@@ -108,6 +108,35 @@ end
 
 -- ======= FUNCTIONS END ===========
 
+-- ========= FUNCTION TOPBAR_ ==========
+
+-- ฟังก์ชันเช็คสถานะของ tb แล้วปรับ Visible ของ ImageButton ทั้งหมด
+local function updateButtonsVisibility()
+    if tb.Size.X.Scale <= 0.035 then
+        -- ถ้า size เล็ก (OFF) → ซ่อนปุ่มทั้งหมด
+        for _, child in ipairs(tb:GetChildren()) do
+            if child:IsA("ImageButton") then
+                child.Visible = false
+            end
+        end
+    else
+        -- ถ้า size ใหญ่กว่า 0.035 (ON) → แสดงปุ่มทั้งหมด
+        for _, child in ipairs(tb:GetChildren()) do
+            if child:IsA("ImageButton") then
+                child.Visible = true
+            end
+        end
+    end
+end
+
+-- อัพเดทครั้งแรก
+updateButtonsVisibility()
+
+-- คอยฟังการเปลี่ยนแปลงของ Size
+tb:GetPropertyChangedSignal("Size"):Connect(updateButtonsVisibility)
+
+-- ======= FUNCTION TOPBAR_ END ===========
+
 -- Settings button
 local Set = Instance.new("ImageButton")
 Set.Name = "A_Settings"
