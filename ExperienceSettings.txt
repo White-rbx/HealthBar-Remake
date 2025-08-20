@@ -96,7 +96,7 @@ createUIListLayout(tb, 0, 0)
 local function createImageButton(name, r, g, b, bt, image, visible)
     local im = Instance.new("ImageButton") -- เดิมคุณใช้ ImageLabel แต่บอกว่า Button
     im.Name = tostring(name)
-    im.Size = UDim2.new(0.35, 0, 0.8, 0)
+    im.Size = UDim2.new(0, 35, 0.8, 0)
     im.BackgroundTransparency = bt
     im.BackgroundColor3 = Color3.fromRGB(r, g, b)
     im.Visible = visible
