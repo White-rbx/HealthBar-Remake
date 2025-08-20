@@ -33,20 +33,6 @@ local function createUIListLayout(parent, scale, offset)
     return Listlay
 end
 
--- helper: ImageButton creation
-local function createImageButton(name, r, g, b, bt, image, visible)
-    local im = Instance.new("ImageButton") -- เดิมคุณใช้ ImageLabel แต่บอกว่า Button
-    im.Name = tostring(name)
-    im.Size = UDim2.new(0.35, 0, 0.8, 0)
-    im.BackgroundTransparency = bt
-    im.BackgroundColor3 = Color3.fromRGB(r, g, b)
-    im.Visible = visible
-    im.Image = "rbxassetid://" .. image
-    im.Parent = tb
-    createUICorner(im, 1, 0)
-    return im
-end
-
 -- Tween helper
 local function tweenObject(obj, props, time, style, direction)
     time = time or 0.28
@@ -102,6 +88,25 @@ tb.BackgroundTransparency = 0.2
 tb.Parent =  mtb
 createUICorner(tb, 1, 0)
 createUIListLayout(tb, 0, 0)
+
+
+-- ======= IMAGEBUTTON FUNCTIONS =========
+
+-- helper: ImageButton creation
+local function createImageButton(name, r, g, b, bt, image, visible)
+    local im = Instance.new("ImageButton") -- เดิมคุณใช้ ImageLabel แต่บอกว่า Button
+    im.Name = tostring(name)
+    im.Size = UDim2.new(0.35, 0, 0.8, 0)
+    im.BackgroundTransparency = bt
+    im.BackgroundColor3 = Color3.fromRGB(r, g, b)
+    im.Visible = visible
+    im.Image = "rbxassetid://" .. image
+    im.Parent = tb
+    createUICorner(im, 1, 0)
+    return im
+end 
+
+-- ======= FUNCTIONS END ===========
 
 -- Settings button
 local Set = Instance.new("ImageButton")
