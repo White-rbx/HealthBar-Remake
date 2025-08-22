@@ -434,16 +434,25 @@ end, false)
 
 -- ❗ Look like it is empty please create some button!
 
--- ============= TEXT BUTTONS =================
--- [[ (name, r, g, b, bt, text, scaled, visible, tr, tg, tb2,  parentFrame)
---]]
+-- ===== TEXT BUTTONS =======
 
+-- CTB1
+local ctb1 = createTextButton("CTB1", 50, 50, 50, 0.2, "INF YIELD", true, true, tb, 255,255,255)
+ctb1.MouseButton1Click:Connect(function()
+    loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+end)
 
-local CTB1 = createTextButton("Infinite yield", 50, 50, 50, 0.5, " IY ", true, true, 255, 255, 255)
+-- CTB2
+local ctb2 = createTextButton("CTB2", 50, 50, 50, 0.2, "DEX", true, true, tb, 255,255,255)
+ctb2.MouseButton1Click:Connect(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/MITUMAxDev/Tools/refs/heads/main/Dex-Explorer.lua"))()
+end)
 
-local CTB2 = createTextButton("Dex Explorer", 50, 50, 50, 0.5, "DEX", true, true, 255, 255, 255)
-
-local CTB3 = createTextButton("Delta keyboard", 50, 50, 50, 0.5, "KEYBOARD", true, true, 255, 255, 255)
+-- CTB3
+local ctb3 = createTextButton("CTB3", , 0.2, "KEYBOARD", true, true, tb, 255,255,255)
+ctb3.MouseButton1Click:Connect(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt", true))()
+end)
 
 -- ============== Background open/close functions ==============
 local BG_X_ON = 0.65
