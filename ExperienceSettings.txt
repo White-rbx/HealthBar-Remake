@@ -145,7 +145,7 @@ end
 -- update visibility function for tb children (ImageButton & Textbutton)
 local function updateButtonsVisibility()
     local scale = tb.Size.X.Scale
-    if scale <= 0 then
+    if scale <= 0.001 then
         for _, child in ipairs(tb:GetChildren()) do
             if child:IsA("ImageButton") or child:IsA("TextButton") or child:IsA(tb) then
                 child.Visible = false
@@ -432,15 +432,16 @@ end, false)
 -- ============== IMAGE BUTTONS ==============
 -- [[ (name, r, g, b, bt, imageId, visible, parentFrame) --]]
 
-
-createImageButton("TestBtn", 255, 255, 255, 0.8, "127097276837204", true)
+-- ❗ Look like it is empty please create some button!
 
 -- ============= TEXT BUTTONS =================
 -- [[ (name, r, g, b, bt, text, scaled, visible, tr, tg, tb2,  parentFrame)
 --]]
 
 
-createTextButton("TestBtn", 255, 255, 255, 0.8, "TEST", true, true, 0, 0, 0)
+createTextButton("Infinite yield", 255, 255, 255, 0.5, "IY", true, true, 0, 0, 0)
+
+createTextButton("Dex Explorer", 255, 255, 255, 0.5, "DEX", true, true, 0, 0, 0)
 
 -- ============== Background open/close functions ==============
 local BG_X_ON = 0.65
