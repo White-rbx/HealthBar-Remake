@@ -449,7 +449,7 @@ ctb2.MouseButton1Click:Connect(function()
 end)
 
 -- CTB3
-local ctb3 = createTextButton("CTB3", , 0.2, "KEYBOARD", true, true, tb, 255,255,255)
+local ctb3 = createTextButton("CTB3", 50, 50, 50, 0.2, "KEYBOARD", true, true, tb, 255,255,255)
 ctb3.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt", true))()
 end)
