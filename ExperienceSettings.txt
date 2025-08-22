@@ -125,7 +125,7 @@ local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg
     
     local txtb = Instance.new("TextButton")
     txtb.Name = tostring(name)
-    txtb.Size = UDim2.new(0.35, 0, 0.8, 0)
+    txtb.Size = UDim2.new(0, 34, 0.8, 0)
     txtb.BackgroundTransparency = bt or 1
     txtb.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
     txtb.Visible = (visible ~= false)
