@@ -147,13 +147,13 @@ local function updateButtonsVisibility()
     local scale = tb.Size.X.Scale
     if scale <= 0.1 then
         for _, child in ipairs(tb:GetChildren()) do
-            if child:IsA("ImageButton") or child:IsA("TextButton") or child:IsA(tb) then
+            if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = false
             end
         end
     else
         for _, child in ipairs(tb:GetChildren()) do
-            if child:IsA("ImageButton") or child:IsA("TextButton") or child:IsA(tb) then
+            if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = true
             end
         end
