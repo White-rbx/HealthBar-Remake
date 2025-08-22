@@ -142,18 +142,18 @@ local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg
     return txtb
 end
 
--- update visibility function for tb children (ImageButton)
+-- update visibility function for tb children (ImageButton & Textbutton)
 local function updateButtonsVisibility()
     local scale = tb.Size.X.Scale
-    if scale <= 0.035 then
+    if scale <= 0 then
         for _, child in ipairs(tb:GetChildren()) do
-            if child:IsA("ImageButton") then
+            if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = false
             end
         end
     else
         for _, child in ipairs(tb:GetChildren()) do
-            if child:IsA("ImageButton") then
+            if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = true
             end
         end
