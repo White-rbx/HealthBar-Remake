@@ -1,11 +1,10 @@
 -- Client: ExperienceUI_Client.lua
 -- LocalScript — สร้าง UI, ควบคุม Toggle, รับ thumbnail จาก Client API
-
 --!strict
+
 local CoreGui = game:GetService("CoreGui")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
 local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
@@ -14,7 +13,7 @@ local Lighting = game:GetService("Lighting")
 
 local localPlayer = Players.LocalPlayer
 
--- helper: UICorner creation
+-- ======= Helpers =======
 local function createUICorner(parent, scale, offset)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(scale, offset)
@@ -22,18 +21,16 @@ local function createUICorner(parent, scale, offset)
     return corner
 end
 
--- helper: UIListLayout creation
 local function createUIListLayout(parent, scale, offset)
-    local Listlay = Instance.new("UIListLayout")
-    Listlay.Padding = UDim.new(scale, offset)
-    Listlay.FillDirection = Enum.FillDirection.Horizontal
-    Listlay.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    Listlay.VerticalAlignment = Enum.VerticalAlignment.Center
-    Listlay.Parent = parent
-    return Listlay
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(scale or 0, offset or 0)
+    list.FillDirection = Enum.FillDirection.Horizontal
+    list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    list.VerticalAlignment = Enum.VerticalAlignment.Center
+    list.Parent = parent
+    return list
 end
 
--- Tween helper
 local function tweenObject(obj, props, time, style, direction)
     time = time or 0.28
     style = style or Enum.EasingStyle.Sine
@@ -44,13 +41,23 @@ local function tweenObject(obj, props, time, style, direction)
     return t
 end
 
--- ============== Build UI (same tree as you had) ==============
--- NOTE: Parent to CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar
-local topBar = CoreGui:WaitForChild("TopBarApp")
-local inner = topBar:WaitForChild("TopBarApp")
-local left = inner:WaitForChild("UnibarLeftFrame")
-local healthBar = left:WaitForChild("HealthBar")
+-- Safe Find path to the HealthBar where we parent our Menu
+local function getHealthBar()
+    local ok, topBar = pcall(function() return CoreGui:WaitForChild("TopBarApp", 5) end)
+    if not ok or not topBar then return nil end
+    local inner = topBar:FindFirstChild("TopBarApp")
+    local left = inner and inner:FindFirstChild("UnibarLeftFrame")
+    local healthBar = left and left:FindFirstChild("HealthBar")
+    return healthBar
+end
 
+local healthBar = getHealthBar()
+if not healthBar then
+    warn("ExperienceUI: HealthBar not found. Aborting UI creation.")
+    return
+end
+
+-- ======= Build UI =======
 local expSettings = Instance.new("Folder")
 expSettings.Name = "ExperienceSettings"
 expSettings.Parent = healthBar
@@ -61,7 +68,7 @@ menuGui.ResetOnSpawn = false
 menuGui.IgnoreGuiInset = true
 menuGui.Parent = expSettings
 
--- MainTopBar
+-- Main TopBar holder (small)
 local mtb = Instance.new("Frame")
 mtb.Name = "TopBar"
 mtb.Position = UDim2.new(0, 0, 0.02, 0)
@@ -70,8 +77,9 @@ mtb.BackgroundTransparency = 1
 mtb.Parent = menuGui
 createUIListLayout(mtb, 0.005, 0)
 
--- Holder
-local hr = Instance.new("ImageLabel")
+-- Holder image area (left)
+local hr = Instance.new("Frame")
+hr.Name = "Holder"
 hr.Size = UDim2.new(0.08, 0, 1, 0)
 hr.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 hr.BackgroundTransparency = 0.2
@@ -79,48 +87,48 @@ hr.Parent = mtb
 createUICorner(hr, 1, 0)
 createUIListLayout(hr, 0, 0)
 
--- TopBar
+-- Top bar buttons container (tb)
 local tb = Instance.new("Frame")
-tb.Name = "TopBar_"
-tb.Size = UDim2.new(0, 0, 1, 0)
+tb.Name = "TopButtons"
+tb.Size = UDim2.new(0, 0, 1, 0) -- start collapsed
 tb.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 tb.BackgroundTransparency = 0.2
-tb.Parent =  mtb
+tb.Parent = mtb
 createUICorner(tb, 1, 0)
 createUIListLayout(tb, 0, 5)
 
-
--- ======= IMAGEBUTTON FUNCTIONS =========
-
--- helper: ImageButton creation
-local function createImageButton(name, r, g, b, bt, image, visible)
-    local im = Instance.new("ImageButton") -- เดิมคุณใช้ ImageLabel แต่บอกว่า Button
+-- helper: ImageButton creation (parented to tb by default)
+local function createImageButton(name, r, g, b, bt, imageId, visible, parentFrame)
+    parentFrame = parentFrame or tb
+    local im = Instance.new("ImageButton")
     im.Name = tostring(name)
-    im.Size = UDim2.new(0, 35, 0.8, 0)
-    im.BackgroundTransparency = bt
-    im.BackgroundColor3 = Color3.fromRGB(r, g, b)
-    im.Visible = visible
-    im.Image = "rbxassetid://" .. image
-    im.Parent = tb
+    im.Size = UDim2.new(0, 34, 0.8, 0)
+    im.BackgroundTransparency = bt or 1
+    im.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
+    im.Visible = (visible ~= false)
+    if imageId then
+        local idstr = tostring(imageId)
+        if idstr:match("^rbxassetid://") then
+            im.Image = idstr
+        else
+            im.Image = "rbxassetid://" .. idstr
+        end
+    end
+    im.Parent = parentFrame
     createUICorner(im, 1, 0)
     return im
-end 
+end
 
--- ======= FUNCTIONS END ===========
-
--- ========= FUNCTION TOPBAR_ ==========
-
--- ฟังก์ชันเช็คสถานะของ tb แล้วปรับ Visible ของ ImageButton ทั้งหมด
+-- update visibility function for tb children (ImageButton)
 local function updateButtonsVisibility()
-    if tb.Size.X.Scale <= 0.035 then
-        -- ถ้า size เล็ก (OFF) → ซ่อนปุ่มทั้งหมด
+    local scale = tb.Size.X.Scale
+    if scale <= 0.035 then
         for _, child in ipairs(tb:GetChildren()) do
             if child:IsA("ImageButton") then
                 child.Visible = false
             end
         end
     else
-        -- ถ้า size ใหญ่กว่า 0.035 (ON) → แสดงปุ่มทั้งหมด
         for _, child in ipairs(tb:GetChildren()) do
             if child:IsA("ImageButton") then
                 child.Visible = true
@@ -129,15 +137,10 @@ local function updateButtonsVisibility()
     end
 end
 
--- อัพเดทครั้งแรก
-updateButtonsVisibility()
-
--- คอยฟังการเปลี่ยนแปลงของ Size
+-- Listen for tb size changes (safe)
 tb:GetPropertyChangedSignal("Size"):Connect(updateButtonsVisibility)
 
--- ======= FUNCTION TOPBAR_ END ===========
-
--- Settings button
+-- Settings button (on hr)
 local Set = Instance.new("ImageButton")
 Set.Name = "A_Settings"
 Set.Size = UDim2.new(0.35, 0, 0.8, 0)
@@ -148,29 +151,29 @@ Set.Active = true
 Set.Parent = hr
 createUICorner(Set, 1, 0)
 
--- Hamburger menu button
+-- Hamburger menu (hbm)
 local hbm = Instance.new("ImageButton")
-hbm.Name = "Hamburger menu"
+hbm.Name = "HamburgerMenu"
 hbm.Size = UDim2.new(0.35, 0, 0.8, 0)
 hbm.Image = "rbxassetid://12214197591"
 hbm.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 hbm.BackgroundTransparency = 1
 hbm.Active = true
 hbm.Parent = hr
-createUICorner(Set, 1, 0)
+createUICorner(hbm, 1, 0)
 
 -- Background panel (start OFFscreen to right)
 local background = Instance.new("Frame")
 background.Name = "Background"
 background.Size = UDim2.new(0.35, 0, 0.9, 0)
-background.Position = UDim2.new(1, 0, 0.05, 0)
+background.Position = UDim2.new(1, 0, 0.05, 0) -- offscreen
 background.BackgroundColor3 = Color3.new(0, 0, 0)
 background.BackgroundTransparency = 0.5
 background.Active = true
 background.Parent = menuGui
 createUICorner(background, 0.02, 0)
 
--- ExperienceImage
+-- Experience image (thumbnail)
 local experienceImage = Instance.new("ImageLabel")
 experienceImage.Name = "ExperienceImage"
 experienceImage.Size = UDim2.new(0.3, 0, 0.235, 0)
@@ -180,19 +183,7 @@ experienceImage.Image = "rbxassetid://15057690464" -- default fallback
 experienceImage.Parent = background
 createUICorner(experienceImage, 0.05, 0)
 
--- receive thumbnail using Players:GetGameThumbnailAsync (client-side API) with fallback
-task.spawn(function()
-    local ok, content, isReady = pcall(function()
-        return Players:GetGameThumbnailAsync(game.PlaceId, Enum.ThumbnailType.Icon, Enum.ThumbnailSize.Size512x512)
-    end)
-    if ok and type(content) == "string" and #content > 4 then
-        pcall(function() experienceImage.Image = content end)
-    else
-        -- fallback already set to rbxassetid://15057690464
-    end
-end)
-
--- ExperienceName
+-- Experience name label
 local experienceName = Instance.new("TextLabel")
 experienceName.Name = "ExperienceName"
 experienceName.Size = UDim2.new(0.65, 0, 0.235, 0)
@@ -215,7 +206,7 @@ settings.Active = true
 settings.Parent = background
 createUICorner(settings, 0.02, 0)
 
--- Pmax folder & labels
+-- Pmax (players info)
 local pmax = Instance.new("Folder"); pmax.Name = "Pmax"; pmax.Parent = settings
 local playersLabel = Instance.new("TextLabel")
 playersLabel.Name = "Players"; playersLabel.Size = UDim2.new(0.36,0,0.05,0)
@@ -231,63 +222,48 @@ playerCount.BackgroundColor3 = Color3.new(1,1,1); playerCount.BackgroundTranspar
 playerCount.Text = "0/0"; playerCount.TextColor3 = Color3.new(0,0,0)
 playerCount.TextScaled = true; playerCount.Parent = pmax; createUICorner(playerCount,0.3,0)
 
--- SeeAll button (simple press button)
+-- SeeAll button
 local seeAll = Instance.new("TextButton")
-seeAll.Name = "SeeAll"; seeAll.Size = UDim2.new(0.96,0,0.05,0)
+seeAll.Name = "SeeAll"
+seeAll.Size = UDim2.new(0.96,0,0.05,0)
 seeAll.Position = UDim2.new(0.02,0,0.08,0)
-seeAll.BackgroundTransparency = 0.2; seeAll.TextScaled = true
-seeAll.Text = "Open Roblox Settings"; seeAll.Parent = pmax
+seeAll.BackgroundTransparency = 0.2
+seeAll.TextScaled = true
+seeAll.Text = "Open Roblox Settings"
+seeAll.Parent = pmax
 createUICorner(seeAll,0.3,0)
 
--- เมื่อกด -> เปิด Roblox Settings + ปิด Background
-seeAll.MouseButton1Click:Connect(function()
-	local settingsMenu = game:GetService("CoreGui")
-		:FindFirstChild("RobloxGui")
-		:FindFirstChild("SettingsClippingShield")
-	if settingsMenu and settingsMenu:FindFirstChild("SettingsShield") then
-		local menuContainer = settingsMenu.SettingsShield:FindFirstChild("MenuContainer")
-		if menuContainer then
-			menuContainer.Visible = true -- ✅ เปิดเมนู Roblox
-		end
-	end
-	setBackgroundState(false, false) -- ✅ เลื่อนออก (เหมือน OFF)
-end)
-
--- Buttons folder
+-- Buttons folder (Leave / Reset / Resume)
 local Bs = Instance.new("Folder"); Bs.Name = "Buttons"; Bs.Parent = settings
 
--- LE (Leave)
 local LE = Instance.new("TextButton")
 LE.Name="Leave"; LE.Size=UDim2.new(0.96,0,0.05,0); LE.Position=UDim2.new(0.02,0,0.94,0)
 LE.BackgroundTransparency=0.2; LE.BackgroundColor3=Color3.fromRGB(255,0,0)
 LE.TextScaled=true; LE.Text="Leave The Experience"; LE.TextColor3=Color3.fromRGB(255,255,255)
 LE.Parent = Bs; createUICorner(LE,0.3,0)
 
--- Re (Reset)
 local Re = Instance.new("TextButton")
 Re.Name="Reset character"; Re.Size=UDim2.new(0.96,0,0.05,0); Re.Position=UDim2.new(0.02,0,0.88,0)
 Re.BackgroundTransparency=0.2; Re.BackgroundColor3=Color3.fromRGB(255,84,84)
 Re.TextScaled=true; Re.Text="Reset character"; Re.TextColor3=Color3.fromRGB(255,255,255)
 Re.Parent = Bs; createUICorner(Re,0.3,0)
 
--- Rm (Resume/close)
 local Rm = Instance.new("TextButton")
 Rm.Name="Resume"; Rm.Size=UDim2.new(0.96,0,0.05,0); Rm.Position=UDim2.new(0.02,0,0.82,0)
 Rm.BackgroundTransparency=0.2; Rm.BackgroundColor3=Color3.fromRGB(170,170,170)
 Rm.TextScaled=true; Rm.Text="Resume"; Rm.TextColor3=Color3.fromRGB(255,255,255)
 Rm.Parent = Bs; createUICorner(Rm,0.3,0)
 
--- Lines
+-- Lines and toggles container
 local L1 = Instance.new("Frame"); L1.Name="Line"; L1.Position=UDim2.new(0.02,0,0.15,0); L1.Size=UDim2.new(0.96,0,0.01,0); L1.Parent = settings
 local L2 = Instance.new("Frame"); L2.Name="Line2"; L2.Position=UDim2.new(0.02,0,0.79,0); L2.Size=UDim2.new(0.96,0,0.01,0); L2.Parent = settings
 
--- BFrame and UIListLayout (for toggles)
 local BFrame = Instance.new("Frame")
 BFrame.Name = "B_Frame"; BFrame.Position = UDim2.new(0.02,0,0.18,0); BFrame.Size = UDim2.new(0.96,0,0.6,0)
 BFrame.BackgroundTransparency = 1; BFrame.Parent = settings
 local UIList = Instance.new("UIListLayout"); UIList.Padding = UDim.new(0.01,0); UIList.Parent = BFrame
 
--- ============== Toggle builder ==============
+-- Toggle builder
 local toggleCount = 0
 local function createToggle(parent, text, callback, defaultState)
     toggleCount += 1
@@ -318,26 +294,21 @@ local function createToggle(parent, text, callback, defaultState)
             but.Text = "OFF"
         end
         if instant then
-            for k,v in pairs(props) do but[k] = v end
+            for k,v in pairs(props) do
+                pcall(function() but[k] = v end)
+            end
         else
-            TweenService:Create(but, tweenInfo, props):Play()
+            pcall(function() TweenService:Create(but, tweenInfo, props):Play() end)
         end
-        if callback then
-            -- pcall to protect callback
-            pcall(callback, toggle)
-        end
+        if callback then pcall(callback, toggle) end
     end
 
     updateToggle(toggle, true)
-    but.MouseButton1Click:Connect(function()
-        updateToggle(not toggle)
-    end)
-
+    but.MouseButton1Click:Connect(function() updateToggle(not toggle) end)
     return f
 end
 
--- ============== ValueLabels toggle (use existing ValueGui Enabled) ==============
--- safe wait for ValueGui
+-- ValueLabels toggle (safe wait)
 local valueGuiOK, ValueGui = pcall(function()
     return CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp"):WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar"):WaitForChild("ValueFolder"):WaitForChild("ValueGui")
 end)
@@ -348,7 +319,7 @@ createToggle(BFrame, "ValueLabels", function(state)
     end
 end, (valueGuiOK and ValueGui and ValueGui.Enabled) or true)
 
--- ============== Shaders toggle (save/restore lighting) ==============
+-- Save / restore Lighting backup
 local lightingBackup = {}
 local function saveLightingSettings()
     lightingBackup = {
@@ -371,6 +342,7 @@ local function restoreLightingSettings()
     end
 end
 
+-- Shaders toggle
 createToggle(BFrame, "Shaders - Recommend graphics 5+", function(state)
     if state then
         pcall(saveLightingSettings)
@@ -390,26 +362,33 @@ createToggle(BFrame, "Shaders - Recommend graphics 5+", function(state)
             sky.MoonAngularSize = 11
             sky.Parent = Lighting
         end
+        -- DepthOfField
         if not Lighting:FindFirstChild("Shader-Field") then
             local dof = Instance.new("DepthOfFieldEffect")
             dof.Name = "Shader-Field"; dof.InFocusRadius = 25; dof.NearIntensity = 0.15; dof.Parent = Lighting
         end
+        -- ColorCorrection
         if not Lighting:FindFirstChild("Shader-Correction") then
             local cc = Instance.new("ColorCorrectionEffect")
             cc.Name = "Shader-Correction"; cc.Brightness = -0.1; cc.Contrast = 0.3; cc.Parent = Lighting
         end
+        -- SunRays
         if not Lighting:FindFirstChild("Shader-SunRays") then
             local sr = Instance.new("SunRaysEffect")
             sr.Name = "Shader-SunRays"; sr.Intensity = 0.103; sr.Spread = 0.88; sr.Parent = Lighting
         end
+        -- Atmosphere (safe create)
         if not Lighting:FindFirstChild("Shader-Atmosphere") then
-            local at = Instance.new("Atmosphere")
-            at.Name = "Shader-Atmosphere"
-            pcall(function() at.Density = 0.419 end)
-            pcall(function() at.Color = Color3.fromRGB(75,47,29) end)
-            at.Parent = Lighting
+            pcall(function()
+                local a = Instance.new("Atmosphere")
+                a.Name = "Shader-Atmosphere"
+                a.Density = 0.419
+                pcall(function() a.Color = Color3.fromRGB(75,47,29) end)
+                a.Parent = Lighting
+            end)
         end
-        -- lighting props
+
+        -- Lighting props
         Lighting.ClockTime = 6.509
         Lighting.GeographicLatitude = 33.91
         Lighting.ColorShift_Bottom = Color3.fromRGB(0,0,0)
@@ -419,51 +398,19 @@ createToggle(BFrame, "Shaders - Recommend graphics 5+", function(state)
         local targets = {"Shader-sky","Shader-Field","Shader-Correction","Shader-SunRays","Shader-Atmosphere"}
         for _, name in ipairs(targets) do
             local obj = Lighting:FindFirstChild(name)
-            if obj then pcall(function() obj:Destroy() end) end
+            if obj then
+                pcall(function() obj:Destroy() end)
+            end
         end
         pcall(restoreLightingSettings)
     end
 end, false)
 
--- ============== END of toggles ==============
+-- ============== IMAGE BUTTONS (example) ==============
+-- Example ImageButton; you can create more with createImageButton(...)
+createImageButton("TestBtn", 255, 255, 255, 0.8, "127097276837204", true)
 
--- ============== IMAGE BUTTONS ============
-
--- Test
-local Test = createImageButton("Test", 255, 255, 255, 0.8, 127097276837204, true)
-
--- ============== END LINE ===================
-
--- Background toggle positions
-local BG_X_ON = 0.65
-local BG_X_OFF = 1
-
--- ฟังก์ชันเลื่อน Background
-local function setBackgroundState(open, instant)
-	local target = open and BG_X_ON or BG_X_OFF
-	local newPos = UDim2.new(target, 0, background.Position.Y.Scale, 0)
-	if instant then
-		background.Position = newPos
-	else
-		TweenService:Create(background, TweenInfo.new(
-			0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out
-		), { Position = newPos }):Play()
-	end
-end
-
--- 🔹 โหลดภาพเกมจาก PlaceId + fallback
-pcall(function()
-	local productInfo = MarketplaceService:GetProductInfo(game.PlaceId)
-	if productInfo and productInfo.IconImageAssetId and productInfo.IconImageAssetId ~= 0 then
-		RBXGame.Image = "rbxassetid://" .. productInfo.IconImageAssetId
-	else
-		RBXGame.Image = "rbxassetid://15057690464" -- fallback
-	end
-end)
-
--- ---------- Append features: Settings button movement, thumbnail, players, seeAll, LE/Re/Rm ----------
-
--- Background toggle positions
+-- ============== Background open/close functions ==============
 local BG_X_ON = 0.65
 local BG_X_OFF = 1
 local function backgroundIsOpen()
@@ -486,7 +433,40 @@ Set.MouseButton1Click:Connect(function()
     setBackgroundState(not backgroundIsOpen(), false)
 end)
 
--- playerCount realtime
+-- ============== Thumbnail + ExperienceName load ==========
+-- Try MarketplaceService:GetProductInfo first (client can call it), fallback to GetGameThumbnailAsync and fallback image
+pcall(function()
+    local ok, info = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end)
+    if ok and type(info) == "table" then
+        if info.IconImageAssetId and info.IconImageAssetId ~= 0 then
+            experienceImage.Image = "rbxassetid://" .. tostring(info.IconImageAssetId)
+        else
+            -- try Players:GetGameThumbnailAsync
+            local sOk, content = pcall(function()
+                return Players:GetGameThumbnailAsync(game.PlaceId, Enum.ThumbnailType.Icon, Enum.ThumbnailSize.Size512x512)
+            end)
+            if sOk and type(content) == "string" and #content > 4 then
+                experienceImage.Image = content
+            else
+                experienceImage.Image = "rbxassetid://15057690464"
+            end
+        end
+        if info.Name then experienceName.Text = tostring(info.Name) end
+    else
+        -- fallback: try thumbnail call directly
+        local sOk, content = pcall(function()
+            return Players:GetGameThumbnailAsync(game.PlaceId, Enum.ThumbnailType.Icon, Enum.ThumbnailSize.Size512x512)
+        end)
+        if sOk and type(content) == "string" and #content > 4 then
+            experienceImage.Image = content
+        else
+            experienceImage.Image = "rbxassetid://15057690464"
+        end
+        pcall(function() experienceName.Text = tostring(game.Name or ("Place " .. tostring(game.PlaceId))) end)
+    end
+end)
+
+-- ============== playerCount realtime ==========
 local function updatePlayerCounter()
     local count = #Players:GetPlayers()
     local maxPlayers = Players.MaxPlayers or 0
@@ -495,7 +475,6 @@ end
 updatePlayerCounter()
 Players.PlayerAdded:Connect(updatePlayerCounter)
 Players.PlayerRemoving:Connect(updatePlayerCounter)
--- periodic refresh
 do
     local tick = 0
     RunService.Heartbeat:Connect(function(dt)
@@ -504,81 +483,71 @@ do
     end)
 end
 
--- experienceName (from MarketplaceService client-side, safe pcall + fallback)
-do
-    local ok, info = pcall(function()
-        return MarketplaceService:GetProductInfo(game.PlaceId)
-    end)
-    if ok and type(info) == "table" and info.Name then
-        experienceName.Text = tostring(info.Name)
-    else
-        -- fallback: try game.Name or PlaceId
-        pcall(function()
-            experienceName.Text = tostring(game.Name or ("Place " .. tostring(game.PlaceId)))
-        end)
-    end
-end
-
--- helper: try open roblox menu safely (pcall multiple ways)
+-- ============== SeeAll: open Roblox settings and close background ==========
 local function tryOpenRobloxMenu()
-    -- 1) GuiService OpenInGameMenu
-    local ok = pcall(function() GuiService:OpenInGameMenu() end)
-    if ok then return true end
+    -- try RobloxGui path first (set Visible)
+    local ok, settingsShield = pcall(function()
+        local rg = CoreGui:FindFirstChild("RobloxGui")
+        if not rg then return nil end
+        local sc = rg:FindFirstChild("SettingsClippingShield") or rg:FindFirstChild("SettingsShield")
+        if not sc then return nil end
+        local shield = sc:FindFirstChild("SettingsShield") or sc:FindFirstChild("Settings") or sc
+        if shield then
+            local menuContainer = shield:FindFirstChild("MenuContainer") or shield:FindFirstChild("SettingsMenu") or nil
+            if menuContainer then
+                menuContainer.Visible = true
+                return true
+            end
+        end
+        return nil
+    end)
+    if ok and settingsShield then return true end
 
-    -- 2) StarterGui SetCore ToggleGameMenu
-    ok = pcall(function() StarterGui:SetCore("ToggleGameMenu", true) end)
-    if ok then return true end
+    -- fallback: try GuiService/OpenInGameMenu or StarterGui SetCore
+    local ok1 = pcall(function() GuiService:OpenInGameMenu() end)
+    if ok1 then return true end
+    local ok2 = pcall(function() StarterGui:SetCore("ToggleGameMenu", true) end)
+    if ok2 then return true end
+    local ok3 = pcall(function() StarterGui:SetCore("OpenSettings") end)
+    if ok3 then return true end
 
-    -- 3) legacy SetCore OpenSettings
-    ok = pcall(function() StarterGui:SetCore("OpenSettings") end)
-    if ok then return true end
-
-    -- 4) VirtualInputManager simulate ESC (rare availability)
+    -- last resort: try VirtualInputManager to send ESC if available
     local vim = game:FindService("VirtualInputManager")
     if vim then
-        local ok2 = pcall(function()
+        local ok4 = pcall(function()
             vim:SendKeyEvent(true, Enum.KeyCode.Escape, false, game)
-            task.wait(0.03)
+            task.wait(0.02)
             vim:SendKeyEvent(false, Enum.KeyCode.Escape, false, game)
         end)
-        if ok2 then return true end
+        if ok4 then return true end
     end
-
     return false
 end
 
--- SeeAll button: when pressed, set background OFF (move) then try open Roblox menu
 seeAll.MouseButton1Click:Connect(function()
-    setBackgroundState(false, false) -- OFF with tween
+    setBackgroundState(false, false) -- close panel
     tryOpenRobloxMenu()
 end)
 
--- ---------- LE (Kick local) ----------
+-- ============== LE / Re / Rm behaviors ==========
 LE.MouseButton1Click:Connect(function()
     if localPlayer then pcall(function() localPlayer:Kick("You leave the experience.") end) end
 end)
-
--- ---------- Re (reset character) ----------
 Re.MouseButton1Click:Connect(function()
     local plr = localPlayer
     if not plr then return end
     local char = plr.Character
     if char then
         local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            pcall(function() humanoid.Health = 0 end)
-        else
-            pcall(function() char:BreakJoints() end)
-        end
+        if humanoid then pcall(function() humanoid.Health = 0 end)
+        else pcall(function() char:BreakJoints() end) end
     end
 end)
-
--- ---------- Rm (resume/close background only) ----------
 Rm.MouseButton1Click:Connect(function()
     setBackgroundState(false, false)
 end)
 
--- ---------- Safety: keep Set rotation consistent if other scripts move background ----------
+-- Keep Set rotation consistent
 RunService.Heartbeat:Connect(function()
     local open = backgroundIsOpen()
     if open then
@@ -588,30 +557,21 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- ========== TOGGLE HAMBURG MENU ==========
--- กำหนด TweenService สำหรับทำแอนิเมชัน
-local TweenService = game:GetService("TweenService")
-
--- state เริ่มต้น (OFF)
+-- ============== Hamburger toggle (tb size + icons) ==============
 local tbOpen = false
-
--- ฟังก์ชันปรับสถานะ
 local function toggleTB()
     tbOpen = not tbOpen
     if tbOpen then
-        -- ON
-        TweenService:Create(tb, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0.4, 0, tb.Size.Y.Scale, 0),
-        }):Play()
+        tweenObject(tb, { Size = UDim2.new(0.4, 0, 1, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         hbm.Image = "rbxassetid://82092515545222"
     else
-        -- OFF
-        TweenService:Create(tb, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 0, tb.Size.Y.Scale, 0),
-        }):Play()
+        tweenObject(tb, { Size = UDim2.new(0, 0, 1, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         hbm.Image = "rbxassetid://12214197591"
     end
 end
-
--- เมื่อกด hbm ให้ toggle
 hbm.MouseButton1Click:Connect(toggleTB)
+
+-- initial update of visibility
+updateButtonsVisibility()
+
+-- done
