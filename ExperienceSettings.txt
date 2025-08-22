@@ -439,11 +439,11 @@ end, false)
 --]]
 
 
-local CTB1 = createTextButton("Infinite yield", 50, 50, 50, 0.5, "IY", true, true, 255, 255, 255)
+local CTB1 = createTextButton("Infinite yield", 50, 50, 50, 0.5, " IY ", true, true, 255, 255, 255)
 
 local CTB2 = createTextButton("Dex Explorer", 50, 50, 50, 0.5, "DEX", true, true, 255, 255, 255)
 
-local CTB3 = createTextButton("Delta keyboard", 50, 50, 50, 0.5, "KEY", true, true, 255, 255, 255)
+local CTB3 = createTextButton("Delta keyboard", 50, 50, 50, 0.5, "KEYBOARD", true, true, 255, 255, 255)
 
 -- ============== Background open/close functions ==============
 local BG_X_ON = 0.65
