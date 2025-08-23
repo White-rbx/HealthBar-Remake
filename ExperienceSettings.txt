@@ -433,19 +433,19 @@ end, false)
 -- [[ (name, r, g, b, bt, imageId, visible, parentFrame) --]]
 
 -- CTB1
-local ctb1 = createTextButton("INF YIELD", 50, 50, 50, 0.2, 116464551513962, true)
+local ctb1 = createImageButton("INF YIELD", 50, 50, 50, 0.2, 116464551513962, true)
 ctb1.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
 end)
 
 -- CTB2
-local ctb2 = createTextButton("Dex", 50, 50, 50, 0.2, 102148729694907, true)
+local ctb2 = createImageButton("Dex", 50, 50, 50, 0.2, 102148729694907, true)
 ctb2.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/MITUMAxDev/Tools/refs/heads/main/Dex-Explorer.lua"))()
 end)
 
 -- CTB3
-local ctb3 = createTextButton("Keyboard", 50, 50, 50, 0.2, 76210662677344, true)
+local ctb3 = createImageButton("Keyboard", 50, 50, 50, 0.2, 76210662677344, true)
 ctb3.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt", true))()
 end)
