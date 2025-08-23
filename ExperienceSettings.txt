@@ -25,8 +25,8 @@ local function createUIListLayout(parent, scale, offset, HZ, VT)
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
     list.FillDirection = Enum.FillDirection.Horizontal
-    list.HorizontalAlignment = Enum.HorizontalAlignment.tostring(HZ)
-    list.VerticalAlignment = Enum.VerticalAlignment.tostring(VT)
+    list.HorizontalAlignment = HZ or Enum.HorizontalAlignment.Center
+    list.VerticalAlignment = VT or Enum.VerticalAlignment.Center
     list.Parent = parent
     return list
 end
