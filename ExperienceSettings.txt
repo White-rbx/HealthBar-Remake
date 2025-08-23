@@ -21,12 +21,12 @@ local function createUICorner(parent, scale, offset)
     return corner
 end
 
-local function createUIListLayout(parent, scale, offset)
+local function createUIListLayout(parent, scale, offset, HZ, VT)
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
     list.FillDirection = Enum.FillDirection.Horizontal
-    list.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    list.VerticalAlignment = Enum.VerticalAlignment.Center
+    list.HorizontalAlignment = Enum.HorizontalAlignment.tostring(HZ)
+    list.VerticalAlignment = Enum.VerticalAlignment.tostring(VT)
     list.Parent = parent
     return list
 end
@@ -75,7 +75,7 @@ mtb.Position = UDim2.new(0, 0, 0.02, 0)
 mtb.Size = UDim2.new(1, 0, 0, 43)
 mtb.BackgroundTransparency = 1
 mtb.Parent = menuGui
-createUIListLayout(mtb, 0.005, 0)
+createUIListLayout(mtb, 0.005, 0, Center, Top)
 
 -- Holder image area (left)
 local hr = Instance.new("Frame")
@@ -85,7 +85,7 @@ hr.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 hr.BackgroundTransparency = 0.2
 hr.Parent = mtb
 createUICorner(hr, 1, 0)
-createUIListLayout(hr, 0, 0)
+createUIListLayout(hr, 0, 0, Center, Center)
 
 -- Top bar buttons container (tb)
 local tb = Instance.new("Frame")
@@ -94,8 +94,8 @@ tb.Size = UDim2.new(0, 0, 1, 0) -- start collapsed
 tb.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 tb.BackgroundTransparency = 0.2
 tb.Parent = mtb
-createUICorner(tb, 1, 0)
-createUIListLayout(tb, 0, 5)
+createUICorner(tb, 0.02, 0)
+createUIListLayout(tb, 0, 5, Left, Top)
 
 -- update visibility function for tb children (ImageButton & Textbutton)
 local function updateButtonsVisibility()
@@ -391,7 +391,7 @@ local function createImageButton(name, r, g, b, bt, imageId, visible, parentFram
     parentFrame = parentFrame or tb
     local im = Instance.new("ImageButton")
     im.Name = tostring(name)
-    im.Size = UDim2.new(0, 34, 0.8, 0)
+    im.Size = UDim2.new(0, 70, 0.16, 0)
     im.BackgroundTransparency = bt or 1
     im.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
     im.Visible = (visible ~= false)
@@ -436,7 +436,7 @@ local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg
     
     local txtb = Instance.new("TextButton")
     txtb.Name = tostring(name)
-    txtb.Size = UDim2.new(0, 34, 0.8, 0)
+    txtb.Size = UDim2.new(0, 70, 0.16, 0)
     txtb.BackgroundTransparency = bt or 1
     txtb.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
     txtb.Visible = (visible ~= false)
