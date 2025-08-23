@@ -1,7 +1,7 @@
 -- Client: ExperienceUI_Client.lua
 -- LocalScript — สร้าง UI, ควบคุม Toggle, รับ thumbnail จาก Client API
---!strict
 
+--!strict
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -21,13 +21,11 @@ local function createUICorner(parent, scale, offset)
     return corner
 end
 
--- ======= UIListLayout =========
+-- ======= UIListLayout helpers =========
 local HCenter = Enum.HorizontalAlignment.Center
 local VCenter = Enum.VerticalAlignment.Center
-local HLeft   = Enum.HorizontalAlignment.Left
-local VTop    = Enum.VerticalAlignment.Top
-
-- ===============================
+local HLeft = Enum.HorizontalAlignment.Left
+local VTop = Enum.VerticalAlignment.Top
 
 local function createUIListLayout(parent, scale, offset, HZ, VT)
     local list = Instance.new("UIListLayout")
@@ -95,7 +93,7 @@ hr.Parent = mtb
 createUICorner(hr, 1, 0)
 createUIListLayout(hr, 0, 0, HCenter, VCenter)
 
--- Top bar buttons container (tb)
+-- Top bar buttons container (tb) — starts collapsed
 local tb = Instance.new("Frame")
 tb.Name = "TopButtons"
 tb.Size = UDim2.new(0, 0, 1, 0) -- start collapsed
@@ -105,10 +103,10 @@ tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
 createUIListLayout(tb, 0, 5, HLeft, VTop)
 
--- update visibility function for tb children (ImageButton & Textbutton)
+-- update visibility function for tb children (ImageButton & TextButton)
 local function updateButtonsVisibility()
     local scale = tb.Size.X.Scale
-    if scale <= 0.1 then
+    if scale <= 0.035 then
         for _, child in ipairs(tb:GetChildren()) do
             if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = false
@@ -122,8 +120,6 @@ local function updateButtonsVisibility()
         end
     end
 end
-
--- Listen for tb size changes (safe)
 tb:GetPropertyChangedSignal("Size"):Connect(updateButtonsVisibility)
 
 -- Settings button (on hr)
@@ -247,12 +243,14 @@ local L2 = Instance.new("Frame"); L2.Name="Line2"; L2.Position=UDim2.new(0.02,0,
 local BFrame = Instance.new("Frame")
 BFrame.Name = "B_Frame"; BFrame.Position = UDim2.new(0.02,0,0.18,0); BFrame.Size = UDim2.new(0.96,0,0.6,0)
 BFrame.BackgroundTransparency = 1; BFrame.Parent = settings
+
 local UIList = Instance.new("UIListLayout"); UIList.Padding = UDim.new(0.01,0); UIList.Parent = BFrame
 
 -- Toggle builder
 local toggleCount = 0
 local function createToggle(parent, text, callback, defaultState)
     toggleCount += 1
+
     local f = Instance.new("Frame")
     f.Name = "Frame" .. toggleCount
     f.Size = UDim2.new(1,0,0.1,0)
@@ -260,23 +258,47 @@ local function createToggle(parent, text, callback, defaultState)
     f.Parent = parent
     createUICorner(f, 0.3, 0)
 
-    local bar = Instance.new("Frame"); bar.Name="Bar"; bar.Size=UDim2.new(0.4,0,1,0); bar.Position=UDim2.new(0.6,0,0,0)
-    bar.BackgroundColor3 = Color3.fromRGB(66,66,66); bar.Parent = f; createUICorner(bar,0.3,0)
+    local bar = Instance.new("Frame")
+    bar.Name = "Bar"
+    bar.Size = UDim2.new(0.4,0,1,0)
+    bar.Position = UDim2.new(0.6,0,0,0)
+    bar.BackgroundColor3 = Color3.fromRGB(66,66,66)
+    bar.Parent = f
+    createUICorner(bar,0.3,0)
 
-    local but = Instance.new("TextButton"); but.Name="ToggleButton"; but.Size=UDim2.new(0.5,0,1,0); but.Parent = bar; createUICorner(but,0.3,0)
-    local txt = Instance.new("TextLabel"); txt.Name="Label"; txt.Size=UDim2.new(0.6,0,1,0); txt.BackgroundTransparency=1; txt.TextScaled=true
-    txt.TextXAlignment = Enum.TextXAlignment.Left; txt.Text = text; txt.Parent = f
+    local but = Instance.new("TextButton")
+    but.Name = "ToggleButton"
+    but.Size = UDim2.new(0.5,0,1,0)
+    but.Parent = bar
+    createUICorner(but,0.3,0)
 
+    local txt = Instance.new("TextLabel")
+    txt.Name = "Label"
+    txt.Size = UDim2.new(0.6,0,1,0)
+    txt.BackgroundTransparency = 1
+    txt.TextScaled = true
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.Text = text
+    txt.Parent = f
+
+    -- Toggle Logic
     local toggle = defaultState or false
     local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
     local function updateToggle(state, instant)
         toggle = state
         local props
         if toggle then
-            props = { Position = UDim2.new(0,0,0,0), BackgroundColor3 = Color3.fromRGB(0,200,0) }
+            props = {
+                Position = UDim2.new(0,0,0,0),
+                BackgroundColor3 = Color3.fromRGB(0,200,0)
+            }
             but.Text = "ON"
         else
-            props = { Position = UDim2.new(0.5,0,0,0), BackgroundColor3 = Color3.fromRGB(255,0,0) }
+            props = {
+                Position = UDim2.new(0.5,0,0,0),
+                BackgroundColor3 = Color3.fromRGB(255,0,0)
+            }
             but.Text = "OFF"
         end
         if instant then
@@ -286,11 +308,17 @@ local function createToggle(parent, text, callback, defaultState)
         else
             pcall(function() TweenService:Create(but, tweenInfo, props):Play() end)
         end
-        if callback then pcall(callback, toggle) end
+        if callback then
+            pcall(callback, toggle)
+        end
     end
 
     updateToggle(toggle, true)
-    but.MouseButton1Click:Connect(function() updateToggle(not toggle) end)
+
+    but.MouseButton1Click:Connect(function()
+        updateToggle(not toggle)
+    end)
+
     return f
 end
 
@@ -373,8 +401,7 @@ createToggle(BFrame, "Shaders - Recommend graphics 5+", function(state)
                 a.Parent = Lighting
             end)
         end
-
-        -- Lighting props
+        -- lighting props
         Lighting.ClockTime = 6.509
         Lighting.GeographicLatitude = 33.91
         Lighting.ColorShift_Bottom = Color3.fromRGB(0,0,0)
@@ -384,16 +411,13 @@ createToggle(BFrame, "Shaders - Recommend graphics 5+", function(state)
         local targets = {"Shader-sky","Shader-Field","Shader-Correction","Shader-SunRays","Shader-Atmosphere"}
         for _, name in ipairs(targets) do
             local obj = Lighting:FindFirstChild(name)
-            if obj then
-                pcall(function() obj:Destroy() end)
-            end
+            if obj then pcall(function() obj:Destroy() end) end
         end
         pcall(restoreLightingSettings)
     end
 end, false)
 
 -- ============== IMAGE BUTTONS ==============
-
 -- helper: ImageButton creation (parented to tb by default)
 local function createImageButton(name, r, g, b, bt, imageId, visible, parentFrame)
     parentFrame = parentFrame or tb
@@ -416,53 +440,51 @@ local function createImageButton(name, r, g, b, bt, imageId, visible, parentFram
     return im
 end
 
--- [[ (name, r, g, b, bt, imageId, visible, parentFrame) --]]
-
 -- CTB1
-local ctb1 = createImageButton("INF YIELD", 50, 50, 50, 0.2, 116464551513962, true)
+local ctb1 = createImageButton("INF YIELD", 50, 50, 50, 0.2, "116464551513962", true)
 ctb1.MouseButton1Click:Connect(function()
-    loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+    -- user asked for local script -> so call loadstring (note: doing external loadstring has security implications)
+    pcall(function()
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+    end)
 end)
 
 -- CTB2
-local ctb2 = createImageButton("Dex", 50, 50, 50, 0.2, 102148729694907, true)
+local ctb2 = createImageButton("Dex", 50, 50, 50, 0.2, "102148729694907", true)
 ctb2.MouseButton1Click:Connect(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/MITUMAxDev/Tools/refs/heads/main/Dex-Explorer.lua"))()
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/MITUMAxDev/Tools/refs/heads/main/Dex-Explorer.lua"))()
+    end)
 end)
 
 -- CTB3
-local ctb3 = createImageButton("Keyboard", 50, 50, 50, 0.2, 76210662677344, true)
+local ctb3 = createImageButton("Keyboard", 50, 50, 50, 0.2, "76210662677344", true)
 ctb3.MouseButton1Click:Connect(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt", true))()
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt", true))()
+    end)
 end)
 
 -- ===== TEXT BUTTONS =======
-
 -- helper: TextButton creation (parented to tb by default)
 local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg, tb2, parentFrame)
     parentFrame = parentFrame or tb
-    
     local txtb = Instance.new("TextButton")
     txtb.Name = tostring(name)
-    txtb.Size = UDim2.new(0, 70, 0.16, 0)
+    -- fixed size: width 34 px (avoid stretching), full height fraction
+    txtb.Size = UDim2.new(0, 34, 0.8, 0)
     txtb.BackgroundTransparency = bt or 1
     txtb.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
     txtb.Visible = (visible ~= false)
     txtb.Text = tostring(text or "")
-    
-    -- ใช้สี Text แยก (tr,tg,tb2) ถ้าไม่ได้ใส่ให้ default = ขาว
+    -- text color separate (defaults to white)
     txtb.TextColor3 = Color3.fromRGB(tr or 255, tg or 255, tb2 or 255)
-    
     txtb.Font = Enum.Font.Legacy
     txtb.TextScaled = (scaled ~= false)
     txtb.Parent = parentFrame
-    
     createUICorner(txtb, 1, 0)
     return txtb
 end
-
--- [[ (name, r, g, b, bt, text, scaled, visible, tr, tg, tb2, parentFrame) --]]
-
 
 -- ============== Background open/close functions ==============
 local BG_X_ON = 0.65
@@ -488,14 +510,13 @@ Set.MouseButton1Click:Connect(function()
 end)
 
 -- ============== Thumbnail + ExperienceName load ==========
--- Try MarketplaceService:GetProductInfo first (client can call it), fallback to GetGameThumbnailAsync and fallback image
 pcall(function()
     local ok, info = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end)
     if ok and type(info) == "table" then
         if info.IconImageAssetId and info.IconImageAssetId ~= 0 then
             experienceImage.Image = "rbxassetid://" .. tostring(info.IconImageAssetId)
         else
-            -- try Players:GetGameThumbnailAsync
+            -- try GetGameThumbnailAsync fallback
             local sOk, content = pcall(function()
                 return Players:GetGameThumbnailAsync(game.PlaceId, Enum.ThumbnailType.Icon, Enum.ThumbnailSize.Size512x512)
             end)
@@ -547,7 +568,7 @@ local function tryOpenRobloxMenu()
         if not sc then return nil end
         local shield = sc:FindFirstChild("SettingsShield") or sc:FindFirstChild("Settings") or sc
         if shield then
-            local menuContainer = shield:FindFirstChild("MenuContainer") or shield:FindFirstChild("SettingsMenu") or nil
+            local menuContainer = shield:FindFirstChild("MenuContainer") or shield:FindFirstChild("SettingsMenu")
             if menuContainer then
                 menuContainer.Visible = true
                 return true
@@ -575,11 +596,12 @@ local function tryOpenRobloxMenu()
         end)
         if ok4 then return true end
     end
+
     return false
 end
 
 seeAll.MouseButton1Click:Connect(function()
-    setBackgroundState(false, false) -- close panel
+    setBackgroundState(false, false) -- close panel via tween (OFF)
     tryOpenRobloxMenu()
 end)
 
@@ -587,16 +609,21 @@ end)
 LE.MouseButton1Click:Connect(function()
     if localPlayer then pcall(function() localPlayer:Kick("You leave the experience.") end) end
 end)
+
 Re.MouseButton1Click:Connect(function()
     local plr = localPlayer
     if not plr then return end
     local char = plr.Character
     if char then
         local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then pcall(function() humanoid.Health = 0 end)
-        else pcall(function() char:BreakJoints() end) end
+        if humanoid then
+            pcall(function() humanoid.Health = 0 end)
+        else
+            pcall(function() char:BreakJoints() end)
+        end
     end
 end)
+
 Rm.MouseButton1Click:Connect(function()
     setBackgroundState(false, false)
 end)
@@ -619,7 +646,7 @@ local function toggleTB()
         tweenObject(tb, { Size = UDim2.new(0.4, 0, 10, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         hbm.Image = "rbxassetid://82092515545222"
     else
-        tweenObject(tb, { Size = UDim2.new(0, 0, 0, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        tweenObject(tb, { Size = UDim2.new(0, 0, 1, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         hbm.Image = "rbxassetid://12214197591"
     end
 end
@@ -628,4 +655,4 @@ hbm.MouseButton1Click:Connect(toggleTB)
 -- initial update of visibility
 updateButtonsVisibility()
 
--- done
+-- Done
