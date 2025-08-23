@@ -97,51 +97,6 @@ tb.Parent = mtb
 createUICorner(tb, 1, 0)
 createUIListLayout(tb, 0, 5)
 
--- helper: ImageButton creation (parented to tb by default)
-local function createImageButton(name, r, g, b, bt, imageId, visible, parentFrame)
-    parentFrame = parentFrame or tb
-    local im = Instance.new("ImageButton")
-    im.Name = tostring(name)
-    im.Size = UDim2.new(0, 34, 0.8, 0)
-    im.BackgroundTransparency = bt or 1
-    im.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
-    im.Visible = (visible ~= false)
-    if imageId then
-        local idstr = tostring(imageId)
-        if idstr:match("^rbxassetid://") then
-            im.Image = idstr
-        else
-            im.Image = "rbxassetid://" .. idstr
-        end
-    end
-    im.Parent = parentFrame
-    createUICorner(im, 1, 0)
-    return im
-end
-
--- helper: TextButton creation (parented to tb by default)
-local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg, tb2, parentFrame)
-    parentFrame = parentFrame or tb
-    
-    local txtb = Instance.new("TextButton")
-    txtb.Name = tostring(name)
-    txtb.Size = UDim2.new(0, 34, 0.8, 0)
-    txtb.BackgroundTransparency = bt or 1
-    txtb.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
-    txtb.Visible = (visible ~= false)
-    txtb.Text = tostring(text or "")
-    
-    -- ใช้สี Text แยก (tr,tg,tb2) ถ้าไม่ได้ใส่ให้ default = ขาว
-    txtb.TextColor3 = Color3.fromRGB(tr or 255, tg or 255, tb2 or 255)
-    
-    txtb.Font = Enum.Font.Legacy
-    txtb.TextScaled = (scaled ~= false)
-    txtb.Parent = parentFrame
-    
-    createUICorner(txtb, 1, 0)
-    return txtb
-end
-
 -- update visibility function for tb children (ImageButton & Textbutton)
 local function updateButtonsVisibility()
     local scale = tb.Size.X.Scale
@@ -430,6 +385,29 @@ createToggle(BFrame, "Shaders - Recommend graphics 5+", function(state)
 end, false)
 
 -- ============== IMAGE BUTTONS ==============
+
+-- helper: ImageButton creation (parented to tb by default)
+local function createImageButton(name, r, g, b, bt, imageId, visible, parentFrame)
+    parentFrame = parentFrame or tb
+    local im = Instance.new("ImageButton")
+    im.Name = tostring(name)
+    im.Size = UDim2.new(0, 34, 0.8, 0)
+    im.BackgroundTransparency = bt or 1
+    im.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
+    im.Visible = (visible ~= false)
+    if imageId then
+        local idstr = tostring(imageId)
+        if idstr:match("^rbxassetid://") then
+            im.Image = idstr
+        else
+            im.Image = "rbxassetid://" .. idstr
+        end
+    end
+    im.Parent = parentFrame
+    createUICorner(im, 1, 0)
+    return im
+end
+
 -- [[ (name, r, g, b, bt, imageId, visible, parentFrame) --]]
 
 -- CTB1
@@ -451,6 +429,30 @@ ctb3.MouseButton1Click:Connect(function()
 end)
 
 -- ===== TEXT BUTTONS =======
+
+-- helper: TextButton creation (parented to tb by default)
+local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg, tb2, parentFrame)
+    parentFrame = parentFrame or tb
+    
+    local txtb = Instance.new("TextButton")
+    txtb.Name = tostring(name)
+    txtb.Size = UDim2.new(0, 34, 0.8, 0)
+    txtb.BackgroundTransparency = bt or 1
+    txtb.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
+    txtb.Visible = (visible ~= false)
+    txtb.Text = tostring(text or "")
+    
+    -- ใช้สี Text แยก (tr,tg,tb2) ถ้าไม่ได้ใส่ให้ default = ขาว
+    txtb.TextColor3 = Color3.fromRGB(tr or 255, tg or 255, tb2 or 255)
+    
+    txtb.Font = Enum.Font.Legacy
+    txtb.TextScaled = (scaled ~= false)
+    txtb.Parent = parentFrame
+    
+    createUICorner(txtb, 1, 0)
+    return txtb
+end
+
 -- [[ (name, r, g, b, bt, text, scaled, visible, tr, tg, tb2, parentFrame) --]]
 
 
