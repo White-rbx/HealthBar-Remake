@@ -21,12 +21,20 @@ local function createUICorner(parent, scale, offset)
     return corner
 end
 
+-- ======= UIListLayout =========
+local HCenter = Enum.HorizontalAlignment.Center
+local VCenter = Enum.VerticalAlignment.Center
+local HLeft   = Enum.HorizontalAlignment.Left
+local VTop    = Enum.VerticalAlignment.Top
+
+- ===============================
+
 local function createUIListLayout(parent, scale, offset, HZ, VT)
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
     list.FillDirection = Enum.FillDirection.Horizontal
-    list.HorizontalAlignment = HZ or Enum.HorizontalAlignment.Center
-    list.VerticalAlignment = VT or Enum.VerticalAlignment.Center
+    list.HorizontalAlignment = HZ or HCenter
+    list.VerticalAlignment = VT or VCenter
     list.Parent = parent
     return list
 end
@@ -75,7 +83,7 @@ mtb.Position = UDim2.new(0, 0, 0.02, 0)
 mtb.Size = UDim2.new(1, 0, 0, 43)
 mtb.BackgroundTransparency = 1
 mtb.Parent = menuGui
-createUIListLayout(mtb, 0.005, 0, Center, Top)
+createUIListLayout(mtb, 0.005, 0, HCenter, VTop)
 
 -- Holder image area (left)
 local hr = Instance.new("Frame")
@@ -85,7 +93,7 @@ hr.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 hr.BackgroundTransparency = 0.2
 hr.Parent = mtb
 createUICorner(hr, 1, 0)
-createUIListLayout(hr, 0, 0, Center, Center)
+createUIListLayout(hr, 0, 0, HCenter, VCenter)
 
 -- Top bar buttons container (tb)
 local tb = Instance.new("Frame")
@@ -95,7 +103,7 @@ tb.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 tb.BackgroundTransparency = 0.2
 tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
-createUIListLayout(tb, 0, 5, Left, Top)
+createUIListLayout(tb, 0, 5, HLeft, VTop)
 
 -- update visibility function for tb children (ImageButton & Textbutton)
 local function updateButtonsVisibility()
