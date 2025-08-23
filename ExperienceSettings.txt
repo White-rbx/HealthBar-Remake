@@ -608,10 +608,10 @@ local tbOpen = false
 local function toggleTB()
     tbOpen = not tbOpen
     if tbOpen then
-        tweenObject(tb, { Size = UDim2.new(0.4, 0, 1, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        tweenObject(tb, { Size = UDim2.new(0.4, 0, 10, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         hbm.Image = "rbxassetid://82092515545222"
     else
-        tweenObject(tb, { Size = UDim2.new(0, 0, 1, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        tweenObject(tb, { Size = UDim2.new(0, 0, 0, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         hbm.Image = "rbxassetid://12214197591"
     end
 end
