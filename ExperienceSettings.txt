@@ -87,7 +87,7 @@ createUIListLayout(mtb, 0.005, 0, HCenter, VTop)
 local hr = Instance.new("Frame")
 hr.Name = "Holder"
 hr.Size = UDim2.new(0.08, 0, 1, 0)
-hr.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 hr.BackgroundTransparency = 0.2
 hr.Parent = mtb
 createUICorner(hr, 1, 0)
@@ -97,7 +97,7 @@ createUIListLayout(hr, 0, 0, HCenter, VCenter)
 local tb = Instance.new("Frame")
 tb.Name = "TopButtons"
 tb.Size = UDim2.new(0, 0, 1, 0) -- start collapsed
-tb.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+tb.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 tb.BackgroundTransparency = 0.2
 tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
@@ -127,7 +127,7 @@ local Set = Instance.new("ImageButton")
 Set.Name = "A_Settings"
 Set.Size = UDim2.new(0.35, 0, 0.8, 0)
 Set.Image = "rbxassetid://85613740372383"
-Set.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Set.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 Set.BackgroundTransparency = 1
 Set.Active = true
 Set.Parent = hr
