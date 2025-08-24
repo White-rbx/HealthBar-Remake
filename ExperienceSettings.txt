@@ -86,7 +86,7 @@ createUIListLayout(mtb, 0.005, 0, HCenter, VTop)
 -- Holder image area (left)
 local hr = Instance.new("Frame")
 hr.Name = "Holder"
-hr.Size = UDim2.new(0.08, 0, 1, 0)
+hr.Size = UDim2.new(0, 100, 1, 0)
 hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 hr.BackgroundTransparency = 0.2
 hr.Parent = mtb
