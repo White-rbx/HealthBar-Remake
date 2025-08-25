@@ -809,7 +809,7 @@ do
                 if timerMissing >= TIMEOUT then
                     warn("[HRP-Watcher] UI missing for", math.floor(timerMissing), "s - nothing to do")
                 end
-                goto cont
+                continue
             end
 
             -- check player HRP robustly
