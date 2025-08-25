@@ -215,7 +215,7 @@ do
 
     -- config
     local CHECK_INTERVAL = 0.12
-    local TIMEOUT = 13.5 -- ตามที่ขอ
+    local TIMEOUT = 3.5 -- ตามที่ขอ
     local timerMissing = 0
     local isOpen = true -- assume open if UI exists
 
