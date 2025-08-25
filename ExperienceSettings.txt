@@ -167,6 +167,52 @@ wl.TextColor3 = Color3.fromRGB(255, 255, 255)
 wl.Visible = true
 wl.Parent = wa1
 
+-- === WL / WA1 intro sequence ===
+local TweenService = game:GetService("TweenService")
+
+-- เริ่มต้น state
+wa1.Visible = false
+wl.Visible = true
+Set.Visible = false
+hbm.Visible = false
+
+-- tween helper
+local function tween(obj, props, time, style, dir)
+    local ti = TweenInfo.new(time or 0.5, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out)
+    local t = TweenService:Create(obj, ti, props)
+    t:Play()
+    return t
+end
+
+-- main flow
+task.delay(3.5, function()
+    if wl.Visible then
+        -- ปิด wl / wa1
+        wl.Visible = false
+        wa1.Visible = false
+
+        -- โชว์ set / hbm
+        Set.Visible = true
+        hbm.Visible = true
+
+        -- ขยาย hr เป็น 100
+        tween(hr, {Size = UDim2.new(0, 100, hr.Size.Y.Scale, hr.Size.Y.Offset)}, 0.5)
+    end
+end)
+
+-- failsafe: ถ้า wl ไม่ถูกปิดใน 3.5 วิ → force hide และซ่อน tb
+task.delay(3.6, function()
+    if wl.Visible then
+        -- force hide
+        wl.Visible = false
+        wa1.Visible = false
+
+        -- ปรับ tb และ hr
+        tween(tb, {Position = UDim2.new(-5, 0, tb.Position.Y.Scale, tb.Position.Y.Offset)}, 0.5)
+        tween(hr, {Size = UDim2.new(0, 34, hr.Size.Y.Scale, hr.Size.Y.Offset)}, 0.5)
+    end
+end)
+
 -- Background panel (start OFFscreen to right)
 local background = Instance.new("Frame")
 background.Name = "Background"
