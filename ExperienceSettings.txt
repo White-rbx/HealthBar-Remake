@@ -167,52 +167,105 @@ wl.TextColor3 = Color3.fromRGB(255, 255, 255)
 wl.Visible = true
 wl.Parent = wa1
 
--- === WL / WA1 intro sequence ===
-local TweenService = game:GetService("TweenService")
+-- HumanoidRootPart watcher: ถ้า HRP หายเกิน 3.5 วิ -> ปิด, ถ้าเจอ -> เปิด
+do
+    local RunService = game:GetService("RunService")
+    local TweenService = game:GetService("TweenService")
+    local player = Players and Players.LocalPlayer or game.Players.LocalPlayer
 
--- เริ่มต้น state
-wa1.Visible = false
-wl.Visible = true
-Set.Visible = false
-hbm.Visible = false
+    -- safety checks (ต้องมีตัวแปรจากสคริปหลัก)
+    if not tb or not hr or not Set or not hbm then
+        warn("HRP-watcher: missing required UI instances (tb/hr/Set/hbm). Skipping watcher.")
+        return
+    end
 
--- tween helper
-local function tween(obj, props, time, style, dir)
-    local ti = TweenInfo.new(time or 0.5, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out)
-    local t = TweenService:Create(obj, ti, props)
-    t:Play()
-    return t
-end
+    local CHECK_INTERVAL = 0.12        -- รอบเช็ค (วิ)
+    local TIMEOUT = 3.5                -- ถ้าไม่เจอเกินนี้ -> ปิด
+    local timerMissing = 0
+    local isOpen = false               -- สถานะปัจจุบัน (open/close) เพื่อป้องกัน tween ซ้ำ
 
--- main flow
-task.delay(3.5, function()
-    if wl.Visible then
-        -- ปิด wl / wa1
-        wl.Visible = false
-        wa1.Visible = false
+    -- tween helper (ถ้าในไฟล์มี function tweenObject ให้ใช้แทน)
+    local function safeTween(target, props, time)
+        time = time or 0.32
+        local ok, t = pcall(function()
+            local info = TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            return TweenService:Create(target, info, props)
+        end)
+        if ok and t then
+            pcall(function() t:Play() end)
+        end
+    end
 
-        -- โชว์ set / hbm
+    -- ฟังก์ชันเปิด (HRP เจอ)
+    local function applyOpenInstant()
+        -- ตั้งค่าแบบทันที (ถ้าต้องการ)
+        tb.Position = UDim2.new(0, 0, 0, 0)
+        hr.Size = UDim2.new(0, 100, hr.Size.Y.Scale, hr.Size.Y.Offset)
         Set.Visible = true
         hbm.Visible = true
-
-        -- ขยาย hr เป็น 100
-        tween(hr, {Size = UDim2.new(0, 100, hr.Size.Y.Scale, hr.Size.Y.Offset)}, 0.5)
+        isOpen = true
     end
-end)
-
--- failsafe: ถ้า wl ไม่ถูกปิดใน 3.5 วิ → force hide และซ่อน tb
-task.delay(3.6, function()
-    if wl.Visible then
-        -- force hide
-        wl.Visible = false
-        wa1.Visible = false
-
-        -- ปรับ tb และ hr
-        tween(tb, {Position = UDim2.new(-5, 0, tb.Position.Y.Scale, tb.Position.Y.Offset)}, 0.5)
-        tween(hr, {Size = UDim2.new(0, 34, hr.Size.Y.Scale, hr.Size.Y.Offset)}, 0.5)
+    local function applyOpenTween()
+        safeTween(tb, { Position = UDim2.new(0, 0, 0, 0) }, 0.28)
+        safeTween(hr, { Size = UDim2.new(0, 100, hr.Size.Y.Scale, hr.Size.Y.Offset) }, 0.28)
+        Set.Visible = true
+        hbm.Visible = true
+        isOpen = true
     end
-end)
 
+    -- ฟังก์ชันปิด (HRP หายเกิน TIMEOUT)
+    local function applyCloseTween()
+        -- ย้าย tb ออกด้านซ้าย (scale -5 ตามที่ขอ) และ ย่อ hr เป็น 34px
+        safeTween(tb, { Position = UDim2.new(-5, 0, tb.Position.Y.Scale, tb.Position.Y.Offset) }, 0.28)
+        safeTween(hr, { Size = UDim2.new(0, 34, hr.Size.Y.Scale, hr.Size.Y.Offset) }, 0.28)
+        Set.Visible = false
+        hbm.Visible = false
+        isOpen = false
+    end
+
+    -- เริ่ม watcher loop
+    task.spawn(function()
+        while true do
+            local dt = CHECK_INTERVAL
+            task.wait(CHECK_INTERVAL)
+
+            local char = nil
+            if player then
+                -- เช็คตัวละคร & HRP
+                char = player.Character or player.CharacterAdded and player.CharacterAdded:FindFirstChildWhichIsA and player.CharacterAdded:Wait() or player.Character
+            end
+
+            local hasHRP = false
+            if char then
+                if char:FindFirstChild("HumanoidRootPart") then
+                    hasHRP = true
+                else
+                    -- บางระบบ HumanoidRootPart อาจถูกตั้งชื่ออื่น (หา HumanoidRootPart via class)
+                    local hrp = char:FindFirstChildWhichIsA and char:FindFirstChildWhichIsA("BasePart")
+                    if hrp and hrp.Name == "HumanoidRootPart" then
+                        hasHRP = true
+                    end
+                end
+            end
+
+            if hasHRP then
+                timerMissing = 0
+                -- ถ้ายังปิดอยู่ ให้เปิดด้วย tween
+                if not isOpen then
+                    applyOpenTween()
+                end
+            else
+                timerMissing = timerMissing + dt
+                if timerMissing >= TIMEOUT then
+                    -- ถึงเวลาปิด ถ้ายังเปิดอยู่ ให้เปลี่ยนเป็นปิด
+                    if isOpen then
+                        applyCloseTween()
+                    end
+                end
+            end
+        end
+    end)
+end
 -- Background panel (start OFFscreen to right)
 local background = Instance.new("Frame")
 background.Name = "Background"
