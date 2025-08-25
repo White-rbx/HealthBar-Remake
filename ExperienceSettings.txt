@@ -678,122 +678,177 @@ hbm.MouseButton1Click:Connect(toggleTB)
 -- initial update of visibility
 updateButtonsVisibility()
 
--- Robust HumanoidRootPart watcher (REPLACE old watcher block with this)
+-- Robust HRP watcher + auto-find UI instances
 do
     local TweenService = game:GetService("TweenService")
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
     local localPlayer = Players.LocalPlayer
 
-    -- Helper: safe tween wrapper
+    -- รายชื่อชื่อที่อาจถูกตั้งไว้ (fallbacks)
+    local SetNames = {"Settings", "Set", "SetBtn"}
+    local hbmNames = {"hbm", "HBM", "Hamburger", "hbmButton", "hbm_img"}
+    local tbNames  = {"tb", "TB", "ToolBar", "TopBar", "tb_frame", "TB_Frame"}
+    local hrNames  = {"hr", "HR", "hr_frame", "hr_bar", "HR_Frame", "HR"}
+
+    local function findByNames(root, nameList, classFilter)
+        if not root then return nil end
+        for _, name in ipairs(nameList) do
+            local direct = root:FindFirstChild(name, true)
+            if direct and (not classFilter or direct.ClassName == classFilter) then
+                return direct
+            end
+        end
+        -- search descendants manually (case-insensitive)
+        for _, obj in ipairs(root:GetDescendants()) do
+            for _, name in ipairs(nameList) do
+                if obj.Name == name then
+                    if not classFilter or obj.ClassName == classFilter then
+                        return obj
+                    end
+                end
+            end
+        end
+        return nil
+    end
+
+    -- try to resolve UI instances by (1) locals (if same scope), (2) searching GUIs
+    local function resolveUI()
+        -- 1) if locals exist in this scope use them (they might be created above)
+        if rawget(_G, "tb") and rawget(_G, "hr") and rawget(_G, "Set") and rawget(_G, "hbm") then
+            return rawget(_G, "tb"), rawget(_G, "hr"), rawget(_G, "Set"), rawget(_G, "hbm")
+        end
+
+        -- 2) try globals in environment (some scripts define as globals)
+        local envTb = tb or nil
+        local envHr = hr or nil
+        local envSet = Set or nil
+        local envHbm = hbm or nil
+        if envTb and envHr and envSet and envHbm then
+            return envTb, envHr, envSet, envHbm
+        end
+
+        -- 3) search likely parents: CoreGui then PlayerGui
+        local roots = {}
+        table.insert(roots, game:GetService("CoreGui"))
+        if localPlayer and localPlayer:FindFirstChild("PlayerGui") then
+            table.insert(roots, localPlayer.PlayerGui)
+        end
+
+        for _, root in ipairs(roots) do
+            local foundSet = envSet or findByNames(root, SetNames)
+            local foundHbm = envHbm or findByNames(root, hbmNames)
+            local foundTb  = envTb  or findByNames(root, tbNames)
+            local foundHr  = envHr  or findByNames(root, hrNames)
+            if foundSet and foundHbm and foundTb and foundHr then
+                return foundTb, foundHr, foundSet, foundHbm
+            end
+        end
+
+        -- 4) last resort: search entire game for named items
+        local foundSet = findByNames(game, SetNames)
+        local foundHbm = findByNames(game, hbmNames)
+        local foundTb  = findByNames(game, tbNames)
+        local foundHr  = findByNames(game, hrNames)
+        return foundTb, foundHr, foundSet, foundHbm
+    end
+
+    -- safe tween wrapper
     local function safeTween(target, props, time)
-        if not target or type(target) ~= "table" and typeof(target) ~= "Instance" then return end
+        if not target or not target:IsA("Instance") then return end
         local ok, t = pcall(function()
             local info = TweenInfo.new(time or 0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
             return TweenService:Create(target, info, props)
         end)
-        if ok and t then
-            pcall(function() t:Play() end)
-        end
+        if ok and t then pcall(function() t:Play() end) end
     end
 
-    -- Wait for required UI instances (with timeout)
-    local function waitForInstances(timeout)
-        timeout = timeout or 5
-        local start = tick()
-        while tick() - start < timeout do
-            -- try to find them in the current environment (they were created above in the script)
-            if tb and hr and Set and hbm then
-                return tb, hr, Set, hbm
-            end
-            task.wait(0.05)
-        end
-        return nil, nil, nil, nil
+    -- wait for UI to resolve (up to timeout)
+    local UI_TIMEOUT = 5
+    local start = tick()
+    local ui_tb, ui_hr, ui_Set, ui_hbm
+    while tick() - start < UI_TIMEOUT do
+        ui_tb, ui_hr, ui_Set, ui_hbm = resolveUI()
+        if ui_tb and ui_hr and ui_Set and ui_hbm then break end
+        task.wait(0.05)
     end
 
-    -- Try to get the instances (wait up to 5s)
-    local _tb, _hr, _Set, _hbm = waitForInstances(5)
-    if not (_tb and _hr and _Set and _hbm) then
-        warn("HRP-watcher: Required UI instances not found (tb/hr/Set/hbm). Watcher disabled.")
-        return
+    if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
+        warn("[HRP-Watcher] Could not find UI instances (tb/hr/Set/hbm). Found:",
+            "tb=", tostring(ui_tb), "hr=", tostring(ui_hr), "Set=", tostring(ui_Set), "hbm=", tostring(ui_hbm))
+        -- still continue but will abort early in loop
+    else
+        print("[HRP-Watcher] Found UI instances:", ui_tb:GetFullName(), ui_hr:GetFullName(), ui_Set:GetFullName(), ui_hbm:GetFullName())
     end
 
-    -- local copies (use these to avoid accidental globals)
-    local ui_tb = _tb
-    local ui_hr = _hr
-    local ui_Set = _Set
-    local ui_hbm = _hbm
+    -- initial requested visibility states (as you specified)
+    if ui_hbm then pcall(function() ui_hbm.Visible = false end) end
+    -- wl is TextLabel (you said wl true) we DON'T change wl here (user wanted wl true initially)
+    if ui_Set then pcall(function() ui_Set.Visible = false end) end
 
-    -- config
+    -- watcher logic
     local CHECK_INTERVAL = 0.12
-    local TIMEOUT = 3.5 -- ตามที่ขอ
+    local TIMEOUT = 3.5
     local timerMissing = 0
-    local isOpen = true -- assume open if UI exists
+    local isOpen = true
 
-    -- open/close actions
-    local function applyOpen()
-        -- ensure objects exist
-        if not (ui_tb and ui_hr) then return end
-        safeTween(ui_tb, { Position = UDim2.new(0, 0, 0, 0) }, 0.28)
-        safeTween(ui_hr, { Size = UDim2.new(0, 100, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-        pcall(function() ui_Set.Visible = true ui_hbm.Visible = true end)
-        isOpen = true
-    end
-
-    local function applyClose()
-        if not (ui_tb and ui_hr) then return end
-        safeTween(ui_tb, { Position = UDim2.new(-5, 0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
-        safeTween(ui_hr, { Size = UDim2.new(0, 34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-        pcall(function() ui_Set.Visible = false ui_hbm.Visible = false end)
-        isOpen = false
-    end
-
-    -- Start loop (spawned to avoid blocking)
     task.spawn(function()
         while true do
             task.wait(CHECK_INTERVAL)
-            local player = Players.LocalPlayer
-            if not player then
-                -- localPlayer not ready - treat as missing but don't immediately close
+            -- re-resolve if one of UI pieces became nil
+            if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
+                ui_tb, ui_hr, ui_Set, ui_hbm = resolveUI()
+            end
+
+            -- if still not found, increment but avoid immediate close until TIMEOUT passes
+            if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
                 timerMissing = timerMissing + CHECK_INTERVAL
-            else
-                local char = player.Character
-                if not char then
-                    -- maybe waiting for CharacterAdded
-                    timerMissing = timerMissing + CHECK_INTERVAL
+                if timerMissing >= TIMEOUT then
+                    -- nothing we can do without UI
+                    warn("[HRP-Watcher] UI instances missing for", timerMissing, "s")
+                end
+                goto continue
+            end
+
+            -- check player's HumanoidRootPart robustly
+            local hasHRP = false
+            local plr = Players.LocalPlayer
+            if plr and plr.Character then
+                local char = plr.Character
+                if char:FindFirstChild("HumanoidRootPart") then
+                    hasHRP = true
                 else
-                    -- check for HumanoidRootPart (robustly)
-                    local hasHRP = false
-                    if char:FindFirstChild("HumanoidRootPart") then
-                        hasHRP = true
-                    else
-                        -- some custom rigs might not have exact name; try to detect primary part/humanoid root
-                        local hrp = char:FindFirstChildWhichIsA("BasePart") or char.PrimaryPart
-                        if hrp and (hrp.Name == "HumanoidRootPart" or hrp.Name == "Root" or hrp.Name == "HumanoidRoot") then
-                            hasHRP = true
-                        end
-                    end
+                    -- try primary part / any basepart that looks like root
+                    local prim = char.PrimaryPart
+                    if prim and prim:IsA("BasePart") then hasHRP = true end
+                end
+            end
 
-                    if hasHRP then
-                        -- reset timer
-                        timerMissing = 0
-                        if not isOpen then
-                            applyOpen()
-                        end
-                    else
-                        timerMissing = timerMissing + CHECK_INTERVAL
+            if hasHRP then
+                timerMissing = 0
+                if not isOpen then
+                    -- open: tb.Position Y = 0, hr.Size X = 100, Set & hbm visible
+                    safeTween(ui_tb, { Position = UDim2.new(0, 0, 0, 0) }, 0.28)
+                    safeTween(ui_hr, { Size = UDim2.new(0, 100, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                    pcall(function() ui_Set.Visible = true ui_hbm.Visible = true end)
+                    isOpen = true
+                    print("[HRP-Watcher] HRP found -> opening UI")
+                end
+            else
+                timerMissing = timerMissing + CHECK_INTERVAL
+                if timerMissing >= TIMEOUT then
+                    if isOpen then
+                        -- close: tb.Position X = -5, hr.Size X = 34, Set/hbm not visible
+                        safeTween(ui_tb, { Position = UDim2.new(-5, 0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
+                        safeTween(ui_hr, { Size = UDim2.new(0, 34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                        pcall(function() ui_Set.Visible = false ui_hbm.Visible = false end)
+                        isOpen = false
+                        print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI")
                     end
                 end
             end
 
-            -- if timed out, close UI
-            if timerMissing >= TIMEOUT then
-                if isOpen then
-                    applyClose()
-                end
-            end
+            ::continue::
         end
     end)
 end
-
--- Done
