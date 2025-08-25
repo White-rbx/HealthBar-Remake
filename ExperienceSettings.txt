@@ -159,6 +159,7 @@ wa1.Parent = hr
 local wl = Instance.new("TextLabel")
 wl.Name = "Warning & Load"
 wl.BackgroundTransparency = 1
+wl.Size = UDim2.new(1, 0, 1, 0)
 wl.Text = "Not available for this experience."
 wl.TextScaled = true
 wl.Active = false
