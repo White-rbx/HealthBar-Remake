@@ -86,7 +86,7 @@ createUIListLayout(mtb, 0.005, 0, HCenter, VTop)
 -- Holder image area (left)
 local hr = Instance.new("Frame")
 hr.Name = "Holder"
-hr.Size = UDim2.new(0, 100, 1, 0)
+hr.Size = UDim2.new(0, 370, 1, 0)
 hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 hr.BackgroundTransparency = 0.2
 hr.Parent = mtb
@@ -130,6 +130,7 @@ Set.Image = "rbxassetid://85613740372383"
 Set.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 Set.BackgroundTransparency = 1
 Set.Active = true
+Set.Visible = false
 Set.Parent = hr
 createUICorner(Set, 1, 0)
 
@@ -141,8 +142,29 @@ hbm.Image = "rbxassetid://12214197591"
 hbm.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 hbm.BackgroundTransparency = 1
 hbm.Active = true
+hbm.Visible = false
 hbm.Parent = hr
 createUICorner(hbm, 1, 0)
+
+-- Wait1
+local wa1 = Instance.new("Frame")
+wa1.Name = "LoadFrame"
+wa1.BackgroundTransparency = 1
+wa1.Size = UDim2.new(0.8, 0, 1, 0)
+wa1.Active = false
+wa1.Visible = true
+wa1.Parent = hr
+
+-- Warning & Load
+local wl = Instance.new("TextLabel")
+wl.Name = "Warning & Load"
+wl.BackgroundTransparency = 1
+wl.Text = "Not available for this experience."
+wl.TextScaled = true
+wl.Active = false
+wl.TextColor3 = Color3.fromRGB(255, 255, 255)
+wl.Visible = true
+wl.Parent = wa1
 
 -- Background panel (start OFFscreen to right)
 local background = Instance.new("Frame")
