@@ -751,27 +751,32 @@ task.spawn(function()
             local pl = Players.LocalPlayer
             local hasHRP = characterHasHRP(pl)
 
-            if hasHRP then
-                timerMissing = 0
-                if not isOpen then
-                    print("[HRP-Watcher] HRP detected -> opening UI")
-                    safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad)
-                    safeTween(ui_hr, { Size = UDim2.new(0,100, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                    pcall(function() ui_Set.Visible = true ui_hbm.Visible = true end)
-                    isOpen = true
-                end
-            else
-                timerMissing = timerMissing + CHECK_INTERVAL
-                if timerMissing >= TIMEOUT then
-                    if isOpen then
-                        print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI")
-                        safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
-                        safeTween(ui_hr, { Size = UDim2.new(0,34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                        pcall(function() ui_Set.Visible = false ui_hbm.Visible = false end)
-                        isOpen = false
-                    end
-                end
-            end
+if hasHRP then
+    timerMissing = 0
+    if not isOpen then
+        print("[HRP-Watcher] HRP detected -> opening UI")
+        safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad)
+        safeTween(ui_hr, { Size = UDim2.new(0,100, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+        pcall(function()
+            ui_Set.Visible = true 
+            ui_hbm.Visible = true
+            if ui_wa1 then ui_wa1.Visible = false end
+            if ui_wl then ui_wl.Visible = false end
+        end)
+        isOpen = true
+    end
+else
+    timerMissing = timerMissing + CHECK_INTERVAL
+    if timerMissing >= TIMEOUT then
+        if isOpen then
+            print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI (fail-safe)")
+            safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
+            safeTween(ui_hr, { Size = UDim2.new(0,34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+            pcall(function()
+                ui_Set.Visible = false
+                ui_hbm.Visible = false
+            end)
+            isOpen = false
         end
     end
-end)
+end
