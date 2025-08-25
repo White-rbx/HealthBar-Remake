@@ -682,93 +682,137 @@ local TIMEOUT = TIMEOUT or 3.5               -- ปรับตามที่�
 local timerMissing = timerMissing or 0
 local isOpen = isOpen or false
 
--- พยายาม resolve UI ก่อนเริ่ม loop (resolveUI ต้องมีอยู่ในไฟล์หลักของคุณ)
-local ui_tb, ui_hr, ui_Set, ui_hbm = resolveUI()
+-- ======= Robust HRP watcher main loop (replace your old loop with this) =======
+-- Ensure these exist (provide safe defaults if not)
+local CHECK_INTERVAL = (CHECK_INTERVAL ~= nil) and CHECK_INTERVAL or 0.25
+local TIMEOUT = (TIMEOUT ~= nil) and TIMEOUT or 3.5
 
+-- UI refs (will be resolved by resolveUI when available)
+local ui_tb, ui_hr, ui_Set, ui_hbm = nil, nil, nil, nil
+local timerMissing = 0
+local isOpen = false
+
+-- helper: safe call to resolveUI
+local function tryResolveUI()
+    if type(resolveUI) ~= "function" then
+        return nil, nil, nil, nil, false
+    end
+    local ok, a, b, c, d = pcall(resolveUI)
+    if not ok then
+        warn("[HRP-Watcher] resolveUI() errored:", a)
+        return nil, nil, nil, nil, false
+    end
+    -- resolveUI might return nils - accept them
+    return a, b, c, d, true
+end
+
+-- helper: safe tween wrapper (prefer existing safeTween if present)
+local function safeTweenCall(obj, props, time)
+    if not obj then return end
+    if type(safeTween) == "function" then
+        -- use existing safeTween if available
+        local ok, err = pcall(safeTween, obj, props, time)
+        if not ok then
+            warn("[HRP-Watcher] safeTween errored:", err)
+        end
+        return
+    end
+    -- fallback: create simple tween via TweenService
+    local ok2, err2 = pcall(function()
+        local TweenService = game:GetService("TweenService")
+        local info = TweenInfo.new(time or 0.28, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+        local t = TweenService:Create(obj, info, props)
+        t:Play()
+    end)
+    if not ok2 then
+        warn("[HRP-Watcher] fallback tween failed:", err2)
+    end
+end
+
+-- main loop
 task.spawn(function()
     while true do
         task.wait(CHECK_INTERVAL)
 
-        -- ถ้า refs หายให้พยายาม resolve ใหม่ (safe)
+        -- try resolve UI refs if missing
         if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
-            ui_tb, ui_hr, ui_Set, ui_hbm = resolveUI()
-            if ui_tb and ui_hr and ui_Set and ui_hbm then
-                print("[HRP-Watcher] Resolved UI during runtime:", ui_tb:GetFullName(), ui_hr:GetFullName())
-                -- ถ้อยากให้ทันทีเปิดเมื่อพบ ให้ reset timerMissing
-                timerMissing = 0
+            local a,b,c,d, ok = tryResolveUI()
+            if ok then
+                ui_tb, ui_hr, ui_Set, ui_hbm = a,b,c,d
+                if ui_tb and ui_hr and ui_Set and ui_hbm then
+                    print("[HRP-Watcher] Resolved UI during runtime:", ui_tb:GetFullName(), ui_hr:GetFullName())
+                else
+                    -- some refs still nil, continue and accumulate missing time
+                    timerMissing = timerMissing + CHECK_INTERVAL
+                    if timerMissing >= TIMEOUT then
+                        warn("[HRP-Watcher] UI partially missing for", math.floor(timerMissing), "s")
+                    end
+                    -- go next iteration
+                    continue
+                end
+            else
+                -- resolveUI function not yet present; accumulate missing time
+                timerMissing = timerMissing + CHECK_INTERVAL
+                if timerMissing >= TIMEOUT then
+                    warn("[HRP-Watcher] resolveUI() not available for", math.floor(timerMissing), "s")
+                end
+                continue
             end
         end
 
-        -- ถ้ายังหา UI ไม่เจอ ให้เพิ่ม timerMissing แล้วข้ามการตรวจ HRP
-        if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
-            timerMissing = timerMissing + CHECK_INTERVAL
-            if timerMissing >= TIMEOUT then
-                warn("[HRP-Watcher] UI missing for", math.floor(timerMissing), "s - waiting for UI refs")
-            end
-            -- ข้ามการตรวจ HRP รอบนี้
-        else
-            -- มี UI refs อยู่ ให้ตรวจ HRP ของ player
-            local hasHRP = false
-            local pl = Players.LocalPlayer
-            if pl and pl.Character then
-                local char = pl.Character
-                -- direct HumanoidRootPart
-                if char:FindFirstChild("HumanoidRootPart") then
+        -- at this point, ui_* should exist
+        -- reset missing timer (we have UI)
+        timerMissing = 0
+
+        -- check player HRP robustly
+        local hasHRP = false
+        local pl = game:GetService("Players").LocalPlayer
+        if pl and pl.Character then
+            local char = pl.Character
+            if char:FindFirstChild("HumanoidRootPart") then
+                hasHRP = true
+            else
+                local prim = char.PrimaryPart
+                if prim and prim:IsA("BasePart") then
                     hasHRP = true
                 else
-                    -- ถ้ามี PrimaryPart ที่เป็น BasePart ให้ถือว่า ok
-                    if char.PrimaryPart and char.PrimaryPart:IsA("BasePart") then
-                        hasHRP = true
-                    else
-                        -- fallback: scan ชื่อ part หา keyword "Root" หรือ "Humanoid"
-                        for _, c in ipairs(char:GetChildren()) do
-                            if c:IsA("BasePart") then
-                                local n = tostring(c.Name)
-                                if string.find(n, "Root") or string.find(n, "Humanoid") then
-                                    hasHRP = true
-                                    break
-                                end
-                            end
+                    for _, c in ipairs(char:GetChildren()) do
+                        if c:IsA("BasePart") and (string.find(c.Name, "Root") or string.find(c.Name, "Humanoid")) then
+                            hasHRP = true
+                            break
                         end
                     end
                 end
             end
+        end
 
-            if hasHRP then
-                -- รีเซ็ต timerMissing
-                timerMissing = 0
-                if not isOpen then
-                    print("[HRP-Watcher] HRP detected -> opening UI")
-                    -- Tween ปลอดภัย (safeTween ของคุณควรเช็ค obj)
+        if hasHRP then
+            -- found HRP -> open UI if closed
+            timerMissing = 0
+            if not isOpen then
+                print("[HRP-Watcher] HRP detected -> opening UI")
+                -- safe tweening/setting
+                safeTweenCall(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28)
+                safeTweenCall(ui_hr, { Size = UDim2.new(0,100, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                pcall(function()
+                    if ui_Set then ui_Set.Visible = true end
+                    if ui_hbm then ui_hbm.Visible = true end
+                end)
+                isOpen = true
+            end
+        else
+            -- missing HRP -> count time, close UI when surpass TIMEOUT
+            timerMissing = timerMissing + CHECK_INTERVAL
+            if timerMissing >= TIMEOUT then
+                if isOpen then
+                    print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI (fail-safe)")
+                    safeTweenCall(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
+                    safeTweenCall(ui_hr, { Size = UDim2.new(0,34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                     pcall(function()
-                        safeTween(ui_tb, { Position = UDim2.new(0, 0, 0, 0) }, 0.28)
+                        if ui_Set then ui_Set.Visible = false end
+                        if ui_hbm then ui_hbm.Visible = false end
                     end)
-                    pcall(function()
-                        -- ขยาย hr: UDim2.new(xScale, xOffset, yScale, yOffset)
-                        local newSize = UDim2.new(0, 100, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset)
-                        safeTween(ui_hr, { Size = newSize }, 0.28)
-                    end)
-                    pcall(function()
-                        ui_Set.Visible = true
-                        ui_hbm.Visible = true
-                    end)
-                    isOpen = true
-                end
-            else
-                -- HRP หาย เพิ่ม timerMissing และถ้าเกิน TIMEOUT ให้ปิด/ย่อ UI
-                timerMissing = timerMissing + CHECK_INTERVAL
-                if timerMissing >= TIMEOUT then
-                    if isOpen then
-                        print("[HRP-Watcher] HRP missing > ".. tostring(TIMEOUT) .."s -> closing UI (fail-safe)")
-                        pcall(function()
-                            -- เลื่อนไปทางซ้าย (-5 scale) และย่อ hr
-                            safeTween(ui_tb, { Position = UDim2.new(-5, 0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
-                            safeTween(ui_hr, { Size = UDim2.new(0, 34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                            ui_Set.Visible = false
-                            ui_hbm.Visible = false
-                        end)
-                        isOpen = false
-                    end
+                    isOpen = false
                 end
             end
         end
