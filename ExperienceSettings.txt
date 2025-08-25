@@ -180,7 +180,7 @@ do
     end
 
     local CHECK_INTERVAL = 0.12        -- รอบเช็ค (วิ)
-    local TIMEOUT = 3.5                -- ถ้าไม่เจอเกินนี้ -> ปิด
+    local TIMEOUT = 13.5                -- ถ้าไม่เจอเกินนี้ -> ปิด
     local timerMissing = 0
     local isOpen = false               -- สถานะปัจจุบัน (open/close) เพื่อป้องกัน tween ซ้ำ
 
