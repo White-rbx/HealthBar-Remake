@@ -678,186 +678,69 @@ hbm.MouseButton1Click:Connect(toggleTB)
 -- initial update of visibility
 updateButtonsVisibility()
 
--- ===== Robust HRP watcher (put this AFTER you create tb, hr, Set, hbm) =====
-do
-    local TweenService = game:GetService("TweenService")
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
+-- main loop
+task.spawn(function()
+    while true do
+        task.wait(CHECK_INTERVAL)
 
-    -- configurable
-    local CHECK_INTERVAL = 0.12
-    local TIMEOUT = 3.5 -- seconds until consider missing
-    local UI_RESOLVE_TIMEOUT = 5 -- seconds to wait for UI to appear
-
-    -- helper safe tween
-    local function safeTween(inst, props, t)
-        if not inst or not inst:IsA("Instance") then return end
-        local ok, tween = pcall(function()
-            return TweenService:Create(inst, TweenInfo.new(t or 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props)
-        end)
-        if ok and tween then
-            pcall(function() tween:Play() end)
-        end
-    end
-
-    -- helper: try find objects by exact name or case-insensitive search in likely parents
-    local function findInstanceByNameCandidates(root, candidates, classFilter)
-        if not root then return nil end
-        -- direct
-        for _, name in ipairs(candidates) do
-            local v = root:FindFirstChild(name, true)
-            if v and (not classFilter or v.ClassName == classFilter) then
-                return v
+        -- ensure UI refs are live; try to re-resolve if nil
+        if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
+            ui_tb, ui_hr, ui_Set, ui_hbm = resolveUI()
+            if ui_tb and ui_hr and ui_Set and ui_hbm then
+                print("[HRP-Watcher] Resolved UI during runtime:", ui_tb:GetFullName(), ui_hr:GetFullName())
             end
         end
-        -- fallback: brute-force case-insensitive match
-        for _, obj in ipairs(root:GetDescendants()) do
-            for _, name in ipairs(candidates) do
-                if string.lower(obj.Name) == string.lower(name) then
-                    if not classFilter or obj.ClassName == classFilter then
-                        return obj
-                    end
-                end
+
+        -- if still missing UI, increment timerMissing but continue
+        if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
+            timerMissing = timerMissing + CHECK_INTERVAL
+            if timerMissing >= TIMEOUT then
+                warn("[HRP-Watcher] UI missing for", math.floor(timerMissing), "s - nothing to do")
             end
-        end
-        return nil
-    end
-
-    -- candidates lists (edit these if your real names differ)
-    local tbNames = {"tb", "TB", "ToolBar", "TopBar", "tb_frame", "TB_Frame", "tb_container"}
-    local hrNames = {"hr", "HR", "hr_frame", "hr_bar", "HR_Frame", "hr_container"}
-    local setNames = {"Settings", "Set", "SetBtn", "SettingsBtn"}
-    local hbmNames = {"hbm", "HBM", "Hamburger", "hbmButton", "hbm_img"}
-
-    -- Try to resolve UI instances: first check locals (if they are globals in your file),
-    -- then look in CoreGui and PlayerGui, then game-wide.
-    local function resolveUI()
-        -- first - if variables exist in this scope as upvalues/globals, prefer them
-        if rawget(_G, "tb") and rawget(_G, "hr") and rawget(_G, "Set") and rawget(_G, "hbm") then
-            return rawget(_G, "tb"), rawget(_G, "hr"), rawget(_G, "Set"), rawget(_G, "hbm")
-        end
-        -- try globals in the environment
-        local envTb, envHr, envSet, envHbm = (tb or nil), (hr or nil), (Set or nil), (hbm or nil)
-        if envTb and envHr and envSet and envHbm then
-            return envTb, envHr, envSet, envHbm
+            continue -- ✅ ใช้ continue ของ Luau แทน goto
         end
 
-        local roots = {}
-        table.insert(roots, game:GetService("CoreGui"))
+        -- check player HRP robustly
+        local hasHRP = false
         local pl = Players.LocalPlayer
-        if pl and pl:FindFirstChild("PlayerGui") then table.insert(roots, pl.PlayerGui) end
-
-        for _, root in ipairs(roots) do
-            local rTb = findInstanceByNameCandidates(root, tbNames)
-            local rHr = findInstanceByNameCandidates(root, hrNames)
-            local rSet = findInstanceByNameCandidates(root, setNames)
-            local rHbm = findInstanceByNameCandidates(root, hbmNames)
-            if rTb and rHr and rSet and rHbm then
-                return rTb, rHr, rSet, rHbm
-            end
-        end
-
-        -- last resort whole-game search
-        local rTb = findInstanceByNameCandidates(game, tbNames)
-        local rHr = findInstanceByNameCandidates(game, hrNames)
-        local rSet = findInstanceByNameCandidates(game, setNames)
-        local rHbm = findInstanceByNameCandidates(game, hbmNames)
-        return rTb, rHr, rSet, rHbm
-    end
-
-    -- wait for UI (non-blocking)
-    local start = tick()
-    local ui_tb, ui_hr, ui_Set, ui_hbm = resolveUI()
-    while (not (ui_tb and ui_hr and ui_Set and ui_hbm)) and tick() - start < UI_RESOLVE_TIMEOUT do
-        task.wait(0.05)
-        ui_tb, ui_hr, ui_Set, ui_hbm = resolveUI()
-    end
-
-    if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
-        warn("[HRP-Watcher] UI resolution incomplete. Found:",
-             "tb=", tostring(ui_tb), "hr=", tostring(ui_hr),
-             "Set=", tostring(ui_Set), "hbm=", tostring(ui_hbm))
-        -- still continue; resolve during loop
-    else
-        print("[HRP-Watcher] Found UI:", ui_tb:GetFullName(), ui_hr:GetFullName(), ui_Set:GetFullName(), ui_hbm:GetFullName())
-    end
-
-    -- initial requested visibility & states per your note
-    if ui_hbm then pcall(function() ui_hbm.Visible = false end) end
-    if ui_Set then pcall(function() ui_Set.Visible = false end) end
-    -- wl is a separate TextLabel you said should start true; don't touch it here
-
-    local timerMissing = 0
-    local isOpen = true
-
-    -- main loop
-    task.spawn(function()
-        while true do
-            task.wait(CHECK_INTERVAL)
-
-            -- ensure UI refs are live; try to re-resolve if nil
-            if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
-                ui_tb, ui_hr, ui_Set, ui_hbm = resolveUI()
-                if ui_tb and ui_hr and ui_Set and ui_hbm then
-                    print("[HRP-Watcher] Resolved UI during runtime:", ui_tb:GetFullName(), ui_hr:GetFullName())
-                end
-            end
-
-            -- if still missing UI, increment timerMissing but continue
-            if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
-                timerMissing = timerMissing + CHECK_INTERVAL
-                if timerMissing >= TIMEOUT then
-                    warn("[HRP-Watcher] UI missing for", math.floor(timerMissing), "s - nothing to do")
-                end
-                continue
-            end
-
-            -- check player HRP robustly
-            local hasHRP = false
-            local pl = Players.LocalPlayer
-            if pl and pl.Character then
-                local char = pl.Character
-                if char:FindFirstChild("HumanoidRootPart") then
+        if pl and pl.Character then
+            local char = pl.Character
+            if char:FindFirstChild("HumanoidRootPart") then
+                hasHRP = true
+            else
+                if char.PrimaryPart and char.PrimaryPart:IsA("BasePart") then
                     hasHRP = true
                 else
-                    if char.PrimaryPart and char.PrimaryPart:IsA("BasePart") then
-                        hasHRP = true
-                    else
-                        -- attempt to find any BasePart that is likely root
-                        for _, c in ipairs(char:GetChildren()) do
-                            if c:IsA("BasePart") and (string.match(c.Name, "Root") or string.match(c.Name, "Humanoid")) then
-                                hasHRP = true
-                                break
-                            end
+                    for _, c in ipairs(char:GetChildren()) do
+                        if c:IsA("BasePart") and (string.match(c.Name, "Root") or string.match(c.Name, "Humanoid")) then
+                            hasHRP = true
+                            break
                         end
                     end
                 end
             end
+        end
 
-            if hasHRP then
-                timerMissing = 0
-                if not isOpen then
-                    print("[HRP-Watcher] HRP detected -> opening UI")
-                    safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28)
-                    safeTween(ui_hr, { Size = UDim2.new(0,100, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                    pcall(function() ui_Set.Visible = true ui_hbm.Visible = true end)
-                    isOpen = true
-                end
-            else
-                timerMissing = timerMissing + CHECK_INTERVAL
-                if timerMissing >= TIMEOUT then
-                    if isOpen then
-                        print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI (fail-safe)")
-                        safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
-                        safeTween(ui_hr, { Size = UDim2.new(0,34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                        pcall(function() ui_Set.Visible = false ui_hbm.Visible = false end)
-                        isOpen = false
-                    end
+        if hasHRP then
+            timerMissing = 0
+            if not isOpen then
+                print("[HRP-Watcher] HRP detected -> opening UI")
+                safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28)
+                safeTween(ui_hr, { Size = UDim2.new(0,100, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                pcall(function() ui_Set.Visible = true ui_hbm.Visible = true end)
+                isOpen = true
+            end
+        else
+            timerMissing = timerMissing + CHECK_INTERVAL
+            if timerMissing >= TIMEOUT then
+                if isOpen then
+                    print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI (fail-safe)")
+                    safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
+                    safeTween(ui_hr, { Size = UDim2.new(0,34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                    pcall(function() ui_Set.Visible = false ui_hbm.Visible = false end)
+                    isOpen = false
                 end
             end
-
-            ::cont::
         end
-    end)
-end
--- ===== end watcher =====
+    end
+end)
