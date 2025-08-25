@@ -167,124 +167,6 @@ wl.TextColor3 = Color3.fromRGB(255, 255, 255)
 wl.Visible = true
 wl.Parent = wa1
 
--- Robust HumanoidRootPart watcher (REPLACE old watcher block with this)
-do
-    local TweenService = game:GetService("TweenService")
-    local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
-    local localPlayer = Players.LocalPlayer
-
-    -- Helper: safe tween wrapper
-    local function safeTween(target, props, time)
-        if not target or type(target) ~= "table" and typeof(target) ~= "Instance" then return end
-        local ok, t = pcall(function()
-            local info = TweenInfo.new(time or 0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-            return TweenService:Create(target, info, props)
-        end)
-        if ok and t then
-            pcall(function() t:Play() end)
-        end
-    end
-
-    -- Wait for required UI instances (with timeout)
-    local function waitForInstances(timeout)
-        timeout = timeout or 5
-        local start = tick()
-        while tick() - start < timeout do
-            -- try to find them in the current environment (they were created above in the script)
-            if tb and hr and Set and hbm then
-                return tb, hr, Set, hbm
-            end
-            task.wait(0.05)
-        end
-        return nil, nil, nil, nil
-    end
-
-    -- Try to get the instances (wait up to 5s)
-    local _tb, _hr, _Set, _hbm = waitForInstances(5)
-    if not (_tb and _hr and _Set and _hbm) then
-        warn("HRP-watcher: Required UI instances not found (tb/hr/Set/hbm). Watcher disabled.")
-        return
-    end
-
-    -- local copies (use these to avoid accidental globals)
-    local ui_tb = _tb
-    local ui_hr = _hr
-    local ui_Set = _Set
-    local ui_hbm = _hbm
-
-    -- config
-    local CHECK_INTERVAL = 0.12
-    local TIMEOUT = 3.5 -- ตามที่ขอ
-    local timerMissing = 0
-    local isOpen = true -- assume open if UI exists
-
-    -- open/close actions
-    local function applyOpen()
-        -- ensure objects exist
-        if not (ui_tb and ui_hr) then return end
-        safeTween(ui_tb, { Position = UDim2.new(0, 0, 0, 0) }, 0.28)
-        safeTween(ui_hr, { Size = UDim2.new(0, 100, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-        pcall(function() ui_Set.Visible = true ui_hbm.Visible = true end)
-        isOpen = true
-    end
-
-    local function applyClose()
-        if not (ui_tb and ui_hr) then return end
-        safeTween(ui_tb, { Position = UDim2.new(-5, 0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
-        safeTween(ui_hr, { Size = UDim2.new(0, 34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-        pcall(function() ui_Set.Visible = false ui_hbm.Visible = false end)
-        isOpen = false
-    end
-
-    -- Start loop (spawned to avoid blocking)
-    task.spawn(function()
-        while true do
-            task.wait(CHECK_INTERVAL)
-            local player = Players.LocalPlayer
-            if not player then
-                -- localPlayer not ready - treat as missing but don't immediately close
-                timerMissing = timerMissing + CHECK_INTERVAL
-            else
-                local char = player.Character
-                if not char then
-                    -- maybe waiting for CharacterAdded
-                    timerMissing = timerMissing + CHECK_INTERVAL
-                else
-                    -- check for HumanoidRootPart (robustly)
-                    local hasHRP = false
-                    if char:FindFirstChild("HumanoidRootPart") then
-                        hasHRP = true
-                    else
-                        -- some custom rigs might not have exact name; try to detect primary part/humanoid root
-                        local hrp = char:FindFirstChildWhichIsA("BasePart") or char.PrimaryPart
-                        if hrp and (hrp.Name == "HumanoidRootPart" or hrp.Name == "Root" or hrp.Name == "HumanoidRoot") then
-                            hasHRP = true
-                        end
-                    end
-
-                    if hasHRP then
-                        -- reset timer
-                        timerMissing = 0
-                        if not isOpen then
-                            applyOpen()
-                        end
-                    else
-                        timerMissing = timerMissing + CHECK_INTERVAL
-                    end
-                end
-            end
-
-            -- if timed out, close UI
-            if timerMissing >= TIMEOUT then
-                if isOpen then
-                    applyClose()
-                end
-            end
-        end
-    end)
-end
-
 -- Background panel (start OFFscreen to right)
 local background = Instance.new("Frame")
 background.Name = "Background"
@@ -795,5 +677,123 @@ hbm.MouseButton1Click:Connect(toggleTB)
 
 -- initial update of visibility
 updateButtonsVisibility()
+
+-- Robust HumanoidRootPart watcher (REPLACE old watcher block with this)
+do
+    local TweenService = game:GetService("TweenService")
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local localPlayer = Players.LocalPlayer
+
+    -- Helper: safe tween wrapper
+    local function safeTween(target, props, time)
+        if not target or type(target) ~= "table" and typeof(target) ~= "Instance" then return end
+        local ok, t = pcall(function()
+            local info = TweenInfo.new(time or 0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            return TweenService:Create(target, info, props)
+        end)
+        if ok and t then
+            pcall(function() t:Play() end)
+        end
+    end
+
+    -- Wait for required UI instances (with timeout)
+    local function waitForInstances(timeout)
+        timeout = timeout or 5
+        local start = tick()
+        while tick() - start < timeout do
+            -- try to find them in the current environment (they were created above in the script)
+            if tb and hr and Set and hbm then
+                return tb, hr, Set, hbm
+            end
+            task.wait(0.05)
+        end
+        return nil, nil, nil, nil
+    end
+
+    -- Try to get the instances (wait up to 5s)
+    local _tb, _hr, _Set, _hbm = waitForInstances(5)
+    if not (_tb and _hr and _Set and _hbm) then
+        warn("HRP-watcher: Required UI instances not found (tb/hr/Set/hbm). Watcher disabled.")
+        return
+    end
+
+    -- local copies (use these to avoid accidental globals)
+    local ui_tb = _tb
+    local ui_hr = _hr
+    local ui_Set = _Set
+    local ui_hbm = _hbm
+
+    -- config
+    local CHECK_INTERVAL = 0.12
+    local TIMEOUT = 3.5 -- ตามที่ขอ
+    local timerMissing = 0
+    local isOpen = true -- assume open if UI exists
+
+    -- open/close actions
+    local function applyOpen()
+        -- ensure objects exist
+        if not (ui_tb and ui_hr) then return end
+        safeTween(ui_tb, { Position = UDim2.new(0, 0, 0, 0) }, 0.28)
+        safeTween(ui_hr, { Size = UDim2.new(0, 100, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+        pcall(function() ui_Set.Visible = true ui_hbm.Visible = true end)
+        isOpen = true
+    end
+
+    local function applyClose()
+        if not (ui_tb and ui_hr) then return end
+        safeTween(ui_tb, { Position = UDim2.new(-5, 0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
+        safeTween(ui_hr, { Size = UDim2.new(0, 34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+        pcall(function() ui_Set.Visible = false ui_hbm.Visible = false end)
+        isOpen = false
+    end
+
+    -- Start loop (spawned to avoid blocking)
+    task.spawn(function()
+        while true do
+            task.wait(CHECK_INTERVAL)
+            local player = Players.LocalPlayer
+            if not player then
+                -- localPlayer not ready - treat as missing but don't immediately close
+                timerMissing = timerMissing + CHECK_INTERVAL
+            else
+                local char = player.Character
+                if not char then
+                    -- maybe waiting for CharacterAdded
+                    timerMissing = timerMissing + CHECK_INTERVAL
+                else
+                    -- check for HumanoidRootPart (robustly)
+                    local hasHRP = false
+                    if char:FindFirstChild("HumanoidRootPart") then
+                        hasHRP = true
+                    else
+                        -- some custom rigs might not have exact name; try to detect primary part/humanoid root
+                        local hrp = char:FindFirstChildWhichIsA("BasePart") or char.PrimaryPart
+                        if hrp and (hrp.Name == "HumanoidRootPart" or hrp.Name == "Root" or hrp.Name == "HumanoidRoot") then
+                            hasHRP = true
+                        end
+                    end
+
+                    if hasHRP then
+                        -- reset timer
+                        timerMissing = 0
+                        if not isOpen then
+                            applyOpen()
+                        end
+                    else
+                        timerMissing = timerMissing + CHECK_INTERVAL
+                    end
+                end
+            end
+
+            -- if timed out, close UI
+            if timerMissing >= TIMEOUT then
+                if isOpen then
+                    applyClose()
+                end
+            end
+        end
+    end)
+end
 
 -- Done
