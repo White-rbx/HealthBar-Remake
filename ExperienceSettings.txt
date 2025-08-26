@@ -177,7 +177,7 @@ wl.Parent = wa1
 
 -- ===== main loop (HRP watcher) =====
 local CHECK_INTERVAL = 0.12 -- ระยะเวลาเช็ค (วินาที)
-local TIMEOUT = 3.5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
+local TIMEOUT = 6.5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
 
 -- resolve UI refs (พยายามหา refs ที่เราเคยสร้างไว้)
 local function resolveUI()
