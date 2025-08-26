@@ -132,8 +132,8 @@ grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 end)
 -- END TB
 
-    -- ซ่อนปุ่มลูกถ้า scale เล็กกว่า 0.39
-    if scale <= 0.39 then
+    -- ซ่อนปุ่มลูกถ้า scale เล็กกว่า 0.364
+    if scale <= 0.364 then
         for _, child in ipairs(tb:GetChildren()) do
             if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = false
@@ -804,7 +804,7 @@ local tbOpen = false
 local function toggleTB()
     tbOpen = not tbOpen
     if tbOpen then
-        tweenObject(tb, { Size = UDim2.new(0.4, 0, 10, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        tweenObject(tb, { Size = UDim2.new(0.365, 0, 10, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         hbm.Image = "rbxassetid://82092515545222"
     else
         tweenObject(tb, { Size = UDim2.new(0, 0, 0, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
