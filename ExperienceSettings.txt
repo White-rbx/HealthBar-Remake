@@ -230,7 +230,7 @@ task.spawn(function()
                     warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s - waiting for UI")
                 end
                 -- ข้ามการตรวจ HRP รอบนี้
-                goto continue_loop
+                continue
             else
                 -- ถ้า resolve สำเร็จ ให้รีเซ็ต timerMissing เพื่อเริ่มตรวจ HRP ได้
                 timerMissing = 0
@@ -273,8 +273,6 @@ task.spawn(function()
                 end
             end
         end
-
-        ::continue_loop::
     end
 end)
 
