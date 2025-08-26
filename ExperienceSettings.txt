@@ -111,7 +111,7 @@ tb.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 tb.BackgroundTransparency = 0.2
 tb.ScrollBarThickness = 4
 tb.CanvasSize = UDim2.new(0, 0, 0, 0)
-tb.ScrollingDirection = Enum.ScrollingDirection.Y
+tb.ScrollingDirection = Enum.ScrollingDirection.XY
 tb.Visible = false
 tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
