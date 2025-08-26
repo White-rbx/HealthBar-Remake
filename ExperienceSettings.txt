@@ -112,24 +112,33 @@ tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
 createUIListLayout(tb, 0, 5, HLeft, VTop)
 
--- update visibility function for tb children (ImageButton & TextButton)
+-- update visibility function for tb and its children
 local function updateButtonsVisibility()
-    local scale = tb.Size.X.Scale
+    local scale = tb.Size.X.Scale or 0
+
+    -- ซ่อนปุ่มลูกถ้า scale เล็กกว่า 0.39
     if scale <= 0.39 then
         for _, child in ipairs(tb:GetChildren()) do
-            if child:IsA("ImageButton") or child:IsA("TextButton") or child:IsA(tb) then
+            if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = false
             end
         end
     else
         for _, child in ipairs(tb:GetChildren()) do
-            if child:IsA("ImageButton") or child:IsA("TextButton")
-or child:IsA(tb) then
+            if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = true
             end
         end
     end
+
+    -- ซ่อน tb ทั้งกล่องเมื่อ scale == 0
+    if scale <= 0 then
+        tb.Visible = false
+    else
+        tb.Visible = true
+    end
 end
+
 tb:GetPropertyChangedSignal("Size"):Connect(updateButtonsVisibility)
 
 -- Settings button (on hr)
