@@ -115,7 +115,7 @@ tb.ScrollingDirection = Enum.ScrollingDirection.Y
 tb.Visible = false
 tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
-createUIListLayout(tb, 0, 5, HLeft, VTop, FillV)
+createUIListLayout(tb, 0, 5, HLeft, VTop, FillH)
 
 -- update visibility function for tb and its children
 local function updateButtonsVisibility()
