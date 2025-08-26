@@ -268,7 +268,7 @@ task.spawn(function()
     end
 end)
 
-- ========= END ==========
+-- ========= END ==========
 
 -- Background panel (start OFFscreen to right)
 local background = Instance.new("Frame")
