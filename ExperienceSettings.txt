@@ -121,7 +121,7 @@ local grid = Instance.new("UIGridLayout")
 grid.CellSize = UDim2.new(0, 70, 0, 70)   -- ขนาดแต่ละ cell (70x70 px)
 grid.CellPadding = UDim2.new(0, 5, 0, 5)  -- ระยะห่างระหว่าง cell
 grid.FillDirection = Enum.FillDirection.Horizontal
-grid.SortOrder = Enum.SortOrder.LayoutOrder
+grid.SortOrder = Enum.SortOrder.Name
 grid.Parent = tb
 -- update visibility function for tb and its children
 local function updateButtonsVisibility()
@@ -131,6 +131,7 @@ grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     tb.CanvasSize = UDim2.new(0, grid.AbsoluteContentSize.X, 0, grid.AbsoluteContentSize.Y)
 end)
 -- END TB
+
     -- ซ่อนปุ่มลูกถ้า scale เล็กกว่า 0.39
     if scale <= 0.39 then
         for _, child in ipairs(tb:GetChildren()) do
