@@ -114,7 +114,7 @@ createUIListLayout(tb, 0, 5, HLeft, VTop)
 -- update visibility function for tb children (ImageButton & TextButton)
 local function updateButtonsVisibility()
     local scale = tb.Size.X.Scale
-    if scale <= 0.035 then
+    if scale <= 0.38 then
         for _, child in ipairs(tb:GetChildren()) do
             if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = false
