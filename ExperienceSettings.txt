@@ -118,12 +118,18 @@ local function updateButtonsVisibility()
         for _, child in ipairs(tb:GetChildren()) do
             if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = false
+             end
+           else
+                tb.Visible = false
             end
         end
     else
         for _, child in ipairs(tb:GetChildren()) do
             if child:IsA("ImageButton") or child:IsA("TextButton") then
                 child.Visible = true
+             end
+           else
+                tb.Visible = true
             end
         end
     end
