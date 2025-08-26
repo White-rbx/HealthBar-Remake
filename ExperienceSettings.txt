@@ -115,12 +115,22 @@ tb.ScrollingDirection = Enum.ScrollingDirection.XY
 tb.Visible = false
 tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
-createUIListLayout(tb, 0, 5, HLeft, VTop, FillH)
 
+-- AFTER TB
+local grid = Instance.new("UIGridLayout")
+grid.CellSize = UDim2.new(0, 70, 0, 70)   -- ขนาดแต่ละ cell (70x70 px)
+grid.CellPadding = UDim2.new(0, 5, 0, 5)  -- ระยะห่างระหว่าง cell
+grid.FillDirection = Enum.FillDirection.Horizontal
+grid.SortOrder = Enum.SortOrder.LayoutOrder
+grid.Parent = tb
 -- update visibility function for tb and its children
 local function updateButtonsVisibility()
     local scale = tb.Size.X.Scale or 0
 
+grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    tb.CanvasSize = UDim2.new(0, grid.AbsoluteContentSize.X, 0, grid.AbsoluteContentSize.Y)
+end)
+-- END TB
     -- ซ่อนปุ่มลูกถ้า scale เล็กกว่า 0.39
     if scale <= 0.39 then
         for _, child in ipairs(tb:GetChildren()) do
