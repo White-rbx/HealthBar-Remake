@@ -26,11 +26,13 @@ local HCenter = Enum.HorizontalAlignment.Center
 local VCenter = Enum.VerticalAlignment.Center
 local HLeft = Enum.HorizontalAlignment.Left
 local VTop = Enum.VerticalAlignment.Top
+local FillH = Enum.FillDirection.Horizontal
+local FillV = Enum.FillDirection.Vertical
 
-local function createUIListLayout(parent, scale, offset, HZ, VT)
+local function createUIListLayout(parent, scale, offset, HZ, VT, FILL)
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
-    list.FillDirection = Enum.FillDirection.Horizontal
+    list.FillDirection = FILL or FillH
     list.HorizontalAlignment = HZ or HCenter
     list.VerticalAlignment = VT or VCenter
     list.Parent = parent
@@ -89,7 +91,7 @@ mtb.Position = UDim2.new(0, 0, 0.02, 0)
 mtb.Size = UDim2.new(1, 0, 0, 43)
 mtb.BackgroundTransparency = 1
 mtb.Parent = menuGui
-createUIListLayout(mtb, 0.005, 0, HCenter, VTop)
+createUIListLayout(mtb, 0.005, 0, HCenter, VTop, FillH)
 
 -- Holder image area (left)
 local hr = Instance.new("Frame")
@@ -99,7 +101,7 @@ hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 hr.BackgroundTransparency = 0.2
 hr.Parent = mtb
 createUICorner(hr, 1, 0)
-createUIListLayout(hr, 0, 0, HCenter, VCenter)
+createUIListLayout(hr, 0, 0, HCenter, VCenter, FillH)
 
 -- Top bar buttons container (tb) — starts collapsed
 local tb = Instance.new("ScrollingFrame")
@@ -110,11 +112,10 @@ tb.BackgroundTransparency = 0.2
 tb.ScrollBarThickness = 4
 tb.CanvasSize = UDim2.new(0, 0, 0, 0)
 tb.ScrollingDirection = Enum.ScrollingDirection.Y
-tb.FillDirection = Enum.FillDirection.Horizontal
 tb.Visible = false
 tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
-createUIListLayout(tb, 0, 5, HLeft, VTop)
+createUIListLayout(tb, 0, 5, HLeft, VTop, FillV)
 
 -- update visibility function for tb and its children
 local function updateButtonsVisibility()
