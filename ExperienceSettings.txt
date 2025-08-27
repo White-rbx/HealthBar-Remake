@@ -342,7 +342,7 @@ task.spawn(function()
                     warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s")
                 end
                 -- skip this loop
-                goto continue_loop
+                continue
             else
                 timerMissing = 0
             end
@@ -397,8 +397,6 @@ task.spawn(function()
                 end
             end
         end
-
-        ::continue_loop::
     end
 end)
 
