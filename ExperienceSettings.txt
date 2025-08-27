@@ -215,32 +215,29 @@ wl.Visible = true
 wl.Parent = wa1
 
 -- ===== main loop (HRP watcher) =====
-local CHECK_INTERVAL = 0.12 -- ระยะเวลาเช็ค (วินาที)
-local TIMEOUT = 6.5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
+local CHECK_INTERVAL = 0.12 -- วินาที
+local TIMEOUT = 3.5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
 
 -- resolve UI refs (พยายามหา refs ที่เราเคยสร้างไว้)
 local function resolveUI()
-    -- if local refs exist just return them
-    if tb and tb.Parent and hr and hr.Parent and Set and Set.Parent and hbm and hbm.Parent then
-        return tb, hr, Set, hbm, wa1, wl, nil
+    if tb and tb.Parent and hr and hr.Parent and Set and Set.Parent and hbm and hbm.Parent and mtb and mtb.Parent then
+        return tb, hr, Set, hbm, wa1, wl, background, mtb
     end
-    local root = menuGui or expSettings or healthBar
-    if root then
-        local rc_tb = root:FindFirstChild("TopButtons", true)
-        local rc_hr = root:FindFirstChild("Holder", true)
-        local rc_Set = root:FindFirstChild("A_Settings", true)
-        local rc_hbm = root:FindFirstChild("HamburgerMenu", true)
-        local rc_wa1 = root:FindFirstChild("LoadFrame", true)
-        local rc_wl  = root:FindFirstChild("Warning & Load", true)
-        local rc_bg  = root:FindFirstChild("Background", true)
-        return rc_tb, rc_hr, rc_Set, rc_hbm, rc_wa1, rc_wl, rc_bg
-    end
-    return nil
-end
 
-local ui_tb, ui_hr, ui_Set, ui_hbm, ui_wa1, ui_wl, ui_bg = resolveUI()
-local timerMissing = 0
-local isOpen = false
+    local root = menuGui or expSettings or healthBar
+    if not root then return nil end
+
+    local rc_tb  = root:FindFirstChild("TopButtons", true)
+    local rc_hr  = root:FindFirstChild("Holder", true)
+    local rc_Set = root:FindFirstChild("A_Settings", true) or root:FindFirstChild("A2_Settings", true)
+    local rc_hbm = root:FindFirstChild("HamburgerMenu", true) or root:FindFirstChild("A3_HamburgerMenu", true)
+    local rc_wa1 = root:FindFirstChild("LoadFrame", true)
+    local rc_wl  = root:FindFirstChild("Warning & Load", true)
+    local rc_bg  = root:FindFirstChild("Background", true)
+    local rc_mtb = root:FindFirstChild("TopBar", true) or root:FindFirstChild("TopBar", true) -- mtb
+
+    return rc_tb, rc_hr, rc_Set, rc_hbm, rc_wa1, rc_wl, rc_bg, rc_mtb
+end
 
 local function characterHasHRP(plr)
     if not plr or not plr.Character then return false end
@@ -255,23 +252,26 @@ local function characterHasHRP(plr)
     return false
 end
 
--- main watcher
+local ui_tb, ui_hr, ui_Set, ui_hbm, ui_wa1, ui_wl, ui_bg, ui_mtb = resolveUI()
+local timerMissing = 0
+local isOpen = false
+
+-- HRP watcher loop (no goto)
 task.spawn(function()
     while true do
         task.wait(CHECK_INTERVAL)
 
         -- พยายาม resolve refs ถ้ายังไม่มี
-        if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
-            ui_tb, ui_hr, ui_Set, ui_hbm, ui_wa1, ui_wl, ui_bg = resolveUI()
-            if not (ui_tb and ui_hr and ui_Set and ui_hbm) then
+        if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_mtb) then
+            ui_tb, ui_hr, ui_Set, ui_hbm, ui_wa1, ui_wl, ui_bg, ui_mtb = resolveUI()
+            if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_mtb) then
                 timerMissing = timerMissing + CHECK_INTERVAL
                 if timerMissing >= TIMEOUT then
                     warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s - waiting for UI")
                 end
-                -- ข้ามการตรวจ HRP รอบนี้
+                -- ยังหา refs ไม่เจอ -> ข้ามการเช็ค HRP รอบนี้
                 continue
             else
-                -- ถ้า resolve สำเร็จ ให้รีเซ็ต timerMissing เพื่อเริ่มตรวจ HRP ได้
                 timerMissing = 0
             end
         end
@@ -283,13 +283,12 @@ task.spawn(function()
         if hasHRP then
             timerMissing = 0
             if not isOpen then
-                print("[HRP-Watcher] HRP detected -> opening UI")
-                safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad)
+                print("[HRP-Watcher] HRP detected -> opening UI (mtb move)")
+                -- ย้าย mtb (ตามที่ขอ): X = 0.515, Y = -3 (ทวีนนุ่ม)
+                safeTween(ui_mtb, { Position = UDim2.new(0.515, 0, -3, 0) }, 0.32, Enum.EasingStyle.Quad)
+                -- และขยาย hr ให้เห็นชัด (ตามการออกแบบเดิม)
                 safeTween(ui_hr, { Size = UDim2.new(0,150, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                pcall(function()
-                    ui_Set.Visible = true
-                    ui_hbm.Visible = true
-                end)
+                pcall(function() ui_Set.Visible = true ui_hbm.Visible = true end)
                 if ui_wa1 then ui_wa1.Visible = false end
                 if ui_wl then ui_wl.Visible = false end
                 isOpen = true
@@ -298,14 +297,11 @@ task.spawn(function()
             timerMissing = timerMissing + CHECK_INTERVAL
             if timerMissing >= TIMEOUT then
                 if isOpen then
-                    print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI")
-                    safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
+                    print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI (mtb reset)")
+                    -- ย้าย mtb กลับตำแหน่งเดิม (0,0)
+                    safeTween(ui_mtb, { Position = UDim2.new(0, 0, 0, 0) }, 0.32, Enum.EasingStyle.Quad)
                     safeTween(ui_hr, { Size = UDim2.new(0,38, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                    pcall(function()
-                        ui_Set.Visible = false
-                        ui_hbm.Visible = false
-                    end)
-                    -- ถ้าไม่มี HRP ให้แสดงข้อความ/เฟรมรอ (wa1/wl)
+                    pcall(function() ui_Set.Visible = false ui_hbm.Visible = false end)
                     if ui_wa1 then ui_wa1.Visible = true end
                     if ui_wl then ui_wl.Visible = true end
                     isOpen = false
@@ -314,7 +310,6 @@ task.spawn(function()
         end
     end
 end)
-
 -- ========= END ==========
 
 -- Background panel (start OFFscreen to right)
@@ -824,3 +819,39 @@ local function toggleTB()
     end
 end
 hbm.MouseButton1Click:Connect(toggleTB)
+
+-- ===== OC button: ขยาย/ย่อ mtb X position (ไม่เกี่ยวกับ HRP) =====
+-- ใส่หลังสร้าง mtb (TopBar) เสร็จแล้ว
+local OC = Instance.new("ImageButton")
+OC.Name = "OC_MTB"
+OC.Size = UDim2.new(0, 28, 0, 28)
+OC.Position = UDim2.new(0, 0, 0, 0) -- สามารถเลือกตำแหน่งวางได้ตามต้องการ (relative to hr หรือ mtb)
+OC.BackgroundTransparency = 1
+OC.Parent = hr  -- หรือ mtb หรือ tb ตามที่ต้องการให้ปุ่มอยู่
+createUICorner(OC, 1, 0)
+
+local OC_OPEN_IMG  = "rbxassetid://10129796109" -- เปิด: X=0
+local OC_CLOSE_IMG = "rbxassetid://8877547836"  -- ปิด: X=0.515
+
+-- initial state: ถ้า mtb.Position.X.Scale ใกล้ 0 => consider opened
+local function isMtbXOpen()
+    local curX = (mtb and mtb.Position and mtb.Position.X and mtb.Position.X.Scale) and mtb.Position.X.Scale or 0
+    return math.abs(curX - 0) < 0.01
+end
+
+local mtb_is_open_by_OC = isMtbXOpen()
+-- set initial image
+OC.Image = mtb_is_open_by_OC and OC_OPEN_IMG or OC_CLOSE_IMG
+
+OC.MouseButton1Click:Connect(function()
+    mtb_is_open_by_OC = not mtb_is_open_by_OC
+    if mtb_is_open_by_OC then
+        -- เปิด (ย้าย X -> 0)
+        OC.Image = OC_OPEN_IMG
+        safeTween(mtb, { Position = UDim2.new(0, 0, mtb.Position.Y.Scale, mtb.Position.Y.Offset) }, 0.32, Enum.EasingStyle.Quad)
+    else
+        -- ปิด (ย้าย X -> 0.515)
+        OC.Image = OC_CLOSE_IMG
+        safeTween(mtb, { Position = UDim2.new(0.515, 0, mtb.Position.Y.Scale, mtb.Position.Y.Offset) }, 0.32, Enum.EasingStyle.Quad)
+    end
+end)
