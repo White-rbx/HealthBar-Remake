@@ -215,8 +215,8 @@ wl.Visible = true
 wl.Parent = wa1
 
 -- ===== OC (Open/Close) wiring (REPLACE/PUT AFTER you create OC) =====
-local OC_OPEN_IMAGE  = "rbxassetid://10002398990" -- image when OPEN
-local OC_CLOSE_IMAGE = "rbxassetid://11771856687"  -- image when CLOSED
+local OC_OPEN_IMAGE  = "rbxassetid://6993462605" -- image when OPEN
+local OC_CLOSE_IMAGE = "rbxassetid://6993472329"  -- image when CLOSED
 
 -- state: true = opened (mtb at X=0), false = closed (mtb at X=0.515)
 local ocState = false
@@ -933,7 +933,7 @@ local function toggleTB()
     tbOpen = not tbOpen
     if tbOpen then
         tweenObject(tb, { Size = UDim2.new(0.365, 0, 10, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        hbm.Image = "rbxassetid://82092515545222"
+        hbm.Image = "rbxassetid://10002398990"
     else
         tweenObject(tb, { Size = UDim2.new(0, 0, 0, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         hbm.Image = "rbxassetid://12214197591"
