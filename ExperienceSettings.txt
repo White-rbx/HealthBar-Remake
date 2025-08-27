@@ -214,9 +214,15 @@ wl.TextColor3 = Color3.fromRGB(255, 255, 255)
 wl.Visible = true
 wl.Parent = wa1
 
--- ===== main loop (HRP watcher) =====
-local CHECK_INTERVAL = 0.12 -- ระยะเวลาเช็ค (วินาที)
-local TIMEOUT = 8.5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
+-- ===== main loop (HRP watcher) v2 =====
+local CHECK_INTERVAL = 0.12 -- วินาที
+local TIMEOUT = 8.5         -- วินาทีที่รอนานสุดก่อน consider หาย
+
+-- MTB positions (ปรับค่าตามต้องการ)
+local MTB_X_ON = 0.515
+local MTB_X_OFF = 0
+local MTB_Y_VISIBLE = 0.02
+local MTB_Y_HIDDEN  = -3
 
 -- safe tween wrapper
 local function safeTween(obj, props, time, style, dir)
@@ -226,14 +232,15 @@ local function safeTween(obj, props, time, style, dir)
     end)
 end
 
--- resolve UI refs
+-- resolve UI refs (หา mtb ด้วย)
 local function resolveUI()
+    -- ถ้ามีตัวแปร local ที่สร้างไว้ก่อนหน้า ให้คืนค่าทันที
     if mtb and mtb.Parent and tb and tb.Parent and hr and hr.Parent and Set and Set.Parent and hbm and hbm.Parent and OC and OC.Parent then
         return mtb, tb, hr, Set, hbm, OC, wa1, wl, background
     end
     local root = menuGui or expSettings or healthBar
     if root then
-        local rc_mtb = root:FindFirstChild("TopBar", true) -- ✅ mtb (main bar)
+        local rc_mtb = root:FindFirstChild("TopBar", true)
         local rc_tb  = root:FindFirstChild("TopButtons", true)
         local rc_hr  = root:FindFirstChild("Holder", true)
         local rc_Set = root:FindFirstChild("A_Settings", true)
@@ -247,11 +254,12 @@ local function resolveUI()
     return nil
 end
 
+-- เริ่มต้น refs (ถ้าไม่พบ จะพยายาม resolve ระหว่าง loop)
 local ui_mtb, ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg = resolveUI()
 local timerMissing = 0
 local isOpen = false
 
--- HRP checker
+-- ตรวจว่าตัวละครมี HRP หรือชิ้นส่วนหลักหรือไม่ (robust)
 local function characterHasHRP(plr)
     if not plr or not plr.Character then return false end
     local char = plr.Character
@@ -265,67 +273,96 @@ local function characterHasHRP(plr)
     return false
 end
 
--- main loop
+-- main watcher loop
 task.spawn(function()
     while true do
         task.wait(CHECK_INTERVAL)
 
-        -- re-resolve ถ้า refs หาย
+        -- พยายาม resolve refs ถ้ายังไม่ครบ
         if not (ui_mtb and ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC) then
             ui_mtb, ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg = resolveUI()
             if not (ui_mtb and ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC) then
-                timerMissing += CHECK_INTERVAL
+                timerMissing = timerMissing + CHECK_INTERVAL
                 if timerMissing >= TIMEOUT then
-                    warn("[HRP-Watcher] UI missing for "..math.floor(timerMissing).."s - waiting for UI")
+                    warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s - waiting")
                 end
+                -- ถ้าหายยัง รีเซ็ต loop รอบนี้
                 continue
             else
                 timerMissing = 0
             end
         end
 
-        -- ตรวจ HRP
-        local pl = Players.LocalPlayer
-        local hasHRP = characterHasHRP(pl)
+        do
+            local pl = Players.LocalPlayer
+            local hasHRP = characterHasHRP(pl)
 
-        if hasHRP then
-            timerMissing = 0
-            if not isOpen then
-                print("[HRP-Watcher] HRP detected -> opening UI")
-                -- ✅ ขยับ mtb
-                safeTween(ui_mtb, { Position = UDim2.new(0,0, 0.02,0) }, 0.28, Enum.EasingStyle.Quad)
-                -- ✅ ขยาย hr
-                safeTween(ui_hr, { Size = UDim2.new(0,150, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                pcall(function()
-                    ui_Set.Visible = true 
-                    ui_hbm.Visible = true
-                    if ui_OC then ui_OC.Visible = true end
-                    if ui_wa1 then ui_wa1.Visible = false end
-                    if ui_wl then ui_wl.Visible = false end
-                end)
-                isOpen = true
-            end
-        else
-            timerMissing += CHECK_INTERVAL
-            if timerMissing >= TIMEOUT then
-                if isOpen then
-                    print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI")
-                    -- ✅ ซ่อน mtb ลงล่าง
-                    safeTween(ui_mtb, { Position = UDim2.new(0,0, -3,0) }, 0.28)
-                    safeTween(ui_hr, { Size = UDim2.new(0,34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+            if hasHRP then
+                timerMissing = 0
+                if not isOpen then
+                    -- ย้าย mtb ไปตำแหน่ง "เจอ" (X = MTB_X_ON, Y = visible)
+                    safeTween(ui_mtb, { Position = UDim2.new(MTB_X_ON, 0, MTB_Y_VISIBLE, 0) }, 0.28, Enum.EasingStyle.Quad)
+                    -- ขยาย holder (hr) ถ้าต้องการ
+                    safeTween(ui_hr, { Size = UDim2.new(0,150, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                     pcall(function()
-                        ui_Set.Visible = false 
-                        ui_hbm.Visible = false
-                        if ui_OC then ui_OC.Visible = false end
+                        ui_Set.Visible = true
+                        ui_hbm.Visible = true
+                        if ui_OC then ui_OC.Visible = true end
                         if ui_wa1 then ui_wa1.Visible = false end
+                        if ui_wl then ui_wl.Visible = false end
                     end)
-                    isOpen = false
+                    isOpen = true
+                else
+                    -- ถ้าเปิดอยู่แล้ว ให้ตรวจว่าต้องย้าย X (กรณี OC หรือ manual ถูกเปลี่ยน)
+                    -- ให้แน่ใจว่า UI อยู่ที่ตำแหน่ง MTB_X_ON (smooth)
+                    local curX = ui_mtb.Position.X.Scale
+                    if math.abs(curX - MTB_X_ON) > 0.01 then
+                        safeTween(ui_mtb, { Position = UDim2.new(MTB_X_ON, 0, MTB_Y_VISIBLE, 0) }, 0.2)
+                    end
+                end
+            else
+                timerMissing = timerMissing + CHECK_INTERVAL
+                if timerMissing >= TIMEOUT then
+                    if isOpen then
+                        -- ย้าย mtb ไปตำแหน่งปิด (X = MTB_X_OFF, Y = hidden)
+                        safeTween(ui_mtb, { Position = UDim2.new(MTB_X_OFF, 0, MTB_Y_HIDDEN, 0) }, 0.28, Enum.EasingStyle.Quad)
+                        safeTween(ui_hr, { Size = UDim2.new(0,34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                        pcall(function()
+                            ui_Set.Visible = false
+                            ui_hbm.Visible = false
+                            if ui_OC then ui_OC.Visible = false end
+                            if ui_wa1 then ui_wa1.Visible = false end
+                        end)
+                        isOpen = false
+                    end
                 end
             end
         end
     end
 end)
 
+-- OC (Open/Close) toggle: สลับตำแหน่ง X ระหว่าง OFF <-> ON และเปลี่ยนภาพ
+do
+    local ocState = (ui_mtb and math.abs(ui_mtb.Position.X.Scale - MTB_X_ON) < 0.05) -- ถ้า mtb อยู่ใกล้ ON ถือว่า ON
+    local function setOCVisual(state)
+        if not ui_mtb then return end
+        if state then
+            safeTween(ui_mtb, { Position = UDim2.new(MTB_X_ON, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.22)
+            if ui_OC then ui_OC.Image = "rbxassetid://10129796109" end -- icon for "open"
+        else
+            safeTween(ui_mtb, { Position = UDim2.new(MTB_X_OFF, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.22)
+            if ui_OC then ui_OC.Image = "rbxassetid://8877547836" end -- icon for "closed"
+        end
+    end
+
+    if ui_OC then
+        ui_OC.MouseButton1Click:Connect(function()
+            ocState = not ocState
+            setOCVisual(ocState)
+        end)
+    end
+end
+-- ===== end HRP watcher v2 =====
 -- ========= END ==========
 
 -- Background panel (start OFFscreen to right)
