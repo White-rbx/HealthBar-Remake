@@ -285,7 +285,7 @@ task.spawn(function()
             if not isOpen then
                 print("[HRP-Watcher] HRP detected -> opening UI (mtb move)")
                 -- ย้าย mtb (ตามที่ขอ): X = 0.515, Y = -3 (ทวีนนุ่ม)
-                safeTween(ui_mtb, { Position = UDim2.new(0.515, 0, -3, 0) }, 0.32, Enum.EasingStyle.Quad)
+                safeTween(ui_mtb, { Position = UDim2.new(0.515, 0, 0, 0) }, 0.32, Enum.EasingStyle.Quad)
                 -- และขยาย hr ให้เห็นชัด (ตามการออกแบบเดิม)
                 safeTween(ui_hr, { Size = UDim2.new(0,150, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                 pcall(function() ui_Set.Visible = true ui_hbm.Visible = true end)
@@ -299,7 +299,7 @@ task.spawn(function()
                 if isOpen then
                     print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI (mtb reset)")
                     -- ย้าย mtb กลับตำแหน่งเดิม (0,0)
-                    safeTween(ui_mtb, { Position = UDim2.new(0, 0, 0, 0) }, 0.32, Enum.EasingStyle.Quad)
+                    safeTween(ui_mtb, { Position = UDim2.new(0, 0, -3, 0) }, 0.32, Enum.EasingStyle.Quad)
                     safeTween(ui_hr, { Size = UDim2.new(0,38, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                     pcall(function() ui_Set.Visible = false ui_hbm.Visible = false end)
                     if ui_wa1 then ui_wa1.Visible = true end
@@ -820,38 +820,64 @@ local function toggleTB()
 end
 hbm.MouseButton1Click:Connect(toggleTB)
 
--- ===== OC button: ขยาย/ย่อ mtb X position (ไม่เกี่ยวกับ HRP) =====
--- ใส่หลังสร้าง mtb (TopBar) เสร็จแล้ว
-local OC = Instance.new("ImageButton")
-OC.Name = "OC_MTB"
-OC.Size = UDim2.new(0, 28, 0, 28)
-OC.Position = UDim2.new(0, 0, 0, 0) -- สามารถเลือกตำแหน่งวางได้ตามต้องการ (relative to hr หรือ mtb)
-OC.BackgroundTransparency = 1
-OC.Parent = hr  -- หรือ mtb หรือ tb ตามที่ต้องการให้ปุ่มอยู่
-createUICorner(OC, 1, 0)
+-- ===== OC (Open/Close) wiring =====
+-- ใส่หลัง createUICorner(OC, 1, 0)
 
-local OC_OPEN_IMG  = "rbxassetid://10129796109" -- เปิด: X=0
-local OC_CLOSE_IMG = "rbxassetid://8877547836"  -- ปิด: X=0.515
+local OC_OPEN_IMAGE  = "rbxassetid://10129796109" -- image when OPEN
+local OC_CLOSE_IMAGE = "rbxassetid://8877547836"  -- image when CLOSED
 
--- initial state: ถ้า mtb.Position.X.Scale ใกล้ 0 => consider opened
-local function isMtbXOpen()
-    local curX = (mtb and mtb.Position and mtb.Position.X and mtb.Position.X.Scale) and mtb.Position.X.Scale or 0
-    return math.abs(curX - 0) < 0.01
+-- state: true = opened (mtb at X=0), false = closed (mtb at X=0.515)
+local ocState = false
+-- when user manually toggles OC, set ocManual = true to avoid watcher overriding
+local ocManual = false
+
+-- ensure OC has a valid image default (ถ้าไม่ได้ตั้ง)
+if not OC.Image or OC.Image == "" then
+    OC.Image = ocState and OC_OPEN_IMAGE or OC_CLOSE_IMAGE
 end
 
-local mtb_is_open_by_OC = isMtbXOpen()
--- set initial image
-OC.Image = mtb_is_open_by_OC and OC_OPEN_IMG or OC_CLOSE_IMG
+-- helper: set mtb X position smoothly (uses tweenObject helper from your file)
+local function setMtbX(open, instant)
+    ocState = open
+    -- target x scale mapping (ตามที่ระบุ)
+    local targetX = open and 0 or 0.515
 
-OC.MouseButton1Click:Connect(function()
-    mtb_is_open_by_OC = not mtb_is_open_by_OC
-    if mtb_is_open_by_OC then
-        -- เปิด (ย้าย X -> 0)
-        OC.Image = OC_OPEN_IMG
-        safeTween(mtb, { Position = UDim2.new(0, 0, mtb.Position.Y.Scale, mtb.Position.Y.Offset) }, 0.32, Enum.EasingStyle.Quad)
-    else
-        -- ปิด (ย้าย X -> 0.515)
-        OC.Image = OC_CLOSE_IMG
-        safeTween(mtb, { Position = UDim2.new(0.515, 0, mtb.Position.Y.Scale, mtb.Position.Y.Offset) }, 0.32, Enum.EasingStyle.Quad)
+    -- prefer mtb variable if present, else try to find the UI (robust)
+    local target = mtb or (menuGui and menuGui:FindFirstChild("TopBar", true) and menuGui:FindFirstChild("TopBar", true):FindFirstChild("TopBar", true)) or nil
+    -- (Note: most scripts already have 'mtb' local, so 'mtb' will be used)
+
+    -- set OC image
+    OC.Image = open and OC_OPEN_IMAGE or OC_CLOSE_IMAGE
+
+    if target and target.Parent then
+        local newPos = UDim2.new(targetX, 0, target.Position.Y.Scale, target.Position.Y.Offset)
+        if instant then
+            target.Position = newPos
+        else
+            -- use your tweenObject helper (should exist in the script)
+            pcall(function() tweenObject(target, { Position = newPos }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) end)
+        end
     end
+end
+
+-- OC click: toggle manual state and move mtb
+OC.MouseButton1Click:Connect(function()
+    ocManual = true           -- user manually toggled OC -> watcher should not override
+    setMtbX(not ocState, false)
 end)
+
+-- optional: function to let watcher override again (e.g., after some time)
+-- you can call this elsewhere (or comment out if you want manual to persist)
+local function allowWatcherOverride(afterSeconds)
+    if not afterSeconds then
+        ocManual = false
+        return
+    end
+    task.spawn(function()
+        task.wait(afterSeconds)
+        ocManual = false
+    end)
+end
+
+-- initialize OC visual from current ocState
+setMtbX(ocState, true)
