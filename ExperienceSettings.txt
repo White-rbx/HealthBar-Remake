@@ -214,51 +214,90 @@ wl.TextColor3 = Color3.fromRGB(255, 255, 255)
 wl.Visible = true
 wl.Parent = wa1
 
--- ===== main loop (HRP watcher) =====
-local CHECK_INTERVAL = 0.12 -- ระยะเวลาเช็ค (วินาที)
-local TIMEOUT = 8.5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
+-- ===== OC (Open/Close) wiring (REPLACE/PUT AFTER you create OC) =====
+local OC_OPEN_IMAGE  = "rbxassetid://10129796109" -- image when OPEN
+local OC_CLOSE_IMAGE = "rbxassetid://8877547836"  -- image when CLOSED
 
--- ป้องกันกรณี tween หาย / obj หาย
-local function safeTween(obj, props, time, style, dir)
-    if not obj or not obj.Parent then
-        -- เก็บ log เฉพาะตอนดีบัก
-        -- warn("safeTween: obj missing or parentless")
-        return
+-- state: true = opened (mtb at X=0), false = closed (mtb at X=0.515)
+local ocState = false
+local ocManual = false
+
+-- if OC variable used earlier as 'OC' but watcher uses ui_OC, keep OC reference stable
+local OCref = OC -- or ui_OC if you only have ui_OC; here we assume variable OC exists
+
+if OCref and (not OCref.Image or OCref.Image == "") then
+    OCref.Image = ocState and OC_OPEN_IMAGE or OC_CLOSE_IMAGE
+end
+
+-- helper to find the mtb frame (ui_mtb or mtb)
+local function findMtb()
+    if ui_mtb and ui_mtb.Parent then return ui_mtb end
+    if mtb and mtb.Parent then return mtb end
+    -- fallback try to find in menuGui
+    if menuGui and menuGui.Parent then
+        local found = menuGui:FindFirstChild("TopBar", true)
+        if found then return found end
     end
+    return nil
+end
+
+-- helper: set mtb X position smoothly (uses tweenObject helper from your file)
+local function setMtbX(open, instant)
+    ocState = open
+    local targetX = open and 0 or 0.515
+    -- set OC image (safe)
     pcall(function()
-        tweenObject(obj, props, time, style, dir)
+        if OCref then OCref.Image = ocState and OC_OPEN_IMAGE or OC_CLOSE_IMAGE end
+    end)
+
+    local target = findMtb()
+    if not target then return end
+
+    local newPos = UDim2.new(targetX, 0, (target.Position and target.Position.Y.Scale) or 0.02, 0)
+    if instant then
+        pcall(function() target.Position = newPos end)
+    else
+        pcall(function() tweenObject(target, { Position = newPos }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) end)
+    end
+end
+
+-- when user toggles OC: mark manual, move mtb accordingly
+if OCref then
+    OCref.MouseButton1Click:Connect(function()
+        ocManual = true
+        setMtbX(not ocState, false)
+        -- optional: release manual override after 6 seconds so watcher can resume control
+        task.spawn(function()
+            task.wait(6)
+            ocManual = false
+        end)
     end)
 end
 
--- ฟังก์ชันช่วยดึงค่า Scale ของ Position โดยปลอดภัย
-local function getXScale(obj)
-    if not obj then return nil end
-    local ok, pos = pcall(function() return obj.Position end)
-    if not ok or type(pos) ~= "userdata" then return nil end
-    -- pos.X.Scale เป็น number ปกติ แต่ตรวจอีกชั้น
-    if pos.X and type(pos.X.Scale) == "number" then
-        return pos.X.Scale
-    end
-    return nil
+-- initialize OC visual (instant)
+setMtbX(ocState, true)
+
+
+-- ===== main loop (HRP watcher) REPLACEMENT =====
+local CHECK_INTERVAL = 0.12
+local TIMEOUT = 8.5
+
+-- safe tween wrapper
+local function safeTween(obj, props, time, style, dir)
+    if not obj or not obj.Parent then return end
+    pcall(function() tweenObject(obj, props, time, style, dir) end)
 end
-local function getYScale(obj)
-    if not obj then return nil end
-    local ok, pos = pcall(function() return obj.Position end)
-    if not ok or type(pos) ~= "userdata" then return nil end
-    if pos.Y and type(pos.Y.Scale) == "number" then
-        return pos.Y.Scale
-    end
+
+-- helper: get X scale of an object safely
+local function getXScaleSafe(obj)
+    if not obj or not obj.Position then return nil end
+    local ok, x = pcall(function() return obj.Position.X.Scale end)
+    if ok and type(x) == "number" then return x end
     return nil
 end
 
--- ค่าตำแหน่งสำหรับ mtb (กำหนดให้แน่นอน)
-local MTB_X_DEFAULT = 0      -- เริ่มต้น (กลาง)
-local MTB_X_TOGGLED = 0.515  -- ค่าที่ OC ควบคุม
-local MTB_Y_VISIBLE = 0.02   -- แสดง
-local MTB_Y_HIDDEN  = -3     -- ซ่อน
-
--- resolve UI refs (ปรับให้คืน mtb, tb, hr, Set, hbm, OC, wa1, wl, background)
-local function resolveUI()
+-- resolve UI refs returns ui_mtb as well
+local function resolveUI_full()
     local root = menuGui or expSettings or healthBar
     if not root then return nil end
     local rc_mtb = root:FindFirstChild("TopBar", true)
@@ -273,7 +312,7 @@ local function resolveUI()
     return rc_mtb, rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg
 end
 
-local ui_mtb, ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg = resolveUI()
+ui_mtb, ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg = resolveUI_full()
 local timerMissing = 0
 local isOpen = false
 
@@ -290,89 +329,79 @@ local function characterHasHRP(plr)
     return false
 end
 
--- main loop
 task.spawn(function()
     while true do
         task.wait(CHECK_INTERVAL)
 
-        -- พยายาม resolve refs ถ้ายังไม่มี (และรีเซ็ต timerMissing เมื่อเจอ)
+        -- try to resolve refs if missing
         if not (ui_mtb and ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC) then
-            ui_mtb, ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg = resolveUI()
+            ui_mtb, ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg = resolveUI_full()
             if not (ui_mtb and ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC) then
                 timerMissing = timerMissing + CHECK_INTERVAL
                 if timerMissing >= TIMEOUT then
-                    warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s - waiting for UI")
+                    warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s")
                 end
-                -- refs ยังไม่พร้อม → ข้ามรอบนี้
-                continue
+                -- skip this loop
+                goto continue_loop
             else
                 timerMissing = 0
             end
         end
 
-        -- ตรวจ HRP
         local pl = Players.LocalPlayer
         local hasHRP = characterHasHRP(pl)
 
         if hasHRP then
             timerMissing = 0
             if not isOpen then
-                print("[HRP-Watcher] HRP detected -> opening UI (show Y only)")
-                -- ดึงค่า X ปัจจุบัน (fallback เป็น MTB_X_DEFAULT ถ้า nil)
-                local curX = getXScale(ui_mtb) or MTB_X_DEFAULT
-                safeTween(ui_mtb, { Position = UDim2.new(curX, 0, MTB_Y_VISIBLE, 0) }, 0.28, Enum.EasingStyle.Quad)
+                -- open: we want to set Y visible and size; X should be set only if not ocManual
+                print("[HRP-Watcher] HRP detected -> open UI")
+                -- set Y visible (keep current X if exists)
+                local curX = getXScaleSafe(ui_mtb) or 0
+                safeTween(ui_mtb, { Position = UDim2.new(curX, 0, 0.02, 0) }, 0.28, Enum.EasingStyle.Quad)
                 safeTween(ui_hr, { Size = UDim2.new(0,150, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                 pcall(function()
                     if ui_Set then ui_Set.Visible = true end
                     if ui_hbm then ui_hbm.Visible = true end
-                    if ui_OC then ui_OC.Visible = true end
+                    if ui_OC  then ui_OC.Visible  = true end
                     if ui_wa1 then ui_wa1.Visible = false end
-                    if ui_wl then ui_wl.Visible = false end
+                    if ui_wl  then ui_wl.Visible  = false end
                 end)
+                -- change X automatically only if user didn't manually toggle OC
+                if not ocManual then
+                    -- move mtb to closed X as you requested earlier (0.515) when HRP found
+                    setMtbX(false, false)
+                end
                 isOpen = true
             end
         else
             timerMissing = timerMissing + CHECK_INTERVAL
             if timerMissing >= TIMEOUT then
                 if isOpen then
-                    print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI (force X->default, Y->hidden)")
-                    -- ปิดจริง -> บังคับ X กลับเป็น DEFAULT และ Y ซ่อน
-                    safeTween(ui_mtb, { Position = UDim2.new(MTB_X_DEFAULT, 0, MTB_Y_HIDDEN, 0) }, 0.28, Enum.EasingStyle.Quad)
+                    print("[HRP-Watcher] HRP missing -> close UI")
+                    -- close: hide Y and reduce size
+                    local curX = getXScaleSafe(ui_mtb) or 0
+                    safeTween(ui_mtb, { Position = UDim2.new(curX, 0, -3, 0) }, 0.28)
                     safeTween(ui_hr, { Size = UDim2.new(0,34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                     pcall(function()
                         if ui_Set then ui_Set.Visible = false end
                         if ui_hbm then ui_hbm.Visible = false end
-                        if ui_OC then ui_OC.Visible = false end
+                        if ui_OC  then ui_OC.Visible  = false end
                         if ui_wa1 then ui_wa1.Visible = false end
                     end)
+                    -- on full close, if watcher is allowed to control X, reset X to default (0) AFTER hiding
+                    if not ocManual then
+                        setMtbX(true, false) -- default X=0
+                    end
                     isOpen = false
                 end
             end
         end
+
+        ::continue_loop::
     end
 end)
--- OC (Open/Close) toggle: สลับตำแหน่ง X ระหว่าง OFF <-> ON และเปลี่ยนภาพ
-do
-    local ocState = (ui_mtb and math.abs(ui_mtb.Position.X.Scale - MTB_X_ON) < 0.05) -- ถ้า mtb อยู่ใกล้ ON ถือว่า ON
-    local function setOCVisual(state)
-        if not ui_mtb then return end
-        if state then
-            safeTween(ui_mtb, { Position = UDim2.new(MTB_X_ON, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.22)
-            if ui_OC then ui_OC.Image = "rbxassetid://10129796109" end -- icon for "open"
-        else
-            safeTween(ui_mtb, { Position = UDim2.new(MTB_X_OFF, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.22)
-            if ui_OC then ui_OC.Image = "rbxassetid://8877547836" end -- icon for "closed"
-        end
-    end
 
-    if ui_OC then
-        ui_OC.MouseButton1Click:Connect(function()
-            ocState = not ocState
-            setOCVisual(ocState)
-        end)
-    end
-end
--- ===== end HRP watcher v2 =====
 -- ========= END ==========
 
 -- Background panel (start OFFscreen to right)
@@ -882,65 +911,3 @@ local function toggleTB()
     end
 end
 hbm.MouseButton1Click:Connect(toggleTB)
-
--- ===== OC (Open/Close) wiring =====
--- ใส่หลัง createUICorner(OC, 1, 0)
-
-local OC_OPEN_IMAGE  = "rbxassetid://10129796109" -- image when OPEN
-local OC_CLOSE_IMAGE = "rbxassetid://8877547836"  -- image when CLOSED
-
--- state: true = opened (mtb at X=0), false = closed (mtb at X=0.515)
-local ocState = false
--- when user manually toggles OC, set ocManual = true to avoid watcher overriding
-local ocManual = false
-
--- ensure OC has a valid image default (ถ้าไม่ได้ตั้ง)
-if not OC.Image or OC.Image == "" then
-    OC.Image = ocState and OC_OPEN_IMAGE or OC_CLOSE_IMAGE
-end
-
--- helper: set mtb X position smoothly (uses tweenObject helper from your file)
-local function setMtbX(open, instant)
-    ocState = open
-    -- target x scale mapping (ตามที่ระบุ)
-    local targetX = open and 0 or 0.515
-
-    -- prefer mtb variable if present, else try to find the UI (robust)
-    local target = mtb or (menuGui and menuGui:FindFirstChild("TopBar", true) and menuGui:FindFirstChild("TopBar", true):FindFirstChild("TopBar", true)) or nil
-    -- (Note: most scripts already have 'mtb' local, so 'mtb' will be used)
-
-    -- set OC image
-    OC.Image = open and OC_OPEN_IMAGE or OC_CLOSE_IMAGE
-
-    if target and target.Parent then
-        local newPos = UDim2.new(targetX, 0, target.Position.Y.Scale, target.Position.Y.Offset)
-        if instant then
-            target.Position = newPos
-        else
-            -- use your tweenObject helper (should exist in the script)
-            pcall(function() tweenObject(target, { Position = newPos }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) end)
-        end
-    end
-end
-
--- OC click: toggle manual state and move mtb
-OC.MouseButton1Click:Connect(function()
-    ocManual = true           -- user manually toggled OC -> watcher should not override
-    setMtbX(not ocState, false)
-end)
-
--- optional: function to let watcher override again (e.g., after some time)
--- you can call this elsewhere (or comment out if you want manual to persist)
-local function allowWatcherOverride(afterSeconds)
-    if not afterSeconds then
-        ocManual = false
-        return
-    end
-    task.spawn(function()
-        task.wait(afterSeconds)
-        ocManual = false
-    end)
-end
-
--- initialize OC visual from current ocState
-setMtbX(ocState, true)
