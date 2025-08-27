@@ -278,44 +278,58 @@ end
 setMtbX(ocState, true)
 
 
--- ===== main loop (HRP watcher) REPLACEMENT =====
-local CHECK_INTERVAL = 0.12
-local TIMEOUT = 8.5
+-- replace resolveUI() + HRP watcher with this block
 
--- safe tween wrapper
+-- helper: try multiple candidate names
+local function findAny(root, candidates)
+    if not root then return nil end
+    for _, name in ipairs(candidates) do
+        local ok, found = pcall(function() return root:FindFirstChild(name, true) end)
+        if ok and found then return found end
+    end
+    return nil
+end
+
+-- robust resolveUI: search common name variants (a1/a2 prefixes etc.)
+local function resolveUI()
+    local root = menuGui or expSettings or healthBar or CoreGui
+    if not root then return nil end
+
+    local rc_tb  = findAny(root, {"TopButtons", "TopButtonsFrame", "TopButtonsHolder"})
+    local rc_hr  = findAny(root, {"Holder", "TopHolder", "HolderFrame"})
+    local rc_Set = findAny(root, {"a2_Settings","A_Settings","Settings","a2_Settings_Button"})
+    local rc_hbm = findAny(root, {"a3_HamburgerMenu","HamburgerMenu","a3_Hamburger","Hamburger"})
+    local rc_OC  = findAny(root, {"a1_Open/Close","A0_Open/Close","A_OpenClose","OpenClose","A0_OpenClose"})
+    local rc_wa1 = findAny(root, {"LoadFrame","wa1","Load_Frame","LoadFrameHolder"})
+    local rc_wl  = findAny(root, {"Warning & Load","WarningAndLoad","wl","Warning_Load"})
+    local rc_bg  = findAny(root, {"Background","MenuBackground","BackgroundFrame"})
+
+    -- If some are nil, still return what we have (caller will check)
+    return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg
+end
+
+-- initial resolve
+local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg = resolveUI()
+
+-- watcher params
+local CHECK_INTERVAL = CHECK_INTERVAL or 0.12
+local TIMEOUT = TIMEOUT or 3.5
+local timerMissing = 0
+local isOpen = false
+
+-- convenience: safe set visible (pcall to avoid runtime errors)
+local function safeSetVisible(obj, visible)
+    if not obj then return end
+    pcall(function() obj.Visible = visible end)
+end
+
+-- convenience: safe tween + ensure object still exists
 local function safeTween(obj, props, time, style, dir)
     if not obj or not obj.Parent then return end
     pcall(function() tweenObject(obj, props, time, style, dir) end)
 end
 
--- helper: get X scale of an object safely
-local function getXScaleSafe(obj)
-    if not obj or not obj.Position then return nil end
-    local ok, x = pcall(function() return obj.Position.X.Scale end)
-    if ok and type(x) == "number" then return x end
-    return nil
-end
-
--- resolve UI refs returns ui_mtb as well
-local function resolveUI_full()
-    local root = menuGui or expSettings or healthBar
-    if not root then return nil end
-    local rc_mtb = root:FindFirstChild("TopBar", true)
-    local rc_tb  = root:FindFirstChild("TopButtons", true)
-    local rc_hr  = root:FindFirstChild("Holder", true)
-    local rc_Set = root:FindFirstChild("a2_Settings", true)
-    local rc_hbm = root:FindFirstChild("a3_HamburgerMenu", true)
-    local rc_OC  = root:FindFirstChild("a1_Open/Close", true)
-    local rc_wa1 = root:FindFirstChild("LoadFrame", true)
-    local rc_wl  = root:FindFirstChild("Warning & Load", true)
-    local rc_bg  = root:FindFirstChild("Background", true)
-    return rc_mtb, rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg
-end
-
-ui_mtb, ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg = resolveUI_full()
-local timerMissing = 0
-local isOpen = false
-
+-- helper: determine if character has HRP (reuse your char detection)
 local function characterHasHRP(plr)
     if not plr or not plr.Character then return false end
     local char = plr.Character
@@ -329,70 +343,66 @@ local function characterHasHRP(plr)
     return false
 end
 
+-- main loop (robust resolve + show/hide logic)
 task.spawn(function()
     while true do
         task.wait(CHECK_INTERVAL)
 
-        -- try to resolve refs if missing
-        if not (ui_mtb and ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC) then
-            ui_mtb, ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg = resolveUI_full()
-            if not (ui_mtb and ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC) then
+        -- try to (re)resolve UI refs if missing
+        if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC) then
+            local a,b,c,d,e,f,g,h = resolveUI()
+            ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg = a,b,c,d,e,f,g,h
+            if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC) then
                 timerMissing = timerMissing + CHECK_INTERVAL
                 if timerMissing >= TIMEOUT then
-                    warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s")
+                    warn("[HRP-Watcher] Partial UI refs; still waiting for full set (", math.floor(timerMissing), "s)")
                 end
-                -- skip this loop
+                -- skip HRP checking this cycle if core UI not found
                 continue
             else
+                -- resolved successfully -> reset timer
                 timerMissing = 0
             end
         end
 
+        -- at this point we should have the key refs (or at least enough to operate)
         local pl = Players.LocalPlayer
         local hasHRP = characterHasHRP(pl)
 
         if hasHRP then
             timerMissing = 0
             if not isOpen then
-                -- open: we want to set Y visible and size; X should be set only if not ocManual
-                print("[HRP-Watcher] HRP detected -> open UI")
-                -- set Y visible (keep current X if exists)
-                local curX = getXScaleSafe(ui_mtb) or 0
-                safeTween(ui_mtb, { Position = UDim2.new(curX, 0, 0.02, 0) }, 0.28, Enum.EasingStyle.Quad)
-                safeTween(ui_hr, { Size = UDim2.new(0,150, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                pcall(function()
-                    if ui_Set then ui_Set.Visible = true end
-                    if ui_hbm then ui_hbm.Visible = true end
-                    if ui_OC  then ui_OC.Visible  = true end
-                    if ui_wa1 then ui_wa1.Visible = false end
-                    if ui_wl  then ui_wl.Visible  = false end
-                end)
-                -- change X automatically only if user didn't manually toggle OC
-                if not ocManual then
-                    -- move mtb to closed X as you requested earlier (0.515) when HRP found
-                    setMtbX(false, false)
-                end
+                -- show/expand UI
+                print("[HRP-Watcher] HRP detected -> opening UI")
+                -- move/expand using safeTween (if targets exist)
+                safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad)
+                if ui_hr then safeTween(ui_hr, { Size = UDim2.new(0,150, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28) end
+
+                -- ensure visibility: hide loading widgets (wa1/wl) and show controls
+                safeSetVisible(ui_wa1, false)
+                safeSetVisible(ui_wl, false)
+                safeSetVisible(ui_Set, true)
+                safeSetVisible(ui_hbm, true)
+                safeSetVisible(ui_OC, true)
+
                 isOpen = true
             end
         else
             timerMissing = timerMissing + CHECK_INTERVAL
             if timerMissing >= TIMEOUT then
                 if isOpen then
-                    print("[HRP-Watcher] HRP missing -> close UI")
-                    -- close: hide Y and reduce size
-                    local curX = getXScaleSafe(ui_mtb) or 0
-                    safeTween(ui_mtb, { Position = UDim2.new(curX, 0, -3, 0) }, 0.28)
-                    safeTween(ui_hr, { Size = UDim2.new(0,34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                    pcall(function()
-                        if ui_Set then ui_Set.Visible = false end
-                        if ui_hbm then ui_hbm.Visible = false end
-                        if ui_OC  then ui_OC.Visible  = false end
-                        if ui_wa1 then ui_wa1.Visible = false end
-                    end)
-                    -- on full close, if watcher is allowed to control X, reset X to default (0) AFTER hiding
-                    if not ocManual then
-                        setMtbX(true, false) -- default X=0
-                    end
+                    print("[HRP-Watcher] HRP missing > "..TIMEOUT.."s -> closing UI")
+                    -- close/hide
+                    if ui_tb then safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28) end
+                    if ui_hr then safeTween(ui_hr, { Size = UDim2.new(0,34, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28) end
+
+                    -- hide controls, show load/warning if needed
+                    safeSetVisible(ui_Set, false)
+                    safeSetVisible(ui_hbm, false)
+                    safeSetVisible(ui_OC, false)
+                    safeSetVisible(ui_wa1, true)  -- show load frame if you want reload UI
+                    safeSetVisible(ui_wl, true)
+
                     isOpen = false
                 end
             end
