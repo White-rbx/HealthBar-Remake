@@ -216,7 +216,7 @@ wl.Parent = wa1
 
 -- ===== OC (Open/Close) wiring (REPLACE/PUT AFTER you create OC) =====
 local OC_OPEN_IMAGE  = "rbxassetid://10002398990" -- image when OPEN
-local OC_CLOSE_IMAGE = "rbxassetid://12008863261"  -- image when CLOSED
+local OC_CLOSE_IMAGE = "rbxassetid://11771856687"  -- image when CLOSED
 
 -- state: true = opened (mtb at X=0), false = closed (mtb at X=0.515)
 local ocState = false
