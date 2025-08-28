@@ -414,8 +414,8 @@ task.spawn(function()
 
                     safeTween(ui_hr, { Size = UDim2.new(0,48, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                     pcall(function()
-                        if ui_Set  then ui_Set.Visible  = true end
-                        if ui_hbm then ui_hbm.Visible = true end
+                        if ui_Set  then ui_Set.Visible  = false end
+                        if ui_hbm then ui_hbm.Visible = false end
                         if ui_OC  then ui_OC.Visible  = true end
                     end)
 
