@@ -214,69 +214,103 @@ wl.TextColor3 = Color3.fromRGB(255, 255, 255)
 wl.Visible = true
 wl.Parent = wa1
 
--- ===== OC (Open/Close) wiring (REPLACE/PUT AFTER you create OC) =====
-local OC_OPEN_IMAGE  = "rbxassetid://6993462605" -- image when OPEN
-local OC_CLOSE_IMAGE = "rbxassetid://6993472329"  -- image when CLOSED
+-- ===== OC (Open/Close) wiring - REPLACEMENT =====
+local OC_OPEN_IMAGE  = "rbxassetid://6993462605" -- image when OPEN (show Set/hbm)
+local OC_CLOSE_IMAGE = "rbxassetid://6993472329"  -- image when CLOSED (hide Set/hbm)
 
--- state: true = opened (mtb at X=0), false = closed (mtb at X=0.515)
-local ocState = false
-local ocManual = false
+-- target mtb X for "closed" (was 0.515 -> change to 0.48 as requested)
+local MTB_X_CLOSED = 0.48
+local MTB_X_OPEN   = 0 -- open => X = 0
 
--- if OC variable used earlier as 'OC' but watcher uses ui_OC, keep OC reference stable
-local OCref = OC -- or ui_OC if you only have ui_OC; here we assume variable OC exists
+-- hr sizes in px for open/close
+local HR_WIDTH_OPEN  = 150
+local HR_WIDTH_CLOSE = 48
 
-if OCref and (not OCref.Image or OCref.Image == "") then
-    OCref.Image = ocState and OC_OPEN_IMAGE or OC_CLOSE_IMAGE
-end
-
--- helper to find the mtb frame (ui_mtb or mtb)
-local function findMtb()
-    if ui_mtb and ui_mtb.Parent then return ui_mtb end
-    if mtb and mtb.Parent then return mtb end
-    -- fallback try to find in menuGui
-    if menuGui and menuGui.Parent then
-        local found = menuGui:FindFirstChild("TopBar", true)
-        if found then return found end
-    end
-    return nil
-end
-
--- helper: set mtb X position smoothly (uses tweenObject helper from your file)
+-- safe setter for mtb position (uses tweenObject if available)
 local function setMtbX(open, instant)
-    ocState = open
-    local targetX = open and 0 or 0.515
-    -- set OC image (safe)
-    pcall(function()
-        if OCref then OCref.Image = ocState and OC_OPEN_IMAGE or OC_CLOSE_IMAGE end
-    end)
+    local targetX = open and MTB_X_OPEN or MTB_X_CLOSED
+    -- prefer existing mtb variable; fallback to searching inside menuGui
+    local targetMtb = mtb or (menuGui and menuGui:FindFirstChild("TopBar", true))
 
-    local target = findMtb()
-    if not target then return end
+    if OC and (OC:IsA("GuiObject")) then
+        OC.Image = open and OC_OPEN_IMAGE or OC_CLOSE_IMAGE
+    end
 
-    local newPos = UDim2.new(targetX, 0, (target.Position and target.Position.Y.Scale) or 0.02, 0)
+    if not targetMtb then
+        return
+    end
+
+    local newPos = UDim2.new(targetX, 0, targetMtb.Position.Y.Scale, targetMtb.Position.Y.Offset)
     if instant then
-        pcall(function() target.Position = newPos end)
+        pcall(function() targetMtb.Position = newPos end)
     else
-        pcall(function() tweenObject(target, { Position = newPos }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) end)
+        pcall(function()
+            if safeTween then
+                safeTween(targetMtb, { Position = newPos }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            else
+                tweenObject(targetMtb, { Position = newPos }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            end
+        end)
     end
 end
 
--- when user toggles OC: mark manual, move mtb accordingly
-if OCref then
-    OCref.MouseButton1Click:Connect(function()
-        ocManual = true
-        setMtbX(not ocState, false)
-        -- optional: release manual override after 6 seconds so watcher can resume control
-        task.spawn(function()
-            task.wait(6)
-            ocManual = false
+-- safe setter for hr width
+local function setHrWidth(px, instant)
+    if not hr then return end
+    local newSize = UDim2.new(0, px, hr.Size.Y.Scale, hr.Size.Y.Offset)
+    if instant then
+        pcall(function() hr.Size = newSize end)
+    else
+        pcall(function()
+            if safeTween then
+                safeTween(hr, { Size = newSize }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            else
+                tweenObject(hr, { Size = newSize }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            end
         end)
-    end)
+    end
 end
 
--- initialize OC visual (instant)
-setMtbX(ocState, true)
+-- determine initial state from current UI (if Set/hbm visible => consider OPEN)
+local ocState = false
+if (Set and Set:IsA("GuiObject")) and Set.Visible then
+    ocState = true
+end
 
+-- ensure OC image set
+if OC and OC:IsA("ImageButton") then
+    OC.Image = ocState and OC_OPEN_IMAGE or OC_CLOSE_IMAGE
+end
+
+-- function to apply the state
+local function applyOCState(open, instant)
+    ocState = open
+    -- set mtb position
+    setMtbX(open, instant)
+    -- set hr size
+    setHrWidth(open and HR_WIDTH_OPEN or HR_WIDTH_CLOSE, instant)
+    -- toggle Set/hbm visibility (pcall to be safe)
+    pcall(function()
+        if Set and Set:IsA("GuiObject") then Set.Visible = open end
+        if hbm and hbm:IsA("GuiObject") then hbm.Visible = open end
+    end)
+    -- update OC image
+    if OC and OC:IsA("GuiObject") then
+        OC.Image = open and OC_OPEN_IMAGE or OC_CLOSE_IMAGE
+    end
+end
+
+-- initialize (instant)
+applyOCState(ocState, true)
+
+-- OC click toggles
+if OC and OC:IsA("GuiObject") then
+    OC.MouseButton1Click:Connect(function()
+        -- toggle and animate
+        ocState = not ocState
+        applyOCState(ocState, false)
+    end)
+end
 
 -- ===== main loop (HRP watcher) =====
 local CHECK_INTERVAL = 0.12 -- ระยะเวลาเช็ค (วินาที)
@@ -372,13 +406,13 @@ task.spawn(function()
                     print("[HRP-Watcher] HRP detected -> opening UI")
                     -- ย้าย mtb/หรือ tb/ hr ในแบบที่คุณต้องการ (เช็คว่า ui_mtb มีไหม ถ้ามีก็ย้าย mtb)
                     if ui_mtb and ui_mtb.Parent then
-                        safeTween(ui_mtb, { Position = UDim2.new(0.515, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28, Enum.EasingStyle.Quad)
+                        safeTween(ui_mtb, { Position = UDim2.new(0.48, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28, Enum.EasingStyle.Quad)
                     else
                         -- ถ้าไม่มี mtb ให้ย้าย tb แทน (ถ้านี่คือพฤติกรรมเดิม)
                         safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad)
                     end
 
-                    safeTween(ui_hr, { Size = UDim2.new(0,150, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                    safeTween(ui_hr, { Size = UDim2.new(0,48, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                     pcall(function()
                         if ui_Set  then ui_Set.Visible  = true end
                         if ui_hbm then ui_hbm.Visible = true end
