@@ -101,7 +101,7 @@ hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 hr.BackgroundTransparency = 0.2
 hr.Parent = mtb
 createUICorner(hr, 1, 0)
-createUIListLayout(hr, 0, 0, HCenter, VCenter, FillH)
+createUIListLayout(hr, 0.1, 0, HCenter, VCenter, FillH)
 
 -- Top bar buttons container (tb) — starts collapsed
 local tb = Instance.new("ScrollingFrame")
