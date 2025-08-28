@@ -4,7 +4,7 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 
 -- เป้าหมายใหม่ของตำแหน่ง HealthBar
-local newHealthBarPosition = UDim2.new(0.9, 0, 0, 0)
+local newHealthBarPosition = UDim2.new(0.86, 0, 0, 0)
 local newInnerBarSize = UDim2.new(0, 230, 0, 10)
 
 -- ปรับตำแหน่ง HealthBar
