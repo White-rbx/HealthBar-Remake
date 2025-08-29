@@ -887,188 +887,289 @@ end, false)
 
 
 
--- ===== Services =====
+-- ===== FULL ESP (Client) =====
+-- วางหลัง createToggle และ BFrame ถูกประกาศแล้ว (LocalScript)
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-local BadgeService = game:GetService("BadgeService")
 local localPlayer = Players.LocalPlayer
 
--- ===== ADMIN BADGE ID (ปรับเป็น id จริงของ Administration Badge) =====
-local ADMIN_BADGE_ID = 12345678
-
--- ===== Helper: Parse ISO Date =====
-local function parseIso8601ToTime(iso)
-    local y, m, d, hh, mm, ss = iso:match("^(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+)")
-    if not y then return nil end
-    return os.time({
-        year = tonumber(y), month = tonumber(m), day = tonumber(d),
-        hour = tonumber(hh), min = tonumber(mm), sec = tonumber(ss)
-    })
-end
-local function formatDateDMY(osTime)
-    if not osTime then return "" end
-    local t = os.date("*t", osTime)
-    return string.format("%02d/%02d/%04d", t.day, t.month, t.year)
-end
-local function computeAgeYears(createdTime)
-    if not createdTime then return nil end
-    return (os.time() - createdTime) / (365*24*60*60)
+if not localPlayer then
+    warn("[ESP] LocalPlayer not available - must run in LocalScript")
+    return
 end
 
--- ===== Helper: Badge Check =====
-local function hasBadgeWeb(userId, badgeId)
-    local ok, res = pcall(function()
-        return HttpService:GetAsync("https://badges.roblox.com/v1/users/"..userId.."/badges?limit=100")
-    end)
-    if not ok then return nil end
-    local parsed = HttpService:JSONDecode(res)
-    for _, entry in ipairs(parsed.data or {}) do
-        local bid = entry.badgeId or entry.id
-        if tonumber(bid) == tonumber(badgeId) then return true end
+local ESP_FOLDER_NAME = "Client_ESP_Folder"
+
+local function getOrCreateEspFolder()
+    local f = workspace:FindFirstChild(ESP_FOLDER_NAME)
+    if not f then
+        f = Instance.new("Folder")
+        f.Name = ESP_FOLDER_NAME
+        f.Parent = workspace
     end
-    return false
-end
-local function hasBadgeFallback(userId, badgeId)
-    local ok, res = pcall(function()
-        return BadgeService:UserHasBadgeAsync(userId, badgeId)
-    end)
-    return ok and res or nil
+    return f
 end
 
--- ===== Fetch User Meta =====
-local cache = {}
-local function fetchUserMeta(userId)
-    if cache[userId] then return cache[userId] end
-    local result = { ageYears=nil, joinDate=nil, isModerator=nil }
+local espRecords = {} -- [player] = { container, conn (Heartbeat), highlight, billboard }
 
-    local ok, body = pcall(function()
-        return HttpService:GetAsync("https://users.roblox.com/v1/users/"..userId)
-    end)
-    if ok and body then
-        local parsed = HttpService:JSONDecode(body)
-        if parsed.created then
-            local ct = parseIso8601ToTime(parsed.created)
-            result.ageYears = computeAgeYears(ct)
-            result.joinDate = formatDateDMY(ct)
-        end
+local function safeDestroy(obj)
+    if obj and obj.Parent then
+        pcall(function() obj:Destroy() end)
     end
-
-    local b = hasBadgeWeb(userId, ADMIN_BADGE_ID)
-    if b ~= nil then result.isModerator = b else
-        local fb = hasBadgeFallback(userId, ADMIN_BADGE_ID)
-        result.isModerator = fb or false
-    end
-
-    cache[userId] = result
-    return result
 end
 
--- ===== ESP Builder =====
-local espFolder = Instance.new("Folder")
-espFolder.Name = "ESPFolder"
-espFolder.Parent = workspace
+local function makeBillboardForCharacter(plr, char)
+    local head = char:FindFirstChild("Head") or char:FindFirstChildWhichIsA("BasePart")
+    local bb = Instance.new("BillboardGui")
+    bb.Name = "ESP_Billboard"
+    bb.Size = UDim2.new(0, 250, 0, 40)
+    bb.StudsOffset = Vector3.new(0, 3, 0)
+    bb.AlwaysOnTop = true
+    bb.ResetOnSpawn = false
+    bb.Adornee = head
+    local label = Instance.new("TextLabel")
+    label.Name = "ESP_Label"
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextScaled = true
+    label.TextStrokeTransparency = 0
+    label.TextColor3 = Color3.new(1,1,1)
+    label.Font = Enum.Font.Legacy
+    label.Parent = bb
+    bb.Parent = getOrCreateEspFolder()
+    return bb, label
+end
 
-local function addESP(plr)
-    if not plr.Character then return end
-    if espFolder:FindFirstChild(plr.Name) then return end
-
-    local char = plr.Character
-    local container = Instance.new("Folder")
-    container.Name = plr.Name
-    container.Parent = espFolder
-
-    -- Highlight
+local function makeHighlightForCharacter(char, teamColor)
     local hl = Instance.new("Highlight")
+    hl.Name = "ESP_Highlight"
     hl.FillTransparency = 0.8
     hl.OutlineTransparency = 0
-    hl.Adornee = char
-    hl.Parent = container
-
-    -- Billboard
-    local bb = Instance.new("BillboardGui")
-    bb.Size = UDim2.new(0,250,0,40)
-    bb.StudsOffset = Vector3.new(0,3,0)
-    bb.AlwaysOnTop = true
-    bb.Parent = container
-    bb.Adornee = char:FindFirstChild("Head") or char:FindFirstChildWhichIsA("BasePart")
-
-    local txt = Instance.new("TextLabel")
-    txt.Name = "InfoLabel"
-    txt.Size = UDim2.new(1,0,1,0)
-    txt.BackgroundTransparency = 1
-    txt.TextScaled = true
-    txt.TextStrokeTransparency = 0
-    txt.Parent = bb
-
-    -- Update loop
-    RunService.Heartbeat:Connect(function()
-        if not plr.Parent then container:Destroy() return end
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-
-        local meta = fetchUserMeta(plr.UserId)
-        local health = hum and hum.Health/hum.MaxHealth or 0
-        local studs = hrp and (localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and (hrp.Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude) or 0
-
-        txt.Text = string.format(
-            "@%s\nAge: %.2f yrs\nJoin: %s\nHealth: %.2f%%\nStuds: %.2f\nTeam: %s\nPlaID: %d\nIsModerator: %s",
-            plr.Name,
-            meta.ageYears or 0,
-            meta.joinDate or "?",
-            (health*100),
-            studs,
-            (plr.Team and plr.Team.Name or "NoTeam"),
-            plr.UserId,
-            meta.isModerator and "Yes" or "No"
-        )
-
-        -- Highlight color
-        if plr.Team and plr.Team.TeamColor then
-            hl.FillColor = plr.Team.TeamColor.Color
-            hl.OutlineColor = plr.Team.TeamColor.Color
-        else
-            hl.FillColor = Color3.fromRGB(255,255,255)
-            hl.OutlineColor = Color3.fromRGB(255,255,255)
-        end
-
-        -- Low health blink
-        if health < 0.25 then
-            if tick()%0.1 < 0.05 then
-                hl.FillColor = Color3.fromRGB(255,0,0)
-                txt.TextColor3 = Color3.fromRGB(255,0,0)
-            end
-        else
-            txt.TextColor3 = Color3.fromRGB(255,255,255)
-        end
-    end)
-end
-
-local function removeESP(plr)
-    local f = espFolder:FindFirstChild(plr.Name)
-    if f then f:Destroy() end
-end
-
--- ===== Toggle Switch (ใช้ของคุณ) =====
-local BFrame = Instance.new("Frame")
-BFrame.Size = UDim2.new(0,200,0,50)
-BFrame.Parent = game:GetService("CoreGui")
-
-local function onToggleESP(state)
-    if state then
-        for _,plr in ipairs(Players:GetPlayers()) do
-            if plr ~= localPlayer then addESP(plr) end
-        end
-        Players.PlayerAdded:Connect(function(p) addESP(p) end)
-        Players.PlayerRemoving:Connect(function(p) removeESP(p) end)
+    -- set colors (teamColor is Color3)
+    if teamColor then
+        hl.FillColor = teamColor
+        hl.OutlineColor = teamColor
     else
-        espFolder:ClearAllChildren()
+        hl.FillColor = Color3.new(1,1,1)
+        hl.OutlineColor = Color3.new(1,1,1)
+    end
+    hl.Adornee = char
+    hl.Parent = getOrCreateEspFolder()
+    return hl
+end
+
+local function getPlatformStringForPlayer(plr)
+    -- client-side cannot reliably know remote player's platform. Return "Unknown" except for local player.
+    if plr == localPlayer then
+        local UserInputService = game:GetService("UserInputService")
+        local platform = UserInputService:GetPlatform()
+        if platform == Enum.Platform.Windows or platform == Enum.Platform.OSX or platform == Enum.Platform.Linux then
+            return "PC"
+        elseif platform == Enum.Platform.IOS or platform == Enum.Platform.Android then
+            return "Mobile"
+        elseif platform == Enum.Platform.XBoxOne then
+            return "Console"
+        elseif platform == Enum.Platform.VR then
+            return "VR"
+        else
+            return "Unknown"
+        end
+    else
+        return "Unknown"
     end
 end
 
--- เรียกสร้าง toggle
-createToggle(BFrame,"ESP",onToggleESP,false)
+local function updateRecordForPlayer(plr)
+    local rec = espRecords[plr]
+    if not rec then return end
+    local char = plr.Character
+    if not char then
+        -- character not available yet: wait
+        return
+    end
 
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
+    local head = char:FindFirstChild("Head") or hrp
+
+    -- health percent
+    local healthPct = 0
+    if hum and hum.MaxHealth > 0 then
+        healthPct = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
+    end
+
+    -- studs from local player (if possible)
+    local studs = 0
+    local localHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and localHRP then
+        studs = (hrp.Position - localHRP.Position).Magnitude
+    end
+
+    -- Team color
+    local teamColor = (plr.Team and plr.Team.TeamColor) and plr.Team.TeamColor.Color or Color3.new(1,1,1)
+
+    -- Update highlight color (team)
+    if rec.highlight and rec.highlight.Parent then
+        pcall(function()
+            rec.highlight.FillColor = teamColor
+            rec.highlight.OutlineColor = teamColor
+        end)
+    end
+
+    -- Create display strings for the billboard
+    local age = tostring(plr.AccountAge or "N/A") -- AccountAge (days) is available client-side
+    local joinStr = "Unknown" -- account creation date not available client-side by default
+    local isMod = "Unknown" -- badge check requires server; leave Unknown unless you implement server fetch
+    local platform = getPlatformStringForPlayer(plr)
+    local pid = tostring(plr.UserId or "N/A")
+    local teamName = plr.Team and plr.Team.Name or "NoTeam"
+
+    local healthDisplay = "0"
+    if hum and hum.MaxHealth > 0 then
+        healthDisplay = string.format("%.2f", hum.Health)
+    end
+
+    local studsDisplay = string.format("%.2f", studs)
+
+    local textLines = {
+        "@" .. tostring(plr.Name),
+        "Age: " .. age,
+        "Join: " .. joinStr,
+        "Health: " .. healthDisplay,
+        "Studs: " .. studsDisplay,
+        "Team: " .. tostring(teamName),
+        "Platform: " .. platform,
+        "PlaID: " .. pid,
+        "IsModerator: " .. isMod
+    }
+
+    if rec.label and rec.label.Parent then
+        rec.label.Text = table.concat(textLines, "  |  ")
+        -- blinking behavior for low HP (<25%)
+        if healthPct < 0.25 then
+            -- blink red/white (0.1s toggle)
+            if (tick() % 0.2) < 0.1 then
+                rec.label.TextColor3 = Color3.new(1,0,0)
+                if rec.highlight then rec.highlight.FillColor = Color3.new(1,0,0) end
+            else
+                rec.label.TextColor3 = Color3.new(1,1,1)
+                if rec.highlight then rec.highlight.FillColor = teamColor end
+            end
+        else
+            rec.label.TextColor3 = Color3.new(1,1,1)
+            if rec.highlight then rec.highlight.FillColor = teamColor end
+        end
+    end
+end
+
+local function createESPForPlayer(plr)
+    if not plr or plr == localPlayer then return end
+    if espRecords[plr] then return end
+
+    -- only create when character exists
+    if not plr.Character then
+        -- wait for character then create
+        local cConn
+        cConn = plr.CharacterAdded:Connect(function(char)
+            cConn:Disconnect()
+            createESPForPlayer(plr) -- try again now that character exists
+        end)
+        return
+    end
+
+    local char = plr.Character
+
+    local container = Instance.new("Folder")
+    container.Name = "ESP_" .. tostring(plr.UserId)
+    container.Parent = getOrCreateEspFolder()
+
+    local hl = makeHighlightForCharacter(char, (plr.Team and plr.Team.TeamColor.Color) or nil)
+
+    local bb, label = makeBillboardForCharacter(plr, char)
+
+    -- Heartbeat connection to update text & blink
+    local conn = RunService.Heartbeat:Connect(function()
+        if not plr.Parent or not plr.Character then
+            -- player left or character removed -> cleanup
+            if conn then conn:Disconnect() end
+            safeDestroy(container)
+            espRecords[plr] = nil
+            return
+        end
+        updateRecordForPlayer(plr)
+    end)
+
+    espRecords[plr] = {
+        container = container,
+        conn = conn,
+        highlight = hl,
+        billboard = bb,
+        label = label
+    }
+
+    -- parent attachments for cleanup clarity
+    if hl then hl.Parent = container end
+    if bb then bb.Parent = container end
+
+    print("[ESP] created for", plr.Name)
+end
+
+local function removeESPForPlayer(plr)
+    local rec = espRecords[plr]
+    if not rec then return end
+    if rec.conn then pcall(function() rec.conn:Disconnect() end) end
+    safeDestroy(rec.container)
+    espRecords[plr] = nil
+    print("[ESP] removed for", plr.Name)
+end
+
+local function enableESP()
+    -- create for all current players
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= localPlayer then
+            createESPForPlayer(p)
+        end
+    end
+    -- connect future players
+    espRecords._addedConn = Players.PlayerAdded:Connect(function(p)
+        if p ~= localPlayer then createESPForPlayer(p) end
+    end)
+    espRecords._removingConn = Players.PlayerRemoving:Connect(function(p)
+        removeESPForPlayer(p)
+    end)
+    print("[ESP] enabled")
+end
+
+local function disableESP()
+    -- disconnect connections
+    if espRecords._addedConn then pcall(function() espRecords._addedConn:Disconnect() end) end
+    if espRecords._removingConn then pcall(function() espRecords._removingConn:Disconnect() end) end
+    -- cleanup
+    local folder = workspace:FindFirstChild(ESP_FOLDER_NAME)
+    if folder then safeDestroy(folder) end
+    espRecords = {}
+    print("[ESP] disabled")
+end
+
+-- callback bound to createToggle
+local function onToggleESP(state)
+    if state then
+        enableESP()
+    else
+        disableESP()
+    end
+end
+
+-- register toggle (if createToggle and BFrame exist)
+if typeof(createToggle) == "function" and BFrame then
+    createToggle(BFrame, "ESP", onToggleESP, false)
+    print("[ESP] registered toggle with createToggle")
+else
+    warn("[ESP] createToggle or BFrame not found. Place this code after createToggle and BFrame are defined.")
+end
+
+-- END ESP
 
 
 
