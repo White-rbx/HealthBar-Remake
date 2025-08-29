@@ -1068,7 +1068,7 @@ end
 -- ===== Attach to your createToggle =====
 -- NOTE: your createToggle signature: createToggle(parent, text, callback, defaultState)
 -- Put this line AFTER you have BFrame and createToggle defined.
-createToggle(BFrame, "ESP", function(state)
+createToggle(BFrame, "ESP (Beta)", function(state)
     dprint("ESP toggle callback ->", state)
     if state then
         addAll()
