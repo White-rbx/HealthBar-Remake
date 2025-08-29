@@ -887,257 +887,262 @@ end, false)
 
 
 
--- ===== UPDATED ESP (Client) =====
--- วางหลัง createToggle และ BFrame ถูกประกาศแล้ว (LocalScript)
-
+-- ===== Realtime player updates + simple ESP (paste after UI creation) =====
+-- ต้องมีตัวแปร: Players, RunService, TweenService, localPlayer, playerCount, settings (หรือ parent ที่จะใส่ players list)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local localPlayer = Players.LocalPlayer
 
-if not localPlayer then
-    warn("[ESP] LocalPlayer not available - must run in LocalScript")
-    return
-end
-
-local ESP_FOLDER_NAME = "Client_ESP_Folder"
-
-local function getOrCreateEspFolder()
-    local f = workspace:FindFirstChild(ESP_FOLDER_NAME)
-    if not f then
-        f = Instance.new("Folder")
-        f.Name = ESP_FOLDER_NAME
-        f.Parent = workspace
+-- ถ้าไม่มี frame สำหรับรายการผู้เล่น ให้สร้าง (scrolling)
+local function ensurePlayersListContainer(parent)
+    parent = parent or settings -- ใช้ settings เป็น default parent
+    local container = parent:FindFirstChild("PlayersList")
+    if container and container:IsA("ScrollingFrame") then
+        return container
     end
-    return f
+
+    container = Instance.new("ScrollingFrame")
+    container.Name = "PlayersList"
+    container.Size = UDim2.new(0.96, 0, 0.35, 0)
+    container.Position = UDim2.new(0.02, 0, 0.08, 0)
+    container.BackgroundTransparency = 1
+    container.ScrollBarThickness = 6
+    container.CanvasSize = UDim2.new(0, 0, 0, 0)
+    container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    container.Parent = parent
+
+    local ui = Instance.new("UIListLayout")
+    ui.Padding = UDim.new(0, 4)
+    ui.Parent = container
+
+    return container
 end
 
-local espRecords = {} -- [player] = { container, conn, highlight, billboard, label }
+local playersList = ensurePlayersListContainer(settings) -- settings ต้องมี
+local playerEntries = {} -- map Player -> {Label = ..., updateConn = ...}
 
-local function safeDestroy(obj)
-    if obj and obj.Parent then
-        pcall(function() obj:Destroy() end)
+-- update player count (safe)
+local function updatePlayerCounter()
+    local ok, maxp = pcall(function() return Players.MaxPlayers end)
+    local maxPlayers = ok and (maxp or 0) or 0
+    local count = #Players:GetPlayers()
+    if playerCount and playerCount:IsA("TextLabel") then
+        playerCount.Text = tostring(count) .. "/" .. tostring(maxPlayers)
     end
 end
 
-local function makeBillboardForCharacter(plr, char)
-    local head = char:FindFirstChild("Head") or char:FindFirstChildWhichIsA("BasePart")
-    if not head then return nil end
-    local bb = Instance.new("BillboardGui")
-    bb.Name = "ESP_Billboard"
-    bb.Size = UDim2.new(0, 250, 0, 40)
-    bb.StudsOffset = Vector3.new(0, 3, 0)
-    bb.AlwaysOnTop = true
-    bb.ResetOnSpawn = false
-    bb.Adornee = head
+-- create an entry in the playersList for a player
+local function createPlayerEntry(p)
+    if not playersList then return end
+    if playerEntries[p] then return playerEntries[p] end
+
     local label = Instance.new("TextLabel")
-    label.Name = "ESP_Label"
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.TextScaled = true
-    label.TextStrokeTransparency = 0
+    label.Name = "Player_" .. tostring(p.UserId)
+    label.Size = UDim2.new(1, 0, 0, 28)
+    label.BackgroundTransparency = 0.4
+    label.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    label.TextColor3 = Color3.fromRGB(255,255,255)
+    label.TextScaled = false
     label.Font = Enum.Font.Legacy
-    label.Parent = bb
-    bb.Parent = getOrCreateEspFolder()
-    return bb, label
-end
+    label.Text = p.Name
+    label.Parent = playersList
+    createUICorner(label, 0.2, 0)
 
-local function makeHighlightForCharacter(char, teamColor)
-    local hl = Instance.new("Highlight")
-    hl.Name = "ESP_Highlight"
-    hl.FillTransparency = 0.8
-    hl.OutlineTransparency = 0
-    -- default colors; will be updated per-player
-    hl.FillColor = teamColor or Color3.fromRGB(200,200,200)
-    hl.OutlineColor = teamColor or Color3.fromRGB(200,200,200)
-    hl.Adornee = char
-    hl.Parent = getOrCreateEspFolder()
-    return hl
-end
-
-local function updateRecordForPlayer(plr)
-    local rec = espRecords[plr]
-    if not rec then return end
-    local char = plr.Character
-    if not char then return end
-
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
-    local head = char:FindFirstChild("Head") or hrp
-
-    -- health percent
-    local healthPct = 0
-    if hum and hum.MaxHealth and hum.MaxHealth > 0 then
-        healthPct = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
-    end
-
-    -- studs from local player (if possible)
-    local studs = 0
-    local localHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if hrp and localHRP then
-        studs = (hrp.Position - localHRP.Position).Magnitude
-    end
-
-    -- Team name & color
-    local teamName = "Neutral"
-    local teamColor = Color3.fromRGB(200,200,200) -- neutral gray default
-    if plr.Team then
-        teamName = plr.Team.Name or "Neutral"
-        if plr.Team.TeamColor then
-            teamColor = plr.Team.TeamColor.Color
-        end
-    end
-
-    -- Update highlight color (team)
-    if rec.highlight and rec.highlight.Parent then
-        pcall(function()
-            rec.highlight.FillColor = teamColor
-            rec.highlight.OutlineColor = teamColor
-        end)
-    end
-
-    -- Compose display text
-    local age = tostring(plr.AccountAge or "N/A") -- days
-    local pid = tostring(plr.UserId or "N/A")
-    local healthDisplay = "0"
-    if hum and hum.MaxHealth and hum.MaxHealth > 0 then
-        healthDisplay = string.format("%.2f", hum.Health)
-    end
-    local studsDisplay = string.format("%.2f", studs)
-
-    local textLines = {
-        "@" .. tostring(plr.Name),
-        "Age: " .. age,
-        "Health: " .. healthDisplay,
-        "Studs: " .. studsDisplay,
-        "Team: " .. tostring(teamName),
-        "PlaID: " .. pid
-    }
-
-    if rec.label and rec.label.Parent then
-        rec.label.Text = table.concat(textLines, "  |  ")
-
-        -- normal text color = teamColor (or gray for Neutral)
-        -- low health blinking: alternate between RED and teamColor
-        if healthPct < 0.25 then
-            -- blink frequency ~ 0.1s per state (0.2s full cycle)
-            if (tick() % 0.2) < 0.1 then
-                rec.label.TextColor3 = Color3.fromRGB(255, 0, 0) -- red blink
-                if rec.highlight then rec.highlight.FillColor = Color3.fromRGB(255, 0, 0) end
-            else
-                rec.label.TextColor3 = teamColor
-                if rec.highlight then rec.highlight.FillColor = teamColor end
-            end
-        else
-            rec.label.TextColor3 = teamColor
-            if rec.highlight then rec.highlight.FillColor = teamColor end
-        end
-    end
-end
-
-local function createESPForPlayer(plr)
-    if not plr or plr == localPlayer then return end
-    if espRecords[plr] then return end
-
-    -- only create when character exists
-    if not plr.Character then
-        local cConn
-        cConn = plr.CharacterAdded:Connect(function(char)
-            cConn:Disconnect()
-            createESPForPlayer(plr)
-        end)
-        return
-    end
-
-    local char = plr.Character
-
-    local container = Instance.new("Folder")
-    container.Name = "ESP_" .. tostring(plr.UserId)
-    container.Parent = getOrCreateEspFolder()
-
-    local teamColor = (plr.Team and plr.Team.TeamColor and plr.Team.TeamColor.Color) or Color3.fromRGB(200,200,200)
-    local hl = makeHighlightForCharacter(char, teamColor)
-    local bb, label = makeBillboardForCharacter(plr, char)
-    if not bb or not label then
-        safeDestroy(container)
-        return
-    end
-
-    -- Heartbeat connection to update label & blink
-    local conn = RunService.Heartbeat:Connect(function()
-        if not plr.Parent or not plr.Character then
+    -- updater connection: refresh health/studs every 0.25s
+    local conn
+    conn = RunService.Heartbeat:Connect(function(dt)
+        if not p.Parent then -- player removed
             if conn then conn:Disconnect() end
-            safeDestroy(container)
-            espRecords[plr] = nil
             return
         end
-        updateRecordForPlayer(plr)
-    end)
-
-    espRecords[plr] = {
-        container = container,
-        conn = conn,
-        highlight = hl,
-        billboard = bb,
-        label = label
-    }
-
-    -- parent highlight & billboard to container for tidy cleanup
-    if hl then hl.Parent = container end
-    if bb then bb.Parent = container end
-
-    print("[ESP] created for", plr.Name)
-end
-
-local function removeESPForPlayer(plr)
-    local rec = espRecords[plr]
-    if not rec then return end
-    if rec.conn then pcall(function() rec.conn:Disconnect() end) end
-    safeDestroy(rec.container)
-    espRecords[plr] = nil
-    print("[ESP] removed for", plr.Name)
-end
-
-local function enableESP()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= localPlayer then
-            createESPForPlayer(p)
+        local text = p.Name
+        local char = p.Character
+        if char then
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            local hrp = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+            if humanoid then
+                text = string.format("%s  |  HP: %.0f", text, humanoid.Health or 0)
+            end
+            if hrp and localPlayer and localPlayer.Character and localPlayer.Character.PrimaryPart then
+                local dist = (hrp.Position - localPlayer.Character.PrimaryPart.Position).Magnitude
+                text = string.format("%s  |  %.1f studs", text, dist)
+            end
         end
-    end
-    espRecords._addedConn = Players.PlayerAdded:Connect(function(p)
-        if p ~= localPlayer then createESPForPlayer(p) end
+        label.Text = text
     end)
-    espRecords._removingConn = Players.PlayerRemoving:Connect(function(p)
-        removeESPForPlayer(p)
-    end)
-    print("[ESP] enabled")
+
+    playerEntries[p] = {
+        Label = label,
+        Conn = conn
+    }
+    return playerEntries[p]
 end
 
-local function disableESP()
-    if espRecords._addedConn then pcall(function() espRecords._addedConn:Disconnect() end) end
-    if espRecords._removingConn then pcall(function() espRecords._removingConn:Disconnect() end) end
-    local folder = workspace:FindFirstChild(ESP_FOLDER_NAME)
-    if folder then safeDestroy(folder) end
-    espRecords = {}
-    print("[ESP] disabled")
+-- destroy entry
+local function removePlayerEntry(p)
+    local info = playerEntries[p]
+    if not info then return end
+    if info.Conn then pcall(function() info.Conn:Disconnect() end) end
+    if info.Label and info.Label.Parent then info.Label:Destroy() end
+    playerEntries[p] = nil
 end
 
--- callback bound to createToggle
-local function onToggleESP(state)
-    if state then
-        enableESP()
-    else
-        disableESP()
+-- Simple ESP: highlight + billboard
+local highlights = {} -- player -> highlight object
+local billboards = {} -- player -> billboard gui
+
+local function createESPForCharacter(p, char)
+    if not char or not p then return end
+    -- avoid local player
+    if p == localPlayer then return end
+
+    -- If highlight exists remove first
+    if highlights[p] and highlights[p].Parent then
+        highlights[p]:Destroy()
+    end
+
+    -- create Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_Highlight_" .. tostring(p.UserId)
+    highlight.Adornee = char
+    highlight.OutlineTransparency = 0 -- visible outline
+    highlight.FillTransparency = 0.8
+    -- color by team (fallback neutral)
+    local t = p.Team
+    local color = (t and t.TeamColor.Color) or Color3.fromRGB(200,200,200)
+    highlight.FillColor = color
+    highlight.OutlineColor = color
+    highlight.Parent = workspace -- Highlight must be in workspace or CoreGui? Usually in CoreGui, but in modern roblox put in CoreGui or collection? We'll put in workspace for safety.
+    highlights[p] = highlight
+
+    -- Billboard
+    if billboards[p] and billboards[p].Parent then
+        billboards[p]:Destroy()
+    end
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+    if hrp then
+        local bg = Instance.new("BillboardGui")
+        bg.Name = "ESP_Billboard_" .. tostring(p.UserId)
+        bg.Size = UDim2.new(0, 250, 0, 40)
+        bg.StudsOffset = Vector3.new(0, 3, 0)
+        bg.Adornee = hrp
+        bg.AlwaysOnTop = true
+        bg.Parent = playerGuiSafe() -- helper below will attempt to add to player's PlayerGui, but if nil then parent to CoreGui
+        local tlabel = Instance.new("TextLabel")
+        tlabel.Size = UDim2.new(1,0,1,0)
+        tlabel.BackgroundTransparency = 1
+        tlabel.TextScaled = true
+        tlabel.TextStrokeTransparency = 0
+        -- show username and health
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        local hp = humanoid and humanoid.Health or 0
+        tlabel.Text = string.format("@%s | HP: %.0f", p.Name, hp)
+        tlabel.TextColor3 = color
+        tlabel.Parent = bg
+        billboards[p] = bg
     end
 end
 
-if typeof(createToggle) == "function" and BFrame then
-    createToggle(BFrame, "ESP", onToggleESP, false)
-    print("[ESP] registered toggle with createToggle")
-else
-    warn("[ESP] createToggle or BFrame not found. Place this code after createToggle and BFrame are defined.")
+-- helper to return a safe parent for BillboardGui
+function playerGuiSafe()
+    -- prefer local player's PlayerGui (billboard in PlayerGui attaches to 3D? Usually BillboardGui must be descendant of PlayerGui or CoreGui? It's okay in PlayerGui)
+    local ok, pg = pcall(function() return localPlayer and localPlayer:FindFirstChild("PlayerGui") end)
+    if ok and pg then return pg end
+    return CoreGui -- fallback
 end
 
--- END UPDATED ESP
+local function removeESPForPlayer(p)
+    if highlights[p] then pcall(function() highlights[p]:Destroy() end) end
+    highlights[p] = nil
+    if billboards[p] then pcall(function() billboards[p]:Destroy() end) end
+    billboards[p] = nil
+end
+
+-- When player's character spawns — create ESP & ensure entry exists
+local function onCharacterAdded(p, char)
+    -- create/update entry text ASAP
+    createPlayerEntry(p)
+    -- create ESP
+    createESPForCharacter(p, char)
+
+    -- monitor humanoid health to update billboard text color or flash (optional)
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.HealthChanged:Connect(function(h)
+            local bg = billboards[p]
+            if bg and bg:IsA("BillboardGui") and bg:FindFirstChildOfClass("TextLabel") then
+                local tlabel = bg:FindFirstChildOfClass("TextLabel")
+                tlabel.Text = string.format("@%s | HP: %.0f", p.Name, h)
+                -- flash red when low health
+                if h / (humanoid.MaxHealth or 1) < 0.25 then
+                    -- briefly change color
+                    tlabel.TextColor3 = Color3.fromRGB(255,255,255)
+                    task.delay(0.12, function()
+                        if tlabel then
+                            tlabel.TextColor3 = (p.Team and p.Team.TeamColor.Color) or Color3.fromRGB(200,200,200)
+                        end
+                    end)
+                end
+            end
+        end)
+    end
+end
+
+-- Player add/remove handlers
+local function onPlayerAdded(p)
+    -- create UI entry
+    createPlayerEntry(p)
+
+    -- character may already exist (e.g., joining locally)
+    if p.Character then
+        onCharacterAdded(p, p.Character)
+    end
+
+    -- listen for character spawn
+    p.CharacterAdded:Connect(function(char) onCharacterAdded(p, char) end)
+end
+
+local function onPlayerRemoving(p)
+    removePlayerEntry(p)
+    removeESPForPlayer(p)
+end
+
+-- initial populate
+for _, p in ipairs(Players:GetPlayers()) do
+    onPlayerAdded(p)
+end
+updatePlayerCounter()
+
+-- connections
+Players.PlayerAdded:Connect(function(p)
+    onPlayerAdded(p)
+    updatePlayerCounter()
+end)
+Players.PlayerRemoving:Connect(function(p)
+    onPlayerRemoving(p)
+    updatePlayerCounter()
+end)
+
+-- If local player's character spawns, we should recalc distances for studs etc (handled in per-entry Heartbeat)
+if localPlayer then
+    localPlayer.CharacterAdded:Connect(function()
+        -- force immediate update of all entries so studs recalc quickly
+        for p, info in pairs(playerEntries) do
+            -- touch label text update by running one tick
+            -- (the Heartbeat connections will update soon)
+        end
+    end)
+end
+
+-- light periodic maintenance: clean destroyed players
+RunService.Heartbeat:Connect(function(dt)
+    -- keep playersList canvas size correct (UIListLayout.AutomaticCanvasSize can do but safe-check)
+    -- (no heavy work here)
+end)
+
+-- End Realtime updater
+
+
 
 
 -- ============== IMAGE BUTTONS ==============
