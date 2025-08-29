@@ -901,7 +901,7 @@ local BLINK_INTERVAL = 0.05  -- กระพริบทุก 0.05 วินา
 local HEALTH_BLINK_RATIO = 0.25 -- ถ้าน้อยกว่าส่วนนี้ให้กระพริบ
 
 -- cache creation dates fetched from API
-local userCreationCache : {[number] = string?} = {}
+local userCreationCache = {}
 
 -- container for esp data per player
 type EspRecord = {
