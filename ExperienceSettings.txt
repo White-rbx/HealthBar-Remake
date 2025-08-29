@@ -883,6 +883,232 @@ createToggle(BFrame, "RGB Light", function(state)
     toggleForLocalPlayer(state, true) -- RGB (เดิม rainbow)
 end, false)
 
+
+
+
+
+-- ===== ESP Toggle (Highlight + Billboard) =====
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+
+-- storage
+local espConnections = {} -- player -> { charConn, cleanupFlag }
+local espObjects = {}     -- player -> { highlight, billboard }
+
+-- helper: safe destroy
+local function safeDestroy(inst)
+    if inst and inst.Parent then
+        pcall(function() inst:Destroy() end)
+    end
+end
+
+-- helper: create billboard
+local function makeBillboard(hRP, player)
+    local bill = Instance.new("BillboardGui")
+    bill.Name = "ESP_Billboard"
+    bill.Size = UDim2.new(0, 250, 0, 40)
+    bill.StudsOffset = Vector3.new(0, 3, 0)
+    bill.AlwaysOnTop = true
+    bill.LightInfluence = 0
+    bill.Parent = hRP
+
+    local txt = Instance.new("TextLabel")
+    txt.Name = "ESP_Label"
+    txt.Size = UDim2.new(1, 0, 1, 0)
+    txt.BackgroundTransparency = 1
+    txt.TextScaled = true
+    txt.TextStrokeTransparency = 0
+    txt.TextYAlignment = Enum.TextYAlignment.Center
+    txt.TextXAlignment = Enum.TextXAlignment.Center
+    txt.Font = Enum.Font.Legacy
+    txt.Parent = bill
+
+    return bill, txt
+end
+
+-- create highlight + billboard for a player (calls once character exists)
+local function createESPForCharacter(player, character)
+    if not player or not character then return end
+    if espObjects[player] then return end
+
+    local hrp = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChildWhichIsA("BasePart")
+    if not hrp then return end
+
+    -- Highlight
+    local hl = Instance.new("Highlight")
+    hl.Name = "ESP_Highlight"
+    hl.Parent = character
+    hl.OutlineTransparency = 0
+    hl.FillTransparency = 0.8
+    hl.Enabled = true
+    -- initial color from team
+    local teamColor = (player.TeamColor and player.TeamColor.Color) or Color3.new(1,1,1)
+    hl.FillColor = teamColor
+
+    -- Billboard
+    local bill, txt = makeBillboard(hrp, player)
+    txt.TextColor3 = teamColor
+
+    espObjects[player] = { highlight = hl, billboard = bill, textLabel = txt }
+
+    -- updater loop (runs until character removed or esp disabled)
+    local stop = false
+    if not espConnections[player] then espConnections[player] = {} end
+    espConnections[player].stop = function() stop = true end
+
+    task.spawn(function()
+        while not stop and player.Parent and character.Parent do
+            local hum = character:FindFirstChildOfClass("Humanoid")
+            local healthPct = 1
+            local maxHealth = 100
+            if hum then
+                maxHealth = hum.MaxHealth > 0 and hum.MaxHealth or 100
+                healthPct = hum.Health / maxHealth
+            end
+
+            -- distance (studs) from local player (if possible)
+            local studs = 0
+            if localPlayer and localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and hrp then
+                studs = (hrp.Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude
+            end
+
+            -- team
+            local teamName = tostring(player.Team and player.Team.Name or "NoTeam")
+            teamColor = (player.TeamColor and player.TeamColor.Color) or Color3.new(1,1,1)
+
+            -- blinking logic when low HP
+            if healthPct < 0.25 then
+                local phase = (tick() % 0.1) < 0.05
+                if player.TeamColor == BrickColor.new("Bright red") then
+                    hl.FillColor = phase and Color3.new(1,1,1) or Color3.new(1,0,0)
+                else
+                    hl.FillColor = phase and Color3.new(1,0,0) or teamColor
+                end
+                txt.TextColor3 = hl.FillColor
+            else
+                hl.FillColor = teamColor
+                txt.TextColor3 = teamColor
+            end
+
+            -- NOTE: placeholders for API-driven fields (replace with server-provided values if available)
+            local accAge = "AccDateAPI"             -- <- replace via remote event/server data
+            local accJoin = "AccFirstCreatedDateAPI" -- <- replace via remote event/server data
+            local isMod = "Unknown"                -- <- replace via badge/group check (server)
+
+            txt.Text = string.format(
+                "@%s | Age: %s | Join: %s\nHealth: %.2f%% | Studs: %.2f\nTeam: %s | PlaID: %d | Mod: %s",
+                tostring(player.Name),
+                tostring(accAge),
+                tostring(accJoin),
+                (healthPct * 100),
+                studs,
+                teamName,
+                player.UserId,
+                tostring(isMod)
+            )
+
+            task.wait(0.05) -- update every 0.05s (for blinking)
+        end
+
+        -- cleanup when loop ends (character removed or disabled)
+        safeDestroy(hl)
+        safeDestroy(bill)
+        espObjects[player] = nil
+    end)
+end
+
+-- create ESP for a player when their character spawns
+local function onCharacterAdded(player, character)
+    -- small delay to let HRP exist
+    task.wait(0.2)
+    if not character or not character.Parent then return end
+    createESPForCharacter(player, character)
+end
+
+-- enable ESP: attach to existing players and hook events
+local function enableESP()
+    -- prevent double-enable
+    if espConnections._enabled then return end
+    espConnections._enabled = true
+
+    -- hook existing players
+    for _, pl in ipairs(Players:GetPlayers()) do
+        if pl.Character then
+            createESPForCharacter(pl, pl.Character)
+        end
+        -- connect CharacterAdded per-player
+        local conn = pl.CharacterAdded:Connect(function(char) onCharacterAdded(pl, char) end)
+        espConnections[pl] = espConnections[pl] or {}
+        espConnections[pl].charConn = conn
+    end
+
+    -- hook PlayerAdded
+    espConnections._playerAddedConn = Players.PlayerAdded:Connect(function(pl)
+        -- connect charadded
+        local conn = pl.CharacterAdded:Connect(function(char) onCharacterAdded(pl, char) end)
+        espConnections[pl] = espConnections[pl] or {}
+        espConnections[pl].charConn = conn
+        -- if already has character
+        if pl.Character then createESPForCharacter(pl, pl.Character) end
+    end)
+end
+
+-- disable ESP: disconnect and cleanup all created objects
+local function disableESP()
+    if not espConnections._enabled then return end
+    espConnections._enabled = false
+
+    -- stop per-player loops and disconnects
+    for pl, data in pairs(espConnections) do
+        if pl == "_playerAddedConn" or pl == "_enabled" then goto cont end
+        -- stop loop
+        if data and data.stop then
+            pcall(data.stop)
+        end
+        -- disconnect charConn
+        if data and data.charConn then
+            pcall(function() data.charConn:Disconnect() end)
+        end
+        ::cont::
+    end
+
+    -- disconnect playerAdded
+    if espConnections._playerAddedConn then
+        pcall(function() espConnections._playerAddedConn:Disconnect() end)
+        espConnections._playerAddedConn = nil
+    end
+
+    -- destroy esp objects
+    for pl, objs in pairs(espObjects) do
+        if objs then
+            safeDestroy(objs.highlight)
+            safeDestroy(objs.billboard)
+            espObjects[pl] = nil
+        end
+    end
+
+    -- cleanup table
+    for k in pairs(espConnections) do espConnections[k] = nil end
+end
+
+-- Hook toggle into your UI toggle builder
+createToggle(BFrame, "ESP", function(state)
+    if state then
+        enableESP()
+    else
+        disableESP()
+    end
+end, false)
+
+-- ======== ESP END ===========
+
+
+
+
+
 -- ============== IMAGE BUTTONS ==============
 -- helper: ImageButton creation (parented to tb by default)
 local function createImageButton(name, r, g, b, bt, imageId, visible, parentFrame)
