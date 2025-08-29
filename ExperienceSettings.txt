@@ -887,186 +887,159 @@ end, false)
 
 
 
--- ===== ESP improved (replace your older addESP/removeESP) =====
-local RunService = game:GetService("RunService")
+-- ====== ESP FULL SYSTEM ======
+
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local localPlayer = Players.LocalPlayer
 
-local espConns = {} -- store Heartbeat connections per player (for cleanup)
+-- เก็บ ESP ที่สร้างไว้
+local espObjects = {}
+local espConns = {}
 
-local function getAccountAgeDays(plr)
-    return plr and plr.AccountAge or 0
+-- Helper: คำนวณระยะ (Studs) จาก LocalPlayer
+local function getStuds(plr)
+    if not plr.Character or not plr.Character.PrimaryPart then return 0 end
+    if not localPlayer.Character or not localPlayer.Character.PrimaryPart then return 0 end
+    return (plr.Character.PrimaryPart.Position - localPlayer.Character.PrimaryPart.Position).Magnitude
 end
 
-local function getAccountJoinDate(plr)
-    local days = getAccountAgeDays(plr)
-    local joinTime = os.time() - (days * 24 * 60 * 60)
-    return os.date("%d/%m/%Y", joinTime)
-end
-
-local function distanceToLocal(hrp)
-    if not hrp then return 0 end
-    local lchar = LocalPlayer and LocalPlayer.Character
-    local lroot = lchar and (lchar:FindFirstChild("HumanoidRootPart") or lchar:FindFirstChildWhichIsA("BasePart"))
-    if not lroot then return 0 end
-    return (lroot.Position - hrp.Position).Magnitude
-end
-
-local function removeESP(plr)
-    if not plr then return end
-    local char = plr.Character
-    if char then
-        local hl = char:FindFirstChild("ESP_Highlight")
-        if hl then pcall(function() hl:Destroy() end) end
-        local bb = char:FindFirstChild("ESP_Billboard")
-        if bb then pcall(function() bb:Destroy() end) end
+-- Helper: Team Color
+local function getTeamColor(plr)
+    if plr.Team and plr.Team.TeamColor then
+        return plr.Team.TeamColor.Color, plr.Team.Name
     end
-    local conn = espConns[plr]
-    if conn then
-        pcall(function() conn:Disconnect() end)
+    return Color3.new(1,1,1), "Neutral"
+end
+
+-- Helper: Acc Age & Join Date
+local function getAccountInfo(plr)
+    local age = plr.AccountAge or 0
+    local joinDate = os.date("%d %b %Y", os.time() - (age*24*60*60))
+    return age, joinDate
+end
+
+-- สร้าง ESP ให้ Player
+function addESPForPlayer(plr)
+    if not plr.Character then return end
+    if espObjects[plr] then return end
+
+    local char = plr.Character
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    -- Highlight
+    local highlight = Instance.new("Highlight")
+    highlight.OutlineTransparency = 0
+    highlight.FillTransparency = 0.8
+    highlight.Parent = char
+
+    -- Billboard
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0,250,0,40)
+    billboard.StudsOffset = Vector3.new(0,3,0)
+    billboard.AlwaysOnTop = true
+    billboard.BackgroundTransparency = 1
+    billboard.Parent = char:WaitForChild("Head", 5) or hrp
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1,0,1,0)
+    label.BackgroundTransparency = 1
+    label.TextScaled = true
+    label.TextStrokeTransparency = 0
+    label.Parent = billboard
+
+    espObjects[plr] = { highlight = highlight, billboard = billboard, label = label }
+
+    -- อัปเดต realtime
+    espConns[plr] = RunService.RenderStepped:Connect(function()
+        if not plr.Character or not hum or hum.Health <= 0 then return end
+
+        local teamColor, teamName = getTeamColor(plr)
+        local age, joinDate = getAccountInfo(plr)
+        local studs = getStuds(plr)
+
+        -- ข้อมูลที่จะโชว์
+        label.Text = string.format("👤@%s | 🕓Age: %d | 🗓️Join: %s | ♥️Health: %.2f | 📏Studs: %.2f | 🏳️: %s | 🪪PlaID: %d",
+            plr.Name, age, joinDate, hum.Health, studs, teamName, plr.UserId)
+
+        -- Text สีตามทีม
+        label.TextColor3 = teamColor
+
+        -- Highlight สีตามทีม
+        highlight.OutlineColor = teamColor
+        highlight.FillColor = teamColor
+
+        -- ถ้าเลือด < 25% ให้กระพริบ
+        if hum.Health/hum.MaxHealth < 0.25 then
+            local t = tick()*20
+            if teamName == "Red" then
+                local blink = math.floor(t) % 2 == 0 and Color3.new(1,1,1) or teamColor
+                highlight.OutlineColor = blink
+                highlight.FillColor = blink
+                label.TextColor3 = blink
+            else
+                local blink = math.floor(t) % 2 == 0 and Color3.new(1,0,0) or teamColor
+                highlight.OutlineColor = blink
+                highlight.FillColor = blink
+                label.TextColor3 = blink
+            end
+        end
+    end)
+end
+
+-- ลบ ESP ของ Player
+function removeESPForPlayer(plr)
+    if espObjects[plr] then
+        if espObjects[plr].highlight then espObjects[plr].highlight:Destroy() end
+        if espObjects[plr].billboard then espObjects[plr].billboard:Destroy() end
+        if espConns[plr] then espConns[plr]:Disconnect() end
+        espObjects[plr] = nil
         espConns[plr] = nil
     end
 end
 
-local function addESP(plr)
-    if not plr or plr == LocalPlayer then return end
-    -- if already exists, skip
-    if plr.Character and plr.Character:FindFirstChild("ESP_Highlight") then return end
-
-    -- wait for character root/humanoid
-    local char = plr.Character
-    if not char then
-        plr.CharacterAdded:Wait()
-        char = plr.Character
-        if not char then return end
-    end
-
-    -- Create Highlight
-    local hl = Instance.new("Highlight")
-    hl.Name = "ESP_Highlight"
-    hl.Parent = char
-    hl.FillTransparency = 0.8
-    hl.OutlineTransparency = 0
-    -- set adornee to model or a part (prefer Model)
-    pcall(function() hl.Adornee = char end)
-
-    -- Create BillboardGui with TextLabel
-    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
-    local bbRoot = hrp or (char:FindFirstChildWhichIsA("BasePart"))
-    local bb
-    local tl
-    if bbRoot then
-        bb = Instance.new("BillboardGui")
-        bb.Name = "ESP_Billboard"
-        bb.Size = UDim2.new(0,450,0,90)
-        bb.StudsOffset = Vector3.new(0,3,0)
-        bb.AlwaysOnTop = true
-        bb.Parent = bbRoot
-
-        tl = Instance.new("TextLabel")
-        tl.Size = UDim2.new(1,0,1,0)
-        tl.BackgroundTransparency = 1
-        tl.TextScaled = true
-        tl.TextStrokeTransparency = 0
-        tl.Font = Enum.Font.SourceSansBold
-        tl.Text = ""
-        tl.Parent = bb
-    end
-
-    -- per-player update connection
-    local blinkTimer = 0
-    local blinkState = false
-
-    local conn
-    conn = RunService.Heartbeat:Connect(function(dt)
-        -- cleanup if player/character gone
-        if not plr.Parent or not plr.Character then
-            removeESP(plr)
-            return
-        end
-
-        local char = plr.Character
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        local hrpNow = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
-
-        -- team color (fallback neutral grey)
-        local teamColor = (plr.Team and plr.Team.TeamColor and plr.Team.TeamColor.Color) or Color3.fromRGB(128,128,128)
-
-        -- default set both fill & outline to team color (so color is visible)
-        hl.FillColor = teamColor
-        hl.OutlineColor = teamColor
-        if tl then tl.TextColor3 = teamColor end
-
-        -- blinking on low health (<25%)
-        if hum and hum.MaxHealth > 0 and (hum.Health / hum.MaxHealth) < 0.25 then
-            blinkTimer = blinkTimer + dt
-            if blinkTimer >= 0.05 then
-                blinkTimer = 0
-                blinkState = not blinkState
-            end
-
-            -- choose alternate color:
-            -- if player's team name is "Red" then alternate with white, otherwise alternate with red
-            local altColor
-            local teamName = (plr.Team and plr.Team.Name) or "Neutral"
-            if teamName:lower() == "red" then
-                altColor = Color3.new(1,1,1)
-            else
-                altColor = Color3.new(1,0,0)
-            end
-
-            local finalColor = blinkState and altColor or teamColor
-            hl.FillColor = finalColor
-            hl.OutlineColor = finalColor
-            if tl then tl.TextColor3 = finalColor end
-        end
-
-        -- Update billboard text (real-time)
-        if tl then
-            local studs = hrpNow and distanceToLocal(hrpNow) or 0
-            local healthVal = hum and hum.Health or 0
-            local text = string.format(
-                "@%s\nAge: %d days\nJoin: %s\nHealth: %.2f\nStuds: %.2f\nTeam: %s\nPlaID: %d",
-                plr.Name,
-                getAccountAgeDays(plr),
-                getAccountJoinDate(plr),
-                healthVal,
-                studs,
-                (plr.Team and plr.Team.Name) or "Neutral",
-                plr.UserId
-            )
-            tl.Text = text
-        end
-    end)
-
-    espConns[plr] = conn
-
-    -- ensure cleanup on leave/character removal
-    plr.AncestryChanged:Connect(function()
-        if not plr:IsDescendantOf(game) then removeESP(plr) end
-    end)
-    plr.CharacterRemoving:Connect(function()
-        removeESP(plr)
-    end)
-end
-
--- Integrate with toggle: open/close
+-- Toggle ESP
 createToggle(BFrame, "ESP", function(state)
     if state then
-        -- create ESP for existing players and listen for new players
-        for _, plr in ipairs(Players:GetPlayers()) do
-            addESP(plr)
+        -- เปิด ESP
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= localPlayer then
+                addESPForPlayer(p)
+            end
         end
-        Players.PlayerAdded:Connect(function(p) addESP(p) end)
-        Players.PlayerRemoving:Connect(function(p) removeESP(p) end)
+
+        -- player added/removed
+        espConns["_PlayerAdded"] = Players.PlayerAdded:Connect(function(p)
+            if p ~= localPlayer then
+                p.CharacterAdded:Connect(function()
+                    task.wait(1)
+                    addESPForPlayer(p)
+                end)
+            end
+        end)
+
+        espConns["_PlayerRemoving"] = Players.PlayerRemoving:Connect(function(p)
+            removeESPForPlayer(p)
+        end)
+
+        print("[ESP] Enabled")
     else
-        -- remove all
-        for _, plr in ipairs(Players:GetPlayers()) do
-            removeESP(plr)
+        -- ปิด ESP
+        for _, p in ipairs(Players:GetPlayers()) do
+            removeESPForPlayer(p)
         end
+        for k, conn in pairs(espConns) do
+            if typeof(conn) == "RBXScriptConnection" then
+                conn:Disconnect()
+            end
+            espConns[k] = nil
+        end
+        print("[ESP] Disabled")
     end
 end, false)
-
 
 
 
