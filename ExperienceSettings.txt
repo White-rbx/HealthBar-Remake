@@ -742,6 +742,147 @@ createToggle(BFrame, "Shaders - Recommend graphics 5+", function(state)
     end
 end, false)
 
+-- ต้องมี service เหล่านี้
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+
+-- เก็บ coroutine / task ของ rainbow per-part เพื่อให้เราหยุดได้
+local _rainbowTasks = {}
+
+-- ลิสต์ part ที่จะพยายามหา (ลำดับความสำคัญ)
+local ATTACH_CANDIDATES = {
+    "HumanoidRootPart",
+    "LowerTorso",
+    "UpperTorso",
+    "Torso",
+    "Head"
+}
+
+-- หา part ที่จะ parent light ให้ (คืน BasePart หรือ nil)
+local function findAttachPart(character)
+    if not character then return nil end
+    for _, name in ipairs(ATTACH_CANDIDATES) do
+        local p = character:FindFirstChild(name)
+        if p and p:IsA("BasePart") then
+            return p
+        end
+    end
+    return nil
+end
+
+-- สต็อกชื่อ light
+local LIGHT_NAME = "Experience_Lighter"
+
+-- หยุด rainbow loop สำหรับ part นั้น (ถ้ามี)
+local function stopRainbowFor(part)
+    if not part then return end
+    local taskFlag = _rainbowTasks[part]
+    if taskFlag and taskFlag._stop then
+        taskFlag._stop = true
+        _rainbowTasks[part] = nil
+    end
+end
+
+-- สร้างหรือเปิด light
+-- params:
+--  state: boolean (true = on, false = off)
+--  rainbow: boolean (true => ไล่สี)
+--  opts (optional): table { Brightness = number, Range = number, Color = Color3 }
+local function setLighterForCharacter(char, state, rainbow, opts)
+    if not char then return false, "no char" end
+    local attach = findAttachPart(char)
+    if not attach then return false, "no attach part found" end
+
+    -- ถ้ามี light อยู่แล้ว จัดการตาม state
+    local existing = attach:FindFirstChild(LIGHT_NAME)
+    if not state then
+        -- ปิด/ลบ
+        if existing then
+            stopRainbowFor(attach)
+            existing:Destroy()
+        end
+        return true, "turned off"
+    end
+
+    -- เปิด: สร้าง light ถ้ายังไม่มี
+    if not existing then
+        local light = Instance.new("PointLight")
+        light.Name = LIGHT_NAME
+        light.Brightness = (opts and opts.Brightness) or 2
+        light.Range = (opts and opts.Range) or 25
+        light.Color = (opts and opts.Color) or Color3.new(1,1,1)
+        -- PointLight ไม่มี Angle property — เป็น omnidirectional อยู่แล้ว (เทียบกับ SpotLight)
+        light.Parent = attach
+
+        -- ถ้าผู้ใช้ทำลาย part เราควรหยุด task ด้วย (เช็ค AncestryChanged)
+        attach.AncestryChanged:Connect(function(child, parent)
+            if not parent then
+                -- part ถูกลบ -> หยุด rainbow (ถ้ามี)
+                stopRainbowFor(attach)
+            end
+        end)
+    else
+        -- update properties ถ้ามี
+        existing.Brightness = (opts and opts.Brightness) or existing.Brightness
+        existing.Range = (opts and opts.Range) or existing.Range
+        existing.Color = (opts and opts.Color) or existing.Color
+    end
+
+    -- rainbow handling
+    stopRainbowFor(attach) -- ทำความสะอาดก่อน
+    if rainbow then
+        -- สร้าง task flag เพื่อให้หยุดได้
+        local flag = { _stop = false }
+        _rainbowTasks[attach] = flag
+        task.spawn(function()
+            local t0 = tick()
+            while not flag._stop and attach.Parent do
+                local h = (tick() - t0) * 0.12 -- speed factor (ปรับได้)
+                local color = Color3.fromHSV(h % 1, 1, 1)
+                local light = attach:FindFirstChild(LIGHT_NAME)
+                if light then
+                    -- pcall ป้องกัน error ถ้า light ถูกทำลายในระหว่าง loop
+                    pcall(function() light.Color = color end)
+                else
+                    break
+                end
+                task.wait(0.06)
+            end
+        end)
+    else
+        -- ตั้งสีปกติ (ขาว) เมื่อไม่ใช่ rainbow
+        local light = attach:FindFirstChild(LIGHT_NAME)
+        if light then
+            pcall(function() light.Color = Color3.fromRGB(255,255,255) end)
+        end
+    end
+
+    return true, "turned on"
+end
+
+-- ตัวช่วย: toggle สำหรับ local player (เรียกจาก toggle callback)
+local function toggleForLocalPlayer(state, rainbow)
+    local pl = Players.LocalPlayer
+    if not pl then return end
+    local char = pl.Character or pl.CharacterAdded:Wait()
+    local ok, msg = pcall(function()
+        return setLighterForCharacter(char, state, rainbow)
+    end)
+    if not ok then
+        warn("[Lighter] failed:", msg)
+    end
+end
+
+createToggle(BFrame, "White Light", function(state)
+    toggleForLocalPlayer(state, false) -- ปกติ ขาว
+end, false)
+
+createToggle(BFrame, "RGB Light", function(state)
+    toggleForLocalPlayer(state, true) -- RGB (เดิม rainbow)
+end, false)
+
 -- ============== IMAGE BUTTONS ==============
 -- helper: ImageButton creation (parented to tb by default)
 local function createImageButton(name, r, g, b, bt, imageId, visible, parentFrame)
@@ -764,60 +905,6 @@ local function createImageButton(name, r, g, b, bt, imageId, visible, parentFram
     createUICorner(im, 1, 0)
     return im
 end
-
--- ===== LIGHTER TOGGLES =====
-
--- helper: สร้างไฟฉาย (PointLight) บน Torso
-local function ensureLight(name)
-    local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
-    local torso = char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
-    if not torso then return nil end
-
-    local existing = torso:FindFirstChild(name)
-    if existing then return existing end
-
-    local light = Instance.new("PointLight")
-    light.Name = name
-    light.Brightness = 2
-    light.Range = 25
-    light.Angle = 360
-    light.Enabled = false
-    light.Parent = torso
-    return light
-end
-
--- White Lighter Toggle
-createToggle(BFrame, "White Lighter", function(state)
-    local light = ensureLight("WhiteLighter")
-    if light then
-        light.Enabled = state
-        light.Color = Color3.fromRGB(255,255,255)
-    end
-end, false)
-
--- RGB Lighter Toggle
-local hueConnection
-createToggle(BFrame, "RGB Lighter", function(state)
-    local light = ensureLight("RGBLighter")
-    if not light then return end
-
-    if state then
-        light.Enabled = true
-        local hue = 0
-        hueConnection = game:GetService("RunService").RenderStepped:Connect(function(dt)
-            hue = (hue + dt*50) % 360
-            light.Color = Color3.fromHSV(hue/360, 1, 1)
-        end)
-    else
-        light.Enabled = false
-        if hueConnection then
-            hueConnection:Disconnect()
-            hueConnection = nil
-        end
-    end
-end, false)
-
--- ========== TOGGLE SWITCHS END ==========
 
 -- CTB1
 local ctb1 = createImageButton("INF YIELD", 50, 50, 50, 0.2, "116464551513962", false)
