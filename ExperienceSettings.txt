@@ -887,7 +887,7 @@ end, false)
 
 
 
--- ===== FULL ESP (Client) =====
+-- ===== UPDATED ESP (Client) =====
 -- วางหลัง createToggle และ BFrame ถูกประกาศแล้ว (LocalScript)
 
 local Players = game:GetService("Players")
@@ -911,7 +911,7 @@ local function getOrCreateEspFolder()
     return f
 end
 
-local espRecords = {} -- [player] = { container, conn (Heartbeat), highlight, billboard }
+local espRecords = {} -- [player] = { container, conn, highlight, billboard, label }
 
 local function safeDestroy(obj)
     if obj and obj.Parent then
@@ -921,6 +921,7 @@ end
 
 local function makeBillboardForCharacter(plr, char)
     local head = char:FindFirstChild("Head") or char:FindFirstChildWhichIsA("BasePart")
+    if not head then return nil end
     local bb = Instance.new("BillboardGui")
     bb.Name = "ESP_Billboard"
     bb.Size = UDim2.new(0, 250, 0, 40)
@@ -934,7 +935,6 @@ local function makeBillboardForCharacter(plr, char)
     label.BackgroundTransparency = 1
     label.TextScaled = true
     label.TextStrokeTransparency = 0
-    label.TextColor3 = Color3.new(1,1,1)
     label.Font = Enum.Font.Legacy
     label.Parent = bb
     bb.Parent = getOrCreateEspFolder()
@@ -946,48 +946,19 @@ local function makeHighlightForCharacter(char, teamColor)
     hl.Name = "ESP_Highlight"
     hl.FillTransparency = 0.8
     hl.OutlineTransparency = 0
-    -- set colors (teamColor is Color3)
-    if teamColor then
-        hl.FillColor = teamColor
-        hl.OutlineColor = teamColor
-    else
-        hl.FillColor = Color3.new(1,1,1)
-        hl.OutlineColor = Color3.new(1,1,1)
-    end
+    -- default colors; will be updated per-player
+    hl.FillColor = teamColor or Color3.fromRGB(200,200,200)
+    hl.OutlineColor = teamColor or Color3.fromRGB(200,200,200)
     hl.Adornee = char
     hl.Parent = getOrCreateEspFolder()
     return hl
-end
-
-local function getPlatformStringForPlayer(plr)
-    -- client-side cannot reliably know remote player's platform. Return "Unknown" except for local player.
-    if plr == localPlayer then
-        local UserInputService = game:GetService("UserInputService")
-        local platform = UserInputService:GetPlatform()
-        if platform == Enum.Platform.Windows or platform == Enum.Platform.OSX or platform == Enum.Platform.Linux then
-            return "PC"
-        elseif platform == Enum.Platform.IOS or platform == Enum.Platform.Android then
-            return "Mobile"
-        elseif platform == Enum.Platform.XBoxOne then
-            return "Console"
-        elseif platform == Enum.Platform.VR then
-            return "VR"
-        else
-            return "Unknown"
-        end
-    else
-        return "Unknown"
-    end
 end
 
 local function updateRecordForPlayer(plr)
     local rec = espRecords[plr]
     if not rec then return end
     local char = plr.Character
-    if not char then
-        -- character not available yet: wait
-        return
-    end
+    if not char then return end
 
     local hum = char:FindFirstChildOfClass("Humanoid")
     local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
@@ -995,7 +966,7 @@ local function updateRecordForPlayer(plr)
 
     -- health percent
     local healthPct = 0
-    if hum and hum.MaxHealth > 0 then
+    if hum and hum.MaxHealth and hum.MaxHealth > 0 then
         healthPct = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
     end
 
@@ -1006,8 +977,15 @@ local function updateRecordForPlayer(plr)
         studs = (hrp.Position - localHRP.Position).Magnitude
     end
 
-    -- Team color
-    local teamColor = (plr.Team and plr.Team.TeamColor) and plr.Team.TeamColor.Color or Color3.new(1,1,1)
+    -- Team name & color
+    local teamName = "Neutral"
+    local teamColor = Color3.fromRGB(200,200,200) -- neutral gray default
+    if plr.Team then
+        teamName = plr.Team.Name or "Neutral"
+        if plr.Team.TeamColor then
+            teamColor = plr.Team.TeamColor.Color
+        end
+    end
 
     -- Update highlight color (team)
     if rec.highlight and rec.highlight.Parent then
@@ -1017,47 +995,40 @@ local function updateRecordForPlayer(plr)
         end)
     end
 
-    -- Create display strings for the billboard
-    local age = tostring(plr.AccountAge or "N/A") -- AccountAge (days) is available client-side
-    local joinStr = "Unknown" -- account creation date not available client-side by default
-    local isMod = "Unknown" -- badge check requires server; leave Unknown unless you implement server fetch
-    local platform = getPlatformStringForPlayer(plr)
+    -- Compose display text
+    local age = tostring(plr.AccountAge or "N/A") -- days
     local pid = tostring(plr.UserId or "N/A")
-    local teamName = plr.Team and plr.Team.Name or "NoTeam"
-
     local healthDisplay = "0"
-    if hum and hum.MaxHealth > 0 then
+    if hum and hum.MaxHealth and hum.MaxHealth > 0 then
         healthDisplay = string.format("%.2f", hum.Health)
     end
-
     local studsDisplay = string.format("%.2f", studs)
 
     local textLines = {
         "@" .. tostring(plr.Name),
         "Age: " .. age,
-        "Join: " .. joinStr,
         "Health: " .. healthDisplay,
         "Studs: " .. studsDisplay,
         "Team: " .. tostring(teamName),
-        "Platform: " .. platform,
-        "PlaID: " .. pid,
-        "IsModerator: " .. isMod
+        "PlaID: " .. pid
     }
 
     if rec.label and rec.label.Parent then
         rec.label.Text = table.concat(textLines, "  |  ")
-        -- blinking behavior for low HP (<25%)
+
+        -- normal text color = teamColor (or gray for Neutral)
+        -- low health blinking: alternate between RED and teamColor
         if healthPct < 0.25 then
-            -- blink red/white (0.1s toggle)
+            -- blink frequency ~ 0.1s per state (0.2s full cycle)
             if (tick() % 0.2) < 0.1 then
-                rec.label.TextColor3 = Color3.new(1,0,0)
-                if rec.highlight then rec.highlight.FillColor = Color3.new(1,0,0) end
+                rec.label.TextColor3 = Color3.fromRGB(255, 0, 0) -- red blink
+                if rec.highlight then rec.highlight.FillColor = Color3.fromRGB(255, 0, 0) end
             else
-                rec.label.TextColor3 = Color3.new(1,1,1)
+                rec.label.TextColor3 = teamColor
                 if rec.highlight then rec.highlight.FillColor = teamColor end
             end
         else
-            rec.label.TextColor3 = Color3.new(1,1,1)
+            rec.label.TextColor3 = teamColor
             if rec.highlight then rec.highlight.FillColor = teamColor end
         end
     end
@@ -1069,11 +1040,10 @@ local function createESPForPlayer(plr)
 
     -- only create when character exists
     if not plr.Character then
-        -- wait for character then create
         local cConn
         cConn = plr.CharacterAdded:Connect(function(char)
             cConn:Disconnect()
-            createESPForPlayer(plr) -- try again now that character exists
+            createESPForPlayer(plr)
         end)
         return
     end
@@ -1084,14 +1054,17 @@ local function createESPForPlayer(plr)
     container.Name = "ESP_" .. tostring(plr.UserId)
     container.Parent = getOrCreateEspFolder()
 
-    local hl = makeHighlightForCharacter(char, (plr.Team and plr.Team.TeamColor.Color) or nil)
-
+    local teamColor = (plr.Team and plr.Team.TeamColor and plr.Team.TeamColor.Color) or Color3.fromRGB(200,200,200)
+    local hl = makeHighlightForCharacter(char, teamColor)
     local bb, label = makeBillboardForCharacter(plr, char)
+    if not bb or not label then
+        safeDestroy(container)
+        return
+    end
 
-    -- Heartbeat connection to update text & blink
+    -- Heartbeat connection to update label & blink
     local conn = RunService.Heartbeat:Connect(function()
         if not plr.Parent or not plr.Character then
-            -- player left or character removed -> cleanup
             if conn then conn:Disconnect() end
             safeDestroy(container)
             espRecords[plr] = nil
@@ -1108,7 +1081,7 @@ local function createESPForPlayer(plr)
         label = label
     }
 
-    -- parent attachments for cleanup clarity
+    -- parent highlight & billboard to container for tidy cleanup
     if hl then hl.Parent = container end
     if bb then bb.Parent = container end
 
@@ -1125,13 +1098,11 @@ local function removeESPForPlayer(plr)
 end
 
 local function enableESP()
-    -- create for all current players
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= localPlayer then
             createESPForPlayer(p)
         end
     end
-    -- connect future players
     espRecords._addedConn = Players.PlayerAdded:Connect(function(p)
         if p ~= localPlayer then createESPForPlayer(p) end
     end)
@@ -1142,10 +1113,8 @@ local function enableESP()
 end
 
 local function disableESP()
-    -- disconnect connections
     if espRecords._addedConn then pcall(function() espRecords._addedConn:Disconnect() end) end
     if espRecords._removingConn then pcall(function() espRecords._removingConn:Disconnect() end) end
-    -- cleanup
     local folder = workspace:FindFirstChild(ESP_FOLDER_NAME)
     if folder then safeDestroy(folder) end
     espRecords = {}
@@ -1161,7 +1130,6 @@ local function onToggleESP(state)
     end
 end
 
--- register toggle (if createToggle and BFrame exist)
 if typeof(createToggle) == "function" and BFrame then
     createToggle(BFrame, "ESP", onToggleESP, false)
     print("[ESP] registered toggle with createToggle")
@@ -1169,8 +1137,7 @@ else
     warn("[ESP] createToggle or BFrame not found. Place this code after createToggle and BFrame are defined.")
 end
 
--- END ESP
-
+-- END UPDATED ESP
 
 
 -- ============== IMAGE BUTTONS ==============
