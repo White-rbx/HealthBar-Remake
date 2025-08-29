@@ -645,6 +645,8 @@ local function createToggle(parent, text, callback, defaultState)
     return f
 end
 
+-- ======== TOGGLE SWITCHS ===========
+
 -- ValueLabels toggle (safe wait)
 local valueGuiOK, ValueGui = pcall(function()
     return CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp"):WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar"):WaitForChild("ValueFolder"):WaitForChild("ValueGui")
@@ -762,6 +764,60 @@ local function createImageButton(name, r, g, b, bt, imageId, visible, parentFram
     createUICorner(im, 1, 0)
     return im
 end
+
+-- ===== LIGHTER TOGGLES =====
+
+-- helper: สร้างไฟฉาย (PointLight) บน Torso
+local function ensureLight(name)
+    local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
+    local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+    if not torso then return nil end
+
+    local existing = torso:FindFirstChild(name)
+    if existing then return existing end
+
+    local light = Instance.new("PointLight")
+    light.Name = name
+    light.Brightness = 2
+    light.Range = 25
+    light.Angle = 360
+    light.Enabled = false
+    light.Parent = torso
+    return light
+end
+
+-- White Lighter Toggle
+createToggle(BFrame, "White Lighter", function(state)
+    local light = ensureLight("WhiteLighter")
+    if light then
+        light.Enabled = state
+        light.Color = Color3.fromRGB(255,255,255)
+    end
+end, false)
+
+-- RGB Lighter Toggle
+local hueConnection
+createToggle(BFrame, "RGB Lighter", function(state)
+    local light = ensureLight("RGBLighter")
+    if not light then return end
+
+    if state then
+        light.Enabled = true
+        local hue = 0
+        hueConnection = game:GetService("RunService").RenderStepped:Connect(function(dt)
+            hue = (hue + dt*50) % 360
+            light.Color = Color3.fromHSV(hue/360, 1, 1)
+        end)
+    else
+        light.Enabled = false
+        if hueConnection then
+            hueConnection:Disconnect()
+            hueConnection = nil
+        end
+    end
+end, false)
+
+-- ========== TOGGLE SWITCHS END ==========
 
 -- CTB1
 local ctb1 = createImageButton("INF YIELD", 50, 50, 50, 0.2, "116464551513962", false)
