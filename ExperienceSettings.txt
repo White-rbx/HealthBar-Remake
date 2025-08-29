@@ -1061,18 +1061,26 @@ local function disableESP()
     if not espConnections._enabled then return end
     espConnections._enabled = false
 
-    -- stop per-player loops and disconnects
-    for pl, data in pairs(espConnections) do
-        if pl == "_playerAddedConn" or pl == "_enabled" then goto cont end
-        -- stop loop
-        if data and data.stop then
-            pcall(data.stop)
+    -- เก็บคีย์ที่เป็น player (ไม่รวมคีย์พิเศษ)
+    local toRemove = {}
+    for k, data in pairs(espConnections) do
+        if k ~= "_playerAddedConn" and k ~= "_enabled" then
+            table.insert(toRemove, k)
         end
-        -- disconnect charConn
-        if data and data.charConn then
-            pcall(function() data.charConn:Disconnect() end)
+    end
+
+    -- หยุด loop และ disconnect for each player
+    for _, pl in ipairs(toRemove) do
+        local data = espConnections[pl]
+        if data then
+            if data.stop then
+                pcall(function() data.stop() end)
+            end
+            if data.charConn then
+                pcall(function() data.charConn:Disconnect() end)
+            end
         end
-        ::cont::
+        espConnections[pl] = nil
     end
 
     -- disconnect playerAdded
@@ -1090,7 +1098,7 @@ local function disableESP()
         end
     end
 
-    -- cleanup table
+    -- make sure no leftover keys
     for k in pairs(espConnections) do espConnections[k] = nil end
 end
 
