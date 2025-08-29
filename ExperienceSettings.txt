@@ -770,7 +770,7 @@ end
 -- helper: สร้างไฟฉาย (PointLight) บน Torso
 local function ensureLight(name)
     local char = Players.LocalPlayer.Character or Players.LocalPlayer.CharacterAdded:Wait()
-    local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+    local torso = char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
     if not torso then return nil end
 
     local existing = torso:FindFirstChild(name)
