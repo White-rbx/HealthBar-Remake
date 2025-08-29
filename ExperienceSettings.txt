@@ -887,48 +887,66 @@ end, false)
 
 
 
--- ====== ESP FULL SYSTEM ======
-
+-- ====== SIMPLE DEBUGGABLE ESP (paste after createToggle & BFrame) ======
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local localPlayer = Players.LocalPlayer
 
--- เก็บ ESP ที่สร้างไว้
-local espObjects = {}
-local espConns = {}
+-- debug helper
+local function dprint(...) print("[ESP-debug]", ...) end
 
--- Helper: คำนวณระยะ (Studs) จาก LocalPlayer
-local function getStuds(plr)
-    if not plr.Character or not plr.Character.PrimaryPart then return 0 end
-    if not localPlayer.Character or not localPlayer.Character.PrimaryPart then return 0 end
-    return (plr.Character.PrimaryPart.Position - localPlayer.Character.PrimaryPart.Position).Magnitude
-end
+-- Tables store
+local espObjects = {}        -- [player] = {highlight, billboard, label}
+local espUpdateConns = {}    -- [player] = RBXScriptConnection
 
--- Helper: Team Color
-local function getTeamColor(plr)
-    if plr.Team and plr.Team.TeamColor then
-        return plr.Team.TeamColor.Color, plr.Team.Name
+-- safe destroy
+local function safeRemoveESP(player)
+    local entry = espObjects[player]
+    if entry then
+        if entry.highlight and entry.highlight.Parent then pcall(function() entry.highlight:Destroy() end) end
+        if entry.billboard and entry.billboard.Parent then pcall(function() entry.billboard:Destroy() end) end
+        espObjects[player] = nil
     end
-    return Color3.new(1,1,1), "Neutral"
+    if espUpdateConns[player] then
+        pcall(function() espUpdateConns[player]:Disconnect() end)
+        espUpdateConns[player] = nil
+    end
+    dprint("Removed ESP for", player and player.Name)
 end
 
--- Helper: Acc Age & Join Date
-local function getAccountInfo(plr)
-    local age = plr.AccountAge or 0
-    local joinDate = os.date("%d %b %Y", os.time() - (age*24*60*60))
-    return age, joinDate
+-- helper: team color + name
+local function getTeamColorAndName(p)
+    if p.Team and p.Team.TeamColor then
+        return p.Team.TeamColor.Color, (p.Team.Name or "Neutral")
+    end
+    return Color3.fromRGB(255,255,255), "Neutral"
 end
 
--- สร้าง ESP ให้ Player
-function addESPForPlayer(plr)
-    if not plr.Character then return end
-    if espObjects[plr] then return end
+-- helper: studs (distance) safe
+local function getStudsToLocal(p)
+    if not p.Character then return 0 end
+    local prim = p.Character.PrimaryPart or p.Character:FindFirstChild("HumanoidRootPart")
+    local myPrim = localPlayer.Character and (localPlayer.Character.PrimaryPart or localPlayer.Character:FindFirstChild("HumanoidRootPart"))
+    if not prim or not myPrim then return 0 end
+    return (prim.Position - myPrim.Position).Magnitude
+end
 
-    local char = plr.Character
-    local hrp = char:FindFirstChild("HumanoidRootPart")
+-- create ESP for a player
+local function addESPToPlayer(player)
+    if not player or player == localPlayer then return end
+    if espObjects[player] then return end
+
+    local char = player.Character
+    if not char then
+        dprint("Character missing for", player.Name)
+        return
+    end
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hrp or not hum then return end
+    local head = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+    if not hum or not head then
+        dprint("Missing Humanoid/Head for", player.Name)
+        return
+    end
 
     -- Highlight
     local highlight = Instance.new("Highlight")
@@ -941,8 +959,8 @@ function addESPForPlayer(plr)
     billboard.Size = UDim2.new(0,250,0,40)
     billboard.StudsOffset = Vector3.new(0,3,0)
     billboard.AlwaysOnTop = true
-    billboard.BackgroundTransparency = 1
-    billboard.Parent = char:WaitForChild("Head", 5) or hrp
+    billboard.ResetOnSpawn = false
+    billboard.Parent = head
 
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1,0,1,0)
@@ -951,96 +969,117 @@ function addESPForPlayer(plr)
     label.TextStrokeTransparency = 0
     label.Parent = billboard
 
-    espObjects[plr] = { highlight = highlight, billboard = billboard, label = label }
+    espObjects[player] = { highlight = highlight, billboard = billboard, label = label }
+    dprint("Created ESP for", player.Name)
 
-    -- อัปเดต realtime
-    espConns[plr] = RunService.RenderStepped:Connect(function()
-        if not plr.Character or not hum or hum.Health <= 0 then return end
+    -- update loop (RenderStepped)
+    local conn = RunService.RenderStepped:Connect(function()
+        if not player or not player.Character or not player.Character.Parent then
+            safeRemoveESP(player)
+            return
+        end
+        local h = player.Character:FindFirstChildOfClass("Humanoid")
+        if not h then return end
 
-        local teamColor, teamName = getTeamColor(plr)
-        local age, joinDate = getAccountInfo(plr)
-        local studs = getStuds(plr)
+        local teamColor, teamName = getTeamColorAndName(player)
+        local age = player.AccountAge or 0
+        -- join date approximate: (note: better to call web API if you need real account creation time)
+        local joinDate = os.date("%d %b %Y", os.time() - (age * 24 * 60 * 60))
 
-        -- ข้อมูลที่จะโชว์
+        local studs = getStudsToLocal(player)
+        local health = h.Health or 0
+        local maxH = h.MaxHealth or 100
+
+        -- text (format per your request)
         label.Text = string.format("👤@%s | 🕓Age: %d | 🗓️Join: %s | ♥️Health: %.2f | 📏Studs: %.2f | 🏳️: %s | 🪪PlaID: %d",
-            plr.Name, age, joinDate, hum.Health, studs, teamName, plr.UserId)
+            player.Name, age, joinDate, health, studs, (teamName or "Neutral"), player.UserId)
 
-        -- Text สีตามทีม
+        -- text color according to team
         label.TextColor3 = teamColor
 
-        -- Highlight สีตามทีม
-        highlight.OutlineColor = teamColor
-        highlight.FillColor = teamColor
+        -- highlight colors according to team
+        if espObjects[player] and espObjects[player].highlight then
+            espObjects[player].highlight.OutlineColor = teamColor
+            espObjects[player].highlight.FillColor = teamColor
+        end
 
-        -- ถ้าเลือด < 25% ให้กระพริบ
-        if hum.Health/hum.MaxHealth < 0.25 then
-            local t = tick()*20
+        -- low health blink logic (if <25% then blink red/team)
+        if maxH > 0 and (health / maxH) < 0.25 then
+            local blink = (math.floor(tick()*10) % 2 == 0)
             if teamName == "Red" then
-                local blink = math.floor(t) % 2 == 0 and Color3.new(1,1,1) or teamColor
-                highlight.OutlineColor = blink
-                highlight.FillColor = blink
-                label.TextColor3 = blink
+                -- if team red: blink white <-> teamColor
+                local c = blink and Color3.new(1,1,1) or teamColor
+                label.TextColor3 = c
+                espObjects[player].highlight.OutlineColor = c
+                espObjects[player].highlight.FillColor = c
             else
-                local blink = math.floor(t) % 2 == 0 and Color3.new(1,0,0) or teamColor
-                highlight.OutlineColor = blink
-                highlight.FillColor = blink
-                label.TextColor3 = blink
+                local c = blink and Color3.new(1,0,0) or teamColor
+                label.TextColor3 = c
+                espObjects[player].highlight.OutlineColor = c
+                espObjects[player].highlight.FillColor = c
             end
         end
     end)
+    espUpdateConns[player] = conn
 end
 
--- ลบ ESP ของ Player
-function removeESPForPlayer(plr)
-    if espObjects[plr] then
-        if espObjects[plr].highlight then espObjects[plr].highlight:Destroy() end
-        if espObjects[plr].billboard then espObjects[plr].billboard:Destroy() end
-        if espConns[plr] then espConns[plr]:Disconnect() end
-        espObjects[plr] = nil
-        espConns[plr] = nil
+-- add for all existing players (except local)
+local function addAll()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= localPlayer then
+            -- try immediately; if no character, attach to CharacterAdded
+            if p.Character and p.Character.Parent then
+                addESPToPlayer(p)
+            else
+                p.CharacterAdded:Connect(function()
+                    task.wait(0.5)
+                    addESPToPlayer(p)
+                end)
+            end
+        end
     end
 end
 
--- Toggle ESP
+-- clean all
+local function removeAll()
+    for p, _ in pairs(espObjects) do safeRemoveESP(p) end
+end
+
+-- Player events
+local playersAddedConn, playersRemovingConn
+local function attachPlayerEvents()
+    playersAddedConn = Players.PlayerAdded:Connect(function(p)
+        if p == localPlayer then return end
+        p.CharacterAdded:Connect(function()
+            task.wait(0.5)
+            addESPToPlayer(p)
+        end)
+    end)
+    playersRemovingConn = Players.PlayerRemoving:Connect(function(p)
+        safeRemoveESP(p)
+    end)
+end
+
+local function detachPlayerEvents()
+    if playersAddedConn then pcall(function() playersAddedConn:Disconnect() end) end
+    if playersRemovingConn then pcall(function() playersRemovingConn:Disconnect() end) end
+end
+
+-- ===== Attach to your createToggle =====
+-- NOTE: your createToggle signature: createToggle(parent, text, callback, defaultState)
+-- Put this line AFTER you have BFrame and createToggle defined.
 createToggle(BFrame, "ESP", function(state)
+    dprint("ESP toggle callback ->", state)
     if state then
-        -- เปิด ESP
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= localPlayer then
-                addESPForPlayer(p)
-            end
-        end
-
-        -- player added/removed
-        espConns["_PlayerAdded"] = Players.PlayerAdded:Connect(function(p)
-            if p ~= localPlayer then
-                p.CharacterAdded:Connect(function()
-                    task.wait(1)
-                    addESPForPlayer(p)
-                end)
-            end
-        end)
-
-        espConns["_PlayerRemoving"] = Players.PlayerRemoving:Connect(function(p)
-            removeESPForPlayer(p)
-        end)
-
-        print("[ESP] Enabled")
+        addAll()
+        attachPlayerEvents()
     else
-        -- ปิด ESP
-        for _, p in ipairs(Players:GetPlayers()) do
-            removeESPForPlayer(p)
-        end
-        for k, conn in pairs(espConns) do
-            if typeof(conn) == "RBXScriptConnection" then
-                conn:Disconnect()
-            end
-            espConns[k] = nil
-        end
-        print("[ESP] Disabled")
+        removeAll()
+        detachPlayerEvents()
     end
 end, false)
 
+dprint("Debug ESP module loaded")
 
 
 -- ============== IMAGE BUTTONS ==============
