@@ -887,25 +887,96 @@ end, false)
 
 
 
--- ESP (fixed) - LocalScript
+-- ESP Full (LocalScript)
+-- วางใน StarterPlayerScripts หรือ LocalScript อื่น ๆ ฝั่ง Client
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-
 local localPlayer = Players.LocalPlayer
 
--- CONFIG
-local UPDATE_INTERVAL = 0.12
-local BLINK_INTERVAL  = 0.05
-local SKIP_LOCAL = true
+-- === CONFIG ===
 local HIGHLIGHT_NAME = "ESP_Highlight"
-local BILLBOARD_NAME  = "ESP_Billboard"
+local BILLBOARD_NAME = "ESP_Billboard"
+local UPDATE_INTERVAL = 0.12
+local BLINK_INTERVAL = 0.05
+local SKIP_LOCAL = true
 
--- storage
+-- === TOGGLE BUILDER ===
+local toggleCount = 0
+local function createUICorner(parent, scale, offset)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(scale or 0, offset or 0)
+    corner.Parent = parent
+    return corner
+end
+
+local function createToggle(parent, text, callback, defaultState)
+    toggleCount += 1
+    local f = Instance.new("Frame")
+    f.Name = "Frame" .. toggleCount
+    f.Size = UDim2.new(1,0,0,30)
+    f.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    f.Parent = parent
+    createUICorner(f, 0.3, 0)
+
+    local bar = Instance.new("Frame")
+    bar.Name = "Bar"
+    bar.Size = UDim2.new(0.4,0,1,0)
+    bar.Position = UDim2.new(0.6,0,0,0)
+    bar.BackgroundColor3 = Color3.fromRGB(66,66,66)
+    bar.Parent = f
+    createUICorner(bar,0.3,0)
+
+    local but = Instance.new("TextButton")
+    but.Name = "ToggleButton"
+    but.Size = UDim2.new(0.5,0,1,0)
+    but.Parent = bar
+    createUICorner(but,0.3,0)
+
+    local txt = Instance.new("TextLabel")
+    txt.Name = "Label"
+    txt.Size = UDim2.new(0.6,0,1,0)
+    txt.BackgroundTransparency = 1
+    txt.TextScaled = true
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.Text = text
+    txt.TextColor3 = Color3.new(1,1,1)
+    txt.Parent = f
+
+    local toggle = defaultState or false
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    local function updateToggle(state, instant)
+        toggle = state
+        local props
+        if toggle then
+            props = { Position = UDim2.new(0,0,0,0), BackgroundColor3 = Color3.fromRGB(0,200,0) }
+            but.Text = "ON"
+        else
+            props = { Position = UDim2.new(0.5,0,0,0), BackgroundColor3 = Color3.fromRGB(200,0,0) }
+            but.Text = "OFF"
+        end
+        if instant then
+            for k,v in pairs(props) do
+                pcall(function() but[k] = v end)
+            end
+        else
+            pcall(function() game:GetService("TweenService"):Create(but, tweenInfo, props):Play() end)
+        end
+        if callback then
+            pcall(callback, toggle)
+        end
+    end
+
+    but.MouseButton1Click:Connect(function() updateToggle(not toggle) end)
+    updateToggle(toggle, true)
+    return f
+end
+
+-- === ESP STORAGE ===
 local esp = {}
-local espEnabled = false
 
--- helpers
+-- === HELPERS ===
 local function getTeamColor(player)
     if player and player.TeamColor and player.TeamColor.Color then
         return player.TeamColor.Color
@@ -913,345 +984,181 @@ local function getTeamColor(player)
     return Color3.fromRGB(170,170,170)
 end
 
-local function fmtNum(n, f)
-    f = f or "%.2f"
-    if type(n) ~= "number" then return string.format(f, 0) end
-    return string.format(f, n)
-end
+local function buildInfoString(player, char)
+    local username = player.Name or "Unknown"
+    local userId   = tostring(player.UserId)
 
-local monthNames = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"}
-
-local function parseISODate(iso)
-    if not iso or type(iso) ~= "string" then return nil end
-    -- support "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM:SS..."
-    local y,m,d,h,min,s = iso:match("^(%d+)%-(%d+)%-(%d+)T?(%d*):?(%d*):?(%d*)")
-    if not y then return nil end
-    return {
-        year = tonumber(y),
-        month = tonumber(m) or 1,
-        day = tonumber(d) or 1,
-        hour = tonumber(h) or 0,
-        min = tonumber(min) or 0,
-        sec = tonumber(s) or 0
-    }
-end
-
-local function isoToTime(iso)
-    local t = parseISODate(iso)
-    if not t then return nil end
-    -- os.time expects table with fields year, month, day, hour, min, sec (in local time)
-    return os.time{ year = t.year, month = t.month, day = t.day, hour = t.hour, min = t.min, sec = t.sec }
-end
-
-local function formatJoinDate(iso)
-    local t = parseISODate(iso)
-    if not t then return "N/A" end
-    return string.format("%d %s %04d", t.day, monthNames[t.month] or "Jan", t.year)
-end
-
-local function computeAccountAgeYears(isoOrDays)
-    -- if iso string provided -> compute exact years
-    if type(isoOrDays) == "string" then
-        local createdTime = isoToTime(isoOrDays)
-        if not createdTime then return "N/A" end
-        local now = os.time()
-        local seconds = now - createdTime
-        if seconds < 0 then seconds = 0 end
-        local years = math.floor(seconds / (365.2425 * 24 * 3600))
-        return tostring(years)
-    end
-    -- if numeric days provided (Player.AccountAge) -> approximate years
-    if type(isoOrDays) == "number" then
-        local years = math.floor( (isoOrDays or 0) / 365.2425 )
-        return tostring(years)
-    end
-    return "N/A"
-end
-
-local function fetchAccountCreated(userId)
-    if not HttpService or not HttpService.HttpEnabled then return nil end
-    local ok, res = pcall(function()
-        local url = "https://users.roblox.com/v1/users/" .. tostring(userId)
-        local s = HttpService:GetAsync(url, true)
-        return HttpService:JSONDecode(s)
-    end)
-    if ok and type(res) == "table" and res.created then
-        return res.created -- ISO string
-    end
-    return nil
-end
-
-local function buildInfoString(player, char, record)
-    local username = (player and player.Name) or "Unknown"
-    local userId = tostring((player and player.UserId) or 0)
-
+    -- health
     local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-    local health = (humanoid and humanoid.Health) or 0
+    local health   = humanoid and humanoid.Health or 0
+    local maxH     = humanoid and humanoid.MaxHealth or 100
     local healthText = string.format("%.2f", health)
 
-    local localRoot = localPlayer and localPlayer.Character and (localPlayer.Character:FindFirstChild("HumanoidRootPart") or localPlayer.Character:FindFirstChild("Head"))
-    local targetPart = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head"))
+    -- studs
     local studs = 0
-    if targetPart and localRoot then
-        studs = (targetPart.Position - localRoot.Position).Magnitude
-    elseif targetPart then
-        studs = targetPart.Position.Magnitude
-    end
-    local studsText = fmtNum(studs)
-
-    local teamName = "Neutral"
-    if player and player.Team and type(player.Team.Name) == "string" and player.Team.Name ~= "" then
-        teamName = player.Team.Name
+    local localRoot = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local targetRoot = char and char:FindFirstChild("HumanoidRootPart")
+    if localRoot and targetRoot then
+        studs = (targetRoot.Position - localRoot.Position).Magnitude
     end
 
-    local joinText = "N/A"
-    local ageText = "N/A"
-    if record and record.accountCreated then
-        joinText = formatJoinDate(record.accountCreated)
-        ageText = computeAccountAgeYears(record.accountCreated)
-    elseif player and player.AccountAge then
-        -- fallback: use AccountAge (days) -> compute year approx
-        ageText = computeAccountAgeYears(player.AccountAge)
-        -- estimate join date roughly:
-        joinText = "Approx " .. tostring(math.floor(player.AccountAge or 0)) .. " days ago"
+    -- team
+    local teamName = (player.Team and player.Team.Name ~= "") and player.Team.Name or "Neutral"
+
+    -- join & age
+    local joinDate, ageYears = "N/A", "N/A"
+    if player.AccountAge and type(player.AccountAge) == "number" then
+        local createdUnix = os.time() - (player.AccountAge * 86400)
+        joinDate = os.date("%d %b %Y", createdUnix)
+        ageYears = tostring(math.floor(player.AccountAge / 365.2425))
     end
 
-    local out = string.format("👤 @%s | 🕓Age: %s | 🗓️Join: %s | ♥️Health: %s | 📏Studs: %s | 🏳️: %s | 🪪%s",
-        username, ageText, joinText, healthText, studsText, teamName, userId)
-    return out
+    return string.format("👤 @%s | 🕓Age: %s | 🗓️Join: %s | ♥️Health: %s | 📏Studs: %.2f | 🏳️: %s | 🪪%s",
+        username, ageYears, joinDate, healthText, studs, teamName, userId)
 end
 
--- Ensure Highlight
-local function ensureHighlight(player, character)
-    if not character then return nil end
-    local hi = character:FindFirstChild(HIGHLIGHT_NAME, true)
-    if hi and not hi:IsA("Highlight") then hi = nil end
+local function ensureHighlight(player, char)
+    if not char then return end
+    local hi = char:FindFirstChild(HIGHLIGHT_NAME)
     if not hi then
         hi = Instance.new("Highlight")
         hi.Name = HIGHLIGHT_NAME
-        hi.Parent = character
+        hi.Parent = char
     end
-    pcall(function()
-        hi.Adornee = character
-        hi.OutlineTransparency = 0
-        hi.FillTransparency = 0.8
-    end)
+    hi.Adornee = char
+    local col = getTeamColor(player)
+    hi.OutlineTransparency = 0
+    hi.FillTransparency = 0.8
+    hi.OutlineColor = col
+    hi.FillColor = col
     return hi
 end
 
--- Ensure Billboard
-local function ensureBillboard(player, character)
-    if not character then return nil, nil end
-    local adornee = character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart")
-    if not adornee then return nil, nil end
-    local bg = character:FindFirstChild(BILLBOARD_NAME, true)
-    if bg and not bg:IsA("BillboardGui") then bg = nil end
+local function ensureBillboard(player, char)
+    local adornee = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+    if not adornee then return end
+    local bg = char:FindFirstChild(BILLBOARD_NAME)
     if not bg then
         bg = Instance.new("BillboardGui")
         bg.Name = BILLBOARD_NAME
-        bg.Adornee = adornee
-        bg.Parent = character
+        bg.Size = UDim2.new(0,250,0,40)
+        bg.StudsOffset = Vector3.new(0,3,0)
         bg.AlwaysOnTop = true
-        bg.Size = UDim2.new(0, 250, 0, 40)
-        bg.StudsOffset = Vector3.new(0, 3, 0)
+        bg.Adornee = adornee
+        bg.Parent = char
     end
     local tl = bg:FindFirstChild("ESP_Label")
     if not tl then
         tl = Instance.new("TextLabel")
         tl.Name = "ESP_Label"
-        tl.Parent = bg
         tl.Size = UDim2.new(1,0,1,0)
         tl.BackgroundTransparency = 1
         tl.TextScaled = true
         tl.TextStrokeTransparency = 0
-        tl.Font = Enum.Font.Legacy
+        tl.Font = Enum.Font.SourceSans
         tl.TextXAlignment = Enum.TextXAlignment.Left
-        tl.TextYAlignment = Enum.TextYAlignment.Center
+        tl.TextColor3 = getTeamColor(player)
+        tl.Parent = bg
     end
     return bg, tl
 end
 
--- Add ESP for player
-local function addESPToPlayer(player)
-    if not player then return end
+-- === CORE ===
+local function addESP(player)
     if SKIP_LOCAL and player == localPlayer then return end
     if esp[player] then return end
-
-    esp[player] = { highlight = nil, billboard = nil, label = nil, accountCreated = nil, blinkState = false }
-
-    task.spawn(function()
-        local created = nil
-        if HttpService and HttpService.HttpEnabled then
-            local ok, res = pcall(fetchAccountCreated, player.UserId)
-            if ok and res then created = res end
-        end
-        if not created and player.AccountAge then
-            created = (type(player.AccountAge) == "number") and (computeAccountAgeYears(player.AccountAge) ~= "N/A" and computeAccountAgeYears(player.AccountAge) or nil) or nil
-            -- computeAccountAgeYears expects iso or days; but for caching we'll store iso-like computed date
-            if not created then
-                -- leave nil
-            end
-        end
-        esp[player].accountCreated = created
-    end)
-
-    local function setupCharacter(char)
+    esp[player] = {highlight=nil, billboard=nil, label=nil, blinkState=false}
+    local function setup(char)
         if not char then return end
-        esp[player].highlight = ensureHighlight(player, char)
-        local bg, tl = ensureBillboard(player, char)
+        esp[player].highlight = ensureHighlight(player,char)
+        local bg, tl = ensureBillboard(player,char)
         esp[player].billboard = bg
         esp[player].label = tl
-        if tl then
-            pcall(function()
-                tl.Text = buildInfoString(player, char, esp[player])
-                tl.TextColor3 = getTeamColor(player)
-            end)
-        end
+        if tl then tl.Text = buildInfoString(player,char) end
     end
-
-    if player.Character then setupCharacter(player.Character) end
-    player.CharacterAdded:Connect(function(char)
-        char:WaitForChild("HumanoidRootPart", 2)
-        setupCharacter(char)
+    if player.Character then setup(player.Character) end
+    player.CharacterAdded:Connect(function(c)
+        c:WaitForChild("HumanoidRootPart",2)
+        setup(c)
     end)
 end
 
-local function removeESPForPlayer(player)
+local function removeESP(player)
     local rec = esp[player]
     if not rec then return end
-    pcall(function()
-        if rec.highlight and rec.highlight.Parent then rec.highlight:Destroy() end
-        if rec.billboard and rec.billboard.Parent then rec.billboard:Destroy() end
-    end)
+    if rec.highlight then rec.highlight:Destroy() end
+    if rec.billboard then rec.billboard:Destroy() end
     esp[player] = nil
 end
 
 local function addAll()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= localPlayer then addESPToPlayer(p) end
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p ~= localPlayer then addESP(p) end
     end
 end
+
 local function removeAll()
-    for p, _ in pairs(esp) do removeESPForPlayer(p) end
+    for p in pairs(esp) do removeESP(p) end
 end
 
--- player handlers
-local playerAddedConn, playerRemovingConn
-local function connectPlayerHandlers()
-    playerAddedConn = Players.PlayerAdded:Connect(function(p)
-        if espEnabled and p ~= localPlayer then addESPToPlayer(p) end
-    end)
-    playerRemovingConn = Players.PlayerRemoving:Connect(function(p)
-        removeESPForPlayer(p)
-    end)
-end
-local function disconnectPlayerHandlers()
-    if playerAddedConn then playerAddedConn:Disconnect(); playerAddedConn = nil end
-    if playerRemovingConn then playerRemovingConn:Disconnect(); playerRemovingConn = nil end
-end
+Players.PlayerAdded:Connect(addESP)
+Players.PlayerRemoving:Connect(removeESP)
 
--- heartbeat loops
-local updateAcc, blinkAcc = 0, 0
-local hbConn
-local function startHeartbeat()
-    if hbConn then return end
-    hbConn = RunService.Heartbeat:Connect(function(dt)
-        updateAcc = updateAcc + dt
-        blinkAcc = blinkAcc + dt
-
-        if updateAcc >= UPDATE_INTERVAL then
-            updateAcc = 0
-            for player, rec in pairs(esp) do
-                local char = player and player.Character
-                if char then
-                    if not (rec.highlight and rec.highlight.Parent) then rec.highlight = ensureHighlight(player, char) end
-                    if not (rec.billboard and rec.billboard.Parent and rec.label) then
-                        local bg, tl = ensureBillboard(player, char); rec.billboard = bg; rec.label = tl
-                    end
-                    if rec.label then
-                        pcall(function()
-                            rec.label.Text = buildInfoString(player, char, rec)
-                            rec.label.TextColor3 = getTeamColor(player)
-                        end)
-                    end
-                end
-            end
-        end
-
-        if blinkAcc >= BLINK_INTERVAL then
-            blinkAcc = blinkAcc - BLINK_INTERVAL
-            for player, rec in pairs(esp) do
-                local char = player and player.Character
-                if char then
-                    if not (rec.highlight and rec.highlight.Parent) then rec.highlight = ensureHighlight(player, char) end
-
-                    local humanoid = char:FindFirstChildOfClass("Humanoid")
-                    local health = humanoid and humanoid.Health or 0
-                    local maxH = humanoid and humanoid.MaxHealth or 1
-                    if type(maxH) ~= "number" or maxH <= 0 then maxH = 1 end
-                    local healthFrac = health / maxH
-
-                    -- determine team color / isTeamRed
-                    local teamCol = getTeamColor(player)
-                    local isTeamRed = false
-                    pcall(function()
-                        local tc = player.TeamColor and player.TeamColor.Color
-                        if tc then
-                            if tc.R >= 0.6 and tc.G <= 0.4 and tc.B <= 0.4 then isTeamRed = true end
-                        end
-                        if not isTeamRed and player.Team and type(player.Team.Name) == "string" and string.find(string.lower(player.Team.Name), "red") then
-                            isTeamRed = true
-                        end
-                    end)
-
-                    -- toggle blink state
-                    rec.blinkState = not rec.blinkState
-
-                    -- pick color rules:
-                    -- if team is red and healthFrac < 0.25 -> white <-> team color
-                    -- else -> red <-> team color
-                    local col
-                    if isTeamRed and healthFrac < 0.25 then
-                        col = rec.blinkState and Color3.fromRGB(255,255,255) or teamCol
-                    else
-                        col = rec.blinkState and Color3.fromRGB(255,0,0) or teamCol
-                    end
-
-                    pcall(function()
-                        if rec.highlight then
-                            rec.highlight.OutlineColor = col
-                            rec.highlight.FillColor = col
-                        end
-                        if rec.label then rec.label.TextColor3 = col end
-                    end)
-                end
-            end
-        end
-    end)
-end
-
-local function stopHeartbeat()
-    if hbConn then hbConn:Disconnect(); hbConn = nil end
-end
-
--- public enable/disable
-function enableESP(state)
-    if state then
-        if espEnabled then return end
-        espEnabled = true
-        addAll()
-        connectPlayerHandlers()
-        startHeartbeat()
-    else
-        espEnabled = false
-        disconnectPlayerHandlers()
-        stopHeartbeat()
-        removeAll()
+-- === UPDATE LOOP ===
+local acc, blinkAcc = 0,0
+RunService.Heartbeat:Connect(function(dt)
+    acc += dt
+    blinkAcc += dt
+    local doBlink = false
+    if blinkAcc >= BLINK_INTERVAL then
+        blinkAcc = 0
+        doBlink = true
     end
-end
+    if acc >= UPDATE_INTERVAL then
+        acc = 0
+        for player, rec in pairs(esp) do
+            local char = player.Character
+            if char then
+                rec.highlight = rec.highlight or ensureHighlight(player,char)
+                if not rec.billboard then
+                    local bg,tl = ensureBillboard(player,char)
+                    rec.billboard,rec.label = bg,tl
+                end
+                if rec.label then
+                    rec.label.Text = buildInfoString(player,char)
+                end
+                local teamCol = getTeamColor(player)
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                local health,maxH=hum and hum.Health or 0, hum and hum.MaxHealth or 100
+                local frac = (maxH>0) and (health/maxH) or 0
+                local isRed = (teamCol.R>0.9 and teamCol.G<0.2 and teamCol.B<0.2)
+                if frac < 0.25 and doBlink then
+                    rec.blinkState = not rec.blinkState
+                    local col
+                    if isRed then
+                        col = rec.blinkState and Color3.new(1,1,1) or teamCol
+                    else
+                        col = rec.blinkState and Color3.new(1,0,0) or teamCol
+                    end
+                    if rec.highlight then
+                        rec.highlight.FillColor = col
+                        rec.highlight.OutlineColor = col
+                    end
+                    if rec.label then rec.label.TextColor3 = col end
+                elseif frac >= 0.25 then
+                    if rec.highlight then
+                        rec.highlight.FillColor = teamCol
+                        rec.highlight.OutlineColor = teamCol
+                    end
+                    if rec.label then rec.label.TextColor3 = teamCol end
+                end
+            end
+        end
+    end
+end)
 
 createToggle(BFrame, "ESP", function(state)
-    enableESP(state)
+    if state then addAll() else removeAll() end
 end, false)
 
 -- ===== END ESP implementation =====
