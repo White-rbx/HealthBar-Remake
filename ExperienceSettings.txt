@@ -941,7 +941,7 @@ local function buildInfoString(player, char)
         ageYears = tostring(math.floor(player.AccountAge / 365.2425))
     end
 
-    return string.format("👤 @%s | 🕓Age: %s | 🗓️Join: %s | ♥️Health: %s | 📏Studs: %.2f | 🏳️: %s | 🪪%s",
+    return string.format("👤 @%s | 🕓Age: %s | 🗓️Join: %s | ♥️Health: %s | 📏Studs: %.2f | 🏳️: %s | 🆔UserID: %s",
         username, ageYears, joinDate, healthText, studs, teamName, userId)
 end
 
