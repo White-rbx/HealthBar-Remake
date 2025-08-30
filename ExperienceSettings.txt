@@ -901,78 +901,6 @@ local UPDATE_INTERVAL = 0.12
 local BLINK_INTERVAL = 0.05
 local SKIP_LOCAL = true
 
--- === TOGGLE BUILDER ===
-local toggleCount = 0
-local function createUICorner(parent, scale, offset)
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(scale or 0, offset or 0)
-    corner.Parent = parent
-    return corner
-end
-
-local function createToggle(parent, text, callback, defaultState)
-    toggleCount += 1
-    local f = Instance.new("Frame")
-    f.Name = "Frame" .. toggleCount
-    f.Size = UDim2.new(1,0,0,30)
-    f.BackgroundColor3 = Color3.fromRGB(40,40,40)
-    f.Parent = parent
-    createUICorner(f, 0.3, 0)
-
-    local bar = Instance.new("Frame")
-    bar.Name = "Bar"
-    bar.Size = UDim2.new(0.4,0,1,0)
-    bar.Position = UDim2.new(0.6,0,0,0)
-    bar.BackgroundColor3 = Color3.fromRGB(66,66,66)
-    bar.Parent = f
-    createUICorner(bar,0.3,0)
-
-    local but = Instance.new("TextButton")
-    but.Name = "ToggleButton"
-    but.Size = UDim2.new(0.5,0,1,0)
-    but.Parent = bar
-    createUICorner(but,0.3,0)
-
-    local txt = Instance.new("TextLabel")
-    txt.Name = "Label"
-    txt.Size = UDim2.new(0.6,0,1,0)
-    txt.BackgroundTransparency = 1
-    txt.TextScaled = true
-    txt.TextXAlignment = Enum.TextXAlignment.Left
-    txt.Text = text
-    txt.TextColor3 = Color3.new(1,1,1)
-    txt.Parent = f
-
-    local toggle = defaultState or false
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-    local function updateToggle(state, instant)
-        toggle = state
-        local props
-        if toggle then
-            props = { Position = UDim2.new(0,0,0,0), BackgroundColor3 = Color3.fromRGB(0,200,0) }
-            but.Text = "ON"
-        else
-            props = { Position = UDim2.new(0.5,0,0,0), BackgroundColor3 = Color3.fromRGB(200,0,0) }
-            but.Text = "OFF"
-        end
-        if instant then
-            for k,v in pairs(props) do
-                pcall(function() but[k] = v end)
-            end
-        else
-            pcall(function() game:GetService("TweenService"):Create(but, tweenInfo, props):Play() end)
-        end
-        if callback then
-            pcall(callback, toggle)
-        end
-    end
-
-    but.MouseButton1Click:Connect(function() updateToggle(not toggle) end)
-    updateToggle(toggle, true)
-    return f
-end
-
 -- === ESP STORAGE ===
 local esp = {}
 
@@ -1158,9 +1086,17 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 createToggle(BFrame, "ESP", function(state)
-    if state then addAll() else removeAll() end
+    if state then
+        addAll()
+    else
+        removeAll()
+    end
 end, false)
 
+return {
+    AddAll = addAll,
+    RemoveAll = removeAll,
+}
 -- ===== END ESP implementation =====
 
 
