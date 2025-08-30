@@ -887,23 +887,24 @@ end, false)
 
 
 
--- ===== ESP (Local only) =====
--- วางเป็นส่วนของ LocalScript (ต่อท้ายไฟล์ UI ของคุณ)
+-- ===== ESP (LocalScript) - fixed highlights & blink logic =====
+-- วางต่อท้าย LocalScript client ของคุณ (ไม่เป็น ModuleScript)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
 
 local localPlayer = Players.LocalPlayer
 
 -- config
-local ESP_HIGHLIGHT_NAME = "ESP_Highlight"
-local ESP_BILLBOARD_NAME = "ESP_Billboard"
-local ESP_UPDATE_INTERVAL = 0.12
-local ESP_BLINK_INTERVAL = 0.05
-local ESP_SKIP_LOCAL = true
+local HIGHLIGHT_NAME = "ESP_Highlight"
+local BILLBOARD_NAME  = "ESP_Billboard"
+local UPDATE_INTERVAL = 0.12
+local BLINK_INTERVAL  = 0.05
+local SKIP_LOCAL      = true
 
 -- storage
-local esp_records = {} -- esp_records[player] = { highlight, billboard, label, blinkState, accountCreated }
+local esp = {} -- esp[player] = { highlight = Instance, billboard = Instance, label = Instance, blinkState = false, accountCreated = nil }
 
 -- helpers (date/format)
 local monthNames = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"}
@@ -962,7 +963,6 @@ local function buildInfoString(player, char, rec)
 
     local humanoid = (char and char:FindFirstChildOfClass("Humanoid"))
     local curHealth = humanoid and humanoid.Health or 0
-    local maxHealth = humanoid and humanoid.MaxHealth or 100
 
     local targetPart = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head"))
     local localRoot = localPlayer and localPlayer.Character and (localPlayer.Character:FindFirstChild("HumanoidRootPart") or localPlayer.Character:FindFirstChild("Head"))
@@ -990,21 +990,40 @@ local function buildInfoString(player, char, rec)
     return out
 end
 
--- ensure Highlight exists
+-- Ensure Highlight exists and is visible (parent to CoreGui for reliability)
 local function ensureHighlight(player, character)
     if not character then return nil end
-    local hi = character:FindFirstChild(ESP_HIGHLIGHT_NAME)
+
+    -- prefer to adorn a part if available
+    local adorneePart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Head")
+    -- try find existing highlight by name anywhere under character
+    local hi = character:FindFirstChild(HIGHLIGHT_NAME, true)
+    if hi and not hi:IsA("Highlight") then hi = nil end
+
     if not hi then
-        for _, c in ipairs(character:GetChildren()) do
-            if c:IsA("Highlight") then hi = c; break end
+        -- try find any Highlight inside character
+        for _, d in ipairs(character:GetDescendants()) do
+            if d:IsA("Highlight") then hi = d; break end
         end
     end
+
     if not hi then
         hi = Instance.new("Highlight")
-        hi.Name = ESP_HIGHLIGHT_NAME
-        hi.Parent = character
+        hi.Name = HIGHLIGHT_NAME
+        -- parent to CoreGui for stable rendering on client
+        hi.Parent = CoreGui
     end
-    pcall(function() hi.Adornee = character end)
+
+    -- set adornee: prefer specific part (better reliability), otherwise whole model
+    pcall(function()
+        if adorneePart and adorneePart.Parent then
+            hi.Adornee = adorneePart
+        else
+            hi.Adornee = character
+        end
+    end)
+
+    -- set colors and transparencies
     local col = getTeamColor(player)
     pcall(function()
         hi.OutlineTransparency = 0
@@ -1012,30 +1031,35 @@ local function ensureHighlight(player, character)
         hi.OutlineColor = col
         hi.FillColor = col
     end)
+
     return hi
 end
 
--- ensure BillboardGui + TextLabel
+-- Ensure BillboardGui + TextLabel
 local function ensureBillboard(player, character)
     if not character then return nil, nil end
     local adornee = character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart")
     if not adornee then return nil, nil end
-    local bg = character:FindFirstChild(ESP_BILLBOARD_NAME)
+
+    local bg = character:FindFirstChild(BILLBOARD_NAME, true)
+    if bg and not bg:IsA("BillboardGui") then bg = nil end
+
     if not bg then
         bg = Instance.new("BillboardGui")
-        bg.Name = ESP_BILLBOARD_NAME
+        bg.Name = BILLBOARD_NAME
         bg.Parent = character
         bg.Adornee = adornee
         bg.AlwaysOnTop = true
-        bg.Size = UDim2.new(0,250,0,40)
-        bg.StudsOffset = Vector3.new(0,3,0)
+        bg.Size = UDim2.new(0, 250, 0, 40)
+        bg.StudsOffset = Vector3.new(0, 3, 0)
     end
+
     local tl = bg:FindFirstChild("ESP_Label")
     if not tl then
         tl = Instance.new("TextLabel")
         tl.Name = "ESP_Label"
         tl.Parent = bg
-        tl.Size = UDim2.new(1,0,1,0)
+        tl.Size = UDim2.new(1, 0, 1, 0)
         tl.BackgroundTransparency = 1
         tl.TextScaled = true
         tl.TextStrokeTransparency = 0
@@ -1043,67 +1067,63 @@ local function ensureBillboard(player, character)
         tl.TextXAlignment = Enum.TextXAlignment.Left
         tl.TextYAlignment = Enum.TextYAlignment.Center
     end
+
     return bg, tl
 end
 
--- add ESP for player
+-- Add ESP to a player
 local function addESPToPlayer(player)
     if not player then return end
-    if ESP_SKIP_LOCAL and player == localPlayer then return end
-    if esp_records[player] then return end
+    if SKIP_LOCAL and player == localPlayer then return end
+    if esp[player] then return end
 
-    esp_records[player] = { highlight = nil, billboard = nil, label = nil, blinkState = false, accountCreated = nil }
+    esp[player] = { highlight = nil, billboard = nil, label = nil, blinkState = false, accountCreated = nil }
 
-    -- fetch accountCreated async (best-effort)
+    -- async fetch created date
     spawn(function()
         local ok, created = pcall(fetchAccountCreated, player.UserId)
-        if ok and created then
-            esp_records[player].accountCreated = created
-        end
+        if ok and created then esp[player].accountCreated = created end
     end)
 
-    local function onCharacter(char)
+    local function setupCharacter(char)
         if not char then return end
         pcall(function() char:WaitForChild("HumanoidRootPart", 2) end)
-        esp_records[player].highlight = ensureHighlight(player, char)
+        esp[player].highlight = ensureHighlight(player, char)
         local bg, tl = ensureBillboard(player, char)
-        esp_records[player].billboard = bg
-        esp_records[player].label = tl
+        esp[player].billboard = bg
+        esp[player].label = tl
         if tl then
             pcall(function()
-                tl.Text = buildInfoString(player, char, esp_records[player])
+                tl.Text = buildInfoString(player, char, esp[player])
                 tl.TextColor3 = getTeamColor(player)
             end)
         end
     end
 
-    if player.Character then onCharacter(player.Character) end
-    player.CharacterAdded:Connect(onCharacter)
+    if player.Character then setupCharacter(player.Character) end
+    player.CharacterAdded:Connect(setupCharacter)
 end
 
 local function removeESPForPlayer(player)
-    local rec = esp_records[player]
+    local rec = esp[player]
     if not rec then return end
     pcall(function()
         if rec.highlight and rec.highlight.Parent then rec.highlight:Destroy() end
         if rec.billboard and rec.billboard.Parent then rec.billboard:Destroy() end
     end)
-    esp_records[player] = nil
+    esp[player] = nil
 end
 
--- public toggles
 local function esp_addAll()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= localPlayer then addESPToPlayer(p) end
     end
 end
 local function esp_removeAll()
-    for p, _ in pairs(esp_records) do
-        removeESPForPlayer(p)
-    end
+    for p, _ in pairs(esp) do removeESPForPlayer(p) end
 end
 
--- player join/leave hooks (keeps realtime)
+-- hooks
 Players.PlayerAdded:Connect(function(p) if p ~= localPlayer then addESPToPlayer(p) end end)
 Players.PlayerRemoving:Connect(function(p) removeESPForPlayer(p) end)
 
@@ -1115,11 +1135,11 @@ do
         acc = acc + dt
         blinkAcc = blinkAcc + dt
         local willBlink = false
-        if blinkAcc >= ESP_BLINK_INTERVAL then blinkAcc = 0; willBlink = true end
+        if blinkAcc >= BLINK_INTERVAL then blinkAcc = 0; willBlink = true end
 
-        if acc >= ESP_UPDATE_INTERVAL then
+        if acc >= UPDATE_INTERVAL then
             acc = 0
-            for player, rec in pairs(esp_records) do
+            for player, rec in pairs(esp) do
                 local char = player and player.Character
                 if char then
                     if not (rec.highlight and rec.highlight.Parent) then rec.highlight = ensureHighlight(player, char) end
@@ -1127,11 +1147,13 @@ do
                         local bg, tl = ensureBillboard(player, char)
                         rec.billboard = bg; rec.label = tl
                     end
-                    -- update text
+
+                    -- update text every tick
                     if rec.label then
                         pcall(function() rec.label.Text = buildInfoString(player, char, rec) end)
                     end
-                    -- color by team
+
+                    -- update team color
                     local teamCol = getTeamColor(player)
                     pcall(function()
                         if rec.highlight then
@@ -1140,15 +1162,25 @@ do
                         end
                         if rec.label then rec.label.TextColor3 = teamCol end
                     end)
-                    -- blinking
+
+                    -- blinking logic
                     if willBlink then
                         local humanoid = char:FindFirstChildOfClass("Humanoid")
                         local health = humanoid and humanoid.Health or 0
                         local maxH = humanoid and humanoid.MaxHealth or 100
                         local healthFrac = (maxH > 0) and (health / maxH) or 0
-                        local tc = teamCol
-                        local isTeamRed = (tc.R > 0.9 and tc.G < 0.3 and tc.B < 0.3)
+
+                        -- robust check for "red team": check exact BrickColor Bright red OR team name contains "red"
+                        local isTeamRed = false
+                        pcall(function()
+                            if player.TeamColor == BrickColor.new("Bright red") then isTeamRed = true end
+                            if not isTeamRed and player.Team and type(player.Team.Name) == "string" then
+                                if string.find(string.lower(player.Team.Name), "red") then isTeamRed = true end
+                            end
+                        end)
+
                         if isTeamRed and healthFrac < 0.25 then
+                            -- blink white <-> team color
                             rec.blinkState = not rec.blinkState
                             local col = rec.blinkState and Color3.fromRGB(255,255,255) or teamCol
                             pcall(function()
@@ -1156,6 +1188,7 @@ do
                                 if rec.label then rec.label.TextColor3 = col end
                             end)
                         else
+                            -- default blink red <-> team color
                             rec.blinkState = not rec.blinkState
                             local col = rec.blinkState and Color3.fromRGB(255,0,0) or teamCol
                             pcall(function()
@@ -1170,16 +1203,17 @@ do
     end)
 end
 
--- ===== hook this toggle into your UI toggle builder =====
-
 createToggle(BFrame, "ESP", function(state)
     if state then
-        require(path_to_this_module).AddAll() -- หรือเรียก addAll() ถ้าโค้ดอยู่ในไฟล์เดียวกัน
+        esp_addAll()
     else
-        require(path_to_this_module).RemoveAll()
+        esp_removeAll()
     end
 end, false)
 
+-- expose if wanted
+_G.__ESP_addAll = esp_addAll
+_G.__ESP_removeAll = esp_removeAll
 
 
 -- ============== IMAGE BUTTONS ==============
