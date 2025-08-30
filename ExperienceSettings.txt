@@ -887,29 +887,41 @@ end, false)
 
 
 
--- ===== ESP (LocalScript) - fixed highlights & blink logic =====
--- วางต่อท้าย LocalScript client ของคุณ (ไม่เป็น ModuleScript)
+-- ===== ESP Toggle + Implementation (LocalScript client-side) =====
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
-local CoreGui = game:GetService("CoreGui")
 
-local localPlayer = Players.LocalPlayer
-
--- config
+-- CONFIG
+local UPDATE_INTERVAL = 0.12 -- update text / ensure GUIs
+local BLINK_INTERVAL  = 0.05 -- blink every 0.05s (ตามคำขอ)
+local SKIP_LOCAL = true      -- ข้าม local player
 local HIGHLIGHT_NAME = "ESP_Highlight"
 local BILLBOARD_NAME  = "ESP_Billboard"
-local UPDATE_INTERVAL = 0.12
-local BLINK_INTERVAL  = 0.05
-local SKIP_LOCAL      = true
 
 -- storage
-local esp = {} -- esp[player] = { highlight = Instance, billboard = Instance, label = Instance, blinkState = false, accountCreated = nil }
+local esp = {} -- esp[player] = { highlight, billboard, label, accountCreated, blinkState, lastChar }
+local espEnabled = false
 
--- helpers (date/format)
+-- helper: team color
+local function getTeamColor(player)
+    if not player then return Color3.fromRGB(170,170,170) end
+    -- prefer TeamColor then Team
+    if player.TeamColor and player.TeamColor.Color then return player.TeamColor.Color end
+    return Color3.fromRGB(170,170,170)
+end
+
+-- helper format
+local function fmtNum(n, f)
+    f = f or "%.2f"
+    if type(n) ~= "number" then return string.format(f, 0) end
+    return string.format(f, n)
+end
+
+-- date helpers
 local monthNames = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"}
 local function parseISODate(iso)
-    if type(iso) ~= "string" then return nil end
+    if not iso or type(iso) ~= "string" then return nil end
     local y,m,d = iso:match("^(%d+)%-(%d+)%-(%d+)")
     if not y then return nil end
     return { year = tonumber(y), month = tonumber(m), day = tonumber(d) }
@@ -930,7 +942,7 @@ local function computeAccountAgeYears(iso)
     return tostring(years)
 end
 
--- best-effort fetch account creation date (may fail if HttpService disabled)
+-- try fetch account created ISO (best-effort, may fail if Http disabled)
 local function fetchAccountCreated(userId)
     if not HttpService or not HttpService.HttpEnabled then return nil end
     local ok, res = pcall(function()
@@ -944,28 +956,19 @@ local function fetchAccountCreated(userId)
     return nil
 end
 
--- get team color or neutral gray
-local function getTeamColor(player)
-    if player and player.TeamColor and player.TeamColor.Color then
-        return player.TeamColor.Color
-    end
-    return Color3.fromRGB(170,170,170)
-end
+-- build info string
+local function buildInfoString(player, char, record)
+    local username = (player and player.Name) or "Unknown"
+    local userId = tostring((player and player.UserId) or 0)
 
-local function safeFormatNum(n)
-    if type(n) ~= "number" then return "0.00" end
-    return string.format("%.2f", n)
-end
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    local health = humanoid and humanoid.Health or 0
+    local maxH = humanoid and humanoid.MaxHealth or 100
+    local healthText = string.format("%.2f", health)
 
-local function buildInfoString(player, char, rec)
-    local username = player.Name or "Unknown"
-    local userId = tostring(player.UserId or 0)
-
-    local humanoid = (char and char:FindFirstChildOfClass("Humanoid"))
-    local curHealth = humanoid and humanoid.Health or 0
-
+    -- studs distance from local player
+    local localRoot = Players.LocalPlayer and Players.LocalPlayer.Character and (Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or Players.LocalPlayer.Character:FindFirstChild("Head"))
     local targetPart = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head"))
-    local localRoot = localPlayer and localPlayer.Character and (localPlayer.Character:FindFirstChild("HumanoidRootPart") or localPlayer.Character:FindFirstChild("Head"))
     local studs = 0
     if targetPart and localRoot then
         studs = (targetPart.Position - localRoot.Position).Magnitude
@@ -973,93 +976,66 @@ local function buildInfoString(player, char, rec)
         studs = targetPart.Position.Magnitude
     end
 
+    local studsText = fmtNum(studs)
     local teamName = "Neutral"
-    if player.Team and type(player.Team.Name) == "string" and player.Team.Name ~= "" then
+    if player and player.Team and type(player.Team.Name) == "string" and player.Team.Name ~= "" then
         teamName = player.Team.Name
     end
 
     local joinText = "N/A"
     local ageText = "N/A"
-    if rec and rec.accountCreated then
-        joinText = formatJoinDate(rec.accountCreated)
-        ageText = computeAccountAgeYears(rec.accountCreated)
+    if record and record.accountCreated then
+        joinText = formatJoinDate(record.accountCreated)
+        ageText = computeAccountAgeYears(record.accountCreated)
     end
 
-    local out = string.format("👤@%s | 🕓Age: %s | 🗓️Join: %s | ♥️Health: %s | 📏Studs: %s | 🏳️: %s | 🪪%s",
-        username, ageText, joinText, string.format("%.2f", curHealth), safeFormatNum(studs), teamName, userId)
+    local out = string.format("👤 @%s | 🕓Age: %s | 🗓️Join: %s | ♥️Health: %s | 📏Studs: %s | 🏳️: %s | 🪪%s",
+        username, ageText, joinText, healthText, studsText, teamName, userId)
     return out
 end
 
--- Ensure Highlight exists and is visible (parent to CoreGui for reliability)
+-- Ensure highlight exists and properties
 local function ensureHighlight(player, character)
     if not character then return nil end
-
-    -- prefer to adorn a part if available
-    local adorneePart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Head")
-    -- try find existing highlight by name anywhere under character
     local hi = character:FindFirstChild(HIGHLIGHT_NAME, true)
     if hi and not hi:IsA("Highlight") then hi = nil end
-
-    if not hi then
-        -- try find any Highlight inside character
-        for _, d in ipairs(character:GetDescendants()) do
-            if d:IsA("Highlight") then hi = d; break end
-        end
-    end
-
     if not hi then
         hi = Instance.new("Highlight")
         hi.Name = HIGHLIGHT_NAME
-        -- parent to CoreGui for stable rendering on client
-        hi.Parent = CoreGui
+        hi.Parent = character
     end
-
-    -- set adornee: prefer specific part (better reliability), otherwise whole model
-    pcall(function()
-        if adorneePart and adorneePart.Parent then
-            hi.Adornee = adorneePart
-        else
-            hi.Adornee = character
-        end
-    end)
-
-    -- set colors and transparencies
-    local col = getTeamColor(player)
+    -- Adornee whole model
+    pcall(function() hi.Adornee = character end)
+    -- default style
     pcall(function()
         hi.OutlineTransparency = 0
         hi.FillTransparency = 0.8
-        hi.OutlineColor = col
-        hi.FillColor = col
     end)
-
     return hi
 end
 
--- Ensure BillboardGui + TextLabel
+-- Ensure BillboardGui & TextLabel
 local function ensureBillboard(player, character)
     if not character then return nil, nil end
     local adornee = character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart")
     if not adornee then return nil, nil end
-
     local bg = character:FindFirstChild(BILLBOARD_NAME, true)
     if bg and not bg:IsA("BillboardGui") then bg = nil end
-
     if not bg then
         bg = Instance.new("BillboardGui")
         bg.Name = BILLBOARD_NAME
-        bg.Parent = character
         bg.Adornee = adornee
+        bg.Parent = character
         bg.AlwaysOnTop = true
         bg.Size = UDim2.new(0, 250, 0, 40)
         bg.StudsOffset = Vector3.new(0, 3, 0)
     end
-
     local tl = bg:FindFirstChild("ESP_Label")
     if not tl then
         tl = Instance.new("TextLabel")
         tl.Name = "ESP_Label"
         tl.Parent = bg
-        tl.Size = UDim2.new(1, 0, 1, 0)
+        tl.Size = UDim2.new(1,0,1,0)
         tl.BackgroundTransparency = 1
         tl.TextScaled = true
         tl.TextStrokeTransparency = 0
@@ -1067,41 +1043,59 @@ local function ensureBillboard(player, character)
         tl.TextXAlignment = Enum.TextXAlignment.Left
         tl.TextYAlignment = Enum.TextYAlignment.Center
     end
-
     return bg, tl
 end
 
--- Add ESP to a player
+-- Add ESP to a single player
 local function addESPToPlayer(player)
     if not player then return end
-    if SKIP_LOCAL and player == localPlayer then return end
+    if SKIP_LOCAL and player == Players.LocalPlayer then return end
     if esp[player] then return end
 
-    esp[player] = { highlight = nil, billboard = nil, label = nil, blinkState = false, accountCreated = nil }
+    esp[player] = {
+        highlight = nil,
+        billboard = nil,
+        label = nil,
+        accountCreated = nil,
+        blinkState = false,
+        lastChar = nil
+    }
 
-    -- async fetch created date
-    spawn(function()
+    -- fetch account created (async)
+    task.spawn(function()
         local ok, created = pcall(fetchAccountCreated, player.UserId)
-        if ok and created then esp[player].accountCreated = created end
+        if ok and created then
+            esp[player].accountCreated = created
+        end
     end)
 
+    -- setup for existing character now
     local function setupCharacter(char)
         if not char then return end
-        pcall(function() char:WaitForChild("HumanoidRootPart", 2) end)
+        esp[player].lastChar = char
+        -- ensure highlight & billboard
         esp[player].highlight = ensureHighlight(player, char)
         local bg, tl = ensureBillboard(player, char)
         esp[player].billboard = bg
         esp[player].label = tl
-        if tl then
+        -- immediate update
+        if esp[player].label then
             pcall(function()
-                tl.Text = buildInfoString(player, char, esp[player])
-                tl.TextColor3 = getTeamColor(player)
+                esp[player].label.Text = buildInfoString(player, char, esp[player])
+                esp[player].label.TextColor3 = getTeamColor(player)
             end)
         end
     end
 
-    if player.Character then setupCharacter(player.Character) end
-    player.CharacterAdded:Connect(setupCharacter)
+    if player.Character then
+        setupCharacter(player.Character)
+    end
+
+    player.CharacterAdded:Connect(function(char)
+        -- wait a little
+        char:WaitForChild("HumanoidRootPart", 2)
+        setupCharacter(char)
+    end)
 end
 
 local function removeESPForPlayer(player)
@@ -1114,31 +1108,43 @@ local function removeESPForPlayer(player)
     esp[player] = nil
 end
 
-local function esp_addAll()
+-- Add all current players
+local function addAll()
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= localPlayer then addESPToPlayer(p) end
+        if p ~= Players.LocalPlayer then addESPToPlayer(p) end
     end
 end
-local function esp_removeAll()
+local function removeAll()
     for p, _ in pairs(esp) do removeESPForPlayer(p) end
 end
 
--- hooks
-Players.PlayerAdded:Connect(function(p) if p ~= localPlayer then addESPToPlayer(p) end end)
-Players.PlayerRemoving:Connect(function(p) removeESPForPlayer(p) end)
+-- hooks for PlayerAdded/Removing while enabled
+local playerAddedConn, playerRemovingConn
+local function connectPlayerHandlers()
+    playerAddedConn = Players.PlayerAdded:Connect(function(p)
+        if espEnabled and p ~= Players.LocalPlayer then addESPToPlayer(p) end
+    end)
+    playerRemovingConn = Players.PlayerRemoving:Connect(function(p)
+        removeESPForPlayer(p)
+    end)
+end
+local function disconnectPlayerHandlers()
+    if playerAddedConn then playerAddedConn:Disconnect(); playerAddedConn = nil end
+    if playerRemovingConn then playerRemovingConn:Disconnect(); playerRemovingConn = nil end
+end
 
--- heartbeat updater
-do
-    local acc = 0
-    local blinkAcc = 0
-    RunService.Heartbeat:Connect(function(dt)
-        acc = acc + dt
+-- Heartbeat loops: one for updates, one for blink (combined but separate timers)
+local updateAcc = 0
+local blinkAcc = 0
+local updateConn -- keep reference if needed (we use a single RunService conn)
+local function startHeartbeatLoops()
+    if updateConn then return end
+    updateConn = RunService.Heartbeat:Connect(function(dt)
+        updateAcc = updateAcc + dt
         blinkAcc = blinkAcc + dt
-        local willBlink = false
-        if blinkAcc >= BLINK_INTERVAL then blinkAcc = 0; willBlink = true end
 
-        if acc >= UPDATE_INTERVAL then
-            acc = 0
+        if updateAcc >= UPDATE_INTERVAL then
+            updateAcc = 0
             for player, rec in pairs(esp) do
                 local char = player and player.Character
                 if char then
@@ -1147,55 +1153,62 @@ do
                         local bg, tl = ensureBillboard(player, char)
                         rec.billboard = bg; rec.label = tl
                     end
-
-                    -- update text every tick
                     if rec.label then
-                        pcall(function() rec.label.Text = buildInfoString(player, char, rec) end)
+                        pcall(function()
+                            rec.label.Text = buildInfoString(player, char, rec)
+                            rec.label.TextColor3 = getTeamColor(player)
+                        end)
                     end
 
-                    -- update team color
                     local teamCol = getTeamColor(player)
                     pcall(function()
                         if rec.highlight then
                             rec.highlight.OutlineColor = teamCol
                             rec.highlight.FillColor = teamCol
                         end
-                        if rec.label then rec.label.TextColor3 = teamCol end
+                    end)
+                end
+            end
+        end
+
+        if blinkAcc >= BLINK_INTERVAL then
+            blinkAcc = 0
+            for player, rec in pairs(esp) do
+                local char = player and player.Character
+                if char then
+                    if not (rec.highlight and rec.highlight.Parent) then rec.highlight = ensureHighlight(player, char) end
+                    local humanoid = char:FindFirstChildOfClass("Humanoid")
+                    local health = humanoid and humanoid.Health or 0
+                    local maxH = humanoid and humanoid.MaxHealth or 100
+                    local healthFrac = (maxH > 0) and (health / maxH) or 0
+
+                    local teamCol = getTeamColor(player)
+                    -- detect team red
+                    local isTeamRed = false
+                    pcall(function()
+                        if player.TeamColor == BrickColor.new("Bright red") then isTeamRed = true end
+                        if not isTeamRed and player.Team and type(player.Team.Name) == "string" then
+                            if string.find(string.lower(player.Team.Name), "red") then isTeamRed = true end
+                        end
                     end)
 
-                    -- blinking logic
-                    if willBlink then
-                        local humanoid = char:FindFirstChildOfClass("Humanoid")
-                        local health = humanoid and humanoid.Health or 0
-                        local maxH = humanoid and humanoid.MaxHealth or 100
-                        local healthFrac = (maxH > 0) and (health / maxH) or 0
+                    -- decide blinking: default only team-red && hp<0.25 (as you requested)
+                    local shouldBlink = false
+                    if isTeamRed and healthFrac < 0.25 then shouldBlink = true end
 
-                        -- robust check for "red team": check exact BrickColor Bright red OR team name contains "red"
-                        local isTeamRed = false
+                    if shouldBlink then
+                        rec.blinkState = not rec.blinkState
+                        local col = rec.blinkState and Color3.fromRGB(255,255,255) or teamCol
                         pcall(function()
-                            if player.TeamColor == BrickColor.new("Bright red") then isTeamRed = true end
-                            if not isTeamRed and player.Team and type(player.Team.Name) == "string" then
-                                if string.find(string.lower(player.Team.Name), "red") then isTeamRed = true end
-                            end
+                            if rec.highlight then rec.highlight.OutlineColor = col; rec.highlight.FillColor = col end
+                            if rec.label then rec.label.TextColor3 = col end
                         end)
-
-                        if isTeamRed and healthFrac < 0.25 then
-                            -- blink white <-> team color
-                            rec.blinkState = not rec.blinkState
-                            local col = rec.blinkState and Color3.fromRGB(255,255,255) or teamCol
-                            pcall(function()
-                                if rec.highlight then rec.highlight.OutlineColor = col; rec.highlight.FillColor = col end
-                                if rec.label then rec.label.TextColor3 = col end
-                            end)
-                        else
-                            -- default blink red <-> team color
-                            rec.blinkState = not rec.blinkState
-                            local col = rec.blinkState and Color3.fromRGB(255,0,0) or teamCol
-                            pcall(function()
-                                if rec.highlight then rec.highlight.OutlineColor = col; rec.highlight.FillColor = col end
-                                if rec.label then rec.label.TextColor3 = col end
-                            end)
-                        end
+                    else
+                        -- not blinking: ensure team color
+                        pcall(function()
+                            if rec.highlight then rec.highlight.OutlineColor = teamCol; rec.highlight.FillColor = teamCol end
+                            if rec.label then rec.label.TextColor3 = teamCol end
+                        end)
                     end
                 end
             end
@@ -1203,18 +1216,31 @@ do
     end)
 end
 
-createToggle(BFrame, "ESP", function(state)
+local function stopHeartbeatLoops()
+    if updateConn then updateConn:Disconnect(); updateConn = nil end
+end
+
+-- Enable / Disable ESP
+function enableESP(state)
     if state then
-        esp_addAll()
+        if espEnabled then return end
+        espEnabled = true
+        addAll()
+        connectPlayerHandlers()
+        startHeartbeatLoops()
     else
-        esp_removeAll()
+        espEnabled = false
+        disconnectPlayerHandlers()
+        stopHeartbeatLoops()
+        removeAll()
     end
+end
+
+createToggle(BFrame, "ESP", function(state)
+    enableESP(state)
 end, false)
 
--- expose if wanted
-_G.__ESP_addAll = esp_addAll
-_G.__ESP_removeAll = esp_removeAll
-
+-- ===== END ESP implementation =====
 
 -- ============== IMAGE BUTTONS ==============
 -- helper: ImageButton creation (parented to tb by default)
