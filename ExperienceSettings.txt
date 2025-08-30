@@ -887,7 +887,7 @@ end, false)
 
 
 
--- ===== ESP Toggle + Implementation (fixed) =====
+-- ESP (fixed) - LocalScript
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
@@ -920,26 +920,52 @@ local function fmtNum(n, f)
 end
 
 local monthNames = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"}
+
 local function parseISODate(iso)
     if not iso or type(iso) ~= "string" then return nil end
-    local y,m,d = iso:match("^(%d+)%-(%d+)%-(%d+)")
+    -- support "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM:SS..."
+    local y,m,d,h,min,s = iso:match("^(%d+)%-(%d+)%-(%d+)T?(%d*):?(%d*):?(%d*)")
     if not y then return nil end
-    return { year = tonumber(y), month = tonumber(m), day = tonumber(d) }
+    return {
+        year = tonumber(y),
+        month = tonumber(m) or 1,
+        day = tonumber(d) or 1,
+        hour = tonumber(h) or 0,
+        min = tonumber(min) or 0,
+        sec = tonumber(s) or 0
+    }
 end
+
+local function isoToTime(iso)
+    local t = parseISODate(iso)
+    if not t then return nil end
+    -- os.time expects table with fields year, month, day, hour, min, sec (in local time)
+    return os.time{ year = t.year, month = t.month, day = t.day, hour = t.hour, min = t.min, sec = t.sec }
+end
+
 local function formatJoinDate(iso)
     local t = parseISODate(iso)
     if not t then return "N/A" end
     return string.format("%d %s %04d", t.day, monthNames[t.month] or "Jan", t.year)
 end
-local function computeAccountAgeYears(iso)
-    local t = parseISODate(iso)
-    if not t then return "N/A" end
-    local now = os.date("*t")
-    local years = now.year - t.year
-    local passed = (now.month > t.month) or (now.month == t.month and now.day >= t.day)
-    if not passed then years = years - 1 end
-    if years < 0 then years = 0 end
-    return tostring(years)
+
+local function computeAccountAgeYears(isoOrDays)
+    -- if iso string provided -> compute exact years
+    if type(isoOrDays) == "string" then
+        local createdTime = isoToTime(isoOrDays)
+        if not createdTime then return "N/A" end
+        local now = os.time()
+        local seconds = now - createdTime
+        if seconds < 0 then seconds = 0 end
+        local years = math.floor(seconds / (365.2425 * 24 * 3600))
+        return tostring(years)
+    end
+    -- if numeric days provided (Player.AccountAge) -> approximate years
+    if type(isoOrDays) == "number" then
+        local years = math.floor( (isoOrDays or 0) / 365.2425 )
+        return tostring(years)
+    end
+    return "N/A"
 end
 
 local function fetchAccountCreated(userId)
@@ -950,17 +976,9 @@ local function fetchAccountCreated(userId)
         return HttpService:JSONDecode(s)
     end)
     if ok and type(res) == "table" and res.created then
-        return res.created
+        return res.created -- ISO string
     end
     return nil
-end
-
-local function computeCreatedFromAccountAge(accountAgeDays)
-    if not accountAgeDays or type(accountAgeDays) ~= "number" then return nil end
-    local secs = os.time() - (accountAgeDays * 24 * 3600)
-    local t = os.date("!*t", secs) -- use UTC-like
-    if not t then return nil end
-    return string.format("%04d-%02d-%02dT00:00:00.000Z", t.year, t.month, t.day)
 end
 
 local function buildInfoString(player, char, record)
@@ -968,7 +986,7 @@ local function buildInfoString(player, char, record)
     local userId = tostring((player and player.UserId) or 0)
 
     local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-    local health = humanoid and humanoid.Health or 0
+    local health = (humanoid and humanoid.Health) or 0
     local healthText = string.format("%.2f", health)
 
     local localRoot = localPlayer and localPlayer.Character and (localPlayer.Character:FindFirstChild("HumanoidRootPart") or localPlayer.Character:FindFirstChild("Head"))
@@ -991,8 +1009,11 @@ local function buildInfoString(player, char, record)
     if record and record.accountCreated then
         joinText = formatJoinDate(record.accountCreated)
         ageText = computeAccountAgeYears(record.accountCreated)
-    else
-        joinText = "N/A"; ageText = "N/A"
+    elseif player and player.AccountAge then
+        -- fallback: use AccountAge (days) -> compute year approx
+        ageText = computeAccountAgeYears(player.AccountAge)
+        -- estimate join date roughly:
+        joinText = "Approx " .. tostring(math.floor(player.AccountAge or 0)) .. " days ago"
     end
 
     local out = string.format("👤 @%s | 🕓Age: %s | 🗓️Join: %s | ♥️Health: %s | 📏Studs: %s | 🏳️: %s | 🪪%s",
@@ -1056,7 +1077,7 @@ local function addESPToPlayer(player)
     if SKIP_LOCAL and player == localPlayer then return end
     if esp[player] then return end
 
-    esp[player] = { highlight = nil, billboard = nil, label = nil, accountCreated = nil, blinkState = false, lastChar = nil }
+    esp[player] = { highlight = nil, billboard = nil, label = nil, accountCreated = nil, blinkState = false }
 
     task.spawn(function()
         local created = nil
@@ -1065,14 +1086,17 @@ local function addESPToPlayer(player)
             if ok and res then created = res end
         end
         if not created and player.AccountAge then
-            created = computeCreatedFromAccountAge(player.AccountAge)
+            created = (type(player.AccountAge) == "number") and (computeAccountAgeYears(player.AccountAge) ~= "N/A" and computeAccountAgeYears(player.AccountAge) or nil) or nil
+            -- computeAccountAgeYears expects iso or days; but for caching we'll store iso-like computed date
+            if not created then
+                -- leave nil
+            end
         end
         esp[player].accountCreated = created
     end)
 
     local function setupCharacter(char)
         if not char then return end
-        esp[player].lastChar = char
         esp[player].highlight = ensureHighlight(player, char)
         local bg, tl = ensureBillboard(player, char)
         esp[player].billboard = bg
@@ -1150,13 +1174,6 @@ local function startHeartbeat()
                             rec.label.TextColor3 = getTeamColor(player)
                         end)
                     end
-                    local teamCol = getTeamColor(player)
-                    pcall(function()
-                        if rec.highlight then
-                            rec.highlight.OutlineColor = teamCol
-                            rec.highlight.FillColor = teamCol
-                        end
-                    end)
                 end
             end
         end
@@ -1167,13 +1184,15 @@ local function startHeartbeat()
                 local char = player and player.Character
                 if char then
                     if not (rec.highlight and rec.highlight.Parent) then rec.highlight = ensureHighlight(player, char) end
+
                     local humanoid = char:FindFirstChildOfClass("Humanoid")
                     local health = humanoid and humanoid.Health or 0
-                    local maxH = humanoid and humanoid.MaxHealth or 100
-                    local healthFrac = (maxH > 0) and (health / maxH) or 0
+                    local maxH = humanoid and humanoid.MaxHealth or 1
+                    if type(maxH) ~= "number" or maxH <= 0 then maxH = 1 end
+                    local healthFrac = health / maxH
 
+                    -- determine team color / isTeamRed
                     local teamCol = getTeamColor(player)
-                    -- detect "team red" tolerant
                     local isTeamRed = false
                     pcall(function()
                         local tc = player.TeamColor and player.TeamColor.Color
@@ -1188,7 +1207,9 @@ local function startHeartbeat()
                     -- toggle blink state
                     rec.blinkState = not rec.blinkState
 
-                    -- choose color
+                    -- pick color rules:
+                    -- if team is red and healthFrac < 0.25 -> white <-> team color
+                    -- else -> red <-> team color
                     local col
                     if isTeamRed and healthFrac < 0.25 then
                         col = rec.blinkState and Color3.fromRGB(255,255,255) or teamCol
@@ -1234,6 +1255,10 @@ createToggle(BFrame, "ESP", function(state)
 end, false)
 
 -- ===== END ESP implementation =====
+
+
+
+
 
 -- ============== IMAGE BUTTONS ==============
 -- helper: ImageButton creation (parented to tb by default)
