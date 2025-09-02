@@ -1,10 +1,11 @@
-warn("--
+warn("                                                   This file is unavailable. Please use another file to continue the client script.                                                         ")
 
-This file is unavailable. Please use another file to continue client script.
+print("                                                                      Unavailable date: 2 September 2025 [TH]                                                            ")
 
---")
+print("                                                                                     -- Q&A --                                                                                                   ")
 
-print("Unavailable date: 2 September 2025 [TH]
+print("                                                                Q: How do I go to a new file to continue using it?                                                            ")
 
+print("                                                        A: Go to find on GitHub and use ExperiencSettings to continue using!                                                  ")
 
---")
+print("                                                           Source: https://github.com/White-rbx/HealthBar-Remake/tree/main                                                  ")
