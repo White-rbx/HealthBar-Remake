@@ -763,8 +763,7 @@ task.spawn(function()
                         if ui_Set  then ui_Set.Visible  = false end
                         if ui_hbm then ui_hbm.Visible = false end
                         if ui_OC  then ui_OC.Visible  = true end
-                        if ui_gpt then
-ui_gpt.Visible = false end
+                        if ui_gpt then ui_gpt.Visible = false end
                     end)
 
                     -- ซ่อน wa1/wl ถ้ามันมีอยู่ (และอย่าพยายามเปลี่ยนตำแหน่งถ้ามันไม่มี)
@@ -795,8 +794,7 @@ ui_gpt.Visible = false end
                             if ui_Set  then ui_Set.Visible  = false end
                             if ui_hbm then ui_hbm.Visible = false end
                             if ui_OC  then ui_OC.Visible  = false end
-                            if ui_gpt then
-ui_gpt.Visible = false end
+                            if ui_gpt then ui_gpt.Visible = false end
                         end)
 
                         -- ถ้าต้องการแสดง wa1 เมื่อไม่มี HRP (เช่นเป็น warning) ให้ทำตรงนี้
