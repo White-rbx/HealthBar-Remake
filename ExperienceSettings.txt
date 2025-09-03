@@ -434,7 +434,7 @@ hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 hr.BackgroundTransparency = 0.2
 hr.Parent = mtb
 createUICorner(hr, 1, 0)
-createUIListLayout(hr, 0.1, 0, HCenter, VCenter, FillH)
+createUIListLayout(hr, 0, 10, HCenter, VCenter, FillH)
 
 -- Top bar buttons container (tb) — starts collapsed
 local tb = Instance.new("ScrollingFrame")
@@ -495,8 +495,8 @@ local Set = Instance.new("ImageButton")
 Set.Name = "a2_Settings"
 Set.Size = UDim2.new(0, 36, 0.8, 0)
 Set.Image = "rbxassetid://85613740372383"
-Set.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
-Set.BackgroundTransparency = 1
+Set.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Set.BackgroundTransparency = 0.8
 Set.Active = true
 Set.Visible = false
 Set.Parent = hr
@@ -504,11 +504,11 @@ createUICorner(Set, 1, 0)
 
 -- Hamburger menu (hbm)
 local hbm = Instance.new("ImageButton")
-hbm.Name = "a3_HamburgerMenu"
+hbm.Name = "a9999_HamburgerMenu"
 hbm.Size = UDim2.new(0, 36, 0.8, 0)
 hbm.Image = "rbxassetid://12214197591"
-hbm.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-hbm.BackgroundTransparency = 1
+hbm.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+hbm.BackgroundTransparency = 0.8
 hbm.Active = true
 hbm.Visible = false
 hbm.Parent = hr
@@ -524,6 +524,18 @@ OC.BackgroundTransparency = 0.8
 OC.Active = true
 OC.Visible = false
 OC.Parent = hr
+createUICorner(OC, 1, 0)
+
+-- GPT
+local gpt = Instance.new("ImageButton")
+gpt.Name = "a3_ChatGPT"
+gpt.Size = UDim2.new(0, 36, 0.8, 0)
+gpt.Image = "rbxassetid://15419312153"
+gpt.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+gpt.BackgroundTransparency = 0.8
+gpt.Active = true
+gpt.Visible = false
+gpt.Parent = hr
 createUICorner(OC, 1, 0)
 
 -- Wait1
@@ -556,7 +568,7 @@ local MTB_X_CLOSED = 0.48
 local MTB_X_OPEN   = 0 -- open => X = 0
 
 -- hr sizes in px for open/close
-local HR_WIDTH_OPEN  = 150
+local HR_WIDTH_OPEN  = 185
 local HR_WIDTH_CLOSE = 44
 
 -- safe setter for mtb position (uses tweenObject if available)
@@ -670,26 +682,27 @@ end)
 -- resolve UI refs (พยายามหา refs ที่เราเคยสร้างไว้)
 local function resolveUI()
     -- ถ้าตัวแปร UI มีอยู่แล้วและยัง parent อยู่ ให้ return ทันที
-    if tb and tb.Parent and hr and hr.Parent and Set and Set.Parent and hbm and hbm.Parent and OC and OC.Parent then
-        return tb, hr, Set, hbm, OC, wa1, wl, background, mtb
+    if tb and tb.Parent and hr and hr.Parent and Set and Set.Parent and hbm and hbm.Parent and OC and OC.Parent and gpt and gpt.Parent then
+        return tb, hr, Set, hbm, OC, gpt, wa1, wl, background, mtb
     end
     local root = menuGui or expSettings or healthBar
     if root then
         local rc_tb = root:FindFirstChild("TopButtons", true)
         local rc_hr = root:FindFirstChild("Holder", true)
         local rc_Set = root:FindFirstChild("a2_Settings", true)
-        local rc_hbm = root:FindFirstChild("a3_HamburgerMenu", true)
+        local rc_hbm = root:FindFirstChild("a9999_HamburgerMenu", true)
         local rc_OC  = root:FindFirstChild("a1_Open/Close", true)
         local rc_wa1 = root:FindFirstChild("LoadFrame", true)
         local rc_wl  = root:FindFirstChild("Warning & Load", true)
         local rc_bg  = root:FindFirstChild("Background", true)
-        local rc_mtb = root:FindFirstChild("TopBar", true) -- ถ้ามี mtb อยู่ใน tree
-        return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb
+        local rc_mtb = root:FindFirstChild("TopBar", true)
+        local rc_gpt = root:FindFirstChild("a3_ChatGPT", true) -- ถ้ามี mtb อยู่ใน tree
+        return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt
     end
     return nil
 end
 
-local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb = resolveUI()
+local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
 local timerMissing = 0
 local isOpen = false
 
@@ -711,10 +724,10 @@ task.spawn(function()
         task.wait(CHECK_INTERVAL)
 
         -- พยายาม resolve refs ถ้ายังไม่มี
-        if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_wa1) then
-            ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb = resolveUI()
+        if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1) then
+            ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
 
-            if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC) then
+            if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt) then
                 -- ถ้า refs ยังไม่ครบ: เพิ่ม timerMissing แล้วข้ามการกระทำใด ๆ ที่ไปเปลี่ยน UI
                 timerMissing = timerMissing + CHECK_INTERVAL
                 if timerMissing >= TIMEOUT then
@@ -750,6 +763,8 @@ task.spawn(function()
                         if ui_Set  then ui_Set.Visible  = false end
                         if ui_hbm then ui_hbm.Visible = false end
                         if ui_OC  then ui_OC.Visible  = true end
+                        if ui_gpt then
+ui_gpt.Visible = false end
                     end)
 
                     -- ซ่อน wa1/wl ถ้ามันมีอยู่ (และอย่าพยายามเปลี่ยนตำแหน่งถ้ามันไม่มี)
@@ -780,6 +795,8 @@ task.spawn(function()
                             if ui_Set  then ui_Set.Visible  = false end
                             if ui_hbm then ui_hbm.Visible = false end
                             if ui_OC  then ui_OC.Visible  = false end
+                            if ui_gpt then
+ui_gpt.Visible = false end
                         end)
 
                         -- ถ้าต้องการแสดง wa1 เมื่อไม่มี HRP (เช่นเป็น warning) ให้ทำตรงนี้
