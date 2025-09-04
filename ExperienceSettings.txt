@@ -1792,181 +1792,235 @@ local function toggleTB()
 end
 hbm.MouseButton1Click:Connect(toggleTB)
 
--- ====== UISTROKE FUNCTION ======
-local ABorder = Enum.ApplyStrokeMode.Border
-local AContxt = Enum.ApplyStrokeMode.Contextual
-local LBevel = Enum.LineJoinMode.Bevel
-local LMiter = Enum.LineJoinMode.Miter
-local LRound = Enum.LineJoinMode.Round
+-- ======= ChatGPT UI (replace/patch) =======
+-- This block is robust: uses your createInput if present, otherwise builds UI minimal.
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
-local function createUIStroke(parentStroke, ASM, CR, CG, CB, LJM, TN)
-    local UIStroke = Instance.new("UIStroke")
-    UIStroke.ApplyStrokeMode = ASM or Enum.ApplyStrokeMode.Border
-    -- กำหนดสีอย่างถูกต้อง (default 255 ถ้า nil)
-    UIStroke.Color = Color3.fromRGB(CR or 255, CG or 255, CB or 255)
-    UIStroke.LineJoinMode = LJM or Enum.LineJoinMode.Round
-    UIStroke.Thickness = TN or 1
-    if parentStroke and parentStroke.Parent ~= nil then
-        UIStroke.Parent = parentStroke
-    else
-        -- ถ้า parent ไม่พร้อม ให้คืน UIStroke ไว้ (caller ควร parent เอง)
-        -- หรือจะ parent ไปที่ workspace/temp ตามต้องการ
-    end
-    return UIStroke
-end
+-- OPENAI settings (will be set by user via APIInput)
+local OPENAI_KEY = nil
+local MODEL = "gpt-3.5-turbo"
 
--- ====== INPUT FUNCTION ========
--- Input builder
-local InputFrame = 0
-local function createInput(parentInput, txt, tCR, tCG, tCB, txI, callback, defaultState)
-    -- เพิ่ม index แบบปลอดภัย
-    InputFrame = InputFrame + 1
-
-    -- Frame
-    local Input = Instance.new("Frame")
-    Input.Name = "a" .. tostring(InputFrame) .. "_Input"
-    Input.Size = UDim2.new(1, 0, 0.05, 0)
-    Input.BackgroundTransparency = 1
-    if parentInput then Input.Parent = parentInput end
-
-    -- Input (TextBox)
-    local txtbA = Instance.new("TextBox")
-    txtbA.Size = UDim2.new(0.8, 0, 1, 0)
-    txtbA.Text = tostring(txt or "")
-    txtbA.BackgroundColor3 = Color3.fromRGB(90, 89, 91)
-    txtbA.TextScaled = true
-    txtbA.TextColor3 = Color3.fromRGB(tCR or 255, tCG or 255, tCB or 255)
-    txtbA.ClearTextOnFocus = false
-    txtbA.Parent = Input
-    if type(createUICorner) == "function" then createUICorner(txtbA, 0.2, 0) end
-    if type(createUIStroke) == "function" then createUIStroke(txtbA, ABorder, 255, 255, 255, LRound, 1) end
-
-    -- TextButton (ขวา)
-    local txtbB = Instance.new("TextButton")
-    txtbB.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    txtbB.Size = UDim2.new(0.2, 0, 1, 0)
-    txtbB.Position = UDim2.new(0.8, 0, 0, 0)
-    txtbB.Text = tostring(txI or "")
-    txtbB.TextScaled = true
-    txtbB.TextColor3 = Color3.fromRGB(0, 0, 0)
-    txtbB.Parent = Input
-    if type(createUICorner) == "function" then createUICorner(txtbB, 0.2, 0) end
-
-    -- ถ้ามี callback ให้เชื่อม
-    if type(callback) == "function" then
-        txtbB.MouseButton1Click:Connect(function()
-            pcall(function() callback(txtbA.Text) end)
-        end)
-    end
-
-    return Input, txtbA, txtbB
-end
-
--- ====== CHATGPT UI CREATION ========
--- สมมติว่า menuGui ถูกประกาศ/มีอยู่ข้างนอก (ถ้ายังไม่มี ให้สร้างหรือ parent เหมาะสม)
--- ตรวจเช็กว่า menuGui มีอยู่ก่อน
-if not menuGui then
-    -- ถ้าไม่มี menuGui ให้สร้าง ScreenGui เป็น fallback (เฉพาะ LocalScript)
-    local player = game:GetService("Players").LocalPlayer
+-- ensure menuGui exists (we parent to your menuGui if present)
+if not menuGui or not menuGui.Parent then
+    local player = LocalPlayer
     if player and player:FindFirstChild("PlayerGui") then
         local sg = Instance.new("ScreenGui")
-        sg.Name = "MenuGui_Fallback"
+        sg.Name = "Menu_ChatGPT_Fallback"
         sg.ResetOnSpawn = false
         sg.Parent = player:WaitForChild("PlayerGui")
         menuGui = sg
     else
-        -- ถ้าไม่มี PlayerGui (server script) จะไม่สร้าง
-        warn("[ChatGPT UI] menuGui not found and PlayerGui unavailable.")
+        warn("[ChatGPT UI] menuGui not available; aborting ChatGPT patch.")
+        return
     end
 end
 
--- สร้าง panel หลักของ ChatGPT
-local gptGui = Instance.new("Frame")
-gptGui.Name = "ChatGPT"
-gptGui.Size = UDim2.new(0.35, 0, 0.9, 0)
-gptGui.Position = UDim2.new(-0.35, 0, 0.05, 0)
-gptGui.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-gptGui.BackgroundTransparency = 0.5
-if menuGui then gptGui.Parent = menuGui end
-if type(createUICorner) == "function" then createUICorner(gptGui, 0.02, 0) end
+-- If there's already a ChatGPT frame, don't duplicate
+local existing = menuGui:FindFirstChild("ChatGPT")
+if existing then
+    -- reuse existing GUI (but still try to resolve child elements)
+    gptGui = existing
+else
+    -- create panel
+    local gptGui_local = Instance.new("Frame")
+    gptGui_local.Name = "ChatGPT"
+    gptGui_local.Size = UDim2.new(0.35, 0, 0.9, 0)
+    gptGui_local.Position = UDim2.new(0, 0, 0.05, 0)
+    gptGui_local.BackgroundColor3 = Color3.fromRGB(18,18,20)
+    gptGui_local.BackgroundTransparency = 0.12
+    gptGui_local.Parent = menuGui
+    if type(createUICorner) == "function" then pcall(createUICorner, gptGui_local, 0.02, 0) end
 
--- Background container
-local gptBack = Instance.new("Frame")
-gptBack.Name = "Background"
-gptBack.Size = UDim2.new(0.96, 0, 0.96, 0)
-gptBack.Position = UDim2.new(0.02, 0, 0.02, 0)
-gptBack.BackgroundTransparency = 1
-gptBack.Parent = gptGui
-if type(createUIListLayout) == "function" then
-    createUIListLayout(gptBack, 0, 10, HLeft, VTop, FillV)
+    -- inner background container (gptBack)
+    local gptBack_local = Instance.new("Frame")
+    gptBack_local.Name = "Background"
+    gptBack_local.Size = UDim2.new(0.96, 0, 0.96, 0)
+    gptBack_local.Position = UDim2.new(0.02, 0, 0.02, 0)
+    gptBack_local.BackgroundTransparency = 1
+    gptBack_local.Parent = gptGui_local
+    -- if you have createUIListLayout, use it; otherwise we will add layout later
+    if type(createUIListLayout) == "function" then
+        pcall(createUIListLayout, gptBack_local, 0, 10, HLeft, VTop, FillV)
+    end
+
+    -- expose
+    gptGui = gptGui_local
+    gptBack = gptBack_local
 end
 
--- TextBoxInput
-createInput(gptBack, "Ask anything...", 255, 255, 255, "Send")
-
--- APIInput 
-createInput(gptBack, "Put ChatGPT API", 255, 255, 255, "Enter")
--- === REQUIRE SERVICES ===
-local HttpService = game:GetService("HttpService")
-
--- === STATE ===
-local OPENAI_KEY = nil
-local MODEL = "gpt-3.5-turbo"
-
--- ScrollingFrame
-local gptScroll = Instance.new("ScrollingFrame")
-gptScroll.Name = "a0_Scroll"
-gptScroll.Size = UDim2.new(1, 0, 0.7, 0)
-gptScroll.BackgroundTransparency = 0.5
-gptScroll.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-gptScroll.ScrollBarThickness = 0
-gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-gptScroll.Parent = gptBack
-if type(createUICorner) == "function" then createUICorner(gptScroll, 0.02, 0) end
-
--- Chat container inside scroll
-local gptChat = Instance.new("Frame")
-gptChat.Name = "Chat"
-gptChat.Size = UDim2.new(0.96, 0, 0.96, 0)
-gptChat.Position = UDim2.new(0.02, 0, 0, 10)
-gptChat.BackgroundTransparency = 1
-gptChat.Parent = gptScroll
-if type(createUIListLayout) == "function" then
-    createUIListLayout(gptChat, 0, 5, HLeft, VTop, FillV)
+-- create scrolling frame (if not exists)
+gptScroll = gptGui:FindFirstChild("a0_Scroll") or gptGui:FindFirstChildWhichIsA("ScrollingFrame", true)
+if not gptScroll then
+    local s = Instance.new("ScrollingFrame")
+    s.Name = "a0_Scroll"
+    s.Size = UDim2.new(1, 0, 0.7, 0)
+    s.Position = UDim2.new(0, 0, 0.18, 0)
+    s.BackgroundTransparency = 0.5
+    s.BackgroundColor3 = Color3.fromRGB(12,12,12)
+    s.ScrollBarThickness = 6
+    s.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    s.Parent = gptGui
+    if type(createUICorner) == "function" then pcall(createUICorner, s, 0.02, 0) end
+    gptScroll = s
 end
 
--- Auto-canvas update (uses UIListLayout on gptChat)
+-- chat container inside scroll (gptChat)
+gptChat = gptScroll:FindFirstChild("Chat") or gptScroll:FindFirstChildWhichIsA("Frame", true)
+if not gptChat or gptChat.Name ~= "Chat" then
+    local c = Instance.new("Frame")
+    c.Name = "Chat"
+    c.Size = UDim2.new(0.96, 0, 0, 0)
+    c.Position = UDim2.new(0.02, 0, 0, 10)
+    c.BackgroundTransparency = 1
+    c.Parent = gptScroll
+    gptChat = c
+end
+
+-- ensure UIListLayout exists in gptChat
 local uiLayout = gptChat:FindFirstChildOfClass("UIListLayout")
 if not uiLayout then
     uiLayout = Instance.new("UIListLayout")
     uiLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    uiLayout.Padding = UDim.new(0,6)
+    uiLayout.Padding = UDim.new(0, 6)
     uiLayout.Parent = gptChat
 end
--- make sure scroll auto-resizes
-gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
--- fallback: keep canvas synced
+
+-- helper: sync canvas on layout change & auto-scroll bottom
 uiLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    if pcall(function() return uiLayout.AbsoluteContentSize end) then
-        pcall(function()
-            gptScroll.CanvasSize = UDim2.new(0, 0, 0, uiLayout.AbsoluteContentSize.Y)
-            gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.Y)
-        end)
-    end
+    pcall(function()
+        gptScroll.CanvasSize = UDim2.new(0, 0, 0, uiLayout.AbsoluteContentSize.Y)
+        gptScroll.CanvasPosition = Vector2.new(0, math.max(0, uiLayout.AbsoluteContentSize.Y))
+    end)
 end)
 
--- createChat: create bubble auto-size and color by isUser
+-- --------- Helper: robustly resolve createInput returns ----------
+local function resolveInputReturn(parentFrame, r1, r2, r3)
+    local txtBox, btn
+    -- direct guesses
+    if typeof(r2) == "Instance" and r2:IsA("TextBox") then txtBox = r2 end
+    if typeof(r3) == "Instance" and (r3:IsA("TextButton") or r3:IsA("ImageButton")) then btn = r3 end
+    -- if first return is a frame, search inside
+    local frameCandidate = nil
+    if typeof(r1) == "Instance" and r1:IsA("GuiObject") then frameCandidate = r1 end
+    if frameCandidate then
+        for _, d in ipairs(frameCandidate:GetDescendants()) do
+            if not txtBox and d:IsA("TextBox") then txtBox = d end
+            if not btn and (d:IsA("TextButton") or d:IsA("ImageButton")) then btn = d end
+            if txtBox and btn then break end
+        end
+    end
+    -- search recent siblings inside parentFrame (pattern a#_Input)
+    if parentFrame and parentFrame:IsA("GuiObject") and (not txtBox or not btn) then
+        for _, child in ipairs(parentFrame:GetChildren()) do
+            if child:IsA("Frame") and string.match(child.Name or "", "^a%d+_Input") then
+                for _, d in ipairs(child:GetDescendants()) do
+                    if not txtBox and d:IsA("TextBox") then txtBox = d end
+                    if not btn and (d:IsA("TextButton") or d:IsA("ImageButton")) then btn = d end
+                    if txtBox and btn then break end
+                end
+                if txtBox and btn then break end
+            end
+        end
+    end
+    -- last resort: search parentFrame descendants
+    if parentFrame and parentFrame:IsA("GuiObject") and (not txtBox or not btn) then
+        for _, d in ipairs(parentFrame:GetDescendants()) do
+            if not txtBox and d:IsA("TextBox") then txtBox = d end
+            if not btn and (d:IsA("TextButton") or d:IsA("ImageButton")) then btn = d end
+            if txtBox and btn then break end
+        end
+    end
+
+    return txtBox, btn
+end
+
+-- --------- Create inputs using your createInput if available ----------
+-- We expect you called something like: createInput(gptBack, "Put ChatGPT API", ...) earlier.
+-- If you didn't, we create minimal API + Chat inputs here.
+
+-- Attempt to reuse existing gptBack or gptGui container
+local gptBackRef = gptBack or gptGui:FindFirstChild("Background") or gptGui
+
+-- call createInput for API and Chat if function available and not already present
+local apiFrame, apiTxt_r, apiBtn_r
+local chatFrame, chatTxt_r, chatBtn_r
+
+if type(createInput) == "function" then
+    -- call but capture returns (some implementations return only frame, others frame, textbox, button)
+    local ok, r1, r2, r3 = pcall(function()
+        return createInput(gptBackRef, "Put ChatGPT API", 255,255,255, "Enter")
+    end)
+    if ok then apiFrame, apiTxt_r, apiBtn_r = r1, r2, r3 end
+
+    ok, r1, r2, r3 = pcall(function()
+        return createInput(gptBackRef, "Ask anything...", 255,255,255, "Send")
+    end)
+    if ok then chatFrame, chatTxt_r, chatBtn_r = r1, r2, r3 end
+end
+
+-- If createInput didn't exist or didn't return, create quick fallback inputs
+local function makeFallbackInput(parent, placeholder, btnText)
+    local frame = Instance.new("Frame")
+    frame.Name = "aX_Input_Fallback"
+    frame.Size = UDim2.new(1,0,0,40)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(0.75,0,1,0)
+    box.Position = UDim2.new(0,0,0,0)
+    box.Text = ""
+    box.PlaceholderText = placeholder
+    box.TextScaled = true
+    box.ClearTextOnFocus = false
+    box.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    box.TextColor3 = Color3.fromRGB(255,255,255)
+    box.Parent = frame
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.25,0,1,0)
+    btn.Position = UDim2.new(0.75,0,0,0)
+    btn.Text = btnText
+    btn.TextScaled = true
+    btn.BackgroundColor3 = Color3.fromRGB(86,170,255)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Parent = frame
+
+    return frame, box, btn
+end
+
+if not apiFrame and not apiTxt_r and not apiBtn_r then
+    apiFrame, apiTxt_r, apiBtn_r = makeFallbackInput(gptBackRef, "Put ChatGPT API", "Enter")
+end
+if not chatFrame and not chatTxt_r and not chatBtn_r then
+    chatFrame, chatTxt_r, chatBtn_r = makeFallbackInput(gptBackRef, "Ask anything...", "Send")
+end
+
+-- resolve actual TextBox and Button objects
+local apiTxt, apiBtn = resolveInputReturn(gptBackRef, apiFrame, apiTxt_r, apiBtn_r)
+local chatTxt, chatBtn = resolveInputReturn(gptBackRef, chatFrame, chatTxt_r, chatBtn_r)
+
+-- safety checks + diagnostics
+if not apiTxt then warn("[ChatGPT] apiTxt not found; API input will not be available.") end
+if not apiBtn then warn("[ChatGPT] apiBtn not found; API input button unavailable.") end
+if not chatTxt then warn("[ChatGPT] chatTxt not found; chat input will not be available.") end
+if not chatBtn then warn("[ChatGPT] chatBtn not found; chat send button unavailable.") end
+
+-- --------- createChat function (auto-size + color) ----------
 local ChatCounts = 0
 local function createChat(parentChat, isUser, txt)
     ChatCounts = ChatCounts + 1
     local frame = Instance.new("Frame")
-    frame.Name = "ChatItem_"..tostring(ChatCounts)
+    frame.Name = "ChatItem_" .. tostring(ChatCounts)
     frame.BackgroundTransparency = 1
     frame.Size = UDim2.new(1, 0, 0, 0)
     frame.AutomaticSize = Enum.AutomaticSize.Y
     frame.Parent = parentChat
 
     local label = Instance.new("TextLabel")
+    label.Name = "ChatLabel"
     label.Size = UDim2.new(1, -16, 0, 0)
     label.Position = UDim2.new(0, 8, 0, 6)
     label.BackgroundTransparency = 1
@@ -1984,20 +2038,22 @@ local function createChat(parentChat, isUser, txt)
     end
     label.Parent = frame
 
-    -- give the frame a tiny padding bottom so uiLayout spacing works nicely
+    -- sync canvas after short defer so layout updates
     task.defer(function()
         if uiLayout then
-            gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
-            gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.Y)
+            pcall(function()
+                gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
+                gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.Y)
+            end)
         end
     end)
 
     return frame, label
 end
 
--- Lightweight OpenAI call (client-side). Returns string or error-string
+-- --------- Lightweight client-side OpenAI call (use only for local/testing) ----------
 local function callOpenAI_Client(userText, key)
-    if not key then return nil, "no key" end
+    if not key or key == "" then return nil, "no_key" end
     local ok, resp = pcall(function()
         local payload = {
             model = MODEL,
@@ -2019,39 +2075,33 @@ local function callOpenAI_Client(userText, key)
         })
         return res
     end)
-    if not ok or not resp then
-        return nil, "http_failed"
-    end
-    if not resp.Success then
-        return nil, ("http_error "..tostring(resp.StatusCode))
-    end
+    if not ok or not resp then return nil, "http_failed" end
+    if not resp.Success then return nil, ("http_error "..tostring(resp.StatusCode)) end
     local decoded = HttpService:JSONDecode(resp.Body)
     local content = decoded and decoded.choices and decoded.choices[1] and decoded.choices[1].message and decoded.choices[1].message.content
     if content then return tostring(content), nil end
     return nil, "no_content"
 end
 
--- Validate API key (small test). Returns true/false
+-- --------- Validate API key (quick test) ----------
 local function validateKey(testKey)
-    local ok, res = pcall(callOpenAI_Client, "hello", testKey)
-    if ok and res then
-        return true, res
-    else
-        return false, res
-    end
+    local ok, res = pcall(callOpenAI_Client, "Hello", testKey)
+    if ok and res then return true end
+    return false
 end
 
--- Hook API input: support both Enter (FocusLost with enterPressed) and button click
+-- --------- Bind API input handlers ----------
 if apiTxt then
-    -- on Enter (FocusLost)
     apiTxt.FocusLost:Connect(function(enter)
         if not enter then return end
         local newKey = tostring(apiTxt.Text or ""):match("%S+")
-        if not newKey or newKey == "" then return end
-        -- show temporary system message
+        if not newKey or newKey == "" then
+            createChat(gptChat, false, "[System] ❗ API key empty.")
+            return
+        end
         createChat(gptChat, false, "[System] 🔎 Validating API key...")
         task.spawn(function()
-            local ok, _ = validateKey(newKey)
+            local ok = validateKey(newKey)
             if ok then
                 OPENAI_KEY = newKey
                 createChat(gptChat, false, "[System] ✅ API Key verified and saved!")
@@ -2063,11 +2113,14 @@ if apiTxt then
 end
 if apiBtn then
     apiBtn.MouseButton1Click:Connect(function()
-        local newKey = tostring(apiTxt.Text or ""):match("%S+")
-        if not newKey or newKey == "" then return end
+        local newKey = tostring((apiTxt and apiTxt.Text) or ""):match("%S+")
+        if not newKey or newKey == "" then
+            createChat(gptChat, false, "[System] ❗ API key empty.")
+            return
+        end
         createChat(gptChat, false, "[System] 🔎 Validating API key...")
         task.spawn(function()
-            local ok, _ = validateKey(newKey)
+            local ok = validateKey(newKey)
             if ok then
                 OPENAI_KEY = newKey
                 createChat(gptChat, false, "[System] ✅ API Key verified and saved!")
@@ -2078,25 +2131,22 @@ if apiBtn then
     end)
 end
 
--- Hook chat input send
+-- --------- Bind chat send handlers ----------
 local function sendChatMessage()
+    if not chatTxt then return end
     local text = tostring(chatTxt.Text or "")
     if text:match("^%s*$") then return end
     -- show user bubble immediately
     createChat(gptChat, true, text)
     chatTxt.Text = ""
-
-    -- call OpenAI async
+    -- show thinking indicator
+    createChat(gptChat, false, "[System] ⌛ Thinking...")
     task.spawn(function()
         if not OPENAI_KEY then
             createChat(gptChat, false, "[System] ❗ Please set API Key first in the API field above.")
             return
         end
-
-        createChat(gptChat, false, "[System] ⌛ Thinking...")
-
         local reply, err = callOpenAI_Client(text, OPENAI_KEY)
-        -- remove last "Thinking..." system message? (left simple here)
         if reply then
             createChat(gptChat, false, reply)
         else
@@ -2113,3 +2163,5 @@ if chatTxt then
         if enter then sendChatMessage() end
     end)
 end
+
+-- END ChatGPT patch
