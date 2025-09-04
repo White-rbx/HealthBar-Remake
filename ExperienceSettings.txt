@@ -1884,7 +1884,7 @@ end
 local gptGui = Instance.new("Frame")
 gptGui.Name = "ChatGPT"
 gptGui.Size = UDim2.new(0.35, 0, 0.9, 0)
-gptGui.Position = UDim2.new(0, 0, 0.05, 0)
+gptGui.Position = UDim2.new(-0.35, 0, 0.05, 0)
 gptGui.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 gptGui.BackgroundTransparency = 0.5
 if menuGui then gptGui.Parent = menuGui end
