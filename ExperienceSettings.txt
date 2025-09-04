@@ -1898,14 +1898,14 @@ gptBack.Position = UDim2.new(0.02, 0, 0.02, 0)
 gptBack.BackgroundTransparency = 1
 gptBack.Parent = gptGui
 if type(createUIListLayout) == "function" then
-    createUIListLayout(gptBack, 0, 10, HLeft, VTop, FILLV)
+    createUIListLayout(gptBack, 0, 10, HLeft, VTop, FillV)
 end
-
--- APIInput 
-createInput(gptBack, "Put ChatGPT API", 255, 255, 255, "Enter")
 
 -- TextBoxInput
 createInput(gptBack, "Ask anything...", 255, 255, 255, "Send")
+
+-- APIInput 
+createInput(gptBack, "Put ChatGPT API", 255, 255, 255, "Enter")
 
 -- ScrollingFrame
 local gptScroll = Instance.new("ScrollingFrame")
@@ -1924,7 +1924,7 @@ gptChat.Position = UDim2.new(0.02, 0, 0, 10)
 gptChat.BackgroundTransparency = 1
 gptChat.Parent = gptScroll
 if type(createUIListLayout) == "function" then
-    createUIListLayout(gptChat, 0, 5, HLeft, VTop, FILLV)
+    createUIListLayout(gptChat, 0, 5, HLeft, VTop, FillV)
 end
 
 -- ==== CHAT FUNCTION (skeleton) ======
