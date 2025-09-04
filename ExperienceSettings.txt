@@ -1824,7 +1824,7 @@ local function createInput(parentInput, txt, tCR, tCG, tCB, txI, callback, defau
 
     -- Frame
     local Input = Instance.new("Frame")
-    Input.Name = "Input" .. tostring(InputFrame)
+    Input.Name = "a" .. tostring(InputFrame) .. "_Input"
     Input.Size = UDim2.new(1, 0, 0.05, 0)
     Input.BackgroundTransparency = 1
     if parentInput then Input.Parent = parentInput end
@@ -1909,10 +1909,11 @@ createInput(gptBack, "Ask anything...", 255, 255, 255, "Send")
 
 -- ScrollingFrame
 local gptScroll = Instance.new("ScrollingFrame")
+gptScroll.Name = "a0_Scroll"
 gptScroll.Size = UDim2.new(1, 0, 0.7, 0)
 gptScroll.BackgroundTransparency = 0.5
 gptScroll.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-gptScroll.Parent = gptGui
+gptScroll.Parent = gptBack
 if type(createUICorner) == "function" then createUICorner(gptScroll, 0.02, 0) end
 
 -- Chat container inside scroll
