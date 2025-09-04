@@ -1906,6 +1906,12 @@ createInput(gptBack, "Ask anything...", 255, 255, 255, "Send")
 
 -- APIInput 
 createInput(gptBack, "Put ChatGPT API", 255, 255, 255, "Enter")
+-- === REQUIRE SERVICES ===
+local HttpService = game:GetService("HttpService")
+
+-- === STATE ===
+local OPENAI_KEY = nil
+local MODEL = "gpt-3.5-turbo"
 
 -- ScrollingFrame
 local gptScroll = Instance.new("ScrollingFrame")
@@ -1929,29 +1935,181 @@ if type(createUIListLayout) == "function" then
     createUIListLayout(gptChat, 0, 5, HLeft, VTop, FillV)
 end
 
--- ==== CHAT FUNCTION (skeleton) ======
+-- Auto-canvas update (uses UIListLayout on gptChat)
+local uiLayout = gptChat:FindFirstChildOfClass("UIListLayout")
+if not uiLayout then
+    uiLayout = Instance.new("UIListLayout")
+    uiLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    uiLayout.Padding = UDim.new(0,6)
+    uiLayout.Parent = gptChat
+end
+-- make sure scroll auto-resizes
+gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+-- fallback: keep canvas synced
+uiLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    if pcall(function() return uiLayout.AbsoluteContentSize end) then
+        pcall(function()
+            gptScroll.CanvasSize = UDim2.new(0, 0, 0, uiLayout.AbsoluteContentSize.Y)
+            gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.Y)
+        end)
+    end
+end)
+
+-- createChat: create bubble auto-size and color by isUser
 local ChatCounts = 0
-local function createChat(parentChat, TCR, TCG, TCB, txtChat, callBack, defaultState)
+local function createChat(parentChat, isUser, txt)
     ChatCounts = ChatCounts + 1
-    local chatFrame = Instance.new("Frame")
-    chatFrame.Name = "ChatItem_" .. tostring(ChatCounts)
-    chatFrame.BackgroundTransparency = 1
-    chatFrame.Size = UDim2.new(1, 0, 0, 40) -- ปรับให้พอดี
-    if parentChat then chatFrame.Parent = parentChat end
+    local frame = Instance.new("Frame")
+    frame.Name = "ChatItem_"..tostring(ChatCounts)
+    frame.BackgroundTransparency = 1
+    frame.Size = UDim2.new(1, 0, 0, 0)
+    frame.AutomaticSize = Enum.AutomaticSize.Y
+    frame.Parent = parentChat
 
-    local chatLabel = Instance.new("TextLabel")
-    chatLabel.Size = UDim2.new(1, -10, 1, 0)
-    chatLabel.Position = UDim2.new(0, 5, 0, 0)
-    chatLabel.TextWrapped = true
-    chatLabel.TextXAlignment = Enum.TextXAlignment.Left
-    chatLabel.Text = tostring(txtChat or "")
-    chatLabel.TextColor3 = Color3.fromRGB(TCR or 255, TCG or 255, TCB or 255)
-    chatLabel.BackgroundTransparency = 1
-    chatLabel.Parent = chatFrame
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -16, 0, 0)
+    label.Position = UDim2.new(0, 8, 0, 6)
+    label.BackgroundTransparency = 1
+    label.TextWrapped = true
+    label.AutomaticSize = Enum.AutomaticSize.Y
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.RichText = false
+    label.Font = Enum.Font.SourceSans
+    label.TextSize = 18
+    label.Text = tostring(txt or "")
+    if isUser then
+        label.TextColor3 = Color3.fromRGB(86,170,255)
+    else
+        label.TextColor3 = Color3.fromRGB(255,255,255)
+    end
+    label.Parent = frame
 
-    -- return created objects for further handling
-    return chatFrame, chatLabel
+    -- give the frame a tiny padding bottom so uiLayout spacing works nicely
+    task.defer(function()
+        if uiLayout then
+            gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
+            gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.Y)
+        end
+    end)
+
+    return frame, label
 end
 
--- ตัวอย่างการใช้งาน (ทดสอบ)
--- createChat(gptChat, 255,255,255, "Hello from ChatGPT UI")
+-- Lightweight OpenAI call (client-side). Returns string or error-string
+local function callOpenAI_Client(userText, key)
+    if not key then return nil, "no key" end
+    local ok, resp = pcall(function()
+        local payload = {
+            model = MODEL,
+            messages = {
+                { role = "user", content = userText }
+            },
+            max_tokens = 350,
+            temperature = 0.7
+        }
+        local res = HttpService:RequestAsync({
+            Url = "https://api.openai.com/v1/chat/completions",
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json",
+                ["Authorization"] = "Bearer " .. key
+            },
+            Body = HttpService:JSONEncode(payload),
+            Timeout = 20,
+        })
+        return res
+    end)
+    if not ok or not resp then
+        return nil, "http_failed"
+    end
+    if not resp.Success then
+        return nil, ("http_error "..tostring(resp.StatusCode))
+    end
+    local decoded = HttpService:JSONDecode(resp.Body)
+    local content = decoded and decoded.choices and decoded.choices[1] and decoded.choices[1].message and decoded.choices[1].message.content
+    if content then return tostring(content), nil end
+    return nil, "no_content"
+end
+
+-- Validate API key (small test). Returns true/false
+local function validateKey(testKey)
+    local ok, res = pcall(callOpenAI_Client, "hello", testKey)
+    if ok and res then
+        return true, res
+    else
+        return false, res
+    end
+end
+
+-- Hook API input: support both Enter (FocusLost with enterPressed) and button click
+if apiTxt then
+    -- on Enter (FocusLost)
+    apiTxt.FocusLost:Connect(function(enter)
+        if not enter then return end
+        local newKey = tostring(apiTxt.Text or ""):match("%S+")
+        if not newKey or newKey == "" then return end
+        -- show temporary system message
+        createChat(gptChat, false, "[System] 🔎 Validating API key...")
+        task.spawn(function()
+            local ok, _ = validateKey(newKey)
+            if ok then
+                OPENAI_KEY = newKey
+                createChat(gptChat, false, "[System] ✅ API Key verified and saved!")
+            else
+                createChat(gptChat, false, "[System] ❌ Invalid API Key.")
+            end
+        end)
+    end)
+end
+if apiBtn then
+    apiBtn.MouseButton1Click:Connect(function()
+        local newKey = tostring(apiTxt.Text or ""):match("%S+")
+        if not newKey or newKey == "" then return end
+        createChat(gptChat, false, "[System] 🔎 Validating API key...")
+        task.spawn(function()
+            local ok, _ = validateKey(newKey)
+            if ok then
+                OPENAI_KEY = newKey
+                createChat(gptChat, false, "[System] ✅ API Key verified and saved!")
+            else
+                createChat(gptChat, false, "[System] ❌ Invalid API Key.")
+            end
+        end)
+    end)
+end
+
+-- Hook chat input send
+local function sendChatMessage()
+    local text = tostring(chatTxt.Text or "")
+    if text:match("^%s*$") then return end
+    -- show user bubble immediately
+    createChat(gptChat, true, text)
+    chatTxt.Text = ""
+
+    -- call OpenAI async
+    task.spawn(function()
+        if not OPENAI_KEY then
+            createChat(gptChat, false, "[System] ❗ Please set API Key first in the API field above.")
+            return
+        end
+
+        createChat(gptChat, false, "[System] ⌛ Thinking...")
+
+        local reply, err = callOpenAI_Client(text, OPENAI_KEY)
+        -- remove last "Thinking..." system message? (left simple here)
+        if reply then
+            createChat(gptChat, false, reply)
+        else
+            createChat(gptChat, false, "[System] Error: "..tostring(err))
+        end
+    end)
+end
+
+if chatBtn then
+    chatBtn.MouseButton1Click:Connect(sendChatMessage)
+end
+if chatTxt then
+    chatTxt.FocusLost:Connect(function(enter)
+        if enter then sendChatMessage() end
+    end)
+end
