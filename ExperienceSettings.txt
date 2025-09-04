@@ -1833,6 +1833,24 @@ else
     gptGui_local.Parent = menuGui
     if type(createUICorner) == "function" then pcall(createUICorner, gptGui_local, 0.02, 0) end
 
+-- ============== ChatGPT toggle ==============
+local gptOpen = false
+
+local function toggleGPT()
+    gptOpen = not gptOpen
+    if gptOpen then
+        -- เปิด: เลื่อนเข้ามา
+        tweenObject(gptGui, { Position = UDim2.new(0, 0, 0.05, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    else
+        -- ปิด: เลื่อนออกไปทางซ้าย
+        tweenObject(gptGui, { Position = UDim2.new(-0.35, 0, 0.05, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    end
+end
+
+if gpt then
+    gpt.MouseButton1Click:Connect(toggleGPT)
+end
+
     -- inner background container (gptBack)
     local gptBack_local = Instance.new("Frame")
     gptBack_local.Name = "Background"
@@ -2143,7 +2161,10 @@ local function sendChatMessage()
     createChat(gptChat, false, "[System] ⌛ Thinking...")
     task.spawn(function()
         if not OPENAI_KEY then
-            createChat(gptChat, false, "[System] ❗ Please set API Key first in the API field above.")
+    -- แสดง error สีแดง ถ้ายังไม่ใส่ API
+    _gpt_createSystem("Error HttpService: Did you forget to put API?", {255, 80, 80})
+    return
+end
             return
         end
         local reply, err = callOpenAI_Client(text, OPENAI_KEY)
