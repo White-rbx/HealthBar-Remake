@@ -1800,66 +1800,106 @@ local LMiter = Enum.LineJoinMode.Miter
 local LRound = Enum.LineJoinMode.Round
 
 local function createUIStroke(parentStroke, ASM, CR, CG, CB, LJM, TN)
- local UIStroke = Instance.new("UIStroke")
- UIStroke.ApplyStrokeMode = ASM or Enum.ApplyStrokeMode.Border
- UIStroke.Color = Color3.fromRGB(CR, CG, CB or 255, 255, 255)
- UIStroke.LineJoinMode = LJM or Enum.LineJoinMode.Round
- UIStroke.Thickness = TN or 1
-
+    local UIStroke = Instance.new("UIStroke")
+    UIStroke.ApplyStrokeMode = ASM or Enum.ApplyStrokeMode.Border
+    -- กำหนดสีอย่างถูกต้อง (default 255 ถ้า nil)
+    UIStroke.Color = Color3.fromRGB(CR or 255, CG or 255, CB or 255)
+    UIStroke.LineJoinMode = LJM or Enum.LineJoinMode.Round
+    UIStroke.Thickness = TN or 1
+    if parentStroke and parentStroke.Parent ~= nil then
+        UIStroke.Parent = parentStroke
+    else
+        -- ถ้า parent ไม่พร้อม ให้คืน UIStroke ไว้ (caller ควร parent เอง)
+        -- หรือจะ parent ไปที่ workspace/temp ตามต้องการ
+    end
+    return UIStroke
+end
 
 -- ====== INPUT FUNCTION ========
 -- Input builder
 local InputFrame = 0
 local function createInput(parentInput, txt, tCR, tCG, tCB, txI, callback, defaultState)
-    InputFrame += 1
+    -- เพิ่ม index แบบปลอดภัย
+    InputFrame = InputFrame + 1
 
--- Frame
- local Input = Instance.new("Frame")
- Input.Name = "Input" .. InputFrame
- Input.Size = UDim2.new(1, 0, 0.05, 0)
- Input.BackgroundTransparency = 1
- Input.Parent = parentInput
+    -- Frame
+    local Input = Instance.new("Frame")
+    Input.Name = "Input" .. tostring(InputFrame)
+    Input.Size = UDim2.new(1, 0, 0.05, 0)
+    Input.BackgroundTransparency = 1
+    if parentInput then Input.Parent = parentInput end
 
--- Input
- local txtbA = Instance.new("TextBox")
- txtbA.Size = UDim2.new(0.8, 0, 1, 0)
- txtbA.Text = txt
- txtbA.BackgroundColor3 = Color3.new(90, 89, 91)
- txtbA.TextScaled = true
- txtbA.TextColor3 = Color3.fromRGB(tCR, tCG, tCB or 255, 255, 255)
- txtbA.Parent = Input
- createUICorner(txtbA, 0.2, 0)
- createUIStroke(txtbA, ABorder,255, 255, 255,  LRound, 1)
+    -- Input (TextBox)
+    local txtbA = Instance.new("TextBox")
+    txtbA.Size = UDim2.new(0.8, 0, 1, 0)
+    txtbA.Text = tostring(txt or "")
+    txtbA.BackgroundColor3 = Color3.fromRGB(90, 89, 91)
+    txtbA.TextScaled = true
+    txtbA.TextColor3 = Color3.fromRGB(tCR or 255, tCG or 255, tCB or 255)
+    txtbA.ClearTextOnFocus = false
+    txtbA.Parent = Input
+    if type(createUICorner) == "function" then createUICorner(txtbA, 0.2, 0) end
+    if type(createUIStroke) == "function" then createUIStroke(txtbA, ABorder, 255, 255, 255, LRound, 1) end
 
--- TextButton
- local txtbB = Instance.new("TextButton")
- txtbB.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
- txtbB.Size = UDim2.new(0.2, 0, 1, 0)
- txtbB.Position = UDim2.new(0.8, 0, 0, 0)
- txtbB.Text = txI
- txtbB.TextScaled = true
- txtbB.TextColor3 = Color3.fromRGB(0, 0, 0)
- txtbB.Parent = Input
- createUICorner(txtbB, 0.2, 0)
+    -- TextButton (ขวา)
+    local txtbB = Instance.new("TextButton")
+    txtbB.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    txtbB.Size = UDim2.new(0.2, 0, 1, 0)
+    txtbB.Position = UDim2.new(0.8, 0, 0, 0)
+    txtbB.Text = tostring(txI or "")
+    txtbB.TextScaled = true
+    txtbB.TextColor3 = Color3.fromRGB(0, 0, 0)
+    txtbB.Parent = Input
+    if type(createUICorner) == "function" then createUICorner(txtbB, 0.2, 0) end
 
--- ====== CHATGPT ========
+    -- ถ้ามี callback ให้เชื่อม
+    if type(callback) == "function" then
+        txtbB.MouseButton1Click:Connect(function()
+            pcall(function() callback(txtbA.Text) end)
+        end)
+    end
+
+    return Input, txtbA, txtbB
+end
+
+-- ====== CHATGPT UI CREATION ========
+-- สมมติว่า menuGui ถูกประกาศ/มีอยู่ข้างนอก (ถ้ายังไม่มี ให้สร้างหรือ parent เหมาะสม)
+-- ตรวจเช็กว่า menuGui มีอยู่ก่อน
+if not menuGui then
+    -- ถ้าไม่มี menuGui ให้สร้าง ScreenGui เป็น fallback (เฉพาะ LocalScript)
+    local player = game:GetService("Players").LocalPlayer
+    if player and player:FindFirstChild("PlayerGui") then
+        local sg = Instance.new("ScreenGui")
+        sg.Name = "MenuGui_Fallback"
+        sg.ResetOnSpawn = false
+        sg.Parent = player:WaitForChild("PlayerGui")
+        menuGui = sg
+    else
+        -- ถ้าไม่มี PlayerGui (server script) จะไม่สร้าง
+        warn("[ChatGPT UI] menuGui not found and PlayerGui unavailable.")
+    end
+end
+
+-- สร้าง panel หลักของ ChatGPT
 local gptGui = Instance.new("Frame")
 gptGui.Name = "ChatGPT"
 gptGui.Size = UDim2.new(0.35, 0, 0.9, 0)
 gptGui.Position = UDim2.new(0, 0, 0.05, 0)
 gptGui.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 gptGui.BackgroundTransparency = 0.5
-gptGui.Parent = menuGui
-createUICorner(gptGui, 0.02, 0)
+if menuGui then gptGui.Parent = menuGui end
+if type(createUICorner) == "function" then createUICorner(gptGui, 0.02, 0) end
 
--- Background
+-- Background container
 local gptBack = Instance.new("Frame")
 gptBack.Name = "Background"
 gptBack.Size = UDim2.new(0.96, 0, 0.96, 0)
 gptBack.Position = UDim2.new(0.02, 0, 0.02, 0)
 gptBack.BackgroundTransparency = 1
 gptBack.Parent = gptGui
-createUIListLayout(gptBack, 0, 10, HLeft, VTop, FILLV)
+if type(createUIListLayout) == "function" then
+    createUIListLayout(gptBack, 0, 10, HLeft, VTop, FILLV)
+end
 
 -- APIInput 
 createInput(gptBack, "Put ChatGPT API", 255, 255, 255, "Enter")
@@ -1873,18 +1913,42 @@ gptScroll.Size = UDim2.new(1, 0, 0.7, 0)
 gptScroll.BackgroundTransparency = 0.5
 gptScroll.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 gptScroll.Parent = gptGui
-createUICorner(gptScroll, 0.02, 0)
+if type(createUICorner) == "function" then createUICorner(gptScroll, 0.02, 0) end
 
--- Chat
+-- Chat container inside scroll
 local gptChat = Instance.new("Frame")
 gptChat.Name = "Chat"
 gptChat.Size = UDim2.new(0.96, 0, 0.96, 0)
 gptChat.Position = UDim2.new(0.02, 0, 0, 10)
 gptChat.BackgroundTransparency = 1
 gptChat.Parent = gptScroll
-createUIListLayout(gptChat, 0, 5, HLeft, VTop, FILLV)
+if type(createUIListLayout) == "function" then
+    createUIListLayout(gptChat, 0, 5, HLeft, VTop, FILLV)
+end
 
--- ==== CHAT FUNCTION ======
+-- ==== CHAT FUNCTION (skeleton) ======
 local ChatCounts = 0
 local function createChat(parentChat, TCR, TCG, TCB, txtChat, callBack, defaultState)
- ChatCounts += 1
+    ChatCounts = ChatCounts + 1
+    local chatFrame = Instance.new("Frame")
+    chatFrame.Name = "ChatItem_" .. tostring(ChatCounts)
+    chatFrame.BackgroundTransparency = 1
+    chatFrame.Size = UDim2.new(1, 0, 0, 40) -- ปรับให้พอดี
+    if parentChat then chatFrame.Parent = parentChat end
+
+    local chatLabel = Instance.new("TextLabel")
+    chatLabel.Size = UDim2.new(1, -10, 1, 0)
+    chatLabel.Position = UDim2.new(0, 5, 0, 0)
+    chatLabel.TextWrapped = true
+    chatLabel.TextXAlignment = Enum.TextXAlignment.Left
+    chatLabel.Text = tostring(txtChat or "")
+    chatLabel.TextColor3 = Color3.fromRGB(TCR or 255, TCG or 255, TCB or 255)
+    chatLabel.BackgroundTransparency = 1
+    chatLabel.Parent = chatFrame
+
+    -- return created objects for further handling
+    return chatFrame, chatLabel
+end
+
+-- ตัวอย่างการใช้งาน (ทดสอบ)
+-- createChat(gptChat, 255,255,255, "Hello from ChatGPT UI")
