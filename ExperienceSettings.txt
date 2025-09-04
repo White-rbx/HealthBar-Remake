@@ -1913,6 +1913,8 @@ gptScroll.Name = "a0_Scroll"
 gptScroll.Size = UDim2.new(1, 0, 0.7, 0)
 gptScroll.BackgroundTransparency = 0.5
 gptScroll.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+gptScroll.Thickness = 0
+gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 gptScroll.Parent = gptBack
 if type(createUICorner) == "function" then createUICorner(gptScroll, 0.02, 0) end
 
