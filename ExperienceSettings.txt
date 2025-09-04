@@ -1791,3 +1791,100 @@ local function toggleTB()
     end
 end
 hbm.MouseButton1Click:Connect(toggleTB)
+
+-- ====== UISTROKE FUNCTION ======
+local ABorder = Enum.ApplyStrokeMode.Border
+local AContxt = Enum.ApplyStrokeMode.Contextual
+local LBevel = Enum.LineJoinMode.Bevel
+local LMiter = Enum.LineJoinMode.Miter
+local LRound = Enum.LineJoinMode.Round
+
+local function createUIStroke(parentStroke, ASM, CR, CG, CB, LJM, TN)
+ local UIStroke = Instance.new("UIStroke")
+ UIStroke.ApplyStrokeMode = ASM or Enum.ApplyStrokeMode.Border
+ UIStroke.Color = Color3.fromRGB(CR, CG, CB or 255, 255, 255)
+ UIStroke.LineJoinMode = LJM or Enum.LineJoinMode.Round
+ UIStroke.Thickness = TN or 1
+
+
+-- ====== INPUT FUNCTION ========
+-- Input builder
+local InputFrame = 0
+local function createInput(parentInput, txt, tCR, tCG, tCB, txI, callback, defaultState)
+    InputFrame += 1
+
+-- Frame
+ local Input = Instance.new("Frame")
+ Input.Name = "Input" .. InputFrame
+ Input.Size = UDim2.new(1, 0, 0.05, 0)
+ Input.BackgroundTransparency = 1
+ Input.Parent = parentInput
+
+-- Input
+ local txtbA = Instance.new("TextBox")
+ txtbA.Size = UDim2.new(0.8, 0, 1, 0)
+ txtbA.Text = txt
+ txtbA.BackgroundColor3 = Color3.new(90, 89, 91)
+ txtbA.TextScaled = true
+ txtbA.TextColor3 = Color3.fromRGB(tCR, tCG, tCB or 255, 255, 255)
+ txtbA.Parent = Input
+ createUICorner(txtbA, 0.2, 0)
+ createUIStroke(txtbA, ABorder,255, 255, 255,  LRound, 1)
+
+-- TextButton
+ local txtbB = Instance.new("TextButton")
+ txtbB.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ txtbB.Size = UDim2.new(0.2, 0, 1, 0)
+ txtbB.Position = UDim2.new(0.8, 0, 0, 0)
+ txtbB.Text = txI
+ txtbB.TextScaled = true
+ txtbB.TextColor3 = Color3.fromRGB(0, 0, 0)
+ txtbB.Parent = Input
+ createUICorner(txtbB, 0.2, 0)
+
+-- ====== CHATGPT ========
+local gptGui = Instance.new("Frame")
+gptGui.Name = "ChatGPT"
+gptGui.Size = UDim2.new(0.35, 0, 0.9, 0)
+gptGui.Position = UDim2.new(0, 0, 0.05, 0)
+gptGui.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+gptGui.BackgroundTransparency = 0.5
+gptGui.Parent = menuGui
+createUICorner(gptGui, 0.02, 0)
+
+-- Background
+local gptBack = Instance.new("Frame")
+gptBack.Name = "Background"
+gptBack.Size = UDim2.new(0.96, 0, 0.96, 0)
+gptBack.Position = UDim2.new(0.02, 0, 0.02, 0)
+gptBack.BackgroundTransparency = 1
+gptBack.Parent = gptGui
+createUIListLayout(gptBack, 0, 10, HLeft, VTop, FILLV)
+
+-- APIInput 
+createInput(gptBack, "Put ChatGPT API", 255, 255, 255, "Enter")
+
+-- TextBoxInput
+createInput(gptBack, "Ask anything...", 255, 255, 255, "Send")
+
+-- ScrollingFrame
+local gptScroll = Instance.new("ScrollingFrame")
+gptScroll.Size = UDim2.new(1, 0, 0.7, 0)
+gptScroll.BackgroundTransparency = 0.5
+gptScroll.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+gptScroll.Parent = gptGui
+createUICorner(gptScroll, 0.02, 0)
+
+-- Chat
+local gptChat = Instance.new("Frame")
+gptChat.Name = "Chat"
+gptChat.Size = UDim2.new(0.96, 0, 0.96, 0)
+gptChat.Position = UDim2.new(0.02, 0, 0, 10)
+gptChat.BackgroundTransparency = 1
+gptChat.Parent = gptScroll
+createUIListLayout(gptChat, 0, 5, HLeft, VTop, FILLV)
+
+-- ==== CHAT FUNCTION ======
+local ChatCounts = 0
+local function createChat(parentChat, TCR, TCG, TCB, txtChat, callBack, defaultState)
+ ChatCounts += 1
