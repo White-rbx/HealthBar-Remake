@@ -1,0 +1,545 @@
+-- ChatGPT Full LocalScript (Extended commands) for ExperienceSettings (menuGui/CoreGui only)
+-- Includes: 2-step validation, debug, commands (/API, /HttpState, /CheckPlaHP, /Instance, /Destroy, /View, /loadstring, etc.)
+-- WARNING: client-side API keys and loadstring are dangerous. Use for testing/local only.
+
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- ---------- root (menuGui / CoreGui only) ----------
+local root = menuGui
+if not root or not root.Parent then
+    local ok_get, gethui_fn = pcall(function() return gethui end)
+    if ok_get and type(gethui_fn) == "function" then
+        local suc, gh = pcall(gethui_fn)
+        if suc and gh then root = gh end
+    end
+    if not root or not root.Parent then
+        local core = game:GetService("CoreGui")
+        if core and core.Parent then root = core end
+    end
+end
+
+if not root or not root.Parent then
+    warn("[ChatGPT-FullX] menuGui/CoreGui not found. Aborting.")
+    return
+end
+
+-- ---------- try to find existing toggle 'gpt' (a3_ChatGPT) ----------
+if not gpt or type(gpt) ~= "Instance" then
+    local found = root:FindFirstChild("a3_ChatGPT", true) or root:FindFirstChild("gpt", true)
+    if found and (found:IsA("ImageButton") or found:IsA("TextButton")) then
+        gpt = found
+    else
+        gpt = nil
+        warn("[ChatGPT-FullX] toggle button 'gpt' not found in menuGui. Panel can still be opened programmatically.")
+    end
+end
+
+-- ---------- state ----------
+local STATE = {
+    OPENAI_KEY = nil,
+    PROJECT_ID = nil,
+    MODEL = "gpt-3.5-turbo",
+    validated = false,
+    requestInFlight = false
+}
+
+-- ---------- helpers ----------
+local function safeTween(obj, props, time, style, dir)
+    if not obj or not obj.Parent then return end
+    if type(tweenObject) == "function" then
+        pcall(function() tweenObject(obj, props, time, style, dir) end)
+        return
+    end
+    pcall(function()
+        local info = TweenInfo.new(time or 0.28, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out)
+        local tw = TweenService:Create(obj, info, props)
+        tw:Play()
+    end)
+end
+
+local function redactKey(k)
+    if not k or type(k) ~= "string" then return "<nil>" end
+    if #k <= 12 then return "********" end
+    return k:sub(1,6) .. "..." .. k:sub(-6)
+end
+
+local function trim(s) return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "")) end
+
+local function parseKeyProj(raw)
+    if not raw then return nil, nil end
+    local s = trim(raw)
+    if s:find("|") then
+        local a,b = s:match("^(.-)|(.+)$")
+        if a and b then return trim(a), trim(b) end
+    end
+    local key = s:match("^(%S+)")
+    local proj = s:match("proj:([%w_%-]+)")
+    if not proj then
+        local tail = s:match("%S+%s+([%w_%-]+)$")
+        if tail and tail:match("^proj_") then proj = tail end
+    end
+    return key, proj
+end
+
+local function httpEnabled()
+    local ok, val = pcall(function() return HttpService.HttpEnabled end)
+    if not ok then return false end
+    return val == true
+end
+
+-- eval helper (uses loadstring) — returns value or nil + err
+local function safeEval(expr)
+    if not expr or expr == "" then return nil, "empty" end
+    -- try to return expression
+    local f, err = loadstring("return " .. expr)
+    if not f then
+        return nil, err
+    end
+    local ok, res = pcall(f)
+    if not ok then
+        return nil, res
+    end
+    return res, nil
+end
+
+-- resolve locate string to actual object (tries evaluating "game.Workspace.Part" etc)
+local function resolveLocate(locateStr)
+    if not locateStr or locateStr == "" then return nil, "empty locate" end
+    local s = trim(locateStr)
+    -- try eval: return game:FindFirstChild or workspace reference
+    local ok, val = pcall(function()
+        local f, e = loadstring("return " .. s)
+        if not f then return nil, e end
+        return f()
+    end)
+    if ok and val then return val, nil end
+    -- fallback: do manual traversal when s starts with "game." or "workspace."
+    if s:match("^game%.") or s:match("^workspace") then
+        local evok, evres = pcall(function()
+            local func = loadstring("return " .. s)
+            if not func then return nil end
+            return func()
+        end)
+        if evok and evres then return evres, nil end
+    end
+    return nil, "resolve_failed"
+end
+
+-- find object by name (search workspace & descendants)
+local function findObjectByName(name)
+    if not name or name == "" then return nil end
+    -- search workspace first
+    local ws = workspace
+    local found = ws:FindFirstChild(name, true)
+    if found then return found end
+    -- search game hierarchy
+    for _, service in ipairs(game:GetChildren()) do
+        if service and service.FindFirstChild then
+            local f = service:FindFirstChild(name, true)
+            if f then return f end
+        end
+    end
+    return nil
+end
+
+-- apply color to object (attempts multiple property names)
+local function applyColorToObject(obj, color)
+    if not obj or not color then return false, "invalid" end
+    pcall(function()
+        if obj:IsA("BasePart") then obj.Color = color end
+        if obj:FindFirstChildWhichIsA("Decal") then
+            for _, d in ipairs(obj:GetDescendants()) do
+                if d:IsA("Decal") then
+                    pcall(function() d.Color3 = color end)
+                end
+            end
+        end
+        -- UI objects
+        pcall(function() if obj.BackgroundColor3 then obj.BackgroundColor3 = color end end)
+        pcall(function() if obj.TextColor3 then obj.TextColor3 = color end end)
+        pcall(function() if obj.ImageColor3 then obj.ImageColor3 = color end end)
+    end)
+    return true, nil
+end
+
+-- ---------- UI: create/reuse under root ----------
+local gptGui = root:FindFirstChild("gptGui", true)
+if not gptGui then
+    gptGui = Instance.new("Frame")
+    gptGui.Name = "gptGui"
+    gptGui.Size = UDim2.new(0.35, 0, 0.9, 0)
+    gptGui.Position = UDim2.new(-0.35, 0, 0.05, 0)
+    gptGui.BackgroundColor3 = Color3.fromRGB(18,18,20)
+    gptGui.BackgroundTransparency = 0.12
+    gptGui.Parent = root
+end
+
+local gptBack = gptGui:FindFirstChild("Background")
+if not gptBack then
+    gptBack = Instance.new("Frame")
+    gptBack.Name = "Background"
+    gptBack.Size = UDim2.new(0.96,0,0.96,0)
+    gptBack.Position = UDim2.new(0.02,0,0.02,0)
+    gptBack.BackgroundTransparency = 1
+    gptBack.Parent = gptGui
+end
+
+local gptScroll = gptBack:FindFirstChild("a0_Scroll")
+if not gptScroll then
+    gptScroll = Instance.new("ScrollingFrame")
+    gptScroll.Name = "a0_Scroll"
+    gptScroll.Size = UDim2.new(1, 0, 0.62, 0)
+    gptScroll.Position = UDim2.new(0, 0, 0.18, 0)
+    gptScroll.BackgroundTransparency = 0.5
+    gptScroll.BackgroundColor3 = Color3.fromRGB(12,12,12)
+    gptScroll.ScrollBarThickness = 6
+    gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    gptScroll.Parent = gptBack
+end
+
+local gptChat = gptScroll:FindFirstChild("Chat")
+if not gptChat then
+    gptChat = Instance.new("Frame")
+    gptChat.Name = "Chat"
+    gptChat.Size = UDim2.new(0.96,0,0,0)
+    gptChat.Position = UDim2.new(0.02,0,0,10)
+    gptChat.BackgroundTransparency = 1
+    gptChat.Parent = gptScroll
+end
+
+local uiLayout = gptChat:FindFirstChildOfClass("UIListLayout")
+if not uiLayout then
+    uiLayout = Instance.new("UIListLayout")
+    uiLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    uiLayout.Padding = UDim.new(0,6)
+    uiLayout.Parent = gptChat
+end
+uiLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    pcall(function()
+        gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
+        gptScroll.CanvasPosition = Vector2.new(0, math.max(0, uiLayout.AbsoluteContentSize.Y))
+    end)
+end)
+
+-- bottom input
+local inputFrame = gptGui:FindFirstChild("a_chat_input") or Instance.new("Frame")
+inputFrame.Name = "a_chat_input"
+inputFrame.Size = UDim2.new(1,0,0,42)
+inputFrame.Position = UDim2.new(0,0,0.82,0)
+inputFrame.BackgroundTransparency = 1
+inputFrame.Parent = gptGui
+
+local chatBox = inputFrame:FindFirstChild("ChatBox")
+local sendBtn = inputFrame:FindFirstChild("SendBtn")
+if not chatBox or not chatBox:IsA("TextBox") then
+    chatBox = Instance.new("TextBox")
+    chatBox.Name = "ChatBox"
+    chatBox.Size = UDim2.new(0.75, -6, 1, 0)
+    chatBox.Position = UDim2.new(0, 6, 0, 0)
+    chatBox.PlaceholderText = "Ask anything..."
+    chatBox.ClearTextOnFocus = false
+    chatBox.Font = Enum.Font.SourceSans
+    chatBox.TextSize = 16
+    chatBox.BackgroundColor3 = Color3.fromRGB(255,255,255)
+    chatBox.TextColor3 = Color3.fromRGB(0,0,0)
+    chatBox.Parent = inputFrame
+end
+if not sendBtn or not sendBtn:IsA("TextButton") then
+    sendBtn = Instance.new("TextButton")
+    sendBtn.Name = "SendBtn"
+    sendBtn.Size = UDim2.new(0.25, -6, 1, 0)
+    sendBtn.Position = UDim2.new(0.75, 2, 0, 0)
+    sendBtn.Text = "Send"
+    sendBtn.TextScaled = true
+    sendBtn.BackgroundColor3 = Color3.fromRGB(86,170,255)
+    sendBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    sendBtn.Parent = inputFrame
+end
+
+-- two-step rows
+local function makeRow(parent, id, placeholder, btnText)
+    local f = Instance.new("Frame")
+    f.Name = id .. "_frame"
+    f.Size = UDim2.new(1,0,0,36)
+    f.BackgroundTransparency = 1
+    f.Parent = parent
+    local box = Instance.new("TextBox")
+    box.Name = id .. "_box"
+    box.Size = UDim2.new(0.75,0,1,0)
+    box.Position = UDim2.new(0,0,0,0)
+    box.PlaceholderText = placeholder
+    box.ClearTextOnFocus = false
+    box.Font = Enum.Font.SourceSans
+    box.TextSize = 16
+    box.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    box.TextColor3 = Color3.fromRGB(255,255,255)
+    box.Parent = f
+    local btn = Instance.new("TextButton")
+    btn.Name = id .. "_btn"
+    btn.Size = UDim2.new(0.25,0,1,0)
+    btn.Position = UDim2.new(0.75,0,0,0)
+    btn.Text = btnText
+    btn.TextScaled = true
+    btn.BackgroundColor3 = Color3.fromRGB(86,170,255)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Parent = f
+    return f, box, btn
+end
+
+local projFrame, projBox, projBtn = gptBack:FindFirstChild("a_proj_input_frame") and gptBack:FindFirstChild("a_proj_input_box") and gptBack:FindFirstChild("a_proj_input_btn")
+if not projFrame then
+    projFrame, projBox, projBtn = makeRow(gptBack, "a_proj_input", "Enter Project ID (proj_xxxxx)", "Next")
+end
+local apiFrame, apiBox, apiBtn = gptBack:FindFirstChild("a_api_input_frame") and gptBack:FindFirstChild("a_api_input_box") and gptBack:FindFirstChild("a_api_input_btn")
+if not apiFrame then
+    apiFrame, apiBox, apiBtn = makeRow(gptBack, "a_api_input", "Enter API key (sk-proj-... or sk-...)", "Save")
+    apiFrame.Position = UDim2.new(0,0,0,40)
+    apiFrame.Visible = false
+end
+
+-- ---------- UI append helpers ----------
+local chatCount = 0
+local function appendChat(isUser, text, colorTbl)
+    chatCount = chatCount + 1
+    local fr = Instance.new("Frame")
+    fr.Name = "ChatItem_"..chatCount
+    fr.BackgroundTransparency = 1
+    fr.Size = UDim2.new(1,0,0,0)
+    fr.AutomaticSize = Enum.AutomaticSize.Y
+    fr.Parent = gptChat
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Name = "ChatLabel"
+    lbl.Size = UDim2.new(1, -16, 0, 0)
+    lbl.Position = UDim2.new(0, 8, 0, 6)
+    lbl.BackgroundTransparency = 1
+    lbl.TextWrapped = true
+    lbl.AutomaticSize = Enum.AutomaticSize.Y
+    lbl.Font = Enum.Font.SourceSans
+    lbl.TextSize = 18
+    lbl.Text = tostring(text or "")
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    if colorTbl and type(colorTbl) == "table" then
+        pcall(function() lbl.TextColor3 = Color3.fromRGB(colorTbl[1], colorTbl[2], colorTbl[3]) end)
+    else
+        if isUser then lbl.TextColor3 = Color3.fromRGB(86,170,255) else lbl.TextColor3 = Color3.fromRGB(255,255,255) end
+    end
+    lbl.Parent = fr
+
+    task.defer(function()
+        pcall(function()
+            gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
+            gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.Y)
+        end)
+    end)
+    return fr, lbl
+end
+
+local function appendDebug(msg)
+    appendChat(false, "[Debug] "..tostring(msg), {200,200,200})
+    warn("[ChatGPT-Debug] "..tostring(msg))
+end
+
+-- ---------- robust OpenAI call with debug + retry (same as before) ----------
+local function callOpenAI_debug(prompt, key, proj)
+    if not httpEnabled() then
+        appendDebug("HttpService.HttpEnabled = false. Enable HTTP in Game Settings.")
+        return nil, "http_disabled"
+    end
+    if not key or key == "" then
+        appendDebug("No API key provided.")
+        return nil, "no_key"
+    end
+
+    local attempts = 2
+    local backoffs = {1, 2}
+    for attempt = 1, attempts do
+        local payload = {
+            model = STATE.MODEL,
+            messages = { { role = "user", content = prompt } },
+            max_tokens = 300,
+            temperature = 0.6
+        }
+        local headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Bearer " .. tostring(key)
+        }
+        if proj and proj ~= "" then headers["OpenAI-Project"] = tostring(proj) end
+
+        appendDebug(("Attempt %d: POST /v1/chat/completions (key=%s, project=%s)"):format(attempt, redactKey(key), tostring(proj)))
+        appendDebug("Payload preview: "..string.sub(HttpService:JSONEncode(payload),1,400))
+
+        local ok, respOrErr = pcall(function()
+            return HttpService:RequestAsync({
+                Url = "https://api.openai.com/v1/chat/completions",
+                Method = "POST",
+                Headers = headers,
+                Body = HttpService:JSONEncode(payload),
+                Timeout = 25,
+            })
+        end)
+
+        if not ok then
+            appendDebug("RequestAsync pcall failed: "..tostring(respOrErr))
+            if attempt < attempts then
+                appendDebug("Retrying after "..tostring(backoffs[attempt]).."s")
+                task.wait(backoffs[attempt])
+            else
+                return nil, "http_pcall_failed"
+            end
+        else
+            local resp = respOrErr
+            appendDebug("HTTP status: "..tostring(resp.StatusCode).." Success: "..tostring(resp.Success))
+            appendDebug(("Body (trunc 1000): %s"):format((tostring(resp.Body) or ""):sub(1,1000)))
+            if not resp.Success then
+                local parsed = nil
+                pcall(function() parsed = HttpService:JSONDecode(resp.Body or "{}") end)
+                local errMsg = parsed and parsed.error and parsed.error.message or nil
+                if tostring(resp.StatusCode) == "401" or (errMsg and tostring(errMsg):lower():find("invalid")) then
+                    appendDebug("Auth failed: invalid API key or unauthorized. Check key and project header.")
+                    return nil, "unauthorized: "..tostring(errMsg or resp.StatusCode)
+                end
+                if tostring(resp.StatusCode) == "429" then
+                    appendDebug("Rate limited (429).")
+                    return nil, "rate_limited"
+                end
+                if attempt < attempts then
+                    appendDebug("Non-success -> retrying")
+                    task.wait(backoffs[attempt])
+                else
+                    return nil, ("http_error_"..tostring(resp.StatusCode) .. (errMsg and (": "..errMsg) or ""))
+                end
+            else
+                local ok2, decoded = pcall(function() return HttpService:JSONDecode(resp.Body or "") end)
+                if not ok2 or not decoded then
+                    appendDebug("JSON decode failed.")
+                    return nil, "json_decode_failed"
+                end
+                local content = nil
+                pcall(function()
+                    if decoded.choices and decoded.choices[1] and decoded.choices[1].message and decoded.choices[1].message.content then
+                        content = decoded.choices[1].message.content
+                    end
+                end)
+                if content then
+                    appendDebug("Received content (len="..tostring(#tostring(content))..")")
+                    return tostring(content), nil
+                else
+                    appendDebug("No content in response.")
+                    return nil, "no_content"
+                end
+            end
+        end
+    end
+    return nil, "http_failed_all_attempts"
+end
+
+-- ---------- validation helpers ----------
+local function isValidProjectFormat(p)
+    if not p then return false end
+    return tostring(p):match("^proj_[%w_%-]+") ~= nil
+end
+
+-- ---------- command handler (/ commands) ----------
+local savedKeeps = {}
+local savedViewState = { active = false, conn = nil, prevType = nil, prevSubject = nil }
+
+local function try_parse_parentheses_content(txt)
+    local inside = txt:match("%((.*)%)")
+    if inside then
+        inside = inside:gsub('^%s*"', ""):gsub('"%s*$', "")
+        return trim(inside)
+    end
+    return nil
+end
+
+local function split_args_parentheses(s)
+    -- get everything inside parentheses, then split by comma (top-level)
+    local inside = s:match("%((.*)%)")
+    if not inside then return {} end
+    local parts = {}
+    local cur = ""
+    local depth = 0
+    for i = 1, #inside do
+        local ch = inside:sub(i,i)
+        if ch == "," and depth == 0 then
+            table.insert(parts, trim(cur))
+            cur = ""
+        else
+            cur = cur .. ch
+            if ch == "(" then depth = depth + 1 end
+            if ch == ")" then depth = math.max(0, depth - 1) end
+        end
+    end
+    if trim(cur) ~= "" then table.insert(parts, trim(cur)) end
+    -- remove surrounding quotes if present
+    for i,p in ipairs(parts) do
+        parts[i] = p:gsub("^%s*\"",""):gsub("\"%s*$","")
+        parts[i] = p:gsub("^%s*'",""):gsub("'%s*$","")
+    end
+    return parts
+end
+
+local function checkPlayerByName(name)
+    if not name or name == "" then return nil end
+    name = trim(name)
+    -- exact match first
+    local p = Players:FindFirstChild(name)
+    if p then return p end
+    -- try case-insensitive
+    for _,pl in ipairs(Players:GetPlayers()) do
+        if pl.Name:lower():find(name:lower()) then return pl end
+    end
+    return nil
+end
+
+local function handleCommand(rawText)
+    local t = tostring(rawText or "")
+    if t:sub(1,1) ~= "/" then return false end
+    local cmd, rest = t:match("^/(%S+)%s*(.*)$")
+    cmd = (cmd or ""):upper()
+    rest = rest or ""
+
+    -- /API ("sk_...") set API key via command
+    if cmd == "API" then
+        local inside = try_parse_parentheses_content(rest) or trim(rest)
+        if inside == "" then
+            appendChat(false, "[System] Usage: /API (\"sk-...\")", {255,180,60})
+            return true
+        end
+        STATE.OPENAI_KEY = trim(inside)
+        appendChat(false, ("[System] API key set: %s (not validated)"):format(redactKey(STATE.OPENAI_KEY)), {200,200,255})
+        return true
+    end
+
+    -- /APIJ ("proj_xxx") set project id
+    if cmd == "APIJ" then
+        local inside = try_parse_parentheses_content(rest) or trim(rest)
+        if inside == "" then
+            appendChat(false, "[System] Usage: /APIJ (\"proj-xxxx\")", {255,180,60})
+            return true
+        end
+        STATE.PROJECT_ID = trim(inside)
+        appendChat(false, ("[System] Project ID set: %s"):format(tostring(STATE.PROJECT_ID)), {200,200,255})
+        return true
+    end
+
+    -- /CheckPlaHP ("Player")
+    if cmd == "CHECKPLAWP" or cmd == "CHECKPLAH P" then
+        -- minor typo tolerant, but real command is /CheckPlaHP; handle case-insensitive
+    end
+    if cmd == "CHECKPL AHP" then end
+
+    if cmd == "CHECKPL AHP" then end -- no-op placeholder
+
+    if cmd == "CHECKPLAH P" then end
+
+    -- actual intended command: /CheckPlaHP
+    if cmd == "CHECKPLAH P" then end -- skip (we keep original spelled)
+    -- We'll just accept "CHECKPLAHP" as uppercase of "CheckPlaHP"
+    if cmd == "CHECKPLAHP" or cmd == 
