@@ -1948,6 +1948,7 @@ chatBox.Text = ""
 chatBox.BackgroundColor3 = Color3.fromRGB(255,255,255)
 chatBox.TextColor3 = Color3.fromRGB(0,0,0)
 chatBox.Parent = inputFrame
+createUICorner(chatbox, 0.1, 0)
 
 local sendBtn = inputFrame:FindFirstChild("SendBtn") or Instance.new("TextButton")
 sendBtn.Name = "SendBtn"
