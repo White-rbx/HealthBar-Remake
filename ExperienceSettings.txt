@@ -1892,7 +1892,7 @@ if not gptGui then
     gptGui = Instance.new("Frame")
     gptGui.Name = "gptGui"
     gptGui.Size = UDim2.new(0.35, 0, 0.9, 0)
-    gptGui.Position = UDim2.new(-0.35, 0, 0.05, 0)
+    gptGui.Position = UDim2.new(-0.35, 0, 0.1, 0)
     gptGui.BackgroundColor3 = Color3.fromRGB(18,18,20)
     gptGui.BackgroundTransparency = 0.12
     gptGui.Parent = root
@@ -1907,6 +1907,7 @@ if not gptBack then
     gptBack.Position = UDim2.new(0.02,0,0.02,0)
     gptBack.BackgroundTransparency = 1
     gptBack.Parent = gptGui
+    createUICorner(gptBack, 0.02, 0)
 end
 
 -- scroll & chat container
@@ -1921,6 +1922,7 @@ if not gptScroll then
     gptScroll.ScrollBarThickness = 6
     gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     gptScroll.Parent = gptBack
+    createUICorner(gptScroll, 0.02, 0)
 end
 
 local gptChat = gptScroll:FindFirstChild("Chat")
@@ -1967,9 +1969,11 @@ if not chatBox or not chatBox:IsA("TextBox") then
     chatBox.ClearTextOnFocus = false
     chatBox.Font = Enum.Font.SourceSans
     chatBox.TextSize = 16
+    chatBox.Text = ""
     chatBox.BackgroundColor3 = Color3.fromRGB(255,255,255)
     chatBox.TextColor3 = Color3.fromRGB(0,0,0)
     chatBox.Parent = inputFrame
+    createUICorner(chatBox, 0.1, 0)
 end
 
 if not sendBtn or not sendBtn:IsA("TextButton") then
@@ -1982,6 +1986,7 @@ if not sendBtn or not sendBtn:IsA("TextButton") then
     sendBtn.BackgroundColor3 = Color3.fromRGB(86,170,255)
     sendBtn.TextColor3 = Color3.fromRGB(255,255,255)
     sendBtn.Parent = inputFrame
+    createUICorner(sendBtn, 0.1, 0)
 end
 
 -- two-step rows under gptBack
@@ -2002,6 +2007,7 @@ local function makeRow(parent, id, placeholder, btnText)
     box.BackgroundColor3 = Color3.fromRGB(40,40,40)
     box.TextColor3 = Color3.fromRGB(255,255,255)
     box.Parent = f
+    createUICorner(box, 0.1, 0)
     local btn = Instance.new("TextButton")
     btn.Name = id .. "_btn"
     btn.Size = UDim2.new(0.25,0,1,0)
@@ -2011,6 +2017,7 @@ local function makeRow(parent, id, placeholder, btnText)
     btn.BackgroundColor3 = Color3.fromRGB(86,170,255)
     btn.TextColor3 = Color3.fromRGB(255,255,255)
     btn.Parent = f
+    createUICorner(btn, 0.1, 0)
     return f, box, btn
 end
 
@@ -2411,9 +2418,9 @@ local panelOpen = false
 local function togglePanel()
     panelOpen = not panelOpen
     if panelOpen then
-        safeTween(gptGui, { Position = UDim2.new(0,0,0.05,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        safeTween(gptGui, { Position = UDim2.new(0,0,0.1,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     else
-        safeTween(gptGui, { Position = UDim2.new(-0.35,0,0.05,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        safeTween(gptGui, { Position = UDim2.new(-0.35,0,0.1,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     end
 end
 if gpt and (gpt:IsA("ImageButton") or gpt:IsA("TextButton")) then
