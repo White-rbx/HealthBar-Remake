@@ -1796,7 +1796,6 @@ hbm.MouseButton1Click:Connect(toggleTB)
 -- PURPOSE: Self-contained Chat UI + OpenAI client (supports sk-... and sk-proj-... with optional project id)
 -- WARNING: Client-side API keys are not secure for public games. Use for Studio/testing/local only.
 
--- Services
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -1831,7 +1830,7 @@ end
 -- Ensure PlayerGui
 local PlayerGui = LocalPlayer:FindFirstChild("PlayerGui")
 if not PlayerGui then
-    warn("[ChatGPT] PlayerGui not found - aborting.")
+    warn("[GPT] PlayerGui not found - aborting ChatGPT LocalScript")
     return
 end
 
@@ -1848,7 +1847,6 @@ end
 local function findExistingGptButton()
     local found = screenGui:FindFirstChild("gpt")
     if found then return found end
-    -- search PlayerGui top-level for a button named 'gpt'
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
         if obj.Name == "gpt" and (obj:IsA("TextButton") or obj:IsA("ImageButton")) then
             return obj
@@ -1870,7 +1868,7 @@ if not gptGui then
     gptGui.Parent = screenGui
 end
 
--- Inner background (gptBack)
+-- inner background (gptBack)
 local gptBack = gptGui:FindFirstChild("Background")
 if not gptBack then
     gptBack = Instance.new("Frame")
@@ -1926,12 +1924,10 @@ end)
 local apiBox, apiBtn, chatBox, sendBtn
 
 if type(createInput) == "function" then
-    -- Try to call createInput but do it protected and accept varied returns
     local ok, r1, r2, r3 = pcall(function()
         return createInput(gptBack, "Put ChatGPT API", 255, 255, 255, "Enter")
     end)
     if ok then
-        -- r1 may be frame, r2 textBox, r3 button - handle flexibly
         if typeof(r2) == "Instance" and r2:IsA("TextBox") then apiBox = r2 end
         if typeof(r3) == "Instance" and r3:IsA("TextButton") then apiBtn = r3 end
         if not apiBox and typeof(r1) == "Instance" and r1:IsA("GuiObject") then
@@ -2086,16 +2082,13 @@ local function parseKeyAndProject(raw)
     if not raw then return nil, nil end
     local s = tostring(raw)
     s = s:gsub("^%s+", ""):gsub("%s+$", "")
-    -- delimiter |
     if s:find("|") then
         local a, b = s:match("^(.-)|(.+)$")
         if a and b then return a:match("%S+"), b:match("%S+") end
     end
-    -- proj: token
     local key = s:match("^(%S+)")
     local proj = s:match("proj:([%w_%-]+)")
     if not proj then
-        -- maybe project id appended separated by space
         local tail = s:match("%S+%s+([%w_%-]+)$")
         if tail and tail:match("^proj_") then proj = tail end
     end
@@ -2172,14 +2165,11 @@ local function applyApiFromBox()
     createSystemMessage("[System] 🔎 Validating API key...", {200,200,255})
     task.spawn(function()
         local ok, infoOrErr = pcall(validateKey, raw)
-        -- pcall returns (bool, result) where result is table or err string
         if ok and infoOrErr and type(infoOrErr) == "table" and infoOrErr.key then
             GPT.OPENAI_KEY = infoOrErr.key
             GPT.PROJECT_ID = infoOrErr.proj
             createSystemMessage("[System] ✅ API Key verified and saved!", {80,255,120})
         else
-            -- if pcall ok but validateKey returned false, infoOrErr contains error
-            -- diagnose project-key case
             local keyOnly, projOnly = parseKeyAndProject(raw)
             if keyOnly and tostring(keyOnly):match("^sk%-proj") and (not projOnly or projOnly == "") then
                 createSystemMessage("[System] ❌ Project key detected but project id missing. Use: 'sk-proj-... proj:proj_xxxxx' or 'sk-proj-...|proj_xxxxx'", {255,160,60})
@@ -2205,13 +2195,11 @@ local function sendChat()
         return
     end
 
-    -- show thinking indicator
     local f, l = createChatBubble(false, "[System] ⌛ Thinking...")
     lastThinkingFrame = f
 
     task.spawn(function()
         local reply, err = callOpenAI_Request(text, GPT.OPENAI_KEY, GPT.PROJECT_ID)
-        -- remove thinking indicator
         pcall(function()
             if lastThinkingFrame and lastThinkingFrame.Parent then lastThinkingFrame:Destroy() end
             lastThinkingFrame = nil
@@ -2219,9 +2207,7 @@ local function sendChat()
         if reply then
             createChatBubble(false, reply)
         else
-            -- show error message (red)
             createSystemMessage("[System] Error: "..tostring(err or "unknown"), {255,80,80})
-            -- If invalid project key and missing proj id, give hint
             if tostring(err):lower():find("invalid") and GPT.OPENAI_KEY and tostring(GPT.OPENAI_KEY):match("^sk%-proj") and not GPT.PROJECT_ID then
                 createSystemMessage("[System] Project key detected. Append project id like: 'sk-proj-... proj:proj_xxxxx' or 'sk-proj-...|proj_xxxxx'", {255,160,60})
             end
@@ -2266,7 +2252,6 @@ end
 if gptButton and (gptButton:IsA("TextButton") or gptButton:IsA("ImageButton")) then
     pcall(function() gptButton.MouseButton1Click:Connect(togglePanel) end)
 else
-    -- fallback small button inside this screenGui
     local fallback = screenGui:FindFirstChild("gpt_fallback_btn")
     if not fallback then
         fallback = Instance.new("TextButton")
@@ -2286,4 +2271,3 @@ end
 createSystemMessage("[System] ChatGPT UI ready. Enter your API key (sk-... or sk-proj-... proj:proj_xxx) to begin.", {200,200,255})
 
 -- End of script
-```0
