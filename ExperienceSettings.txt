@@ -1792,40 +1792,58 @@ local function toggleTB()
 end
 hbm.MouseButton1Click:Connect(toggleTB)
 
--- ChatGPT LocalScript (supports sk-... and sk-proj-... with optional Project ID)
--- WARNING: client-side API keys are insecure in public games. Use for testing/Studio only.
+-- ChatGPT LocalScript (client-side)
+-- WARNING: client-side API keys are not secure for public games. Use for testing/Studio only.
 
 local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 if not LocalPlayer then
-    warn("[ChatGPT] LocalPlayer missing; abort.")
+    warn("[ChatGPT] LocalPlayer not available. Aborting.")
     return
 end
 
--- Namespace
-local GPT = {}
-GPT.OPENAI_KEY = nil
-GPT.PROJECT_ID = nil
-GPT.MODEL = "gpt-3.5-turbo"
+-- namespaced locals
+local _gpt = {}
+_gpt.OPENAI_KEY = nil
+_gpt.PROJECT_ID = nil
+_gpt.MODEL = "gpt-3.5-turbo"
 
--- safe tween helper (uses tweenObject if available)
+-- safe tween: try existing tweenObject, else use TweenService, else instant set
 local function safeTweenGui(obj, props, time, style, dir)
     if not obj or not obj.Parent then return end
     if type(tweenObject) == "function" then
         pcall(function() tweenObject(obj, props, time, style, dir) end)
-    else
+        return
+    end
+    -- attempt TweenService for UDim2 properties (Position/Size)
+    local info = TweenInfo.new(time or 0.28, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out)
+    local ok, err = pcall(function()
+        local tween = TweenService:Create(obj, info, props)
+        tween:Play()
+    end)
+    if not ok then
+        -- fallback: apply immediately
         pcall(function()
             for k,v in pairs(props or {}) do
-                if obj[k] ~= nil then obj[k] = v end
+                if obj[k] ~= nil then
+                    obj[k] = v
+                end
             end
         end)
     end
 end
 
--- PlayerGui & container
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+-- find PlayerGui
+local PlayerGui = LocalPlayer:FindFirstChild("PlayerGui")
+if not PlayerGui then
+    warn("[ChatGPT] PlayerGui not found. Aborting.")
+    return
+end
+
+-- find/create top-level ScreenGui for ChatGPT UI
 local screenGui = PlayerGui:FindFirstChild("ChatGPT_UI")
 if not screenGui then
     screenGui = Instance.new("ScreenGui")
@@ -1834,49 +1852,63 @@ if not screenGui then
     screenGui.Parent = PlayerGui
 end
 
--- try to find existing toggle button named 'gpt' anywhere under PlayerGui
-local function findGptButton()
-    local b = screenGui:FindFirstChild("gpt")
-    if b and (b:IsA("TextButton") or b:IsA("ImageButton")) then return b end
+-- helper: attempt to find existing toggle button 'gpt' (common names)
+local function findToggleButton()
+    -- first, under the same ScreenGui
+    local names = {"a3_ChatGPT", "a3_ChatGPT", "gpt", "ChatGPTToggle", "a3_ChatGPT"}
+    for _, n in ipairs(names) do
+        local obj = screenGui:FindFirstChild(n, true)
+        if obj and (obj:IsA("TextButton") or obj:IsA("ImageButton")) then
+            return obj
+        end
+    end
+    -- search entire PlayerGui
     for _, obj in ipairs(PlayerGui:GetDescendants()) do
-        if obj.Name == "gpt" and (obj:IsA("TextButton") or obj:IsA("ImageButton")) then
+        if (obj.Name == "a3_ChatGPT" or obj.Name == "gpt") and (obj:IsA("TextButton") or obj:IsA("ImageButton")) then
+            return obj
+        end
+    end
+    -- by image asset id (common asset)
+    for _, obj in ipairs(PlayerGui:GetDescendants()) do
+        if obj:IsA("ImageButton") and obj.Image and tostring(obj.Image):find("15419312153") then
             return obj
         end
     end
     return nil
 end
-local gptButton = findGptButton()
+
+local toggleBtn = findToggleButton()
 
 -- create or reuse panel gptGui
 local gptGui = screenGui:FindFirstChild("gptGui")
 if not gptGui then
     gptGui = Instance.new("Frame")
     gptGui.Name = "gptGui"
-    gptGui.Size = UDim2.new(0.35,0,0.9,0)
-    gptGui.Position = UDim2.new(-0.35,0,0.05,0) -- OFF default
+    gptGui.Size = UDim2.new(0.35, 0, 0.9, 0)
+    gptGui.Position = UDim2.new(-0.35, 0, 0.05, 0) -- OFF by default
     gptGui.BackgroundColor3 = Color3.fromRGB(18,18,20)
     gptGui.BackgroundTransparency = 0.12
     gptGui.Parent = screenGui
 end
 
--- inner container
+-- inner background
 local gptBack = gptGui:FindFirstChild("Background")
 if not gptBack then
     gptBack = Instance.new("Frame")
     gptBack.Name = "Background"
-    gptBack.Size = UDim2.new(0.96,0,0.96,0)
-    gptBack.Position = UDim2.new(0.02,0,0.02,0)
+    gptBack.Size = UDim2.new(0.96, 0, 0.96, 0)
+    gptBack.Position = UDim2.new(0.02, 0, 0.02, 0)
     gptBack.BackgroundTransparency = 1
     gptBack.Parent = gptGui
 end
 
--- scrolling chat
+-- scrolling frame and chat container
 local gptScroll = gptBack:FindFirstChild("a0_Scroll")
 if not gptScroll then
     gptScroll = Instance.new("ScrollingFrame")
     gptScroll.Name = "a0_Scroll"
-    gptScroll.Size = UDim2.new(1,0,0.7,0)
-    gptScroll.Position = UDim2.new(0,0,0.18,0)
+    gptScroll.Size = UDim2.new(1, 0, 0.7, 0)
+    gptScroll.Position = UDim2.new(0, 0, 0.18, 0)
     gptScroll.BackgroundTransparency = 0.5
     gptScroll.BackgroundColor3 = Color3.fromRGB(12,12,12)
     gptScroll.ScrollBarThickness = 6
@@ -1888,8 +1920,8 @@ local gptChat = gptScroll:FindFirstChild("Chat")
 if not gptChat then
     gptChat = Instance.new("Frame")
     gptChat.Name = "Chat"
-    gptChat.Size = UDim2.new(0.96,0,0,0)
-    gptChat.Position = UDim2.new(0.02,0,0,10)
+    gptChat.Size = UDim2.new(0.96, 0, 0, 0)
+    gptChat.Position = UDim2.new(0.02, 0, 0, 10)
     gptChat.BackgroundTransparency = 1
     gptChat.Parent = gptScroll
 end
@@ -1902,6 +1934,7 @@ if not uiLayout then
     uiLayout.Parent = gptChat
 end
 
+-- auto-scroll when content changes
 uiLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     pcall(function()
         gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
@@ -1910,36 +1943,39 @@ uiLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 end)
 
 -- try to use createInput if available; otherwise create fallback inputs
-local apiBox, apiBtn, projectBox, projectBtn, chatBox, sendBtn
+local apiBox, apiBtn, chatBox, sendBtn
 
-local function tryCreateInputsViaCreateInput()
-    if type(createInput) ~= "function" then return end
-    local ok, a1, a2, a3 = pcall(function() return createInput(gptBack, "Put ChatGPT API", 255,255,255, "Enter") end)
-    if ok and a1 then
-        -- try find TextBox/TextButton inside a1
-        for _, d in ipairs(a1:GetDescendants()) do
-            if not apiBox and d:IsA("TextBox") then apiBox = d end
-            if not apiBtn and d:IsA("TextButton") then apiBtn = d end
-            if apiBox and apiBtn then break end
+if type(createInput) == "function" then
+    local ok, r1, r2, r3 = pcall(function()
+        return createInput(gptBack, "Put ChatGPT API", 255,255,255, "Enter")
+    end)
+    if ok then
+        if typeof(r2) == "Instance" and r2:IsA("TextBox") then apiBox = r2 end
+        if typeof(r3) == "Instance" and r3:IsA("TextButton") then apiBtn = r3 end
+        if not apiBox and typeof(r1) == "Instance" then
+            for _, d in ipairs(r1:GetDescendants()) do
+                if not apiBox and d:IsA("TextBox") then apiBox = d end
+                if not apiBtn and d:IsA("TextButton") then apiBtn = d end
+            end
         end
-        -- if createInput returned 3 values directly
-        if not apiBox and typeof(a2) == "Instance" and a2:IsA("TextBox") then apiBox = a2 end
-        if not apiBtn and typeof(a3) == "Instance" and a3:IsA("TextButton") then apiBtn = a3 end
     end
-    ok, a1, a2, a3 = pcall(function() return createInput(gptBack, "Ask anything...", 255,255,255, "Send") end)
-    if ok and a1 then
-        for _, d in ipairs(a1:GetDescendants()) do
-            if not chatBox and d:IsA("TextBox") then chatBox = d end
-            if not sendBtn and d:IsA("TextButton") then sendBtn = d end
-            if chatBox and sendBtn then break end
+
+    ok, r1, r2, r3 = pcall(function()
+        return createInput(gptBack, "Ask anything...", 255,255,255, "Send")
+    end)
+    if ok then
+        if typeof(r2) == "Instance" and r2:IsA("TextBox") then chatBox = r2 end
+        if typeof(r3) == "Instance" and r3:IsA("TextButton") then sendBtn = r3 end
+        if not chatBox and typeof(r1) == "Instance" then
+            for _, d in ipairs(r1:GetDescendants()) do
+                if not chatBox and d:IsA("TextBox") then chatBox = d end
+                if not sendBtn and d:IsA("TextButton") then sendBtn = d end
+            end
         end
-        if not chatBox and typeof(a2) == "Instance" and a2:IsA("TextBox") then chatBox = a2 end
-        if not sendBtn and typeof(a3) == "Instance" and a3:IsA("TextButton") then sendBtn = a3 end
     end
 end
-tryCreateInputsViaCreateInput()
 
--- fallback API input frame
+-- fallback API input
 if not apiBox or not apiBtn then
     local afr = gptBack:FindFirstChild("a_api_input") or Instance.new("Frame")
     afr.Name = "a_api_input"
@@ -1947,12 +1983,10 @@ if not apiBox or not apiBtn then
     afr.BackgroundTransparency = 1
     afr.Position = UDim2.new(0,0,0,2)
     afr.Parent = gptBack
-
     if not afr:FindFirstChild("APIBox") then
         local box = Instance.new("TextBox")
         box.Name = "APIBox"
-        box.Size = UDim2.new(0.6, 0, 1, 0)
-        box.Position = UDim2.new(0, 0, 0, 0)
+        box.Size = UDim2.new(0.75, 0, 1, 0)
         box.PlaceholderText = "Put ChatGPT API Key (sk-... or sk-proj-...)"
         box.Text = ""
         box.TextScaled = true
@@ -1964,45 +1998,16 @@ if not apiBox or not apiBtn then
     if not afr:FindFirstChild("APIBtn") then
         local btn = Instance.new("TextButton")
         btn.Name = "APIBtn"
-        btn.Size = UDim2.new(0.15, 0, 1, 0)
-        btn.Position = UDim2.new(0.6, 4, 0, 0)
+        btn.Size = UDim2.new(0.25,0,1,0)
+        btn.Position = UDim2.new(0.75,0,0,0)
         btn.Text = "Enter"
         btn.TextScaled = true
         btn.BackgroundColor3 = Color3.fromRGB(86,170,255)
         btn.TextColor3 = Color3.fromRGB(255,255,255)
         btn.Parent = afr
     end
-    -- project id box (hidden until needed)
-    if not afr:FindFirstChild("ProjectBox") then
-        local pbox = Instance.new("TextBox")
-        pbox.Name = "ProjectBox"
-        pbox.Size = UDim2.new(0.6, 0, 1, 0)
-        pbox.Position = UDim2.new(0, 0, 0, 0)
-        pbox.PlaceholderText = "Project ID (proj_xxxxx) - required for sk-proj keys"
-        pbox.Text = ""
-        pbox.TextScaled = true
-        pbox.Visible = false
-        pbox.ClearTextOnFocus = false
-        pbox.BackgroundColor3 = Color3.fromRGB(40,40,40)
-        pbox.TextColor3 = Color3.fromRGB(255,255,255)
-        pbox.Parent = afr
-
-        local pbtn = Instance.new("TextButton")
-        pbtn.Name = "ProjectBtn"
-        pbtn.Size = UDim2.new(0.15, 0, 1, 0)
-        pbtn.Position = UDim2.new(0.6, 4, 0, 0)
-        pbtn.Text = "Save"
-        pbtn.TextScaled = true
-        pbtn.BackgroundColor3 = Color3.fromRGB(120,180,120)
-        pbtn.TextColor3 = Color3.fromRGB(255,255,255)
-        pbtn.Visible = false
-        pbtn.Parent = afr
-    end
-
     apiBox = afr:FindFirstChild("APIBox")
     apiBtn = afr:FindFirstChild("APIBtn")
-    projectBox = afr:FindFirstChild("ProjectBox")
-    projectBtn = afr:FindFirstChild("ProjectBtn")
 end
 
 -- fallback chat input
@@ -2042,16 +2047,16 @@ if not chatBox or not sendBtn then
     sendBtn = cfr:FindFirstChild("SendBtn")
 end
 
--- chat creation helpers
-local chatIndex = 0
+-- chat bubble creator (auto-size + autoscroll)
+local _chatCount = 0
 local function createChat(isUser, text)
-    chatIndex = chatIndex + 1
-    local item = Instance.new("Frame")
-    item.Name = "ChatItem_"..chatIndex
-    item.BackgroundTransparency = 1
-    item.Size = UDim2.new(1,0,0,0)
-    item.AutomaticSize = Enum.AutomaticSize.Y
-    item.Parent = gptChat
+    _chatCount = _chatCount + 1
+    local it = Instance.new("Frame")
+    it.Name = "ChatItem_".._chatCount
+    it.BackgroundTransparency = 1
+    it.Size = UDim2.new(1,0,0,0)
+    it.AutomaticSize = Enum.AutomaticSize.Y
+    it.Parent = gptChat
 
     local lbl = Instance.new("TextLabel")
     lbl.Name = "ChatLabel"
@@ -2061,6 +2066,7 @@ local function createChat(isUser, text)
     lbl.TextWrapped = true
     lbl.AutomaticSize = Enum.AutomaticSize.Y
     lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.RichText = false
     lbl.Font = Enum.Font.SourceSans
     lbl.TextSize = 18
     lbl.Text = tostring(text or "")
@@ -2069,7 +2075,7 @@ local function createChat(isUser, text)
     else
         lbl.TextColor3 = Color3.fromRGB(255,255,255)
     end
-    lbl.Parent = item
+    lbl.Parent = it
 
     task.defer(function()
         pcall(function()
@@ -2078,18 +2084,19 @@ local function createChat(isUser, text)
         end)
     end)
 
-    return item, lbl
+    return it, lbl
 end
 
-local function createSystem(msg, rgb)
-    local f, l = createChat(false, msg)
-    if l and rgb and type(rgb) == "table" then
-        pcall(function() l.TextColor3 = Color3.fromRGB(rgb[1] or 255, rgb[2] or 255, rgb[3] or 255) end)
+-- system message helper
+local function createSystem(text, color)
+    local f, lbl = createChat(false, text)
+    if lbl and color and type(color) == "table" then
+        pcall(function() lbl.TextColor3 = Color3.fromRGB(color[1] or 255, color[2] or 255, color[3] or 255) end)
     end
-    return f, l
+    return f, lbl
 end
 
--- parse key + project from input text
+-- parse key and optional project id from input (supports "key | proj_xxx" or "key proj:proj_xxx")
 local function parseKeyProj(raw)
     if not raw then return nil, nil end
     local s = tostring(raw):gsub("^%s+", ""):gsub("%s+$", "")
@@ -2106,14 +2113,15 @@ local function parseKeyProj(raw)
     return key, proj
 end
 
--- OpenAI call
-local function callOpenAI(text, key, projectId)
+-- call OpenAI (supports optional OpenAI-Project header)
+local function callOpenAI(text, key, proj)
     if not key or key == "" then return nil, "no_key" end
-    if type(HttpService.RequestAsync) ~= "function" then return nil, "http_unavailable" end
-
+    if type(HttpService.RequestAsync) ~= "function" then
+        return nil, "http_unavailable"
+    end
     local ok, resp = pcall(function()
-        local payload = {
-            model = GPT.MODEL,
+        local body = {
+            model = _gpt.MODEL,
             messages = { { role = "user", content = text } },
             max_tokens = 350,
             temperature = 0.7
@@ -2122,46 +2130,47 @@ local function callOpenAI(text, key, projectId)
             ["Content-Type"] = "application/json",
             ["Authorization"] = "Bearer " .. key
         }
-        if projectId and projectId ~= "" then
-            headers["OpenAI-Project"] = projectId
+        if proj and proj ~= "" then
+            headers["OpenAI-Project"] = proj
         end
         return HttpService:RequestAsync({
             Url = "https://api.openai.com/v1/chat/completions",
             Method = "POST",
             Headers = headers,
-            Body = HttpService:JSONEncode(payload),
+            Body = HttpService:JSONEncode(body),
             Timeout = 20,
         })
     end)
-
     if not ok or not resp then return nil, "http_failed" end
     if not resp.Success then
-        local code = tostring(resp.StatusCode)
+        local code = tostring(resp.StatusCode or "nil")
         local msg = ""
         pcall(function()
-            local dec = HttpService:JSONDecode(resp.Body)
+            local dec = HttpService:JSONDecode(resp.Body or "{}")
             if dec and dec.error and dec.error.message then msg = dec.error.message end
         end)
-        return nil, ("http_error_"..code..(msg ~= "" and (": "..msg) or ""))
+        return nil, ("http_error_"..code .. (msg ~= "" and (": "..msg) or ""))
     end
-
     local dec = HttpService:JSONDecode(resp.Body)
     local content = dec and dec.choices and dec.choices[1] and dec.choices[1].message and dec.choices[1].message.content
     if content then return tostring(content), nil end
     return nil, "no_content"
 end
 
--- validate key (try small test)
+-- validate key function
 local function validateKey(raw)
     local k, p = parseKeyProj(raw)
     if not k then return false, "no_key" end
     local reply, err = callOpenAI("Hello", k, p)
-    if reply then return true, { key = k, proj = p } end
-    return false, err
+    if reply then
+        return true, { key = k, proj = p }
+    else
+        return false, err
+    end
 end
 
--- handle API apply (enter)
-local function handleApiApply()
+-- apply API input from apiBox
+local function applyApi()
     if not apiBox then return end
     local raw = tostring(apiBox.Text or "")
     if raw:match("^%s*$") then
@@ -2170,61 +2179,32 @@ local function handleApiApply()
     end
     createSystem("[System] 🔎 Validating API key...", {200,200,255})
     task.spawn(function()
-        local ok, info = pcall(validateKey, raw)
-        if ok and info and type(info) == "table" and info.key then
-            GPT.OPENAI_KEY = info.key
-            GPT.PROJECT_ID = info.proj
+        local ok, res = pcall(validateKey, raw)
+        if ok and res and type(res) == "table" and res.key then
+            _gpt.OPENAI_KEY = res.key
+            _gpt.PROJECT_ID = res.proj
             createSystem("[System] ✅ API Key verified and saved!", {80,255,120})
-            -- if project id missing for sk-proj, show projectBox
-            if GPT.OPENAI_KEY and tostring(GPT.OPENAI_KEY):match("^sk%-proj") and (not GPT.PROJECT_ID or GPT.PROJECT_ID == "") then
-                if projectBox and projectBtn then
-                    projectBox.Visible = true
-                    projectBtn.Visible = true
-                    projectBox.Text = ""
-                    createSystem("[System] Detected sk-proj key; please input Project ID in the new box then click Save.", {255,180,60})
-                else
-                    createSystem("[System] Project ID required for sk-proj keys. Use format: sk-proj-... | proj_xxxxx", {255,180,60})
-                end
-            end
         else
-            -- diagnose missing project id case
             local k, p = parseKeyProj(raw)
             if k and tostring(k):match("^sk%-proj") and (not p or p == "") then
-                createSystem("[System] ❌ sk-proj key detected but project id missing. Use 'sk-proj-... | proj_xxxxx' or fill Project box.", {255,160,60})
-                if projectBox and projectBtn then
-                    projectBox.Visible = true
-                    projectBtn.Visible = true
-                end
+                createSystem("[System] ❌ Project key detected but project id missing. Use: 'sk-proj-... proj:proj_xxxxx' or 'sk-proj-...|proj_xxxxx'", {255,160,60})
             else
-                createSystem("[System] ❌ Invalid API Key or network error: "..tostring(info or "verify_failed"), {255,80,80})
+                createSystem("[System] ❌ Invalid API Key or network error: "..tostring(res or "verify_failed"), {255,80,80})
             end
         end
     end)
-end
-
--- handle project save
-local function handleProjectSave()
-    if not projectBox then return end
-    local val = tostring(projectBox.Text or ""):gsub("^%s+",""):gsub("%s+$","")
-    if val == "" then
-        createSystem("[System] ❗ Project ID empty.", {255,200,60})
-        return
-    end
-    GPT.PROJECT_ID = val
-    createSystem("[System] ✅ Project ID saved: "..tostring(val), {80,255,120})
 end
 
 -- send chat
 local lastThinking = nil
 local function sendChat()
     if not chatBox then return end
-    local txt = tostring(chatBox.Text or "")
-    if txt:match("^%s*$") then return end
-
-    createChat(true, txt)
+    local t = tostring(chatBox.Text or "")
+    if t:match("^%s*$") then return end
+    createChat(true, t)
     chatBox.Text = ""
 
-    if not GPT.OPENAI_KEY then
+    if not _gpt.OPENAI_KEY then
         createSystem("Error HttpService: Did you forget to put API?", {255,80,80})
         return
     end
@@ -2233,7 +2213,7 @@ local function sendChat()
     lastThinking = f
 
     task.spawn(function()
-        local reply, err = callOpenAI(txt, GPT.OPENAI_KEY, GPT.PROJECT_ID)
+        local reply, err = callOpenAI(t, _gpt.OPENAI_KEY, _gpt.PROJECT_ID)
         pcall(function()
             if lastThinking and lastThinking.Parent then lastThinking:Destroy() end
             lastThinking = nil
@@ -2242,46 +2222,20 @@ local function sendChat()
             createChat(false, reply)
         else
             createSystem("[System] Error: "..tostring(err or "unknown"), {255,80,80})
-            if tostring(err):lower():find("invalid") and GPT.OPENAI_KEY and tostring(GPT.OPENAI_KEY):match("^sk%-proj") and not GPT.PROJECT_ID then
-                createSystem("[System] Project key detected. Provide project id (proj_xxxx) in the Project box or use: 'sk-proj-...|proj_xxxx'", {255,160,60})
+            if tostring(err):lower():find("invalid") and _gpt.OPENAI_KEY and tostring(_gpt.OPENAI_KEY):match("^sk%-proj") and not _gpt.PROJECT_ID then
+                createSystem("[System] Project key detected. Append project id: 'sk-proj-... proj:proj_xxxxx' or 'sk-proj-...|proj_xxxxx'", {255,160,60})
             end
         end
     end)
 end
 
--- wiring buttons / Enter keys
-pcall(function()
-    if sendBtn and sendBtn:IsA("TextButton") then
-        sendBtn.MouseButton1Click:Connect(sendChat)
-    end
-end)
-pcall(function()
-    if chatBox and chatBox:IsA("TextBox") then
-        chatBox.FocusLost:Connect(function(enter) if enter then sendChat() end end)
-    end
-end)
-pcall(function()
-    if apiBtn and apiBtn:IsA("TextButton") then
-        apiBtn.MouseButton1Click:Connect(handleApiApply)
-    end
-end)
-pcall(function()
-    if apiBox and apiBox:IsA("TextBox") then
-        apiBox.FocusLost:Connect(function(enter) if enter then handleApiApply() end end)
-    end
-end)
-pcall(function()
-    if projectBtn and projectBtn:IsA("TextButton") then
-        projectBtn.MouseButton1Click:Connect(handleProjectSave)
-    end
-end)
-pcall(function()
-    if projectBox and projectBox:IsA("TextBox") then
-        projectBox.FocusLost:Connect(function(enter) if enter then handleProjectSave() end end)
-    end
-end)
+-- bind controls
+pcall(function() if sendBtn and sendBtn:IsA("TextButton") then sendBtn.MouseButton1Click:Connect(sendChat) end end)
+pcall(function() if chatBox and chatBox:IsA("TextBox") then chatBox.FocusLost:Connect(function(enter) if enter then sendChat() end end) end end)
+pcall(function() if apiBtn and apiBtn:IsA("TextButton") then apiBtn.MouseButton1Click:Connect(applyApi) end end)
+pcall(function() if apiBox and apiBox:IsA("TextBox") then apiBox.FocusLost:Connect(function(enter) if enter then applyApi() end end) end end)
 
--- toggle panel with existing gpt button (or fallback)
+-- toggle panel using found toggleBtn or fallback
 local openState = false
 local function togglePanel()
     openState = not openState
@@ -2292,25 +2246,23 @@ local function togglePanel()
     end
 end
 
-if gptButton and (gptButton:IsA("TextButton") or gptButton:IsA("ImageButton")) then
-    pcall(function() gptButton.MouseButton1Click:Connect(togglePanel) end)
+if toggleBtn and (toggleBtn:IsA("ImageButton") or toggleBtn:IsA("TextButton")) then
+    pcall(function() toggleBtn.MouseButton1Click:Connect(togglePanel) end)
 else
-    local fallback = screenGui:FindFirstChild("gpt_fallback_btn")
-    if not fallback then
-        fallback = Instance.new("TextButton")
-        fallback.Name = "gpt_fallback_btn"
-        fallback.Size = UDim2.new(0,48,0,32)
-        fallback.Position = UDim2.new(0,8,0,8)
-        fallback.Text = "GPT"
-        fallback.TextScaled = true
-        fallback.BackgroundColor3 = Color3.fromRGB(86,170,255)
-        fallback.TextColor3 = Color3.fromRGB(255,255,255)
-        fallback.Parent = screenGui
+    local fb = screenGui:FindFirstChild("gpt_fallback_btn")
+    if not fb then
+        fb = Instance.new("TextButton")
+        fb.Name = "gpt_fallback_btn"
+        fb.Size = UDim2.new(0,48,0,32)
+        fb.Position = UDim2.new(0,8,0,8)
+        fb.Text = "GPT"
+        fb.TextScaled = true
+        fb.BackgroundColor3 = Color3.fromRGB(86,170,255)
+        fb.TextColor3 = Color3.fromRGB(255,255,255)
+        fb.Parent = screenGui
     end
-    pcall(function() fallback.MouseButton1Click:Connect(togglePanel) end)
+    pcall(function() fb.MouseButton1Click:Connect(togglePanel) end)
 end
 
--- initial message
-createSystem("[System] ChatGPT UI ready. Enter your API key (sk-... or sk-proj-...). If you have sk-proj key, also add Project ID or use format 'key|proj_xxx'.", {200,200,255})
-
--- end
+-- initial note
+createSystem("[System] ChatGPT UI ready. Enter API key to begin.", {200,200,255})
