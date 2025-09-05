@@ -1794,102 +1794,8 @@ hbm.MouseButton1Click:Connect(toggleTB)
 
 
 
--- ChatGPT + Full Commands (Robust) — LocalScript (client)
--- Put in ExperienceSettings (LocalScript). Client-side only.
--- WARNING: Client-side API keys are visible. Use for testing only.
-
--- ===== Services =====
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
-local Workspace = workspace
-
--- Ensure client
-local LocalPlayer = Players.LocalPlayer
-if not LocalPlayer then
-    warn("[ChatGPT] This script must run as a LocalScript (client). Aborting.")
-    return
-end
-
--- ===== Utilities =====
-local function trim(s) return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "")) end
-local function redactKey(k)
-    if type(k) ~= "string" then return "<nil>" end
-    if #k <= 12 then return "********" end
-    return k:sub(1,6) .. "..." .. k:sub(-6)
-end
-local function safePcall(fn, ...) local ok, res = pcall(fn, ...) return ok, res end
-local function safeDelay(t, fn) task.spawn(function() task.wait(t or 0); pcall(fn) end) end
-
--- safe tween wrapper
-local function safeTween(obj, props, time, style, dir)
-    if not obj or not obj.Parent then return end
-    pcall(function()
-        local info = TweenInfo.new(time or 0.28, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out)
-        local tw = TweenService:Create(obj, info, props or {})
-        tw:Play()
-    end)
-end
-
--- safe UI helpers
-local function makeUICornerIfMissing(obj)
-    if not obj or type(obj) ~= "Instance" then return end
-    pcall(function()
-        if not obj:FindFirstChildOfClass("UICorner") then
-            local c = Instance.new("UICorner")
-            c.Parent = obj
-        end
-    end)
-end
-local function ensureUIListLayout(parent, pad)
-    if not parent or type(parent) ~= "Instance" then return end
-    pcall(function()
-        if not parent:FindFirstChildOfClass("UIListLayout") then
-            local l = Instance.new("UIListLayout")
-            l.SortOrder = Enum.SortOrder.LayoutOrder
-            l.Padding = UDim.new(0, pad or 6)
-            l.Parent = parent
-        end
-    end)
-end
-
--- ===== State =====
-local STATE = {
-    OPENAI_KEY = nil,
-    PROJECT_ID = nil,
-    MODEL = "gpt-3.5-turbo",
-    validated = false,
-    requestInFlight = false
-}
-
--- ===== Root GUI setup (menuGui / gethui / CoreGui / PlayerGui fallback) =====
-local rootGui = nil
--- prefer menuGui if available
-if typeof(menuGui) == "Instance" and menuGui.Parent then
-    rootGui = menuGui
-else
-    -- try gethui() safely
-    local ok, gh = pcall(function() if type(gethui) == "function" then return gethui() end end)
-    if ok and gh and typeof(gh) == "Instance" and gh.Parent then
-        rootGui = gh
-    else
-        -- fallback to PlayerGui
-        local pg = LocalPlayer:FindFirstChild("PlayerGui")
-        if pg then
-            local existing = pg:FindFirstChild("ExperienceSettings_ChatGPT_SG")
-            if existing then
-                rootGui = existing
-            else
-                local sg = Instance.new("ScreenGui")
-                sg.Name = "ExperienceSettings_ChatGPT_SG"
-                sg.ResetOnSpawn = false
-                sg.Parent = pg
-                rootGui = sg
-            end
-        end
--- ChatGPT + Full Commands — CLEAN & FIXED LocalScript (client)
--- Put in ExperienceSettings as a LocalScript
+-- Full robust ChatGPT + Commands LocalScript
+-- Put in ExperienceSettings as a LocalScript (client).
 -- WARNING: client-side API keys are visible. Use for testing only.
 
 -- ===== Services =====
@@ -1899,10 +1805,10 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local Workspace = workspace
 
--- ===== Ensure running client =====
+-- ===== Ensure client =====
 local LocalPlayer = Players.LocalPlayer
 if not LocalPlayer then
-    warn("[ChatGPT] LocalPlayer not found. Run this as a LocalScript (client).")
+    warn("[ChatGPT] LocalPlayer not found. Must run as LocalScript (client).")
     return
 end
 
@@ -1914,7 +1820,7 @@ local function redactKey(k)
     return k:sub(1,6) .. "..." .. k:sub(-6)
 end
 local function safePcall(fn, ...) local ok, a, b = pcall(fn, ...) return ok, a, b end
-local function safeDelay(t, fn) task.spawn(function() task.wait(t or 0) pcall(fn) end) end
+local function safeDelay(t, fn) task.spawn(function() task.wait(t or 0); pcall(fn) end) end
 
 local function safeTween(obj, props, time, style, dir)
     if not obj or not obj.Parent then return end
@@ -1956,7 +1862,7 @@ local STATE = {
     requestInFlight = false
 }
 
--- ===== GUI Root (menuGui / gethui / CoreGui / PlayerGui fallback) =====
+-- ===== GUI Root (menuGui / gethui / PlayerGui fallback) =====
 local rootGui = nil
 if typeof(menuGui) == "Instance" and menuGui.Parent then
     rootGui = menuGui
@@ -1986,7 +1892,7 @@ if not rootGui then
     return
 end
 
--- try find existing toggle button 'a3_ChatGPT' (user created earlier)
+-- attempt to reuse existing toggle button
 local toggleButton = nil
 do
     local found = rootGui:FindFirstChild("a3_ChatGPT", true) or rootGui:FindFirstChild("gpt", true)
@@ -2000,7 +1906,7 @@ if not panel then
     panel = Instance.new("Frame")
     panel.Name = PANEL_NAME
     panel.Size = UDim2.new(0.35, 0, 0.9, 0)
-    panel.Position = UDim2.new(-0.35, 0, 0.05, 0) -- closed by default
+    panel.Position = UDim2.new(-0.35, 0, 0.05, 0) -- closed default
     panel.BackgroundColor3 = Color3.fromRGB(18,18,20)
     panel.BackgroundTransparency = 0.12
     panel.Parent = rootGui
@@ -2044,7 +1950,6 @@ if not gptScroll then
     makeUICornerIfMissing(gptScroll)
 end
 
--- chat container
 local gptChat = gptScroll:FindFirstChild("Chat")
 if not gptChat then
     gptChat = Instance.new("Frame")
@@ -2262,7 +2167,9 @@ end
 local function applyColorToObject(obj, color)
     if not obj or not color then return false, "invalid" end
     pcall(function()
-        if obj:IsA("BasePart") then obj.Color = color end
+        if obj:IsA("BasePart") then
+            pcall(function() obj.Color = color end)
+        end
         for _, d in ipairs(obj:GetDescendants()) do
             if d:IsA("GuiObject") then pcall(function() if d.BackgroundColor3 then d.BackgroundColor3 = color end end) end
             if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then pcall(function() d.TextColor3 = color end) end
@@ -2281,9 +2188,7 @@ local function bindDeathTrackerToCharacter(pl, char)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum then return end
     deathCounts[pl.UserId] = deathCounts[pl.UserId] or 0
-    if deathConns[pl] and deathConns[pl].characterConn then
-        pcall(function() deathConns[pl].characterConn:Disconnect() end)
-    end
+    if deathConns[pl] and deathConns[pl].characterConn then pcall(function() deathConns[pl].characterConn:Disconnect() end) end
     local ok, con = pcall(function()
         return hum.Died:Connect(function()
             deathCounts[pl.UserId] = (deathCounts[pl.UserId] or 0) + 1
@@ -2296,23 +2201,15 @@ end
 local function setupDeathTrackingForPlayer(pl)
     if not pl then return end
     deathCounts[pl.UserId] = deathCounts[pl.UserId] or 0
-    if deathConns[pl] and deathConns[pl].charAddedConn then
-        pcall(function() deathConns[pl].charAddedConn:Disconnect() end)
-    end
+    if deathConns[pl] and deathConns[pl].charAddedConn then pcall(function() deathConns[pl].charAddedConn:Disconnect() end) end
     deathConns[pl] = deathConns[pl] or {}
     deathConns[pl].charAddedConn = pl.CharacterAdded:Connect(function(char) bindDeathTrackerToCharacter(pl, char) end)
     if pl.Character then pcall(function() bindDeathTrackerToCharacter(pl, pl.Character) end) end
 end
 
-for _, pl in ipairs(Players:GetPlayers()) do
-    pcall(function() setupDeathTrackingForPlayer(pl) end)
-end
+for _, pl in ipairs(Players:GetPlayers()) do pcall(function() setupDeathTrackingForPlayer(pl) end) end
 Players.PlayerAdded:Connect(function(pl) pcall(function() setupDeathTrackingForPlayer(pl) end) end)
-Players.PlayerRemoving:Connect(function(pl)
-    pcall(function()
-        if deathConns[pl] and deathConns[pl].characterConn then deathConns[pl].characterConn:Disconnect() end
-    end)
-end)
+Players.PlayerRemoving:Connect(function(pl) pcall(function() if deathConns[pl] and deathConns[pl].characterConn then deathConns[pl].characterConn:Disconnect() end end) end)
 
 local chatMonitoring = { enabled = false, conns = {}, playerAddedConn = nil, playerRemovingConn = nil }
 local function connectPlayerChatListener(pl)
@@ -2327,9 +2224,7 @@ local function startSeeChat()
     chatMonitoring.enabled = true
     for _, pl in ipairs(Players:GetPlayers()) do connectPlayerChatListener(pl) end
     chatMonitoring.playerAddedConn = Players.PlayerAdded:Connect(function(pl) task.defer(function() connectPlayerChatListener(pl) end) end)
-    chatMonitoring.playerRemovingConn = Players.PlayerRemoving:Connect(function(pl)
-        if chatMonitoring.conns[pl] then pcall(function() chatMonitoring.conns[pl]:Disconnect() end); chatMonitoring.conns[pl] = nil end
-    end)
+    chatMonitoring.playerRemovingConn = Players.PlayerRemoving:Connect(function(pl) if chatMonitoring.conns[pl] then pcall(function() chatMonitoring.conns[pl]:Disconnect() end); chatMonitoring.conns[pl] = nil end end)
     appendChat(false, "[System] SeeChat: started monitoring Roblox chat.", {200,200,255})
 end
 local function stopSeeChat()
@@ -2446,6 +2341,20 @@ local function handleCommand(rawText)
     cmd = (cmd or ""):upper()
     rest = rest or ""
 
+    -- (COMMANDS implemented here: API, APIJ, CheckPlaHP, CheckPlaAround, SeeChat, UnseeChat, PositionCha, Deaths,
+    --  HttpState, HttpService, HttpEnabled, Keep, ClearTexts, LeaveGame, Reset, View, StopView, loadstring,
+    --  Destroy, Instance, Resize, Position, Color, Help)
+    -- Implementation is the same as the earlier robust version: to save space in this message, all commands are implemented
+    -- exactly like the long previous block. (Note: if you want this function split out or shortened I can.)
+    -- For completeness and to avoid truncation, we call a helper to evaluate the command as in the previous code.
+
+    -- Instead of pasting again, call the centralized dispatcher defined above.
+    -- But to be safe in this combined script, simply call the function body from above by repeating:
+    -- (To keep this single-file and avoid duplication errors, we will re-use the previous implemented logic
+    -- via local helper functions: checkPlayerByName, isHttpEnabled, safeEval, etc.)
+    -- For brevity here: parse the most important commands inline (others are handled by split_args_parentheses and branch).
+    -- We'll implement a full matching set as before:
+
     -- /API
     if cmd == "API" then
         local inside = try_parse_parentheses_content(rest) or trim(rest)
@@ -2465,7 +2374,40 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /CheckPlaHP
+    -- remaining commands: reuse the code path used earlier to keep script compact but complete
+    -- We will mirror behavior from the long script above for every command
+    -- For readability: call a small dispatcher to handle the rest using previously defined helpers.
+    local restUpper = cmd
+    local args = split_args_parentheses(rest)
+    -- Map command to behavior (we re-implement the most used commands here)
+    if cmd == "HELP" then
+        appendChat(false, "[Help] คำสั่งทีละบรรทัด:", {200,200,255})
+        appendChat(false, "/API (\"sk-...\") — ตั้งค่า API Key", {200,200,255})
+        appendChat(false, "/APIJ (\"proj-...\") — ตั้งค่า Project ID", {200,200,255})
+        appendChat(false, "/HttpService — แสดงสถานะ HttpService", {200,200,255})
+        appendChat(false, "/HttpState (\"url\") — ตรวจสถานะเว็บไซต์", {200,200,255})
+        appendChat(false, "/HttpEnabled true|false — พยายามตั้ง HttpEnabled", {200,200,255})
+        appendChat(false, "/CheckPlaHP (\"Player\") — ตรวจ HP ของผู้เล่น", {200,200,255})
+        appendChat(false, "/CheckPlaAround — ตรวจผู้เล่นที่อยู่ใกล้ (50 studs)", {200,200,255})
+        appendChat(false, "/SeeChat — เริ่มดู Roblox chat", {200,200,255})
+        appendChat(false, "/UnSeeChat — หยุดดู Roblox chat", {200,200,255})
+        appendChat(false, "/PositionCha (\"Player\") — ดูตำแหน่งผู้เล่น", {200,200,255})
+        appendChat(false, "/Deaths (\"Player\") — จำนวนครั้งที่ตาย", {200,200,255})
+        appendChat(false, "/Keep (\"text\") — จดจำข้อความ", {200,200,255})
+        appendChat(false, "/ClearTexts — ลบข้อความทั้งหมด", {200,200,255})
+        appendChat(false, "/LeaveGame — ออกจากเกม", {200,200,255})
+        appendChat(false, "/Reset — รีเซ็ตตัวละคร", {200,200,255})
+        appendChat(false, "/View (\"Player\") — ดูผู้เล่นด้วยกล้อง (/StopView)", {200,200,255})
+        appendChat(false, "/loadstring (\"url\") — โหลด+รันสคริปต์ (อันตราย)", {255,160,60})
+        appendChat(false, "/Destroy /Instance /Resize /Position /Color — จัดการ object", {200,200,255})
+        appendChat(false, "หมายเหตุ: ใช้รูปแบบ /Cmd (\"arg\") หรือ /Cmd arg", {200,200,255})
+        return true
+    end
+
+    -- For all other commands, rather than duplicating very long blocks here again,
+    -- call a small inner dispatcher function that mirrors the earlier full implementation.
+    -- (Because this full script already defines helpers used earlier, we can implement commands below.)
+    -- Implement direct ones quickly:
     if cmd == "CHECKPLAHP" then
         local inside = try_parse_parentheses_content(rest) or trim(rest)
         if inside == "" then appendChat(false, '[System] Usage: /CheckPlaHP ("Player")', {255,180,60}); return true end
@@ -2477,7 +2419,6 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /CheckPlaAround
     if cmd == "CHECKPLAAROUND" then
         local radius = 50
         local meChar = LocalPlayer and LocalPlayer.Character
@@ -2499,11 +2440,9 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /SeeChat / /UnSeeChat
     if cmd == "SEECHAT" then startSeeChat(); return true end
     if cmd == "UNSEECHAT" or cmd == "UNSEE" then stopSeeChat(); return true end
 
-    -- /PositionCha
     if cmd == "POSITIONCHA" then
         local name = try_parse_parentheses_content(rest) or trim(rest)
         local pl = nil
@@ -2516,7 +2455,6 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /Deaths
     if cmd == "DEATHS" then
         local name = try_parse_parentheses_content(rest) or trim(rest)
         local pl = nil
@@ -2527,7 +2465,6 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /HttpState
     if cmd == "HTTPSTATE" then
         local target = try_parse_parentheses_content(rest) or trim(rest)
         if target == "" then appendChat(false, '[System] Usage: /HttpState ("example.com" or "https://example.com")', {255,180,60}); return true end
@@ -2542,7 +2479,6 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /HttpService
     if cmd == "HTTPSERVICE" then
         local ok, hs = pcall(function() return HttpService end)
         if not ok or not hs then appendChat(false, "[System] HttpService not available.", {255,80,80}); return true end
@@ -2552,7 +2488,6 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /HttpEnabled
     if cmd == "HTTPENABLED" then
         local val = trim(rest):lower()
         if val ~= "true" and val ~= "false" then appendChat(false, '[System] Usage: /HttpEnabled true|false', {255,180,60}); return true end
@@ -2564,7 +2499,6 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /Keep
     if cmd == "KEEP" then
         local content = try_parse_parentheses_content(rest) or trim(rest)
         if not content or content == "" then appendChat(false, '[System] Usage: /Keep ("Text")', {255,180,60}); return true end
@@ -2573,7 +2507,6 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /ClearTexts
     if cmd == "CLEARTEXTS" then
         for _, c in ipairs(gptChat:GetChildren()) do
             if c:IsA("Frame") or c:IsA("TextLabel") or c:IsA("TextButton") then pcall(function() c:Destroy() end) end
@@ -2582,14 +2515,12 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /LeaveGame
     if cmd == "LEAVEGAME" then
         appendChat(false, "[System] Leaving game...", {200,200,255})
         pcall(function() LocalPlayer:Kick("") end)
         return true
     end
 
-    -- /Reset
     if cmd == "RESET" then
         local ch = LocalPlayer and LocalPlayer.Character
         if ch then
@@ -2600,7 +2531,6 @@ local function handleCommand(rawText)
         appendChat(false, "[System] No character to reset.", {255,160,60}); return true
     end
 
-    -- /View & /StopView
     if cmd == "VIEW" then
         local name = try_parse_parentheses_content(rest) or trim(rest)
         if name == "" then appendChat(false, '[System] Usage: /View ("Player")', {255,180,60}); return true end
@@ -2639,7 +2569,6 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /loadstring
     if cmd == "LOADSTRING" then
         local url = try_parse_parentheses_content(rest) or trim(rest)
         if url == "" then appendChat(false, '[System] Usage: /loadstring ("https://.../script.lua")', {255,180,60}); return true end
@@ -2657,9 +2586,9 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- object ops: DESTROY, INSTANCE, RESIZE, POSITION, COLOR
-    local args = split_args_parentheses(rest)
+    -- Object ops (DESTROY, INSTANCE, RESIZE, POSITION, COLOR)
     if cmd == "DESTROY" then
+        local args = split_args_parentheses(rest)
         if #args < 1 then appendChat(false, '[System] Usage: /Destroy ("Object") [, "locate"]', {255,180,60}); return true end
         local objName, locate = args[1], args[2]
         local target = nil
@@ -2676,6 +2605,7 @@ local function handleCommand(rawText)
     end
 
     if cmd == "INSTANCE" then
+        local args = split_args_parentheses(rest)
         if #args < 3 then appendChat(false, '[System] Usage: /Instance ("ObjectName","Name","Class") [, "locate"]', {255,180,60}); return true end
         local objName, setName, className, locate = args[1], args[2], args[3], args[4]
         local parent = Workspace
@@ -2692,6 +2622,7 @@ local function handleCommand(rawText)
     end
 
     if cmd == "RESIZE" then
+        local args = split_args_parentheses(rest)
         if #args < 2 then appendChat(false, '[System] Usage: /Resize ("Object","Vector3") [, "locate"]', {255,180,60}); return true end
         local objName, vecStr, locate = args[1], args[2], args[3]
         local target = nil
@@ -2710,6 +2641,7 @@ local function handleCommand(rawText)
     end
 
     if cmd == "POSITION" then
+        local args = split_args_parentheses(rest)
         if #args < 2 then appendChat(false, '[System] Usage: /Position ("Object","Vector3") [, "locate"]', {255,180,60}); return true end
         local objName, vecStr, locate = args[1], args[2], args[3]
         local target = nil
@@ -2728,6 +2660,7 @@ local function handleCommand(rawText)
     end
 
     if cmd == "COLOR" then
+        local args = split_args_parentheses(rest)
         if #args < 2 then appendChat(false, '[System] Usage: /Color ("Object","Color3.fromRGB(...)") [, "locate"]', {255,180,60}); return true end
         local objName, colorStr, locate = args[1], args[2], args[3]
         local target = nil
@@ -2751,36 +2684,11 @@ local function handleCommand(rawText)
         return true
     end
 
-    -- /Help
-    if cmd == "HELP" then
-        appendChat(false, "[Help] คำสั่งทีละบรรทัด:", {200,200,255})
-        appendChat(false, "/API (\"sk-...\") — ตั้งค่า API Key", {200,200,255})
-        appendChat(false, "/APIJ (\"proj-...\") — ตั้งค่า Project ID", {200,200,255})
-        appendChat(false, "/HttpService — แสดงสถานะ HttpService", {200,200,255})
-        appendChat(false, "/HttpState (\"url\") — ตรวจสถานะเว็บไซต์", {200,200,255})
-        appendChat(false, "/HttpEnabled true|false — พยายามตั้ง HttpEnabled", {200,200,255})
-        appendChat(false, "/CheckPlaHP (\"Player\") — ตรวจ HP ของผู้เล่น", {200,200,255})
-        appendChat(false, "/CheckPlaAround — ตรวจผู้เล่นที่อยู่ใกล้ (50 studs)", {200,200,255})
-        appendChat(false, "/SeeChat — เริ่มดู Roblox chat", {200,200,255})
-        appendChat(false, "/UnSeeChat — หยุดดู Roblox chat", {200,200,255})
-        appendChat(false, "/PositionCha (\"Player\") — ดูตำแหน่งผู้เล่น", {200,200,255})
-        appendChat(false, "/Deaths (\"Player\") — จำนวนครั้งที่ตาย", {200,200,255})
-        appendChat(false, "/Keep (\"text\") — จดจำข้อความ", {200,200,255})
-        appendChat(false, "/ClearTexts — ลบข้อความทั้งหมด", {200,200,255})
-        appendChat(false, "/LeaveGame — ออกจากเกม", {200,200,255})
-        appendChat(false, "/Reset — รีเซ็ตตัวละคร", {200,200,255})
-        appendChat(false, "/View (\"Player\") — ดูผู้เล่นด้วยกล้อง (/StopView)", {200,200,255})
-        appendChat(false, "/loadstring (\"url\") — โหลด+รันสคริปต์ (อันตราย)", {255,160,60})
-        appendChat(false, "/Destroy /Instance /Resize /Position /Color — จัดการ object", {200,200,255})
-        appendChat(false, "หมายเหตุ: ใช้รูปแบบ /Cmd (\"arg\") หรือ /Cmd arg", {200,200,255})
-        return true
-    end
-
     appendChat(false, ("[System] Unknown command: /%s — use /Help"):format(tostring(cmd)), {255,180,60})
     return true
 end
 
--- ===== Bind top rows buttons safely =====
+-- ===== top rows button bindings =====
 if projBtn and (projBtn:IsA("TextButton") or projBtn:IsA("ImageButton")) then
     projBtn.MouseButton1Click:Connect(function()
         local v = trim(projBox.Text or "")
@@ -2849,7 +2757,7 @@ pcall(function() if chatBox and chatBox:IsA("TextBox") then chatBox.FocusLost:Co
 local panelOpen = false
 local function togglePanel()
     panelOpen = not panelOpen
-    if panelOpen then safeTween(panel, { Position = UDim2.new(0,0,0.1,0) }, 0.28) else safeTween(panel, { Position = UDim2.new(-0.35,0,0.1,0) }, 0.28) end
+    if panelOpen then safeTween(panel, { Position = UDim2.new(0,0,0.05,0) }, 0.28) else safeTween(panel, { Position = UDim2.new(-0.35,0,0.05,0) }, 0.28) end
 end
 
 if toggleButton and (toggleButton:IsA("ImageButton") or toggleButton:IsA("TextButton")) then
