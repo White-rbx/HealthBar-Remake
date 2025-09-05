@@ -1794,21 +1794,21 @@ hbm.MouseButton1Click:Connect(toggleTB)
 
 
 
--- Full robust ChatGPT + Commands LocalScript
--- Put in ExperienceSettings as a LocalScript (client).
--- WARNING: client-side API keys are visible. Use for testing only.
+-- ChatGPT + Commands (GPT-only patch) - LocalScript (put in ExperienceSettings, client)
+-- Uses existing toggle button variable 'gpt' if available; otherwise looks for "a3_ChatGPT" in UI.
+-- Robust: uses typeof, pcall and careful nil checks.
 
 -- ===== Services =====
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Workspace = workspace
 
--- ===== Ensure client =====
+-- ===== Ensure LocalPlayer (client) =====
 local LocalPlayer = Players.LocalPlayer
 if not LocalPlayer then
-    warn("[ChatGPT] LocalPlayer not found. Must run as LocalScript (client).")
+    warn("[ChatGPT] LocalPlayer not found — run as a LocalScript.")
     return
 end
 
@@ -1819,16 +1819,18 @@ local function redactKey(k)
     if #k <= 12 then return "********" end
     return k:sub(1,6) .. "..." .. k:sub(-6)
 end
-local function safePcall(fn, ...) local ok, a, b = pcall(fn, ...) return ok, a, b end
-local function safeDelay(t, fn) task.spawn(function() task.wait(t or 0); pcall(fn) end) end
-
-local function safeTween(obj, props, time, style, dir)
-    if not obj or not obj.Parent then return end
+local function safeTween(obj, props, t, style, dir)
+    if not obj or typeof(obj) ~= "Instance" or not obj.Parent then return end
     pcall(function()
-        local info = TweenInfo.new(time or 0.28, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out)
+        local info = TweenInfo.new(t or 0.28, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out)
         local tw = TweenService:Create(obj, info, props or {})
         tw:Play()
     end)
+end
+local function safeNew(className)
+    local ok, inst = pcall(function() return Instance.new(className) end)
+    if ok then return inst end
+    return nil
 end
 
 local function makeUICornerIfMissing(obj)
@@ -1853,6 +1855,11 @@ local function ensureUIListLayout(parent, pad)
     end)
 end
 
+local function isHttpEnabled()
+    local ok, val = pcall(function() return HttpService.HttpEnabled end)
+    return ok and val == true
+end
+
 -- ===== State =====
 local STATE = {
     OPENAI_KEY = nil,
@@ -1862,10 +1869,14 @@ local STATE = {
     requestInFlight = false
 }
 
--- ===== GUI Root (menuGui / gethui / PlayerGui fallback) =====
+-- ===== Root GUI: prefer menuGui/expSettings/healthBar, fallback to PlayerGui =====
 local rootGui = nil
 if typeof(menuGui) == "Instance" and menuGui.Parent then
     rootGui = menuGui
+elseif typeof(expSettings) == "Instance" and expSettings.Parent then
+    rootGui = expSettings
+elseif typeof(healthBar) == "Instance" and healthBar.Parent then
+    rootGui = healthBar
 else
     local ok, gh = pcall(function() if type(gethui) == "function" then return gethui() end end)
     if ok and gh and typeof(gh) == "Instance" and gh.Parent then
@@ -1873,10 +1884,9 @@ else
     else
         local pg = LocalPlayer:FindFirstChild("PlayerGui")
         if pg then
+            -- create a dedicated ScreenGui as fallback (non-invasive)
             local existing = pg:FindFirstChild("ExperienceSettings_ChatGPT_SG")
-            if existing then
-                rootGui = existing
-            else
+            if existing then rootGui = existing else
                 local sg = Instance.new("ScreenGui")
                 sg.Name = "ExperienceSettings_ChatGPT_SG"
                 sg.ResetOnSpawn = false
@@ -1888,31 +1898,35 @@ else
 end
 
 if not rootGui then
-    warn("[ChatGPT] No GUI root found. Aborting.")
+    warn("[ChatGPT] could not find UI root (menuGui/PlayerGui/gethui). Aborting.")
     return
 end
 
--- attempt to reuse existing toggle button
+-- ===== Try to reuse existing toggle button named 'gpt' (user created) =====
 local toggleButton = nil
-do
-    local found = rootGui:FindFirstChild("a3_ChatGPT", true) or rootGui:FindFirstChild("gpt", true)
+if typeof(gpt) == "Instance" and (gpt:IsA("ImageButton") or gpt:IsA("TextButton")) then
+    toggleButton = gpt
+else
+    -- search in rootGui for a3_ChatGPT
+    local found = rootGui:FindFirstChild("a3_ChatGPT", true)
     if found and (found:IsA("ImageButton") or found:IsA("TextButton")) then toggleButton = found end
 end
 
--- ===== Build / Reuse UI =====
-local PANEL_NAME = "ExperienceSettings_ChatGPT_Panel"
+-- ===== Build or reuse panel UI =====
+local PANEL_NAME = "a3_ChatGPT_Panel"
 local panel = rootGui:FindFirstChild(PANEL_NAME, true)
 if not panel then
     panel = Instance.new("Frame")
     panel.Name = PANEL_NAME
     panel.Size = UDim2.new(0.35, 0, 0.9, 0)
-    panel.Position = UDim2.new(-0.35, 0, 0.05, 0) -- closed default
+    panel.Position = UDim2.new(-0.35, 0, 0.05, 0) -- hidden by default
     panel.BackgroundColor3 = Color3.fromRGB(18,18,20)
     panel.BackgroundTransparency = 0.12
     panel.Parent = rootGui
     makeUICornerIfMissing(panel)
 end
 
+-- background container inside panel
 local back = panel:FindFirstChild("Background")
 if not back then
     back = Instance.new("Frame")
@@ -1923,7 +1937,7 @@ if not back then
     back.Parent = panel
 end
 
--- top rows container (project & api)
+-- Top rows (project & API inputs)
 local topRows = back:FindFirstChild("TopRows")
 if not topRows then
     topRows = Instance.new("Frame")
@@ -1935,13 +1949,13 @@ if not topRows then
     ensureUIListLayout(topRows, 6)
 end
 
--- chat scroll
+-- Scrolling chat area
 local gptScroll = back:FindFirstChild("a0_Scroll")
 if not gptScroll then
     gptScroll = Instance.new("ScrollingFrame")
     gptScroll.Name = "a0_Scroll"
-    gptScroll.Size = UDim2.new(1, 0, 0.62, 0)
-    gptScroll.Position = UDim2.new(0, 0, 0.18, 0)
+    gptScroll.Size = UDim2.new(1,0,0.62,0)
+    gptScroll.Position = UDim2.new(0,0,0.18,0)
     gptScroll.BackgroundTransparency = 0.5
     gptScroll.BackgroundColor3 = Color3.fromRGB(12,12,12)
     gptScroll.ScrollBarThickness = 6
@@ -1950,21 +1964,23 @@ if not gptScroll then
     makeUICornerIfMissing(gptScroll)
 end
 
+-- Chat container within scroll
 local gptChat = gptScroll:FindFirstChild("Chat")
 if not gptChat then
     gptChat = Instance.new("Frame")
     gptChat.Name = "Chat"
-    gptChat.Size = UDim2.new(0.96, 0, 0, 0)
-    gptChat.Position = UDim2.new(0.02, 0, 0, 10)
+    gptChat.Size = UDim2.new(0.96,0,0,0)
+    gptChat.Position = UDim2.new(0.02,0,0,10)
     gptChat.BackgroundTransparency = 1
     gptChat.Parent = gptScroll
 end
 
+-- Ensure UIListLayout for auto-sizing
 local uiLayout = gptChat:FindFirstChildOfClass("UIListLayout")
 if not uiLayout then
     uiLayout = Instance.new("UIListLayout")
     uiLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    uiLayout.Padding = UDim.new(0, 6)
+    uiLayout.Padding = UDim.new(0,6)
     uiLayout.Parent = gptChat
 end
 uiLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -1974,7 +1990,7 @@ uiLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     end)
 end)
 
--- bottom input
+-- Bottom input frame
 local inputFrame = panel:FindFirstChild("a_chat_input")
 if not inputFrame then
     inputFrame = Instance.new("Frame")
@@ -1985,12 +2001,13 @@ if not inputFrame then
     inputFrame.Parent = panel
 end
 
+-- Chat TextBox
 local chatBox = inputFrame:FindFirstChild("ChatBox")
 if not chatBox then
     chatBox = Instance.new("TextBox")
     chatBox.Name = "ChatBox"
     chatBox.Size = UDim2.new(0.75, -6, 1, 0)
-    chatBox.Position = UDim2.new(0, 6, 0, 0)
+    chatBox.Position = UDim2.new(0,6,0,0)
     chatBox.PlaceholderText = "Ask anything... (use / for commands)"
     chatBox.ClearTextOnFocus = false
     chatBox.Font = Enum.Font.SourceSans
@@ -2000,6 +2017,7 @@ if not chatBox then
     chatBox.Parent = inputFrame
 end
 
+-- Send button
 local sendBtn = inputFrame:FindFirstChild("SendBtn")
 if not sendBtn then
     sendBtn = Instance.new("TextButton")
@@ -2013,7 +2031,7 @@ if not sendBtn then
     sendBtn.Parent = inputFrame
 end
 
--- helper: makeRow for top inputs
+-- Helper to create rows (top inputs)
 local function makeRow(parent, id, placeholder, btnText)
     local f = Instance.new("Frame")
     f.Name = id .. "_frame"
@@ -2043,7 +2061,7 @@ local function makeRow(parent, id, placeholder, btnText)
     return f, box, btn
 end
 
--- create top project/API inputs
+-- create or reuse project/API inputs (Project first, then API)
 local projFrame, projBox, projBtn
 local apiFrame, apiBox, apiBtn
 do
@@ -2051,7 +2069,7 @@ do
     projBox   = topRows:FindFirstChild("a_proj_input_box", true)
     projBtn   = topRows:FindFirstChild("a_proj_input_btn", true)
     if not (projFrame and projBox and projBtn) then
-        projFrame, projBox, projBtn = makeRow(topRows, "a_proj_input", "Enter Project ID (proj_xxxxx)", "Next")
+        projFrame, projBox, projBtn = makeRow(topRows, "a_proj_input", "Enter Project ID (proj_...)", "Next")
     end
 
     apiFrame = topRows:FindFirstChild("a_api_input_frame", true)
@@ -2064,7 +2082,7 @@ do
     end
 end
 
--- ===== appendChat helper =====
+-- ===== chat append helper (auto-size) =====
 local chatCounter = 0
 local function appendChat(isUser, text, colorTbl)
     chatCounter = chatCounter + 1
@@ -2108,12 +2126,10 @@ local function appendChat(isUser, text, colorTbl)
     end)
 end
 
-local function appendDebug(msg)
-    pcall(function() appendChat(false, "[Debug] "..tostring(msg), {200,200,200}) end)
-    pcall(function() warn("[ChatGPT] "..tostring(msg)) end)
-end
+local function appendSystem(text) appendChat(false, "[System] " .. tostring(text), {255,255,255}) end
+local function appendError(text) appendChat(false, "[Error] " .. tostring(text), {255,80,80}) end
 
--- ===== Helpers used by commands =====
+-- ===== helpers used by commands =====
 local function checkPlayerByName(name)
     if not name or name == "" then return nil end
     name = trim(name)
@@ -2123,11 +2139,6 @@ local function checkPlayerByName(name)
         if pl.Name:lower():find(name:lower()) then return pl end
     end
     return nil
-end
-
-local function isHttpEnabled()
-    local ok, val = pcall(function() return HttpService.HttpEnabled end)
-    return ok and val == true
 end
 
 local function safeEval(expr)
@@ -2167,20 +2178,17 @@ end
 local function applyColorToObject(obj, color)
     if not obj or not color then return false, "invalid" end
     pcall(function()
-        if obj:IsA("BasePart") then
-            pcall(function() obj.Color = color end)
-        end
+        if obj:IsA("BasePart") then pcall(function() obj.Color = color end) end
         for _, d in ipairs(obj:GetDescendants()) do
             if d:IsA("GuiObject") then pcall(function() if d.BackgroundColor3 then d.BackgroundColor3 = color end end) end
             if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then pcall(function() d.TextColor3 = color end) end
             if d:IsA("ImageLabel") or d:IsA("ImageButton") then pcall(function() d.ImageColor3 = color end) end
-            if d:IsA("Decal") then pcall(function() d.Color3 = color end) end
         end
     end)
     return true, nil
 end
 
--- ===== Death tracking & chat monitoring =====
+-- ===== Death tracking & SeeChat =====
 local deathCounts = {}
 local deathConns = {}
 local function bindDeathTrackerToCharacter(pl, char)
@@ -2192,7 +2200,7 @@ local function bindDeathTrackerToCharacter(pl, char)
     local ok, con = pcall(function()
         return hum.Died:Connect(function()
             deathCounts[pl.UserId] = (deathCounts[pl.UserId] or 0) + 1
-            appendDebug(("DeathTracker: %s died (total %d)"):format(pl.Name, deathCounts[pl.UserId]))
+            appendSystem(("DeathTracker: %s died (total %d)"):format(pl.Name, deathCounts[pl.UserId]))
         end)
     end)
     if ok then deathConns[pl] = deathConns[pl] or {}; deathConns[pl].characterConn = con end
@@ -2220,24 +2228,26 @@ local function connectPlayerChatListener(pl)
     if ok and con then chatMonitoring.conns[pl] = con end
 end
 local function startSeeChat()
-    if chatMonitoring.enabled then appendChat(false, "[System] SeeChat already active.", {200,200,255}); return end
+    if chatMonitoring.enabled then appendSystem("SeeChat already active."); return end
     chatMonitoring.enabled = true
     for _, pl in ipairs(Players:GetPlayers()) do connectPlayerChatListener(pl) end
     chatMonitoring.playerAddedConn = Players.PlayerAdded:Connect(function(pl) task.defer(function() connectPlayerChatListener(pl) end) end)
-    chatMonitoring.playerRemovingConn = Players.PlayerRemoving:Connect(function(pl) if chatMonitoring.conns[pl] then pcall(function() chatMonitoring.conns[pl]:Disconnect() end); chatMonitoring.conns[pl] = nil end end)
-    appendChat(false, "[System] SeeChat: started monitoring Roblox chat.", {200,200,255})
+    chatMonitoring.playerRemovingConn = Players.PlayerRemoving:Connect(function(pl)
+        if chatMonitoring.conns[pl] then pcall(function() chatMonitoring.conns[pl]:Disconnect() end); chatMonitoring.conns[pl] = nil end
+    end)
+    appendSystem("SeeChat: started monitoring Roblox chat.")
 end
 local function stopSeeChat()
-    if not chatMonitoring.enabled then appendChat(false, "[System] SeeChat not active.", {200,200,255}); return end
+    if not chatMonitoring.enabled then appendSystem("SeeChat not active."); return end
     for pl, con in pairs(chatMonitoring.conns) do pcall(function() con:Disconnect() end) end
     chatMonitoring.conns = {}
     if chatMonitoring.playerAddedConn then pcall(function() chatMonitoring.playerAddedConn:Disconnect() end); chatMonitoring.playerAddedConn = nil end
     if chatMonitoring.playerRemovingConn then pcall(function() chatMonitoring.playerRemovingConn:Disconnect() end); chatMonitoring.playerRemovingConn = nil end
     chatMonitoring.enabled = false
-    appendChat(false, "[System] SeeChat: stopped monitoring Roblox chat.", {200,200,255})
+    appendSystem("SeeChat: stopped monitoring Roblox chat.")
 end
 
--- ===== OpenAI request (client-side) =====
+-- ===== Call OpenAI (client-side) =====
 local function callOpenAI_request(prompt, key, proj)
     if not isHttpEnabled() then return nil, "http_disabled" end
     if not key or key == "" then return nil, "no_key" end
@@ -2262,7 +2272,7 @@ local function callOpenAI_request(prompt, key, proj)
             })
         end)
         if not ok then
-            appendDebug("RequestAsync pcall failed: "..tostring(resp))
+            appendSystem("RequestAsync pcall failed: "..tostring(resp))
             if attempt < attempts then task.wait(backoffs[attempt]) end
         else
             if not resp then return nil, "no_response" end
@@ -2329,7 +2339,6 @@ local function split_args_parentheses(s)
     return parts
 end
 
--- saved structures
 local savedKeeps = {}
 local savedViewState = { active = false, conn = nil, prevType = nil, prevSubject = nil }
 
@@ -2341,89 +2350,43 @@ local function handleCommand(rawText)
     cmd = (cmd or ""):upper()
     rest = rest or ""
 
-    -- (COMMANDS implemented here: API, APIJ, CheckPlaHP, CheckPlaAround, SeeChat, UnseeChat, PositionCha, Deaths,
-    --  HttpState, HttpService, HttpEnabled, Keep, ClearTexts, LeaveGame, Reset, View, StopView, loadstring,
-    --  Destroy, Instance, Resize, Position, Color, Help)
-    -- Implementation is the same as the earlier robust version: to save space in this message, all commands are implemented
-    -- exactly like the long previous block. (Note: if you want this function split out or shortened I can.)
-    -- For completeness and to avoid truncation, we call a helper to evaluate the command as in the previous code.
-
-    -- Instead of pasting again, call the centralized dispatcher defined above.
-    -- But to be safe in this combined script, simply call the function body from above by repeating:
-    -- (To keep this single-file and avoid duplication errors, we will re-use the previous implemented logic
-    -- via local helper functions: checkPlayerByName, isHttpEnabled, safeEval, etc.)
-    -- For brevity here: parse the most important commands inline (others are handled by split_args_parentheses and branch).
-    -- We'll implement a full matching set as before:
-
-    -- /API
+    -- /API (set API key directly)
     if cmd == "API" then
         local inside = try_parse_parentheses_content(rest) or trim(rest)
-        if inside == "" then appendChat(false, "[System] Usage: /API (\"sk-...\")", {255,180,60}); return true end
+        if inside == "" then appendSystem("Usage: /API (\"sk-...\")"); return true end
         STATE.OPENAI_KEY = trim(inside)
         STATE.validated = false
-        appendChat(false, ("[System] API key set (not validated): %s"):format(redactKey(STATE.OPENAI_KEY)), {200,200,255})
+        appendSystem(("API key set (not validated): %s"):format(redactKey(STATE.OPENAI_KEY)))
         return true
     end
 
-    -- /APIJ
+    -- /APIJ (Project ID)
     if cmd == "APIJ" then
         local inside = try_parse_parentheses_content(rest) or trim(rest)
-        if inside == "" then appendChat(false, "[System] Usage: /APIJ (\"proj-...\")", {255,180,60}); return true end
-        STATE.PROJECT_ID = trim(inside)
-        appendChat(false, ("[System] Project ID set: %s"):format(tostring(STATE.PROJECT_ID)), {200,200,255})
+        if inside == "" then appendSystem("Usage: /APIJ (\"proj-...\")"); return true end
+        STATE.PROJECT_ID = inside
+        appendSystem(("Project ID set: %s"):format(tostring(STATE.PROJECT_ID)))
         return true
     end
 
-    -- remaining commands: reuse the code path used earlier to keep script compact but complete
-    -- We will mirror behavior from the long script above for every command
-    -- For readability: call a small dispatcher to handle the rest using previously defined helpers.
-    local restUpper = cmd
-    local args = split_args_parentheses(rest)
-    -- Map command to behavior (we re-implement the most used commands here)
-    if cmd == "HELP" then
-        appendChat(false, "[Help] คำสั่งทีละบรรทัด:", {200,200,255})
-        appendChat(false, "/API (\"sk-...\") — ตั้งค่า API Key", {200,200,255})
-        appendChat(false, "/APIJ (\"proj-...\") — ตั้งค่า Project ID", {200,200,255})
-        appendChat(false, "/HttpService — แสดงสถานะ HttpService", {200,200,255})
-        appendChat(false, "/HttpState (\"url\") — ตรวจสถานะเว็บไซต์", {200,200,255})
-        appendChat(false, "/HttpEnabled true|false — พยายามตั้ง HttpEnabled", {200,200,255})
-        appendChat(false, "/CheckPlaHP (\"Player\") — ตรวจ HP ของผู้เล่น", {200,200,255})
-        appendChat(false, "/CheckPlaAround — ตรวจผู้เล่นที่อยู่ใกล้ (50 studs)", {200,200,255})
-        appendChat(false, "/SeeChat — เริ่มดู Roblox chat", {200,200,255})
-        appendChat(false, "/UnSeeChat — หยุดดู Roblox chat", {200,200,255})
-        appendChat(false, "/PositionCha (\"Player\") — ดูตำแหน่งผู้เล่น", {200,200,255})
-        appendChat(false, "/Deaths (\"Player\") — จำนวนครั้งที่ตาย", {200,200,255})
-        appendChat(false, "/Keep (\"text\") — จดจำข้อความ", {200,200,255})
-        appendChat(false, "/ClearTexts — ลบข้อความทั้งหมด", {200,200,255})
-        appendChat(false, "/LeaveGame — ออกจากเกม", {200,200,255})
-        appendChat(false, "/Reset — รีเซ็ตตัวละคร", {200,200,255})
-        appendChat(false, "/View (\"Player\") — ดูผู้เล่นด้วยกล้อง (/StopView)", {200,200,255})
-        appendChat(false, "/loadstring (\"url\") — โหลด+รันสคริปต์ (อันตราย)", {255,160,60})
-        appendChat(false, "/Destroy /Instance /Resize /Position /Color — จัดการ object", {200,200,255})
-        appendChat(false, "หมายเหตุ: ใช้รูปแบบ /Cmd (\"arg\") หรือ /Cmd arg", {200,200,255})
-        return true
-    end
-
-    -- For all other commands, rather than duplicating very long blocks here again,
-    -- call a small inner dispatcher function that mirrors the earlier full implementation.
-    -- (Because this full script already defines helpers used earlier, we can implement commands below.)
-    -- Implement direct ones quickly:
+    -- /CheckPlaHP ("Player")
     if cmd == "CHECKPLAHP" then
         local inside = try_parse_parentheses_content(rest) or trim(rest)
-        if inside == "" then appendChat(false, '[System] Usage: /CheckPlaHP ("Player")', {255,180,60}); return true end
+        if inside == "" then appendSystem('Usage: /CheckPlaHP ("Player")'); return true end
         local pl = checkPlayerByName(inside)
-        if not pl or not pl.Character then appendChat(false, ("[System] Player '%s' not found or no character."):format(inside), {255,160,60}); return true end
+        if not pl or not pl.Character then appendSystem(("Player '%s' not found or no character."):format(inside)); return true end
         local hum = pl.Character:FindFirstChildOfClass("Humanoid")
-        if not hum then appendChat(false, ("[System] Player '%s' has no Humanoid."):format(pl.Name), {255,160,60}); return true end
-        appendChat(false, ("[System] %s HP: %.2f / %.2f"):format(pl.Name, hum.Health, hum.MaxHealth), {200,200,255})
+        if not hum then appendSystem(("Player '%s' has no Humanoid."):format(pl.Name)); return true end
+        appendSystem(("%s HP: %.2f / %.2f"):format(pl.Name, hum.Health, hum.MaxHealth))
         return true
     end
 
+    -- /CheckPlaAround
     if cmd == "CHECKPLAAROUND" then
         local radius = 50
         local meChar = LocalPlayer and LocalPlayer.Character
         local meRoot = meChar and (meChar:FindFirstChild("HumanoidRootPart") or meChar.PrimaryPart)
-        if not meRoot then appendChat(false, "[System] Cannot find your character/HRP.", {255,160,60}); return true end
+        if not meRoot then appendSystem("Cannot find your character/HRP."); return true end
         local nearby = {}
         for _,pl in ipairs(Players:GetPlayers()) do
             if pl ~= LocalPlayer and pl.Character then
@@ -2434,112 +2397,124 @@ local function handleCommand(rawText)
                 end
             end
         end
-        if #nearby == 0 then appendChat(false, "[System] No players within 50 studs.", {200,200,255}); return true end
+        if #nearby == 0 then appendSystem("No players within 50 studs."); return true end
         table.sort(nearby, function(a,b) return a.d < b.d end)
-        for i,v in ipairs(nearby) do appendChat(false, ("[System] %s — %.1f studs"):format(v.pl.Name, v.d), {200,200,255}) end
+        for i,v in ipairs(nearby) do appendSystem(("%s — %.1f studs"):format(v.pl.Name, v.d)) end
         return true
     end
 
+    -- /SeeChat / /UnSeeChat
     if cmd == "SEECHAT" then startSeeChat(); return true end
     if cmd == "UNSEECHAT" or cmd == "UNSEE" then stopSeeChat(); return true end
 
+    -- /PositionCha ("Player")
     if cmd == "POSITIONCHA" then
         local name = try_parse_parentheses_content(rest) or trim(rest)
         local pl = nil
         if name == "" then pl = LocalPlayer else pl = checkPlayerByName(name) end
-        if not pl or not pl.Character then appendChat(false, ("[System] Player '%s' not found or no character."):format(tostring(name)), {255,160,60}); return true end
+        if not pl or not pl.Character then appendSystem(("Player '%s' not found or no character."):format(tostring(name))); return true end
         local rootPart = pl.Character:FindFirstChild("HumanoidRootPart") or pl.Character.PrimaryPart
-        if not rootPart then appendChat(false, ("[System] %s has no root part."):format(pl.Name), {255,160,60}); return true end
+        if not rootPart then appendSystem(("%s has no root part."):format(pl.Name)); return true end
         local p = rootPart.Position
-        appendChat(false, ("[System] %s position: (%.2f, %.2f, %.2f)"):format(pl.Name, p.X, p.Y, p.Z), {200,200,255})
+        appendSystem(("%s position: (%.2f, %.2f, %.2f)"):format(pl.Name, p.X, p.Y, p.Z))
         return true
     end
 
+    -- /Deaths ("Player")
     if cmd == "DEATHS" then
         local name = try_parse_parentheses_content(rest) or trim(rest)
         local pl = nil
         if name == "" then pl = LocalPlayer else pl = checkPlayerByName(name) end
-        if not pl then appendChat(false, ("[System] Player '%s' not found."):format(tostring(name)), {255,160,60}); return true end
+        if not pl then appendSystem(("Player '%s' not found."):format(tostring(name))); return true end
         local count = deathCounts[pl.UserId] or 0
-        appendChat(false, ("[System] %s death count: %d"):format(pl.Name, count), {200,200,255})
+        appendSystem(("%s death count: %d"):format(pl.Name, count))
         return true
     end
 
+    -- /HttpState ("site")
     if cmd == "HTTPSTATE" then
         local target = try_parse_parentheses_content(rest) or trim(rest)
-        if target == "" then appendChat(false, '[System] Usage: /HttpState ("example.com" or "https://example.com")', {255,180,60}); return true end
+        if target == "" then appendSystem('Usage: /HttpState ("example.com" or "https://example.com")'); return true end
         local url = target:match("^https?://") and target or ("https://"..target)
-        if not isHttpEnabled() then appendChat(false, "[System] HttpService.HttpEnabled = false", {255,80,80}); return true end
-        appendChat(false, ("[System] Checking %s ..."):format(url), {200,200,255})
+        if not isHttpEnabled() then appendError("HttpService.HttpEnabled = false"); return true end
+        appendSystem(("Checking %s ..."):format(url))
         task.spawn(function()
             local ok, resp = pcall(function() return HttpService:RequestAsync({ Url = url, Method = "GET", Headers = { ["User-Agent"] = "Roblox-ChatGPT-Check" }, Timeout = 8 }) end)
-            if not ok or not resp then appendChat(false, ("[System] HTTP request failed: %s"):format(tostring(resp)), {255,80,80}); return end
-            appendChat(false, ("[System] HTTP status: %s | Success: %s"):format(tostring(resp.StatusCode), tostring(resp.Success)), {200,200,255})
+            if not ok or not resp then appendError(("HTTP request failed: %s"):format(tostring(resp))); return end
+            appendSystem(("HTTP status: %s | Success: %s"):format(tostring(resp.StatusCode), tostring(resp.Success)))
         end)
         return true
     end
 
+    -- /HttpService
     if cmd == "HTTPSERVICE" then
         local ok, hs = pcall(function() return HttpService end)
-        if not ok or not hs then appendChat(false, "[System] HttpService not available.", {255,80,80}); return true end
+        if not ok or not hs then appendError("HttpService not available."); return true end
         local enabled = false; pcall(function() enabled = HttpService.HttpEnabled end)
         local hasReq = type(HttpService.RequestAsync) == "function"
-        appendChat(false, ("[System] HttpEnabled = %s | RequestAsync available = %s"):format(tostring(enabled), tostring(hasReq)), {200,200,255})
+        appendSystem(("HttpEnabled = %s | RequestAsync available = %s"):format(tostring(enabled), tostring(hasReq)))
         return true
     end
 
+    -- /HttpEnabled true/false
     if cmd == "HTTPENABLED" then
         local val = trim(rest):lower()
-        if val ~= "true" and val ~= "false" then appendChat(false, '[System] Usage: /HttpEnabled true|false', {255,180,60}); return true end
+        if val ~= "true" and val ~= "false" then appendSystem("Usage: /HttpEnabled true|false"); return true end
         local desired = (val == "true")
         local ok, err = pcall(function() HttpService.HttpEnabled = desired end)
         local real = nil; pcall(function() real = HttpService.HttpEnabled end)
-        if ok then appendChat(false, ("[System] Attempted set HttpEnabled -> current: %s"):format(tostring(real)), {200,200,255})
-        else appendChat(false, ("[System] Attempt failed: %s | current: %s"):format(tostring(err), tostring(real)), {255,80,80}); appendChat(false, "[System] Note: Changing HttpEnabled at runtime is often restricted; use Studio settings.", {255,160,60}) end
+        if ok then appendSystem(("Attempted set HttpEnabled -> current: %s"):format(tostring(real)))
+        else appendError(("Attempt failed: %s | current: %s"):format(tostring(err), tostring(real))); appendSystem("Note: Changing HttpEnabled at runtime is often restricted; use Studio settings.") end
         return true
     end
 
+    -- /Keep ("text")
     if cmd == "KEEP" then
         local content = try_parse_parentheses_content(rest) or trim(rest)
-        if not content or content == "" then appendChat(false, '[System] Usage: /Keep ("Text")', {255,180,60}); return true end
+        if not content or content == "" then appendSystem('Usage: /Keep ("Text")'); return true end
         table.insert(savedKeeps, content)
-        appendChat(false, ("[System] Saved note #%d"):format(#savedKeeps), {200,200,255})
+        appendSystem(("Saved note #%d"):format(#savedKeeps))
         return true
     end
 
+    -- /ClearTexts
     if cmd == "CLEARTEXTS" then
         for _, c in ipairs(gptChat:GetChildren()) do
             if c:IsA("Frame") or c:IsA("TextLabel") or c:IsA("TextButton") then pcall(function() c:Destroy() end) end
         end
-        appendChat(false, "[System] All chat texts cleared.", {200,200,255})
+        appendSystem("All chat texts cleared.")
         return true
     end
 
+    -- /LeaveGame
     if cmd == "LEAVEGAME" then
-        appendChat(false, "[System] Leaving game...", {200,200,255})
+        appendSystem("Leaving game...")
         pcall(function() LocalPlayer:Kick("") end)
         return true
     end
 
+    -- /Reset
     if cmd == "RESET" then
         local ch = LocalPlayer and LocalPlayer.Character
         if ch then
             local hum = ch:FindFirstChildOfClass("Humanoid")
-            if hum then pcall(function() hum.Health = 0 end); appendChat(false, "[System] Character reset.", {200,200,255}); return true end
-            pcall(function() ch:BreakJoints() end); appendChat(false, "[System] Character broken.", {200,200,255}); return true
+            if hum then pcall(function() hum.Health = 0 end); appendSystem("Character reset."); return true end
+            pcall(function() ch:BreakJoints() end); appendSystem("Character broken."); return true
         end
-        appendChat(false, "[System] No character to reset.", {255,160,60}); return true
+        appendSystem("No character to reset.")
+        return true
     end
 
+    -- /View ("Player") and /StopView
     if cmd == "VIEW" then
         local name = try_parse_parentheses_content(rest) or trim(rest)
-        if name == "" then appendChat(false, '[System] Usage: /View ("Player")', {255,180,60}); return true end
+        if name == "" then appendSystem('Usage: /View ("Player")'); return true end
         local pl = checkPlayerByName(name)
-        if not pl or not pl.Character then appendChat(false, "[System] Player not found.", {255,160,60}); return true end
+        if not pl or not pl.Character then appendSystem("Player not found."); return true end
         local hrp = pl.Character:FindFirstChild("HumanoidRootPart") or pl.Character.PrimaryPart
-        if not hrp then appendChat(false, "[System] Player has no HRP.", {255,160,60}); return true end
+        if not hrp then appendSystem("Player has no HRP."); return true end
         local cam = Workspace.CurrentCamera
-        if savedViewState.active then appendChat(false, "[System] Already viewing someone. Use /StopView first.", {255,160,60}); return true end
+        if savedViewState.active then appendSystem("Already viewing someone. Use /StopView first."); return true end
         savedViewState.prevType = cam.CameraType
         savedViewState.prevSubject = cam.CameraSubject
         savedViewState.active = true
@@ -2547,13 +2522,14 @@ local function handleCommand(rawText)
             if not savedViewState.active then return end
             if hrp and hrp.Parent then
                 cam.CameraType = Enum.CameraType.Scriptable
-                cam.CFrame = hrp.CFrame * CFrame.new(0, 2, 6) * CFrame.Angles(-0.2, math.rad(180), 0)
+                cam.CFrame = hrp.CFrame * CFrame.new(0,2,6) * CFrame.Angles(-0.2, math.rad(180), 0)
             else
                 if savedViewState.conn then savedViewState.conn:Disconnect(); savedViewState.conn = nil end
                 savedViewState.active = false
             end
         end)
-        appendChat(false, ("[System] Now viewing %s. Use /StopView to restore."):format(pl.Name), {200,200,255}); return true
+        appendSystem(("Now viewing %s. Use /StopView to restore."):format(pl.Name))
+        return true
     end
     if cmd == "STOPVIEW" then
         if savedViewState.active then
@@ -2564,168 +2540,190 @@ local function handleCommand(rawText)
                 cam.CameraSubject = savedViewState.prevSubject or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid"))
             end)
             savedViewState.active = false
-            appendChat(false, "[System] Camera restored.", {200,200,255})
-        else appendChat(false, "[System] Not currently viewing anyone.", {255,160,60}) end
+            appendSystem("Camera restored.")
+        else appendSystem("Not currently viewing anyone.") end
         return true
     end
 
+    -- /loadstring ("url")
     if cmd == "LOADSTRING" then
         local url = try_parse_parentheses_content(rest) or trim(rest)
-        if url == "" then appendChat(false, '[System] Usage: /loadstring ("https://.../script.lua")', {255,180,60}); return true end
-        if not isHttpEnabled() then appendChat(false, "[System] HttpService disabled - cannot load external script.", {255,80,80}); return true end
-        appendChat(false, ("[System] Downloading script from %s ..."):format(url), {200,200,255})
+        if url == "" then appendSystem('Usage: /loadstring ("https://.../script.lua")'); return true end
+        if not isHttpEnabled() then appendError("HttpService disabled - cannot load external script."); return true end
+        appendSystem(("Downloading script from %s ..."):format(url))
         task.spawn(function()
             local ok, res = pcall(function() return HttpService:GetAsync(url, true) end)
-            if not ok then appendChat(false, ("[System] Download failed: %s"):format(tostring(res)), {255,80,80}); return end
+            if not ok then appendError(("Download failed: %s"):format(tostring(res))); return end
             local f, err = loadstring(res)
-            if not f then appendChat(false, ("[System] loadstring error: %s"):format(tostring(err)), {255,80,80}); return end
+            if not f then appendError(("loadstring error: %s"):format(tostring(err))); return end
             local ok2, r2 = pcall(f)
-            if not ok2 then appendChat(false, ("[System] runtime error: %s"):format(tostring(r2)), {255,80,80}); return end
-            appendChat(false, "[System] External script executed successfully.", {80,255,120})
+            if not ok2 then appendError(("runtime error: %s"):format(tostring(r2))); return end
+            appendSystem("External script executed successfully.")
         end)
         return true
     end
 
     -- Object ops (DESTROY, INSTANCE, RESIZE, POSITION, COLOR)
+    local args = split_args_parentheses(rest)
     if cmd == "DESTROY" then
-        local args = split_args_parentheses(rest)
-        if #args < 1 then appendChat(false, '[System] Usage: /Destroy ("Object") [, "locate"]', {255,180,60}); return true end
+        if #args < 1 then appendSystem('Usage: /Destroy ("Object") [, "locate"]'); return true end
         local objName, locate = args[1], args[2]
         local target = nil
         if locate and locate ~= "" then
             local res, err = resolveLocate(locate)
-            if not res then appendChat(false, ("[System] locate resolve failed: %s"):format(tostring(err)), {255,80,80}); return true end
+            if not res then appendError(("locate resolve failed: %s"):format(tostring(err))); return true end
             if typeof(res) == "Instance" then target = res:FindFirstChild(objName, true) end
         else
             target = findObjectByName(objName)
         end
-        if not target then appendChat(false, ("[System] Object '%s' not found."):format(objName), {255,160,60}); return true end
+        if not target then appendSystem(("Object '%s' not found."):format(objName)); return true end
         pcall(function() target:Destroy() end)
-        appendChat(false, ("[System] Destroyed object '%s'."):format(objName), {200,200,255}); return true
+        appendSystem(("Destroyed object '%s'."):format(objName)); return true
     end
 
     if cmd == "INSTANCE" then
-        local args = split_args_parentheses(rest)
-        if #args < 3 then appendChat(false, '[System] Usage: /Instance ("ObjectName","Name","Class") [, "locate"]', {255,180,60}); return true end
+        if #args < 3 then appendSystem('Usage: /Instance ("ObjectName","Name","Class") [, "locate"]'); return true end
         local objName, setName, className, locate = args[1], args[2], args[3], args[4]
         local parent = Workspace
         if locate and locate ~= "" then
             local res, err = resolveLocate(locate)
-            if not res then appendChat(false, ("[System] locate resolve failed: %s"):format(tostring(err)), {255,80,80}); return true end
+            if not res then appendError(("locate resolve failed: %s"):format(tostring(err))); return true end
             parent = res
         end
         local ok, inst = pcall(function() return Instance.new(className) end)
-        if not ok or not inst then appendChat(false, ("[System] Failed to create class '%s'"):format(className), {255,80,80}); return true end
+        if not ok or not inst then appendError(("Failed to create class '%s'"):format(className)); return true end
         pcall(function() inst.Name = setName end)
         pcall(function() inst.Parent = parent end)
-        appendChat(false, ("[System] Created %s named '%s' under %s"):format(className, tostring(setName), tostring(parent)), {200,200,255}); return true
+        appendSystem(("Created %s named '%s' under %s"):format(className, tostring(setName), tostring(parent))); return true
     end
 
     if cmd == "RESIZE" then
-        local args = split_args_parentheses(rest)
-        if #args < 2 then appendChat(false, '[System] Usage: /Resize ("Object","Vector3") [, "locate"]', {255,180,60}); return true end
+        if #args < 2 then appendSystem('Usage: /Resize ("Object","Vector3") [, "locate"]'); return true end
         local objName, vecStr, locate = args[1], args[2], args[3]
         local target = nil
         if locate and locate ~= "" then
             local res, err = resolveLocate(locate)
-            if not res then appendChat(false, ("[System] locate resolve failed: %s"):format(tostring(err)), {255,80,80}); return true end
+            if not res then appendError(("locate resolve failed: %s"):format(tostring(err))); return true end
             target = res:FindFirstChild(objName, true)
         else
             target = findObjectByName(objName)
         end
-        if not target then appendChat(false, ("[System] Object '%s' not found."):format(objName), {255,160,60}); return true end
+        if not target then appendSystem(("Object '%s' not found."):format(objName)); return true end
         local vec, err = safeEval(vecStr)
-        if not vec or typeof(vec) ~= "Vector3" then appendChat(false, ("[System] Vector parse failed: %s"):format(tostring(err or "invalid Vector3")), {255,80,80}); return true end
+        if not vec or typeof(vec) ~= "Vector3" then appendError(("Vector parse failed: %s"):format(tostring(err or "invalid Vector3"))); return true end
         pcall(function() if target:IsA("BasePart") then target.Size = vec end if target.Size then target.Size = vec end end)
-        appendChat(false, ("[System] Resized %s to %s"):format(objName, tostring(vec)), {200,200,255}); return true
+        appendSystem(("Resized %s to %s"):format(objName, tostring(vec))); return true
     end
 
     if cmd == "POSITION" then
-        local args = split_args_parentheses(rest)
-        if #args < 2 then appendChat(false, '[System] Usage: /Position ("Object","Vector3") [, "locate"]', {255,180,60}); return true end
+        if #args < 2 then appendSystem('Usage: /Position ("Object","Vector3") [, "locate"]'); return true end
         local objName, vecStr, locate = args[1], args[2], args[3]
         local target = nil
         if locate and locate ~= "" then
             local res, err = resolveLocate(locate)
-            if not res then appendChat(false, ("[System] locate resolve failed: %s"):format(tostring(err)), {255,80,80}); return true end
+            if not res then appendError(("locate resolve failed: %s"):format(tostring(err))); return true end
             target = res:FindFirstChild(objName, true)
         else
             target = findObjectByName(objName)
         end
-        if not target then appendChat(false, ("[System] Object '%s' not found."):format(objName), {255,160,60}); return true end
+        if not target then appendSystem(("Object '%s' not found."):format(objName)); return true end
         local vec, err = safeEval(vecStr)
-        if not vec or typeof(vec) ~= "Vector3" then appendChat(false, ("[System] Vector parse failed: %s"):format(tostring(err or "invalid Vector3")), {255,80,80}); return true end
+        if not vec or typeof(vec) ~= "Vector3" then appendError(("Vector parse failed: %s"):format(tostring(err or "invalid Vector3"))); return true end
         pcall(function() if target:IsA("BasePart") then target.CFrame = CFrame.new(vec) end if target.Position then target.Position = vec end end)
-        appendChat(false, ("[System] Moved %s to %s"):format(objName, tostring(vec)), {200,200,255}); return true
+        appendSystem(("Moved %s to %s"):format(objName, tostring(vec))); return true
     end
 
     if cmd == "COLOR" then
-        local args = split_args_parentheses(rest)
-        if #args < 2 then appendChat(false, '[System] Usage: /Color ("Object","Color3.fromRGB(...)") [, "locate"]', {255,180,60}); return true end
+        if #args < 2 then appendSystem('Usage: /Color ("Object","Color3.fromRGB(...)") [, "locate"]'); return true end
         local objName, colorStr, locate = args[1], args[2], args[3]
         local target = nil
         if locate and locate ~= "" then
             local res, err = resolveLocate(locate)
-            if not res then appendChat(false, ("[System] locate resolve failed: %s"):format(tostring(err)), {255,80,80}); return true end
+            if not res then appendError(("locate resolve failed: %s"):format(tostring(err))); return true end
             target = res:FindFirstChild(objName, true)
         else
             target = findObjectByName(objName)
         end
-        if not target then appendChat(false, ("[System] Object '%s' not found."):format(objName), {255,160,60}); return true end
+        if not target then appendSystem(("Object '%s' not found."):format(objName)); return true end
         local col, err = safeEval(colorStr)
         if not col then
             local nums = {}
             for n in colorStr:gmatch("%d+") do table.insert(nums, tonumber(n)) end
             if #nums == 3 then col = Color3.fromRGB(nums[1], nums[2], nums[3]) end
         end
-        if not col or typeof(col) ~= "Color3" then appendChat(false, "[System] Color parse failed.", {255,80,80}); return true end
+        if not col or typeof(col) ~= "Color3" then appendError("Color parse failed."); return true end
         local ok, e = applyColorToObject(target, col)
-        if not ok then appendChat(false, ("[System] Failed to set color: %s"):format(tostring(e)), {255,80,80}) else appendChat(false, ("[System] Color set for %s"):format(objName), {200,200,255}) end
+        if not ok then appendError(("Failed to set color: %s"):format(tostring(e))) else appendSystem(("Color set for %s"):format(objName)) end
         return true
     end
 
-    appendChat(false, ("[System] Unknown command: /%s — use /Help"):format(tostring(cmd)), {255,180,60})
+    -- /Help (list commands one-per-line)
+    if cmd == "HELP" then
+        appendSystem("Commands (one-per-line):")
+        appendSystem('/API ("sk-...") — ตั้งค่า API Key (ไม่แนะนำฝังคีย์จริง)')
+        appendSystem('/APIJ ("proj_...") — ตั้งค่า Project ID (Project-level)')
+        appendSystem('/HttpService — ดูสถานะ HttpService')
+        appendSystem('/HttpState ("url") — ตรวจสถานะเว็บไซต์')
+        appendSystem('/HttpEnabled true|false — พยายามเปลี่ยน HttpEnabled')
+        appendSystem('/CheckPlaHP ("Player") — ตรวจ HP ของผู้เล่น')
+        appendSystem('/CheckPlaAround — ตรวจผู้เล่นที่อยู่ใกล้คุณ (50 studs)')
+        appendSystem('/SeeChat — เริ่มดูแชทของผู้เล่น')
+        appendSystem('/UnSeeChat — หยุดดูแชท')
+        appendSystem('/PositionCha ("Player") — ดูตำแหน่งผู้เล่น')
+        appendSystem('/Deaths ("Player") — จำนวนครั้งที่ตาย')
+        appendSystem('/Keep ("text") — จดจำข้อความ')
+        appendSystem('/ClearTexts — ลบข้อความทั้งหมดจาก Chat')
+        appendSystem('/LeaveGame — ออกจากเกม')
+        appendSystem('/Reset — รีเซ็ตตัวละคร')
+        appendSystem('/View ("Player") — ดูผู้เล่นด้วย Camera (ใช้ /StopView คืนค่า)')
+        appendSystem('/loadstring ("url") — โหลด+รันสคริปต์ภายนอก (อันตราย)')
+        appendSystem('/Destroy /Instance /Resize /Position /Color — จัดการ object ในโลก')
+        appendSystem('ใช้รูปแบบ /Cmd ("arg") หรือ /Cmd arg')
+        return true
+    end
+
+    appendSystem(("Unknown command: /%s — ใช้ /Help"):format(cmd))
     return true
 end
 
--- ===== top rows button bindings =====
+-- ===== Top-row buttons: Project -> API flow =====
 if projBtn and (projBtn:IsA("TextButton") or projBtn:IsA("ImageButton")) then
     projBtn.MouseButton1Click:Connect(function()
         local v = trim(projBox.Text or "")
-        if v == "" then appendChat(false, "[System] ❗ Project ID empty.", {255,180,60}); return end
-        if not tostring(v):match("^proj_") then appendChat(false, "[System] ❗ Project ID looks invalid (should start with proj_).", {255,160,60}); return end
+        if v == "" then appendSystem("Project ID empty."); return end
+        if not tostring(v):match("^proj_") then appendSystem("Project ID looks invalid (should start with proj_)"); return end
         STATE.PROJECT_ID = v
         projFrame.Visible = false
         apiFrame.Visible = true
-        appendChat(false, "[System] Project ID saved. Now enter API key.", {200,200,255})
+        appendSystem("Project ID saved. Now enter API key.")
     end)
     projBox.FocusLost:Connect(function(enter) if enter then projBtn:CaptureFocus(); projBtn:MouseButton1Click() end end)
 else
-    appendDebug("projBtn missing or not a button")
+    appendSystem("projBtn missing or not a button (GPT UI)")
 end
 
 if apiBtn and (apiBtn:IsA("TextButton") or apiBtn:IsA("ImageButton")) then
     apiBtn.MouseButton1Click:Connect(function()
         local raw = trim(apiBox.Text or "")
-        if raw == "" then appendChat(false, "[System] ❗ API key empty.", {255,180,60}); return end
-        appendChat(false, "[System] 🔎 Validating API key (test)...", {200,200,255})
+        if raw == "" then appendSystem("API key empty."); return end
+        appendSystem("Validating API key (test)...")
         task.spawn(function()
             local reply, err = callOpenAI_request("Hello", raw, STATE.PROJECT_ID)
             if reply then
                 STATE.OPENAI_KEY = raw
                 STATE.validated = true
-                appendChat(false, ("[System] ✅ API key validated and saved. Key: %s"):format(redactKey(raw)), {80,255,120})
+                appendSystem(("✅ API key validated and saved. Key: %s"):format(redactKey(raw)))
             else
-                appendChat(false, ("[System] ❌ Validation failed: %s"):format(tostring(err or "unknown")), {255,80,80})
+                appendError(("Validation failed: %s"):format(tostring(err or "unknown")))
             end
         end)
     end)
     apiBox.FocusLost:Connect(function(enter) if enter then apiBtn:CaptureFocus(); apiBtn:MouseButton1Click() end end)
 else
-    appendDebug("apiBtn missing or not a button")
+    appendSystem("apiBtn missing or not a button (GPT UI)")
 end
 
--- ===== send chat handler =====
+-- ===== Send chat handler =====
 local function sendChat()
     local text = tostring(chatBox.Text or "")
     if text:match("^%s*$") then return end
@@ -2733,11 +2731,15 @@ local function sendChat()
         if handleCommand(text) then chatBox.Text = "" end
         return
     end
-    if not STATE.OPENAI_KEY or not STATE.validated then appendChat(false, "Error HttpService: Did you forget to put API?", {255,80,80}); chatBox.Text = ""; return end
-    if STATE.requestInFlight then appendChat(false, "[System] Waiting previous response...", {255,200,60}); return end
+    if not STATE.OPENAI_KEY or not STATE.validated then
+        appendError("Error HttpService: Did you forget to put API?")
+        chatBox.Text = ""
+        return
+    end
+    if STATE.requestInFlight then appendSystem("Waiting previous response..."); return end
 
     local msg = trim(text)
-    appendChat(true, msg)
+    appendChat(true, msg) -- user bubble (blue)
     chatBox.Text = ""
     STATE.requestInFlight = true
     pcall(function() sendBtn.Active = false; sendBtn.AutoButtonColor = false; sendBtn.BackgroundColor3 = Color3.fromRGB(180,180,180) end)
@@ -2746,36 +2748,38 @@ local function sendChat()
         local reply, err = callOpenAI_request(msg, STATE.OPENAI_KEY, STATE.PROJECT_ID)
         STATE.requestInFlight = false
         pcall(function() sendBtn.Active = true; sendBtn.AutoButtonColor = true; sendBtn.BackgroundColor3 = Color3.fromRGB(86,170,255) end)
-        if reply then appendChat(false, reply) else appendChat(false, ("[System] Error: %s"):format(tostring(err or "unknown")), {255,80,80}) end
+        if reply then appendChat(false, reply) else appendError(("Error: %s"):format(tostring(err or "unknown"))) end
     end)
 end
 
 pcall(function() if sendBtn and sendBtn:IsA("TextButton") then sendBtn.MouseButton1Click:Connect(sendChat) end end)
 pcall(function() if chatBox and chatBox:IsA("TextBox") then chatBox.FocusLost:Connect(function(enter) if enter then sendChat() end end) end end)
 
--- ===== toggle panel binding =====
+-- ===== Toggle panel binding (use existing 'gpt' button if present) =====
 local panelOpen = false
 local function togglePanel()
     panelOpen = not panelOpen
-    if panelOpen then safeTween(panel, { Position = UDim2.new(0,0,0.05,0) }, 0.28) else safeTween(panel, { Position = UDim2.new(-0.35,0,0.05,0) }, 0.28) end
+    if panelOpen then safeTween(panel, { Position = UDim2.new(0,0,0.1,0) }, 0.28)
+    else safeTween(panel, { Position = UDim2.new(-0.35,0,0.1,0) }, 0.28) end
 end
 
 if toggleButton and (toggleButton:IsA("ImageButton") or toggleButton:IsA("TextButton")) then
     pcall(function() toggleButton.MouseButton1Click:Connect(togglePanel) end)
 else
-    local smallToggle = rootGui:FindFirstChild("ChatGPT_Toggle_Fallback")
-    if not smallToggle then
-        smallToggle = Instance.new("TextButton")
-        smallToggle.Name = "ChatGPT_Toggle_Fallback"
-        smallToggle.Size = UDim2.new(0, 40, 0, 22)
-        smallToggle.Position = UDim2.new(0, 4, 0, 4)
-        smallToggle.Text = "GPT"
-        smallToggle.Parent = rootGui
+    -- don't create a permanent toggle if user insisted on using existing button, but provide a small fallback
+    local fallback = rootGui:FindFirstChild("ChatGPT_Toggle_Fallback")
+    if not fallback then
+        fallback = Instance.new("TextButton")
+        fallback.Name = "ChatGPT_Toggle_Fallback"
+        fallback.Size = UDim2.new(0,40,0,22)
+        fallback.Position = UDim2.new(0,4,0,4)
+        fallback.Text = "GPT"
+        fallback.Parent = rootGui
     end
-    pcall(function() smallToggle.MouseButton1Click:Connect(togglePanel) end)
+    pcall(function() fallback.MouseButton1Click:Connect(togglePanel) end)
 end
 
 -- ===== init message =====
-appendChat(false, "[System] ChatGPT ready — พิมพ์ /Help เพื่อดูคำสั่งทั้งหมด", {200,200,255})
+appendSystem("ChatGPT ready — พิมพ์ /Help เพื่อดูคำสั่งทั้งหมด")
 
--- End of script
+-- End of GPT script
