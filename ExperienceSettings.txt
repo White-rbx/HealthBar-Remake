@@ -1993,8 +1993,8 @@ if not gptScroll then
     gptScroll.Position = UDim2.new(0, 0, 0.18, 0)
     gptScroll.BackgroundTransparency = 0.5
     gptScroll.BackgroundColor3 = Color3.fromRGB(12,12,12)
-    gptScroll.ScrollBarThickness = 6
-    gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    gptScroll.ScrollBarThickness = 3
+    gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.XY
     gptScroll.Parent = gptBack
 end
 
