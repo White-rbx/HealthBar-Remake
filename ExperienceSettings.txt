@@ -2042,8 +2042,8 @@ if not chatBox or not chatBox:IsA("TextBox") then
     chatBox.PlaceholderText = "Ask anything..."
     chatBox.ClearTextOnFocus = false
     chatBox.Font = Enum.Font.SourceSans
-    chatBox.TextSize = 16
-    chatBox.Text = " "
+    chatBox.TextScaled = true
+    chatBox.Text = ""
     chatBox.BackgroundColor3 = Color3.fromRGB(255,255,255)
     chatBox.TextColor3 = Color3.fromRGB(0,0,0)
     chatBox.Parent = inputFrame
@@ -2076,8 +2076,8 @@ local function makeRow(parent, id, placeholder, btnText)
     box.PlaceholderText = placeholder
     box.ClearTextOnFocus = false
     box.Font = Enum.Font.SourceSans
-    box.TextSize = 16
-    box.Text = " "
+    box.TextScaled = true
+    box.Text = ""
     box.BackgroundColor3 = Color3.fromRGB(40,40,40)
     box.TextColor3 = Color3.fromRGB(255,255,255)
     box.Parent = f
@@ -2114,7 +2114,7 @@ local function appendChat(isUser, text, colorTbl)
     fr.Name = "ChatItem_"..chatCount
     fr.BackgroundTransparency = 1
     fr.Size = UDim2.new(1,0,0,0)
-    fr.AutomaticSize = Enum.AutomaticSize.Y
+    fr.AutomaticSize = Enum.AutomaticSize.XY
     fr.Parent = gptChat
 
     local lbl = Instance.new("TextLabel")
@@ -2137,8 +2137,8 @@ local function appendChat(isUser, text, colorTbl)
 
     task.defer(function()
         pcall(function()
-            gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
-            gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.Y)
+            gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.XY)
+            gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.XY)
         end)
     end)
     return fr, lbl
@@ -2457,12 +2457,25 @@ local function handleCommand(rawText)
     -- /Help
     if cmd == "HELP" then
         appendChat(false, "[System] Commands (summary):", {200,200,255})
-        appendChat(false, "/API (\"sk-...\") /APIJ (\"proj-...\") - set API/project", {200,200,255})
-        appendChat(false, "/HttpService /HttpState (\"url\") /CheckPlaHP (\"Player\") /CheckPlaAround", {200,200,255})
-        appendChat(false, "/Keep (\"text\") /ClearTexts /HttpEnabled true|false", {200,200,255})
-        appendChat(false, "/LeaveGame /Reset /View (\"Player\") /StopView", {200,200,255})
+        appendChat(false, "/API (\"sk-...\") - set API", {200,200,255}) 
+        appendChat(false, /APIJ (\"proj-...\") - set project", {200,200,255})
+        appendChat(false, "/HttpService - Check Service", {200,200,255})
+        appendChat(false, "/HttpState (\"url\") - Check website state", {200,200,255})
+        appendChat(false, "/CheckPlaHP (\"Player\") - Check player health", {200,200,255})
+        appendChat(false, "/CheckPlaAround - Check players around you", {200,200,255})
+        appendChat(false, "/Keep (\"text\") - Remember the message", {200,200,255}) 
+        appendChat(false, "/ClearTexts - Clear all texts in chat", {200,200,255})
+        appendChat(false, "/HttpEnabled true|false - Enabled HttpService", {200,200,255})
+        appendChat(false, "/LeaveGame - Leave the game or experience", {200,200,255})
+        appendChat(false, "/Reset - Reset character", {200,200,255})
+        appendChat(false, "/View (\"Player\") - View the player (Buggy)", {200,200,255})
+        appendChat(false, "/StopView - Stop viewing player", {200,200,255})
         appendChat(false, "/loadstring (\"url\") - download+run script (dangerous)", {255,160,60})
-        appendChat(false, "Object ops: /Destroy /Instance /Resize /Position /Color (see usage)", {200,200,255})
+        appendChat(false, "/Destroy (see usage)", {200,200,255})
+        appendChat(false, "/Instance (see usage)", {200,200,255})
+        appendChat(false, "/Resize (see usage)", {200,200,255})
+        appendChat(false, "/Position (see usage)", {200,200,255})
+        appendChat(false, "/Color (see usage)", {200,200,255})
         return true
     end
 
