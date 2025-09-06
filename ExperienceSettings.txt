@@ -1779,5 +1779,3 @@ end
 hbm.MouseButton1Click:Connect(toggleTB)
 
 =========== GPT ==========
-warn("GPT script was unavailable")
-error("Reason: Script issues about Http and Cmds")
