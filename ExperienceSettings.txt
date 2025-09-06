@@ -206,9 +206,6 @@ RunService.RenderStepped:Connect(function()
 		})
 	end
 end)
-
-local Players = game:GetService("Players")  
-local player = Players.LocalPlayer  
   
 local imageIds = {  
     96532568222291, 87031182561721, 98399849016295,  
@@ -337,7 +334,6 @@ end
 --!strict
 local MarketplaceService = game:GetService("MarketplaceService")
 local StarterGui = game:GetService("StarterGui")
-local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
