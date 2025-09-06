@@ -2021,40 +2021,89 @@ local projFrame, projBox, projBtn = makeTopRow(topRows, "a_proj_input", "Enter P
 local apiFrame, apiBox, apiBtn = makeTopRow(topRows, "a_api_input", "Enter API key (sk-...)", "Save", 40)
 apiFrame.Visible = false
 
--- ---------- chat append (fixed-height, clipped text) ----------
+-- robust appendChat replacement
 local chatCounter = 0
+
+local function debugPrint(...) -- small helper to print only when Studio
+    pcall(function() print("[ChatGPT-debug]", ...) end)
+end
+
 local function appendChat(isUser, text, colorTbl)
     chatCounter = chatCounter + 1
-    pcall(function()
+    local ok, err = pcall(function()
+        -- create container frame
         local fr = Instance.new("Frame")
         fr.Name = "ChatItem_" .. tostring(chatCounter)
         fr.BackgroundTransparency = 1
-        fr.Size = UDim2.new(1, 0, 0, 36) -- fixed height
-        fr.Parent = gptChat
+        fr.Size = UDim2.new(1, 0, 0, 36) -- fixed height for clipping behaviour
+        fr.LayoutOrder = chatCounter
+        fr.Parent = gptChat -- assume gptChat exists
 
-        local lbl = Instance.new("TextLabel")
-        lbl.Name = "ChatLabel"
-        lbl.Size = UDim2.new(1, -12, 1, 0)
-        lbl.Position = UDim2.new(0, 8, 0, 0)
-        lbl.BackgroundTransparency = 1
-        lbl.TextWrapped = false       -- do NOT wrap
-        lbl.TextClipped = true        -- clip overflow
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.TextYAlignment = Enum.TextYAlignment.Center
-        lbl.Font = Enum.Font.SourceSans
-        lbl.TextSize = 18
-        lbl.Text = tostring(text or "")
-        if colorTbl and type(colorTbl) == "table" then
-            pcall(function() lbl.TextColor3 = Color3.fromRGB(colorTbl[1], colorTbl[2], colorTbl[3]) end)
-        else
-            if isUser then lbl.TextColor3 = Color3.fromRGB(86,170,255) else lbl.TextColor3 = Color3.fromRGB(255,255,255) end
+        -- try to create TextLabel
+        local lbl = nil
+        local lOk, lErr = pcall(function()
+            lbl = Instance.new("TextLabel")
+            lbl.Name = "ChatLabel"
+            lbl.Size = UDim2.new(1, -12, 1, 0)
+            lbl.Position = UDim2.new(0, 8, 0, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.TextWrapped = false       -- do NOT wrap
+            lbl.TextClipped = true        -- clip overflow
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.TextYAlignment = Enum.TextYAlignment.Center
+            lbl.Font = Enum.Font.SourceSans
+            lbl.TextSize = 18
+            lbl.RichText = false
+            lbl.AutoLocalize = false
+            lbl.Text = tostring(text or "")
+            -- color
+            if colorTbl and type(colorTbl) == "table" and #colorTbl >= 3 then
+                lbl.TextColor3 = Color3.fromRGB(colorTbl[1], colorTbl[2], colorTbl[3])
+            else
+                if isUser then lbl.TextColor3 = Color3.fromRGB(86,170,255) else lbl.TextColor3 = Color3.fromRGB(255,255,255) end
+            end
+            -- ensure visible properties
+            lbl.TextTransparency = 0
+            lbl.Visible = true
+            -- parent last
+            lbl.Parent = fr
+        end)
+
+        if not lOk or not lbl or not lbl.Parent then
+            debugPrint("TextLabel creation failed:", lErr)
+            -- fallback: create a TextBox (read-only) to ensure text displays
+            local fallbackOk, fallbackErr = pcall(function()
+                local tb = Instance.new("TextBox")
+                tb.Name = "ChatLabel_Fallback"
+                tb.Size = UDim2.new(1, -12, 1, 0)
+                tb.Position = UDim2.new(0, 8, 0, 0)
+                tb.BackgroundTransparency = 1
+                tb.TextWrapped = false
+                tb.TextClipped = true
+                tb.TextXAlignment = Enum.TextXAlignment.Left
+                tb.TextYAlignment = Enum.TextYAlignment.Center
+                tb.Font = Enum.Font.SourceSans
+                tb.TextSize = 18
+                tb.ClearTextOnFocus = false
+                tb.Text = tostring(text or "")
+                if colorTbl and type(colorTbl) == "table" and #colorTbl >= 3 then
+                    tb.TextColor3 = Color3.fromRGB(colorTbl[1], colorTbl[2], colorTbl[3])
+                else
+                    if isUser then tb.TextColor3 = Color3.fromRGB(86,170,255) else tb.TextColor3 = Color3.fromRGB(255,255,255) end
+                end
+                tb.ReadOnly = true
+                tb.Parent = fr
+            end)
+            if not fallbackOk then
+                debugPrint("Fallback TextBox creation also failed:", fallbackErr)
+            end
         end
-        lbl.Parent = fr
     end)
+    if not ok then
+        -- if the whole appendChat failed, write to output so we can see the error
+        warn("[ChatGPT] appendChat top-level pcall failed:", tostring(err))
+    end
 end
-local function appendSystem(t) appendChat(false, "[System] " .. tostring(t), {255,255,255}) end
-local function appendError(t) appendChat(false, "[Error] " .. tostring(t), {255,80,80}) end
-
 -- ---------- helper: resolve locate (safe-ish) ----------
 local function resolveLocate(str)
     if not str or str == "" then return nil, "empty" end
