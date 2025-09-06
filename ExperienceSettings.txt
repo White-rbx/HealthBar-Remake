@@ -1793,7 +1793,7 @@ end
 hbm.MouseButton1Click:Connect(toggleTB)
 
 
-
+-- ============ GPT ==========
 -- ChatGPT Full LocalScript (Extended commands) for ExperienceSettings (menuGui/CoreGui only)
 -- Includes: 2-step validation, debug, commands (/API, /HttpState, /CheckPlaHP, /Instance, /Destroy, /View, /loadstring, etc.)
 -- WARNING: client-side API keys and loadstring are dangerous. Use for testing/local only.
@@ -1993,8 +1993,8 @@ if not gptScroll then
     gptScroll.Position = UDim2.new(0, 0, 0.18, 0)
     gptScroll.BackgroundTransparency = 0.5
     gptScroll.BackgroundColor3 = Color3.fromRGB(12,12,12)
-    gptScroll.ScrollBarThickness = 3
-    gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.XY
+    gptScroll.ScrollBarThickness = 6
+    gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     gptScroll.Parent = gptBack
 end
 
@@ -2828,9 +2828,9 @@ local panelOpen = false
 local function togglePanel()
     panelOpen = not panelOpen
     if panelOpen then
-        safeTween(gptGui, { Position = UDim2.new(0,0,0.1,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        safeTween(gptGui, { Position = UDim2.new(0,0,0.05,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     else
-        safeTween(gptGui, { Position = UDim2.new(-0.35,0,0.1,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        safeTween(gptGui, { Position = UDim2.new(-0.35,0,0.05,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     end
 end
 if gpt and (gpt:IsA("ImageButton") or gpt:IsA("TextButton")) then
