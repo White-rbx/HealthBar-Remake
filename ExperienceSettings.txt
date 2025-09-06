@@ -1567,7 +1567,7 @@ local function createImageButton(name, r, g, b, bt, imageId, visible, parentFram
 end
 
 -- CTB1
-local ctb1 = createImageButton("INF YIELD", 50, 50, 50, 0.2, "116464551513962", false)
+local ctb1 = createImageButton("a1_INF YIELD", 50, 50, 50, 0.2, "116464551513962", false)
 ctb1.MouseButton1Click:Connect(function()
     -- user asked for local script -> so call loadstring (note: doing external loadstring has security implications)
     pcall(function()
@@ -1576,7 +1576,7 @@ ctb1.MouseButton1Click:Connect(function()
 end)
 
 -- CTB2
-local ctb2 = createImageButton("Dex", 50, 50, 50, 0.2, "102148729694907", false)
+local ctb2 = createImageButton("a2_Dex", 50, 50, 50, 0.2, "102148729694907", false)
 ctb2.MouseButton1Click:Connect(function()
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/MITUMAxDev/Tools/refs/heads/main/Dex-Explorer.lua"))()
@@ -1584,7 +1584,7 @@ ctb2.MouseButton1Click:Connect(function()
 end)
 
 -- CTB3
-local ctb3 = createImageButton("Keyboard", 50, 50, 50, 0.2, "76210662677344", false)
+local ctb3 = createImageButton("a3_Keyboard", 50, 50, 50, 0.2, "76210662677344", false)
 ctb3.MouseButton1Click:Connect(function()
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt", true))()
@@ -1592,16 +1592,17 @@ ctb3.MouseButton1Click:Connect(function()
 end)
 
 -- CTB4
-local ctb4 = createImageButton("Rochips", 50, 50, 50, 0.2, "111409127543607", false)
+local ctb4 = createImageButton("a4_Rochips", 50, 50, 50, 0.2, "111409127543607", false)
 ctb3.MouseButton1Click:Connect(function()
     pcall(function()
 
-        if "you wanna use rochips universal" then 	local z_x,z_z="gzrux646yj/raw/main.ts","https://glot.io/snippets/" 	local im,lonely,z_c=task.wait,game,loadstring 	z_c(lonely:HttpGet(z_z..""..z_x))() 	return ("This will load in about 2 - 30 seconds" or "according to your device and executor") end  
+        if "you wanna use rochips universal" then 	local z_x,z_z="gzrux646yj/raw/main.ts","https://glot.io/snippets/" 	local im,lonely,z_c=task.wait,game,loadstring 	z_c(lonely:HttpGet(z_z..""..z_x))() 	return ("This will load in about 2 - 30 seconds" or "according to your device and executor") end
+
     end)
 end)
 
 -- CTB5
-local ctb5 = createImageButton("Ketamine", 50, 50, 50, 0.2, "73739594473443", false)
+local ctb5 = createImageButton("a5_Ketamine", 50, 50, 50, 0.2, "73739594473443", false)
 ctb3.MouseButton1Click:Connect(function()
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/InfernusScripts/Ketamine/refs/heads/main/Ketamine.lua"))()
@@ -1609,11 +1610,11 @@ ctb3.MouseButton1Click:Connect(function()
 end)
 
 -- CTB6
-local ctb6 = createImageButton("AFEM", 50, 50, 50, 0.2, "70633192931522", false)
+local ctb6 = createImageButton("a6_AFEM", 50, 50, 50, 0.2, "70633192931522", false)
 ctb3.MouseButton1Click:Connect(function()
     pcall(function()
 
-        loadstring(game:HttpGet("https://yarhm.mhi.im/scr?channel=afem", false))()
+loadstring(game:HttpGet("https://yarhm.mhi.im/scr?channel=afem", true))()
     end)
 end)
 
