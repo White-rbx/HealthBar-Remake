@@ -520,18 +520,6 @@ OC.Visible = false
 OC.Parent = hr
 createUICorner(OC, 1, 0)
 
--- GPT
-local gpt = Instance.new("ImageButton")
-gpt.Name = "a3_ChatGPT"
-gpt.Size = UDim2.new(0, 36, 0.8, 0)
-gpt.Image = "rbxassetid://15419312153"
-gpt.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-gpt.BackgroundTransparency = 0.8
-gpt.Active = true
-gpt.Visible = false
-gpt.Parent = hr
-createUICorner(gpt, 1, 0)
-
 -- Wait1
 local wa1 = Instance.new("Frame")
 wa1.Name = "LoadFrame"
