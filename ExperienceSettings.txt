@@ -1779,7 +1779,7 @@ end
 hbm.MouseButton1Click:Connect(toggleTB)
 
 
--- ============ GPT ==========
+=========== GPT ==========
 -- ChatGPT Full LocalScript (Extended commands) for ExperienceSettings (menuGui/CoreGui only)
 -- Includes: 2-step validation, debug, commands (/API, /HttpState, /CheckPlaHP, /Instance, /Destroy, /View, /loadstring, etc.)
 -- WARNING: client-side API keys and loadstring are dangerous. Use for testing/local only.
@@ -1959,7 +1959,6 @@ if not gptGui then
     gptGui.BackgroundColor3 = Color3.fromRGB(18,18,20)
     gptGui.BackgroundTransparency = 0.12
     gptGui.Parent = root
-    createUICorner(gptGui, 0.02, 0)
 end
 
 local gptBack = gptGui:FindFirstChild("Background")
@@ -1980,10 +1979,9 @@ if not gptScroll then
     gptScroll.Position = UDim2.new(0, 0, 0.18, 0)
     gptScroll.BackgroundTransparency = 0.5
     gptScroll.BackgroundColor3 = Color3.fromRGB(12,12,12)
-    gptScroll.ScrollBarThickness = 2
-    gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.XY
+    gptScroll.ScrollBarThickness = 6
+    gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     gptScroll.Parent = gptBack
-    createUICorner(gptScroll, 0.02, 0)
 end
 
 local gptChat = gptScroll:FindFirstChild("Chat")
@@ -2005,8 +2003,8 @@ if not uiLayout then
 end
 uiLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     pcall(function()
-        gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.XY)
-        gptScroll.CanvasPosition = Vector2.new(0, math.max(0, uiLayout.AbsoluteContentSize.XY))
+        gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
+        gptScroll.CanvasPosition = Vector2.new(0, math.max(0, uiLayout.AbsoluteContentSize.Y))
     end)
 end)
 
@@ -2028,12 +2026,10 @@ if not chatBox or not chatBox:IsA("TextBox") then
     chatBox.PlaceholderText = "Ask anything..."
     chatBox.ClearTextOnFocus = false
     chatBox.Font = Enum.Font.SourceSans
-    chatBox.TextScaled = true
-    chatBox.Text = ""
+    chatBox.TextSize = 16
     chatBox.BackgroundColor3 = Color3.fromRGB(255,255,255)
     chatBox.TextColor3 = Color3.fromRGB(0,0,0)
     chatBox.Parent = inputFrame
-    createUICorner(chatBox, 0.1, 0)
 end
 if not sendBtn or not sendBtn:IsA("TextButton") then
     sendBtn = Instance.new("TextButton")
@@ -2045,7 +2041,6 @@ if not sendBtn or not sendBtn:IsA("TextButton") then
     sendBtn.BackgroundColor3 = Color3.fromRGB(86,170,255)
     sendBtn.TextColor3 = Color3.fromRGB(255,255,255)
     sendBtn.Parent = inputFrame
-    createUICorner(sendBtn, 0.1, 0)
 end
 
 -- two-step rows
@@ -2062,12 +2057,10 @@ local function makeRow(parent, id, placeholder, btnText)
     box.PlaceholderText = placeholder
     box.ClearTextOnFocus = false
     box.Font = Enum.Font.SourceSans
-    box.TextScaled = true
-    box.Text = ""
+    box.TextSize = 16
     box.BackgroundColor3 = Color3.fromRGB(40,40,40)
     box.TextColor3 = Color3.fromRGB(255,255,255)
     box.Parent = f
-    createUICorner(box, 0.1, 0)
     local btn = Instance.new("TextButton")
     btn.Name = id .. "_btn"
     btn.Size = UDim2.new(0.25,0,1,0)
@@ -2077,7 +2070,6 @@ local function makeRow(parent, id, placeholder, btnText)
     btn.BackgroundColor3 = Color3.fromRGB(86,170,255)
     btn.TextColor3 = Color3.fromRGB(255,255,255)
     btn.Parent = f
-    createUICorner(btn, 0.1, 0)
     return f, box, btn
 end
 
@@ -2100,7 +2092,7 @@ local function appendChat(isUser, text, colorTbl)
     fr.Name = "ChatItem_"..chatCount
     fr.BackgroundTransparency = 1
     fr.Size = UDim2.new(1,0,0,0)
-    fr.AutomaticSize = Enum.AutomaticSize.XY
+    fr.AutomaticSize = Enum.AutomaticSize.Y
     fr.Parent = gptChat
 
     local lbl = Instance.new("TextLabel")
@@ -2109,9 +2101,9 @@ local function appendChat(isUser, text, colorTbl)
     lbl.Position = UDim2.new(0, 8, 0, 6)
     lbl.BackgroundTransparency = 1
     lbl.TextWrapped = true
-    lbl.AutomaticSize = Enum.AutomaticSize.XY
+    lbl.AutomaticSize = Enum.AutomaticSize.Y
     lbl.Font = Enum.Font.SourceSans
-    lbl.TextScaled = true
+    lbl.TextSize = 18
     lbl.Text = tostring(text or "")
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     if colorTbl and type(colorTbl) == "table" then
@@ -2123,8 +2115,8 @@ local function appendChat(isUser, text, colorTbl)
 
     task.defer(function()
         pcall(function()
-            gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.XY)
-            gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.XY)
+            gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
+            gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.Y)
         end)
     end)
     return fr, lbl
@@ -2464,6 +2456,7 @@ local function handleCommand(rawText)
         appendChat(false, "/Color (see usage)", {200,200,255})
         return true
     end
+
 
     -- /Keep
     if cmd == "KEEP" then
