@@ -381,8 +381,8 @@ local function safeTween(obj, props, time, style, dir)
     if not obj or not obj.Parent then return end
     pcall(function()
         tweenObject(obj, props, time, style, dir)
-    end)
-end
+    end
+end)
 
 -- Safe Find path to the HealthBar where we parent our Menu
 local function getHealthBar()
