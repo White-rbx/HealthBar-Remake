@@ -335,8 +335,6 @@ end
 -- LocalScript — สร้าง UI, ควบคุม Toggle, รับ thumbnail จาก Client API
 
 --!strict
-local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
@@ -664,14 +662,6 @@ local Players = game:GetService("Players")
 -- interval config
 local CHECK_INTERVAL = 0.12 -- ระยะเวลาเช็ค (วินาที)
 local TIMEOUT = 8.5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
-
--- tween wrapper (safe)
-local function safeTween(obj, props, time, style, dir)
-    if not obj or not obj.Parent then return end
-    pcall(function()
-        tweenObject(obj, props, time, style, dir)
-    end)
-end
 
 -- เก็บตำแหน่งเริ่มต้น
 local wa1_initial_pos, hr_initial_size, mtb_initial_pos
