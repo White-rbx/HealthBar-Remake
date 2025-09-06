@@ -2023,26 +2023,16 @@ apiFrame.Visible = false
 
 -- ===== Robust appendChat (patch) =====
 -- NOTE: place this AFTER gptChat/uiLayout are created.
--- Exposes global helper _G.ChatGPT_appendChat for console testing and other scripts.
-
-if not chatCounter then
-    chatCounter = 0
-end
-
--- Ensure global visible entry point (helps scripts in other scopes)
 _G = _G or {}
-_G.ChatGPT_appendChat = _G.ChatGPT_appendChat or nil
+
+if not chatCounter then chatCounter = 0 end
 
 local function makeFallbackChatContainer()
-    -- create minimal container under PlayerGui if gptChat missing
     local pg = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
     if not pg then return nil end
     local sg = pg:FindFirstChild("ExperienceSettings_ChatGPT_Fallback")
     if not sg then
-        sg = Instance.new("ScreenGui")
-        sg.Name = "ExperienceSettings_ChatGPT_Fallback"
-        sg.ResetOnSpawn = false
-        sg.Parent = pg
+        sg = Instance.new("ScreenGui"); sg.Name = "ExperienceSettings_ChatGPT_Fallback"; sg.ResetOnSpawn = false; sg.Parent = pg
     end
     local frame = sg:FindFirstChild("gptChat_Fallback")
     if not frame then
@@ -2053,10 +2043,7 @@ local function makeFallbackChatContainer()
         frame.BackgroundTransparency = 0.6
         frame.BackgroundColor3 = Color3.fromRGB(10,10,10)
         frame.Parent = sg
-        local list = Instance.new("UIListLayout")
-        list.Parent = frame
-        list.SortOrder = Enum.SortOrder.LayoutOrder
-        list.Padding = UDim.new(0,6)
+        local list = Instance.new("UIListLayout"); list.Parent = frame; list.SortOrder = Enum.SortOrder.LayoutOrder; list.Padding = UDim.new(0,6)
     end
     return frame
 end
@@ -2088,7 +2075,6 @@ local function safeCreateLabel(parent, txt, isUser, colorTbl)
         lbl.Parent = parent
     end)
     if not ok or not lbl or not lbl.Parent then
-        -- fallback to TextBox
         local tb
         local ok2, err2 = pcall(function()
             tb = Instance.new("TextBox")
@@ -2121,18 +2107,11 @@ local function safeCreateLabel(parent, txt, isUser, colorTbl)
 end
 
 local function appendChat_new(isUser, text, colorTbl)
-    -- ensure container
     if not gptChat or typeof(gptChat) ~= "Instance" or not gptChat.Parent then
-        -- try to fallback
         local fb = makeFallbackChatContainer()
         if fb then
-            -- create an inner frame for chat items there
             if not fb:FindFirstChild("Chat") then
-                local f = Instance.new("Frame")
-                f.Name = "Chat"
-                f.BackgroundTransparency = 1
-                f.Size = UDim2.new(1,0,0,0)
-                f.Parent = fb
+                local f = Instance.new("Frame"); f.Name = "Chat"; f.BackgroundTransparency = 1; f.Size = UDim2.new(1,0,0,0); f.Parent = fb
                 local l = Instance.new("UIListLayout"); l.Parent = f; l.SortOrder = Enum.SortOrder.LayoutOrder; l.Padding = UDim.new(0,6)
                 gptChat = f
             else
@@ -2154,32 +2133,26 @@ local function appendChat_new(isUser, text, colorTbl)
         fr.Parent = gptChat
 
         local lbl, lerr = safeCreateLabel(fr, text, isUser, colorTbl)
-        if not lbl then
-            warn("[ChatGPT] safeCreateLabel failed:", tostring(lerr))
-        end
+        if not lbl then warn("[ChatGPT] safeCreateLabel failed:", tostring(lerr)) end
     end)
     if not ok then
         warn("[ChatGPT] appendChat failed:", tostring(err))
         return nil, err
     end
-    -- update canvas size if uiLayout present
+
     pcall(function()
-        if uiLayout and uiLayout.AbsoluteContentSize then
+        if uiLayout and uiLayout.AbsoluteContentSize and gptScroll then
             local y = uiLayout.AbsoluteContentSize.Y
-            if gptScroll and typeof(gptScroll) == "Instance" then
-                gptScroll.CanvasSize = UDim2.new(0,0,0,y)
-                gptScroll.CanvasPosition = Vector2.new(0, math.max(0, y))
-            end
+            gptScroll.CanvasSize = UDim2.new(0,0,0,y)
+            gptScroll.CanvasPosition = Vector2.new(0, math.max(0, y))
         end
     end)
     return true, nil
 end
 
--- assign both local and global reference so other scripts can call
 appendChat = appendChat_new
 _G.ChatGPT_appendChat = appendChat_new
 -- ===== end patch =====
-
 -- ---------- helper: resolve locate (safe-ish) ----------
 local function resolveLocate(str)
     if not str or str == "" then return nil, "empty" end
