@@ -2021,138 +2021,6 @@ local projFrame, projBox, projBtn = makeTopRow(topRows, "a_proj_input", "Enter P
 local apiFrame, apiBox, apiBtn = makeTopRow(topRows, "a_api_input", "Enter API key (sk-...)", "Save", 40)
 apiFrame.Visible = false
 
--- ===== Robust appendChat (patch) =====
--- NOTE: place this AFTER gptChat/uiLayout are created.
-_G = _G or {}
-
-if not chatCounter then chatCounter = 0 end
-
-local function makeFallbackChatContainer()
-    local pg = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
-    if not pg then return nil end
-    local sg = pg:FindFirstChild("ExperienceSettings_ChatGPT_Fallback")
-    if not sg then
-        sg = Instance.new("ScreenGui"); sg.Name = "ExperienceSettings_ChatGPT_Fallback"; sg.ResetOnSpawn = false; sg.Parent = pg
-    end
-    local frame = sg:FindFirstChild("gptChat_Fallback")
-    if not frame then
-        frame = Instance.new("Frame")
-        frame.Name = "gptChat_Fallback"
-        frame.Size = UDim2.new(0.6, 0, 0.5, 0)
-        frame.Position = UDim2.new(0.2,0,0.25,0)
-        frame.BackgroundTransparency = 0.6
-        frame.BackgroundColor3 = Color3.fromRGB(10,10,10)
-        frame.Parent = sg
-        local list = Instance.new("UIListLayout"); list.Parent = frame; list.SortOrder = Enum.SortOrder.LayoutOrder; list.Padding = UDim.new(0,6)
-    end
-    return frame
-end
-
-local function safeCreateLabel(parent, txt, isUser, colorTbl)
-    local lbl
-    local ok, err = pcall(function()
-        lbl = Instance.new("TextLabel")
-        lbl.Name = "ChatLabel"
-        lbl.Size = UDim2.new(1, -12, 1, 0)
-        lbl.Position = UDim2.new(0, 8, 0, 0)
-        lbl.BackgroundTransparency = 1
-        lbl.TextWrapped = false
-        lbl.TextClipped = true
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.TextYAlignment = Enum.TextYAlignment.Center
-        lbl.Font = Enum.Font.SourceSans
-        lbl.TextSize = 18
-        lbl.RichText = false
-        lbl.AutoLocalize = false
-        lbl.Text = tostring(txt or "")
-        if colorTbl and type(colorTbl) == "table" and #colorTbl >= 3 then
-            lbl.TextColor3 = Color3.fromRGB(colorTbl[1], colorTbl[2], colorTbl[3])
-        else
-            if isUser then lbl.TextColor3 = Color3.fromRGB(86,170,255) else lbl.TextColor3 = Color3.fromRGB(255,255,255) end
-        end
-        lbl.TextTransparency = 0
-        lbl.Visible = true
-        lbl.Parent = parent
-    end)
-    if not ok or not lbl or not lbl.Parent then
-        local tb
-        local ok2, err2 = pcall(function()
-            tb = Instance.new("TextBox")
-            tb.Name = "ChatLabel_Fallback"
-            tb.Size = UDim2.new(1, -12, 1, 0)
-            tb.Position = UDim2.new(0, 8, 0, 0)
-            tb.BackgroundTransparency = 1
-            tb.TextWrapped = false
-            tb.TextClipped = true
-            tb.TextXAlignment = Enum.TextXAlignment.Left
-            tb.TextYAlignment = Enum.TextYAlignment.Center
-            tb.Font = Enum.Font.SourceSans
-            tb.TextSize = 18
-            tb.ClearTextOnFocus = false
-            tb.Text = tostring(txt or "")
-            tb.ReadOnly = true
-            if colorTbl and type(colorTbl) == "table" and #colorTbl >= 3 then
-                tb.TextColor3 = Color3.fromRGB(colorTbl[1], colorTbl[2], colorTbl[3])
-            else
-                if isUser then tb.TextColor3 = Color3.fromRGB(86,170,255) else tb.TextColor3 = Color3.fromRGB(255,255,255) end
-            end
-            tb.Parent = parent
-        end)
-        if not ok2 then
-            warn("[ChatGPT] Failed to create both TextLabel and fallback TextBox:", err, err2)
-        end
-        return tb or lbl, (not ok and err) or (not ok2 and err2)
-    end
-    return lbl, nil
-end
-
-local function appendChat_new(isUser, text, colorTbl)
-    if not gptChat or typeof(gptChat) ~= "Instance" or not gptChat.Parent then
-        local fb = makeFallbackChatContainer()
-        if fb then
-            if not fb:FindFirstChild("Chat") then
-                local f = Instance.new("Frame"); f.Name = "Chat"; f.BackgroundTransparency = 1; f.Size = UDim2.new(1,0,0,0); f.Parent = fb
-                local l = Instance.new("UIListLayout"); l.Parent = f; l.SortOrder = Enum.SortOrder.LayoutOrder; l.Padding = UDim.new(0,6)
-                gptChat = f
-            else
-                gptChat = fb:FindFirstChild("Chat")
-            end
-        else
-            warn("[ChatGPT] gptChat not present and fallback failed. Aborting appendChat.")
-            return nil, "no_container"
-        end
-    end
-
-    chatCounter = (chatCounter or 0) + 1
-    local ok, err = pcall(function()
-        local fr = Instance.new("Frame")
-        fr.Name = "ChatItem_" .. tostring(chatCounter)
-        fr.BackgroundTransparency = 1
-        fr.Size = UDim2.new(1, 0, 0, 36)
-        fr.LayoutOrder = chatCounter
-        fr.Parent = gptChat
-
-        local lbl, lerr = safeCreateLabel(fr, text, isUser, colorTbl)
-        if not lbl then warn("[ChatGPT] safeCreateLabel failed:", tostring(lerr)) end
-    end)
-    if not ok then
-        warn("[ChatGPT] appendChat failed:", tostring(err))
-        return nil, err
-    end
-
-    pcall(function()
-        if uiLayout and uiLayout.AbsoluteContentSize and gptScroll then
-            local y = uiLayout.AbsoluteContentSize.Y
-            gptScroll.CanvasSize = UDim2.new(0,0,0,y)
-            gptScroll.CanvasPosition = Vector2.new(0, math.max(0, y))
-        end
-    end)
-    return true, nil
-end
-
-appendChat = appendChat_new
-_G.ChatGPT_appendChat = appendChat_new
--- ===== end patch =====
 -- ---------- helper: resolve locate (safe-ish) ----------
 local function resolveLocate(str)
     if not str or str == "" then return nil, "empty" end
@@ -2616,11 +2484,141 @@ end
 pcall(function() if sendBtn and sendBtn:IsA("TextButton") then sendBtn.MouseButton1Click:Connect(sendChat) end end)
 pcall(function() if chatBox and chatBox:IsA("TextBox") then chatBox.FocusLost:Connect(function(enter) if enter then sendChat() end end) end end)
 
+-- ===== Robust appendChat (place this AFTER gptChat/uiLayout are created) =====
+_G = _G or {}
+chatCounter = chatCounter or 0
+
+local function makeFallbackChatContainer()
+    local pg = LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui")
+    if not pg then return nil end
+    local sg = pg:FindFirstChild("ExperienceSettings_ChatGPT_Fallback")
+    if not sg then
+        sg = Instance.new("ScreenGui"); sg.Name = "ExperienceSettings_ChatGPT_Fallback"; sg.ResetOnSpawn = false; sg.Parent = pg
+    end
+    local frame = sg:FindFirstChild("gptChat_Fallback")
+    if not frame then
+        frame = Instance.new("Frame")
+        frame.Name = "gptChat_Fallback"
+        frame.Size = UDim2.new(0.6, 0, 0.5, 0)
+        frame.Position = UDim2.new(0.2,0,0.25,0)
+        frame.BackgroundTransparency = 0.6
+        frame.BackgroundColor3 = Color3.fromRGB(10,10,10)
+        frame.Parent = sg
+        local list = Instance.new("UIListLayout"); list.Parent = frame; list.SortOrder = Enum.SortOrder.LayoutOrder; list.Padding = UDim.new(0,6)
+    end
+    return frame
+end
+
+local function safeCreateLabel(parent, txt, isUser, colorTbl)
+    local lbl
+    local ok, err = pcall(function()
+        lbl = Instance.new("TextLabel")
+        lbl.Name = "ChatLabel"
+        lbl.Size = UDim2.new(1, -12, 1, 0)
+        lbl.Position = UDim2.new(0, 8, 0, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.TextWrapped = false
+        lbl.TextClipped = true
+        lbl.TextXAlignment = Enum.TextXAlignment.Left
+        lbl.TextYAlignment = Enum.TextYAlignment.Center
+        lbl.Font = Enum.Font.SourceSans
+        lbl.TextSize = 18
+        lbl.RichText = false
+        lbl.AutoLocalize = false
+        lbl.Text = tostring(txt or "")
+        if colorTbl and type(colorTbl) == "table" and #colorTbl >= 3 then
+            lbl.TextColor3 = Color3.fromRGB(colorTbl[1], colorTbl[2], colorTbl[3])
+        else
+            if isUser then lbl.TextColor3 = Color3.fromRGB(86,170,255) else lbl.TextColor3 = Color3.fromRGB(255,255,255) end
+        end
+        lbl.TextTransparency = 0
+        lbl.Visible = true
+        lbl.Parent = parent
+    end)
+    if not ok or not lbl or not lbl.Parent then
+        local tb
+        local ok2, err2 = pcall(function()
+            tb = Instance.new("TextBox")
+            tb.Name = "ChatLabel_Fallback"
+            tb.Size = UDim2.new(1, -12, 1, 0)
+            tb.Position = UDim2.new(0, 8, 0, 0)
+            tb.BackgroundTransparency = 1
+            tb.TextWrapped = false
+            tb.TextClipped = true
+            tb.TextXAlignment = Enum.TextXAlignment.Left
+            tb.TextYAlignment = Enum.TextYAlignment.Center
+            tb.Font = Enum.Font.SourceSans
+            tb.TextSize = 18
+            tb.ClearTextOnFocus = false
+            tb.Text = tostring(txt or "")
+            tb.ReadOnly = true
+            if colorTbl and type(colorTbl) == "table" and #colorTbl >= 3 then
+                tb.TextColor3 = Color3.fromRGB(colorTbl[1], colorTbl[2], colorTbl[3])
+            else
+                if isUser then tb.TextColor3 = Color3.fromRGB(86,170,255) else tb.TextColor3 = Color3.fromRGB(255,255,255) end
+            end
+            tb.Parent = parent
+        end)
+        if not ok2 then
+            warn("[ChatGPT] Failed to create both TextLabel and fallback TextBox:", err, err2)
+        end
+        return tb or lbl, (not ok and err) or (not ok2 and err2)
+    end
+    return lbl, nil
+end
+
+local function appendChat(isUser, text, colorTbl)
+    if not gptChat or typeof(gptChat) ~= "Instance" or not gptChat.Parent then
+        local fb = makeFallbackChatContainer()
+        if fb then
+            if not fb:FindFirstChild("Chat") then
+                local f = Instance.new("Frame"); f.Name = "Chat"; f.BackgroundTransparency = 1; f.Size = UDim2.new(1,0,0,0); f.Parent = fb
+                local l = Instance.new("UIListLayout"); l.Parent = f; l.SortOrder = Enum.SortOrder.LayoutOrder; l.Padding = UDim.new(0,6)
+                gptChat = f
+            else
+                gptChat = fb:FindFirstChild("Chat")
+            end
+        else
+            warn("[ChatGPT] gptChat not present and fallback failed. Aborting appendChat.")
+            return nil, "no_container"
+        end
+    end
+
+    chatCounter = (chatCounter or 0) + 1
+    local ok, err = pcall(function()
+        local fr = Instance.new("Frame")
+        fr.Name = "ChatItem_" .. tostring(chatCounter)
+        fr.BackgroundTransparency = 1
+        fr.Size = UDim2.new(1, 0, 0, 36)
+        fr.LayoutOrder = chatCounter
+        fr.Parent = gptChat
+
+        local lbl, lerr = safeCreateLabel(fr, text, isUser, colorTbl)
+        if not lbl then warn("[ChatGPT] safeCreateLabel failed:", tostring(lerr)) end
+    end)
+    if not ok then
+        warn("[ChatGPT] appendChat failed:", tostring(err))
+        return nil, err
+    end
+
+    pcall(function()
+        if uiLayout and uiLayout.AbsoluteContentSize and gptScroll then
+            local y = uiLayout.AbsoluteContentSize.Y
+            gptScroll.CanvasSize = UDim2.new(0,0,0,y)
+            gptScroll.CanvasPosition = Vector2.new(0, math.max(0, y))
+        end
+    end)
+    return true, nil
+end
+
+_G.ChatGPT_appendChat = appendChat
+-- ===== end appendChat =====
+
 -- ---------- toggle panel ----------
 local openState = false
 local function togglePanel()
     openState = not openState
-    if openState then safeTween(panel, { Position = UDim2.new(0,0,0.05,0) }, 0.28) else safeTween(panel, { Position = UDim2.new(-0.4,0,0.05,0) }, 0.28) end
+    if openState then safeTween(panel, { Position = UDim2.new(0,0,0.1,0) }, 0.28) else safeTween(panel, { Position = UDim2.new(-0.4,0,0.1,0) }, 0.28) end
 end
 
 if toggleButton then
