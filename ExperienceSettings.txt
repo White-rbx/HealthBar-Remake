@@ -1778,7 +1778,6 @@ local function toggleTB()
 end
 hbm.MouseButton1Click:Connect(toggleTB)
 
-
 =========== GPT ==========
 -- ChatGPT Full LocalScript (Extended commands) for ExperienceSettings (menuGui/CoreGui only)
 -- Includes: 2-step validation, debug, commands (/API, /HttpState, /CheckPlaHP, /Instance, /Destroy, /View, /loadstring, etc.)
@@ -1954,8 +1953,8 @@ local gptGui = root:FindFirstChild("gptGui", true)
 if not gptGui then
     gptGui = Instance.new("Frame")
     gptGui.Name = "gptGui"
-    gptGui.Size = UDim2.new(0.4, 0, 0.9, 0)
-    gptGui.Position = UDim2.new(-0.4, 0, 0.1, 0)
+    gptGui.Size = UDim2.new(0.35, 0, 0.9, 0)
+    gptGui.Position = UDim2.new(-0.35, 0, 0.05, 0)
     gptGui.BackgroundColor3 = Color3.fromRGB(18,18,20)
     gptGui.BackgroundTransparency = 0.12
     gptGui.Parent = root
@@ -2432,39 +2431,17 @@ local function handleCommand(rawText)
         return true
     end
 
--- /Help (replace existing Help block with this)
-if cmdU == "HELP" then
-    appendChat(false, "[System] Commands (summary):", {200,200,255})
-
-    appendChat(false, "/API (\"sk-...\")  — ใส่ OpenAI API key (ตัวอย่าง: /API (\"sk-......\"))", {200,200,255})
-    appendChat(false, "/APIJ (\"proj_...\") — ใส่ Project ID (ตัวอย่าง: /APIJ (\"proj_......\"))", {200,200,255})
-
-    appendChat(false, "/HttpService — แสดงสถานะ HttpService.HttpEnabled (true/false)", {200,200,255})
-    appendChat(false, "/HttpState (\"url\") — ตรวจสถานะเว็บไซต์ (ส่ง HTTP GET ไปตรวจ)", {200,200,255})
-
-    appendChat(false, "/CheckPlaHP (\"Player\") — ดูพลังชีวิตของผู้เล่นที่ระบุ", {200,200,255})
-    appendChat(false, "/CheckPlaAround — เช็คผู้เล่นรอบตัว (ภายใน 50 studs)", {200,200,255})
-
-    appendChat(false, "/Keep (\"text\") — จดจำข้อความ (เก็บไว้ใน local list)", {200,200,255})
-    appendChat(false, "/ClearTexts — ลบข้อความทั้งหมดในหน้าต่างแชท", {200,200,255})
-
-    appendChat(false, "/HttpEnabled true|false — พยายามตั้งค่าสถานะ HttpService (อาจถูกปฏิเสธโดย environment)", {200,200,255})
-    appendChat(false, "/LeaveGame — ออกจากเกม (client-side)", {200,200,255})
-    appendChat(false, "/Reset — รีเซ็ตตัวละครของคุณ (client-side)", {200,200,255})
-
-    appendChat(false, "/View (\"Player\") — ดูผู้เล่น (ใช้ Camera มองไปที่ HumanoidRootPart)", {200,200,255})
-    appendChat(false, "/StopView — หยุดการดูผู้เล่น คืนสภาพกล้องเดิม", {200,200,255})
-
-    appendChat(false, "/loadstring (\"url\") — ดาวน์โหลดและรันสคริปต์จาก URL (อันตราย ใช้ด้วยความระมัดระวัง)", {255,160,60})
-
-    appendChat(false, "/Destroy (see usage) — ทำลาย object (ดูรูปแบบการใช้ใน Help เพิ่มเติม)", {200,200,255})
-    appendChat(false, "/Instance (see usage) — สร้าง object (ดูรูปแบบการใช้ใน Help เพิ่มเติม)", {200,200,255})
-    appendChat(false, "/Resize (see usage) — ปรับขนาด object", {200,200,255})
-    appendChat(false, "/Position (see usage) — ย้าย object", {200,200,255})
-    appendChat(false, "/Color (see usage) — เปลี่ยนสี object", {200,200,255})
-
-    return true
-end
+    -- /Help
+    if cmd == "HELP" then
+        appendChat(false, "[System] Commands (summary):", {200,200,255})
+        appendChat(false, "/API (\"sk-...\") /APIJ (\"proj-...\") - set API/project", {200,200,255})
+        appendChat(false, "/HttpService /HttpState (\"url\") /CheckPlaHP (\"Player\") /CheckPlaAround", {200,200,255})
+        appendChat(false, "/Keep (\"text\") /ClearTexts /HttpEnabled true|false", {200,200,255})
+        appendChat(false, "/LeaveGame /Reset /View (\"Player\") /StopView", {200,200,255})
+        appendChat(false, "/loadstring (\"url\") - download+run script (dangerous)", {255,160,60})
+        appendChat(false, "Object ops: /Destroy /Instance /Resize /Position /Color (see usage)", {200,200,255})
+        return true
+    end
 
     -- /Keep
     if cmd == "KEEP" then
@@ -2836,9 +2813,9 @@ local panelOpen = false
 local function togglePanel()
     panelOpen = not panelOpen
     if panelOpen then
-        safeTween(gptGui, { Position = UDim2.new(0,0,0.1,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        safeTween(gptGui, { Position = UDim2.new(0,0,0.05,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     else
-        safeTween(gptGui, { Position = UDim2.new(-0.4,0,0.1,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        safeTween(gptGui, { Position = UDim2.new(-0.35,0,0.05,0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     end
 end
 if gpt and (gpt:IsA("ImageButton") or gpt:IsA("TextButton")) then
