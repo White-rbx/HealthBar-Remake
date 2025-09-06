@@ -1,4 +1,4 @@
-ฝาก-- ========= HEALTHBAR AND SOUNDS (REPLACE) ===========
+-- ========= HEALTHBAR AND SOUNDS (REPLACE) ===========
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
