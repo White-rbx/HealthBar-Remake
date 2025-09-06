@@ -2457,7 +2457,6 @@ local function handleCommand(rawText)
         return true
     end
 
-
     -- /Keep
     if cmd == "KEEP" then
         local content = try_parse_parentheses_content(rest)
