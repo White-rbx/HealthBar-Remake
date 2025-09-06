@@ -1608,7 +1608,7 @@ ctb3.MouseButton1Click:Connect(function()
     end)
 end)
 
--- CTB5
+-- CTB6
 local ctb6 = createImageButton("AFEM", 50, 50, 50, 0.2, "70633192931522", false)
 ctb3.MouseButton1Click:Connect(function()
     pcall(function()
