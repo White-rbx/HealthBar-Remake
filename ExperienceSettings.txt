@@ -1778,4 +1778,6 @@ local function toggleTB()
 end
 hbm.MouseButton1Click:Connect(toggleTB)
 
-=========== GPT ==========
+-- =========== GPT ==========
+warn("ChatGPT was unavailable, for script is had a many issues.")
+error("HTTP 502: Bad Gateway.")
