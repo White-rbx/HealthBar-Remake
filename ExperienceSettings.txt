@@ -1954,8 +1954,8 @@ local gptGui = root:FindFirstChild("gptGui", true)
 if not gptGui then
     gptGui = Instance.new("Frame")
     gptGui.Name = "gptGui"
-    gptGui.Size = UDim2.new(0.6, 0, 0.9, 0) -- width 0.4 requested
-    gptGui.Position = UDim2.new(-0.6, 0, 0.1, 0) -- OFF
+    gptGui.Size = UDim2.new(1, 0, 0.9, 0) -- width 1 requested
+    gptGui.Position = UDim2.new(-1, 0, 0.1, 0) -- OFF
     gptGui.BackgroundColor3 = Color3.fromRGB(18,18,20)
     gptGui.BackgroundTransparency = 0.12
     gptGui.Parent = root
@@ -2773,7 +2773,7 @@ pcall(function() if chatBox and chatBox:IsA("TextBox") then chatBox.FocusLost:Co
 local panelOpen = false
 local function togglePanel()
     panelOpen = not panelOpen
-    if panelOpen then safeTween(gptGui, { Position = UDim2.new(0,0,0.1,0) }, 0.28) else safeTween(gptGui, { Position = UDim2.new(-0.6,0,0.1,0) }, 0.28) end
+    if panelOpen then safeTween(gptGui, { Position = UDim2.new(0,0,0.1,0) }, 0.28) else safeTween(gptGui, { Position = UDim2.new(-1,0,0.1,0) }, 0.28) end
 end
 if toggleButton then
     pcall(function() toggleButton.MouseButton1Click:Connect(togglePanel) end)
