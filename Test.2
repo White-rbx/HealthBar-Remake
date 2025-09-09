@@ -2139,7 +2139,6 @@ local function callOpenAI(prompt, key, proj)
             Method = "POST",
             Headers = headers,
             Body = HttpService:JSONEncode(payload),
-            Timeout = 25,
         })
     end)
     if not ok then return nil, ("http_pcall_failed: %s"):format(tostring(respOrErr)) end
