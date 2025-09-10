@@ -1940,8 +1940,8 @@ local gptGui = root:FindFirstChild("gptGui", true)
 if not gptGui then
     gptGui = Instance.new("Frame")
     gptGui.Name = "gptGui"
-    gptGui.Size = UDim2.new(0.4, 0, 0.9, 0) -- requested width 0.4
-    gptGui.Position = UDim2.new(-0.4, 0, 0.05, 0) -- OFF initially
+    gptGui.Size = UDim2.new(1, 0, 0.9, 0) -- requested width 0.4
+    gptGui.Position = UDim2.new(-1, 0, 0.1, 0) -- OFF initially
     gptGui.BackgroundColor3 = Color3.fromRGB(18,18,20)
     gptGui.BackgroundTransparency = 0.12
     gptGui.Parent = root
@@ -2136,8 +2136,8 @@ local function appendSystem(msg) appendChat(false, "[System] " .. tostring(msg),
 
 -- ===== OpenAI call (robust) =====
 local STATE = {
-    OPENAI_KEY = nil,
-    PROJECT_ID = nil,
+    OPENAI_KEY = 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,
+    PROJECT_ID = proj_mOkFDsX3Gcv9EHn0nicNBsR1,
     MODEL = "gpt-3.5-turbo",
     validated = false,
     requestInFlight = false,
@@ -2797,7 +2797,7 @@ pcall(function() if chatBox and chatBox:IsA("TextBox") then chatBox.FocusLost:Co
 local panelOpen = false
 local function togglePanel()
     panelOpen = not panelOpen
-    if panelOpen then safeTween(gptGui, { Position = UDim2.new(0,0,0.05,0) }, 0.28) else safeTween(gptGui, { Position = UDim2.new(-0.4,0,0.05,0) }, 0.28) end
+    if panelOpen then safeTween(gptGui, { Position = UDim2.new(0,0,0.1,0) }, 0.28) else safeTween(gptGui, { Position = UDim2.new(-1,0,0.1,0) }, 0.28) end
 end
 if toggleButton then pcall(function() toggleButton.MouseButton1Click:Connect(togglePanel) end)
 else appendSystem("Toggle button not found; use ChatGPT_togglePanel() to open.") end
