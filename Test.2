@@ -1940,7 +1940,7 @@ local STATE = {
     seeChatEnabled = false,
     seeChatConns = {},
     autop = { enabled = false, mode = "Random", task = nil },
-    debug = false
+    debug = true
 }
 
 -- ensure ChatGPTClientEvent exists safely
@@ -2982,8 +2982,8 @@ end
 -- Help
 if cmd == "HELP" then
 appendSystem("Command (short form). Use parentheses for args when displaying:")
-appendChat(false, '/API ("sk-...") — Set the OpenAI API key (client-side). KEEP YOUR API! DO NOT SHARE.', {200,200,255})
-appendChat(false, '/APIJ ("proj_...") — Set the Project ID (if any). KEEP YOUR PROJECT ID! DO NOT SHARE.', {200,200,255})
+appendChat(false, '/API ("sk-...") — Set the OpenAI API key (client-side).', {200,200,255})
+appendChat(false, '/APIJ ("proj_...") — Set the Project ID (if any).', {200,200,255})
 appendChat(false, '/UnSaveAPIJ — Delete the saved Project ID.', {200,200,255})
 appendChat(false, '/HttpService — Display the HttpService status.', {200,200,255})
 appendChat(false, '/HttpState ("url") — Check the website status  (GET).', {200,200,255})
