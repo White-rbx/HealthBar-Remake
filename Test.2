@@ -2745,16 +2745,20 @@ function handleCommand(rawText)
             return true
         end
         local low = inside:lower()
-        -- play by ID: play:ID(123456)
-        local id = inside:match("play%s*:%s*id%s*%(%s*(%d+)%s*%)") or inside:match("play%s*:%s*(%d+)")
-        if id then
-            local snd, serr = getOrCreateMusicSound(5)
-            if not snd then appendError("Music sound error: "..tostring(serr)); return true end
-            local ok, e = pcall(function()
-                snd.SoundId = "rbxassetid://" .. tostring(id)
-                snd.TimePosition = 0
-                snd:Play()
-            end)
+        -- Music: play:ID(123456)
+        local id = rest:match("play%s*:%s*ID%s*%(%s*(%d+)%s*%)")
+         if id then
+          local snd, serr = getOrCreateMusicSound(5)
+           if not snd then appendError("Music sound error:    "..tostring(serr)); return true end
+         local ok, e = pcall(function()
+         snd.SoundId = "rbxassetid://" .. tostring(id)
+         snd.TimePosition = 0
+         snd:Play()
+        end)
+    if not ok then appendError("Failed to play sound: "..tostring(e)) 
+    else appendSystem("Playing Music ID "..tostring(id)) end
+    return true
+end
             if not ok then appendError("Failed to play sound: "..tostring(e)) else appendSystem(("Playing ID %s"):format(id)) end
             return true
         end
