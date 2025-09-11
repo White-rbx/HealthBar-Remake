@@ -2835,62 +2835,144 @@ function handleCommand(rawText)
         return handleExecute(rest)
     end
 
-    -- Music command (improved parsing)
-    if cmd == "MUSIC" then
-        local arg = trim(rest)
-        local sound = Workspace:FindFirstChild("gptMusicPlay")
-        if not sound then
-            sound = Instance.new("Sound"); sound.Name = "gptMusicPlay"; sound.Parent = Workspace
-        end
+-- Replace the /Music handler with this block
+if cmd == "MUSIC" then
+    local arg = trim(rest)
 
-        -- parse do:action or play:ID(...)
-        if arg:lower():sub(1,3) == "do:" then
-            local action = trim(arg:sub(4)):lower()
-            if action == "play" then pcall(function() sound:Play() end); appendSystem("Music playing.")
-            elseif action == "pause" then pcall(function() sound:Pause() end); appendSystem("Music paused.")
-            elseif action == "stop" then pcall(function() sound:Stop(); sound.SoundId = "" end); appendSystem("Music stopped and cleared.")
-            elseif action == "restart" then pcall(function() sound.TimePosition = 0; sound:Play() end); appendSystem("Music restarted.")
-            elseif action == "loop" then pcall(function() sound.Looped = true end); appendSystem("Music looping enabled.")
-            elseif action == "unloop" then pcall(function() sound.Looped = false end); appendSystem("Music looping disabled.")
-            elseif action:match("^loop%((%d+) times%)") then
-                local times = tonumber(action:match("loop%((%d+) times%)"))
+    -- helper: get or create Sound under player HRP (or workspace temporary)
+    local function getPlayerHRPSound()
+        -- try to find existing sound attached to player's HRP first
+        local ch = LocalPlayer and LocalPlayer.Character
+        local hrp = ch and (ch:FindFirstChild("HumanoidRootPart") or ch.PrimaryPart)
+        if hrp then
+            local s = hrp:FindFirstChild("gptMusicPlay")
+            if s and s:IsA("Sound") then return s, hrp end
+            -- not found -> create
+            local ns = Instance.new("Sound")
+            ns.Name = "gptMusicPlay"
+            ns.Parent = hrp
+            ns.Volume = ns.Volume or 1
+            ns.PlaybackSpeed = ns.PlaybackSpeed or 1
+            return ns, hrp
+        end
+        -- fallback: place in Workspace (temporary), will move when HRP exists
+        local s = Workspace:FindFirstChild("gptMusicPlay")
+        if s and s:IsA("Sound") then return s, Workspace end
+        local ns = Instance.new("Sound")
+        ns.Name = "gptMusicPlay"
+        ns.Parent = Workspace
+        ns.Volume = ns.Volume or 1
+        ns.PlaybackSpeed = ns.PlaybackSpeed or 1
+        return ns, Workspace
+    end
+
+    -- ensure we move sound to HRP on respawn
+    if LocalPlayer then
+        -- connect CharacterAdded once to keep sound parented
+        if not STATE._musicCharConn then
+            STATE._musicCharConn = LocalPlayer.CharacterAdded:Connect(function(char)
+                task.wait(0.1)
+                local hrp = char:WaitForChild("HumanoidRootPart", 3) or char.PrimaryPart
+                if hrp then
+                    -- move existing workspace sound if present
+                    local wsSound = Workspace:FindFirstChild("gptMusicPlay")
+                    if wsSound and wsSound:IsA("Sound") then
+                        wsSound.Parent = hrp
+                    else
+                        -- if not exists, create under hrp
+                        local newS = hrp:FindFirstChild("gptMusicPlay")
+                        if not newS then
+                            local ns = Instance.new("Sound"); ns.Name = "gptMusicPlay"; ns.Parent = hrp
+                        end
+                    end
+                end
+            end)
+        end
+    end
+
+    -- main handling
+    local sound, parentRef = getPlayerHRPSound()
+    if not sound then appendError("Cannot create sound object."); return true end
+
+    -- parse commands
+    if arg:lower():sub(1,3) == "do:" then
+        local action = trim(arg:sub(4)):lower()
+        if action == "play" then
+            pcall(function() sound:Play() end); appendSystem("Music playing.")
+        elseif action == "pause" then
+            pcall(function() sound:Pause() end); appendSystem("Music paused.")
+        elseif action == "stop" then
+            pcall(function() sound:Stop(); sound.SoundId = "" end); appendSystem("Music stopped and cleared.")
+        elseif action == "restart" then
+            pcall(function() sound.TimePosition = 0; sound:Play() end); appendSystem("Music restarted.")
+        elseif action == "loop" then
+            pcall(function() sound.Looped = true end); appendSystem("Music looping enabled.")
+        elseif action == "unloop" then
+            pcall(function() sound.Looped = false end); appendSystem("Music looping disabled.")
+        else
+            local loopN = action:match("^loop%((%d+)%)")
+            if loopN then
+                loopN = tonumber(loopN)
                 task.spawn(function()
-                    for i=1,(times or 1) do
-                        sound.TimePosition = 0; sound:Play()
-                        task.wait(math.max( (sound.TimeLength or 3), 0.1))
+                    for i=1,loopN do
+                        if not sound then break end
+                        pcall(function() sound.TimePosition = 0; sound:Play() end)
+                        -- wait until end or small fallback
+                        local length = tonumber(sound.TimeLength) or 5
+                        task.wait(math.max(0.1, length))
                     end
                 end)
-                appendSystem("Music will loop "..tostring(times).." times.")
-            else appendError("Unknown /Music do action.") end
-
-        elseif arg:lower():sub(1,5) == "play:" then
-            -- accept formats: play:ID(123456) or play:123456 or play:rbxassetid://123456
-            local remainder = trim(arg:sub(6))
-            local id = remainder:match("ID%((%d+)%)") or remainder:match("(%d+)") or remainder:match("rbxassetid://(%d+)")
-            if id then
-                pcall(function()
-                    sound.SoundId = "rbxassetid://"..id
-                    sound.Looped = false
-                    sound:Play()
-                end)
-                appendSystem("Playing music ID "..id)
+                appendSystem("Music will loop "..tostring(loopN).." times.")
             else
-                appendError("Usage: /Music play:ID(assetId) or /Music play:123456")
-            end
-        elseif arg:lower():sub(1,7) == "change:" then
-            local param = arg:sub(8)
-            -- change:Vol(0.5) or change:Playback(1.2)
-            local vol = param:match("Vol%(([%d%.]+)%)")
-            if vol then pcall(function() sound.Volume = tonumber(vol) end); appendSystem("Volume set to "..tostring(vol)); return true end
-            local pb = param:match("Playback%(([%d%.]+)%)")
-            if pb then pcall(function() sound.PlaybackSpeed = tonumber(pb) end); appendSystem("PlaybackSpeed set to "..tostring(pb)); return true end
-            appendError("Usage: /Music change:Vol(x) or change:Playback(x)")
-        else
-            appendSystem("Usage: /Music do:Play|Pause|Stop|Restart|Loop|UnLoop|Loop(N times) or /Music play:ID(assetId) or /Music change:Vol(x) /Music change:Playback(x)")
+                appendError("Unknown /Music do action.")
+        end
         end
         return true
     end
 
+    if arg:lower():sub(1,5) == "play:" then
+        -- accept play:ID(123456) or play:123456 or play:rbxassetid://123456
+        local remainder = trim(arg:sub(6))
+        local id = remainder:match("ID%((%d+)%)") or remainder:match("(%d+)") or remainder:match("rbxassetid://(%d+)")
+        if id then
+            pcall(function()
+                sound.SoundId = "rbxassetid://"..id
+                sound.Looped = false
+                sound.TimePosition = 0
+                sound:Play()
+            end)
+            appendSystem("Playing music ID "..id.." (parent: "..tostring(parentRef and parentRef.Name)..")")
+        else
+            appendError("Usage: /Music play:ID(assetId) or /Music play:123456")
+        end
+        return true
+    end
+
+    if arg:lower():sub(1,7) == "change:" then
+        local param = arg:sub(8)
+        -- change:Vol(0.5) or change:Playback(1.2)
+        local vol = param:match("Vol%(([%d%.]+)%)")
+        if vol then
+            local v = tonumber(vol)
+            pcall(function() sound.Volume = math.clamp(v, 0, 10) end)
+            appendSystem("Volume set to "..tostring(sound.Volume))
+            return true
+        end
+        local pb = param:match("Playback%(([%d%.]+)%)")
+        if pb then
+            local p = tonumber(pb)
+            pcall(function() sound.PlaybackSpeed = math.max(0.01, p) end)
+            appendSystem("PlaybackSpeed set to "..tostring(sound.PlaybackSpeed))
+            return true
+        end
+        appendError("Usage: /Music change:Vol(x) or change:Playback(x)")
+        return true
+    end
+
+    -- no arg / help
+    appendSystem('Usage: /Music do:Play|Pause|Stop|Restart|Loop|UnLoop|Loop(N)  OR  /Music play:ID(123456)  OR  /Music change:Vol(x)|change:Playback(x). Sound is parented to your HumanoidRootPart when available.')
+    return true
+end
     -- Console: DO NOT create UI, just instruct user to open Dev Console (F9)
     if cmd == "CONSOLE" then
         appendSystem("Developer Console: press F9 (Roblox). This command does not create UI.")
