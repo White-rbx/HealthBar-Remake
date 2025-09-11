@@ -2979,32 +2979,32 @@ end
         return true
     end
 
-    -- Help (Thai)
+    -- Help
     if cmd == "HELP" then
-        appendSystem("คำสั่ง (แบบย่อ). ใช้วงเล็บสำหรับ args เมื่อแสดง:")
-        appendChat(false, '/API ("sk-...") — ตั้งค่า OpenAI API key (client-side).', {200,200,255})
-        appendChat(false, '/APIJ ("proj_...") — ตั้งค่า Project ID (ถ้ามี).', {200,200,255})
-        appendChat(false, '/UnSaveAPIJ — ลบ Project ID ที่บันทึกไว้.', {200,200,255})
-        appendChat(false, '/HttpService — แสดงสถานะ HttpService.', {200,200,255})
-        appendChat(false, '/HttpState ("url") — ตรวจสถานะเว็บไซต์ (GET).', {200,200,255})
-        appendChat(false, '/HttpEnabled true|false — พยายามตั้งค่า HttpEnabled (อาจถูกจำกัด).', {200,200,255})
-        appendChat(false, '/Keep ("text") — เก็บข้อความภายในเครื่อง.', {200,200,255})
-        appendChat(false, '/ShowKeep /ClearAllKeep — จัดการข้อความที่เก็บไว้.', {200,200,255})
-        appendChat(false, '/Ins, /InsMesh, /InsDecal, /InsSurfaceGui, /InsEffect — สร้าง object (ดู usage).', {200,200,255})
+        appendSystem("Command (short form). Use parentheses for args when displaying:")
+        appendChat(false, '/API ("sk-...") — Set up the OpenAI API key (client-side). KEEP YOUR API DO NOT SHARE.', {200,200,255})
+        appendChat(false, '/APIJ ("proj_...") — Set the Project ID (if any). KEEP YOUR API DO NOT SHARE.', {200,200,255})
+        appendChat(false, '/UnSaveAPIJ — Delete the saved Project ID.', {200,200,255})
+        appendChat(false, '/HttpService — Show HttpService status.', {200,200,255})
+        appendChat(false, '/HttpState ("url") — Check website status (GET).', {200,200,255})
+        appendChat(false, '/HttpEnabled true|false — Try setting HttpEnabled (อาจถูกจำกัด).', {200,200,255})
+        appendChat(false, '/Keep ("text") — Store messages locally.', {200,200,255})
+        appendChat(false, '/ShowKeep /ClearAllKeep — Manage stored messages.', {200,200,255})
+        appendChat(false, '/Ins, /InsMesh, /InsDecal, /InsSurfaceGui, /InsEffect — Create an object (see usage).', {200,200,255})
         appendChat(false, '/Destroy /Resize /Position /Color — จัดการ object.', {200,200,255})
         appendChat(false, '/TP ("Vector3") /Rejoin /ServerHop ("plalimit:N")', {200,200,255})
-        appendChat(false, '/AutoBot ("Walk","Jump","Spin","Dance","Random","Stop") — bot อัตโนมัติ', {200,200,255})
-        appendChat(false, '/SeeChat /UnSeeChat — แสดงแชท Roblox ใน GPT UI.', {200,200,255})
-        appendChat(false, '/TextsCounts — นับข้อความใน GPT chat.', {200,200,255})
-        appendChat(false, '/Translate "global:EN" — ตั้งโหมดแปลผลการตอบ.', {200,200,255})
-        appendChat(false, '/Execute "pla:..." or "cmd:..." — รันการกระทำของผู้เล่นหรือเรียกคำสั่งอื่น.', {200,200,255})
+        appendChat(false, '/AutoBot ("Walk","Jump","Spin","Dance","Random","Stop") — bot automatic', {200,200,255})
+        appendChat(false, '/SeeChat /UnSeeChat — Show Roblox chat in GPT UI.', {200,200,255})
+        appendChat(false, '/TextsCounts — Count messages in GPT chat.', {200,200,255})
+        appendChat(false, '/Translate "global:EN" — Set the response interpretation mode.', {200,200,255})
+        appendChat(false, '/Execute "pla:..." or "cmd:..." — Run player actions or call other commands.', {200,200,255})
         appendChat(false, '/Music do:Play|Pause|Stop|Restart|Loop|UnLoop|Loop(N times) or /Music play:ID(assetId)', {200,200,255})
-        appendChat(false, '/Console — บอกวิธีเปิด Developer Console (F9).', {200,200,255})
-        appendSystem("ต้องการตัวอย่างการใช้งานคำสั่งไหน พิมพ์ /Help <CommandName>")
+        appendChat(false, '/Console — Developer Console (F9).', {200,200,255})
+        appendSystem("If you want an example of how to use a command, type /Help <CommandName>")
         return true
     end
 
-    appendError("Unknown command: /"..tostring(cmd).." (ใช้ /Help ดูคำสั่ง)")
+    appendError("Unknown command: /"..tostring(cmd).." (Use /Help to view commands)")
     return true
 end -- handleCommand
 
