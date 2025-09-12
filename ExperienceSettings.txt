@@ -2330,7 +2330,7 @@ local function appendInput()
         local fldFr = Instance.new("Frame")
         fldFr.Size = UDim2.new(1,0,0,30); fldFr.BackgroundTransparency = 1; fldFr.Parent = container
         local lbl = Instance.new("TextLabel"); lbl.Size = UDim2.new(0.28,0,1,0); lbl.Position = UDim2.new(0,4,0,0); lbl.BackgroundTransparency = 1; lbl.Text = labelTxt; lbl.Font = Enum.Font.SourceSans; lbl.TextSize = 14; lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.TextColor3 = Color3.fromRGB(200,200,200); lbl.Parent = fldFr
-        local tb = Instance.new("TextBox"); tb.Size = UDim2.new(0.7,-8,1,0); tb.Position = UDim2.new(0.3,4,0,0); tb.PlaceholderText = placeholder or ""; tb.ClearTextOnFocus = false; tb.Font = Enum.Font.SourceSans; tb.TextSize = 14; tb.BackgroundColor3 = Color3.fromRGB(40,40,40); tb.TextColor3 = Color3.fromRGB(255,255,255); tb.Parent = fldFr
+        local tb = Instance.new("TextBox"); tb.Size = UDim2.new(0.7,-8,1,0); tb.Position = UDim2.new(0.3,4,0,0); tb.PlaceholderText = placeholder or ""; tb.Text = ""; tb.ClearTextOnFocus = true; tb.Font = Enum.Font.SourceSans; tb.TextSize = 14; tb.BackgroundColor3 = Color3.fromRGB(40,40,40); tb.TextColor3 = Color3.fromRGB(255,255,255); tb.Parent = fldFr
         return tb
     end
 
