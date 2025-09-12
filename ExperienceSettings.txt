@@ -554,8 +554,8 @@ wl.Visible = true
 wl.Parent = wa1
 
 -- ===== OC (Open/Close) wiring - REPLACEMENT =====
-local OC_OPEN_IMAGE  = "rbxassetid://6993462605" -- image when OPEN (show Set/hbm)
-local OC_CLOSE_IMAGE = "rbxassetid://6993472329"  -- image when CLOSED (hide Set/hbm)
+local OC_OPEN_IMAGE  = "rbxassetid://125535050034164" -- image when OPEN (show Set/hbm)
+local OC_CLOSE_IMAGE = "rbxassetid://118675926284171"  -- image when CLOSED (hide Set/hbm)
 
 -- target mtb X for "closed" (was 0.515 -> change to 0.48 as requested)
 local MTB_X_CLOSED = 0.48
@@ -2081,7 +2081,7 @@ if not topRow.Parent then
 end
 local function makeRow(parent, id, placeholder, btnText, side)
     local f = Instance.new("Frame"); f.Name = id .. "_frame"; f.Size = UDim2.new(0.5, -6, 1, 0); f.Position = UDim2.new((side==2) and 0.5 or 0, 6, 0, 0); f.BackgroundTransparency = 1; f.Parent = parent
-    local box = Instance.new("TextBox"); box.Name = id .. "_box"; box.Size = UDim2.new(0.75, 0, 1, 0); box.Position = UDim2.new(0,0,0,0); box.PlaceholderText = placeholder; box.Text = ""; box.ClearTextOnFocus = false; box.Font = Enum.Font.SourceSans; box.TextSize = 14; box.BackgroundColor3 = Color3.fromRGB(40,40,40); box.TextColor3 = Color3.fromRGB(255,255,255); box.Parent = f
+    local box = Instance.new("TextBox"); box.Name = id .. "_box"; box.Size = UDim2.new(0.75, 0, 1, 0); box.Position = UDim2.new(0,0,0,0); box.PlaceholderText = placeholder; box.Text = ""; box.ClearTextOnFocus = true; box.Font = Enum.Font.SourceSans; box.TextSize = 14; box.BackgroundColor3 = Color3.fromRGB(40,40,40); box.TextColor3 = Color3.fromRGB(255,255,255); box.Parent = f
     local btn = Instance.new("TextButton"); btn.Name = id .. "_btn"; btn.Size = UDim2.new(0.25, 0, 1, 0); btn.Position = UDim2.new(0.75, 0, 0, 0); btn.Text = btnText; btn.TextScaled = true; btn.BackgroundColor3 = Color3.fromRGB(86,170,255); btn.TextColor3 = Color3.fromRGB(255,255,255); btn.Parent = f
     return f, box, btn
 end
