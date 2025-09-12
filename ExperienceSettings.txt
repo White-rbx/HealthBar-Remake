@@ -554,8 +554,8 @@ wl.Visible = true
 wl.Parent = wa1
 
 -- ===== OC (Open/Close) wiring - REPLACEMENT =====
-local OC_OPEN_IMAGE  = "rbxassetid://96748873664437" -- image when OPEN (show Set/hbm)
-local OC_CLOSE_IMAGE = "rbxassetid://126759169574128"  -- image when CLOSED (hide Set/hbm)
+local OC_OPEN_IMAGE  = "rbxassetid://126759169574128" -- image when OPEN (show Set/hbm)
+local OC_CLOSE_IMAGE = "rbxassetid://96748873664437"  -- image when CLOSED (hide Set/hbm)
 
 -- target mtb X for "closed" (was 0.515 -> change to 0.48 as requested)
 local MTB_X_CLOSED = 0.48
