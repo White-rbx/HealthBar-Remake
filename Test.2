@@ -1815,15 +1815,15 @@ hbm.MouseButton1Click:Connect(toggleTB)
 
 
 
--- ChatGPT LocalScript (Unified /Ins extended) - FULL
--- LANGUAGE: Thai (UI messages are English-ish but handler comments kept)
--- NOTE: Put this as a LocalScript in your environment (PlayerGui or CoreGui/menuGui-aware)
+-- ChatGPT Full LocalScript (menuGui-aware) - FINAL (single-file)
+-- Uses existing menuGui / CoreGui parent. Robust nil guards & pcall to avoid "attempt to call a nil value".
+-- NOTE: KEEP OPENAI KEY CLIENT-SIDE. Do NOT commit your secret key to public repos.
 
--- Services
-local HttpService       = game:GetService("HttpService")
-local TweenService      = game:GetService("TweenService")
+-- ===== Services =====
 local Players           = game:GetService("Players")
 local RunService        = game:GetService("RunService")
+local TweenService      = game:GetService("TweenService")
+local HttpService       = game:GetService("HttpService")
 local TeleportService   = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui           = game:GetService("CoreGui")
@@ -1831,40 +1831,58 @@ local Workspace         = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Utilities
+-- VirtualInputManager (may not exist)
+local VirtualInputManager = nil
+pcall(function() VirtualInputManager = game:GetService("VirtualInputManager") end)
+
+-- ===== Helpers =====
 local function trim(s) return tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "") end
-local function safePcall(fn, ...) local ok, res = pcall(fn, ...) if not ok then return nil, tostring(res) end return res, nil end
-local function redactKey(k) if type(k) ~= "string" or k == "" then return "<nil>" end if #k <= 12 then return "********" end return k:sub(1,6) .. "..." .. k:sub(-6) end
+local function safePcall(fn, ...) local ok, res = pcall(fn, ...) return ok, res end
+local function redactKey(k) if type(k) ~= "string" then return "<nil>" end if #k <= 12 then return "********" end return k:sub(1,6) .. "..." .. k:sub(-6) end
 local function safeTween(obj, props, time, style, dir) if not obj or not obj.Parent then return end pcall(function() local tinfo = TweenInfo.new(time or 0.28, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out) local tw = TweenService:Create(obj, tinfo, props) tw:Play() end) end
+
 local function safeEval(expr)
     if not expr or expr == "" then return nil, "empty" end
-    if type(loadstring) ~= "function" then return nil, "loadstring not available" end
-    local okf, f = pcall(function() return loadstring("return " .. expr) end)
-    if not okf or not f then return nil, "compile_error" end
+    if type(loadstring) ~= "function" then return nil, "loadstring unavailable" end
+    local f, err = loadstring("return " .. expr)
+    if not f then return nil, err end
     local ok, res = pcall(f)
-    if not ok then return nil, tostring(res) end
+    if not ok then return nil, res end
     return res, nil
+end
+
+local function httpGet(url, nocache)
+    if not HttpService then return false, "HttpService unavailable" end
+    local ok, res = pcall(function() return HttpService:GetAsync(url, nocache) end)
+    if not ok then return false, res end
+    return true, res
+end
+local function httpRequest(info)
+    if not HttpService then return false, "HttpService unavailable" end
+    local ok, res = pcall(function() return HttpService:RequestAsync(info) end)
+    if not ok then return false, res end
+    return true, res
 end
 
 local function resolveLocate(locateStr)
     if not locateStr or locateStr == "" then return nil, "empty locate" end
     local s = trim(locateStr)
-    -- try eval first (safe)
+    -- try eval if allowed
     if type(loadstring) == "function" then
-        local ok, val = pcall(function()
+        local ok, res = pcall(function()
             local f, e = loadstring("return " .. s)
-            if not f then error(e) end
-            return f()
+            if f then return f() end
+            return nil, e
         end)
-        if ok and val then return val, nil end
+        if ok and res then return res, nil end
     end
-    -- search in Workspace
+    -- search workspace
     local found = Workspace:FindFirstChild(s, true)
     if found then return found, nil end
     for _,svc in ipairs(game:GetChildren()) do
         if type(svc) == "Instance" and svc.FindFirstChild then
-            local ff = svc:FindFirstChild(s, true)
-            if ff then return ff end
+            local f = svc:FindFirstChild(s, true)
+            if f then return f, nil end
         end
     end
     return nil, "resolve_failed"
@@ -1883,30 +1901,44 @@ local function findObjectByName(name)
     return nil
 end
 
-local function parseColorStr(s)
-    if not s then return nil end
-    local nums = {}
-    for n in s:gmatch("%-?%d+%.?%d*") do table.insert(nums, tonumber(n)) end
-    if #nums >= 3 then
-        return Color3.fromRGB(math.clamp(math.floor(nums[1]+0.5),0,255),
-                              math.clamp(math.floor(nums[2]+0.5),0,255),
-                              math.clamp(math.floor(nums[3]+0.5),0,255))
-    end
-    return nil
-end
-
-local function applyColorToObject(obj, color)
-    if not obj or not color then return false end
+local function applyColorToObject(obj, color3)
+    if not obj or not color3 then return false end
     pcall(function()
-        if obj:IsA("BasePart") then pcall(function() obj.Color = color end) end
-        if pcall(function() return obj.BackgroundColor3 end) then pcall(function() obj.BackgroundColor3 = color end) end
-        if pcall(function() return obj.TextColor3 end) then pcall(function() obj.TextColor3 = color end) end
-        if pcall(function() return obj.ImageColor3 end) then pcall(function() obj.ImageColor3 = color end) end
+        if obj:IsA("BasePart") then obj.Color = color3 end
+        if pcall(function() return obj.BackgroundColor3 end) then obj.BackgroundColor3 = color3 end
+        if pcall(function() return obj.TextColor3 end) then obj.TextColor3 = color3 end
+        if pcall(function() return obj.ImageColor3 end) then obj.ImageColor3 = color3 end
     end)
     return true
 end
 
--- parent detection (prefer menuGui variable)
+-- ===== STATE =====
+local STATE = {
+    OPENAI_KEY = nil,          -- do not hardcode your key here if sharing
+    PROJECT_ID = nil,
+    MODEL = "gpt-3.5-turbo",
+    validated = false,
+    requestInFlight = false,
+    HttpAsync = true,
+    translateGlobal = nil,
+    autoAllDeathCounts = false,
+    consoleChatMode = false,
+    seeChatEnabled = false,
+    seeChatConns = {},
+    autop = { enabled = false, mode = "Random", task = nil },
+    debug = false,
+}
+
+-- ensure ChatGPTClientEvent exists (client-created RemoteEvent is safe)
+pcall(function()
+    if ReplicatedStorage and not ReplicatedStorage:FindFirstChild("ChatGPTClientEvent") then
+        local ev = Instance.new("RemoteEvent")
+        ev.Name = "ChatGPTClientEvent"
+        ev.Parent = ReplicatedStorage
+    end
+end)
+
+-- ===== parent UI selection =====
 local targetMenu = nil
 if type(menuGui) == "Instance" and menuGui.Parent then
     targetMenu = menuGui
@@ -1922,118 +1954,40 @@ if not (targetMenu and targetMenu.Parent) then
     targetMenu = CoreGui
 end
 
--- STATE
-local STATE = {
-    OPENAI_KEY = nil,
-    PROJECT_ID = nil,
-    MODEL = "gpt-3.5-turbo",
-    validated = false,
-    requestInFlight = false,
-    HttpAsync = true,
-    seeChatEnabled = false,
-    seeChatConns = {},
-    _playerAddedConn = nil,
-    _chatEventConn = nil,
-    autobot = { enabled = false, mode = "Random", task = nil },
-    debug = false,
-    _keeps = {},
-}
+-- ===== build/reuse UI under targetMenu (do NOT create ScreenGui) =====
+local gptGui = nil
+pcall(function() gptGui = targetMenu:FindFirstChild("gptGui", true) end)
+if not gptGui then
+    gptGui = Instance.new("Frame")
+    gptGui.Name = "gptGui"
+    gptGui.Size = UDim2.new(1,0,0.9,0)
+    gptGui.Position = UDim2.new(-1,0,0.1,0)
+    gptGui.BackgroundColor3 = Color3.fromRGB(18,18,20)
+    gptGui.BackgroundTransparency = 0.12
+    local uc = Instance.new("UICorner"); uc.CornerRadius = UDim.new(0,8); uc.Parent = gptGui
+    gptGui.Parent = targetMenu
+end
 
--- ensure ChatGPTClientEvent in ReplicatedStorage (safe to create client-side)
-pcall(function()
-    if not ReplicatedStorage:FindFirstChild("ChatGPTClientEvent") then
-        local ev = Instance.new("RemoteEvent")
-        ev.Name = "ChatGPTClientEvent"
-        ev.Parent = ReplicatedStorage
+local function ensureChild(parent, className, props)
+    if not parent then return nil end
+    for _,c in ipairs(parent:GetChildren()) do
+        if c.ClassName == className and props and props.Name and c.Name == props.Name then return c end
     end
-end)
-
--- build/locate gui (use existing menuGui if present)
-local function createIfMissingGui()
-    local gptGui = nil
-    pcall(function() gptGui = targetMenu:FindFirstChild("gptGui", true) end)
-    if not gptGui then
-        local ok, isPlayerGui = pcall(function() return targetMenu:IsA("PlayerGui") end)
-        if ok and isPlayerGui then
-            gptGui = Instance.new("ScreenGui")
-            gptGui.Name = "gptGui"
-            gptGui.IgnoreGuiInset = true
-            gptGui.Parent = targetMenu
-        else
-            local frame = Instance.new("Frame")
-            frame.Name = "gptGui"
-            frame.Size = UDim2.new(1,0,0.9,0)
-            frame.Position = UDim2.new(-1,0,0.1,0)
-            frame.BackgroundColor3 = Color3.fromRGB(18,18,20)
-            frame.BackgroundTransparency = 0.12
-            local uc = Instance.new("UICorner"); uc.CornerRadius = UDim.new(0,6); uc.Parent = frame
-            frame.Parent = targetMenu
-            gptGui = frame
-        end
+    local inst = Instance.new(className)
+    if props then
+        for k,v in pairs(props) do pcall(function() inst[k] = v end) end
     end
-    return gptGui
+    inst.Parent = parent
+    return inst
 end
 
-local gptGui = createIfMissingGui()
+local gptBack = gptGui:FindFirstChild("Background") or ensureChild(gptGui, "Frame", {Name = "Background", Size = UDim2.new(0.96,0,0.96,0), Position = UDim2.new(0.02,0,0.02,0), BackgroundTransparency = 1})
+local gptScroll = gptBack:FindFirstChild("a0_Scroll") or ensureChild(gptBack, "ScrollingFrame", {Name="a0_Scroll", Size=UDim2.new(1,0,0.62,0), Position=UDim2.new(0,0,0.12,0), BackgroundTransparency=0.5, BackgroundColor3=Color3.fromRGB(12,12,12), ScrollBarThickness=6})
+gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+if not gptScroll:FindFirstChildOfClass("UICorner") then local c=Instance.new("UICorner"); c.Parent = gptScroll end
 
--- rootFrame (if ScreenGui, create a child Frame main)
-local rootFrame = gptGui
-if gptGui:IsA("ScreenGui") then
-    local child = gptGui:FindFirstChild("FrameMain")
-    if not child then
-        child = Instance.new("Frame")
-        child.Name = "FrameMain"
-        child.Size = UDim2.new(1,0,0.9,0)
-        child.Position = UDim2.new(-1,0,0.1,0)
-        child.BackgroundColor3 = Color3.fromRGB(18,18,20)
-        child.BackgroundTransparency = 0.12
-        child.Parent = gptGui
-    end
-    rootFrame = child
-end
-
--- Chat containers (create only missing elements)
-local gptBack = rootFrame:FindFirstChild("Background")
-if not gptBack then
-    gptBack = Instance.new("Frame")
-    gptBack.Name = "Background"
-    gptBack.Size = UDim2.new(0.96,0,0.96,0)
-    gptBack.Position = UDim2.new(0.02,0,0.02,0)
-    gptBack.BackgroundTransparency = 1
-    gptBack.Parent = rootFrame
-end
-
-local gptScroll = gptBack:FindFirstChild("a0_Scroll")
-if not gptScroll then
-    gptScroll = Instance.new("ScrollingFrame")
-    gptScroll.Name = "a0_Scroll"
-    gptScroll.Size = UDim2.new(1,0,0.62,0)
-    gptScroll.Position = UDim2.new(0,0,0.12,0)
-    gptScroll.BackgroundTransparency = 0.5
-    gptScroll.BackgroundColor3 = Color3.fromRGB(12,12,12)
-    gptScroll.ScrollBarThickness = 6
-    gptScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    local cc = Instance.new("UICorner"); cc.Parent = gptScroll
-    gptScroll.Parent = gptBack
-end
-
-local gptChat = gptScroll:FindFirstChild("Chat")
-if not gptChat then
-    gptChat = Instance.new("Frame")
-    gptChat.Name = "Chat"
-    gptChat.Size = UDim2.new(0.96,0,0,0)
-    gptChat.Position = UDim2.new(0.02,0,0,10)
-    gptChat.BackgroundTransparency = 1
-    gptChat.Parent = gptScroll
-end
-
-local uiLayout = gptChat:FindFirstChildOfClass("UIListLayout")
-if not uiLayout then
-    uiLayout = Instance.new("UIListLayout")
-    uiLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    uiLayout.Padding = UDim.new(0,6)
-    uiLayout.Parent = gptChat
-end
+local gptChat = gptScroll:FindFirstChild("Chat") or ensureChild(gptScroll, "Frame", {Name="Chat", Size=UDim2.new(0.96,0,0,0), Position=UDim2.new(0.02,0,0,10), BackgroundTransparency=1})
+local uiLayout = gptChat:FindFirstChildOfClass("UIListLayout") or (function() local l=Instance.new("UIListLayout"); l.SortOrder=Enum.SortOrder.LayoutOrder; l.Padding=UDim.new(0,6); l.Parent=gptChat; return l end)()
 uiLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     pcall(function()
         gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
@@ -2041,57 +1995,26 @@ uiLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     end)
 end)
 
--- Input frame
-local inputFrame = rootFrame:FindFirstChild("a_chat_input") or Instance.new("Frame")
-inputFrame.Name = "a_chat_input"
-inputFrame.Size = UDim2.new(1,0,0,44)
-inputFrame.Position = UDim2.new(0,0,0.82,0)
-inputFrame.BackgroundTransparency = 1
-inputFrame.Parent = rootFrame
+-- bottom input
+local inputFrame = gptGui:FindFirstChild("a_chat_input") or ensureChild(gptGui, "Frame", {Name="a_chat_input", Size=UDim2.new(1,0,0,44), Position=UDim2.new(0,0,0.82,0), BackgroundTransparency=1})
+local chatBox = inputFrame:FindFirstChild("ChatBox") or ensureChild(inputFrame, "TextBox", {Name="ChatBox", Size=UDim2.new(0.75,-8,1,0), Position=UDim2.new(0,6,0,0), PlaceholderText="Ask anything... (use / for commands)", ClearTextOnFocus=false, Font=Enum.Font.SourceSans, TextSize=16, BackgroundColor3=Color3.fromRGB(40,40,40), TextColor3=Color3.fromRGB(255,255,255)})
+local sendBtn = inputFrame:FindFirstChild("SendBtn") or ensureChild(inputFrame, "TextButton", {Name="SendBtn", Size=UDim2.new(0.25,-8,1,0), Position=UDim2.new(0.75,4,0,0), Text="Send", TextScaled=true, BackgroundColor3=Color3.fromRGB(86,170,255), TextColor3=Color3.fromRGB(255,255,255)})
 
-local chatBox = inputFrame:FindFirstChild("ChatBox")
-if not chatBox then
-    chatBox = Instance.new("TextBox")
-    chatBox.Name = "ChatBox"
-    chatBox.Size = UDim2.new(0.75, -8, 1, 0)
-    chatBox.Position = UDim2.new(0,6,0,0)
-    chatBox.PlaceholderText = "Ask anything... (use / for commands)"
-    chatBox.ClearTextOnFocus = false
-    chatBox.Font = Enum.Font.SourceSans
-    chatBox.TextSize = 16
-    chatBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
-    chatBox.TextColor3 = Color3.fromRGB(255,255,255)
-    chatBox.Parent = inputFrame
-end
-
-local sendBtn = inputFrame:FindFirstChild("SendBtn")
-if not sendBtn then
-    sendBtn = Instance.new("TextButton")
-    sendBtn.Name = "SendBtn"
-    sendBtn.Size = UDim2.new(0.25, -8, 1, 0)
-    sendBtn.Position = UDim2.new(0.75, 4, 0, 0)
-    sendBtn.Text = "Send"
-    sendBtn.TextScaled = true
-    sendBtn.BackgroundColor3 = Color3.fromRGB(86,170,255)
-    sendBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    sendBtn.Parent = inputFrame
-end
-
--- Top row inputs for API/project (optional)
-local topRow = gptBack:FindFirstChild("TopRow") or Instance.new("Frame")
-if not topRow.Parent then
-    topRow.Name = "TopRow"; topRow.Size = UDim2.new(1,0,0,40); topRow.Position = UDim2.new(0,0,0,0); topRow.BackgroundTransparency = 1; topRow.Parent = gptBack
-end
+-- top row for API / Project inputs
+local topRow = gptBack:FindFirstChild("TopRow") or ensureChild(gptBack, "Frame", {Name="TopRow", Size=UDim2.new(1,0,0,40), Position=UDim2.new(0,0,0,0), BackgroundTransparency=1})
 local function makeRow(parent, id, placeholder, btnText, side)
-    local f = Instance.new("Frame"); f.Name = id .. "_frame"; f.Size = UDim2.new(0.5, -6, 1, 0); f.Position = UDim2.new((side==2) and 0.5 or 0, 6, 0, 0); f.BackgroundTransparency = 1; f.Parent = parent
-    local box = Instance.new("TextBox"); box.Name = id .. "_box"; box.Size = UDim2.new(0.75, 0, 1, 0); box.Position = UDim2.new(0,0,0,0); box.PlaceholderText = placeholder; box.ClearTextOnFocus = false; box.Font = Enum.Font.SourceSans; box.TextSize = 14; box.BackgroundColor3 = Color3.fromRGB(40,40,40); box.TextColor3 = Color3.fromRGB(255,255,255); box.Parent = f
-    local btn = Instance.new("TextButton"); btn.Name = id .. "_btn"; btn.Size = UDim2.new(0.25, 0, 1, 0); btn.Position = UDim2.new(0.75, 0, 0, 0); btn.Text = btnText; btn.TextScaled = true; btn.BackgroundColor3 = Color3.fromRGB(86,170,255); btn.TextColor3 = Color3.fromRGB(255,255,255); btn.Parent = f
+    local f = Instance.new("Frame"); f.Name = id.."_frame"; f.Size = UDim2.new(0.5, -6, 1, 0); f.Position = UDim2.new((side==2) and 0.5 or 0, 6, 0, 0); f.BackgroundTransparency = 1; f.Parent = parent
+    local box = Instance.new("TextBox"); box.Name = id.."_box"; box.Size = UDim2.new(0.75,0,1,0); box.Position = UDim2.new(0,0,0,0); box.PlaceholderText = placeholder; box.ClearTextOnFocus=false; box.Font=Enum.Font.SourceSans; box.TextSize=14; box.BackgroundColor3=Color3.fromRGB(40,40,40); box.TextColor3=Color3.fromRGB(255,255,255); box.Parent = f
+    local btn = Instance.new("TextButton"); btn.Name = id.."_btn"; btn.Size = UDim2.new(0.25,0,1,0); btn.Position = UDim2.new(0.75,0,0,0); btn.Text = btnText; btn.TextScaled=true; btn.BackgroundColor3=Color3.fromRGB(86,170,255); btn.TextColor3=Color3.fromRGB(255,255,255); btn.Parent = f
     return f, box, btn
 end
-local f1, projBox, projBtn = makeRow(topRow, "a_proj_input", "Enter Project ID (proj_x...)", "Next", 1)
-local f2, apiBox, apiBtn   = makeRow(topRow, "a_api_input",  "Enter API key (sk-...)", "Save", 2)
 
--- append helpers
+local projFrame, projBox, projBtn = makeRow(topRow, "a_proj_input", "Enter Project ID (proj_x...)", "Next", 1)
+local apiFrame, apiBox, apiBtn = makeRow(topRow, "a_api_input", "Enter API key (sk-...)", "Save", 2)
+projFrame.Position = UDim2.new(0,6,0,0)
+apiFrame.Position = UDim2.new(0.5,6,0,0)
+
+-- ===== append helpers =====
 local chatCount = 0
 local function appendChat(isUser, text, colorTbl)
     chatCount = chatCount + 1
@@ -2129,459 +2052,133 @@ local function appendChat(isUser, text, colorTbl)
     end)
     return fr, lbl
 end
-local function appendSystem(msg) appendChat(false, "[System] "..tostring(msg), {200,200,255}) end
-local function appendError(msg) appendChat(false, "[Error] "..tostring(msg), {255,80,80}) end
-local function appendDebug(msg) if STATE.debug then appendChat(false, "[Debug] "..tostring(msg), {200,200,200}) end end
 
--- ----- /Ins core: processInsTable (extended) -----
-local function processInsTable(data)
-    if not data then appendError("Ins: no data provided."); return end
-    local className = trim(data.Class or data.Type or "") or ""
-    if className == "" then className = "Part" end
-    local name = trim(data.Name or "") or (className .. "_inst")
-    local parentLocate = trim(data.Parent or data.ParentLocate or "") or ""
-    local parent = Workspace
-    if parentLocate ~= "" then
-        local p, err = resolveLocate(parentLocate)
-        if not p then appendError("Ins: cannot resolve Parent: "..tostring(err)); return end
-        parent = p
-    end
+local function appendSystem(msg) appendChat(false, "[System] " .. tostring(msg), {200,200,255}) end
+local function appendError(msg) appendChat(false, "[Error] " .. tostring(msg), {255,80,80}) end
+local function appendDebug(msg) if STATE.debug then appendChat(false, "[Debug] "..tostring(msg), {180,180,180}) end end
 
-    local ok, inst = pcall(function() return Instance.new(className) end)
-    if not ok or not inst then appendError("Ins: failed to create class '"..tostring(className).."'."); return end
-    pcall(function() inst.Name = name end)
-    pcall(function() inst.Parent = parent end)
+-- append input (TextBox) & append button to gptChat (for /Ins UI)
+local function appendInput(placeholder, name, widthScale)
+    widthScale = tonumber(widthScale) or 1
+    local fr = Instance.new("Frame")
+    fr.Size = UDim2.new(1,0,0,36)
+    fr.BackgroundTransparency = 1
+    fr.Parent = gptChat
 
-    -- Anchored (for BasePart)
-    if data.Anchored and tostring(data.Anchored) ~= "" then
-        local sval = tostring(data.Anchored):lower()
-        if inst:IsA("BasePart") and (sval == "true" or sval == "false") then
-            pcall(function() inst.Anchored = (sval == "true") end)
-        end
-    end
+    local tb = Instance.new("TextBox")
+    tb.Name = name or "InsInput"
+    tb.Size = UDim2.new(0.75 * widthScale, -8, 1, 0)
+    tb.Position = UDim2.new(0, 8, 0, 0)
+    tb.PlaceholderText = placeholder or ""
+    tb.ClearTextOnFocus = false
+    tb.Font = Enum.Font.SourceSans
+    tb.TextSize = 16
+    tb.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    tb.TextColor3 = Color3.fromRGB(255,255,255)
+    tb.Parent = fr
 
-    -- CFrame: support "spawn" or CFrame.new(...) or "CFrame.new(x,y,z)"
-    if data.CFrame and trim(data.CFrame) ~= "" then
-        local cfStr = trim(data.CFrame)
-        if cfStr:lower() == "spawn" then
-            local pl = LocalPlayer
-            local ch = pl and pl.Character
-            local root = ch and (ch:FindFirstChild("HumanoidRootPart") or ch.PrimaryPart)
-            if root then pcall(function() if inst:IsA("BasePart") then inst.CFrame = root.CFrame * CFrame.new(0, - (root.Size and root.Size.Y/2 or 2), 0) end end)
-        else
-            local val, err = safeEval(cfStr)
-            if val and typeof(val) == "CFrame" then pcall(function() if inst:IsA("BasePart") then inst.CFrame = val end end) else
-                -- try Vector3 fallback
-                local v, verr = safeEval(cfStr:gsub("^%s*Vector3%(","Vector3("))
-                if v and typeof(v) == "Vector3" then pcall(function() if inst:IsA("BasePart") then inst.CFrame = CFrame.new(v) end end) else appendDebug("Ins: CFrame parse failed: "..tostring(err or verr)) end
-            end
-        end
-    end
-
-    -- Position (Vector3)
-    if data.Position and trim(data.Position) ~= "" then
-        local vec, err = safeEval(data.Position)
-        if vec and typeof(vec) == "Vector3" then
-            pcall(function() if inst:IsA("BasePart") then inst.CFrame = CFrame.new(vec) end end)
-        else appendDebug("Ins: Position parse failed: "..tostring(err)) end
-    end
-
-    -- Size
-    if data.Size and trim(data.Size) ~= "" then
-        local vec, err = safeEval(data.Size)
-        if vec and typeof(vec) == "Vector3" then pcall(function() if inst:IsA("BasePart") then inst.Size = vec end end) else appendDebug("Ins: Size parse failed: "..tostring(err)) end
-    end
-
-    -- Color
-    if data.Color and trim(data.Color) ~= "" then
-        local col = nil
-        -- try code
-        if type(loadstring) == "function" then
-            local okc, cres = pcall(function() return safeEval(data.Color) end)
-            if okc and cres then col = cres end
-        end
-        if not col then col = parseColorStr(data.Color) end
-        if col and typeof(col) == "Color3" then pcall(function() applyColorToObject(inst, col) end) end
-    end
-
-    -- Mesh
-    if (data.MeshId and trim(data.MeshId) ~= "") or (data.MeshShape and trim(data.MeshShape) ~= "") then
-        if inst:IsA("BasePart") then
-            local mesh = Instance.new("SpecialMesh")
-            pcall(function()
-                if data.MeshId and trim(data.MeshId) ~= "" then
-                    mesh.MeshId = tostring(data.MeshId)
-                    mesh.MeshType = Enum.MeshType.FileMesh
-                else
-                    local s = tostring(data.MeshShape or ""):gsub("%s+","")
-                    local okm, val = pcall(function() return Enum.MeshType[s] end)
-                    mesh.MeshType = (okm and val) or Enum.MeshType.Brick
-                end
-                if data.MeshScale and trim(data.MeshScale) ~= "" then
-                    local ms, err = safeEval(data.MeshScale)
-                    if ms and typeof(ms) == "Vector3" then mesh.Scale = ms end
-                end
-                if data.MeshTexture and trim(data.MeshTexture) ~= "" then mesh.TextureId = tostring(data.MeshTexture) end
-            end)
-            mesh.Parent = inst
-        else appendDebug("Ins: Mesh requested but target not BasePart.") end
-    end
-
-    -- Decal/Texture
-    if data.DecalId and trim(data.DecalId) ~= "" then
-        local parentDecal = inst
-        if not parentDecal:IsA("BasePart") then
-            local partChild = parentDecal:FindFirstChildOfClass("BasePart") or parentDecal:FindFirstChild("Handle")
-            if partChild then parentDecal = partChild end
-        end
-        if parentDecal and parentDecal:IsA("BasePart") then
-            local d = Instance.new("Decal")
-            d.Texture = tostring(data.DecalId)
-            d.Transparency = tonumber(data.DecalTransparency) or 0
-            d.Parent = parentDecal
-        else appendDebug("Ins: Decal not inserted - target not a BasePart.") end
-    end
-
-    -- SurfaceGui / TextLabel
-    if (data.SurfaceDirection and trim(data.SurfaceDirection) ~= "") or (data.SurfaceText and trim(data.SurfaceText) ~= "") or (data.UDim2Vector and trim(data.UDim2Vector) ~= "") then
-        local targetPart = inst
-        if not targetPart:IsA("BasePart") then
-            local fp = inst:FindFirstChildOfClass("BasePart")
-            if fp then targetPart = fp end
-        end
-        if targetPart and targetPart:IsA("BasePart") then
-            local sg = Instance.new("SurfaceGui")
-            local faceName = trim(data.SurfaceDirection or ""):gsub("%s+","")
-            local face = (faceName ~= "" and (Enum.NormalId[faceName] or Enum.NormalId.Front)) or Enum.NormalId.Front
-            pcall(function() sg.Face = face end)
-            -- AlwaysOnTop
-            if data.SurfaceAlwaysOnTop and tostring(data.SurfaceAlwaysOnTop) ~= "" then
-                pcall(function() sg.AlwaysOnTop = (tostring(data.SurfaceAlwaysOnTop):lower()=="true") end)
-            end
-            sg.Parent = targetPart
-            -- TextLabel if requested
-            if data.SurfaceText and trim(data.SurfaceText) ~= "" then
-                local lbl = Instance.new("TextLabel")
-                lbl.Size = UDim2.new(1,0,1,0)
-                lbl.Text = tostring(data.SurfaceText or "")
-                lbl.TextScaled = (tostring(data.SurfaceTextScaled or ""):lower() == "true")
-                local col = parseColorStr(tostring(data.SurfaceTextColor or "255,255,255"))
-                if col then pcall(function() lbl.TextColor3 = col end) end
-                lbl.TextSize = tonumber(data.SurfaceTextSize) or 14
-                local okf, fenum = pcall(function() return Enum.Font[tostring(data.SurfaceTextFont or "SourceSans")] end)
-                if okf and fenum then lbl.Font = fenum else lbl.Font = Enum.Font.SourceSans end
-                lbl.TextWrapped = (tostring(data.SurfaceTextWrapped or "true"):lower() ~= "false")
-                lbl.RichText = (tostring(data.SurfaceTextRich or "false"):lower() == "true")
-                lbl.Parent = sg
-            end
-        else appendDebug("Ins: SurfaceGui fields provided but target is not BasePart.") end
-    end
-
-    -- Effects: Particle / Light
-    if data.EffectType and trim(data.EffectType) ~= "" then
-        local typ = tostring(data.EffectType):lower()
-        local targetParent = inst
-        if typ:find("particle") or typ:find("spark") or typ:find("fire") or typ:find("smoke") then
-            local emitter = Instance.new("ParticleEmitter")
-            if data.EffectColor and trim(data.EffectColor) ~= "" then
-                local col = parseColorStr(data.EffectColor)
-                if col then pcall(function() emitter.Color = ColorSequence.new(col) end) end
-            end
-            if data.EffectSize and trim(data.EffectSize) ~= "" then
-                local s,err = safeEval(data.EffectSize)
-                if s and (type(s) == "number" or typeof(s) == "NumberSequence") then
-                    if type(s) == "number" then pcall(function() emitter.Size = NumberSequence.new(s) end) else pcall(function() emitter.Size = s end) end
-                end
-            end
-            emitter.Parent = targetParent
-        elseif typ:find("light") then
-            local li = Instance.new("PointLight")
-            li.Brightness = tonumber(data.LightBrightness) or 1
-            li.Range = tonumber(data.LightRange) or 8
-            li.Parent = targetParent
-        end
-    end
-
-    -- Script: create Script / LocalScript / ModuleScript
-    if data.ScriptType and trim(data.ScriptType) ~= "" then
-        local t = tostring(data.ScriptType):lower()
-        local src = tostring(data.ScriptSource or "")
-        local scriptObj = nil
-        pcall(function()
-            if t:find("localscript") then scriptObj = Instance.new("LocalScript")
-            elseif t:find("module") then scriptObj = Instance.new("ModuleScript")
-            else scriptObj = Instance.new("Script") end
-            scriptObj.Name = tostring(data.ScriptName or "gptScript")
-            scriptObj.Parent = inst
-            -- try set source (may fail on client)
-            if src ~= "" then
-                local okSrc, errSrc = pcall(function() scriptObj.Source = src end)
-                if not okSrc then appendDebug("Ins: could not set Script.Source (permission).") end
-            end
-        end)
-    end
-
-    -- Sound: create sound under inst (or under inst.PrimaryPart)
-    if (data.SoundId and trim(data.SoundId) ~= "") or (data.SoundPlay and trim(data.SoundPlay) ~= "") then
-        local targetParent = inst
-        if not targetParent:IsA("BasePart") then
-            local fp = inst:FindFirstChildOfClass("BasePart") or inst:FindFirstChild("Handle")
-            if fp then targetParent = fp end
-        end
-        if targetParent then
-            local s = Instance.new("Sound")
-            s.Name = tostring(data.SoundName or "gptSound")
-            if data.SoundId and trim(data.SoundId) ~= "" then
-                local id = tostring(data.SoundId)
-                if id:match("^%d+$") then s.SoundId = "rbxassetid://"..id else s.SoundId = id end
-            end
-            if data.SoundLoop and tostring(data.SoundLoop) ~= "" then s.Looped = (tostring(data.SoundLoop):lower()=="true") end
-            if data.SoundVolume and tonumber(trim(data.SoundVolume) or "") then s.Volume = tonumber(trim(data.SoundVolume)) end
-            if data.SoundPlayback and tonumber(trim(data.SoundPlayback) or "") then s.PlaybackSpeed = tonumber(trim(data.SoundPlayback)) end
-            if data.SoundTime and tonumber(trim(data.SoundTime) or "") then pcall(function() s.TimePosition = tonumber(trim(data.SoundTime)) end) end
-            s.Parent = targetParent
-            if data.SoundPlay and tostring(data.SoundPlay):lower():find("true") then pcall(function() s:Play() end) end
-        else appendDebug("Ins: cannot place Sound; no valid part target.") end
-    end
-
-    -- More options: Destroy, ReName, ReColor, RePos (Vector3), ReCFrame
-    if data.MoreDestroy and tostring(data.MoreDestroy):lower():find("true") then
-        task.spawn(function() task.wait(0.2); pcall(function() inst:Destroy() end) end)
-    end
-    if data.MoreReName and trim(data.MoreReName) ~= "" then pcall(function() inst.Name = tostring(data.MoreReName) end) end
-    if data.MoreReColor and trim(data.MoreReColor) ~= "" then
-        local c = parseColorStr(tostring(data.MoreReColor))
-        if c then pcall(function() applyColorToObject(inst, c) end) end
-    end
-    if data.MoreRePos and trim(data.MoreRePos) ~= "" then
-        local v,err = safeEval(data.MoreRePos)
-        if v and typeof(v) == "Vector3" then pcall(function() if inst:IsA("BasePart") then inst.CFrame = CFrame.new(v) end end) end
-    end
-    if data.MoreReCFrame and trim(data.MoreReCFrame) ~= "" then
-        local cf, err = safeEval(tostring(data.MoreReCFrame))
-        if cf and typeof(cf) == "CFrame" then pcall(function() if inst:IsA("BasePart") then inst.CFrame = cf end end) else appendDebug("Ins: MoreReCFrame parse failed: "..tostring(err)) end
-    end
-
-    appendSystem(("Ins: Created %s named '%s' under %s"):format(tostring(className), tostring(name), tostring(parent and (parent.Name or tostring(parent)) or "Workspace")))
+    return fr, tb
 end
 
--- appendInput UI (adds many fields) - similar to previous but adds missing fields requested
-local function appendInput()
-    -- container
-    local frame = Instance.new("Frame")
-    frame.Name = "InsInputPanel"
-    frame.BackgroundTransparency = 1
-    frame.Size = UDim2.new(1,0,0,0)
-    frame.AutomaticSize = Enum.AutomaticSize.Y
-    frame.Parent = gptChat
+local function appendButton(text, callback)
+    local fr = Instance.new("Frame")
+    fr.Size = UDim2.new(1,0,0,36)
+    fr.BackgroundTransparency = 1
+    fr.Parent = gptChat
 
-    local container = Instance.new("Frame")
-    container.Name = "Container"
-    container.Size = UDim2.new(0.96,0,0,300)
-    container.Position = UDim2.new(0.02,0,0,6)
-    container.BackgroundColor3 = Color3.fromRGB(28,28,30)
-    container.Parent = frame
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.25, -8, 1, 0)
+    btn.Position = UDim2.new(0.75, 8, 0, 0)
+    btn.Text = text or "Button"
+    btn.TextScaled = true
+    btn.BackgroundColor3 = Color3.fromRGB(86,170,255)
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Parent = fr
 
-    local layout = Instance.new("UIListLayout")
-    layout.Parent = container
-    layout.Padding = UDim.new(0,4)
-
-    local function makeField(labelTxt, placeholder)
-        local fldFr = Instance.new("Frame")
-        fldFr.Size = UDim2.new(1,0,0,30); fldFr.BackgroundTransparency = 1; fldFr.Parent = container
-        local lbl = Instance.new("TextLabel"); lbl.Size = UDim2.new(0.28,0,1,0); lbl.Position = UDim2.new(0,4,0,0); lbl.BackgroundTransparency = 1; lbl.Text = labelTxt; lbl.Font = Enum.Font.SourceSans; lbl.TextSize = 14; lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.TextColor3 = Color3.fromRGB(200,200,200); lbl.Parent = fldFr
-        local tb = Instance.new("TextBox"); tb.Size = UDim2.new(0.7,-8,1,0); tb.Position = UDim2.new(0.3,4,0,0); tb.PlaceholderText = placeholder or ""; tb.ClearTextOnFocus = false; tb.Font = Enum.Font.SourceSans; tb.TextSize = 14; tb.BackgroundColor3 = Color3.fromRGB(40,40,40); tb.TextColor3 = Color3.fromRGB(255,255,255); tb.Parent = fldFr
-        return tb
+    if type(callback) == "function" then
+        pcall(function() btn.MouseButton1Click:Connect(callback) end)
     end
-
-    -- Basic
-    local tbType = makeField("Type (Class)","Part, Model, Folder, etc. (default Part)")
-    local tbVector = makeField("Vector (Position)","Vector3(0,5,0)")
-    local tbName = makeField("Name","MyPart")
-    local tbCFrame = makeField("CFrame or 'spawn'","CFrame.new(0,5,0) or spawn")
-    local tbCFrameDir = makeField("CFrame.Direction","Position(0,0,0) or lookVector")
-    local tbColor = makeField("Color (r,g,b or Color3.fromRGB)","255,255,255 or Color3.fromRGB(...)")
-    local tbAnchored = makeField("Anchored true/false","false")
-    local tbParent = makeField("Parent (locate)","game.Workspace.MyFolder or Workspace")
-    -- Mesh
-    local tbMeshShape = makeField("Mesh Shape","Brick,Sphere,FileMesh")
-    local tbMeshSize = makeField("Mesh Size","Vector3(1,1,1)")
-    local tbMeshOffset = makeField("Mesh Offset","Vector3(0,0,0)")
-    local tbMeshId = makeField("Mesh ID","rbxassetid://12345 or 12345")
-    local tbMeshTexture = makeField("Mesh Texture","rbxassetid://...")
-    local tbMeshColor = makeField("Mesh Color","255,255,255")
-    -- Effect
-    local tbEffectType = makeField("Effect Type","Fire,Particle,Spark,Smoke,Light")
-    local tbEffectSize = makeField("Effect Size","0.5 or NumberSequence")
-    local tbEffectColor = makeField("Effect Color","255,200,200")
-    local tbLightBrightness = makeField("Light Brightness","1")
-    local tbLightRange = makeField("Light Range","8")
-    -- Surface / Decal / TextLabel
-    local tbDecalID = makeField("Decal/Texture ID","rbxassetid://...")
-    local tbDecalTrans = makeField("Decal Transparency","0")
-    local tbSurfaceDir = makeField("Surface Direction","Front,Top,Bottom,Left,Right,Back or ALL")
-    local tbSurfaceAlways = makeField("Surface AlwaysOnTop true/false","false")
-    local tbSurfaceText = makeField("Surface Text","Hello")
-    local tbSurfaceTextScaled = makeField("TextScaled true/false","true")
-    local tbSurfaceTextColor = makeField("Text Color","255,255,255")
-    local tbSurfaceTextSize = makeField("Text Size","18")
-    local tbSurfaceTextFont = makeField("Text Font","SourceSans")
-    local tbSurfaceTextWrap = makeField("TextWrapped true/false","true")
-    local tbSurfaceTextRich = makeField("Text Rich true/false","false")
-    -- SurfaceGui UDim2
-    local tbUDim2Vec = makeField("UDim2 Vector","UDim2.new(0,0,0,0)")
-    local tbUDim2Pos = makeField("UDim2 Position","UDim2.new(0,0,0,0)")
-    local tbBgColor = makeField("BG Color","255,255,255")
-    local tbBgTrans = makeField("BG Transparency","0")
-    -- Script
-    local tbScriptType = makeField("Script Type","Script / LocalScript / ModuleScript")
-    local tbScriptName = makeField("Script Name","myScript")
-    local tbScriptSource = makeField("Script Source (code)","print('hello')")
-    -- Sound
-    local tbSoundId = makeField("Sound ID (number or rbxassetid://)","118939739460633")
-    local tbSoundLoop = makeField("Loop true/false","false")
-    local tbSoundVolume = makeField("Volume (0-1)","1")
-    local tbSoundPlayback = makeField("Playback (speed)","1")
-    local tbSoundTime = makeField("TimePosition (sec)","0")
-    local tbSoundPlay = makeField("Play after create true/false","true")
-    -- More options
-    local tbTarget = makeField("More Target (locate)","game.Workspace.Part")
-    local tbMoreDestroy = makeField("Destroy after (true/false)","false")
-    local tbMoreRePos = makeField("RePosition Vector3","Vector3(0,0,0)")
-    local tbMoreReCFrame = makeField("Re CFrame (CFrame.new(...))","CFrame.new(0,0,0)")
-    local tbMoreReColor = makeField("ReColor r,g,b","255,255,255")
-    local tbMoreRename = makeField("Rename to","NewName")
-
-    -- Done / Cancel
-    local doneBtn = Instance.new("TextButton")
-    doneBtn.Size = UDim2.new(1,0,0,28)
-    doneBtn.Text = "Done (Create Instance)"
-    doneBtn.Font = Enum.Font.SourceSans
-    doneBtn.TextSize = 16
-    doneBtn.BackgroundColor3 = Color3.fromRGB(86,170,255)
-    doneBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    doneBtn.Parent = container
-
-    local cancelBtn = Instance.new("TextButton")
-    cancelBtn.Size = UDim2.new(1,0,0,28)
-    cancelBtn.Text = "Cancel"
-    cancelBtn.Font = Enum.Font.SourceSans
-    cancelBtn.TextSize = 16
-    cancelBtn.BackgroundColor3 = Color3.fromRGB(120,120,120)
-    cancelBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    cancelBtn.Parent = container
-
-    doneBtn.MouseButton1Click:Connect(function()
-        local data = {
-            Class = trim(tbType.Text),
-            Position = trim(tbVector.Text),
-            Name = trim(tbName.Text),
-            CFrame = trim(tbCFrame.Text),
-            CFrameDirection = trim(tbCFrameDir.Text),
-            Color = trim(tbColor.Text),
-            Anchored = trim(tbAnchored.Text),
-            Parent = trim(tbParent.Text),
-            MeshShape = trim(tbMeshShape.Text),
-            MeshScale = trim(tbMeshSize.Text),
-            MeshOffset = trim(tbMeshOffset.Text),
-            MeshId = trim(tbMeshId.Text),
-            MeshTexture = trim(tbMeshTexture.Text),
-            MeshColor = trim(tbMeshColor.Text),
-            EffectType = trim(tbEffectType.Text),
-            EffectSize = trim(tbEffectSize.Text),
-            EffectColor = trim(tbEffectColor.Text),
-            LightBrightness = trim(tbLightBrightness.Text),
-            LightRange = trim(tbLightRange.Text),
-            DecalId = trim(tbDecalID.Text),
-            DecalTransparency = trim(tbDecalTrans.Text),
-            SurfaceDirection = trim(tbSurfaceDir.Text),
-            SurfaceAlwaysOnTop = trim(tbSurfaceAlways.Text),
-            SurfaceText = trim(tbSurfaceText.Text),
-            SurfaceTextScaled = trim(tbSurfaceTextScaled.Text),
-            SurfaceTextColor = trim(tbSurfaceTextColor.Text),
-            SurfaceTextSize = trim(tbSurfaceTextSize.Text),
-            SurfaceTextFont = trim(tbSurfaceTextFont.Text),
-            SurfaceTextWrapped = trim(tbSurfaceTextWrap.Text),
-            SurfaceTextRich = trim(tbSurfaceTextRich.Text),
-            UDim2Vector = trim(tbUDim2Vec.Text),
-            UDim2Position = trim(tbUDim2Pos.Text),
-            BackgroundColor = trim(tbBgColor.Text),
-            BackgroundTransparency = trim(tbBgTrans.Text),
-            ScriptType = trim(tbScriptType.Text),
-            ScriptName = trim(tbScriptName.Text),
-            ScriptSource = trim(tbScriptSource.Text),
-            SoundId = trim(tbSoundId.Text),
-            SoundLoop = trim(tbSoundLoop.Text),
-            SoundVolume = trim(tbSoundVolume.Text),
-            SoundPlayback = trim(tbSoundPlayback.Text),
-            SoundTime = trim(tbSoundTime.Text),
-            SoundPlay = trim(tbSoundPlay.Text),
-            MoreTarget = trim(tbTarget.Text),
-            MoreDestroy = trim(tbMoreDestroy.Text),
-            MoreRePos = trim(tbMoreRePos.Text),
-            MoreReCFrame = trim(tbMoreReCFrame.Text),
-            MoreReColor = trim(tbMoreReColor.Text),
-            MoreReName = trim(tbMoreRename.Text),
-        }
-        processInsTable(data)
-        pcall(function() frame:Destroy() end)
-    end)
-
-    cancelBtn.MouseButton1Click:Connect(function() pcall(function() frame:Destroy() end) end)
-
-    task.defer(function()
-        pcall(function()
-            gptScroll.CanvasSize = UDim2.new(0,0,0,uiLayout.AbsoluteContentSize.Y)
-            gptScroll.CanvasPosition = Vector2.new(0, uiLayout.AbsoluteContentSize.Y)
-        end)
-    end)
+    return fr, btn
 end
 
--- quick parser for /Ins(args)
-local function parseInsArgs(rest)
-    local inside = rest:match("%((.*)%)")
+-- ===== OpenAI call helper =====
+local function callOpenAI(prompt, key, proj)
+    if not key or key == "" then return nil, "no_key" end
+    if not pcall(function() return HttpService end) then return nil, "HttpService missing" end
+    local payload = {
+        model = STATE.MODEL,
+        messages = { { role = "user", content = prompt } },
+        max_tokens = 400,
+        temperature = 0.6,
+    }
+    local headers = { ["Content-Type"] = "application/json", ["Authorization"] = "Bearer " .. tostring(key) }
+    if proj and proj ~= "" then headers["OpenAI-Project"] = tostring(proj) end
+
+    local ok, respOrErr = httpRequest({
+        Url = "https://api.openai.com/v1/chat/completions",
+        Method = "POST",
+        Headers = headers,
+        Body = HttpService:JSONEncode(payload),
+        Timeout = 25,
+    })
+    if not ok then return nil, ("http_pcall_failed: %s"):format(tostring(respOrErr)) end
+    local resp = respOrErr
+    if not resp or not resp.Success then
+        local parsed = nil
+        pcall(function() parsed = HttpService:JSONDecode(resp.Body or "{}") end)
+        local errMsg = parsed and parsed.error and parsed.error.message or ("status:"..tostring(resp.StatusCode))
+        return nil, errMsg
+    end
+    local decoded = nil
+    pcall(function() decoded = HttpService:JSONDecode(resp.Body or "{}") end)
+    if decoded and decoded.choices and decoded.choices[1] and decoded.choices[1].message and decoded.choices[1].message.content then
+        return tostring(decoded.choices[1].message.content), nil
+    end
+    return nil, "no_content"
+end
+
+-- ===== translate stub (removed global translate if requested earlier; still kept but not used) =====
+local function translateText(text, targetLang)
+    if not text then return nil, "empty" end
+    if not STATE.OPENAI_KEY or STATE.OPENAI_KEY == "" then return ("[TR:"..tostring(targetLang).."] "..text), nil end
+    local prompt = ("Translate the following text to %s (only the translation):\n\n%s"):format(tostring(targetLang), text)
+    local ok, res = pcall(function() return callOpenAI(prompt, STATE.OPENAI_KEY, STATE.PROJECT_ID) end)
+    if ok and res then return res, nil end
+    return ("[TR:"..tostring(targetLang).."] "..text), nil
+end
+
+-- ===== Command parsing helpers =====
+local function try_parse_parentheses_content(txt)
+    local inside = txt:match("%((.*)%)")
+    if inside then
+        inside = inside:gsub('^%s*"', ""):gsub('"%s*$', "")
+        inside = inside:gsub("^%s*'",""):gsub("'%s*$","")
+        return trim(inside)
+    end
+    return nil
+end
+local function split_args_parentheses(s)
+    local inside = s:match("%((.*)%)")
     if not inside then return {} end
     local parts = {}
     local cur = ""
     local depth = 0
-    for i=1,#inside do
-        local ch = inside:sub(i,i)
-        if ch == "," and depth == 0 then table.insert(parts, trim(cur)); cur = "" else cur = cur..ch end
-        if ch == "(" then depth = depth + 1 end
-        if ch == ")" then depth = math.max(0, depth-1) end
-    end
-    if trim(cur) ~= "" then table.insert(parts, trim(cur)) end
-    local data = {}
-    for _,p in ipairs(parts) do
-        p = p:gsub('^%s*"', ""):gsub('"%s*$', ""):gsub("^%s*'",""):gsub("'%s*$","")
-        local k,v = p:match("^([^:]+):(.+)$")
-        if k and v then data[ trim(k) ] = trim(v) else
-            if not data[1] then data[1] = trim(p) elseif not data[2] then data[2] = trim(p) elseif not data[3] then data[3] = trim(p) end
-        end
-    end
-    if data[1] and not data.Class then data.Class = data[1] end
-    if data[2] and not data.Name then data.Name = data[2] end
-    if data[3] and not data.Parent then data.Parent = data[3] end
-    return data
-end
-
--- command helpers
-local function try_parse_parentheses_content(txt)
-    local inside = txt:match("%((.*)%)")
-    if inside then inside = inside:gsub('^%s*"', ""):gsub('"%s*$', ""):gsub("^%s*'",""):gsub("'%s*$","") return trim(inside) end
-    return nil
-end
-local function split_args_parentheses(s)
-    local inside = s:match("%((.*)%)") if not inside then return {} end
-    local parts = {} local cur = "" local depth = 0
     for i = 1, #inside do
         local ch = inside:sub(i,i)
-        if ch == "," and depth == 0 then table.insert(parts, trim(cur)); cur = "" else cur = cur .. ch end
-        if ch == "(" then depth = depth + 1 end
-        if ch == ")" then depth = math.max(0, depth - 1) end
+        if ch == "," and depth == 0 then
+            table.insert(parts, trim(cur))
+            cur = ""
+        else
+            cur = cur .. ch
+            if ch == "(" then depth = depth + 1 end
+            if ch == ")" then depth = math.max(0, depth - 1) end
+        end
     end
     if trim(cur) ~= "" then table.insert(parts, trim(cur)) end
-    for i,p in ipairs(parts) do parts[i] = p:gsub('^%s*"',''):gsub('"%s*$',''):gsub("^%s*'",""):gsub("'%s*$","") end
+    for i,p in ipairs(parts) do
+        parts[i] = p:gsub('^%s*"',''):gsub('"%s*$','')
+        parts[i] = parts[i]:gsub("^%s*'",""):gsub("'%s*$","")
+    end
     return parts
 end
 local function checkPlayerByName(name)
@@ -2589,11 +2186,448 @@ local function checkPlayerByName(name)
     name = trim(name)
     local p = Players:FindFirstChild(name)
     if p then return p end
-    for _,pl in ipairs(Players:GetPlayers()) do if pl.Name:lower():find(name:lower()) then return pl end end
+    for _,pl in ipairs(Players:GetPlayers()) do
+        if pl.Name:lower():find(name:lower()) then return pl end
+    end
     return nil
 end
 
--- main command handler (kept many commands; only /Ins changed)
+-- ===== SeeChat implementation (robust) =====
+local function enableSeeChat()
+    if STATE.seeChatEnabled then return end
+    STATE.seeChatEnabled = true
+    appendSystem("SeeChat enabled.")
+    -- bind existing players
+    for _,p in ipairs(Players:GetPlayers()) do
+        pcall(function()
+            if p and p.Chatted then
+                local color3 = Color3.fromRGB(255,255,255)
+                if p.TeamColor then pcall(function() color3 = p.TeamColor.Color end) end
+                local conn = p.Chatted:Connect(function(msg)
+                    pcall(function() appendChat(false, ("[%s]: %s"):format(p.Name, tostring(msg)), {math.floor(color3.R*255), math.floor(color3.G*255), math.floor(color3.B*255)}) end)
+                end)
+                if conn then STATE.seeChatConns[p] = conn end
+            end
+        end)
+    end
+    -- player added
+    STATE._playerAddedConn = Players.PlayerAdded:Connect(function(p)
+        pcall(function()
+            if p and p.Chatted then
+                local color3 = Color3.fromRGB(255,255,255)
+                if p.TeamColor then pcall(function() color3 = p.TeamColor.Color end) end
+                local conn = p.Chatted:Connect(function(msg)
+                    pcall(function() appendChat(false, ("[%s]: %s"):format(p.Name, tostring(msg)), {math.floor(color3.R*255), math.floor(color3.G*255), math.floor(color3.B*255)}) end)
+                end)
+                if conn then STATE.seeChatConns[p] = conn end
+            end
+        end)
+    end)
+    -- new chat system event (filtered messages)
+    pcall(function()
+        local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        if chatEvents and chatEvents:FindFirstChild("OnMessageDoneFiltering") then
+            STATE._chatEventConn = chatEvents.OnMessageDoneFiltering.OnClientEvent:Connect(function(msgData)
+                pcall(function()
+                    if type(msgData) == "table" and msgData.FromSpeaker and msgData.Message then
+                        -- try find player and team color
+                        local p = Players:FindFirstChild(msgData.FromSpeaker)
+                        local color3 = Color3.fromRGB(255,255,255)
+                        if p and p.TeamColor then pcall(function() color3 = p.TeamColor.Color end) end
+                        appendChat(false, ("[%s]: %s"):format(msgData.FromSpeaker, msgData.Message), {math.floor(color3.R*255), math.floor(color3.G*255), math.floor(color3.B*255)})
+                    end
+                end)
+            end)
+        end
+    end)
+end
+
+local function disableSeeChat()
+    if not STATE.seeChatEnabled then return end
+    STATE.seeChatEnabled = false
+    if STATE._playerAddedConn then pcall(function() STATE._playerAddedConn:Disconnect() end); STATE._playerAddedConn = nil end
+    if STATE._chatEventConn then pcall(function() STATE._chatEventConn:Disconnect() end); STATE._chatEventConn = nil end
+    for p,conn in pairs(STATE.seeChatConns or {}) do
+        pcall(function()
+            if conn and conn.Disconnect then conn:Disconnect() end
+        end)
+    end
+    STATE.seeChatConns = {}
+    appendSystem("SeeChat disabled.")
+end
+
+-- ===== /Ins UI + logic (single command for many instance types) =====
+local activeInsElements = {} -- track created UI elements for /Ins so we can collect and remove
+
+local function clearActiveInsUI()
+    for _,el in ipairs(activeInsElements) do
+        pcall(function() if el and el.Parent then el:Destroy() end end)
+    end
+    activeInsElements = {}
+end
+
+local function showInsUI()
+    -- create a header label
+    local h = appendChat(false, "[Instance] Please fill fields below (leave blank for nil)", {200,200,200})
+    table.insert(activeInsElements, h)
+
+    -- helper to create labeled input (returns TextBox)
+    local function makeLabeledInput(placeholder, name)
+        local fr, tb = appendInput(placeholder, name)
+        table.insert(activeInsElements, fr)
+        return tb
+    end
+
+    -- primary fields
+    local tbType = makeLabeledInput("Type to instance (e.g. Part, Model, Sound, SurfaceGui, Decal, Script, SpecialMesh)", "ins_Type")
+    local tbVector = makeLabeledInput("Vector3 or Size (ex: Vector3.new(1,1,1) or (1,2,3)) or leave blank", "ins_Vector")
+    local tbName = makeLabeledInput("Name (optional)", "ins_Name")
+    local tbCFrame = makeLabeledInput('CFrame or "spawn" to spawn at character (ex: CFrame.new(0,5,0))', "ins_CFrame")
+    local tbCFrameDir = makeLabeledInput("CFrame.Direction or Position example (optional)", "ins_CFrameDir")
+    local tbColor = makeLabeledInput("Color (Color3.fromRGB(255,0,0) or 255,0,0)", "ins_Color")
+    local tbAnchored = makeLabeledInput("Anchored true|false (optional)", "ins_Anchored")
+    local tbParent = makeLabeledInput('Parent locate (ex: workspace.PartName or "game.Workspace")', "ins_Parent")
+
+    -- mesh fields
+    local tbMeshShape = makeLabeledInput("Mesh Shape (e.g. Brick, FileMesh, Sphere) (optional)", "ins_MeshShape")
+    local tbMeshSize = makeLabeledInput("Mesh Size Vector3 (optional)", "ins_MeshSize")
+    local tbMeshOffset = makeLabeledInput("Mesh Offset Vector3 (optional)", "ins_MeshOffset")
+    local tbMeshId = makeLabeledInput("MeshId (rbxassetid://1234 or id)", "ins_MeshId")
+    local tbMeshTexture = makeLabeledInput("MeshTexture (optional)", "ins_MeshTexture")
+    local tbMeshColor = makeLabeledInput("Mesh Color (optional)", "ins_MeshColor")
+
+    -- effect fields
+    local tbEffectName = makeLabeledInput("Effect (Fire, Sparkles, Smoke, Particle) (optional)", "ins_EffectName")
+    local tbEffectSize = makeLabeledInput("Effect Size (optional)", "ins_EffectSize")
+    local tbEffectColor = makeLabeledInput("Effect Color (optional)", "ins_EffectColor")
+
+    -- surface / decal / textlabel fields
+    local tbDecalId = makeLabeledInput("Decal/Texture ID (rbxassetid:// or id)", "ins_DecalId")
+    local tbTransparency = makeLabeledInput("Transparency (0-1)", "ins_Transparency")
+    local tbSurfaceDir = makeLabeledInput("Surface Direction (Top,Bottom,Left,Right,Front,Back) or ALL", "ins_SurfaceDir")
+    local tbAlwaysOnTop = makeLabeledInput("AlwaysOnTop true|false (surfacegui)", "ins_AlwaysOnTop")
+
+    local tbText = makeLabeledInput("Text (for Surface.TextLabel)", "ins_Text")
+    local tbTextScaled = makeLabeledInput("TextScaled true|false", "ins_TextScaled")
+    local tbTextColor = makeLabeledInput("TextColor (Color3)", "ins_TextColor")
+    local tbTextSize = makeLabeledInput("TextSize (number)", "ins_TextSize")
+    local tbTextFont = makeLabeledInput("TextFont (SourceSans, Arial, etc)", "ins_TextFont")
+    local tbTextWrapped = makeLabeledInput("TextWrapped true|false", "ins_TextWrapped")
+    local tbTextRich = makeLabeledInput("TextRich true|false", "ins_TextRich")
+
+    -- surface gui UDim2 vectors
+    local tbUDim2Vec = makeLabeledInput("Vector UDim2 example: (0,0,0,0) xScaled,xOffset,yScaled,yOffset", "ins_UDim2")
+    local tbUDim2Pos = makeLabeledInput("Position UDim2 similar format", "ins_UDim2Pos")
+    local tbBgColor = makeLabeledInput("Background Color (Color3)", "ins_BgColor")
+    local tbBgTrans = makeLabeledInput("Background Transparency 0-1", "ins_BgTrans")
+
+    -- script/sound
+    local tbScriptType = makeLabeledInput("Script code (will create Script under parent) - single line or nil", "ins_Script")
+    local tbSoundId = makeLabeledInput("Sound ID (id or rbxassetid://) (optional)", "ins_SoundId")
+    local tbSoundLoop = makeLabeledInput("Loop true|false", "ins_SoundLoop")
+    local tbSoundVol = makeLabeledInput("Volume (0-10)", "ins_SoundVol")
+    local tbSoundPlayback = makeLabeledInput("PlaybackSpeed (0.01-10)", "ins_SoundPlayback")
+    local tbSoundTime = makeLabeledInput("TimePosition seconds (optional)", "ins_SoundTime")
+    local tbSoundPlay = makeLabeledInput("Play true|false", "ins_SoundPlay")
+
+    -- more options
+    local tbMoreTarget = makeLabeledInput('More options target (locate) e.g. "game.Workspace.MyPart"', "ins_MoreTarget")
+    local tbMoreAction = makeLabeledInput("More action (Destroy, ReCFrame, RePositionUDim2, ReColor, ReVector, ReName, ReSurfaceDecal, ReSurfaceDir)", "ins_MoreAction")
+
+    -- Done & Cancel buttons
+    local doneFr, doneBtn = appendButton("Done", function()
+        -- collect values (safely)
+        local function val(tb) return (tb and trim(tb.Text) ~= "") and trim(tb.Text) or nil end
+        local tType = val(tbType)
+        local vVector = val(tbVector)
+        local vName = val(tbName)
+        local vCFrame = val(tbCFrame)
+        local vColor = val(tbColor)
+        local vAnchored = val(tbAnchored)
+        local vParent = val(tbParent)
+
+        -- prepare parent
+        local parentInst = Workspace
+        if vParent then
+            local p, err = resolveLocate(vParent)
+            if p then parentInst = p else appendError("Parent locate failed: "..tostring(err)); return end
+        end
+
+        -- create main instance
+        if not tType or tType == "" then appendError("Type is required."); return end
+        local created = nil
+        local ok, instOrErr = pcall(function() return Instance.new(tType) end)
+        if not ok or not instOrErr then appendError("Failed to create class: "..tostring(instOrErr)); return end
+        created = instOrErr
+        pcall(function() created.Name = vName or created.Name end)
+        pcall(function() created.Parent = parentInst end)
+
+        -- apply CFrame/Position: try eval
+        if vCFrame then
+            -- if vCFrame contains "spawn" then place at player foot
+            if vCFrame:lower():find("spawn") and LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                pcall(function()
+                    if created:IsA("BasePart") then created.CFrame = hrp.CFrame * CFrame.new(0, -3, 0) end
+                    if created:IsA("Model") and created.PrimaryPart then created:SetPrimaryPartCFrame(hrp.CFrame * CFrame.new(0, -3, 0)) end
+                end)
+            else
+                local cf, err = safeEval(vCFrame)
+                if cf and typeof(cf) == "CFrame" then
+                    pcall(function()
+                        if created:IsA("BasePart") then created.CFrame = cf end
+                        if created:IsA("Model") and created.PrimaryPart then created:SetPrimaryPartCFrame(cf) end
+                    end)
+                else
+                    -- try parse Vector3 to set Position
+                    local v3, verr = safeEval(vCFrame)
+                    if v3 and typeof(v3) == "Vector3" then
+                        pcall(function() if created:IsA("BasePart") then created.CFrame = CFrame.new(v3) end end)
+                    end
+                end
+            end
+        end
+
+        -- Color
+        if vColor then
+            local col, cerr = safeEval(vColor)
+            if not col then
+                local nums = {}
+                for n in vColor:gmatch("%d+") do table.insert(nums, tonumber(n)) end
+                if #nums == 3 then col = Color3.fromRGB(nums[1], nums[2], nums[3]) end
+            end
+            if col and typeof(col) == "Color3" then pcall(function() applyColorToObject(created, col) end) end
+        end
+
+        -- Anchored
+        if vAnchored then
+            local a = (vAnchored:lower() == "true")
+            pcall(function() if created and created:IsA("BasePart") then created.Anchored = a end end)
+        end
+
+        -- Size / Vector3
+        if vVector then
+            local vec, errv = safeEval(vVector)
+            if vec and typeof(vec) == "Vector3" then
+                pcall(function() if created:IsA("BasePart") then created.Size = vec end end)
+            end
+        end
+
+        -- Mesh handling (basic)
+        local meshId = trim(tbMeshId.Text or "")
+        if (trim(tbMeshShape.Text or "") ~= "" or meshId ~= "") and created then
+            pcall(function()
+                local sm = Instance.new("SpecialMesh")
+                if meshId ~= "" then
+                    local id = meshId:match("%d+")
+                    if id then sm.MeshId = "rbxassetid://"..id end
+                    sm.MeshType = Enum.MeshType.FileMesh
+                else
+                    local shape = trim(tbMeshShape.Text or "")
+                    local ok, mt = pcall(function() return Enum.MeshType[shape] end)
+                    if ok and mt then sm.MeshType = mt end
+                end
+                if created:IsA("BasePart") then sm.Parent = created else sm.Parent = created end
+            end)
+        end
+
+        -- Effect (basic)
+        local effName = trim(tbEffectName.Text or "")
+        if effName ~= "" and created then
+            pcall(function()
+                if effName:lower():find("spark") then Instance.new("Sparkles", created)
+                elseif effName:lower():find("fire") then Instance.new("Fire", created)
+                elseif effName:lower():find("smoke") then Instance.new("Smoke", created)
+                else Instance.new("ParticleEmitter", created) end
+            end)
+        end
+
+        -- Decal / SurfaceGui creation (simplified)
+        local dId = trim(tbDecalId.Text or "")
+        if dId ~= "" and created then
+            pcall(function()
+                local dec = Instance.new("Decal")
+                local id = dId:match("%d+")
+                if id then dec.Texture = "rbxassetid://"..id else dec.Texture = dId end
+                dec.Parent = created
+            end)
+        end
+
+        -- TextLabel under SurfaceGui (if requested)
+        if trim(tbText.Text or "") ~= "" then
+            pcall(function()
+                local sg = created:FindFirstChildOfClass("SurfaceGui") or (created:IsA("BasePart") and Instance.new("SurfaceGui", created))
+                if sg then
+                    local tl = Instance.new("TextLabel")
+                    tl.Text = trim(tbText.Text)
+                    tl.TextScaled = (trim(tbTextScaled.Text or ""):lower() == "true")
+                    if tbTextColor.Text ~= "" then
+                        local col = safeEval(tbTextColor.Text)
+                        if not col then
+                            local nums = {}
+                            for n in (tbTextColor.Text or ""):gmatch("%d+") do table.insert(nums, tonumber(n)) end
+                            if #nums == 3 then col = Color3.fromRGB(nums[1], nums[2], nums[3]) end
+                        end
+                        if col and typeof(col) == "Color3" then tl.TextColor3 = col end
+                    end
+                    if tonumber(tbTextSize.Text or "") then tl.TextSize = tonumber(tbTextSize.Text) end
+                    tl.Size = UDim2.new(1,0,1,0)
+                    tl.Parent = sg
+                end
+            end)
+        end
+
+        -- Script insertion (basic)
+        if trim(tbScriptType.Text or "") ~= "" then
+            pcall(function()
+                local sc = Instance.new("Script")
+                sc.Name = vName or "InsertedScript"
+                sc.Source = tbScriptType.Text or ""
+                sc.Parent = created
+            end)
+        end
+
+        -- Sound insertion & play options
+        if trim(tbSoundId.Text or "") ~= "" then
+            pcall(function()
+                local id = tbSoundId.Text:match("%d+")
+                local s = Instance.new("Sound", created)
+                if id then s.SoundId = "rbxassetid://"..id else s.SoundId = tbSoundId.Text end
+                s.Looped = (trim(tbSoundLoop.Text or ""):lower() == "true")
+                if tonumber(tbSoundVol.Text) then s.Volume = tonumber(tbSoundVol.Text) end
+                if tonumber(tbSoundPlayback.Text) then s.PlaybackSpeed = tonumber(tbSoundPlayback.Text) end
+                if tonumber(tbSoundTime.Text) then s.TimePosition = tonumber(tbSoundTime.Text) end
+                if trim(tbSoundPlay.Text or ""):lower() == "true" then pcall(function() s:Play() end) end
+            end)
+        end
+
+        appendSystem(("Created %s named '%s' under %s"):format(tostring(tType), tostring(vName or created.Name), tostring(parentInst)))
+
+        -- cleanup UI
+        clearActiveInsUI()
+    end)
+
+    local cancelFr, cancelBtn = appendButton("Cancel", function()
+        clearActiveInsUI()
+        appendSystem("Instance creation canceled.")
+    end)
+    table.insert(activeInsElements, cancelFr)
+end
+
+-- ===== Execute handler (pla:/cmd:) =====
+local spamThread = nil
+local function handleExecute(rest)
+    local inside = rest:match('"(.*)"') or rest
+    inside = trim(inside or "")
+    if inside == "" then appendSystem('Usage: /execute "pla:..." or "cmd:..."'); return true end
+
+    if inside:sub(1,4):lower() == "pla:" then
+        local action = trim(inside:sub(5))
+        if action:lower():match("^run%.") then
+            local parts = {}
+            for w in action:gmatch("[^%.]+") do table.insert(parts, trim(w)) end
+            local key = (parts[2] or "W")
+            local mode = (parts[3] or "Step")
+            if not VirtualInputManager then appendError("VirtualInputManager not available."); return true end
+            if mode:lower():find("hold") then
+                pcall(function() VirtualInputManager:SendKeyEvent(true, key, false, game) end)
+                appendSystem("Holding key "..key)
+            elseif mode:lower():find("stop") then
+                pcall(function() VirtualInputManager:SendKeyEvent(false, key, false, game) end)
+                appendSystem("Stopped key "..key)
+            else
+                local stepCount, stepDelay = 1, 0.5
+                local n,t = mode:match("Step%((%d+),%s*([%d%.]+)s?%)")
+                if n and t then stepCount = tonumber(n) or stepCount; stepDelay = tonumber(t) or stepDelay end
+                task.spawn(function()
+                    for i=1, stepCount do
+                        if not VirtualInputManager then break end
+                        pcall(function() VirtualInputManager:SendKeyEvent(true, key, false, game) end)
+                        task.wait(0.05)
+                        pcall(function() VirtualInputManager:SendKeyEvent(false, key, false, game) end)
+                        task.wait(stepDelay)
+                    end
+                end)
+                appendSystem(("Stepped key %s x%d"):format(key, stepCount))
+            end
+            return true
+        end
+
+        if action:lower():match("^chat%.") then
+            local msg = action:match("^chat%.(.+)")
+            if not msg then return true end
+            if msg:lower():find("stopspam") then
+                spamThread = nil
+                appendSystem("Chat spam stopped.")
+                return true
+            end
+            local spamDelay = msg:match("%.spam%(([%d%.]+)s?%)")
+            if spamDelay then
+                local text = msg:match("^(.-)%.spam")
+                text = text or msg
+                local d = tonumber(spamDelay) or 1
+                spawn(function()
+                    while spamThread ~= nil do
+                        pcall(function()
+                            if ReplicatedStorage and ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents") and ReplicatedStorage.DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest") then
+                                ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
+                            elseif LocalPlayer and LocalPlayer.Character then
+                                pcall(function() LocalPlayer:Chat(text) end)
+                            end
+                        end)
+                        task.wait(d)
+                    end
+                end)
+                spamThread = true
+                appendSystem(("Chat spamming started: \"%s\" every %.2fs"):format(text, d))
+            else
+                pcall(function()
+                    if ReplicatedStorage and ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents") and ReplicatedStorage.DefaultChatSystemChatEvents:FindFirstChild("SayMessageRequest") then
+                        ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
+                        appendSystem("Sent chat: "..msg)
+                    else
+                        pcall(function() LocalPlayer:Chat(msg) end)
+                        appendSystem("Tried to send chat via LocalPlayer:Chat")
+                    end
+                end)
+            end
+            return true
+        end
+
+        if action:lower():match("^key%.") then
+            local key = action:match("^key%.(.+)")
+            if not key then return true end
+            if not VirtualInputManager then appendError("VirtualInputManager not available."); return true end
+            pcall(function() VirtualInputManager:SendKeyEvent(true, key, false, game) end)
+            task.wait(0.05)
+            pcall(function() VirtualInputManager:SendKeyEvent(false, key, false, game) end)
+            appendSystem("Pressed key "..key)
+            return true
+        end
+
+        if action:lower():match("^dance%.") then
+            local em = action:match("^dance%.(.+)")
+            if em and LocalPlayer then
+                pcall(function() LocalPlayer:Chat("/e " .. em) end)
+                appendSystem("Played emote: "..tostring(em))
+            end
+            return true
+        end
+
+        appendError("Unknown pla: action: "..tostring(action))
+        return true
+    elseif inside:sub(1,4):lower() == "cmd:" then
+        local cmdLine = trim(inside:sub(5))
+        if cmdLine:sub(1,1) ~= "/" then cmdLine = "/" .. cmdLine end
+        task.spawn(function() pcall(function() handleCommand(cmdLine) end) end)
+        return true
+    else
+        appendError("Unknown /execute target. Use pla: or cmd:")
+        return true
+    end
+end
+
+-- ===== Command handler (main) =====
 function handleCommand(rawText)
     if not rawText or rawText == "" then return false end
     local t = tostring(rawText)
@@ -2602,76 +2636,571 @@ function handleCommand(rawText)
     cmd = (cmd or ""):upper()
     rest = rest or ""
 
-    -- (many commands kept — for brevity keep core ones and Ins handling)
-    if cmd == "INS" then
-        local data = parseInsArgs(rest)
-        if next(data) then
-            processInsTable(data)
-            return true
-        else
-            appendInput()
-            appendSystem("Fill the input panel and click Done to create the instance.")
-            return true
-        end
+    -- API / APIJ
+    if cmd == "API" then
+        local inside = try_parse_parentheses_content(rest) or trim(rest)
+        if inside == "" then appendSystem('Usage: /API ("sk-...")'); return true end
+        STATE.OPENAI_KEY = inside
+        STATE.validated = false
+        appendSystem(("API key set: %s (client-side)"):format(redactKey(STATE.OPENAI_KEY)))
+        return true
+    end
+    if cmd == "APIJ" then
+        local inside = try_parse_parentheses_content(rest) or trim(rest)
+        if inside == "" then appendSystem('Usage: /APIJ ("proj_...")'); return true end
+        STATE.PROJECT_ID = inside
+        appendSystem(("Project ID set: %s"):format(tostring(STATE.PROJECT_ID)))
+        return true
+    end
+    if cmd == "UNSAVEAPIJ" or cmd == "NOAPIJ" then
+        STATE.PROJECT_ID = nil
+        appendSystem("Project ID cleared.")
+        return true
     end
 
-    -- (for brevity, include only other commands minimally — your full script can keep earlier handlers)
+    -- HttpState / HttpService / HttpEnabled / HttpAsync
+    if cmd == "HTTPSTATE" then
+        local urlRaw = try_parse_parentheses_content(rest) or trim(rest)
+        if urlRaw == "" then appendSystem('Usage: /HttpState ("example.com" or "https://example.com")'); return true end
+        local url = (urlRaw:match("^https?://") and urlRaw) or ("https://" .. urlRaw)
+        appendSystem("Checking " .. url .. " ...")
+        local ok, resp = httpRequest({ Url = url, Method = "GET", Timeout = 8 })
+        if not ok then appendError("Http request failed: "..tostring(resp)); return true end
+        if not resp then appendError("Http returned no response."); return true end
+        appendSystem(("HTTP status: %s | Success: %s"):format(tostring(resp.StatusCode), tostring(resp.Success)))
+        return true
+    end
+    if cmd == "HTTPSERVICE" then
+        local ok, enabled = pcall(function() return HttpService.HttpEnabled end)
+        appendSystem(("HttpEnabled = %s (pcall ok=%s)"):format(tostring(enabled), tostring(ok)))
+        return true
+    end
+    if cmd == "HTTPENABLED" then
+        local v = trim(rest):lower()
+        if v ~= "true" and v ~= "false" then appendSystem('Usage: /HttpEnabled true|false'); return true end
+        local desired = (v == "true")
+        local succ, err = pcall(function() HttpService.HttpEnabled = desired end)
+        local actual = nil; pcall(function() actual = HttpService.HttpEnabled end)
+        if succ then appendSystem(("Set HttpEnabled -> current: %s"):format(tostring(actual))) else appendError(("Set HttpEnabled failed: %s | current: %s"):format(tostring(err), tostring(actual))) end
+        return true
+    end
+    if cmd == "HTTPASYNC" then
+        local v = trim(rest):lower()
+        if v ~= "true" and v ~= "false" then appendSystem('Usage: /HttpAsync true|false'); return true end
+        STATE.HttpAsync = (v == "true")
+        appendSystem(("HttpAsync set to %s"):format(tostring(STATE.HttpAsync)))
+        return true
+    end
+
+    -- Keep / ShowKeep / ClearAllKeep
+    if cmd == "KEEP" then
+        local content = try_parse_parentheses_content(rest) or trim(rest)
+        if content == "" then appendSystem('Usage: /Keep ("text")'); return true end
+        table.insert(savedKeeps, content)
+        appendSystem(("Saved note #%d"):format(#savedKeeps))
+        return true
+    end
+    if cmd == "SHOWKEEP" then
+        if #savedKeeps == 0 then appendSystem("No saved notes.") else
+            appendSystem("Saved notes:")
+            for i,v in ipairs(savedKeeps) do appendChat(false, ("#%d: %s"):format(i, tostring(v)), {200,200,255}) end
+        end
+        return true
+    end
+    if cmd == "CLEARALLKEEP" or cmd == "CAK" or cmd == "CLEARKEEP" then
+        savedKeeps = {}
+        appendSystem("All saved notes cleared.")
+        return true
+    end
+
+    -- ClearTexts
+    if cmd == "CLEARTEXTS" then
+        for _,c in ipairs(gptChat:GetChildren()) do
+            if c:IsA("Frame") then pcall(function() c:Destroy() end) end
+        end
+        appendSystem("Cleared chat.")
+        return true
+    end
+
+    -- Leave/Exit / Reset
+    if cmd == "LEAVEGAME" or cmd == "EXIT" then
+        appendSystem("Leaving game...")
+        pcall(function() LocalPlayer:Kick("") end)
+        return true
+    end
+    if cmd == "RESET" or cmd == "RE" then
+        local ch = LocalPlayer and LocalPlayer.Character
+        if ch then
+            local hum = ch:FindFirstChildOfClass("Humanoid")
+            if hum then pcall(function() hum.Health = 0 end); appendSystem("Character reset.") else pcall(function() ch:BreakJoints() end); appendSystem("Character broken.") end
+            return true
+        end
+        appendSystem("No character to reset.")
+        return true
+    end
+
+    -- View / UnView
+    if cmd == "VIEW" or cmd == "SPY" then
+        local inside = try_parse_parentheses_content(rest) or trim(rest)
+        if inside == "" then appendSystem('Usage: /View ("pla:Name" or "obj:locate")'); return true end
+        if inside:sub(1,4):lower() == "pla:" then inside = inside:sub(5) end
+        if inside:sub(1,4):lower() == "obj:" then inside = inside:sub(5) end
+        local pl = checkPlayerByName(inside)
+        if pl and pl.Character then
+            local hrp = pl.Character:FindFirstChild("HumanoidRootPart") or pl.Character.PrimaryPart
+            if not hrp then appendError("Player has no HRP."); return true end
+            if gptGui._viewConn then pcall(function() gptGui._viewConn:Disconnect() end); gptGui._viewConn = nil end
+            local cam = workspace.CurrentCamera
+            gptGui._prevCamType = cam.CameraType; gptGui._prevCamSubject = cam.CameraSubject
+            gptGui._viewConn = RunService.RenderStepped:Connect(function()
+                if not hrp or not hrp.Parent then if gptGui._viewConn then gptGui._viewConn:Disconnect(); gptGui._viewConn = nil end; return end
+                pcall(function()
+                    cam.CameraType = Enum.CameraType.Scriptable
+                    cam.CFrame = hrp.CFrame * CFrame.new(0,2,6)
+                end)
+            end)
+            appendSystem(("Viewing player %s (use /UnView)"):format(pl.Name))
+            return true
+        end
+        local obj, err = resolveLocate(inside)
+        if obj then
+            local hrp = (obj:IsA("Model") and (obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart)) or (obj:IsA("BasePart") and obj)
+            if not hrp then appendError("Object not viewable."); return true end
+            if gptGui._viewConn then pcall(function() gptGui._viewConn:Disconnect() end); gptGui._viewConn = nil end
+            local cam = workspace.CurrentCamera
+            gptGui._prevCamType = cam.CameraType; gptGui._prevCamSubject = cam.CameraSubject
+            gptGui._viewConn = RunService.RenderStepped:Connect(function()
+                if not hrp or not hrp.Parent then if gptGui._viewConn then gptGui._viewConn:Disconnect(); gptGui._viewConn = nil end; return end
+                pcall(function()
+                    cam.CameraType = Enum.CameraType.Scriptable
+                    cam.CFrame = hrp.CFrame * CFrame.new(0,2,6)
+                end)
+            end)
+            appendSystem(("Viewing object %s (use /UnView)"):format(tostring(inside)))
+            return true
+        end
+        appendError("Player/object not found.")
+        return true
+    end
+    if cmd == "UNVIEW" or cmd == "UNSPY" then
+        if gptGui._viewConn then pcall(function() gptGui._viewConn:Disconnect() end); gptGui._viewConn = nil end
+        local cam = workspace.CurrentCamera
+        pcall(function()
+            cam.CameraType = gptGui._prevCamType or Enum.CameraType.Custom
+            cam.CameraSubject = gptGui._prevCamSubject or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid"))
+        end)
+        appendSystem("Camera restored.")
+        return true
+    end
+
+    -- SeeChat / UnSeeChat
+    if cmd == "SEECHAT" then enableSeeChat(); return true end
+    if cmd == "UNSEECHAT" then disableSeeChat(); return true end
+
+    -- Ins (show interactive UI)
+    if cmd == "INS" then
+        showInsUI()
+        return true
+    end
+
+    -- Other instance helper commands still available (backwards compatibility)
+    if cmd == "INSMESH" or cmd == "INSDECAL" or cmd == "INSSURFACEGUI" or cmd == "INSEFFECT" then
+        appendSystem("Note: single /Ins now preferred. Using legacy command is allowed but /Ins gives full UI.")
+        -- Let original handlers from earlier script be used if present; but we keep simple reply
+        return true
+    end
+
+    -- Destroy / Resize / Position / Color / TP / Rejoin / ServerHop
+    if cmd == "DESTROY" then
+        local args = split_args_parentheses(rest); if #args < 1 then appendSystem('Usage: /Destroy ("locate" or "Name")'); return true end
+        local targetStr = args[1]
+        local obj, err = resolveLocate(targetStr)
+        if not obj then obj = findObjectByName(targetStr) end
+        if not obj then appendError("Object not found: "..tostring(err)); return true end
+        pcall(function() obj:Destroy() end)
+        appendSystem(("Destroyed %s"):format(tostring(targetStr)))
+        return true
+    end
+
+    if cmd == "RESIZE" or cmd == "RES" then
+        local args = split_args_parentheses(rest)
+        if #args < 2 then appendSystem('Usage: /Resize ("locate","Vector3(x,y,z)")'); return true end
+        local locate, vecStr = args[1], args[2]
+        local obj, err = resolveLocate(locate)
+        if not obj then appendError("Locate failed: "..tostring(err)); return true end
+        local vec, verr = safeEval(vecStr)
+        if not vec or typeof(vec) ~= "Vector3" then appendError("Vector parse failed."); return true end
+        pcall(function() if obj:IsA("BasePart") then obj.Size = vec end end)
+        appendSystem(("Resized %s to %s"):format(tostring(locate), tostring(vec)))
+        return true
+    end
+
+    if cmd == "POSITION" or cmd == "REPOS" or cmd == "REPOSITION" then
+        local args = split_args_parentheses(rest)
+        if #args < 2 then appendSystem('Usage: /Position ("locate","Vector3(x,y,z)")'); return true end
+        local locate, vecStr = args[1], args[2]
+        local obj, err = resolveLocate(locate)
+        if not obj then appendError("Locate failed: "..tostring(err)); return true end
+        local vec, verr = safeEval(vecStr)
+        if not vec or typeof(vec) ~= "Vector3" then appendError("Vector parse failed."); return true end
+        pcall(function() if obj:IsA("BasePart") then obj.CFrame = CFrame.new(vec) end end)
+        appendSystem(("Moved %s to %s"):format(tostring(locate), tostring(vec)))
+        return true
+    end
+
+    if cmd == "COLOR" or cmd == "RECOLOR" then
+        local args = split_args_parentheses(rest)
+        if #args < 2 then appendSystem('Usage: /Color ("locate","Color3.fromRGB(255,0,0)")'); return true end
+        local locate, colorStr = args[1], args[2]
+        local obj, err = resolveLocate(locate)
+        if not obj then appendError("Locate failed: "..tostring(err)); return true end
+        local col, cerr = safeEval(colorStr)
+        if not col then
+            local nums = {}
+            for n in colorStr:gmatch("%d+") do table.insert(nums, tonumber(n)) end
+            if #nums == 3 then col = Color3.fromRGB(nums[1], nums[2], nums[3]) end
+        end
+        if not col or typeof(col) ~= "Color3" then appendError("Color parse failed."); return true end
+        applyColorToObject(obj, col)
+        appendSystem(("Color set for %s"):format(tostring(locate)))
+        return true
+    end
+
+    if cmd == "TP" or cmd == "TELEPORT" then
+        local inside = try_parse_parentheses_content(rest) or trim(rest)
+        if inside == "" then appendSystem('Usage: /TP ("Vector3(x,y,z)")'); return true end
+        local vec, err = safeEval(inside)
+        if not vec or typeof(vec) ~= "Vector3" then appendError("Vector parse failed: "..tostring(err)); return true end
+        local ch = LocalPlayer and LocalPlayer.Character
+        if ch then
+            local rootPart = ch:FindFirstChild("HumanoidRootPart") or ch.PrimaryPart
+            if rootPart then pcall(function() rootPart.CFrame = CFrame.new(vec) end); appendSystem("Teleported.") else appendError("No root part.") end
+        else appendError("No character.") end
+        return true
+    end
+
+    if cmd == "REJOIN" or cmd == "RJ" then
+        appendSystem("Rejoining...")
+        pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
+        return true
+    end
+
+    if cmd == "SERVERHOP" or cmd == "SH" then
+        local inside = try_parse_parentheses_content(rest) or trim(rest)
+        local limit = tonumber(inside:match("plalimit:(%d+)")) or tonumber(inside) or 8
+        appendSystem(("ServerHop: searching servers with players < %d ..."):format(limit))
+        if not HttpService then appendError("HttpService not available."); return true end
+        local url = ("https://games.roblox.com/v1/games/%s/servers/Public?sortOrder=Asc&limit=100"):format(tostring(game.PlaceId))
+        local ok, bodyOrErr = httpGet(url, true)
+        if not ok then appendError("Server list fetch failed: "..tostring(bodyOrErr)); return true end
+        local ok2, data = pcall(function() return HttpService:JSONDecode(bodyOrErr) end)
+        if not ok2 or not data or not data.data then appendError("Invalid server data."); return true end
+        for _,server in ipairs(data.data) do
+            if server.id and (server.playing or 0) < limit and server.id ~= game.JobId then
+                appendSystem(("Hopping to server %s (%d players)..."):format(tostring(server.id), server.playing or 0))
+                pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer) end)
+                return true
+            end
+        end
+        appendError("No server matching criteria.")
+        return true
+    end
+
+    -- AutoBot (Walk, Jump, Spin, Dance, Random, Stop)
+    if cmd == "AUTOBOT" then
+        local arg = try_parse_parentheses_content(rest) or trim(rest) or "Random"
+        local mode = arg:match("^%s*(%w+)") or arg
+        mode = mode:sub(1,1):upper() .. mode:sub(2):lower()
+        if mode:lower() == "stop" then
+            STATE.autop.enabled = false
+            appendSystem("Autobot stopped.")
+            return true
+        end
+
+        STATE.autop.enabled = true
+        STATE.autop.mode = mode
+        appendSystem(("Autobot started (mode=%s). Use /Autobot(Stop) to stop."):format(tostring(mode)))
+
+        if STATE.autop.task then
+            STATE.autop.enabled = false
+            task.wait(0.1)
+        end
+        STATE.autop.enabled = true
+        STATE.autop.task = task.spawn(function()
+            local emotes = {"dance","dance2","dance3","point","cheer","laugh","wave"}
+            while STATE.autop.enabled do
+                local ch = LocalPlayer.Character
+                local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+                local root = ch and (ch:FindFirstChild("HumanoidRootPart") or ch.PrimaryPart)
+                if hum and root then
+                    local action = STATE.autop.mode
+                    if action:lower() == "random" then
+                        local pool = {"Walk","Jump","Spin","Dance"}
+                        action = pool[math.random(1,#pool)]
+                    end
+
+                    local duration = math.random(1,10)
+                    local jumpChance = math.random(1,100)
+                    local spinChance = math.random(1,100)
+                    local danceChance = math.random(1,100)
+
+                    if action:lower() == "walk" then
+                        local dir = Vector3.new(math.random(-8,8),0,math.random(-8,8))
+                        pcall(function() hum:MoveTo(root.Position + dir) end)
+                        appendDebug("Autobot: walk")
+                        if jumpChance <= 25 then pcall(function() hum.Jump = true end); appendDebug("Autobot: jump during walk") end
+                        task.wait(duration)
+                    elseif action:lower() == "jump" then
+                        if math.random(1,100) <= 90 then pcall(function() hum.Jump = true end) end
+                        task.wait(duration)
+                    elseif action:lower() == "spin" then
+                        local spins = math.random(6,18)
+                        local speedFactor = math.random(10,50)/100
+                        for i=1,spins do
+                            if not STATE.autop.enabled then break end
+                            pcall(function() root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(360*speedFactor/10), 0) end)
+                            task.wait(0.05)
+                        end
+                        appendDebug("Autobot: spin")
+                        task.wait(math.max(0.5, duration/2))
+                    elseif action:lower() == "dance" then
+                        local em = emotes[math.random(1,#emotes)]
+                        pcall(function() LocalPlayer:Chat("/e " .. em) end)
+                        appendDebug("Autobot: dance "..tostring(em))
+                        task.wait(duration)
+                    end
+
+                    if math.random(1,100) <= 5 then
+                        pcall(function() LocalPlayer.Character:SetPrimaryPartCFrame((root.CFrame * CFrame.new(0,-5,0))) end)
+                        appendDebug("Autobot: simulated fall")
+                        task.wait(1)
+                    end
+                end
+                local waitT = math.random(1,10)
+                task.wait(waitT)
+            end
+            appendDebug("Autobot loop ended")
+        end)
+        return true
+    end
+
+    -- TextsCounts
+    if cmd == "TEXTSCOUNTS" or cmd == "TEXTSCOUNT" then
+        local count = 0
+        for _,c in ipairs(gptChat:GetChildren()) do if c:IsA("Frame") and c.Name:match("^ChatItem_%d+") then count = count + 1 end end
+        appendSystem(("Total messages in GPT chat: %d"):format(count))
+        return true
+    end
+
+    -- Music (do: , play:ID() , change:)
+    if cmd == "MUSIC" then
+        local arg = trim(rest)
+        local function getPlayerHRPSound()
+            local ch = LocalPlayer and LocalPlayer.Character
+            local hrp = ch and (ch:FindFirstChild("HumanoidRootPart") or ch.PrimaryPart)
+            if hrp then
+                local s = hrp:FindFirstChild("gptMusicPlay")
+                if s and s:IsA("Sound") then return s, hrp end
+                local ns = Instance.new("Sound")
+                ns.Name = "gptMusicPlay"
+                ns.Parent = hrp
+                ns.Volume = ns.Volume or 1
+                ns.PlaybackSpeed = ns.PlaybackSpeed or 1
+                return ns, hrp
+            end
+            local s = Workspace:FindFirstChild("gptMusicPlay")
+            if s and s:IsA("Sound") then return s, Workspace end
+            local ns = Instance.new("Sound")
+            ns.Name = "gptMusicPlay"
+            ns.Parent = Workspace
+            ns.Volume = ns.Volume or 1
+            ns.PlaybackSpeed = ns.PlaybackSpeed or 1
+            return ns, Workspace
+        end
+
+        if LocalPlayer and not STATE._musicCharConn then
+            STATE._musicCharConn = LocalPlayer.CharacterAdded:Connect(function(char)
+                task.wait(0.1)
+                local hrp = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+                if hrp then
+                    local wsSound = Workspace:FindFirstChild("gptMusicPlay")
+                    if wsSound and wsSound:IsA("Sound") then wsSound.Parent = hrp else
+                        local newS = hrp:FindFirstChild("gptMusicPlay")
+                        if not newS then local ns = Instance.new("Sound"); ns.Name = "gptMusicPlay"; ns.Parent = hrp end
+                    end
+                end
+            end)
+        end
+
+        local sound, parentRef = getPlayerHRPSound()
+        if not sound then appendError("Cannot create sound object."); return true end
+
+        if arg:lower():sub(1,3) == "do:" then
+            local action = trim(arg:sub(4)):lower()
+            if action == "play" then pcall(function() sound:Play() end); appendSystem("Music playing.")
+            elseif action == "pause" then pcall(function() sound:Pause() end); appendSystem("Music paused.")
+            elseif action == "stop" then pcall(function() sound:Stop(); sound.SoundId = "" end); appendSystem("Music stopped and cleared.")
+            elseif action == "restart" then pcall(function() sound.TimePosition = 0; sound:Play() end); appendSystem("Music restarted.")
+            elseif action == "loop" then pcall(function() sound.Looped = true end); appendSystem("Music looping enabled.")
+            elseif action == "unloop" then pcall(function() sound.Looped = false end); appendSystem("Music looping disabled.")
+            else
+                local loopN = action:match("^loop%((%d+)%)")
+                if loopN then
+                    loopN = tonumber(loopN)
+                    task.spawn(function()
+                        for i=1,loopN do
+                            if not sound then break end
+                            pcall(function() sound.TimePosition = 0; sound:Play() end)
+                            local length = tonumber(sound.TimeLength) or 5
+                            task.wait(math.max(0.1, length))
+                        end
+                    end)
+                    appendSystem("Music will loop "..tostring(loopN).." times.")
+                else
+                    appendError("Unknown /Music do action.")
+                end
+            end
+            return true
+        end
+
+        if arg:lower():sub(1,5) == "play:" then
+            local remainder = trim(arg:sub(6))
+            local id = remainder:match("ID%((%d+)%)") or remainder:match("(%d+)") or remainder:match("rbxassetid://(%d+)")
+            if id then
+                pcall(function()
+                    sound.SoundId = "rbxassetid://"..id
+                    sound.Looped = false
+                    sound.TimePosition = 0
+                    sound:Play()
+                end)
+                appendSystem("Playing music ID "..id.." (parent: "..tostring(parentRef and parentRef.Name)..")")
+            else
+                appendError("Usage: /Music play:ID(assetId) or /Music play:123456")
+            end
+            return true
+        end
+
+        if arg:lower():sub(1,7) == "change:" then
+            local param = arg:sub(8)
+            local vol = param:match("Vol%(([%d%.]+)%)")
+            if vol then
+                local v = tonumber(vol)
+                pcall(function() sound.Volume = math.clamp(v, 0, 10) end)
+                appendSystem("Volume set to "..tostring(sound.Volume))
+                return true
+            end
+            local pb = param:match("Playback%(([%d%.]+)%)")
+            if pb then
+                local p = tonumber(pb)
+                pcall(function() sound.PlaybackSpeed = math.max(0.01, p) end)
+                appendSystem("PlaybackSpeed set to "..tostring(sound.PlaybackSpeed))
+                return true
+            end
+            appendError("Usage: /Music change:Vol(x) or change:Playback(x)")
+            return true
+        end
+
+        appendSystem('Usage: /Music do:Play|Pause|Stop|Restart|Loop|UnLoop|Loop(N)  OR  /Music play:ID(123456)  OR  /Music change:Vol(x)|change:Playback(x).')
+        return true
+    end
+
+    -- Console (do not create UI)
+    if cmd == "CONSOLE" then
+        appendSystem("Developer Console: press F9 (Roblox). This command does not create UI.")
+        return true
+    end
+
+    -- Help (English list, bullet style)
     if cmd == "HELP" then
-        appendSystem("Commands (enumerated):")
-        local helpLines = {
-            '/Ins — Open interactive instancer or /Ins(Class:Part,Name:Foo,Parent:Workspace) quick.',
-            '/Keep /ShowKeep /ClearAllKeep /ClearTexts',
-            '/TP /Rejoin /ServerHop',
-            '/Autobot [Walk|Jump|Spin|Dance|Random|Stop]',
-            '/Music play:ID(123) /Music do:Play|Pause|Stop|Restart|Loop|UnLoop /Music change:Vol(X)|Playback(X)',
-            '/SeeChat /UnSeeChat',
-            '/API /APIJ /UnSaveAPI /UnSaveAPIJ',
-            '/HttpService /HttpEnabled /HttpAsync /HttpState',
-            '/Console (press F9) /TextsCounts',
+        appendSystem("Commands (summary):")
+        local lines = {
+            '/API ("sk-...") — Set the OpenAI API key (client-side).',
+            '/APIJ ("proj_...") — Set the Project ID (optional).',
+            '/UnSaveAPIJ — Clear saved Project ID.',
+            '/HttpService — Show HttpService status.',
+            '/HttpState ("url") — Check website (GET).',
+            '/HttpEnabled true|false — Try to set HttpEnabled (may fail).',
+            '/HttpAsync true|false — Toggle internal async mode.',
+            '/Keep ("text") — Save local note.',
+            '/ShowKeep /ClearAllKeep — Manage saved notes.',
+            '/Ins — Open instance UI (create many types: Part, Mesh, SurfaceGui, Sound, Script, Effect, Decal, etc).',
+            '/Destroy /Resize /Position /Color — Object ops.',
+            '/TP ("Vector3") /Rejoin /ServerHop ("plalimit:N")',
+            '/AutoBot ("Walk","Jump","Spin","Dance","Random","Stop") — Auto bot behaviors.',
+            '/SeeChat /UnSeeChat — Show Roblox chat inside GPT UI.',
+            '/TextsCounts — Count messages in GPT chat.',
+            '/Execute "pla:..." or "cmd:..." — Execute player actions or commands.',
+            '/Music do:Play|Pause|Stop|Restart|Loop|UnLoop|Loop(N) OR /Music play:ID(assetId) OR /Music change:Vol(x)|change:Playback(x)',
+            '/Console — Instruct to open Developer Console (F9).'
         }
-        for i,line in ipairs(helpLines) do appendChat(false, tostring(i) .. ". " .. line, {200,200,255}) end
+        for _,ln in ipairs(lines) do appendChat(false, " • "..ln, {200,200,255}) end
+        appendSystem("For examples, ask /Help <CommandName>.")
         return true
     end
 
     appendError("Unknown command: /"..tostring(cmd).." (use /Help)")
     return true
-end
+end -- handleCommand
 
--- top-row bindings (API/Proj)
+-- ===== API & buttons binding =====
 pcall(function()
     if projBtn and projBtn:IsA("TextButton") then
         projBtn.MouseButton1Click:Connect(function()
             local v = trim(projBox.Text or "")
             if v == "" then appendError("Project ID empty."); return end
             if not v:match("^proj_") then appendError("Project ID should start with 'proj_'"); return end
-            STATE.PROJECT_ID = v; appendSystem("Project ID saved.")
+            STATE.PROJECT_ID = v
+            appendSystem("Project ID saved.")
         end)
     end
     if apiBtn and apiBtn:IsA("TextButton") then
         apiBtn.MouseButton1Click:Connect(function()
             local raw = trim(apiBox.Text or "")
             if raw == "" then appendError("API key empty."); return end
-            STATE.OPENAI_KEY = raw; appendSystem(("API key set: %s (client-side)"):format(redactKey(raw)))
+            STATE.OPENAI_KEY = raw
+            appendSystem(("API key set: %s (client-side)"):format(redactKey(raw)))
+            -- best-effort validate
+            task.spawn(function()
+                local ok, res = pcall(function() return callOpenAI("Hello", raw, STATE.PROJECT_ID) end)
+                if ok and type(res) == "string" then
+                    STATE.validated = true
+                    appendSystem("API validated.")
+                else
+                    appendError("API validation failed: "..tostring(res or "unknown"))
+                end
+            end)
         end)
     end
 end)
 
--- send chat
+-- ===== sendChat binding =====
 local function sendChat()
     local text = tostring(chatBox.Text or "")
     if text:match("^%s*$") then return end
     if text:sub(1,1) == "/" then
-        if handleCommand(text) then chatBox.Text = "" ; return end
+        if handleCommand(text) then chatBox.Text = ""; return end
     end
     appendChat(true, text)
     chatBox.Text = ""
-    appendSystem("Local mode: no OpenAI call (set /API to enable).")
+    if STATE.OPENAI_KEY and STATE.OPENAI_KEY ~= "" then
+        appendChat(false, "[System] ⌛ Thinking...")
+        task.spawn(function()
+            local reply, err = callOpenAI(text, STATE.OPENAI_KEY, STATE.PROJECT_ID)
+            if reply then
+                appendChat(false, reply)
+            else
+                appendError("OpenAI Error: "..tostring(err))
+            end
+        end)
+    else
+        appendSystem("No API key set. Use /API (\"sk-...\") or top input box.")
+    end
 end
 
 pcall(function() if sendBtn and sendBtn:IsA("TextButton") then sendBtn.MouseButton1Click:Connect(sendChat) end end)
 pcall(function() if chatBox and chatBox:IsA("TextBox") then chatBox.FocusLost:Connect(function(enter) if enter then sendChat() end end) end end)
 
--- toggle panel (use existing toggle if available)
+-- ===== panel toggle binding (use existing toggle if present) =====
 local toggleBtn = nil
 pcall(function()
     if type(menuGui) == "Instance" and menuGui.Parent then
@@ -2681,17 +3210,29 @@ pcall(function()
         toggleBtn = targetMenu:FindFirstChild("a3_ChatGPT", true) or targetMenu:FindFirstChild("gpt", true)
     end
 end)
+
 local panelOpen = false
 local function togglePanel()
     panelOpen = not panelOpen
-    if panelOpen then safeTween(rootFrame, { Position = UDim2.new(0,0,0.1,0) }, 0.28) else safeTween(rootFrame, { Position = UDim2.new(-1,0,0.1,0) }, 0.28) end
+    if panelOpen then
+        safeTween(gptGui, { Position = UDim2.new(0,0,0.1,0) }, 0.28)
+    else
+        safeTween(gptGui, { Position = UDim2.new(-1,0,0.1,0) }, 0.28)
+    end
 end
-if toggleBtn and (toggleBtn:IsA("ImageButton") or toggleBtn:IsA("TextButton")) then pcall(function() toggleBtn.MouseButton1Click:Connect(togglePanel) end) else _G.ExperienceSettings_ToggleGPT = togglePanel end
 
--- startup
-appendSystem("GPT UI ready. Use /Help for commands. Use /Ins to open the instancer or /Ins(<args>) for quick create.")
+if toggleBtn and (toggleBtn:IsA("ImageButton") or toggleBtn:IsA("TextButton")) then
+    pcall(function() toggleBtn.MouseButton1Click:Connect(togglePanel) end)
+else
+    _G.ExperienceSettings_ToggleGPT = togglePanel
+end
+
+-- ===== startup message =====
+appendSystem("ChatGPT UI ready. Type /Help to see commands. (Script: robust nil-guards enabled)")
+
+-- export debug handles
 _G.ExperienceSettings_GPT_STATE = STATE
 _G.ExperienceSettings_GPT_append = appendChat
 _G.ExperienceSettings_ToggleGPT = togglePanel
 
--- End of file
+-- End of script
