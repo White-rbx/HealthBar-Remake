@@ -2044,6 +2044,7 @@ if not chatBox then
     chatBox.Position = UDim2.new(0,6,0,0)
     chatBox.PlaceholderText = "Ask anything... (use / for commands)"
     chatBox.ClearTextOnFocus = false
+    chatBox.Text = ""
     chatBox.Font = Enum.Font.SourceSans
     chatBox.TextSize = 16
     chatBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
@@ -2071,7 +2072,7 @@ if not topRow.Parent then
 end
 local function makeRow(parent, id, placeholder, btnText, side)
     local f = Instance.new("Frame"); f.Name = id .. "_frame"; f.Size = UDim2.new(0.5, -6, 1, 0); f.Position = UDim2.new((side==2) and 0.5 or 0, 6, 0, 0); f.BackgroundTransparency = 1; f.Parent = parent
-    local box = Instance.new("TextBox"); box.Name = id .. "_box"; box.Size = UDim2.new(0.75, 0, 1, 0); box.Position = UDim2.new(0,0,0,0); box.PlaceholderText = placeholder; box.ClearTextOnFocus = false; box.Font = Enum.Font.SourceSans; box.TextSize = 14; box.BackgroundColor3 = Color3.fromRGB(40,40,40); box.TextColor3 = Color3.fromRGB(255,255,255); box.Parent = f
+    local box = Instance.new("TextBox"); box.Name = id .. "_box"; box.Size = UDim2.new(0.75, 0, 1, 0); box.Position = UDim2.new(0,0,0,0); box.PlaceholderText = placeholder; box.Text = ""; box.ClearTextOnFocus = false; box.Font = Enum.Font.SourceSans; box.TextSize = 14; box.BackgroundColor3 = Color3.fromRGB(40,40,40); box.TextColor3 = Color3.fromRGB(255,255,255); box.Parent = f
     local btn = Instance.new("TextButton"); btn.Name = id .. "_btn"; btn.Size = UDim2.new(0.25, 0, 1, 0); btn.Position = UDim2.new(0.75, 0, 0, 0); btn.Text = btnText; btn.TextScaled = true; btn.BackgroundColor3 = Color3.fromRGB(86,170,255); btn.TextColor3 = Color3.fromRGB(255,255,255); btn.Parent = f
     return f, box, btn
 end
@@ -2302,7 +2303,7 @@ local function appendInput()
         local fldFr = Instance.new("Frame")
         fldFr.Size = UDim2.new(1,0,0,30); fldFr.BackgroundTransparency = 1; fldFr.Parent = container
         local lbl = Instance.new("TextLabel"); lbl.Size = UDim2.new(0.28,0,1,0); lbl.Position = UDim2.new(0,4,0,0); lbl.BackgroundTransparency = 1; lbl.Text = labelTxt; lbl.Font = Enum.Font.SourceSans; lbl.TextSize = 14; lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.TextColor3 = Color3.fromRGB(200,200,200); lbl.Parent = fldFr
-        local tb = Instance.new("TextBox"); tb.Size = UDim2.new(0.7,-8,1,0); tb.Position = UDim2.new(0.3,4,0,0); tb.PlaceholderText = placeholder or ""; tb.ClearTextOnFocus = false; tb.Font = Enum.Font.SourceSans; tb.TextSize = 14; tb.BackgroundColor3 = Color3.fromRGB(40,40,40); tb.TextColor3 = Color3.fromRGB(255,255,255); tb.Parent = fldFr
+        local tb = Instance.new("TextBox"); tb.Size = UDim2.new(0.7,-8,1,0); tb.Position = UDim2.new(0.3,4,0,0); tb.PlaceholderText = placeholder or ""; tb.Text = ""; tb.ClearTextOnFocus = false; tb.Font = Enum.Font.SourceSans; tb.TextSize = 14; tb.BackgroundColor3 = Color3.fromRGB(40,40,40); tb.TextColor3 = Color3.fromRGB(255,255,255); tb.Parent = fldFr
         return tb
     end
 
