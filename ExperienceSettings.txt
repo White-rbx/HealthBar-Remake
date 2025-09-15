@@ -1,4 +1,4 @@
--- ========= HEALTHBAR AND SOUNDS ===========
+-- ========= HEALTHBAR AND SOUNDS (FIXED) ===========
 -- ใช้ใน LocalScript (client-side)
 -- ปรับปรุงการตรวจสอบ nil เพื่อหลีกเลี่ยง "attempt to index nil with 'FindFirstChild'"
 
