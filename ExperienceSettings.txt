@@ -708,7 +708,7 @@ local function characterHasHRP(plr)
     if char:FindFirstChild("HumanoidRootPart") then return true end
     if char.PrimaryPart and char.PrimaryPart:IsA("BasePart") then return true end
     for _, c in ipairs(char:GetChildren()) do
-        if c:IsA("BasePart") and (string.find(c.Name, "Root") or string.find(c.Name, "Humanoid")) then
+        if c:IsA("BasePart") and (string.find(c.Name, "Root") or string.find(c.Name, "Humanoid") or string.find(c.Name, "Head")) then
             return true
         end
     end
