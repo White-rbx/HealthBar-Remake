@@ -882,7 +882,7 @@ task.spawn(function()
                 if isOpen then
                     print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI")
                     if ui_mtb and ui_mtb.Parent then
-                        safeTween(ui_mtb, { Position = UDim2.new(0,0, -3, 0) }, 0.28)
+                        safeTween(ui_mtb, { Position = UDim2.new(0,0, 0.02, 0) }, 0.28)
                     else
                         safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
                     end
@@ -891,16 +891,16 @@ task.spawn(function()
                     pcall(function()
                         if ui_Set  then ui_Set.Visible  = false end
                         if ui_hbm then ui_hbm.Visible = false end
-                        if ui_OC  then ui_OC.Visible  = false end
+                        if ui_OC  then ui_OC.Visible  = true end
                         if ui_gpt then ui_gpt.Visible = false end
                     end)
 
                     -- แสดง wa1 และ wl
                     if ui_wa1 and ui_wa1.Parent then
-                        ui_wa1.Visible = true
+                        ui_wa1.Visible = false
                     end
                     if ui_wl and ui_wl.Parent then
-                        ui_wl.Visible = true
+                        ui_wl.Visible = false
                     end
 
                     isOpen = false
