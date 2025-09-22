@@ -1753,11 +1753,11 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/InfernusScripts/Execu
 end
 
 -- CTB9
-local ctb9 = createImageButton("a9_GuiStealer", 255, 25, 25, 0.2, "95196969969406", false)
+local ctb9 = createImageButton("a9_REM", 0, 165, 0, 0.2, "91782079102380", false)
 if ctb9 then
     ctb9.MouseButton1Click:Connect(function()
         pcall(function()
-    loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-GuiStealer-12751", true))()
+    loadstring(game:HttpGet("https://e-vil.com/anbu/rem.lua"))()
         end)
     end)
 end
