@@ -834,7 +834,6 @@ local function applyOCState(open, instant)
         if Set and Set:IsA("GuiObject") then Set.Visible = open end
         if hbm and hbm:IsA("GuiObject") then hbm.Visible = open end
         if gpt and gpt:IsA("GuiObject") then gpt.Visible = open end
-        if liger and liger:IsA("GuiObject") then liger.Visible = open end
     end)
     -- update OC image
     if OC and OC:IsA("GuiObject") then
@@ -948,9 +947,8 @@ if type(resolveUI) ~= "function" then
         local rc_bg  = findFast("Background") or findFast("bg")
         local rc_mtb = findFast("TopBar") or findFast("MainTopBar") or findFast("mtb")
         local rc_gpt = findFast("a3_ChatGPT") or findFast("gpt") or findFast("ChatGPTButton")
-        local rc_liger = findFast("a4_LighterCyan.ai") or findFast("LighterCyan.ai") or findFast("ai")
 
-        return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt, rc_liger
+        return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt
     end
     dbg("resolveUI fallback injected")
 end
@@ -970,9 +968,9 @@ local CHECK_INTERVAL = 0.12
 local TIMEOUT = 0.5
 
 -- UI refs (attempt initial resolve)
-local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger = safeCall(resolveUI, "resolveUI") or {}
+local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = safeCall(resolveUI, "resolveUI") or {}
 -- If resolveUI returned multiple values, safeCall returns first; so call again normally:
-ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger = resolveUI()
+ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
 
 -- timer + state
 local timerMissing = 0
@@ -1055,7 +1053,6 @@ task.spawn(function()
                     if ui_hbm and isGuiObject(ui_hbm) then ui_hbm.Visible = false end
                     if ui_OC  and isGuiObject(ui_OC)  then ui_OC.Visible  = true  end
                     if ui_gpt and isGuiObject(ui_gpt) then ui_gpt.Visible = false end
-                    if ui_liger and isGuiObject(ui_liger) then ui_liger.Visible = false end
                 end)
 
                 if ui_wa1 and isGuiObject(ui_wa1) then
@@ -1087,7 +1084,6 @@ task.spawn(function()
                         if ui_hbm and isGuiObject(ui_hbm) then ui_hbm.Visible = false end
                         if ui_OC  and isGuiObject(ui_OC)  then ui_OC.Visible  = false end
                         if ui_gpt and isGuiObject(ui_gpt) then ui_gpt.Visible = false end
-                        if ui_liger and isGuiObject(ui_liger) then ui_liger.Visible = false end
                     end)
 
                     -- show wa1 / wl again
