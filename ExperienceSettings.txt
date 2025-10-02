@@ -770,160 +770,210 @@ if OC and OC:IsA("GuiObject") then
     end)
 end
 
--- ===== HRP Watcher System (full) =====
+-- ===== HRP Watcher (replacement, drop-in) =====
 local Players = game:GetService("Players")
-local gui_aV2 = game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ValueFolder.ValueGui
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
 
--- interval config
-local CHECK_INTERVAL = 0.1 -- ระยะเวลาเช็ค (วินาที)
-local TIMEOUT = 0.1         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
-
--- เก็บตำแหน่งเริ่มต้น
-local wa1_initial_pos, hr_initial_size, mtb_initial_pos
-pcall(function()
-    if wa1 then wa1_initial_pos = wa1.Position end
-    if hr  then hr_initial_size = hr.Size end
-    if mtb then mtb_initial_pos = mtb.Position end
-end)
-
--- --- Ensure resolveUI exists (fallback) ---
-if type(resolveUI) ~= "function" then
-    function resolveUI()
-        local root = menuGui or expSettings or healthBar or game:GetService("CoreGui")
-        if not root then return nil end
-
-        local function find(name)
-            local ok, res = pcall(function() return root:FindFirstChild(name, true) end)
-            if ok then return res end
-            return nil
-        end
-
-        local rc_tb  = find("TopButtons") or find("TopBar") or find("TopBarApp")
-        local rc_hr  = find("Holder") or find("HolderFrame") or find("a_holder")
-        local rc_Set = find("a2_Settings") or find("Set") or find("SettingsButton")
-        local rc_hbm = find("a9999_HamburgerMenu") or find("Hamburger") or find("hbm")
-        local rc_OC  = find("a1_Open/Close") or find("OC") or find("OpenClose")
-        local rc_wa1 = find("LoadFrame") or find("wa1") or find("WarningFrame")
-        local rc_wl  = find("Warning & Load") or find("wl") or find("WaitLabel")
-        local rc_bg  = find("Background") or find("bg")
-        local rc_mtb = find("TopBar") or find("MainTopBar") or find("mtb")
-        local rc_gpt = find("a3_ChatGPT") or find("gpt") or find("ChatGPTButton")
-        local rc_liger = find("a4_LighterCyan.ai") or find("ai")
-
-        return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt, rc_liger
+-- safe doTween: uses safeTween if defined, otherwise TweenService fallback
+local function doTween(obj, props, time, style, direction)
+    if not obj or not obj.Parent then return end
+    if type(safeTween) == "function" then
+        -- protect call
+        pcall(function() safeTween(obj, props, time or 0.28, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out) end)
+        return
     end
-
-    warn("[HRP-Watcher] Fallback resolveUI() injected (was missing).")
+    local ok, t = pcall(function()
+        local info = TweenInfo.new(time or 0.28, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out)
+        return TweenService:Create(obj, info, props)
+    end)
+    if ok and t then
+        pcall(function() t:Play() end)
+    end
 end
 
--- UI refs
-local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger = resolveUI()
-local timerMissing = 0
-local isOpen = false
+-- safe access to healthbar/value gui (avoid direct long chains that fail)
+local function getValueGui()
+    local ok, hb = pcall(function() 
+        if type(getHealthBarRoot) == "function" then
+            return getHealthBarRoot()
+        else
+            return nil
+        end
+    end)
+    if not ok or not hb then
+        -- try common path, guarded
+        local coreTop = game:GetService("CoreGui"):FindFirstChild("TopBarApp")
+        if not coreTop then return nil end
+        local inner = coreTop:FindFirstChild("TopBarApp") or coreTop
+        local left = inner and inner:FindFirstChild("UnibarLeftFrame")
+        local healthBar = left and left:FindFirstChild("HealthBar")
+        if not healthBar then return nil end
+        local folder = healthBar:FindFirstChild("ValueFolder")
+        return folder and folder:FindFirstChild("ValueGui")
+    end
+    local folder = (hb and hb:FindFirstChild("ValueFolder"))
+    return folder and folder:FindFirstChild("ValueGui")
+end
 
--- check HRP in character
-local function characterHasHRP(plr)
-    if not plr or not plr.Character then return false end
-    local char = plr.Character
-    if char:FindFirstChild("HumanoidRootPart") then return true end
-    if char.PrimaryPart and char.PrimaryPart:IsA("BasePart") then return true end
-    for _, c in ipairs(char:GetChildren()) do
-        if c:IsA("BasePart") and (string.find(c.Name, "Root") or string.find(c.Name, "Humanoid") or string.find(c.Name, "Head")) then
-            return true
+-- local UI refs (will be resolved lazily)
+local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger
+local gui_aV2 = getValueGui() -- may be nil; update in listeners
+
+-- helper: robust HRP detection for a Character instance
+local function characterHasHRP(character)
+    if not character then return false end
+    if character:FindFirstChild("HumanoidRootPart") then return true end
+    if character.PrimaryPart and character.PrimaryPart:IsA("BasePart") then return true end
+    -- fallback: scan for parts with root/torso/humanoid in name
+    for _, c in ipairs(character:GetChildren()) do
+        if c:IsA("BasePart") then
+            local n = string.lower(c.Name)
+            if string.find(n, "root") or string.find(n, "torso") or string.find(n, "humanoid") or string.find(n, "pelvis") then
+                return true
+            end
         end
     end
     return false
 end
 
--- watcher loop
-task.spawn(function()
-    while true do
-        task.wait(CHECK_INTERVAL)
+-- Keep current open state
+local isOpen = false
+local hrpDebounce = false
+local function setOpenState(open, instant)
+    if hrpDebounce then return end
+    hrpDebounce = true
+    -- small debounce window to avoid flicker
+    task.defer(function()
+        task.wait(0.08) -- 80ms debounce
+        hrpDebounce = false
+    end)
+    if open == isOpen then return end
+    isOpen = open
 
-        -- พยายาม resolve refs ถ้ายังไม่มี
-        if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_liger and ui_wa1 and ui_wl) then
-            ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger = resolveUI()
+    -- actions when opening
+    if open then
+        -- set positions / sizes safely (use doTween)
+        if ui_mtb and ui_mtb.Parent then
+            doTween(ui_mtb, { Position = UDim2.new(0.48, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28)
+        elseif ui_tb and ui_tb.Parent then
+            doTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28)
+        end
+        if ui_hr and ui_hr.Parent then
+            doTween(ui_hr, { Size = UDim2.new(0,44, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+        end
+        pcall(function()
+            if ui_Set  then ui_Set.Visible  = false end
+            if ui_hbm then ui_hbm.Visible = false end
+            if ui_OC  then ui_OC.Visible  = true end
+            if ui_gpt then ui_gpt.Visible = false end
+            if ui_liger then ui_liger.Visible = false end
+            gui_aV2 = getValueGui()
+            if gui_aV2 then gui_aV2.Enabled = true end
+        end)
+        -- hide wa1/wl if present
+        if ui_wa1 and ui_wa1.Parent then
+            ui_wa1.Visible = false
+            -- try restore pos if stored
+            if wa1_initial_pos then pcall(function() doTween(ui_wa1, { Position = wa1_initial_pos }, 0.22) end) end
+        end
+        if ui_wl and ui_wl.Parent then ui_wl.Visible = false end
+    else
+        -- closing
+        if ui_mtb and ui_mtb.Parent then
+            doTween(ui_mtb, { Position = UDim2.new(0,0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28)
+        elseif ui_tb and ui_tb.Parent then
+            doTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
+        end
+        if ui_hr and ui_hr.Parent then
+            doTween(ui_hr, { Size = UDim2.new(0,130, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+        end
+        pcall(function()
+            if ui_Set  then ui_Set.Visible  = false end
+            if ui_hbm then ui_hbm.Visible = false end
+            if ui_OC  then ui_OC.Visible  = false end
+            if ui_gpt then ui_gpt.Visible = false end
+            if ui_liger then ui_liger.Visible = false end
+            gui_aV2 = getValueGui()
+            if gui_aV2 then gui_aV2.Enabled = false end
+        end)
+        if ui_wa1 and ui_wa1.Parent then ui_wa1.Visible = true end
+        if ui_wl and ui_wl.Parent then ui_wl.Visible = true end
+    end
+end
 
-            if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_liger and ui_wa1 and ui_wl) then
-                timerMissing = timerMissing + CHECK_INTERVAL
-                if timerMissing >= TIMEOUT then
-                    warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s - waiting for UI")
-                end
-                continue
-            else
-                timerMissing = 0
+-- attach listeners to a character to react to HRP appear/disappear
+local function monitorCharacter(character)
+    if not character then return end
+
+    -- immediate check
+    setOpenState(characterHasHRP(character), true)
+
+    -- watch for children added/removed so we can detect HRP being created or removed
+    local function onChildAdded(child)
+        if child and child:IsA("BasePart") then
+            if string.find(string.lower(child.Name), "root") or string.find(string.lower(child.Name), "torso") or string.find(string.lower(child.Name), "humanoid") then
+                setOpenState(true, false)
             end
         end
-
-        -- ตรวจ HRP ของผู้เล่น
-        local pl = Players.LocalPlayer
-        local hasHRP = characterHasHRP(pl)
-
-        if hasHRP then
-            timerMissing = 0
-            if not isOpen then
-                print("[HRP-Watcher] HRP detected -> opening UI")
-                if ui_mtb and ui_mtb.Parent then
-                    safeTween(ui_mtb, { Position = UDim2.new(0.48, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28, Enum.EasingStyle.Quad)
-                else
-                    safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad)
+    end
+    local function onChildRemoved(child)
+        -- if HRP removed we check whole character
+        if child and child:IsA("BasePart") then
+            task.delay(0.02, function()
+                if not characterHasHRP(character) then
+                    setOpenState(false, false)
                 end
+            end)
+        end
+    end
 
-                safeTween(ui_hr, { Size = UDim2.new(0,44, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                pcall(function()
-                    if ui_Set  then ui_Set.Visible  = false end
-                    if ui_hbm then ui_hbm.Visible = false end
-                    if ui_OC  then ui_OC.Visible  = true end
-                    if ui_gpt then ui_gpt.Visible = false end
-                    if ui_liger then ui_liger.Visible = false end
-                    if gui_aV2 then gui_aV2.Enabled = true end
-                end)
+    -- Humanoid died → mark missing (respawn will trigger CharacterAdded)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.Died:Connect(function()
+            setOpenState(false, false)
+        end)
+    end
 
-                -- ซ่อน wa1 และ wl
-                if ui_wa1 and ui_wa1.Parent then
-                    ui_wa1.Visible = false
-                    if wa1_initial_pos then
-                        pcall(function() safeTween(ui_wa1, { Position = wa1_initial_pos }, 0.22) end)
-                    end
-                end
-                if ui_wl and ui_wl.Parent then
-                    ui_wl.Visible = false
-                end
+    -- connect child added/removed
+    local addedConn = character.ChildAdded:Connect(onChildAdded)
+    local removedConn = character.ChildRemoved:Connect(onChildRemoved)
 
-                isOpen = true
-            end
-        else
-            timerMissing = timerMissing + CHECK_INTERVAL
-            if timerMissing >= TIMEOUT then
-                if isOpen then
-                    print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI")
-                    if ui_mtb and ui_mtb.Parent then
-                        safeTween(ui_mtb, { Position = UDim2.new(0,0, 0.02, 0) }, 0.28)
-                    else
-                        safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
-                    end
+    -- cleanup when character removed
+    character.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            -- character removed from workspace (player died / replaced)
+            setOpenState(false, false)
+            -- disconnect both (they may auto disconnect on GC, but safe)
+            pcall(function() addedConn:Disconnect() removedConn:Disconnect() end)
+        end
+    end)
+end
 
-                    safeTween(ui_hr, { Size = UDim2.new(0,130, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
-                    pcall(function()
-                        if ui_Set  then ui_Set.Visible  = false end
-                        if ui_hbm then ui_hbm.Visible = false end
-                        if ui_OC  then ui_OC.Visible  = false end
-                        if ui_gpt then ui_gpt.Visible = false end
-                        if ui_liger then ui_liger.Visible = false end
-                        if gui_aV2 then gui_aV2.Enabled = false end
-                    end)
+-- CharacterAdded handler
+Players.LocalPlayer.CharacterAdded:Connect(function(char)
+    -- re-resolve UI refs lazily (in case UI created later)
+    ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger =
+        (type(resolveUI) == "function") and (pcall(resolveUI) and { resolveUI() })[1] or { ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger }
+    monitorCharacter(char)
+end)
 
-                    -- แสดง wa1 และ wl
-                    if ui_wa1 and ui_wa1.Parent then
-                        ui_wa1.Visible = true
-                    end
-                    if ui_wl and ui_wl.Parent then
-                        ui_wl.Visible = true
-                    end
+-- initial attach if character exists
+if player and player.Character then
+    monitorCharacter(player.Character)
+end
 
-                    isOpen = false
-                end
-            end
+-- small fallback polling (optional) to catch edge-cases (exec environments etc.)
+task.spawn(function()
+    while true do
+        task.wait(0.25)
+        local curChar = player and player.Character
+        local curHas = characterHasHRP(curChar)
+        -- ensure open state reflects reality
+        if curHas ~= isOpen then
+            setOpenState(curHas, false)
         end
     end
 end)
