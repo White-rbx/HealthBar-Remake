@@ -1,3 +1,36 @@
+-- ==== SAFETY FALLBACKS ====
+local TweenService = game:GetService("TweenService")
+
+-- safeTween fallback
+if type(safeTween) ~= "function" then
+    function safeTween(obj, props, time, style, dir)
+        if not obj or not obj.Parent then return end
+        local info = TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out)
+        local tween = TweenService:Create(obj, info, props)
+        tween:Play()
+        return tween
+    end
+end
+
+-- tweenObject fallback (alias)
+if type(tweenObject) ~= "function" then
+    tweenObject = safeTween
+end
+
+-- resolveUI fallback
+if type(resolveUI) ~= "function" then
+    function resolveUI()
+        local root = game:GetService("CoreGui")
+        local function find(name)
+            local ok, res = pcall(function() return root:FindFirstChild(name, true) end)
+            return ok and res or nil
+        end
+        return find("TopBar"), find("Holder"), find("Set"), find("Hamburger"),
+               find("OC"), find("wa1"), find("wl"), find("bg"), find("mtb"),
+               find("gpt"), find("LighterCyan.ai")
+    end
+end
+
 -- ========= HEALTHBAR AND SOUNDS ===========
 -- ใช้ใน LocalScript (client-side)
 
