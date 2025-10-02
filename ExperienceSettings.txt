@@ -862,7 +862,7 @@ task.spawn(function()
                     if ui_hbm then ui_hbm.Visible = false end
                     if ui_OC  then ui_OC.Visible  = true end
                     if ui_gpt then ui_gpt.Visible = false end
-                    if gui.aV2 then gui_aV2.Enabled = false end
+                    if gui_aV2 then gui_aV2.Enabled = false end
                 end)
 
                 -- ซ่อน wa1 และ wl
@@ -895,7 +895,7 @@ task.spawn(function()
                         if ui_hbm then ui_hbm.Visible = false end
                         if ui_OC  then ui_OC.Visible  = false end
                         if ui_gpt then ui_gpt.Visible = false end
-                        if gui.aV2 then gui_aV2.Enabled = false end
+                        if gui_aV2 then gui_aV2.Enabled = false end
                     end)
 
                     -- แสดง wa1 และ wl
