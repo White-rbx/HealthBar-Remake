@@ -1006,7 +1006,7 @@ task.spawn(function()
         if not (isGuiObject(ui_tb) and isGuiObject(ui_hr) and (ui_Set~=nil) and (ui_hbm~=nil) and (ui_OC~=nil)) then
             local ok, a,b,c,d,e,f,g,h,i,j,k = pcall(resolveUI)
             if ok then
-                ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger = a,b,c,d,e,f,g,h,i,j,k
+                ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = a,b,c,d,e,f,g,h,i,j
                 -- log what we found (non-nil only)
                 if ui_tb then dbg("found ui_tb = %s", ui_tb:GetFullName()) end
                 if ui_hr  then dbg("found ui_hr  = %s", ui_hr:GetFullName()) end
