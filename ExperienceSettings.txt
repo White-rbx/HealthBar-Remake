@@ -809,7 +809,7 @@ if type(resolveUI) ~= "function" then
         local rc_bg  = find("Background") or find("bg")
         local rc_mtb = find("TopBar") or find("MainTopBar") or find("mtb")
         local rc_gpt = find("a3_ChatGPT") or find("gpt") or find("ChatGPTButton")
-        local re_liger = find("a4_LighterCyan")
+        local re_liger = find("a4_LighterCyan.ai") or find("ai")
 
         return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt rc_liger
     end
