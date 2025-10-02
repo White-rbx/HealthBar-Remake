@@ -1,5 +1,6 @@
 -- ========= HEALTHBAR AND SOUNDS ===========
 -- ใช้ใน LocalScript (client-side)
+-- Hey, you gonna stole my script huh? fuck you.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
