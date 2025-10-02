@@ -1,3 +1,87 @@
+-- DEBUG: inspect critical globals / refs (paste at top)
+local function tv(v) return (type(v) == "userdata" and (v.GetFullName and pcall(function() return v:GetFullName() end) and v:GetFullName() or tostring(v)) ) or tostring(v) end
+local function show(name, v)
+    local t = type(v)
+    if t == "userdata" and v.IsA then
+        print(("[DBG] %s -> userdata (%s) : %s"):format(name, t, tv(v)))
+    else
+        print(("[DBG] %s -> %s : %s"):format(name, t, tv(v)))
+    end
+end
+
+-- list of names to check (add any more you rely on)
+local check_names = {
+    "safeTween","tweenObject","resolveUI",
+    "mtb","hr","OC","Set","hbm","gpt","liger","wa1","wl","menuGui","expSettings","gui_aV2"
+}
+
+-- expose global lookup helper
+local function getGlobal(name)
+    if rawget(_G, name) ~= nil then return rawget(_G, name) end
+    if _G[name] ~= nil then return _G[name] end
+    -- also check local environment fallbacks:
+    local suc, val = pcall(function() return _G[name] end)
+    if suc then return val end
+    return nil
+end
+
+print("---- DEBUG START: critical refs ----")
+for _,n in ipairs(check_names) do
+    local val = getGlobal(n) or (script and script:FindFirstChild(n, true)) or _G[n]
+    show(n, val)
+end
+-- also inspect names that exist as locals (if they are declared later, this may be nil here)
+-- print stack trace to help
+print("---- STACK TRACE ----")
+print(debug.traceback("",2))
+print("---- END DEBUG ----")
+
+-- Safe wrapper for MouseButton connection (call this instead of raw Connect if OC may be nil)
+local function safeConnectMouse(btn, cb)
+    if not btn then
+        warn("[SAFE CONNECT] button is nil, cannot connect MouseButton1Click.")
+        return nil
+    end
+    if not (type(btn) == "table" and btn.IsA and btn:IsA("GuiObject")) then
+        warn("[SAFE CONNECT] button is not GuiObject: " .. tostring(btn))
+        return nil
+    end
+    if not btn.MouseButton1Click then
+        warn("[SAFE CONNECT] button has no MouseButton1Click event: " .. tostring(btn:GetFullName()))
+        return nil
+    end
+    local ok, conn = pcall(function() return btn.MouseButton1Click:Connect(function(...) 
+        local suc, err = pcall(cb, ...)
+        if not suc then
+            warn("[SAFE CONNECT] callback error: " .. tostring(err) .. "\n" .. debug.traceback("",2))
+        end
+    end) end)
+    if not ok then
+        warn("[SAFE CONNECT] failed to connect: " .. tostring(conn))
+        return nil
+    end
+    return conn
+end
+
+-- Example: if your code did `OC.MouseButton1Click:Connect(function() ... end)` replace with:
+-- safeConnectMouse(OC, function() ... end)
+
+-- Also provide a helper to assert function-ness before calling
+local function callIfFunction(fn, name, ...)
+    if type(fn) ~= "function" then
+        warn(("[DBG CALL] '%s' is not callable (type=%s)"):format(tostring(name), type(fn)))
+        warn(debug.traceback("",2))
+        return nil
+    end
+    local ok, res = pcall(fn, ...)
+    if not ok then
+        warn(("[DBG CALL] error in '%s': %s"):format(tostring(name), tostring(res)))
+        warn(debug.traceback("",2))
+        return nil
+    end
+    return res
+end
+
 -- ========= HEALTHBAR AND SOUNDS ===========
 -- ใช้ใน LocalScript (client-side)
 
