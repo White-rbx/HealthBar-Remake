@@ -636,7 +636,19 @@ gpt.BackgroundTransparency = 0.8
 gpt.Active = true
 gpt.Visible = false
 gpt.Parent = hr
-createUICorner(gpt, 1, 0) --
+createUICorner(gpt, 1, 0)
+
+-- LighterCyan
+local liger = Instance.new("ImageButton")
+liger.Name = "a4_LighterCyan.ai"
+liger.Size = UDim2.new(0, 36, 0.8, 0)
+liger.Image = "rbxassetid://83032822916288"
+liger.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+liger.BackgroundTransparency = 0.8
+liger.Active = true
+liger.Visible = false
+liger.Parent = hr
+createUICorner(liger, 1, 0)
 
 -- Wait1
 local wa1 = Instance.new("Frame")
@@ -739,6 +751,7 @@ local function applyOCState(open, instant)
         if Set and Set:IsA("GuiObject") then Set.Visible = open end
         if hbm and hbm:IsA("GuiObject") then hbm.Visible = open end
         if gpt and gpt:IsA("GuiObject") then gpt.Visible = open end
+        if liger and liger:IsA("GuiObject") then liger.Visible = open end
     end)
     -- update OC image
     if OC and OC:IsA("GuiObject") then
@@ -764,7 +777,7 @@ local gui_aV2 = game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.H
 
 -- interval config
 local CHECK_INTERVAL = 0.1 -- ระยะเวลาเช็ค (วินาที)
-local TIMEOUT = 5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
+local TIMEOUT = 0.1         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
 
 -- เก็บตำแหน่งเริ่มต้น
 local wa1_initial_pos, hr_initial_size, mtb_initial_pos
@@ -796,15 +809,16 @@ if type(resolveUI) ~= "function" then
         local rc_bg  = find("Background") or find("bg")
         local rc_mtb = find("TopBar") or find("MainTopBar") or find("mtb")
         local rc_gpt = find("a3_ChatGPT") or find("gpt") or find("ChatGPTButton")
+        local re_liger = find("a4_LighterCyan")
 
-        return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt
+        return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt rc_liger
     end
 
     warn("[HRP-Watcher] Fallback resolveUI() injected (was missing).")
 end
 
 -- UI refs
-local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
+local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger = resolveUI()
 local timerMissing = 0
 local isOpen = false
 
@@ -828,10 +842,10 @@ task.spawn(function()
         task.wait(CHECK_INTERVAL)
 
         -- พยายาม resolve refs ถ้ายังไม่มี
-        if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1 and ui_wl) then
-            ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
+        if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_liger and ui_wa1 and ui_wl) then
+            ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger = resolveUI()
 
-            if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1 and ui_wl) then
+            if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_liger and ui_wa1 and ui_wl) then
                 timerMissing = timerMissing + CHECK_INTERVAL
                 if timerMissing >= TIMEOUT then
                     warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s - waiting for UI")
@@ -862,6 +876,7 @@ task.spawn(function()
                     if ui_hbm then ui_hbm.Visible = false end
                     if ui_OC  then ui_OC.Visible  = true end
                     if ui_gpt then ui_gpt.Visible = false end
+                    if ui_liger then ui_liger.Visible = false end
                     if gui_aV2 then gui_aV2.Enabled = true end
                 end)
 
@@ -895,6 +910,7 @@ task.spawn(function()
                         if ui_hbm then ui_hbm.Visible = false end
                         if ui_OC  then ui_OC.Visible  = false end
                         if ui_gpt then ui_gpt.Visible = false end
+                        if ui_liger then ui_liger.Visible = false end
                         if gui_aV2 then gui_aV2.Enabled = false end
                     end)
 
