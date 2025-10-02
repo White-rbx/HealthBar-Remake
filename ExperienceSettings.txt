@@ -505,118 +505,57 @@ if not healthBar then
     return
 end
 
--- ======= Build UI (REPLACEMENT for executor; replace lines ~509-671) =======
-local function createExperienceUI(healthBar)
-    if not healthBar then return nil end
+-- ======= Build UI =======
+local expSettings = Instance.new("Folder")
+expSettings.Name = "ExperienceSettings"
+expSettings.Parent = healthBar
 
-    local ui = {}
+local menuGui = Instance.new("ScreenGui")
+menuGui.Name = "Menu"
+menuGui.ResetOnSpawn = false
+menuGui.IgnoreGuiInset = true
+menuGui.Parent = expSettings
 
-    ui.expSettings = Instance.new("Folder")
-    ui.expSettings.Name = "ExperienceSettings"
-    ui.expSettings.Parent = healthBar
+-- Main TopBar holder (small)
+local mtb = Instance.new("Frame")
+mtb.Name = "TopBar"
+mtb.Position = UDim2.new(0, 0, 0.02, 0)
+mtb.Size = UDim2.new(1, 0, 0, 43)
+mtb.BackgroundTransparency = 1
+mtb.Parent = menuGui
+createUIListLayout(mtb, 0.005, 0, HCenter, VTop, FillH)
 
-    ui.menuGui = Instance.new("ScreenGui")
-    ui.menuGui.Name = "Menu"
-    ui.menuGui.ResetOnSpawn = false
-    ui.menuGui.IgnoreGuiInset = true
-    ui.menuGui.Parent = ui.expSettings
+-- Holder image area (left)
+local hr = Instance.new("Frame")
+hr.Name = "Holder"
+hr.Size = UDim2.new(0, 370, 1, 0)
+hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+hr.BackgroundTransparency = 0.2
+hr.Parent = mtb
+createUICorner(hr, 1, 0)
+createUIListLayout(hr, 0, 10, HCenter, VCenter, FillH)
 
-    -- Main TopBar holder (small)
-    ui.mtb = Instance.new("Frame")
-    ui.mtb.Name = "TopBar"
-    ui.mtb.Position = UDim2.new(0, 0, 0.02, 0)
-    ui.mtb.Size = UDim2.new(1, 0, 0, 43)
-    ui.mtb.BackgroundTransparency = 1
-    ui.mtb.Parent = ui.menuGui
+-- Top bar buttons container (tb) — starts collapsed
+local tb = Instance.new("ScrollingFrame")
+tb.Name = "TopButtons"
+tb.Size = UDim2.new(0, 0, 0, 0) -- start collapsed
+tb.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+tb.BackgroundTransparency = 0.2
+tb.ScrollBarThickness = 4
+tb.CanvasSize = UDim2.new(0, 0, 0, 0)
+tb.ScrollingDirection = Enum.ScrollingDirection.XY
+tb.Visible = false
+tb.Parent = mtb
+createUICorner(tb, 0.02, 0)
 
-    -- Holder image area (left)
-    ui.hr = Instance.new("Frame")
-    ui.hr.Name = "Holder"
-    ui.hr.Size = UDim2.new(0, 370, 1, 0)
-    ui.hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
-    ui.hr.BackgroundTransparency = 0.2
-    ui.hr.Parent = ui.mtb
-
-    -- Top bar buttons container (tb) — starts collapsed
-    ui.tb = Instance.new("ScrollingFrame")
-    ui.tb.Name = "TopButtons"
-    ui.tb.Size = UDim2.new(0, 0, 0, 0)
-    ui.tb.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
-    ui.tb.BackgroundTransparency = 0.2
-    ui.tb.ScrollBarThickness = 4
-    ui.tb.CanvasSize = UDim2.new(0, 0, 0, 0)
-    ui.tb.ScrollingDirection = Enum.ScrollingDirection.XY
-    ui.tb.Visible = false
-    ui.tb.Parent = ui.mtb
-
-    -- Grid layout
-    ui.grid = Instance.new("UIGridLayout")
-    ui.grid.CellSize = UDim2.new(0, 70, 0, 70)
-    ui.grid.CellPadding = UDim2.new(0, 5, 0, 5)
-    ui.grid.FillDirection = Enum.FillDirection.Horizontal
-    ui.grid.SortOrder = Enum.SortOrder.Name
-    ui.grid.Parent = ui.tb
-
-    -- Buttons / icons (store directly on ui table)
-    local function newImage(name, asset)
-        local b = Instance.new("ImageButton")
-        b.Name = name
-        b.Size = UDim2.new(0, 36, 0.8, 0)
-        if asset then b.Image = asset end
-        b.BackgroundTransparency = 0.8
-        b.Active = true
-        b.Visible = false
-        return b
-    end
-
-    ui.Set   = newImage("a2_Settings", "rbxassetid://85613740372383"); ui.Set.Parent   = ui.hr
-    ui.hbm   = newImage("a9999_HamburgerMenu", "rbxassetid://12214197591"); ui.hbm.Parent   = ui.hr
-    ui.OC    = newImage("a1_Open/Close", "rbxassetid://8877547836"); ui.OC.Parent    = ui.hr
-    ui.gpt   = newImage("a3_ChatGPT", "rbxassetid://15419312153"); ui.gpt.Parent   = ui.hr
-    ui.liger = newImage("a4_LighterCyan.ai", "rbxassetid://83032822916288"); ui.liger.Parent = ui.hr
-
-    ui.wa1 = Instance.new("Frame")
-    ui.wa1.Name = "LoadFrame"
-    ui.wa1.BackgroundTransparency = 1
-    ui.wa1.Size = UDim2.new(0.8, 0, 1, 0)
-    ui.wa1.Active = false
-    ui.wa1.Visible = true
-    ui.wa1.Parent = ui.hr
-
-    ui.wl = Instance.new("TextLabel")
-    ui.wl.Name = "Warning & Load"
-    ui.wl.BackgroundTransparency = 1
-    ui.wl.Size = UDim2.new(1, 0, 1, 0)
-    ui.wl.Text = "HumanoidRootPart not found."
-    ui.wl.TextScaled = true
-    ui.wl.Active = false
-    ui.wl.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ui.wl.Visible = true
-    ui.wl.Parent = ui.wa1
-
-    return ui
-end
-
--- create UI and map names used later in script (keeps compatibility)
-local healthBar = getHealthBar()
-local UI = createExperienceUI(healthBar) or {}
-
-menuGui   = UI.menuGui
-mtb       = UI.mtb
-hr        = UI.hr
-tb        = UI.tb
-grid      = UI.grid
-Set       = UI.Set
-hbm       = UI.hbm
-OC        = UI.OC
-gpt       = UI.gpt
-liger     = UI.liger
-wa1       = UI.wa1
-wl        = UI.wl
-expSettings = UI.expSettings
--- END REPLACEMENT 
---REPLACEMENT
---update visibility function for tb and its children
+-- AFTER TB
+local grid = Instance.new("UIGridLayout")
+grid.CellSize = UDim2.new(0, 70, 0, 70)   -- ขนาดแต่ละ cell (70x70 px)
+grid.CellPadding = UDim2.new(0, 5, 0, 5)  -- ระยะห่างระหว่าง cell
+grid.FillDirection = Enum.FillDirection.Horizontal
+grid.SortOrder = Enum.SortOrder.Name
+grid.Parent = tb
+-- update visibility function for tb and its children
 local function updateButtonsVisibility()
     local scale = tb.Size.X.Scale or 0
 
@@ -649,6 +588,87 @@ end)
 end
 
 tb:GetPropertyChangedSignal("Size"):Connect(updateButtonsVisibility)
+
+-- Settings button (on hr)
+local Set = Instance.new("ImageButton")
+Set.Name = "a2_Settings"
+Set.Size = UDim2.new(0, 36, 0.8, 0)
+Set.Image = "rbxassetid://85613740372383"
+Set.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Set.BackgroundTransparency = 0.8
+Set.Active = true
+Set.Visible = false
+Set.Parent = hr
+createUICorner(Set, 1, 0)
+
+-- Hamburger menu (hbm)
+local hbm = Instance.new("ImageButton")
+hbm.Name = "a9999_HamburgerMenu"
+hbm.Size = UDim2.new(0, 36, 0.8, 0)
+hbm.Image = "rbxassetid://12214197591"
+hbm.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+hbm.BackgroundTransparency = 0.8
+hbm.Active = true
+hbm.Visible = false
+hbm.Parent = hr
+createUICorner(hbm, 1, 0)
+
+-- Open/Close
+local OC = Instance.new("ImageButton")
+OC.Name = "a1_Open/Close"
+OC.Size = UDim2.new(0, 36, 0.8, 0)
+OC.Image = "rbxassetid://8877547836"
+OC.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+OC.BackgroundTransparency = 0.8
+OC.Active = true
+OC.Visible = false
+OC.Parent = hr
+createUICorner(OC, 1, 0)
+
+-- GPT
+local gpt = Instance.new("ImageButton")
+gpt.Name = "a3_ChatGPT"
+gpt.Size = UDim2.new(0, 36, 0.8, 0)
+gpt.Image = "rbxassetid://15419312153"
+gpt.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+gpt.BackgroundTransparency = 0.8
+gpt.Active = true
+gpt.Visible = false
+gpt.Parent = hr
+createUICorner(gpt, 1, 0)
+
+-- LighterCyan
+local liger = Instance.new("ImageButton")
+liger.Name = "a4_LighterCyan.ai"
+liger.Size = UDim2.new(0, 36, 0.8, 0)
+liger.Image = "rbxassetid://83032822916288"
+liger.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+liger.BackgroundTransparency = 0.8
+liger.Active = true
+liger.Visible = false
+liger.Parent = hr
+createUICorner(liger, 1, 0)
+
+-- Wait1
+local wa1 = Instance.new("Frame")
+wa1.Name = "LoadFrame"
+wa1.BackgroundTransparency = 1
+wa1.Size = UDim2.new(0.8, 0, 1, 0)
+wa1.Active = false
+wa1.Visible = true
+wa1.Parent = hr
+
+-- Warning & Load
+local wl = Instance.new("TextLabel")
+wl.Name = "Warning & Load"
+wl.BackgroundTransparency = 1
+wl.Size = UDim2.new(1, 0, 1, 0)
+wl.Text = "HumanoidRootPart not found."
+wl.TextScaled = true
+wl.Active = false
+wl.TextColor3 = Color3.fromRGB(255, 255, 255)
+wl.Visible = true
+wl.Parent = wa1
 
 -- ===== OC (Open/Close) wiring - REPLACEMENT =====
 local OC_OPEN_IMAGE  = "rbxassetid://126759169574128" -- image when OPEN (show Set/hbm)
