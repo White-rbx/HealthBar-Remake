@@ -923,22 +923,23 @@ local function characterHasHRP(plr)
     return false
 end
 
--- main watcher loop in a safe spawn
+-- main watcher loop (REPLACEMENT: no continue/goto, robust guards)
 task.spawn(function()
     while true do
         task.wait(CHECK_INTERVAL)
 
-        -- try resolving UI if missing
-        if not (isGuiObject(ui_tb) and isGuiObject(ui_hr) and (ui_Set~=nil) and (ui_hbm~=nil) and (ui_OC~=nil)) then
-            local ok, a,b,c,d,e,f,g,h,i,j,k = pcall(resolveUI)
-            if ok then
-                ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = a,b,c,d,e,f,g,h,i,j
-                -- log what we found (non-nil only)
+        -- Try resolving UI refs if missing or invalid
+        if not (isGuiObject(ui_tb) and isGuiObject(ui_hr) and (ui_OC ~= nil)) then
+            local ok, a, b, c, d, e, f, g, h, i = pcall(function() return resolveUI() end)
+            if ok and a then
+                -- resolveUI() may return multiple values; try to assign safely
+                ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt =
+                    a, b, c, d, e, f, g, h, i
                 if ui_tb then dbg("found ui_tb = %s", ui_tb:GetFullName()) end
                 if ui_hr  then dbg("found ui_hr  = %s", ui_hr:GetFullName()) end
                 if ui_OC  then dbg("found ui_OC  = %s", ui_OC:GetFullName()) end
             else
-                warnDbg("resolveUI pcall failed: %s", tostring(a))
+                warnDbg("resolveUI pcall failed or returned nil: %s", tostring(a))
             end
 
             if not (ui_tb and ui_hr and ui_OC) then
@@ -946,84 +947,108 @@ task.spawn(function()
                 if timerMissing >= TIMEOUT then
                     warnDbg("UI still missing after %.2fs, waiting...", timerMissing)
                 end
-                continue
+                -- Skip the rest of this iteration: we just won't run the "core" logic below
             else
                 timerMissing = 0
             end
         end
 
-        -- check HRP presence
-        local pl = Players.LocalPlayer
-        local hasHRP = false
-        local ok, result = pcall(characterHasHRP, pl)
-        if ok then hasHRP = result else warnDbg("characterHasHRP failed: %s", tostring(result)) end
-
-        if hasHRP then
-            timerMissing = 0
-            if not isOpen then
-                dbg("HRP detected -> opening UI")
-                -- safe set mtb position (use pcall)
-                if ui_mtb and isGuiObject(ui_mtb) then
-                    safeCall(function() safeTween(ui_mtb, { Position = UDim2.new(0.48, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28, Enum.EasingStyle.Quad) end, "safeTween(ui_mtb)")
-                elseif ui_tb and isGuiObject(ui_tb) then
-                    safeCall(function() safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad) end, "safeTween(ui_tb)")
-                end
-
-                -- shrink hr safely
-                if ui_hr and isGuiObject(ui_hr) then
-                    safeCall(function() safeTween(ui_hr, { Size = UDim2.new(0,44, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28) end, "safeTween(ui_hr)")
-                end
-
-                pcall(function()
-                    if ui_Set  and isGuiObject(ui_Set)  then ui_Set.Visible  = false end
-                    if ui_hbm and isGuiObject(ui_hbm) then ui_hbm.Visible = false end
-                    if ui_OC  and isGuiObject(ui_OC)  then ui_OC.Visible  = true  end
-                    if ui_gpt and isGuiObject(ui_gpt) then ui_gpt.Visible = false end
-                end)
-
-                if ui_wa1 and isGuiObject(ui_wa1) then
-                    pcall(function()
-                        ui_wa1.Visible = false
-                        -- if you had initial pos stored, you can tween back
-                    end)
-                end
-
-                isOpen = true
+        -- Only proceed with main logic when required UI refs are present
+        if (ui_tb and ui_hr and ui_OC) then
+            -- check HRP presence
+            local pl = Players.LocalPlayer
+            local hasHRP = false
+            local ok2, result = pcall(characterHasHRP, pl)
+            if ok2 then
+                hasHRP = result
+            else
+                warnDbg("characterHasHRP failed: %s", tostring(result))
             end
-        else
-            timerMissing = timerMissing + CHECK_INTERVAL
-            if timerMissing >= TIMEOUT then
-                if isOpen then
-                    dbg("HRP missing -> closing UI")
+
+            if hasHRP then
+                timerMissing = 0
+                if not isOpen then
+                    dbg("HRP detected -> opening UI")
+
+                    -- Prefer mtb if available, otherwise try tb
                     if ui_mtb and isGuiObject(ui_mtb) then
-                        safeCall(function() safeTween(ui_mtb, { Position = UDim2.new(0,0,0.02,0) }, 0.28) end, "safeTween(ui_mtb_close)")
+                        safeCall(function()
+                            safeTween(ui_mtb, {
+                                Position = UDim2.new(MTB_X_OPEN or 0, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset)
+                            }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                        end, "safeTween(ui_mtb)")
                     elseif ui_tb and isGuiObject(ui_tb) then
-                        safeCall(function() safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28) end, "safeTween(ui_tb_close)")
+                        safeCall(function()
+                            safeTween(ui_tb, { Position = UDim2.new(0, 0, 0, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                        end, "safeTween(ui_tb)")
+                    end
+
+                    -- shrink hr safely
+                    if ui_hr and isGuiObject(ui_hr) then
+                        safeCall(function()
+                            safeTween(ui_hr, {
+                                Size = UDim2.new(0, HR_WIDTH_OPEN or 185, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset)
+                            }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                        end, "safeTween(ui_hr)")
+                    end
+
+                    -- show/hide children safely
+                    pcall(function()
+                        if ui_Set  and isGuiObject(ui_Set)  then ui_Set.Visible  = true end
+                        if ui_hbm and isGuiObject(ui_hbm) then ui_hbm.Visible = true end
+                        if ui_gpt and isGuiObject(ui_gpt) then ui_gpt.Visible = true end
+                        if ui_OC  and isGuiObject(ui_OC)  then ui_OC.Visible  = true end
+                    end)
+
+                    if ui_wa1 and isGuiObject(ui_wa1) then
+                        pcall(function() ui_wa1.Visible = false end)
+                    end
+
+                    isOpen = true
+                end
+            else
+                -- No HRP -> close UI if it was open
+                if isOpen then
+                    dbg("HRP lost -> closing UI")
+
+                    if ui_mtb and isGuiObject(ui_mtb) then
+                        safeCall(function()
+                            safeTween(ui_mtb, {
+                                Position = UDim2.new(MTB_X_CLOSED or 0.48, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset)
+                            }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                        end, "safeTween(ui_mtb_close)")
+                    elseif ui_tb and isGuiObject(ui_tb) then
+                        safeCall(function()
+                            safeTween(ui_tb, { Position = UDim2.new(0, 0, 0, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                        end, "safeTween(ui_tb_close)")
                     end
 
                     if ui_hr and isGuiObject(ui_hr) then
-                        safeCall(function() safeTween(ui_hr, { Size = UDim2.new(0,130, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28) end, "safeTween(ui_hr_expand)")
+                        safeCall(function()
+                            safeTween(ui_hr, {
+                                Size = UDim2.new(0, HR_WIDTH_CLOSE or 44, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset)
+                            }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+                        end, "safeTween(ui_hr_close)")
                     end
 
                     pcall(function()
                         if ui_Set  and isGuiObject(ui_Set)  then ui_Set.Visible  = false end
                         if ui_hbm and isGuiObject(ui_hbm) then ui_hbm.Visible = false end
-                        if ui_OC  and isGuiObject(ui_OC)  then ui_OC.Visible  = false end
                         if ui_gpt and isGuiObject(ui_gpt) then ui_gpt.Visible = false end
+                        if ui_OC  and isGuiObject(ui_OC)  then ui_OC.Visible  = false end
                     end)
-
-                    -- show wa1 / wl again
-                    if ui_wa1 and isGuiObject(ui_wa1) then
-                        pcall(function() ui_wa1.Visible = true end)
-                    end
-                    if ui_wl and isGuiObject(ui_wl) then
-                        pcall(function() ui_wl.Visible = true end)
-                    end
 
                     isOpen = false
                 end
+
+                -- increment missing timer and warn occasionally
+                timerMissing = timerMissing + CHECK_INTERVAL
+                if timerMissing >= TIMEOUT then
+                    warnDbg("No HRP for %.2fs, UI remains closed.", timerMissing)
+                end
             end
         end
+        -- end of iteration; loop will repeat
     end
 end)
 
