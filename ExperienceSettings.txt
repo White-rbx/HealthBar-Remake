@@ -1,35 +1,29 @@
--- DEBUG (ชั่วคราว) : วางบรรทัดนี้เป็นบรรทัด 1 ของสตริงที่ส่งเข้า loadstring
-do
-    -- ป้องกัน pcall ถูกเรียกด้วย non-function
-    local real_pcall = pcall
-    pcall = function(fn, ...)
-        if type(fn) ~= "function" then
-            warn("[DBG] pcall ได้ค่าแรกไม่ใช่ฟังก์ชัน: " .. tostring(fn))
-            warn(debug.traceback("", 2))
-            return false, ("pcall: non-function (%s)"):format(tostring(fn))
-        end
-        return real_pcall(fn, ...)
-    end
+-- TEMP DEBUG (วางเป็นบรรทัดแรกของสตริงที่ส่งเข้า loadstring)
+print("[DBG] START simple top-level checks")
 
-    -- เตือนเมื่อมีการอ่าน global ที่เป็น nil
-    local mt = getmetatable(_G) or {}
-    local old_index = mt.__index
-    mt.__index = function(t, k)
-        local v = rawget(t, k)
-        if v == nil then
-            warn("[DBG] global '" .. tostring(k) .. "' เป็น nil เมื่อถูกเข้าถึง")
-            warn(debug.traceback("", 2))
-        end
-        if type(old_index) == "function" then
-            return old_index(t, k)
-        end
-        return v
-    end
-    setmetatable(_G, mt)
+local check_names = {
+    "resolveUI","safeTween","tweenObject","pcall","_G",
+    "OC","Set","mtb","hr","menuGui","expSettings","player",
+    "Players","RunService","CoreGui","game","task"
+}
 
-    -- สรุปสั้นๆ ตอนเริ่มทำงาน
-    warn("[DBG STARTUP] resolveUI=" .. tostring(type(resolveUI)) .. " safeTween=" .. tostring(type(safeTween)) .. " tweenObject=" .. tostring(type(tweenObject)))
+for _, name in ipairs(check_names) do
+    local val = rawget(_G, name)
+    local t = type(val)
+    -- if rawget returned nil, try direct global read (some sandboxes differ)
+    if val == nil then
+        val = _G[name]
+        t = type(val)
+    end
+    -- avoid calling :GetFullName() etc. — just print type + tostring
+    print(("[DBG] %s => type=%s, tostring=%s"):format(name, tostring(t), tostring(val)))
 end
+
+-- Also print a tiny context note (loadstring line reporting info)
+print("[DBG] NOTE: error reported as ':18' means line 18 of this loadstring chunk")
+
+-- Stop executing further code so we don't trigger the crash yet.
+return
 
 -- ========= HEALTHBAR AND SOUNDS ===========
 -- ใช้ใน LocalScript (client-side)
