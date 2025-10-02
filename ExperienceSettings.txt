@@ -652,7 +652,7 @@ local wl = Instance.new("TextLabel")
 wl.Name = "Warning & Load"
 wl.BackgroundTransparency = 1
 wl.Size = UDim2.new(1, 0, 1, 0)
-wl.Text = "Not available for this experience."
+wl.Text = "HumanoidRootPart not found."
 wl.TextScaled = true
 wl.Active = false
 wl.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -891,16 +891,16 @@ task.spawn(function()
                     pcall(function()
                         if ui_Set  then ui_Set.Visible  = false end
                         if ui_hbm then ui_hbm.Visible = false end
-                        if ui_OC  then ui_OC.Visible  = true end
+                        if ui_OC  then ui_OC.Visible  = false end
                         if ui_gpt then ui_gpt.Visible = false end
                     end)
 
                     -- แสดง wa1 และ wl
                     if ui_wa1 and ui_wa1.Parent then
-                        ui_wa1.Visible = false
+                        ui_wa1.Visible = true
                     end
                     if ui_wl and ui_wl.Parent then
-                        ui_wl.Visible = false
+                        ui_wl.Visible = true
                     end
 
                     isOpen = false
