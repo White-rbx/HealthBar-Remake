@@ -903,7 +903,11 @@ local timerMissing = 0
 local isOpen = false
 
 -- safe property helpers
-local function isGuiObject(x) return x ~= nil and type(x) == "table" and (x.ClassName == "Frame" or x:IsA and x:IsA("GuiObject")) end
+local function isGuiObject(x)
+    return x ~= nil
+       and type(x) == "table"
+       and ( x.ClassName == "Frame" or (x.IsA and x:IsA("GuiObject")) )
+end
 
 -- characterHasHRP with robust checks
 local function characterHasHRP(plr)
