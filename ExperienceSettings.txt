@@ -762,8 +762,8 @@ end
 local Players = game:GetService("Players")
 
 -- interval config
-local CHECK_INTERVAL = 0.12 -- ระยะเวลาเช็ค (วินาที)
-local TIMEOUT = 8.5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
+local CHECK_INTERVAL = 0.1 -- ระยะเวลาเช็ค (วินาที)
+local TIMEOUT = 5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
 
 -- เก็บตำแหน่งเริ่มต้น
 local wa1_initial_pos, hr_initial_size, mtb_initial_pos
@@ -887,7 +887,7 @@ task.spawn(function()
                         safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
                     end
 
-                    safeTween(ui_hr, { Size = UDim2.new(0,200, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                    safeTween(ui_hr, { Size = UDim2.new(0,300, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                     pcall(function()
                         if ui_Set  then ui_Set.Visible  = false end
                         if ui_hbm then ui_hbm.Visible = false end
