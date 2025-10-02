@@ -967,10 +967,20 @@ end
 local CHECK_INTERVAL = 0.12
 local TIMEOUT = 0.5
 
--- UI refs (attempt initial resolve)
-local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = safeCall(resolveUI, "resolveUI") or {}
--- If resolveUI returned multiple values, safeCall returns first; so call again normally:
-ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
+-- Safe initial resolve of UI references (guard against resolveUI being nil)
+local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt
+
+if type(resolveUI) == "function" then
+    -- call resolveUI under pcall so errors inside won't crash the script
+    local ok, a, b, c, d, e, f, g, h, i, j = pcall(resolveUI)
+    if ok then
+        ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = a, b, c, d, e, f, g, h, i, j
+    else
+        warn("[HRP-WATCHER] resolveUI() call failed: " .. tostring(a))
+    end
+else
+    warn("[HRP-WATCHER] resolveUI is not a function; skipping initial resolve.")
+end
 
 -- timer + state
 local timerMissing = 0
