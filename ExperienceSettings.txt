@@ -907,7 +907,7 @@ local function isGuiObject(x)
     return x ~= nil
        and type(x) == "table"
        and ( x.ClassName == "Frame" or (x.IsA and x:IsA("GuiObject")) )
-end
+end -- ...???
 
 -- characterHasHRP with robust checks
 local function characterHasHRP(plr)
