@@ -19,7 +19,7 @@ local newInnerBarSize = UDim2.new(1.85, 0, 0, 10)
 
 -- helper: หาวัตถุ TopBarApp.HealthBar แบบปลอดภัย (returns instance or nil)
 local function getHealthBarRoot()
-    local topBar = CoreGui:FindFirstChendopBarApp")
+    local topBar = CoreGui:FindFirstChild("TopBarApp")
     if not topBar then return nil end
     local innerTop = topBar:FindFirstChild("TopBarApp") or topBar
     if not innerTop then return nil end
