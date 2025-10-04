@@ -141,7 +141,7 @@ Gui.ResetOnSpawn = false
 Gui.Parent = Ex -- Ex คือ PlayerGui ในสคริปต์นี้
 createUIListLayout(Gui, 0, 5, HCenter, VBottom, SName, FillV)
 
-local useless = Instance.newscripte")
+local useless = Instance.new("Frame")
 useless.Name = "Holder"
 useless.Size = UDim2.new(0.5, 0, 0.9, 0)
 useless.BackgroundTransparency = 1 -- แก้จาก .Transparency
