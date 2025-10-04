@@ -1015,42 +1015,87 @@ end
 -- ----------------------------
 -- GUI Hook (read-only)
 -- ----------------------------
+-- ===== replace from here (line ~1018) =====
 local function safe_connect_mouse(btn, fn)
     if not btn then return end
-    pcall(function() if typeof(btn.MouseButton1Click) == "RBXScriptSignal" then btn.MouseButton1Click:Connect(fn) end end)
+    pcall(function()
+        if typeof(btn.MouseButton1Click) == "RBXScriptSignal" then
+            btn.MouseButton1Click:Connect(fn)
+        end
+    end)
 end
 
 local function hook_gui_handlers()
     local inset = wait_for_gui(GUI_WAIT_TIMEOUT)
-    if not inset then warn("[LC] GUI not found; hooks disabled"); return false end
+    if not inset then
+        warn("[LC] GUI not found; hooks disabled")
+        return false
+    end
+
     local inputFrame = inset:FindFirstChild("a3_Input&Send")
     if not inputFrame then
         for _,v in ipairs(inset:GetDescendants()) do
-            if v.Name == "a3_Input&Send" and v:IsA("Frame") then inputFrame = v; break end
+            if v.Name == "a3_Input&Send" and v:IsA("Frame") then
+                inputFrame = v
+                break
+            end
         end
     end
-    if not inputFrame then warn("[LC] input frame missing"); return false end
+    if not inputFrame then
+        warn("[LC] input frame missing")
+        return false
+    end
+
     local AskBox = inputFrame:FindFirstChild("Ask")
     local SendBtn = inputFrame:FindFirstChild("Send")
     local ClearBtn = inputFrame:FindFirstChild("clear")
     local RecBtn = inputFrame:FindFirstChild("re-chat") or inputFrame:FindFirstChild("rec")
 
     safe_connect_mouse(SendBtn, function()
-        local txt
-        pcall(function() if AskBox and AskBox:IsA("TextBox") then txt = AskBox.Text end end)
-        if txt and tostring(txt):match("%S") then
-            ThinkAsync(txt, read_latest_a2(find_scroll_frame()))
-            pcall(function() if AskBox then AskBox.Text = "" end end)
+        local txt = nil
+        pcall(function()
+            if AskBox and AskBox:IsA("TextBox") then
+                txt = AskBox.Text
+            end
+        end)
+
+        if not (txt and tostring(txt):match("%S")) then
+            return
         end
+
+        -- get latest context safely
+        local latest = ""
+        pcall(function()
+            local sc = find_scroll_frame()
+            if sc then latest = read_latest_a2(sc) or "" end
+        end)
+
+        -- call ThinkAsync safely (only if defined)
+        if type(ThinkAsync) == "function" then
+            pcall(ThinkAsync, txt, latest)
+        else
+            show_message("Internal error: ThinkAsync unavailable", {isError = true})
+            warn("[LC] ThinkAsync is nil when SendBtn clicked")
+        end
+
+        -- clear AskBox safely
+        pcall(function() if AskBox and AskBox:IsA("TextBox") then AskBox.Text = "" end end)
     end)
 
-    safe_connect_mouse(ClearBtn, function() pcall(function() if AskBox and AskBox:IsA("TextBox") then AskBox.Text = "" end end); update_canvas(find_scroll_frame()) end)
+    safe_connect_mouse(ClearBtn, function()
+        pcall(function() if AskBox and AskBox:IsA("TextBox") then AskBox.Text = "" end end)
+        update_canvas(find_scroll_frame())
+    end)
 
     safe_connect_mouse(RecBtn, function()
         local sc = find_scroll_frame()
         if sc then
             pcall(function()
-                for _,c in ipairs(sc:GetChildren()) do if c:IsA("Frame") then pcall(function() c:Destroy() end) end end
+                for _,c in ipairs(sc:GetChildren()) do
+                    if c:IsA("Frame") then
+                        pcall(function() c:Destroy() end)
+                    end
+                end
             end)
             update_canvas(sc)
         end
@@ -1059,13 +1104,25 @@ local function hook_gui_handlers()
     if AskBox and AskBox:IsA("TextBox") then
         pcall(function()
             AskBox.FocusLost:Connect(function(enter)
-                if enter then
-                    local t = AskBox.Text or ""
-                    if t and t:match("%S") then
-                        ThinkAsync(t, read_latest_a2(find_scroll_frame()))
-                        pcall(function() AskBox.Text = "" end)
-                    end
+                if not enter then return end
+                local t = ""
+                pcall(function() t = AskBox.Text or "" end)
+                if not t:match("%S") then return end
+
+                local latest = ""
+                pcall(function()
+                    local sc = find_scroll_frame()
+                    if sc then latest = read_latest_a2(sc) or "" end
+                end)
+
+                if type(ThinkAsync) == "function" then
+                    pcall(ThinkAsync, t, latest)
+                else
+                    show_message("Internal error: ThinkAsync unavailable", {isError = true})
+                    warn("[LC] ThinkAsync is nil on FocusLost")
                 end
+
+                pcall(function() AskBox.Text = "" end)
             end)
         end)
     end
@@ -1076,7 +1133,6 @@ end
 
 -- init: initial rebuild (best effort)
 pcall(function()
-    -- try to invoke DataStorage_Get to warm local corpus in other modules
     pcall(function() wait_for_bindable("ai.DataStorage_Get") end)
 end)
 
@@ -1089,5 +1145,4 @@ task.spawn(function()
         end
     end
 end)
-
-print("[LC.Upgraded] Ready")
+-- ===== replace up to here (line ~1094) =====
