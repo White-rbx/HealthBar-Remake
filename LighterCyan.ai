@@ -422,7 +422,9 @@ btm("a4.Explorer", "🌏 Explorer", 0)
 btm("a50.More", "📦 More", 0)
 createUIListLayout(option, 0, 5, HLeft, VCenter, SName, FillH) -- btw Scaled 0 because UIListLayout haha, now go back to work.
 
--- SEND + TRAIN snippet (ใช้ path ตามที่ผู้ใช้ให้)
+-- SEND + TRAIN (extended)
+-- วาง/ฝังหลัง GUI ที่อยู่ใน CoreGui path ตามที่คุณบอก
+
 local function safeGet(pathFn)
     local ok, res = pcall(pathFn)
     if ok then return res end
@@ -437,40 +439,45 @@ end
 
 local root = safeGet(basePath)
 if not root then
-    warn("[SEND_SNIPPET] ไม่พบ LighterCyan.ai ที่ CoreGui path — ตรวจสอบว่า GUI โหลดแล้วหรือ executor มีสิทธิ์เข้าถึง CoreGui")
-    -- ยังไม่คืน/หยุดให้ script “ไม่พัง” ต่อไป (แต่ส่วนที่ใช้งานจะ no-op)
+    warn("[SEND_EXT] ไม่พบ LighterCyan.ai (CoreGui path). Ensure GUI loaded / executor permission.")
+    return
 end
 
-local Scroll = root and root:FindFirstChild("a2_Chat") and root.a2_Chat:FindFirstChild("Chat")
-local send  = root and root:FindFirstChild("a3_Input&Send") and root["a3_Input&Send"]:FindFirstChild("Send")
-local clear = root and root:FindFirstChild("a3_Input&Send") and root["a3_Input&Send"]:FindFirstChild("clear")
-local rec   = root and root:FindFirstChild("a3_Input&Send") and root["a3_Input&Send"]:FindFirstChild("re-chat") or (root and root["a3_Input&Send"] and root["a3_Input&Send"]:FindFirstChild("rec"))
-local box   = root and root:FindFirstChild("a3_Input&Send") and root["a3_Input&Send"]:FindFirstChild("Ask")
+local input = root["a3_Input&Send"]
+local chat  = root["a2_Chat"]
 
--- 안전한 helpers
-local function safeCall(fn, ...)
-    if type(fn) == "function" then
-        local ok, res = pcall(fn, ...)
-        return ok, res
-    end
-    return false, nil
+local box   = input and input:FindFirstChild("Ask")
+local send  = input and input:FindFirstChild("Send")
+local clear = input and input:FindFirstChild("clear")
+local rec   = input and input:FindFirstChild("re-chat")
+local Scroll = chat and chat:FindFirstChild("Chat")
+
+-- re-use helper creators if caller ไม่มี plr/ai
+local function createAiFrame(text)
+    if not Scroll then return nil end
+    local px = math.clamp(30 + math.ceil(#tostring(text)/40)*18, 28, 400)
+    local f = Instance.new("Frame"); f.Size = UDim2.new(0.96,0,0,px); f.Parent = Scroll
+    local img = Instance.new("ImageLabel"); img.Name="a1"; img.Size=UDim2.new(0,1,0,1); img.BackgroundTransparency=1; img.Parent=f
+    local lbl = Instance.new("TextLabel"); lbl.Name="a2"; lbl.Text = tostring(text or ""); lbl.Size = UDim2.new(0.88,-8,1,0); lbl.Position = UDim2.new(0,56,0,0)
+    lbl.BackgroundTransparency = 1; lbl.TextWrapped = true; lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.Parent = f
+    return f
 end
 
-local function ensureLayout(s)
-    if not s then return nil end
-    local l = s:FindFirstChildOfClass("UIListLayout")
-    if not l then
-        l = Instance.new("UIListLayout")
-        l.SortOrder = Enum.SortOrder.LayoutOrder
-        l.Padding = UDim.new(0,6)
-        l.Parent = s
-    end
-    return l
+local function createPlrFrame(text)
+    if not Scroll then return nil end
+    local px = math.clamp(30 + math.ceil(#tostring(text)/40)*18, 28, 400)
+    local f = Instance.new("Frame"); f.Size = UDim2.new(0.96,0,0,px); f.Parent = Scroll
+    local lbl = Instance.new("TextLabel"); lbl.Name="a1"; lbl.Text = tostring(text or ""); lbl.Size = UDim2.new(0.88,-8,1,0); lbl.Position = UDim2.new(0,56,0,0)
+    lbl.BackgroundTransparency = 1; lbl.TextWrapped = true; lbl.TextXAlignment = Enum.TextXAlignment.Right; lbl.Parent = f
+    local img = Instance.new("ImageLabel"); img.Name="a2"; img.Size=UDim2.new(0,1,0,1); img.BackgroundTransparency=1; img.Parent=f
+    return f
 end
 
-local layout = ensureLayout(Scroll)
-local function updateCanvas()
-    if not (Scroll and layout) then return end
+-- Canvas helper (UIListLayout expected)
+local function safeUpdateCanvas()
+    if not Scroll then return end
+    local layout = Scroll:FindFirstChildOfClass("UIListLayout")
+    if not layout then return end
     task.defer(function()
         local ok, size = pcall(function() return layout.AbsoluteContentSize end)
         if ok and size then
@@ -481,199 +488,205 @@ local function updateCanvas()
         end
     end)
 end
-if layout then layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas) end
 
--- message creators ที่เข้ากับ a1 / a2 ชื่อ TextLabel ตามไฟล์ของคุณ
-local function createPlrFrame(text)
-    if not Scroll then return nil end
-    local px = math.clamp(30 + math.ceil(#tostring(text)/40)*18, 28, 400)
-    local f = Instance.new("Frame"); f.Name = "plr"; f.Size = UDim2.new(0.96,0,0,px); f.Parent = Scroll
-    local lbl = Instance.new("TextLabel"); lbl.Name = "a1"; lbl.Text = tostring(text or ""); lbl.Size = UDim2.new(0.88,-8,1,0); lbl.Position = UDim2.new(0,56,0,0)
-    lbl.BackgroundTransparency = 1; lbl.TextWrapped = true; lbl.TextXAlignment = Enum.TextXAlignment.Right; lbl.Parent = f
-    -- placeholder a2 (image or meta) ให้ ReadLatestA2 หาได้
-    local img = Instance.new("ImageLabel"); img.Name = "a2"; img.Size = UDim2.new(0,1,0,1); img.BackgroundTransparency = 1; img.Parent = f
-    return f
+-- Corpus per language
+local Corpus = { en = {}, th = {}, ext = {} } -- ext for external content
+local function detectLang(str)
+    if not str or str == "" then return "en" end
+    -- simple Thai detection: any char in Thai unicode range
+    if tostring(str):find("[%z\1-\127\194-\244]") then
+        -- naive: check for Thai characters (ก-ฮ)
+        if tostring(str):find("[ก-ฮ]") then return "th" end
+    end
+    return "en"
 end
 
-local function createAiFrame(text)
-    if not Scroll then return nil end
-    local px = math.clamp(30 + math.ceil(#tostring(text)/40)*18, 28, 400)
-    local f = Instance.new("Frame"); f.Name = "ai"; f.Size = UDim2.new(0.96,0,0,px); f.Parent = Scroll
-    local img = Instance.new("ImageLabel"); img.Name = "a1"; img.Size = UDim2.new(0,1,0,1); img.BackgroundTransparency = 1; img.Parent = f
-    local lbl = Instance.new("TextLabel"); lbl.Name = "a2"; lbl.Text = tostring(text or ""); lbl.Size = UDim2.new(0.88,-8,1,0); lbl.Position = UDim2.new(0,56,0,0)
-    lbl.BackgroundTransparency = 1; lbl.TextWrapped = true; lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.Parent = f
-    return f
+local function AddToCorpus(lang, txt)
+    if not txt or txt == "" then return end
+    lang = lang or detectLang(txt)
+    Corpus[lang] = Corpus[lang] or {}
+    table.insert(Corpus[lang], tostring(txt))
 end
 
-local function createMesg(text)
-    if not Scroll then return nil end
-    local px = 40
-    local f = Instance.new("Frame"); f.Name = "message"; f.Size = UDim2.new(0.96,0,0,px); f.Parent = Scroll
-    local lbl = Instance.new("TextLabel"); lbl.Name = "a1"; lbl.Text = tostring(text or ""); lbl.Size = UDim2.new(0.88,-8,1,0); lbl.BackgroundTransparency=1; lbl.TextWrapped=true; lbl.TextXAlignment = Enum.TextXAlignment.Center; lbl.Parent = f
-    return f
-end
-
--- Corpus, Train, ReadLatestA2, Think (เหมือนเดิม แต่อยู่ local)
-local Corpus = {}
-local function AddToCorpus(s) if type(s) == "string" and s:match("%S") then table.insert(Corpus, s) end end
-
-local function TrainFromScroll()
+local function TrainFromScroll(lang)
     if not Scroll then return end
+    lang = lang or "entotal"
     for _, d in ipairs(Scroll:GetDescendants()) do
         if d:IsA("TextLabel") and (d.Name == "a1" or d.Name == "a2") then
-            AddToCorpus(d.Text)
+            if lang == "entotal" then
+                AddToCorpus(detectLang(d.Text), d.Text)
+            else
+                AddToCorpus(lang, d.Text)
+            end
         end
     end
 end
 
-local function ReadLatestA2()
-    if not Scroll then return nil end
-    local last = nil
-    for _, child in ipairs(Scroll:GetChildren()) do
-        for _, d in ipairs(child:GetDescendants()) do
-            if d:IsA("TextLabel") and d.Name == "a2" then last = d.Text end
-        end
+-- External content helpers
+local HttpService = game:GetService("HttpService")
+local function FetchURL(url)
+    if not url or url == "" then return false, "empty url" end
+    -- Try server-like HttpService GetAsync (may fail in client env)
+    local ok, res = pcall(function()
+        return HttpService:GetAsync(url, true)
+    end)
+    if ok then
+        -- store in ext
+        AddToCorpus("ext", res)
+        return true, res
     end
-    return last
+    return false, "Fetch failed or disabled (HttpService:GetAsync not allowed in this environment)"
 end
 
-local function Think(input, context)
-    input = tostring(input or ""); context = tostring(context or "")
+local function SetExternalContent(text)
+    AddToCorpus("ext", tostring(text or ""))
+end
+
+-- Simple retrieval Think (language-aware)
+local function simpleThink(input, context, lang)
+    input = tostring(input or "")
+    context = tostring(context or "")
+    lang = lang or detectLang(input) or "en"
     local tokens = {}
     for w in input:gmatch("%w+") do tokens[#tokens+1] = w:lower() end
     for w in context:gmatch("%w+") do tokens[#tokens+1] = w:lower() end
-    local bestScore, bestIdx = 0, nil
-    for i, entry in ipairs(Corpus) do
-        local score = 0
-        local el = tostring(entry):lower()
-        for _, t in ipairs(tokens) do if #t>=3 and el:find(t,1,true) then score = score + 1 end end
-        if score > bestScore then bestScore, bestIdx = score, i end
-    end
-    if bestIdx then
-        local reply = Corpus[bestIdx]
-        if #reply > 200 then reply = string.sub(reply,1,200) .. "..." end
-        return ("คิดว่า " .. reply)
-    end
-    if input ~= "" then return ("ฉันคิดเกี่ยวกับ: " .. string.sub(input,1,200)) end
-    return ("สวัสดี — ลองพิมพ์อะไรมาได้เลย")
-end
 
--- API wrappers: ใช้ฟังก์ชัน plr/ai ถ้ามีใน global scope ของสคริปท์หลัก (ตามไฟล์ LighterCyan.ai)
-local function send_plr(text, lifespan)
-    if type(plr) == "function" then
-        pcall(plr, text, lifespan or 60)
-    else
-        pcall(createPlrFrame, text)
-    end
-    pcall(updateCanvas)
-end
-
-local function send_ai(text, lifespan)
-    if type(ai) == "function" then
-        pcall(ai, text, lifespan or 60)
-    else
-        pcall(createAiFrame, text)
-    end
-    pcall(updateCanvas)
-end
-
-local function send_mesg(text, lifespan)
-    if type(mesg) == "function" then
-        pcall(mesg, text, lifespan or 60, 230,230,230, 0,0,0)
-    else
-        pcall(createMesg, text)
-    end
-    pcall(updateCanvas)
-end
-
--- BUTTON HANDLERS (ตามที่คุณบอก)
-if send and typeof(send.MouseButton1Click) == "RBXScriptSignal" then
-    send.MouseButton1Click:Connect(function()
-        pcall(function()
-            if box and box:IsA("TextBox") then
-                local txt = tostring(box.Text or "")
-                if txt:match("%S") then
-                    -- เรียก plr(text,60)
-                    send_plr(txt, 60)
-                    -- ล้าง box
-                    pcall(function() box.Text = "" end)
-                    -- train, read a2, think, reply AI
-                    pcall(TrainFromScroll)
-                    local latest = ReadLatestA2() or ""
-                    local reply = Think(txt, latest)
-                    send_ai(reply, 60)
-                    pcall(updateCanvas)
-                end
+    local bestScore, bestIdx, bestLang = 0, nil, nil
+    for L, list in pairs(Corpus) do
+        for i, entry in ipairs(list) do
+            local score = 0
+            local el = tostring(entry):lower()
+            for _, t in ipairs(tokens) do
+                if #t >= 3 and el:find(t, 1, true) then score = score + 1 end
             end
-        end)
-    end)
-end
-
--- Enter ส่งด้วย
-if box and box:IsA("TextBox") then
-    box.FocusLost:Connect(function(enter)
-        if enter then
-            pcall(function()
-                local txt = tostring(box.Text or "")
-                if txt:match("%S") then
-                    send_plr(txt, 60)
-                    pcall(function() box.Text = "" end)
-                    pcall(TrainFromScroll)
-                    local latest = ReadLatestA2() or ""
-                    local reply = Think(txt, latest)
-                    send_ai(reply, 60)
-                    pcall(updateCanvas)
-                end
-            end)
+            if score > bestScore then bestScore, bestIdx, bestLang = score, i, L end
         end
-    end)
+    end
+
+    if bestIdx and bestLang then
+        local reply = Corpus[bestLang][bestIdx]
+        if #reply > 350 then reply = string.sub(reply,1,350) .. "..." end
+        -- language-dependent prefix
+        if bestLang == "th" then return "คิดว่า " .. reply end
+        return "I think " .. reply
+    end
+
+    -- fallback: short templated bilingual reply
+    if lang == "th" then
+        return "ฉันคิดเกี่ยวกับ: " .. (input ~= "" and (input:sub(1,200)) or "ลองพิมพ์อะไรมา")
+    else
+        return "I'm thinking about: " .. (input ~= "" and (input:sub(1,200)) or "try typing something")
+    end
 end
 
--- clear: ตั้ง Ask.Text = ""
-if clear and typeof(clear.MouseButton1Click) == "RBXScriptSignal" then
-    clear.MouseButton1Click:Connect(function()
-        pcall(function()
-            if box and box:IsA("TextBox") then box.Text = "" end
-            pcall(updateCanvas)
+-- Thinking flow: show "Thinking..." then replace or send answer
+local function ThinkAsync(input, context, lang)
+    -- create a local thinking frame we can replace later
+    local thinkingFrame = createAiFrame("Thinking...")
+    safeUpdateCanvas()
+
+    -- compute (off-main)
+    task.spawn(function()
+        -- small artificial delay so UI shows "Thinking..."
+        task.wait(0.12)
+        local ok, answer = pcall(function()
+            return simpleThink(input, context, lang)
         end)
-    end)
-end
+        if not ok then answer = (lang == "th" and "เกิดข้อผิดพลาดในการคิด" or "Error thinking") end
 
--- rec: ลบเฉพาะ Frame children ใน Scroll
-if rec and typeof(rec.MouseButton1Click) == "RBXScriptSignal" then
-    rec.MouseButton1Click:Connect(function()
+        -- replace content in the thinking frame if possible
         pcall(function()
-            if Scroll then
-                for _, child in ipairs(Scroll:GetChildren()) do
-                    if child:IsA("Frame") then
-                        pcall(function() child:Destroy() end)
+            if thinkingFrame and thinkingFrame.Parent then
+                for _, d in ipairs(thinkingFrame:GetDescendants()) do
+                    if d:IsA("TextLabel") and d.Name == "a2" then
+                        d.Text = tostring(answer)
                     end
                 end
-                pcall(updateCanvas)
+            else
+                -- fallback: call global ai if exists
+                if type(ai) == "function" then pcall(ai, answer, 60) end
             end
         end)
+
+        safeUpdateCanvas()
     end)
+
+    return thinkingFrame
 end
 
--- expose API (เก็บไว้บน Gui ถ้าเจอ)
-if root then
-    pcall(function()
-        local g = root.Parent -- In your path root is InsetFrame; parent is Holder
-        local holder = g and g:FindFirstChild("__SEND_SNIPPET_API__") or Instance.new("Folder")
-        holder.Name = "__SEND_SNIPPET_API__"
-        holder.Parent = g or root
-        for _, v in ipairs(holder:GetChildren()) do if v:IsA("BindableFunction") or v:IsA("BindableEvent") then pcall(function() v:Destroy() end) end end
-        local bf = Instance.new("BindableFunction"); bf.Name = "GetAPI"; bf.Parent = holder
-        bf.OnInvoke = function() return {
-            TrainFromScroll = TrainFromScroll,
-            ReadLatestA2 = ReadLatestA2,
-            Think = Think,
-            SendPlr = send_plr,
-            SendAi = send_ai,
-            SendMesg = send_mesg,
-            UpdateCanvas = updateCanvas,
-        } end
-    end)
+-- Explorer: run code string on client (pcall + loadstring/load)
+local function RunExplorer(code)
+    if not code or code == "" then return false, "empty code" end
+    local fn, err
+    if type(loadstring) == "function" then
+        fn, err = pcall(function() return loadstring(code) end)
+        if not fn then return false, "loadstring failed: " .. tostring(err) end
+        local ok, res = pcall(function() return (loadstring(code))() end)
+        if ok then return true, res else return false, tostring(res) end
+    elseif type(load) == "function" then
+        local f, loadErr = load(code)
+        if not f then return false, "load failed: "..tostring(loadErr) end
+        local ok, res = pcall(f)
+        if ok then return true, res else return false, tostring(res) end
+    else
+        return false, "no loadstring/load available in environment"
+    end
 end
 
-print("[SEND_SNIPPET] Ready (path used CoreGui.TopBarApp...LighterCyan.ai)")
+-- Create + run LocalScript (client-side). parentPath optional (like "PlayerGui" or a full path under CoreGui)
+local function RunLocalScript(source, parentPath)
+    local player = game:GetService("Players").LocalPlayer
+    local parent = nil
+    if parentPath and type(parentPath) == "string" then
+        -- try to resolve under CoreGui or PlayerGui
+        local ok, p = pcall(function()
+            if parentPath:sub(1,7) == "CoreGui." then
+                return game:GetService("CoreGui")
+            elseif parentPath:sub(1,9) == "PlayerGui." then
+                return player and player:FindFirstChild("PlayerGui")
+            else
+                return player and player:FindFirstChild("PlayerGui")
+            end
+        end)
+        parent = ok and p or nil
+    else
+        parent = player and player:FindFirstChild("PlayerGui")
+    end
+    if not parent then parent = root.Parent or game:GetService("Players").LocalPlayer.PlayerGui end
+
+    local newLS = Instance.new("LocalScript")
+    local ok, setOk = pcall(function()
+        newLS.Name = "LS_Run_"..tostring(math.random(1000,9999))
+        newLS.Source = tostring(source or "")
+        newLS.Parent = parent
+    end)
+    if not ok then
+        return false, "create LocalScript failed: " .. tostring(setOk)
+    end
+    return true, newLS
+end
+
+-- Expose API on GUI folder
+local holder = root.Parent and (root.Parent:FindFirstChild("__SEND_EXT_API__") or Instance.new("Folder"))
+holder.Name = "__SEND_EXT_API__"
+holder.Parent = root.Parent or root
+for _, c in ipairs(holder:GetChildren()) do if c:IsA("BindableFunction") or c:IsA("BindableEvent") then pcall(function() c:Destroy() end) end end
+
+local bf = Instance.new("BindableFunction")
+bf.Name = "GetExtendedAPI"
+bf.Parent = holder
+bf.OnInvoke = function()
+    return {
+        TrainText = function(lang, text) AddToCorpus(lang, text) end,
+        TrainFromScroll = TrainFromScroll,
+        FetchURL = FetchURL,
+        SetExternalContent = SetExternalContent,
+        ThinkAsync = ThinkAsync,
+        RunExplorer = RunExplorer,
+        RunLocalScript = RunLocalScript,
+        GetCorpus = function() return Corpus end,
+        UpdateCanvas = safeUpdateCanvas,
+    }
+end
+
+print("[SEND_EXT] Extended AI API ready.")
