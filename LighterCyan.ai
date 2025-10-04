@@ -1036,7 +1036,11 @@ local function hook_gui_handlers()
 end
 
 -- warm bindables
-pcall(function() wait_for_bindable and wait_for_bindable("ai.DataStorage_Get") end)
+pcall(function()
+    if wait_for_bindable then
+        pcall(function() wait_for_bindable("ai.DataStorage_Get") end)
+    end
+end)
 
 task.spawn(function()
     while task.wait(2) do
