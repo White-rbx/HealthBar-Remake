@@ -424,10 +424,17 @@ btm("a50.More", "📦 More", 0)
 createUIListLayout(option, 0, 5, HLeft, VCenter, SName, FillH) -- btw Scaled 0 because UIListLayout haha, now go back to work.
 
 
--- LighterCyan Controller (Upgraded)
--- เพิ่ม: single-thinking, staged statuses, error codes, rate-limit, fetch checks
--- รันเป็น LocalScript / executor หลัง bootstrap (ai_runtime) ถูกสร้าง
--- Author: assistant (ปรับตามคำขอของผู้ใช้)
+-- LighterCyan Merged Controller (Full)
+-- Features:
+--  - Safe bindable invoke/fire (vararg-safe)
+--  - Forward-declared ThinkAsync to avoid nil-call
+--  - Single-thinking reuse (no duplicate AI frames)
+--  - Automatic size handling for TextLabel + CanvasSize updates
+--  - Staged statuses (Thinking (Xs), Searching URL..., etc.)
+--  - Error mapping for HTTP and LighterCyan-specific codes
+--  - Rate-limiting (50 messages/min) and message-length checks
+--  - /fetch <url> handling with fetch stages
+-- Usage: LocalScript (or executor) after GUI & ai_runtime prepared
 
 local DEBUG = false
 local GUI_WAIT_TIMEOUT = 12
@@ -438,20 +445,22 @@ local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
-if not player then warn("[LC] No LocalPlayer") return end
+if not player then warn("[LC] No LocalPlayer found; aborting") return end
 
--- util safe print
 local function dbg(...)
     if not DEBUG then return end
-    local t = {...}
+    local args = {...}
     local parts = {"[LC]"}
-    for i=1,#t do parts[#parts+1] = tostring(t[i]) end
+    for i=1,#args do parts[#parts+1] = tostring(args[i]) end
     pcall(function() print(table.unpack(parts)) end)
 end
 
--- ----------------------------
--- bindables / runtime helpers
--- ----------------------------
+-- Forward-declare ThinkAsync so GUI hooks can reference it safely
+local ThinkAsync
+
+-- ======================
+-- ai_runtime bindable helpers (vararg-safe)
+-- ======================
 local function get_ai_runtime_folder()
     local f = player:FindFirstChild("ai_runtime")
     if f then return f end
@@ -473,10 +482,8 @@ end
 local function safe_invoke_bindable(fnName, ...)
     local fn = wait_for_bindable(fnName, 1)
     if fn and fn:IsA("BindableFunction") then
-        local args = {...}                             -- เก็บ vararg ไว้ใน table
-        local ok, res = pcall(function()
-            return fn:Invoke(table.unpack(args))      -- ใช้ unpack ภายในสโคปนี้ได้
-        end)
+        local args = {...}
+        local ok, res = pcall(fn.Invoke, fn, table.unpack(args))
         return ok, res
     end
     return false, "bindable not found"
@@ -486,16 +493,45 @@ local function safe_fire_bindable(evName, ...)
     local ev = wait_for_bindable(evName, 1)
     if ev and ev:IsA("BindableEvent") then
         local args = {...}
-        -- pcall(ev.Fire, ev, unpack(args)) -> จะเรียก ev:Fire(unpack(args))
         local ok, res = pcall(ev.Fire, ev, table.unpack(args))
         return ok, res
+    end
+    return false, "bindable not found"
+end
+
+-- wrapper helpers to call ai(), plr(), mesg() if present
+local function call_ai_func(text, timeSec)
+    if type(ai) == "function" then
+        pcall(ai, text, timeSec)
+        update_canvas(find_scroll_frame())
+        return true
     end
     return false
 end
 
--- ----------------------------
+local function call_plr_func(text, timeSec)
+    -- try common global names for plr function
+    local gplr = rawget(_G, "plr") or rawget(_G, "Plr") or rawget(_G, "playerPlr")
+    if type(gplr) == "function" then
+        pcall(gplr, text, timeSec)
+        update_canvas(find_scroll_frame())
+        return true
+    end
+    return false
+end
+
+local function call_mesg_func(text, timeSec, R,G,B,R1,G1,B1)
+    if type(mesg) == "function" then
+        pcall(mesg, text, timeSec, R,G,B,R1,G1,B1)
+        update_canvas(find_scroll_frame())
+        return true
+    end
+    return false
+end
+
+-- ======================
 -- GUI helpers
--- ----------------------------
+-- ======================
 local function get_lightercyan_inset()
     local ok, base = pcall(function()
         if not CoreGui.TopBarApp then return nil end
@@ -558,13 +594,10 @@ local function update_canvas(scroll)
     if not scroll or not scroll:IsA("ScrollingFrame") then return end
     local layout = scroll:FindFirstChildOfClass("UIListLayout")
     if not layout then
-        -- Try to create one? Better not to alter GUI. Just attempt Canvas update by scanning content
         task.defer(function()
             local totalY = 0
             for _,c in ipairs(scroll:GetChildren()) do
-                if c:IsA("Frame") then
-                    totalY = totalY + (c.AbsoluteSize.Y or 40) + 8
-                end
+                if c:IsA("Frame") then totalY = totalY + (c.AbsoluteSize.Y or 40) + 8 end
             end
             pcall(function() scroll.CanvasSize = UDim2.new(0,0,0, math.max(totalY, scroll.AbsoluteSize.Y)) end)
         end)
@@ -581,7 +614,19 @@ local function update_canvas(scroll)
     end)
 end
 
--- helper to create a message frame (fallback)
+local function read_latest_a2(scroll)
+    if not scroll then return "" end
+    for i = #scroll:GetChildren(), 1, -1 do
+        local c = scroll:GetChildren()[i]
+        for _,d in ipairs(c:GetDescendants()) do
+            if d:IsA("TextLabel") and d.Name == "a2" then
+                return tostring(d.Text)
+            end
+        end
+    end
+    return ""
+end
+
 local function create_frame_in_scroll(scroll, msgText, isError, color)
     if not scroll then return nil end
     local frame = Instance.new("Frame")
@@ -615,60 +660,29 @@ local function create_frame_in_scroll(scroll, msgText, isError, color)
     return frame
 end
 
--- wrapper to call ai(), plr(), mesg() safely and update canvas
-local function call_ai_func(text, timeSec)
-    -- prefer ai(...)
-    if type(ai) == "function" then
-        pcall(function() ai(text, timeSec) end)
-        local sc = find_scroll_frame(); update_canvas(sc)
-        return true
-    end
-    return false
-end
-
-local function call_plr_func(text, timeSec)
-    if type(plr) == "function" then
-        pcall(function() plr(text, timeSec) end)
-        local sc = find_scroll_frame(); update_canvas(sc)
-        return true
-    end
-    return false
-end
-
-local function call_mesg_func(text, timeSec, R,G,B,R1,G1,B1)
-    if type(mesg) == "function" then
-        pcall(function() mesg(text, timeSec, R,G,B,R1,G1,B1) end)
-        local sc = find_scroll_frame(); update_canvas(sc)
-        return true
-    end
-    return false
-end
-
--- generic show message (prefers ai/plr/mesg, fallback create_frame_in_scroll)
 local function show_message(text, opts)
     opts = opts or {}
     local timeSec = opts.time or 60
     local isError = opts.isError
     local color = opts.color
-    -- if is for player message, try plr
     if opts.forPlayer then
         if call_plr_func(text, timeSec) then return end
     end
     if opts.asAI then
         if call_ai_func(text, timeSec) then return end
     end
-    -- try mesg if error
     if isError and color then
-        if call_mesg_func(text, timeSec, color.R, color.G, color.B, color.R, color.G, color.B) then return end
+        if call_mesg_func then
+            pcall(function() call_mesg_func(text, timeSec, color.R, color.G, color.B, color.R, color.G, color.B) end)
+        end
     end
-    -- fallback create frame
     local sc = find_scroll_frame()
     create_frame_in_scroll(sc, text, isError, color)
 end
 
--- ----------------------------
+-- ======================
 -- Single-thinking controller
--- ----------------------------
+-- ======================
 local currentJob = nil
 local jobTokenCounter = 0
 
@@ -679,82 +693,99 @@ local function cancel_current_job()
     currentJob = nil
 end
 
--- staged status updater for a job (will auto-stop when token canceled)
+-- staged status loop (creates or reuses frame and updates text)
 local function staged_status_loop(token, stages, baseThinking)
-    -- returns a controller {cancel=function()}
     local running = true
     local startTime = tick()
     local idx = 1
     local sc = find_scroll_frame()
     local frame = nil
-    -- create initial thinking frame by calling ai or fallback
-    if not call_ai_func(baseThinking.." (0s)", 60) then
-        frame = create_frame_in_scroll(sc, baseThinking.." (0s)", false)
+
+    -- reuse currentJob.frame if available
+    if currentJob and currentJob.frame and currentJob.frame.Parent and not token.canceled then
+        frame = currentJob.frame
     else
-        -- attempt to detect the frame created by ai() by finding last a2 == baseThinking.."(0s)"
-        task.wait(0.02)
+        -- try call ai() to create a native frame, then detect it
+        if type(ai) == "function" then
+            pcall(ai, baseThinking.." (0s)", 60)
+            task.wait(0.03)
+        end
+        -- try detect frame
         local sc2 = find_scroll_frame()
         if sc2 then
             for i=#sc2:GetChildren(),1,-1 do
                 local c = sc2:GetChildren()[i]
-                for _,d in ipairs(c:GetDescendants()) do
-                    if d:IsA("TextLabel") and d.Name == "a2" and d.Text:match("^"..baseThinking) then
-                        frame = c; break
+                if c and c:IsA("Frame") then
+                    local found = false
+                    for _,d in ipairs(c:GetDescendants()) do
+                        if d:IsA("TextLabel") and d.Name == "a2" and tostring(d.Text):match("^"..baseThinking) then
+                            frame = c; found = true; break
+                        end
                     end
+                    if found then break end
                 end
-                if frame then break end
             end
+        end
+        if not frame then
+            frame = create_frame_in_scroll(sc, baseThinking.." (0s)", false)
         end
     end
 
-    local timerConn = nil
+    if frame then
+        currentJob = currentJob or {}
+        currentJob.frame = frame
+    end
+
     local function updateText(txt)
+        if token.canceled then return end
         if frame and frame.Parent then
             pcall(function()
+                local lblFound
                 for _,d in ipairs(frame:GetDescendants()) do
-                    if d:IsA("TextLabel") and d.Name == "a2" then
-                        d.Text = txt
-                        safe_auto_size_label(d)
-                        task.wait(0.01)
-                        pcall(function() if d.AutomaticSize then frame.Size = UDim2.new(0.96,0,0, d.AbsoluteSize.Y + 12) end end)
-                        update_canvas(find_scroll_frame())
-                    end
+                    if d:IsA("TextLabel") and d.Name == "a2" then lblFound = d; break end
+                end
+                if lblFound then
+                    lblFound.Text = tostring(txt or "")
+                    safe_auto_size_label(lblFound)
+                    task.wait(0.02)
+                    pcall(function()
+                        if lblFound.AutomaticSize then
+                            local newH = (lblFound.AbsoluteSize.Y or 24) + 12
+                            frame.Size = UDim2.new(frame.Size.X.Scale, frame.Size.X.Offset, 0, newH)
+                        end
+                    end)
+                    update_canvas(find_scroll_frame())
+                else
+                    call_ai_func(txt, 60)
                 end
             end)
         else
-            -- fallback: call ai again
             call_ai_func(txt, 60)
         end
     end
 
-    -- timer to show seconds
-    timerConn = task.spawn(function()
-        local sec = 0
-        while running do
-            if token.canceled then break end
-            sec = math.floor(tick() - startTime)
-            local text = baseThinking .. " (" .. tostring(sec) .. "s)"
-            updateText(text)
+    -- timer thread for (Xs)
+    local timerThread = task.spawn(function()
+        local secStart = tick()
+        while running and not token.canceled do
+            local sec = math.floor(tick() - secStart)
+            updateText(baseThinking .. " (" .. tostring(sec) .. "s)")
             task.wait(1)
         end
     end)
 
-    -- stage progress loop
+    -- stages thread
     local stageThread = task.spawn(function()
         while running and not token.canceled do
             local st = stages[idx]
             if st then
                 updateText(st)
                 idx = idx + 1
-            else
-                -- cycle waiting text
             end
-            -- wait small time between stages; if canceled break
             for i=1,4 do
                 if token.canceled then break end
                 task.wait(0.2)
             end
-            if token.canceled then break end
         end
     end)
 
@@ -766,14 +797,9 @@ local function staged_status_loop(token, stages, baseThinking)
     return { cancel = cancel, frame = frame, token = token }
 end
 
--- ----------------------------
--- Error mapping utilities
--- ----------------------------
-local HTTP_ERROR_MAP = {
-    timeout = {code = "ERROR0 408", msg = "REQUEST TIMEOUT"},
-    "404", "not found"
-}
--- We'll implement function to try map http error strings to known codes
+-- ======================
+-- Error mapping
+-- ======================
 local function map_http_error(errstr)
     if not errstr then return "ERROR 500: INTERNAL SERVER ERROR" end
     local s = tostring(errstr):lower()
@@ -787,51 +813,36 @@ local function map_http_error(errstr)
     return "ERROR 500: INTERNAL SERVER ERROR"
 end
 
--- LighterCyan-specific error codes for mesg
 local function show_lighter_error(code)
-    local sc = find_scroll_frame()
     local msg = ""
     if code == -1 then msg = "ERROR -1: TIMEOUT (He overthinking about that hehe)" end
     if code == 21 then msg = "ERROR 21: TOO LONG MESSAGE (1000+ words)" end
     if code == 1 then msg = "ERROR 1: OVERWORKS (Let he rest about 2 minutes)" end
     if msg ~= "" then
-        -- prefer mesg() if available
-        if call_mesg_func then
-            pcall(function()
-                call_mesg_func(msg, 60, 1,0,0, 1,0,0) -- red-ish (R,G,B twice used)
-            end)
-        end
-        create_frame_in_scroll(sc, msg, true, Color3.new(1,0.25,0.25))
+        pcall(function() call_mesg_func(msg, 60, 1,0,0, 1,0,0) end)
+        create_frame_in_scroll(find_scroll_frame(), msg, true, Color3.new(1,0.25,0.25))
     end
 end
 
--- ----------------------------
--- Rate limit and checks
--- ----------------------------
-local messageTimestamps = {} -- list of epoch times of messages
+-- ======================
+-- Rate-limiting & checks
+-- ======================
+local messageTimestamps = {}
 local function record_message_timestamp()
     table.insert(messageTimestamps, os.time())
-    -- prune older than 60s
     local now = os.time()
     local pr = {}
-    for i,v in ipairs(messageTimestamps) do
-        if now - v <= 60 then pr[#pr+1] = v end
-    end
+    for i,v in ipairs(messageTimestamps) do if now - v <= 60 then pr[#pr+1] = v end end
     messageTimestamps = pr
     return #messageTimestamps
 end
 
 local function check_rate_limit()
     local n = record_message_timestamp()
-    if n > 50 then
-        return false, "ERROR 1"
-    end
+    if n > 50 then return false, "ERROR 1" end
     return true
 end
 
--- ----------------------------
--- Fetch & compute pipeline
--- ----------------------------
 local function count_words(text)
     if not text then return 0 end
     local c = 0
@@ -839,8 +850,10 @@ local function count_words(text)
     return c
 end
 
+-- ======================
+-- Compute pipeline & fetch
+-- ======================
 local function fetch_url_with_status(url, token)
-    -- stages
     local stages = {
         "Searching URL...",
         'Chrome URL "'..tostring(url)..'"',
@@ -850,155 +863,109 @@ local function fetch_url_with_status(url, token)
         "Readying..",
         "Questioning..."
     }
-    -- create staged status handler
     local job = staged_status_loop(token, stages, THINKING_BASE)
-    -- Attempt fetch (best-effort)
-    local ok, res, err = nil, nil, nil
     local success, result = pcall(function() return game:HttpGet(url) end)
     if not success then
-        -- try HttpService
         success, result = pcall(function() return HttpService:GetAsync(url, true) end)
     end
     if not success then
-        err = result
-        ok = false
-    else
-        res = result
-        ok = true
+        return false, nil, result, job
     end
-    return ok, res, err, job
+    return true, result, nil, job
 end
 
 local function compute_answer_pipeline(input, context, token)
-    -- 1) try predict_supervised
-    local predOk, pred = pcall(function() return (wait_for_bindable("ai.Learning_Supervised_Predict") and wait_for_bindable("ai.Learning_Supervised_Predict"):Invoke(input)) end)
-    if predOk and pred and pred ~= "" then
-        return tostring(pred)
-    end
+    -- try supervised predict
+    local okPred, predRes = pcall(function()
+        local fn = wait_for_bindable("ai.Learning_Supervised_Predict")
+        if fn and fn:IsA("BindableFunction") then return fn:Invoke(input) end
+        return nil
+    end)
+    if okPred and predRes and tostring(predRes) ~= "" then return tostring(predRes) end
 
-    -- 2) check unsupervised topics
-    local topicsOk, topics = pcall(function() return (wait_for_bindable("ai.Unsupervised_GetTopics") and wait_for_bindable("ai.Unsupervised_GetTopics"):Invoke(5)) end)
-    if topicsOk and topics and #topics > 0 then
-        local top = topics[1].w or topics[1].w
+    -- unsupervised topics
+    local okTopics, topics = pcall(function()
+        local fn = wait_for_bindable("ai.Unsupervised_GetTopics")
+        if fn and fn:IsA("BindableFunction") then return fn:Invoke(5) end
+        return nil
+    end)
+    if okTopics and topics and #topics > 0 then
+        local top = topics[1].w or topics[1]
         return "Main topic: "..tostring(top)
     end
 
-    -- 3) local corpus fuzzy match (use controller's rebuild_local_from_storage via bindable if exists)
-    local okAll, resAll = pcall(function() return safe_invoke_bindable("ai.DataStorage_Get") end)
+    -- local data store examples
+    local okAll, resAll = safe_invoke_bindable("ai.DataStorage_Get")
     local examples = nil
-    if okAll and resAll then
-        examples = resAll[1] or resAll
-    end
+    if okAll and resAll then examples = resAll[1] or resAll end
     if examples then
-        -- simple match: find first example containing token
-        local query = tostring(input or ""):lower()
+        local q = tostring(input or ""):lower()
         for _,ex in ipairs(examples) do
             local ttxt = tostring(ex.text or ex):lower()
-            if query ~= "" and ttxt:find(query, 1, true) then
-                return "Found related: "..ttxt:sub(1,300)
-            end
+            if q ~= "" and ttxt:find(q, 1, true) then return "Found related: "..ttxt:sub(1,300) end
         end
     end
 
-    -- fallback
     return nil
 end
 
--- ----------------------------
--- Public ThinkAsync (main)
--- ----------------------------
-local function ThinkAsync(input, context)
-    -- rate limit
+-- ======================
+-- Main ThinkAsync
+-- ======================
+ThinkAsync = function(input, context)
+    if not input then return end
     local okRL, rlErr = check_rate_limit()
-    if not okRL then
-        show_lighter_error(1)
-        return
-    end
+    if not okRL then show_lighter_error(1); return end
 
-    -- cancel previous job and create token
     cancel_current_job()
     jobTokenCounter = jobTokenCounter + 1
     local token = {id = jobTokenCounter, canceled = false}
     currentJob = {token = token, cancel = function() token.canceled = true end}
 
-    -- If input is a slash command for /fetch, handle separately
+    -- detect fetch command
     if tostring(input):match("^/fetch%s+") or tostring(input):match("^https?://") then
         local url = tostring(input):match("^/fetch%s+(.+)$") or tostring(input)
-        -- start fetch with staged status
-        local okFetch, content, err, jobHandle = fetch_url_with_status(url, token)
-        if token.canceled then
-            if jobHandle then pcall(function() jobHandle.cancel() end) end
-            return
-        end
-        if not okFetch then
+        local ok, content, err, jobHandle = fetch_url_with_status(url, token)
+        if token.canceled then if jobHandle then pcall(jobHandle.cancel) end; return end
+        if not ok then
             local errMsg = map_http_error(err)
             show_message(errMsg, {isError=true})
-            if jobHandle then pcall(function() jobHandle.cancel() end) end
+            if jobHandle then pcall(jobHandle.cancel) end
             currentJob = nil
             return
         end
-        -- check word count
         local words = count_words(content)
-        if words > 1000 then
-            show_lighter_error(21)
-            if jobHandle then pcall(function() jobHandle.cancel() end) end
-            currentJob = nil
-            return
-        end
-        -- put content into data storage
+        if words > 1000 then show_lighter_error(21); if jobHandle then pcall(jobHandle.cancel) end; currentJob = nil; return end
         pcall(function() safe_invoke_bindable("ai.DataStorage_Add", content, {source="fetch", time=os.time()}) end)
-        -- compute answer using fetched content as context
         local ans = compute_answer_pipeline("", content, token) or "No focused answer from fetched content"
-        if jobHandle then pcall(function() jobHandle.cancel() end) end
+        if jobHandle then pcall(jobHandle.cancel) end
         show_message(ans, {asAI=true, time=60})
         currentJob = nil
         return
     end
 
-    -- For normal text, show staged Thinking and compute
     local stages = {"Analyzing context...", "Searching memory...", "Preparing answer...", "Finalizing..."}
     local jobHandle = staged_status_loop(token, stages, THINKING_BASE)
-    -- compute in background
+
     task.spawn(function()
-        -- small delay to simulate quick thinking and allow UI to show
         local start = tick()
-        -- compute (with timeout heuristic)
         local timedOut = false
         local result = nil
-        local co = coroutine.create(function()
-            result = compute_answer_pipeline(input, context, token)
-        end)
+        local co = coroutine.create(function() result = compute_answer_pipeline(input, context, token) end)
         coroutine.resume(co)
-        -- wait loop for up to 8s
         local maxWait = 8
-        while coroutine.status(co) ~= "dead" and (tick() - start) < maxWait and not token.canceled do
-            task.wait(0.08)
-        end
-        if coroutine.status(co) ~= "dead" then
-            timedOut = true
-            -- cancel compute by flag (we cannot force coroutine stop reliably, but we'll ignore result)
-        end
-        if token.canceled then
-            if jobHandle then pcall(function() jobHandle.cancel() end) end
-            currentJob = nil
-            return
-        end
-        if timedOut then
-            -- overthinking
-            show_lighter_error(-1)
-            if jobHandle then pcall(function() jobHandle.cancel() end) end
-            currentJob = nil
-            return
-        end
+        while coroutine.status(co) ~= "dead" and (tick() - start) < maxWait and not token.canceled do task.wait(0.08) end
+        if coroutine.status(co) ~= "dead" then timedOut = true end
+        if token.canceled then if jobHandle then pcall(jobHandle.cancel) end; currentJob = nil; return end
+        if timedOut then show_lighter_error(-1); if jobHandle then pcall(jobHandle.cancel) end; currentJob = nil; return end
         local finalAnswer = result or "Sorry, couldn't find an answer. Try /fetch <url> or add more context."
-        -- done: replace thinking text with finalAnswer
         if jobHandle and jobHandle.frame then
             pcall(function()
                 for _,d in ipairs(jobHandle.frame:GetDescendants()) do
                     if d:IsA("TextLabel") and d.Name == "a2" then
                         d.Text = finalAnswer
                         safe_auto_size_label(d)
-                        task.wait(0.01)
+                        task.wait(0.02)
                         pcall(function() if d.AutomaticSize then jobHandle.frame.Size = UDim2.new(0.96,0,0, d.AbsoluteSize.Y + 12) end end)
                         update_canvas(find_scroll_frame())
                     end
@@ -1007,45 +974,29 @@ local function ThinkAsync(input, context)
         else
             show_message(finalAnswer, {asAI=true, time=60})
         end
-        if jobHandle then pcall(function() jobHandle.cancel() end) end
+        if jobHandle then pcall(jobHandle.cancel) end
         currentJob = nil
     end)
 end
 
--- ----------------------------
--- GUI Hook (read-only)
--- ----------------------------
--- ===== replace from here (line ~1018) =====
+-- ======================
+-- Command parsing & GUI hooking
+-- ======================
 local function safe_connect_mouse(btn, fn)
     if not btn then return end
     pcall(function()
-        if typeof(btn.MouseButton1Click) == "RBXScriptSignal" then
-            btn.MouseButton1Click:Connect(fn)
-        end
+        if typeof(btn.MouseButton1Click) == "RBXScriptSignal" then btn.MouseButton1Click:Connect(fn) end
     end)
 end
 
 local function hook_gui_handlers()
     local inset = wait_for_gui(GUI_WAIT_TIMEOUT)
-    if not inset then
-        warn("[LC] GUI not found; hooks disabled")
-        return false
-    end
-
+    if not inset then warn("[LC] GUI not found; hooks disabled"); return false end
     local inputFrame = inset:FindFirstChild("a3_Input&Send")
     if not inputFrame then
-        for _,v in ipairs(inset:GetDescendants()) do
-            if v.Name == "a3_Input&Send" and v:IsA("Frame") then
-                inputFrame = v
-                break
-            end
-        end
+        for _,v in ipairs(inset:GetDescendants()) do if v.Name == "a3_Input&Send" and v:IsA("Frame") then inputFrame = v; break end end
     end
-    if not inputFrame then
-        warn("[LC] input frame missing")
-        return false
-    end
-
+    if not inputFrame then warn("[LC] input frame missing"); return false end
     local AskBox = inputFrame:FindFirstChild("Ask")
     local SendBtn = inputFrame:FindFirstChild("Send")
     local ClearBtn = inputFrame:FindFirstChild("clear")
@@ -1053,32 +1004,11 @@ local function hook_gui_handlers()
 
     safe_connect_mouse(SendBtn, function()
         local txt = nil
-        pcall(function()
-            if AskBox and AskBox:IsA("TextBox") then
-                txt = AskBox.Text
-            end
-        end)
-
-        if not (txt and tostring(txt):match("%S")) then
-            return
-        end
-
-        -- get latest context safely
+        pcall(function() if AskBox and AskBox:IsA("TextBox") then txt = AskBox.Text end end)
+        if not (txt and tostring(txt):match("%S")) then return end
         local latest = ""
-        pcall(function()
-            local sc = find_scroll_frame()
-            if sc then latest = read_latest_a2(sc) or "" end
-        end)
-
-        -- call ThinkAsync safely (only if defined)
-        if type(ThinkAsync) == "function" then
-            pcall(ThinkAsync, txt, latest)
-        else
-            show_message("Internal error: ThinkAsync unavailable", {isError = true})
-            warn("[LC] ThinkAsync is nil when SendBtn clicked")
-        end
-
-        -- clear AskBox safely
+        pcall(function() local sc = find_scroll_frame(); if sc then latest = read_latest_a2(sc) or "" end end)
+        if type(ThinkAsync) == "function" then pcall(ThinkAsync, txt, latest) else show_message("Internal error: ThinkAsync unavailable", {isError=true}); warn("[LC] ThinkAsync nil on Send") end
         pcall(function() if AskBox and AskBox:IsA("TextBox") then AskBox.Text = "" end end)
     end)
 
@@ -1091,11 +1021,7 @@ local function hook_gui_handlers()
         local sc = find_scroll_frame()
         if sc then
             pcall(function()
-                for _,c in ipairs(sc:GetChildren()) do
-                    if c:IsA("Frame") then
-                        pcall(function() c:Destroy() end)
-                    end
-                end
+                for _,c in ipairs(sc:GetChildren()) do if c:IsA("Frame") then pcall(function() c:Destroy() end) end end
             end)
             update_canvas(sc)
         end
@@ -1108,20 +1034,9 @@ local function hook_gui_handlers()
                 local t = ""
                 pcall(function() t = AskBox.Text or "" end)
                 if not t:match("%S") then return end
-
                 local latest = ""
-                pcall(function()
-                    local sc = find_scroll_frame()
-                    if sc then latest = read_latest_a2(sc) or "" end
-                end)
-
-                if type(ThinkAsync) == "function" then
-                    pcall(ThinkAsync, t, latest)
-                else
-                    show_message("Internal error: ThinkAsync unavailable", {isError = true})
-                    warn("[LC] ThinkAsync is nil on FocusLost")
-                end
-
+                pcall(function() local sc = find_scroll_frame(); if sc then latest = read_latest_a2(sc) or "" end end)
+                if type(ThinkAsync) == "function" then pcall(ThinkAsync, t, latest) else show_message("Internal error: ThinkAsync unavailable", {isError=true}); warn("[LC] ThinkAsync nil on FocusLost") end
                 pcall(function() AskBox.Text = "" end)
             end)
         end)
@@ -1131,18 +1046,15 @@ local function hook_gui_handlers()
     return true
 end
 
--- init: initial rebuild (best effort)
-pcall(function()
-    pcall(function() wait_for_bindable("ai.DataStorage_Get") end)
-end)
+-- warm DataStorage if available
+pcall(function() wait_for_bindable("ai.DataStorage_Get") end)
 
+-- re-hook loop
 task.spawn(function()
     while task.wait(2) do
         local inset = get_lightercyan_inset()
-        if inset then
-            hook_gui_handlers()
-            task.wait(4)
-        end
+        if inset then hook_gui_handlers(); task.wait(4) end
     end
 end)
--- ===== replace up to here (line ~1094) =====
+
+print("[LC.Controller] Ready")
