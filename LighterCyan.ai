@@ -473,7 +473,10 @@ end
 local function safe_invoke_bindable(fnName, ...)
     local fn = wait_for_bindable(fnName, 1)
     if fn and fn:IsA("BindableFunction") then
-        local ok, res = pcall(function() return fn:Invoke(...) end)
+        local args = {...}                             -- เก็บ vararg ไว้ใน table
+        local ok, res = pcall(function()
+            return fn:Invoke(table.unpack(args))      -- ใช้ unpack ภายในสโคปนี้ได้
+        end)
         return ok, res
     end
     return false, "bindable not found"
@@ -482,8 +485,10 @@ end
 local function safe_fire_bindable(evName, ...)
     local ev = wait_for_bindable(evName, 1)
     if ev and ev:IsA("BindableEvent") then
-        pcall(function() ev:Fire(...) end)
-        return true
+        local args = {...}
+        -- pcall(ev.Fire, ev, unpack(args)) -> จะเรียก ev:Fire(unpack(args))
+        local ok, res = pcall(ev.Fire, ev, table.unpack(args))
+        return ok, res
     end
     return false
 end
