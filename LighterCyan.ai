@@ -422,214 +422,258 @@ btm("a4.Explorer", "🌏 Explorer", 0)
 btm("a50.More", "📦 More", 0)
 createUIListLayout(option, 0, 5, HLeft, VCenter, SName, FillH) -- btw Scaled 0 because UIListLayout haha, now go back to work.
 
--- === [SEND + TRAINING AI] snippet for LighterCyan.ai ===
--- วาง snippet นี้ในสคริปท์หลักของคุณ (หลังที่สร้าง GUI และฟังก์ชัน plr/ai/mesg)
+-- SEND + TRAIN snippet (ใช้ path ตามที่ผู้ใช้ให้)
+local function safeGet(pathFn)
+    local ok, res = pcall(pathFn)
+    if ok then return res end
+    return nil
+end
 
-do
-    -- หา ScreenGui / element ตามชื่อจากไฟล์ LighterCyan.ai
-    local function findGui()
-        local s = script
-        while s and not s:IsA("ScreenGui") and s.Parent do s = s.Parent end
-        if s and s:IsA("ScreenGui") then return s end
-        local plr = game:GetService("Players").LocalPlayer
-        return plr and plr:FindFirstChild("PlayerGui") and plr.PlayerGui:FindFirstChild("LighterCyan.ai")
+local basePath = function()
+    return game:GetService("CoreGui")
+        .TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ExperienceSettings["LighterCyan.ai"]
+        .Holder.InsetFrame
+end
+
+local root = safeGet(basePath)
+if not root then
+    warn("[SEND_SNIPPET] ไม่พบ LighterCyan.ai ที่ CoreGui path — ตรวจสอบว่า GUI โหลดแล้วหรือ executor มีสิทธิ์เข้าถึง CoreGui")
+    -- ยังไม่คืน/หยุดให้ script “ไม่พัง” ต่อไป (แต่ส่วนที่ใช้งานจะ no-op)
+end
+
+local Scroll = root and root:FindFirstChild("a2_Chat") and root.a2_Chat:FindFirstChild("Chat")
+local send  = root and root:FindFirstChild("a3_Input&Send") and root["a3_Input&Send"]:FindFirstChild("Send")
+local clear = root and root:FindFirstChild("a3_Input&Send") and root["a3_Input&Send"]:FindFirstChild("clear")
+local rec   = root and root:FindFirstChild("a3_Input&Send") and root["a3_Input&Send"]:FindFirstChild("re-chat") or (root and root["a3_Input&Send"] and root["a3_Input&Send"]:FindFirstChild("rec"))
+local box   = root and root:FindFirstChild("a3_Input&Send") and root["a3_Input&Send"]:FindFirstChild("Ask")
+
+-- 안전한 helpers
+local function safeCall(fn, ...)
+    if type(fn) == "function" then
+        local ok, res = pcall(fn, ...)
+        return ok, res
     end
+    return false, nil
+end
 
-    local Gui = findGui()
-    if not Gui then
-        warn("[SEND_SNIPPET] ไม่พบ ScreenGui LighterCyan.ai (snippet จะพยายามใช้ script.Parent แทน)")
-        -- พยายาม fallback ไปหาใน script.Parent
-        local p = script.Parent
-        while p and not p:IsA("ScreenGui") and p.Parent do p = p.Parent end
-        Gui = p
+local function ensureLayout(s)
+    if not s then return nil end
+    local l = s:FindFirstChildOfClass("UIListLayout")
+    if not l then
+        l = Instance.new("UIListLayout")
+        l.SortOrder = Enum.SortOrder.LayoutOrder
+        l.Padding = UDim.new(0,6)
+        l.Parent = s
     end
+    return l
+end
 
-    local input = Gui and Gui:FindFirstChild("a3_Input&Send")
-    local chat  = Gui and Gui:FindFirstChild("a2_Chat")
-
-    local box   = input and input:FindFirstChild("Ask")
-    local send  = input and input:FindFirstChild("Send")
-    local clear = input and input:FindFirstChild("clear")
-    local rec   = input and input:FindFirstChild("re-chat")
-    local Scroll = chat and chat:FindFirstChild("Chat")
-
-    -- safety: ถ้า element หายไม่ต้อง error
-    if not Scroll then
-        warn("[SEND_SNIPPET] ไม่พบ Scroll (Chat). Snippet จะไม่โยน error แต่จะไม่ทำงานบางอย่าง")
-    end
-
-    -- TRAINING AI: corpus และ helper (local; ไม่ชนกับส่วนอื่น)
-    local Corpus = {}
-
-    local function AddToCorpus(s)
-        if type(s) == "string" and s:match("%S") then
-            table.insert(Corpus, s)
-        end
-    end
-
-    local function TrainFromScroll()
-        if not Scroll then return end
-        for _, desc in ipairs(Scroll:GetDescendants()) do
-            if desc:IsA("TextLabel") and (desc.Name == "a1" or desc.Name == "a2") then
-                AddToCorpus(desc.Text)
-            end
-        end
-    end
-
-    local function ReadLatestA2()
-        if not Scroll then return nil end
-        local last = nil
-        -- ตรวจ children ตามลำดับการแทรก (เหมือนไฟล์ต้นฉบับ)
-        for _, child in ipairs(Scroll:GetChildren()) do
-            for _, d in ipairs(child:GetDescendants()) do
-                if d:IsA("TextLabel") and d.Name == "a2" then
-                    last = d.Text
-                end
-            end
-        end
-        return last
-    end
-
-    local function Think(input, context)
-        input = tostring(input or "")
-        context = tostring(context or "")
-        local tokens = {}
-        for w in input:gmatch("%w+") do tokens[#tokens+1] = w:lower() end
-        for w in context:gmatch("%w+") do tokens[#tokens+1] = w:lower() end
-        local bestScore, bestIdx = 0, nil
-        for i, entry in ipairs(Corpus) do
-            local score = 0
-            local el = tostring(entry):lower()
-            for _, t in ipairs(tokens) do
-                if #t >= 3 and el:find(t, 1, true) then score = score + 1 end
-            end
-            if score > bestScore then bestScore, bestIdx = score, i end
-        end
-        if bestIdx then
-            local reply = Corpus[bestIdx]
-            if #reply > 200 then reply = string.sub(reply,1,200) .. "..." end
-            return ("คิดว่า " .. reply)
-        end
-        if input ~= "" then return ("ฉันคิดเกี่ยวกับ: " .. string.sub(input,1,200)) end
-        return ("สวัสดี — ลองพิมพ์อะไรมาได้เลย")
-    end
-
-    -- helper: update Canvas (ถ้ามี UIListLayout ใน Scroll)
-    local function safeUpdateCanvas()
-        if not Scroll then return end
-        local layout = Scroll:FindFirstChildOfClass("UIListLayout")
-        if not layout then return end
-        task.defer(function()
-            local ok, size = pcall(function() return layout.AbsoluteContentSize end)
-            if ok and size then
-                pcall(function()
-                    Scroll.CanvasSize = UDim2.new(0, 0, 0, math.max(size.Y + 8, Scroll.AbsoluteSize.Y))
-                    Scroll.CanvasPosition = Vector2.new(0, math.max(0, size.Y - Scroll.AbsoluteSize.Y))
-                end)
-            end
-        end)
-    end
-
-    -- ปฏิบัติการเมื่อกด Send: เรียก plr(...), ล้าง box, train, อ่าน a2 ล่าสุด, Think -> ai(...)
-    if send and typeof(send.MouseButton1Click) == "RBXScriptSignal" then
-        send.MouseButton1Click:Connect(function()
+local layout = ensureLayout(Scroll)
+local function updateCanvas()
+    if not (Scroll and layout) then return end
+    task.defer(function()
+        local ok, size = pcall(function() return layout.AbsoluteContentSize end)
+        if ok and size then
             pcall(function()
-                if box and box:IsA("TextBox") then
-                    local txt = tostring(box.Text or "")
-                    if txt:match("%S") then
-                        -- เรียก plr จากสคริปท์หลัก (ไฟล์ LighterCyan.ai ประกาศ plrอยู่แล้ว)
-                        if type(plr) == "function" then
-                            pcall(plr, txt, 60)
-                        else
-                            -- ถ้าไม่มี plr ให้ fallback สร้าง mesg แบบชั่วคราว (จะไม่เกิด error)
-                            pcall(function() mesg(txt, 60, 230,230,230, 0,0,0) end)
-                        end
-
-                        -- ล้างกล่องข้อความ (clear)
-                        pcall(function() box.Text = "" end)
-
-                        -- training + think + reply
-                        pcall(TrainFromScroll)
-                        local latestA2 = ReadLatestA2() or ""
-                        local reply = Think(txt, latestA2)
-                        if type(ai) == "function" then
-                            pcall(ai, reply, 60)
-                        else
-                            pcall(function() mesg(reply, 60, 230,230,230, 0,0,0) end)
-                        end
-
-                        -- update canvas (ถ้ามี)
-                        safeUpdateCanvas()
-                    end
-                end
+                Scroll.CanvasSize = UDim2.new(0,0,0, math.max(size.Y + 8, Scroll.AbsoluteSize.Y))
+                Scroll.CanvasPosition = Vector2.new(0, math.max(0, size.Y - Scroll.AbsoluteSize.Y))
             end)
-        end)
-    end
-
-    -- Enter ส่งด้วย
-    if box and box:IsA("TextBox") then
-        box.FocusLost:Connect(function(enter)
-            if enter then
-                pcall(function()
-                    local txt = tostring(box.Text or "")
-                    if txt:match("%S") then
-                        if type(plr) == "function" then pcall(plr, txt, 60) else pcall(function() mesg(txt, 60, 230,230,230,0,0,0) end) end
-                        pcall(function() box.Text = "" end)
-                        pcall(TrainFromScroll)
-                        local latestA2 = ReadLatestA2() or ""
-                        local reply = Think(txt, latestA2)
-                        if type(ai) == "function" then pcall(ai, reply, 60) else pcall(function() mesg(reply, 60, 230,230,230,0,0,0) end) end
-                        safeUpdateCanvas()
-                    end
-                end)
-            end
-        end)
-    end
-
-    -- clear: ล้าง box.Text
-    if clear and typeof(clear.MouseButton1Click) == "RBXScriptSignal" then
-        clear.MouseButton1Click:Connect(function()
-            pcall(function()
-                if box and box:IsA("TextBox") then box.Text = "" end
-                safeUpdateCanvas()
-            end)
-        end)
-    end
-
-    -- re-chat: ลบเฉพาะ Frame children ใน Scroll (ไม่แตะ Scroll2/Scroll3)
-    if rec and typeof(rec.MouseButton1Click) == "RBXScriptSignal" then
-        rec.MouseButton1Click:Connect(function()
-            pcall(function()
-                if Scroll then
-                    for _, child in ipairs(Scroll:GetChildren()) do
-                        if child:IsA("Frame") then
-                            pcall(function() child:Destroy() end)
-                        end
-                    end
-                    safeUpdateCanvas()
-                end
-            end)
-        end)
-    end
-
-    -- Expose API (ถ้าต้องการเรียกจากส่วนอื่นของสคริปท์หลัก)
-    local API = {
-        TrainFromScroll = TrainFromScroll,
-        ReadLatestA2 = ReadLatestA2,
-        Think = Think,
-        GetCorpus = function() return Corpus end,
-        updateCanvas = safeUpdateCanvas
-    }
-    -- เก็บไว้ถ้าอยากเข้าถึงจากที่อื่น (ช่องทางนี้ไม่จำเป็นแต่มีเพิ่มให้)
-    pcall(function()
-        if Gui then
-            local holder = Gui:FindFirstChild("__SEND_TRAIN_API__") or Instance.new("Folder")
-            holder.Name = "__SEND_TRAIN_API__"
-            holder.Parent = Gui
-            for _, c in ipairs(holder:GetChildren()) do if c:IsA("BindableFunction") or c:IsA("BindableEvent") then pcall(function() c:Destroy() end) end end
-            local bf = Instance.new("BindableFunction"); bf.Name = "GetAPI"; bf.Parent = holder
-            bf.OnInvoke = function() return API end
         end
     end)
 end
--- === end snippet ===
+if layout then layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas) end
+
+-- message creators ที่เข้ากับ a1 / a2 ชื่อ TextLabel ตามไฟล์ของคุณ
+local function createPlrFrame(text)
+    if not Scroll then return nil end
+    local px = math.clamp(30 + math.ceil(#tostring(text)/40)*18, 28, 400)
+    local f = Instance.new("Frame"); f.Name = "plr"; f.Size = UDim2.new(0.96,0,0,px); f.Parent = Scroll
+    local lbl = Instance.new("TextLabel"); lbl.Name = "a1"; lbl.Text = tostring(text or ""); lbl.Size = UDim2.new(0.88,-8,1,0); lbl.Position = UDim2.new(0,56,0,0)
+    lbl.BackgroundTransparency = 1; lbl.TextWrapped = true; lbl.TextXAlignment = Enum.TextXAlignment.Right; lbl.Parent = f
+    -- placeholder a2 (image or meta) ให้ ReadLatestA2 หาได้
+    local img = Instance.new("ImageLabel"); img.Name = "a2"; img.Size = UDim2.new(0,1,0,1); img.BackgroundTransparency = 1; img.Parent = f
+    return f
+end
+
+local function createAiFrame(text)
+    if not Scroll then return nil end
+    local px = math.clamp(30 + math.ceil(#tostring(text)/40)*18, 28, 400)
+    local f = Instance.new("Frame"); f.Name = "ai"; f.Size = UDim2.new(0.96,0,0,px); f.Parent = Scroll
+    local img = Instance.new("ImageLabel"); img.Name = "a1"; img.Size = UDim2.new(0,1,0,1); img.BackgroundTransparency = 1; img.Parent = f
+    local lbl = Instance.new("TextLabel"); lbl.Name = "a2"; lbl.Text = tostring(text or ""); lbl.Size = UDim2.new(0.88,-8,1,0); lbl.Position = UDim2.new(0,56,0,0)
+    lbl.BackgroundTransparency = 1; lbl.TextWrapped = true; lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.Parent = f
+    return f
+end
+
+local function createMesg(text)
+    if not Scroll then return nil end
+    local px = 40
+    local f = Instance.new("Frame"); f.Name = "message"; f.Size = UDim2.new(0.96,0,0,px); f.Parent = Scroll
+    local lbl = Instance.new("TextLabel"); lbl.Name = "a1"; lbl.Text = tostring(text or ""); lbl.Size = UDim2.new(0.88,-8,1,0); lbl.BackgroundTransparency=1; lbl.TextWrapped=true; lbl.TextXAlignment = Enum.TextXAlignment.Center; lbl.Parent = f
+    return f
+end
+
+-- Corpus, Train, ReadLatestA2, Think (เหมือนเดิม แต่อยู่ local)
+local Corpus = {}
+local function AddToCorpus(s) if type(s) == "string" and s:match("%S") then table.insert(Corpus, s) end end
+
+local function TrainFromScroll()
+    if not Scroll then return end
+    for _, d in ipairs(Scroll:GetDescendants()) do
+        if d:IsA("TextLabel") and (d.Name == "a1" or d.Name == "a2") then
+            AddToCorpus(d.Text)
+        end
+    end
+end
+
+local function ReadLatestA2()
+    if not Scroll then return nil end
+    local last = nil
+    for _, child in ipairs(Scroll:GetChildren()) do
+        for _, d in ipairs(child:GetDescendants()) do
+            if d:IsA("TextLabel") and d.Name == "a2" then last = d.Text end
+        end
+    end
+    return last
+end
+
+local function Think(input, context)
+    input = tostring(input or ""); context = tostring(context or "")
+    local tokens = {}
+    for w in input:gmatch("%w+") do tokens[#tokens+1] = w:lower() end
+    for w in context:gmatch("%w+") do tokens[#tokens+1] = w:lower() end
+    local bestScore, bestIdx = 0, nil
+    for i, entry in ipairs(Corpus) do
+        local score = 0
+        local el = tostring(entry):lower()
+        for _, t in ipairs(tokens) do if #t>=3 and el:find(t,1,true) then score = score + 1 end end
+        if score > bestScore then bestScore, bestIdx = score, i end
+    end
+    if bestIdx then
+        local reply = Corpus[bestIdx]
+        if #reply > 200 then reply = string.sub(reply,1,200) .. "..." end
+        return ("คิดว่า " .. reply)
+    end
+    if input ~= "" then return ("ฉันคิดเกี่ยวกับ: " .. string.sub(input,1,200)) end
+    return ("สวัสดี — ลองพิมพ์อะไรมาได้เลย")
+end
+
+-- API wrappers: ใช้ฟังก์ชัน plr/ai ถ้ามีใน global scope ของสคริปท์หลัก (ตามไฟล์ LighterCyan.ai)
+local function send_plr(text, lifespan)
+    if type(plr) == "function" then
+        pcall(plr, text, lifespan or 60)
+    else
+        pcall(createPlrFrame, text)
+    end
+    pcall(updateCanvas)
+end
+
+local function send_ai(text, lifespan)
+    if type(ai) == "function" then
+        pcall(ai, text, lifespan or 60)
+    else
+        pcall(createAiFrame, text)
+    end
+    pcall(updateCanvas)
+end
+
+local function send_mesg(text, lifespan)
+    if type(mesg) == "function" then
+        pcall(mesg, text, lifespan or 60, 230,230,230, 0,0,0)
+    else
+        pcall(createMesg, text)
+    end
+    pcall(updateCanvas)
+end
+
+-- BUTTON HANDLERS (ตามที่คุณบอก)
+if send and typeof(send.MouseButton1Click) == "RBXScriptSignal" then
+    send.MouseButton1Click:Connect(function()
+        pcall(function()
+            if box and box:IsA("TextBox") then
+                local txt = tostring(box.Text or "")
+                if txt:match("%S") then
+                    -- เรียก plr(text,60)
+                    send_plr(txt, 60)
+                    -- ล้าง box
+                    pcall(function() box.Text = "" end)
+                    -- train, read a2, think, reply AI
+                    pcall(TrainFromScroll)
+                    local latest = ReadLatestA2() or ""
+                    local reply = Think(txt, latest)
+                    send_ai(reply, 60)
+                    pcall(updateCanvas)
+                end
+            end
+        end)
+    end)
+end
+
+-- Enter ส่งด้วย
+if box and box:IsA("TextBox") then
+    box.FocusLost:Connect(function(enter)
+        if enter then
+            pcall(function()
+                local txt = tostring(box.Text or "")
+                if txt:match("%S") then
+                    send_plr(txt, 60)
+                    pcall(function() box.Text = "" end)
+                    pcall(TrainFromScroll)
+                    local latest = ReadLatestA2() or ""
+                    local reply = Think(txt, latest)
+                    send_ai(reply, 60)
+                    pcall(updateCanvas)
+                end
+            end)
+        end
+    end)
+end
+
+-- clear: ตั้ง Ask.Text = ""
+if clear and typeof(clear.MouseButton1Click) == "RBXScriptSignal" then
+    clear.MouseButton1Click:Connect(function()
+        pcall(function()
+            if box and box:IsA("TextBox") then box.Text = "" end
+            pcall(updateCanvas)
+        end)
+    end)
+end
+
+-- rec: ลบเฉพาะ Frame children ใน Scroll
+if rec and typeof(rec.MouseButton1Click) == "RBXScriptSignal" then
+    rec.MouseButton1Click:Connect(function()
+        pcall(function()
+            if Scroll then
+                for _, child in ipairs(Scroll:GetChildren()) do
+                    if child:IsA("Frame") then
+                        pcall(function() child:Destroy() end)
+                    end
+                end
+                pcall(updateCanvas)
+            end
+        end)
+    end)
+end
+
+-- expose API (เก็บไว้บน Gui ถ้าเจอ)
+if root then
+    pcall(function()
+        local g = root.Parent -- In your path root is InsetFrame; parent is Holder
+        local holder = g and g:FindFirstChild("__SEND_SNIPPET_API__") or Instance.new("Folder")
+        holder.Name = "__SEND_SNIPPET_API__"
+        holder.Parent = g or root
+        for _, v in ipairs(holder:GetChildren()) do if v:IsA("BindableFunction") or v:IsA("BindableEvent") then pcall(function() v:Destroy() end) end end
+        local bf = Instance.new("BindableFunction"); bf.Name = "GetAPI"; bf.Parent = holder
+        bf.OnInvoke = function() return {
+            TrainFromScroll = TrainFromScroll,
+            ReadLatestA2 = ReadLatestA2,
+            Think = Think,
+            SendPlr = send_plr,
+            SendAi = send_ai,
+            SendMesg = send_mesg,
+            UpdateCanvas = updateCanvas,
+        } end
+    end)
+end
+
+print("[SEND_SNIPPET] Ready (path used CoreGui.TopBarApp...LighterCyan.ai)")
