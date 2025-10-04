@@ -95,20 +95,6 @@ local function Gradient(parent, rotation, offsetX, offsetY, ...)
 end
 -- =====END FUNCTION UIGRADIENT=====
 
--- =====REMOTEEVENT=====
-local DS = Instance.new("RemoteEvent")
-DS.Name = "ai.DataStorage"
-DS.Parent = ReplicatedStorage
-
-local Ling = Instance.new("RemoteEvent")
-Ling.Name = "ai.Learning"
-Ling.Parent = ReplicatedStorage
-
-local Ting = Instance.new("RemoteEvent")
-Ting.Name "ai.Training"
-Ting.Parent = ReplicatedStorage
--- =====END REMOTEEVENT=====
-
 -- ====FUNCTION UIPADDING (ตามลำดับ Roblox)=====
 local function Padding(parent, bottom, left, right, top)
     local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
