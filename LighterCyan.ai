@@ -433,7 +433,10 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 local function pcallf(fn, ...) local ok, a, b = pcall(fn, ...) return ok, a, b end
-local function dbg(...) pcall(function() print("[LC]", ...) end) end
+local function dbg(...)
+    local args = {...}
+    pcall(function() print("[LC]", table.unpack(args)) end)
+end
 
 -- ---------- Find base GUI ----------
 local function getBase()
