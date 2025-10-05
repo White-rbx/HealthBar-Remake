@@ -344,7 +344,6 @@ local function ai(Text, Offset)
 	ai.BackgroundColor3 = Color3.fromRGB(255,255,255)
 	ai.BackgroundTransparency = 0.8
 	ai.Size = UDim2.new(0.96, 0, 0, Offset)
-    ai.AutomaticSize = Enum.AutomaticSize.Y
 	ai.Parent = Scroll
 	createUIListLayout(ai, 0, 10, HCenter, VCenter, SName, FillH)
 	Stroke(ai, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
@@ -409,7 +408,6 @@ local function plr(Text, Offset)
 	text.Name = "a1"
 	text.Size = UDim2.new(0.88, -8, 1, 0)
 	text.BackgroundTransparency = 1
-    plrFrame.AutomaticSize = Enum.AutomaticSize.Y
 	text.TextSize = 15
 	text.TextWrapped = true
 	text.TextXAlignment = Enum.TextXAlignment.Right
@@ -429,7 +427,6 @@ local function mesg(Text, Offset, R, G, B, R1, G1, B1)
     mesge.Name = "message"
     mesge.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     mesge.BackgroundTransparency = 0.8
-    mesge.AutomaticSize = Enum.AutomaticSize.Y
     mesge.Size = UDim2.new(0.96, 0, 0, Offset)
     mesge.Parent = Scroll
     createUIListLayout(mesge, 0, 10, HCenter, VCenter, SName, FillH)
