@@ -203,105 +203,173 @@ Scroll3.Parent = chat
 createUIListLayout(Scroll3, 0, 5, HCenter, VTop, SLayout, FillV)
 
 
--- =====FUNCTION CHAT AI AND PLAYER=====
--- NOTE: functions use global Scroll variable so ensure Scroll is created before calling them
+--// ===== TYPEWRITER EFFECT WITH SOUND + LOCK SYSTEM ===== \\--
 
+local isAITyping = false  -- ป้องกันการพิมพ์ซ้ำระหว่าง AI คิด
+
+-- เล่นเสียงง่าย ๆ
+local function playSound(soundId, parent)
+	if not soundId then return end
+	local s = Instance.new("Sound")
+	s.SoundId = "rbxassetid://" .. tostring(soundId)
+	s.Volume = 0.2
+	s.PlayOnRemove = true
+	s.Parent = parent or game:GetService("CoreGui")
+	s:Destroy()
+end
+
+-- พิมพ์ทีละตัวอักษร
+local function typewrite(label, fullText, delayPerChar, soundId, callback)
+	if not (label and label:IsA("TextLabel")) then
+		if callback then callback() end
+		return
+	end
+	fullText = tostring(fullText or "")
+	delayPerChar = tonumber(delayPerChar) or 0.02
+	label.Text = ""
+
+	task.spawn(function()
+		for i = 1, #fullText do
+			pcall(function()
+				label.Text = string.sub(fullText, 1, i)
+				playSound(soundId, label)
+			end)
+			task.wait(delayPerChar)
+		end
+		if callback then callback() end
+	end)
+end
+
+-- ล็อคช่องพิมพ์ระหว่าง AI ทำงาน
+local function lockTextbox(box, locked)
+	if not (box and box:IsA("TextBox")) then return end
+	pcall(function()
+		box.Active = not locked
+		box.Selectable = not locked
+		box.TextEditable = not locked
+		if locked then
+			box.PlaceholderText = "[Thinking...]"
+		else
+			box.PlaceholderText = "Ask anything..."
+		end
+	end)
+end
+
+
+--// ====== ฟังก์ชันแชท ====== \\--
+
+-- ai() – มีเสียงและพิมพ์ทีละตัว
 local function ai(Text, Offset)
-    Offset = tonumber(Offset) or 0
-    local ai = Instance.new("Frame")
-    ai.Name = "ai"
-    ai.BackgroundColor3 = Color3.fromRGB(255,255,255)
-    ai.BackgroundTransparency = 0.8
-    -- ใส่ขนาด X scale + X offset และ Y height (เช่น 72px)
-    ai.Size = UDim2.new(0.96, 0, 0, Offset or 60)
-    ai.Parent = Scroll -- ต้องแน่ใจว่า Scroll มีอยู่แล้ว (สร้างก่อนเรียก)
-    createUIListLayout(ai, 0, 10, HCenter, VCenter, SName, FillH)
-    Stroke(ai, ASMBorder, 255, 255, 255, LJMRound, 1, 0) -- ใช้ LJMRound (ไม่ใช่ JSMRound)
-    Corner(0, 8, ai)
+	isAITyping = true
+	lockTextbox(box, true)
 
-    local image = Instance.new("ImageLabel")
-    image.Name = "a1"
-    image.Image = "rbxassetid://83032822916288" -- property ต้องใช้ Image
-    image.Size = UDim2.new(0, 50, 0, 50)
-    image.BackgroundTransparency = 0.8
-    image.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    image.Parent = ai
-    Corner(0, 8, image)
-    Stroke(image, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+	Offset = tonumber(Offset) or 0
+	local ai = Instance.new("Frame")
+	ai.Name = "ai"
+	ai.BackgroundColor3 = Color3.fromRGB(255,255,255)
+	ai.BackgroundTransparency = 0.8
+	ai.Size = UDim2.new(0.96, 0, 0, Offset)
+	ai.Parent = Scroll
+	createUIListLayout(ai, 0, 10, HCenter, VCenter, SName, FillH)
+	Stroke(ai, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+	Corner(0, 8, ai)
 
-    local text = Instance.new("TextLabel")
-    text.Name = "a2"
-    text.Text = tostring(Text or "")
-    text.Size = UDim2.new(0.88, -8, 1, 0) -- ปรับให้ fill แนวตั้ง
-    text.BackgroundTransparency = 1
-    text.TextSize = 15
-    text.TextWrapped = true
-    text.TextXAlignment = Enum.TextXAlignment.Left
-    text.TextYAlignment = Enum.TextYAlignment.Top
-    text.Parent = ai
-    return ai
+	local image = Instance.new("ImageLabel")
+	image.Name = "a1"
+	image.Image = "rbxassetid://83032822916288"
+	image.Size = UDim2.new(0, 50, 0, 50)
+	image.BackgroundTransparency = 0.8
+	image.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+	image.Parent = ai
+	Corner(0, 8, image)
+	Stroke(image, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+
+	local text = Instance.new("TextLabel")
+	text.Name = "a2"
+	text.Size = UDim2.new(0.88, -8, 1, 0)
+	text.BackgroundTransparency = 1
+	text.TextSize = 15
+	text.TextWrapped = true
+	text.TextXAlignment = Enum.TextXAlignment.Left
+	text.TextYAlignment = Enum.TextYAlignment.Top
+	text.Parent = ai
+
+	typewrite(text, Text or "Thinking...", 0.02, 18439142106, function()
+		isAITyping = false
+		lockTextbox(box, false)
+	end)
+
+	attach_auto_resize(ai, text)
+	return ai
 end
 
+
+-- plr() – มีเสียงและ auto resize
 local function plr(Text, Offset)
-    Offset = tonumber(Offset) or 0
-    local plrFrame = Instance.new("Frame")
-    plrFrame.Name = "plr"
-    plrFrame.BackgroundColor3 = Color3.fromRGB(255,255,255)
-    plrFrame.BackgroundTransparency = 0.8
-    plrFrame.Size = UDim2.new(0.96, 0, 0, Offset or 60) -- ระบุ height ชัดเจน
-    plrFrame.Parent = Scroll
-    createUIListLayout(plrFrame, 0, 10, HCenter, VCenter, SName, FillH)
-    Stroke(plrFrame, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
-    Corner(0, 8, plrFrame)
+	Offset = tonumber(Offset) or 0
+	local plrFrame = Instance.new("Frame")
+	plrFrame.Name = "plr"
+	plrFrame.BackgroundColor3 = Color3.fromRGB(255,255,255)
+	plrFrame.BackgroundTransparency = 0.8
+	plrFrame.Size = UDim2.new(0.96, 0, 0, Offset)
+	plrFrame.Parent = Scroll
+	createUIListLayout(plrFrame, 0, 10, HCenter, VCenter, SName, FillH)
+	Stroke(plrFrame, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+	Corner(0, 8, plrFrame)
 
-    local image = Instance.new("ImageLabel")
-    image.Name = "a2"
-    image.Image = "rbxassetid://135474395711579"
-    image.Size = UDim2.new(0, 50, 0, 50)
-    image.BackgroundTransparency = 0.8
-    image.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    image.Parent = plrFrame
-    Corner(0, 8, image)
-    Stroke(image, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+	local image = Instance.new("ImageLabel")
+	image.Name = "a2"
+	image.Image = "rbxassetid://135474395711579"
+	image.Size = UDim2.new(0, 50, 0, 50)
+	image.BackgroundTransparency = 0.8
+	image.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	image.Parent = plrFrame
+	Corner(0, 8, image)
+	Stroke(image, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
 
-    local text = Instance.new("TextLabel")
-    text.Name = "a1"
-    text.Text = tostring(Text or "")
-    text.Size = UDim2.new(0.88, -8, 1, 0)
-    text.BackgroundTransparency = 1
-    text.TextSize = 15
-    text.TextWrapped = true
-    text.TextXAlignment = Enum.TextXAlignment.Right
-    text.TextYAlignment = Enum.TextYAlignment.Top
-    text.Parent = plrFrame
-    return plrFrame
+	local text = Instance.new("TextLabel")
+	text.Name = "a1"
+	text.Size = UDim2.new(0.88, -8, 1, 0)
+	text.BackgroundTransparency = 1
+	text.TextSize = 15
+	text.TextWrapped = true
+	text.TextXAlignment = Enum.TextXAlignment.Right
+	text.TextYAlignment = Enum.TextYAlignment.Top
+	text.Parent = plrFrame
+
+	typewrite(text, Text or "", 0.02, 1289263994)
+	attach_auto_resize(plrFrame, text)
+	return plrFrame
 end
 
--- MESSAGE
-local function mesg(Text, Offset, R, G, B, R1, G1, B1)
-    Offset = tonumber(Offset) or 0
-    local mesge = Instance.new("Frame")
-    mesge.Name = "message"
-    mesge.BackgroundColor3 = Color3.fromRGB(R, G, B or 255, 255, 255)
-    mesge.BackgroundTransparency = 0.8
-    mesge.Size = UDim2.new(0.96, 0, 0, Offset or 60) -- ระบุ height ชัดเจน
-    mesge.Parent = Scroll
-    createUIListLayout(mesge, 0, 10, HCenter, VCenter, SName, FillH)
-    Stroke(mesge, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
-    Corner(0, 8, mesge)
 
-    local text = Instance.new("TextLabel")
-    text.Name = "a1"
-    text.Text = tostring(Text or "")
-    text.Size = UDim2.new(0.88, 0, 1, 0)
-    text.BackgroundTransparency = 1
-    text.TextColor3 = Color3.fromRGB(R1, G1, B1 or 0, 0, 0)
-    text.TextSize = 15
-    text.TextWrapped = true
-    text.TextXAlignment = Enum.TextXAlignment.Center
-    text.TextYAlignment = Enum.TextYAlignment.Center
-    text.Parent = mesge
-    return mesg
+-- mesg() – ระบบข้อความสถานะ เช่น error หรือ log
+local function mesg(Text, Offset, R, G, B, R1, G1, B1)
+	Offset = tonumber(Offset) or 0
+	local mesge = Instance.new("Frame")
+	mesge.Name = "message"
+	mesge.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+	mesge.BackgroundTransparency = 0.8
+	mesge.Size = UDim2.new(0.96, 0, 0, Offset)
+	mesge.Parent = Scroll
+	createUIListLayout(mesge, 0, 10, HCenter, VCenter, SName, FillH)
+	Stroke(mesge, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+	Corner(0, 8, mesge)
+
+	local text = Instance.new("TextLabel")
+	text.Name = "a1"
+	text.Size = UDim2.new(0.88, 0, 1, 0)
+	text.BackgroundTransparency = 1
+	text.TextColor3 = Color3.fromRGB(R1 or 0, G1 or 0, B1 or 0)
+	text.TextSize = 15
+	text.TextWrapped = true
+	text.TextXAlignment = Enum.TextXAlignment.Center
+	text.TextYAlignment = Enum.TextYAlignment.Center
+	text.Parent = mesge
+
+	typewrite(text, Text or "", 0.02, 263105619)
+	attach_auto_resize(mesge, text)
+	return mesge
 end
 
 -- =====END FUNCTION AI AND PLAYER + END INSETFRAME=====
