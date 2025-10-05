@@ -4,7 +4,10 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-R
 -- ใช้ใน LocalScript (client-side)
 -- ปรับปรุงการตรวจสอบ nil เพื่อหลีกเลี่ยง "attempt to index nil with 'FindFirstChild'"
 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local player = Players.LocalPlayer
 
 -- ถ้า LocalPlayer ยังไม่พร้อม ให้รอ
 if not player then
