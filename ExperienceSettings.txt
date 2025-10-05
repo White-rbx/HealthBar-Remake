@@ -443,6 +443,7 @@ end
 local MarketplaceService = game:GetService("MarketplaceService")
 local StarterGui = game:GetService("StarterGui")
 local GuiService = game:GetService("GuiService")
+local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 
 -- ======= Helpers =======
