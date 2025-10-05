@@ -2,7 +2,7 @@
 -- 7 script (IMPORTANT)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/LigherCyan.ai/refs/heads/main/Loader.lua"))()
 
--- string:LighterCyan:ai(1)
+-- string:LighterCyan:ai()
 -- Parent Finder
 local Ex = game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ExperienceSettings
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
