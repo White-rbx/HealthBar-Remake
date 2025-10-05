@@ -207,22 +207,24 @@ createUIListLayout(Scroll3, 0, 5, HCenter, VTop, SLayout, FillV)
 
 -- =====safe fallback: ถ้า attach_auto_resize ถูกประกาศไว้แล้ว ให้ใช้ของเดิม=====
 local function safe_attach_auto_resize(frame, label)
-    -- ถ้ามี attach_auto_resize ของเดิม (ชื่อเดียว) ให้เรียกมัน
-    if type(attach_auto_resize) == "function" then
-        pcall(function() attach_auto_resize(frame, label) end)
-        return
-    end
-
-    -- ถ้าไม่มี ให้ทำ fallback แบบปลอดภัย (ค่าขั้นต่ำ MIN_HEIGHT ต้องมีในสคริปต์)
-    local ok, MINH = pcall(function() return MIN_HEIGHT end)
-    local MIN_H = (ok and type(MINH) == "number") and MINH or 60
-
-    -- เบื้องต้นตั้งให้ label ห่อข้อความ และใช้ GetTextSize เป็น fallback
+    if not (frame and label and label:IsA("TextLabel")) then return end
     pcall(function()
-        if label and label:IsA("TextLabel") then
-            label.TextWrapped = true
-        end
+        local sc = find_scroll_frame()
+        local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
+        local ok, ts = pcall(function()
+            return TextService:GetTextSize(
+                tostring(label.Text or ""),
+                label.TextSize or 16,
+                label.Font or Enum.Font.SourceSans,
+                Vector2.new(math.max(10, scW * 0.88), math.huge)
+            )
+        end)
+        local textHeight = (ok and ts and ts.Y) and ts.Y or (label.TextSize * 1.2)
+        local newH = math.clamp(textHeight + 18, 60, 200) -- <--- จำกัดความสูงระหว่าง 60-200
+        frame.Size = UDim2.new(0.96, 0, 0, newH)
+        update_canvas(sc)
     end)
+end
 
     -- initial sizing
     pcall(function()
