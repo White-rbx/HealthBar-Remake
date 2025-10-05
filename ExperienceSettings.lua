@@ -530,7 +530,7 @@ createUIListLayout(mtb, 0.005, 0, HCenter, VTop, FillH)
 local hr = Instance.new("Frame")
 hr.Name = "Holder"
 hr.Size = UDim2.new(0, 370, 1, 0)
-hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+hr.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
 hr.BackgroundTransparency = 0.2
 hr.Parent = mtb
 createUICorner(hr, 1, 0)
@@ -540,7 +540,7 @@ createUIListLayout(hr, 0, 10, HCenter, VCenter, FillH)
 local tb = Instance.new("ScrollingFrame")
 tb.Name = "TopButtons"
 tb.Size = UDim2.new(0, 0, 0, 0) -- start collapsed
-tb.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+tb.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
 tb.BackgroundTransparency = 0.2
 tb.ScrollBarThickness = 4
 tb.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -652,7 +652,7 @@ local wl = Instance.new("TextLabel")
 wl.Name = "Warning & Load"
 wl.BackgroundTransparency = 1
 wl.Size = UDim2.new(1, 0, 1, 0)
-wl.Text = "This experience is unavailable for ExperienceSettings. or HumanoidRootPart not found. | Error: Failed to loaded. |"
+wl.Text = "ExperienceSettings had been unavailable for this experience. or HumanoidRootPart is not found. or Failed to load script."
 wl.TextScaled = true
 wl.Active = false
 wl.TextColor3 = Color3.fromRGB(255, 255, 255)
