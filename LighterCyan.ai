@@ -262,6 +262,11 @@ local function safe_attach_auto_resize(frame, label)
     end
 end
 
+-- ถ้า attach_auto_resize ยังไม่มี ให้ชี้ไปที่ safe fallback
+if type(attach_auto_resize) ~= "function" then
+    attach_auto_resize = safe_attach_auto_resize
+end
+
 --// ===== TYPEWRITER EFFECT WITH SOUND + LOCK SYSTEM ===== \\--
 
 local isAITyping = false  -- ป้องกันการพิมพ์ซ้ำระหว่าง AI คิด
