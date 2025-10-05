@@ -202,6 +202,62 @@ Scroll3.Visible = false
 Scroll3.Parent = chat
 createUIListLayout(Scroll3, 0, 5, HCenter, VTop, SLayout, FillV)
 
+-- safe fallback: ถ้า attach_auto_resize ถูกประกาศไว้แล้ว ให้ใช้ของเดิม
+local function safe_attach_auto_resize(frame, label)
+    -- ถ้ามี attach_auto_resize ของเดิม (ชื่อเดียว) ให้เรียกมัน
+    if type(attach_auto_resize) == "function" then
+        pcall(function() attach_auto_resize(frame, label) end)
+        return
+    end
+
+    -- ถ้าไม่มี ให้ทำ fallback แบบปลอดภัย (ค่าขั้นต่ำ MIN_HEIGHT ต้องมีในสคริปต์)
+    local ok, MINH = pcall(function() return MIN_HEIGHT end)
+    local MIN_H = (ok and type(MINH) == "number") and MINH or 60
+
+    -- เบื้องต้นตั้งให้ label ห่อข้อความ และใช้ GetTextSize เป็น fallback
+    pcall(function()
+        if label and label:IsA("TextLabel") then
+            label.TextWrapped = true
+        end
+    end)
+
+    -- initial sizing
+    pcall(function()
+        if not (frame and frame:IsA("Frame") and label and label:IsA("TextLabel")) then return end
+        local sc = find_scroll_frame()
+        local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
+        local sizeOK, ts = pcall(function() return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize or 16, label.Font or Enum.Font.SourceSans, Vector2.new(math.max(10, scW * 0.88), math.huge)) end)
+        local lblH = (sizeOK and ts and ts.Y) and math.ceil(ts.Y) or (label.TextSize * 1.5)
+        local newH = math.max(MIN_H, lblH + 18)
+        frame.Size = UDim2.new(0.96, 0, 0, newH)
+        update_canvas(sc)
+    end)
+
+    -- best-effort: connect Text change to update (non-leaky)
+    local conText
+    local ancCon
+    if label and label:IsA("TextLabel") then
+        conText = label:GetPropertyChangedSignal("Text"):Connect(function()
+            pcall(function()
+                local sc = find_scroll_frame()
+                local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
+                local ok2, ts2 = pcall(function() return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize or 16, label.Font or Enum.Font.SourceSans, Vector2.new(math.max(10, scW * 0.88), math.huge)) end)
+                local lblH2 = (ok2 and ts2 and ts2.Y) and math.ceil(ts2.Y) or (label.TextSize * 1.5)
+                local newH2 = math.max(MIN_H, lblH2 + 18)
+                frame.Size = UDim2.new(0.96, 0, 0, newH2)
+                update_canvas(sc)
+            end)
+        end)
+        ancCon = frame.AncestryChanged:Connect(function()
+            if not frame:IsDescendantOf(game) then
+                pcall(function()
+                    if conText and conText.Disconnect then conText:Disconnect() end
+                    if ancCon and ancCon.Disconnect then ancCon:Disconnect() end
+                end)
+            end
+        end)
+    end
+end
 
 --// ===== TYPEWRITER EFFECT WITH SOUND + LOCK SYSTEM ===== \\--
 
@@ -582,63 +638,6 @@ local function update_canvas(scroll)
             end)
         end
     end)
-end
-
--- safe fallback: ถ้า attach_auto_resize ถูกประกาศไว้แล้ว ให้ใช้ของเดิม
-local function safe_attach_auto_resize(frame, label)
-    -- ถ้ามี attach_auto_resize ของเดิม (ชื่อเดียว) ให้เรียกมัน
-    if type(attach_auto_resize) == "function" then
-        pcall(function() attach_auto_resize(frame, label) end)
-        return
-    end
-
-    -- ถ้าไม่มี ให้ทำ fallback แบบปลอดภัย (ค่าขั้นต่ำ MIN_HEIGHT ต้องมีในสคริปต์)
-    local ok, MINH = pcall(function() return MIN_HEIGHT end)
-    local MIN_H = (ok and type(MINH) == "number") and MINH or 60
-
-    -- เบื้องต้นตั้งให้ label ห่อข้อความ และใช้ GetTextSize เป็น fallback
-    pcall(function()
-        if label and label:IsA("TextLabel") then
-            label.TextWrapped = true
-        end
-    end)
-
-    -- initial sizing
-    pcall(function()
-        if not (frame and frame:IsA("Frame") and label and label:IsA("TextLabel")) then return end
-        local sc = find_scroll_frame()
-        local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
-        local sizeOK, ts = pcall(function() return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize or 16, label.Font or Enum.Font.SourceSans, Vector2.new(math.max(10, scW * 0.88), math.huge)) end)
-        local lblH = (sizeOK and ts and ts.Y) and math.ceil(ts.Y) or (label.TextSize * 1.5)
-        local newH = math.max(MIN_H, lblH + 18)
-        frame.Size = UDim2.new(0.96, 0, 0, newH)
-        update_canvas(sc)
-    end)
-
-    -- best-effort: connect Text change to update (non-leaky)
-    local conText
-    local ancCon
-    if label and label:IsA("TextLabel") then
-        conText = label:GetPropertyChangedSignal("Text"):Connect(function()
-            pcall(function()
-                local sc = find_scroll_frame()
-                local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
-                local ok2, ts2 = pcall(function() return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize or 16, label.Font or Enum.Font.SourceSans, Vector2.new(math.max(10, scW * 0.88), math.huge)) end)
-                local lblH2 = (ok2 and ts2 and ts2.Y) and math.ceil(ts2.Y) or (label.TextSize * 1.5)
-                local newH2 = math.max(MIN_H, lblH2 + 18)
-                frame.Size = UDim2.new(0.96, 0, 0, newH2)
-                update_canvas(sc)
-            end)
-        end)
-        ancCon = frame.AncestryChanged:Connect(function()
-            if not frame:IsDescendantOf(game) then
-                pcall(function()
-                    if conText and conText.Disconnect then conText:Disconnect() end
-                    if ancCon and ancCon.Disconnect then ancCon:Disconnect() end
-                end)
-            end
-        end)
-    end
 end
 
 -- ========== helpers: compute_text (fallback) ==========
