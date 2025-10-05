@@ -202,7 +202,7 @@ Scroll3.Visible = false
 Scroll3.Parent = chat
 createUIListLayout(Scroll3, 0, 5, HCenter, VTop, SLayout, FillV)
 
--- =====safe fallback: ถ้า attach_auto_resize ถูกประกาศไว้แล้ว ให้ใช้ของเดิม======
+-- =====safe fallback: ถ้า attach_auto_resize ถูกประกาศไว้แล้ว ให้ใช้ของเดิม=====
 local function safe_attach_auto_resize(frame, label)
     -- ถ้ามี attach_auto_resize ของเดิม (ชื่อเดียว) ให้เรียกมัน
     if type(attach_auto_resize) == "function" then
