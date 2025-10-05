@@ -388,7 +388,6 @@ local function plr(Text, Offset)
 	plrFrame.BackgroundColor3 = Color3.fromRGB(255,255,255)
 	plrFrame.BackgroundTransparency = 0.8
 	plrFrame.Size = UDim2.new(0.96, 0, 0, Offset)
-    plrFrame.AutomaticSize = Enum.AutomaticSize.Y
 	plrFrame.Parent = Scroll
 	createUIListLayout(plrFrame, 0, 10, HCenter, VCenter, SName, FillH)
 	Stroke(plrFrame, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
@@ -408,6 +407,7 @@ local function plr(Text, Offset)
 	text.Name = "a1"
 	text.Size = UDim2.new(0.88, -8, 1, 0)
 	text.BackgroundTransparency = 1
+    text.AutomaticSize = Enum.AutomaticSize.Y
 	text.TextSize = 15
 	text.TextWrapped = true
 	text.TextXAlignment = Enum.TextXAlignment.Right
