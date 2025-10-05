@@ -1,4 +1,4 @@
--- string starting//
+-- string starting
 -- string:LighterCyan:ai(1)
 -- Parent Finder
 local Ex = game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ExperienceSettings
