@@ -205,66 +205,75 @@ Scroll3.Visible = false
 Scroll3.Parent = chat
 createUIListLayout(Scroll3, 0, 5, HCenter, VTop, SLayout, FillV)
 
--- =====safe fallback: ถ้า attach_auto_resize ถูกประกาศไว้แล้ว ให้ใช้ของเดิม=====
+-- ===== safe_attach_auto_resize (fixed, single complete function) =====
 local function safe_attach_auto_resize(frame, label)
-    if not (frame and label and label:IsA("TextLabel")) then return end
-    pcall(function()
-        local sc = find_scroll_frame()
-        local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
-        local ok, ts = pcall(function()
-            return TextService:GetTextSize(
-                tostring(label.Text or ""),
-                label.TextSize or 16,
-                label.Font or Enum.Font.SourceSans,
-                Vector2.new(math.max(10, scW * 0.88), math.huge)
-            )
-        end)
-        local textHeight = (ok and ts and ts.Y) and ts.Y or (label.TextSize * 1.2)
-        local newH = math.clamp(textHeight + 18, 60, 200) -- <--- จำกัดความสูงระหว่าง 60-200
-        frame.Size = UDim2.new(0.96, 0, 0, newH)
-        update_canvas(sc)
-    end)
-end
+    -- basic guards
+    if not (frame and frame:IsA("Frame") and label and label:IsA("TextLabel")) then return end
 
-    -- initial sizing
+    -- prefer real attach_auto_resize if exists
+    if type(attach_auto_resize) == "function" then
+        pcall(function() attach_auto_resize(frame, label) end)
+        return
+    end
+
+    -- ensure MIN_HEIGHT variable available
+    local okMin, MIN_H = pcall(function() return MIN_HEIGHT end)
+    if not okMin or type(MIN_H) ~= "number" then MIN_H = 60 end
+
+    -- ensure TextWrapped and try to use AutomaticSize where available
     pcall(function()
-        if not (frame and frame:IsA("Frame") and label and label:IsA("TextLabel")) then return end
-        local sc = find_scroll_frame()
-        local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
-        local sizeOK, ts = pcall(function() return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize or 16, label.Font or Enum.Font.SourceSans, Vector2.new(math.max(10, scW * 0.88), math.huge)) end)
-        local lblH = (sizeOK and ts and ts.Y) and math.ceil(ts.Y) or (label.TextSize * 1.5)
-        local newH = math.max(MIN_H, lblH + 18)
-        frame.Size = UDim2.new(0.96, 0, 0, newH)
-        update_canvas(sc)
+        label.TextWrapped = true
+        if label.AutomaticSize ~= nil then label.AutomaticSize = Enum.AutomaticSize.Y end
+        if frame.AutomaticSize ~= nil then frame.AutomaticSize = Enum.AutomaticSize.Y end
     end)
 
-    -- best-effort: connect Text change to update (non-leaky)
-    local conText
-    local ancCon
-    if label and label:IsA("TextLabel") then
-        conText = label:GetPropertyChangedSignal("Text"):Connect(function()
-            pcall(function()
-                local sc = find_scroll_frame()
-                local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
-                local ok2, ts2 = pcall(function() return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize or 16, label.Font or Enum.Font.SourceSans, Vector2.new(math.max(10, scW * 0.88), math.huge)) end)
-                local lblH2 = (ok2 and ts2 and ts2.Y) and math.ceil(ts2.Y) or (label.TextSize * 1.5)
-                local newH2 = math.max(MIN_H, lblH2 + 18)
-                frame.Size = UDim2.new(0.96, 0, 0, newH2)
-                update_canvas(sc)
+    -- helper to compute and apply height (clamped to sane range)
+    local function apply_size()
+        pcall(function()
+            local sc = find_scroll_frame()
+            local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
+            local ok, ts = pcall(function()
+                return TextService:GetTextSize(
+                    tostring(label.Text or ""),
+                    label.TextSize or 16,
+                    label.Font or Enum.Font.SourceSans,
+                    Vector2.new(math.max(10, scW * 0.88), math.huge)
+                )
             end)
-        end)
-        ancCon = frame.AncestryChanged:Connect(function()
-            if not frame:IsDescendantOf(game) then
-                pcall(function()
-                    if conText and conText.Disconnect then conText:Disconnect() end
-                    if ancCon and ancCon.Disconnect then ancCon:Disconnect() end
-                end)
+            local textHeight = (ok and ts and ts.Y) and ts.Y or (label.TextSize * 1.2)
+            -- clamp to avoid "meter-long" frames; adjust max as you like
+            local newH = math.clamp(math.ceil(textHeight) + 18, MIN_H, 200)
+            -- only set frame.Size if AutomaticSize isn't handling it
+            if frame.AutomaticSize == nil then
+                frame.Size = UDim2.new(0.96, 0, 0, newH)
             end
+            update_canvas(sc)
         end)
     end
+
+    -- small initial delay to let Roblox compute AutomaticSize if supported
+    task.spawn(function() task.wait(0.02); apply_size() end)
+
+    -- connect listeners (clean up when frame removed)
+    local conText = label:GetPropertyChangedSignal("Text"):Connect(function()
+        task.defer(function() task.wait(0.02); apply_size() end)
+    end)
+    local conAbs = label:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+        task.defer(function() task.wait(0.01); apply_size() end)
+    end)
+    local ancCon
+    ancCon = frame.AncestryChanged:Connect(function()
+        if not frame:IsDescendantOf(game) then
+            pcall(function()
+                if conText and conText.Disconnect then conText:Disconnect() end
+                if conAbs and conAbs.Disconnect then conAbs:Disconnect() end
+                if ancCon and ancCon.Disconnect then ancCon:Disconnect() end
+            end)
+        end
+    end)
 end
 
--- ถ้า attach_auto_resize ยังไม่มี ให้ชี้ไปที่ safe fallback
+-- Ensure attach_auto_resize alias exists (put this immediately after function above)
 if type(attach_auto_resize) ~= "function" then
     attach_auto_resize = safe_attach_auto_resize
 end
