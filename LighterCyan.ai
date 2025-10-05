@@ -512,24 +512,67 @@ local function update_canvas(scroll)
     end)
 end
 
--- ---------- text sizing ----------
-local function compute_text_height(text, width, textSize, font)
-    if not text then return MIN_HEIGHT end
-    local size = Vector2.new(math.max(10, width or 200), math.huge)
-    local ok, ts = pcall(function() return TextService:GetTextSize(tostring(text), textSize or 16, font or Enum.Font.SourceSans, size) end)
-    if ok and ts then return math.max(MIN_HEIGHT, math.ceil(ts.Y) + 18) end
-    return MIN_HEIGHT
-end
+-- Replace your existing safe_set_frame_height_from_label with this improved version.
 
-local function safe_set_frame_height_from_label(frame, label)
+local RESIZE_DEBOUNCE = 0.03 -- seconds (small)
+local MIN_HEIGHT = 60
+
+local function attach_auto_resize(frame, label)
+    if not (frame and label and label:IsA("TextLabel") and frame:IsA("Frame")) then return end
+
+    -- enable AutomaticSize on label so it calculates height itself
     pcall(function()
-        if not (frame and label) then return end
-        local sc = find_scroll_frame()
-        local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
-        local height = compute_text_height(label.Text, scW * 0.88, label.TextSize, label.Font)
-        frame.Size = UDim2.new(0.96, 0, 0, height)
-        update_canvas(sc)
+        label.TextWrapped = true
+        label.AutomaticSize = Enum.AutomaticSize.Y
     end)
+
+    -- helper to actually set frame size based on label absolute size
+    local lastTick = 0
+    local function do_resize()
+        local now = tick()
+        if now - lastTick < RESIZE_DEBOUNCE then return end
+        lastTick = now
+        pcall(function()
+            local sc = find_scroll_frame()
+            local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
+            -- label.AbsoluteSize.Y is the runtime height after AutomaticSize
+            local lblH = (label.AbsoluteSize and label.AbsoluteSize.Y) or compute_text_height(label.Text, scW * 0.88, label.TextSize, label.Font)
+            local newH = math.max(MIN_HEIGHT, math.ceil(lblH) + 18) -- padding
+            frame.Size = UDim2.new(0.96, 0, 0, newH)
+            -- ensure child icon fits vertically (if you have icon size, adjust if needed)
+            update_canvas(sc)
+        end)
+    end
+
+    -- initial immediate resize (in case label already has content)
+    task.spawn(function()
+        -- small wait to allow UI layout to compute if just created
+        task.wait(0.01)
+        do_resize()
+    end)
+
+    -- connect signals: AbsoluteSize change and Text change
+    local con1, con2
+    con1 = label:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+        do_resize()
+    end)
+    con2 = label:GetPropertyChangedSignal("Text"):Connect(function()
+        -- when text changes, AutomaticSize will update AbsoluteSize soon; do resize after small wait
+        task.defer(function() task.wait(0.01); do_resize() end)
+    end)
+
+    -- also connect frame ancestry changed -> clean up connections when frame removed
+    local ancCon = frame.AncestryChanged:Connect(function()
+        if not frame:IsDescendantOf(game) then
+            pcall(function()
+                if con1 and con1.Disconnect then con1:Disconnect() end
+                if con2 and con2.Disconnect then con2:Disconnect() end
+                if ancCon and ancCon.Disconnect then ancCon:Disconnect() end
+            end)
+        end
+    end)
+
+    return true
 end
 
 -- ---------- call wrappers ----------
