@@ -761,7 +761,7 @@ end
 -- KEEP FORCING 
 
 mtb.Position = UDim2.new(0, 0, 0.02, 0)
-hr.Size = UDim2.new(0, 400, 1, 0)
+hr.Size = UDim2.new(0, 350, 1, 0)
 
 -- ===== HRP Watcher System (full) =====
 local Players = game:GetService("Players")
