@@ -129,7 +129,7 @@ createUIListLayout(Gui, 0, 5, HCenter, VBottom, SName, FillV)
 
 local useless = Instance.new("Frame")
 useless.Name = "Holder"
-useless.Size = UDim2.new(0.t, 0, 0.9, 0)
+useless.Size = UDim2.new(0.96 0, 0.9, 0)
 useless.BackgroundTransparency = 1 -- แก้จาก .Transparency
 useless.Active = false
 useless.Parent = Gui
@@ -422,6 +422,7 @@ btm("a3.Settings", "⚙️ Settings", 0)
 btm("a4.Explorer", "🌏 Explorer", 0)
 btm("a5.About", "📜 About", 0)
 btm("a6.Executor", "✏️ Executor", 0)
+btm("a7.SaveScript", "📂 SaveScript", 0)
 btm("z9.More", "📦 More", 0)
 createUIListLayout(option, 0, 5, HLeft, VCenter, SName, FillH) -- btw Scaled 0 because UIListLayout haha, now go back to work.
 
