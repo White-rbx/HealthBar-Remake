@@ -129,7 +129,7 @@ createUIListLayout(Gui, 0, 5, HCenter, VBottom, SName, FillV)
 
 local useless = Instance.new("Frame")
 useless.Name = "Holder"
-useless.Size = UDim2.new(0.5, 0, 0.9, 0)
+useless.Size = UDim2.new(0.t, 0, 0.9, 0)
 useless.BackgroundTransparency = 1 -- แก้จาก .Transparency
 useless.Active = false
 useless.Parent = Gui
@@ -425,12 +425,13 @@ btm("a6.Executor", "✏️ Executor", 0)
 btm("z9.More", "📦 More", 0)
 createUIListLayout(option, 0, 5, HLeft, VCenter, SName, FillH) -- btw Scaled 0 because UIListLayout haha, now go back to work.
 
--- LighterCyan Controller - Final Fixes
+-- LighterCyan Controller — Final with attach_auto_resize
 -- Run after Loader/bootstrap. Paste into executor or LocalScript (client).
+
 local DEBUG = false
 local GUI_WAIT_TIMEOUT = 12
 local THINKING_BASE = "Thinking"
-local MIN_HEIGHT = 60 -- minimum offset/height in pixels
+local MIN_HEIGHT = 60 -- min pixel height for frames
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -512,21 +513,17 @@ local function update_canvas(scroll)
     end)
 end
 
--- Replace your existing safe_set_frame_height_from_label with this improved version.
-
-local RESIZE_DEBOUNCE = 0.03 -- seconds (small)
-local MIN_HEIGHT = 60
+-- ========== attach_auto_resize (new improved autosize) ==========
+local RESIZE_DEBOUNCE = 0.03
 
 local function attach_auto_resize(frame, label)
     if not (frame and label and label:IsA("TextLabel") and frame:IsA("Frame")) then return end
 
-    -- enable AutomaticSize on label so it calculates height itself
     pcall(function()
         label.TextWrapped = true
         label.AutomaticSize = Enum.AutomaticSize.Y
     end)
 
-    -- helper to actually set frame size based on label absolute size
     local lastTick = 0
     local function do_resize()
         local now = tick()
@@ -535,34 +532,25 @@ local function attach_auto_resize(frame, label)
         pcall(function()
             local sc = find_scroll_frame()
             local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
-            -- label.AbsoluteSize.Y is the runtime height after AutomaticSize
-            local lblH = (label.AbsoluteSize and label.AbsoluteSize.Y) or compute_text_height(label.Text, scW * 0.88, label.TextSize, label.Font)
-            local newH = math.max(MIN_HEIGHT, math.ceil(lblH) + 18) -- padding
+            local lblH = (label.AbsoluteSize and label.AbsoluteSize.Y) or (label.TextSize * 1.5)
+            local newH = math.max(MIN_HEIGHT, math.ceil(lblH) + 18)
             frame.Size = UDim2.new(0.96, 0, 0, newH)
-            -- ensure child icon fits vertically (if you have icon size, adjust if needed)
+            -- short wait to allow UIListLayout/AbsoluteContentSize update, then update canvas
+            task.wait(0.02)
             update_canvas(sc)
         end)
     end
 
-    -- initial immediate resize (in case label already has content)
     task.spawn(function()
-        -- small wait to allow UI layout to compute if just created
-        task.wait(0.01)
+        task.wait(0.02)
         do_resize()
     end)
 
-    -- connect signals: AbsoluteSize change and Text change
-    local con1, con2
-    con1 = label:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-        do_resize()
-    end)
-    con2 = label:GetPropertyChangedSignal("Text"):Connect(function()
-        -- when text changes, AutomaticSize will update AbsoluteSize soon; do resize after small wait
-        task.defer(function() task.wait(0.01); do_resize() end)
-    end)
+    local con1 = label:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() do_resize() end)
+    local con2 = label:GetPropertyChangedSignal("Text"):Connect(function() task.defer(function() task.wait(0.02); do_resize() end) end)
 
-    -- also connect frame ancestry changed -> clean up connections when frame removed
-    local ancCon = frame.AncestryChanged:Connect(function()
+    local ancCon
+    ancCon = frame.AncestryChanged:Connect(function()
         if not frame:IsDescendantOf(game) then
             pcall(function()
                 if con1 and con1.Disconnect then con1:Disconnect() end
@@ -571,11 +559,18 @@ local function attach_auto_resize(frame, label)
             end)
         end
     end)
-
-    return true
 end
 
--- ---------- call wrappers ----------
+-- ========== helpers: compute_text (fallback) ==========
+local function compute_text_height(text, width, textSize, font)
+    if not text then return MIN_HEIGHT end
+    local size = Vector2.new(math.max(10, width or 200), math.huge)
+    local ok, ts = pcall(function() return TextService:GetTextSize(tostring(text), textSize or 16, font or Enum.Font.SourceSans, size) end)
+    if ok and ts then return math.max(MIN_HEIGHT, math.ceil(ts.Y) + 18) end
+    return MIN_HEIGHT
+end
+
+-- ========== call wrappers ==========
 local function call_ai(text, offset)
     local f = (type(ai)=="function" and ai) or (type(_G.ai)=="function" and _G.ai)
     if type(f)=="function" then pcall(f, text, offset or MIN_HEIGHT); update_canvas(find_scroll_frame()); return true end
@@ -592,24 +587,25 @@ local function call_mesg(text, offset, R,G,B,R1,G1,B1)
     return false
 end
 
--- ---------- fallbacks (if functions missing) ----------
+-- ========== fallback creators (use attach_auto_resize) ==========
 local function fallback_create_frame(kind, text, offset, R,G,B,R1,G1,B1)
     local sc = find_scroll_frame() if not sc then return nil end
     local f = Instance.new("Frame"); f.Name = kind; f.BackgroundTransparency = 0.8; f.Parent = sc
     local icon = Instance.new("ImageLabel"); icon.Size = UDim2.new(0,50,0,50); icon.Position = UDim2.new(0,6,0,6); icon.BackgroundTransparency = 1; icon.Parent = f
     local lbl = Instance.new("TextLabel"); lbl.BackgroundTransparency = 1; lbl.TextWrapped = true; lbl.TextSize = 16; lbl.Font = Enum.Font.SourceSans; lbl.Parent = f
-    if kind == "ai" then lbl.Name = "a2" ; lbl.TextXAlignment = Enum.TextXAlignment.Left ; icon.Name="a1" ; icon.Image="rbxassetid://83032822916288"
-    elseif kind=="plr" then lbl.Name="a1" ; lbl.TextXAlignment = Enum.TextXAlignment.Right ; icon.Name="p1" ; icon.Image="rbxassetid://135474395711579"
-    else lbl.Name="a1"; lbl.TextXAlignment=Enum.TextXAlignment.Center; icon.Name="m1" end
+    if kind == "ai" then lbl.Name = "a2"; lbl.TextXAlignment = Enum.TextXAlignment.Left; icon.Name="a1"; icon.Image="rbxassetid://83032822916288"
+    elseif kind == "plr" then lbl.Name = "a1"; lbl.TextXAlignment = Enum.TextXAlignment.Right; icon.Name="p1"; icon.Image="rbxassetid://135474395711579"
+    else lbl.Name = "a1"; lbl.TextXAlignment = Enum.TextXAlignment.Center; icon.Name="m1" end
     lbl.Text = tostring(text or "")
     lbl.Size = UDim2.new(0.88, -8, 1, -12); lbl.Position = UDim2.new(0,56,0,6)
     if R and G and B then pcall(function() f.BackgroundColor3 = Color3.fromRGB(tonumber(R) or 255, tonumber(G) or 255, tonumber(B) or 255) end) end
     if R1 and G1 and B1 then pcall(function() lbl.TextColor3 = Color3.fromRGB(tonumber(R1) or 0, tonumber(G1) or 0, tonumber(B1) or 0) end) end
-    safe_set_frame_height_from_label(f, lbl)
+    -- attach autosize
+    attach_auto_resize(f, lbl)
     return f
 end
 
--- ---------- thinking frame handling ----------
+-- ========== find helpers ==========
 local function find_last_frame_named(name)
     local sc = find_scroll_frame() if not sc then return nil end
     for i=#sc:GetChildren(),1,-1 do
@@ -619,30 +615,37 @@ local function find_last_frame_named(name)
     return nil
 end
 
+local function update_text_in_frame(frame, text)
+    pcall(function()
+        if not frame then return end
+        local lbl
+        for _,d in ipairs(frame:GetDescendants()) do if d:IsA("TextLabel") then lbl = d; break end end
+        if not lbl then return end
+        lbl.Text = tostring(text or "")
+        -- ensure resize hooked (if not already)
+        attach_auto_resize(frame, lbl)
+    end)
+end
+
+-- ========== thinking handling ==========
 local function get_or_create_thinking_frame(initialText)
-    -- try existing thinking frame (we keep one for progress)
     local existing = find_last_frame_named("ai")
     if existing then
-        -- ensure it's marked as thinking by content starting with THINKING_BASE
         local foundLabel
         for _,d in ipairs(existing:GetDescendants()) do if d:IsA("TextLabel") then foundLabel=d; break end end
         if foundLabel and tostring(foundLabel.Text):match("^"..THINKING_BASE) then return existing end
     end
-    -- call ai() to let GUI create if available
     if call_ai then
         pcall(call_ai, initialText or (THINKING_BASE.." (0s)"), MIN_HEIGHT)
         task.wait(0.06)
         local ex2 = find_last_frame_named("ai")
         if ex2 then return ex2 end
     end
-    -- fallback
     return fallback_create_frame("ai", initialText or (THINKING_BASE.." (0s)"), MIN_HEIGHT)
 end
 
 local function create_final_ai_frame(answer)
-    -- create a brand-new ai frame for final answer (do NOT reuse thinking)
     if call_ai then
-        -- prefer calling ai() so UI owner keeps consistency
         pcall(call_ai, answer, MIN_HEIGHT)
         task.wait(0.04)
         local f = find_last_frame_named("ai")
@@ -651,14 +654,12 @@ local function create_final_ai_frame(answer)
     return fallback_create_frame("ai", answer, MIN_HEIGHT)
 end
 
--- ---------- naive URL detection & normalization ----------
+-- ========== URL detect & fetch ==========
 local ALLOWED_DOMAINS = {"youtube.com","youtu.be","en.help.roblox.com","create.roblox.com","x.com","chatgpt.com","chat.openai.com"}
 local function detect_and_normalize_url(s)
     if not s then return nil end
     local text = tostring(s)
-    -- direct http(s) urls
     for url in text:gmatch("https?://[%w%p]+") do return url end
-    -- domain mentions -> add https://
     for _,dom in ipairs(ALLOWED_DOMAINS) do
         local pat = dom:gsub("%.", "%%.")
         local found = text:match("([%w%p]*"..pat.."[%w%p%/%%-]*)")
@@ -682,7 +683,7 @@ local function show_error(msg)
     if call_mesg then pcall(call_mesg, msg, MIN_HEIGHT, 255,200,200, 255,50,50) else fallback_create_frame("message", msg, MIN_HEIGHT, 255,200,200, 255,50,50) end
 end
 
--- ---------- simple knowledge pipeline ----------
+-- ========== simple knowledge pipeline ==========
 local function tokenize(s)
     if not s then return {} end
     s = tostring(s):lower()
@@ -704,7 +705,6 @@ local function overlap(a,b)
 end
 
 local function compute_answer(input, context, fetched_text)
-    -- 1) supervised predict if available
     local ok, pred = pcall(function()
         local fn = wait_for_bindable and wait_for_bindable("ai.Learning_Supervised_Predict")
         if fn and fn:IsA("BindableFunction") then return fn:Invoke(input) end
@@ -712,14 +712,11 @@ local function compute_answer(input, context, fetched_text)
     end)
     if ok and pred and tostring(pred)~="" then return tostring(pred) end
 
-    -- 2) if fetched_text provided, try fuzzy search within it
     if fetched_text and tostring(fetched_text) ~= "" then
         local txt = tostring(fetched_text)
-        -- naive: return first 600 chars as answer summary
         return "From fetched source: "..txt:sub(1,800)
     end
 
-    -- 3) unsupervised topics
     local ok2, topics = pcall(function()
         local fn = wait_for_bindable and wait_for_bindable("ai.Unsupervised_GetTopics")
         if fn and fn:IsA("BindableFunction") then return fn:Invoke(5) end
@@ -727,7 +724,6 @@ local function compute_answer(input, context, fetched_text)
     end)
     if ok2 and topics and #topics>0 then return "Main topic: "..tostring(topics[1].w or topics[1]) end
 
-    -- 4) DataStorage fuzzy match
     local ok3, examples = pcall(function()
         local fn = wait_for_bindable and wait_for_bindable("ai.DataStorage_Get")
         if fn and fn:IsA("BindableFunction") then return fn:Invoke() end
@@ -748,7 +744,7 @@ local function compute_answer(input, context, fetched_text)
     return nil
 end
 
--- ---------- jobs + debounce ----------
+-- ========== jobs + debounce ==========
 local currentJob = nil
 local jobCounter = 0
 local sendLock = false
@@ -762,7 +758,6 @@ local function staged_status_loop(token, stages, base)
     local running = true; local idx = 1
     local frame = get_or_create_thinking_frame(base.." (0s)")
     local function settxt(t) pcall(function() update_text_in_frame(frame, t) end) end
-    -- timer
     task.spawn(function()
         local start = tick()
         while running and not token.canceled do
@@ -771,7 +766,6 @@ local function staged_status_loop(token, stages, base)
             task.wait(1)
         end
     end)
-    -- staged messages
     task.spawn(function()
         while running and not token.canceled do
             if stages[idx] then settxt(stages[idx]); idx = idx + 1 end
@@ -781,36 +775,8 @@ local function staged_status_loop(token, stages, base)
     return { cancel = function() running=false; token.canceled=true end, frame = frame }
 end
 
--- note: helper used above but must be local-defined (we need update_text_in_frame and get_or_create_thinking_frame in scope)
--- define update_text_in_frame and get_or_create_thinking_frame used earlier (re-declare here for completeness)
--- (We use previously declared functions safe_set_frame_height_from_label, fallback_create_frame and find_last_frame_named)
-function update_text_in_frame(frame, text)
-    pcall(function()
-        if not frame then return end
-        local lbl
-        for _,d in ipairs(frame:GetDescendants()) do if d:IsA("TextLabel") then lbl = d; break end end
-        if not lbl then return end
-        lbl.Text = tostring(text or "")
-        safe_set_frame_height_from_label(frame, lbl)
-    end)
-end
-function get_or_create_thinking_frame(initialText)
-    local existing = find_last_frame_named("ai")
-    if existing then
-        local foundLabel
-        for _,d in ipairs(existing:GetDescendants()) do if d:IsA("TextLabel") then foundLabel=d; break end end
-        if foundLabel and tostring(foundLabel.Text):match("^"..THINKING_BASE) then return existing end
-    end
-    if call_ai then
-        pcall(call_ai, initialText or (THINKING_BASE.." (0s)"), MIN_HEIGHT)
-        task.wait(0.06)
-        local ex2 = find_last_frame_named("ai")
-        if ex2 then return ex2 end
-    end
-    return fallback_create_frame("ai", initialText or (THINKING_BASE.." (0s)"), MIN_HEIGHT)
-end
+-- get_or_create_thinking_frame and update_text_in_frame are defined above and used here
 
--- ---------- main ThinkAsync ----------
 function ThinkAsync(input, context)
     if not input then return end
     jobCounter = jobCounter + 1
@@ -819,10 +785,8 @@ function ThinkAsync(input, context)
     currentJob = { token = token, cancel = function() token.canceled = true end }
 
     local s = tostring(input)
-    -- detect url first (if any)
     local url = detect_and_normalize_url(s)
     if url then
-        -- fetch first before computing
         local jobInfo = staged_status_loop(token, {"Searching URL...", "Getting Data...", "Readying..."}, THINKING_BASE)
         local ok, body = fetch_url(url)
         if not ok then
@@ -830,13 +794,9 @@ function ThinkAsync(input, context)
             show_error("ERROR fetching URL: "..tostring(body))
             currentJob=nil; return
         end
-        -- store to DataStorage if available
         pcall(function() local fn = wait_for_bindable and wait_for_bindable("ai.DataStorage_Add"); if fn and fn:IsA("BindableFunction") then fn:Invoke({text = tostring(body), source = url, time = os.time()}) end end)
-        -- compute answer using fetched text as context
         local answer = compute_answer(s, context, tostring(body)) or "No focused answer from fetched content."
-        -- create final ai frame
         local final = create_final_ai_frame(answer)
-        -- remove thinking frame if present and it is a Thinking frame
         if jobInfo and jobInfo.frame then
             pcall(function()
                 local lbl; for _,d in ipairs(jobInfo.frame:GetDescendants()) do if d:IsA("TextLabel") then lbl=d; break end end
@@ -847,7 +807,6 @@ function ThinkAsync(input, context)
         currentJob=nil; return
     end
 
-    -- no url: staged thinking then compute pipeline
     local jobInfo = staged_status_loop(token, {"Analyzing...", "Searching memory...", "Preparing answer..."}, THINKING_BASE)
     task.spawn(function()
         local start = tick(); local maxWait = 30
@@ -862,16 +821,14 @@ function ThinkAsync(input, context)
             if jobInfo and jobInfo.cancel then pcall(jobInfo.cancel) end
             currentJob=nil; return
         end
-        -- create new ai frame for final answer
         local final = create_final_ai_frame(result)
-        -- destroy thinking
         if jobInfo and jobInfo.frame then pcall(function() jobInfo.frame:Destroy() end) end
         if jobInfo and jobInfo.cancel then pcall(jobInfo.cancel) end
         currentJob=nil
     end)
 end
 
--- ---------- GUI hooks ----------
+-- ========== GUI hooks ==========
 local function safe_connect(btn, fn)
     if not btn then return end
     pcall(function()
@@ -912,11 +869,9 @@ local function hook_gui_handlers()
             local txt = ""
             pcall(function() if AskBox and AskBox:IsA("TextBox") then txt = AskBox.Text end end)
             if not (txt and tostring(txt):match("%S")) then sendLock=false; return end
-            -- display player text (one frame)
             local plrok = false
             pcall(function() plrok = call_plr(txt, MIN_HEIGHT) end)
             if not plrok then fallback_create_frame("plr", txt, MIN_HEIGHT) end
-            -- feed to ThinkAsync
             pcall(function() if type(ThinkAsync)=="function" then ThinkAsync(txt, read_latest_label_text(find_scroll_frame())) end end)
             pcall(function() if AskBox and AskBox:IsA("TextBox") then AskBox.Text = "" end end)
             task.wait(0.5)
@@ -967,9 +922,10 @@ local function hook_gui_handlers()
     return true
 end
 
--- warm DataStorage
+-- warm DataStorage bindable
 pcall(function() if wait_for_bindable then wait_for_bindable("ai.DataStorage_Get") end end)
 
+-- re-hook loop
 task.spawn(function()
     while task.wait(2) do
         local inset = get_lightercyan_inset()
@@ -977,4 +933,4 @@ task.spawn(function()
     end
 end)
 
-print("[LC.Controller final-fixes] Ready")
+print("[LC.Controller final + autosize] Ready")
