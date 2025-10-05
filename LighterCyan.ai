@@ -343,35 +343,37 @@ local function plr(Text, Offset)
 end
 
 
--- mesg() – ระบบข้อความสถานะ เช่น error หรือ log
+-- mesg() – ระบบข้อความสถานะ เช่น error หรือ log (patched to use safe_attach_auto_resize)
 local function mesg(Text, Offset, R, G, B, R1, G1, B1)
-	Offset = tonumber(Offset) or 0
-	local mesge = Instance.new("Frame")
-	mesge.Name = "message"
-	mesge.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
-	mesge.BackgroundTransparency = 0.8
-	mesge.Size = UDim2.new(0.96, 0, 0, Offset)
-	mesge.Parent = Scroll
-	createUIListLayout(mesge, 0, 10, HCenter, VCenter, SName, FillH)
-	Stroke(mesge, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
-	Corner(0, 8, mesge)
+    Offset = tonumber(Offset) or 0
+    local mesge = Instance.new("Frame")
+    mesge.Name = "message"
+    mesge.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+    mesge.BackgroundTransparency = 0.8
+    mesge.Size = UDim2.new(0.96, 0, 0, Offset)
+    mesge.Parent = Scroll
+    createUIListLayout(mesge, 0, 10, HCenter, VCenter, SName, FillH)
+    Stroke(mesge, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+    Corner(0, 8, mesge)
 
-	local text = Instance.new("TextLabel")
-	text.Name = "a1"
-	text.Size = UDim2.new(0.88, 0, 1, 0)
-	text.BackgroundTransparency = 1
-	text.TextColor3 = Color3.fromRGB(R1 or 0, G1 or 0, B1 or 0)
-	text.TextSize = 15
-	text.TextWrapped = true
-	text.TextXAlignment = Enum.TextXAlignment.Center
-	text.TextYAlignment = Enum.TextYAlignment.Center
-	text.Parent = mesge
+    local text = Instance.new("TextLabel")
+    text.Name = "a1"
+    text.Size = UDim2.new(0.88, 0, 1, 0)
+    text.BackgroundTransparency = 1
+    text.TextColor3 = Color3.fromRGB(R1 or 0, G1 or 0, B1 or 0)
+    text.TextSize = 15
+    text.TextWrapped = true
+    text.TextXAlignment = Enum.TextXAlignment.Center
+    text.TextYAlignment = Enum.TextYAlignment.Center
+    text.Parent = mesge
 
-	typewrite(text, Text or "", 0.02, 263105619)
-	attach_auto_resize(mesge, text)
-	return mesge
+    typewrite(text, Text or "", 0.02, 263105619)
+
+    -- safe call (if attach_auto_resize exists it will be used; otherwise fallback)
+    safe_attach_auto_resize(mesge, text)
+
+    return mesge
 end
-
 -- =====END FUNCTION AI AND PLAYER + END INSETFRAME=====
 
 -- [ INPUT ]
@@ -582,52 +584,61 @@ local function update_canvas(scroll)
     end)
 end
 
--- ========== attach_auto_resize (new improved autosize) ==========
-local RESIZE_DEBOUNCE = 0.03
-
-local function attach_auto_resize(frame, label)
-    if not (frame and label and label:IsA("TextLabel") and frame:IsA("Frame")) then return end
-
-    pcall(function()
-        label.TextWrapped = true
-        label.AutomaticSize = Enum.AutomaticSize.Y
-    end)
-
-    local lastTick = 0
-    local function do_resize()
-        local now = tick()
-        if now - lastTick < RESIZE_DEBOUNCE then return end
-        lastTick = now
-        pcall(function()
-            local sc = find_scroll_frame()
-            local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
-            local lblH = (label.AbsoluteSize and label.AbsoluteSize.Y) or (label.TextSize * 1.5)
-            local newH = math.max(MIN_HEIGHT, math.ceil(lblH) + 18)
-            frame.Size = UDim2.new(0.96, 0, 0, newH)
-            -- short wait to allow UIListLayout/AbsoluteContentSize update, then update canvas
-            task.wait(0.02)
-            update_canvas(sc)
-        end)
+-- safe fallback: ถ้า attach_auto_resize ถูกประกาศไว้แล้ว ให้ใช้ของเดิม
+local function safe_attach_auto_resize(frame, label)
+    -- ถ้ามี attach_auto_resize ของเดิม (ชื่อเดียว) ให้เรียกมัน
+    if type(attach_auto_resize) == "function" then
+        pcall(function() attach_auto_resize(frame, label) end)
+        return
     end
 
-    task.spawn(function()
-        task.wait(0.02)
-        do_resize()
-    end)
+    -- ถ้าไม่มี ให้ทำ fallback แบบปลอดภัย (ค่าขั้นต่ำ MIN_HEIGHT ต้องมีในสคริปต์)
+    local ok, MINH = pcall(function() return MIN_HEIGHT end)
+    local MIN_H = (ok and type(MINH) == "number") and MINH or 60
 
-    local con1 = label:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() do_resize() end)
-    local con2 = label:GetPropertyChangedSignal("Text"):Connect(function() task.defer(function() task.wait(0.02); do_resize() end) end)
-
-    local ancCon
-    ancCon = frame.AncestryChanged:Connect(function()
-        if not frame:IsDescendantOf(game) then
-            pcall(function()
-                if con1 and con1.Disconnect then con1:Disconnect() end
-                if con2 and con2.Disconnect then con2:Disconnect() end
-                if ancCon and ancCon.Disconnect then ancCon:Disconnect() end
-            end)
+    -- เบื้องต้นตั้งให้ label ห่อข้อความ และใช้ GetTextSize เป็น fallback
+    pcall(function()
+        if label and label:IsA("TextLabel") then
+            label.TextWrapped = true
         end
     end)
+
+    -- initial sizing
+    pcall(function()
+        if not (frame and frame:IsA("Frame") and label and label:IsA("TextLabel")) then return end
+        local sc = find_scroll_frame()
+        local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
+        local sizeOK, ts = pcall(function() return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize or 16, label.Font or Enum.Font.SourceSans, Vector2.new(math.max(10, scW * 0.88), math.huge)) end)
+        local lblH = (sizeOK and ts and ts.Y) and math.ceil(ts.Y) or (label.TextSize * 1.5)
+        local newH = math.max(MIN_H, lblH + 18)
+        frame.Size = UDim2.new(0.96, 0, 0, newH)
+        update_canvas(sc)
+    end)
+
+    -- best-effort: connect Text change to update (non-leaky)
+    local conText
+    local ancCon
+    if label and label:IsA("TextLabel") then
+        conText = label:GetPropertyChangedSignal("Text"):Connect(function()
+            pcall(function()
+                local sc = find_scroll_frame()
+                local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
+                local ok2, ts2 = pcall(function() return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize or 16, label.Font or Enum.Font.SourceSans, Vector2.new(math.max(10, scW * 0.88), math.huge)) end)
+                local lblH2 = (ok2 and ts2 and ts2.Y) and math.ceil(ts2.Y) or (label.TextSize * 1.5)
+                local newH2 = math.max(MIN_H, lblH2 + 18)
+                frame.Size = UDim2.new(0.96, 0, 0, newH2)
+                update_canvas(sc)
+            end)
+        end)
+        ancCon = frame.AncestryChanged:Connect(function()
+            if not frame:IsDescendantOf(game) then
+                pcall(function()
+                    if conText and conText.Disconnect then conText:Disconnect() end
+                    if ancCon and ancCon.Disconnect then ancCon:Disconnect() end
+                end)
+            end
+        end)
+    end
 end
 
 -- ========== helpers: compute_text (fallback) ==========
