@@ -455,35 +455,92 @@ local function plr(Text, Offset)
 end
 
 
--- mesg() – ระบบข้อความสถานะ เช่น error หรือ log (patched to use safe_attach_auto_resize)
+-- SAFE mesg() replacement
+-- usage: mesg(text, offset, R,G,B, R1,G1,B1)
 local function mesg(Text, Offset, R, G, B, R1, G1, B1)
-    Offset = tonumber(Offset) or 0
+    -- safe guards and normalise
+    Text = tostring(Text or "")
+    Offset = tonumber(Offset) or 60
+
+    -- find Scroll parent safely (prefer existing Scroll global if available)
+    local scroll = nil
+    pcall(function()
+        if Scroll and (type(Scroll)=="userdata" or type(Scroll)=="table") then
+            scroll = Scroll
+        elseif type(find_scroll_frame) == "function" then
+            local ok, s = pcall(find_scroll_frame)
+            if ok and s then scroll = s end
+        end
+    end)
+
+    -- create frame
     local mesge = Instance.new("Frame")
     mesge.Name = "message"
-    mesge.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+    mesge.BackgroundColor3 = Color3.fromRGB(R or 240, G or 240, B or 240)
     mesge.BackgroundTransparency = 0.8
     mesge.Size = UDim2.new(0.96, 0, 0, Offset)
-    mesge.Parent = Scroll
-    createUIListLayout(mesge, 0, 10, HCenter, VCenter, SName, FillH)
-    Stroke(mesge, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
-    Corner(0, 8, mesge)
+    -- attach to Scroll if available, else fallback to CoreGui (very rare)
+    pcall(function()
+        if scroll and scroll.Parent then
+            mesge.Parent = scroll
+        else
+            local fallbackParent = game:GetService("CoreGui")
+            if fallbackParent then mesge.Parent = fallbackParent end
+        end
+    end)
 
+    -- try to run helper functions safely (Stroke/Corner/createUIListLayout)
+    pcall(function() if type(createUIListLayout)=="function" then createUIListLayout(mesge, 0, 10, HCenter, VCenter, SName, FillH) end end)
+    pcall(function() if type(Stroke)=="function" then Stroke(mesge, ASMBorder, 255,255,255, LJMRound, 1, 0) end end)
+    pcall(function() if type(Corner)=="function" then Corner(0, 8, mesge) end end)
+
+    -- create text label
     local text = Instance.new("TextLabel")
     text.Name = "a1"
     text.Size = UDim2.new(0.88, 0, 1, 0)
     text.BackgroundTransparency = 1
     text.TextColor3 = Color3.fromRGB(R1 or 0, G1 or 0, B1 or 0)
-    text.AutomaticSize = Enum.AutomaticSize.Y
     text.TextSize = 15
     text.TextWrapped = true
     text.TextXAlignment = Enum.TextXAlignment.Center
     text.TextYAlignment = Enum.TextYAlignment.Center
     text.Parent = mesge
 
-    typewrite(text, Text or "", 0.02, 263105619)
+    -- prepare TextService for measurement
+    local TextService = game:GetService("TextService")
 
-    -- safe call (if attach_auto_resize exists it will be used; otherwise fallback)
-    safe_attach_auto_resize(mesge, text)
+    -- helper to measure height (pixel) for given text and label settings
+    local function measure_height_for(label, txt)
+        txt = tostring(txt or ""):gsub("\r",""):gsub("^%s+",""):gsub("%s+$","")
+        if txt == "" then return Offset end
+        local scW = 400
+        pcall(function()
+            if scroll and scroll.AbsoluteSize and scroll.AbsoluteSize.X then scW = scroll.AbsoluteSize.X end
+        end)
+        local avail = math.max(32, math.floor(scW * 0.88))
+        local ok, dims = pcall(function()
+            return TextService:GetTextSize(txt, label.TextSize or 15, label.Font or Enum.Font.SourceSans, Vector2.new(avail, math.huge))
+        end)
+        local h = (ok and dims and dims.Y) and dims.Y or (label.TextSize * 1.2)
+        return math.max(Offset, math.ceil(h) + 18)
+    end
+
+    -- set tentative size BEFORE typing (so frame won't jump)
+    local computed = measure_height_for(text, Text)
+    pcall(function() mesge.Size = UDim2.new(0.96, 0, 0, computed) end)
+    pcall(function() if type(update_canvas) == "function" then update_canvas(scroll) end end)
+
+    -- if typewrite exists, use it (it may also call attach_auto_resize on text changes)
+    if type(typewrite) == "function" then
+        -- typewrite will update text gradually; we already set size above
+        pcall(function() typewrite(text, Text, 0.02, 263105619) end)
+    else
+        -- fallback: set text immediately
+        pcall(function() text.Text = Text end)
+    end
+
+    -- finally, call attach_auto_resize safely if available (it will manage dynamic changes)
+    pcall(function() if type(attach_auto_resize) == "function" then attach_auto_resize(mesge, text) end end)
 
     return mesge
 end
