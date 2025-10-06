@@ -205,42 +205,34 @@ Scroll3.Visible = false
 Scroll3.Parent = chat
 createUIListLayout(Scroll3, 0, 5, HCenter, VTop, SLayout, FillV)
 
--- safe_attach_auto_resize: คำนวณขนาดด้วย TextService, ไม่ใช้ AutomaticSize
--- คืนค่า: function() -> ถ้าต้องการ disconnect listeners แบบ manual (optional)
-local function safe_attach_auto_resize(frame, label)
-    -- guards
+-- safe_attach_auto_resize_no_auto: ปรับขนาดด้วย TextService; ไม่มี MAX_H limit
+local function safe_attach_auto_resize_no_auto(frame, label)
     if not (frame and frame:IsA("Frame") and label and label:IsA("TextLabel")) then return end
 
-    -- prefer real attach_auto_resize if it exists elsewhere
-    if type(attach_auto_resize) == "function" and attach_auto_resize ~= safe_attach_auto_resize then
+    -- prefer existing attach_auto_resize if present
+    if type(attach_auto_resize) == "function" and attach_auto_resize ~= safe_attach_auto_resize_no_auto then
         pcall(function() attach_auto_resize(frame, label) end)
         return
     end
 
-    -- dependencies / defaults
     local okMin, MIN_H = pcall(function() return MIN_HEIGHT end)
     if not okMin or type(MIN_H) ~= "number" then MIN_H = 60 end
     local TextService = game:GetService("TextService")
 
-    -- helper: get available pixel width for label (match your UI scale fraction)
     local function get_label_width()
         local sc = (type(find_scroll_frame)=="function" and pcall(find_scroll_frame) and find_scroll_frame()) or nil
         local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
-        return math.max(32, math.floor(scW * 0.88)) -- adjust 0.88 if your label uses other scale
+        return math.max(32, math.floor(scW * 0.88))
     end
 
-    -- trim wrapper
     local function clean_text(s)
         if not s then return "" end
-        s = tostring(s)
-        s = s:gsub("\r","")
+        s = tostring(s):gsub("\r","")
         s = s:gsub("^%s+",""):gsub("%s+$","")
         return s
     end
 
-    -- last applied height to avoid cumulative growth
     local lastApplied = 0
-    local MAX_H = 180 -- ปรับถ้าต้องการสูงสุดอื่น
 
     local function apply_size_now()
         pcall(function()
@@ -255,7 +247,7 @@ local function safe_attach_auto_resize(frame, label)
                 return
             end
 
-            -- short texts force minimum (prevents "meter-long" for single word)
+            -- short texts -> minimal height
             if #txt <= 6 then
                 if lastApplied ~= MIN_H then
                     frame.Size = UDim2.new(0.96, 0, 0, MIN_H)
@@ -272,8 +264,7 @@ local function safe_attach_auto_resize(frame, label)
             end)
             local textHeight = (ok and dims and dims.Y) and dims.Y or (label.TextSize * 1.2)
             local newH = math.ceil(textHeight) + 18
-            newH = math.max(MIN_H, math.min(newH, MAX_H))
-
+            -- NO MAX limit here (user requested), only enforce min
             if math.abs(newH - lastApplied) > 1 then
                 frame.Size = UDim2.new(0.96, 0, 0, newH)
                 lastApplied = newH
@@ -283,13 +274,12 @@ local function safe_attach_auto_resize(frame, label)
         end)
     end
 
-    -- initial deferred apply to let layout stabilize
     task.spawn(function() task.wait(0.02); apply_size_now() end)
 
-    -- listeners (clean up when frame removed)
     local conText = label:GetPropertyChangedSignal("Text"):Connect(function()
         task.defer(function() task.wait(0.01); apply_size_now() end)
     end)
+
     local sc = (type(find_scroll_frame)=="function" and pcall(find_scroll_frame) and find_scroll_frame()) or nil
     local conScroll = nil
     if sc then
@@ -309,7 +299,6 @@ local function safe_attach_auto_resize(frame, label)
         end
     end)
 
-    -- return disconnect function (optional)
     return function()
         pcall(function()
             if conText and conText.Disconnect then conText:Disconnect() end
@@ -319,9 +308,9 @@ local function safe_attach_auto_resize(frame, label)
     end
 end
 
--- alias: ถ้า attach_auto_resize ยังไม่มี ให้ให้ชี้ไปที่ safe function นี้
+-- alias ให้เรียกใช้งานโดยชื่อเดิม
 if type(attach_auto_resize) ~= "function" then
-    attach_auto_resize = safe_attach_auto_resize
+    attach_auto_resize = safe_attach_auto_resize_no_auto
 end
 
 --// ===== TYPEWRITER EFFECT WITH SOUND + LOCK SYSTEM ===== \\--
