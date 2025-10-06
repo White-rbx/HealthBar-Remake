@@ -205,6 +205,177 @@ Scroll3.Visible = false
 Scroll3.Parent = chat
 createUIListLayout(Scroll3, 0, 5, HCenter, VTop, SLayout, FillV)
 
+-- safe_attach_auto_resize_no_auto: ปรับขนาดด้วย TextService; ไม่มี MAX_H limit
+local function safe_attach_auto_resize_no_auto(frame, label)
+    if not (frame and frame:IsA("Frame") and label and label:IsA("TextLabel")) then return end
+
+    -- prefer existing attach_auto_resize if present
+    if type(attach_auto_resize) == "function" and attach_auto_resize ~= safe_attach_auto_resize_no_auto then
+        pcall(function() attach_auto_resize(frame, label) end)
+        return
+    end
+
+    local okMin, MIN_H = pcall(function() return MIN_HEIGHT end)
+    if not okMin or type(MIN_H) ~= "number" then MIN_H = 60 end
+    local TextService = game:GetService("TextService")
+
+    local function get_label_width()
+        local sc = (type(find_scroll_frame)=="function" and pcall(find_scroll_frame) and find_scroll_frame()) or nil
+        local scW = (sc and sc.AbsoluteSize and sc.AbsoluteSize.X) or 400
+        return math.max(32, math.floor(scW * 0.88))
+    end
+
+    local function clean_text(s)
+        if not s then return "" end
+        s = tostring(s):gsub("\r","")
+        s = s:gsub("^%s+",""):gsub("%s+$","")
+        return s
+    end
+
+    local lastApplied = 0
+
+    local function apply_size_now()
+        pcall(function()
+            local txt = clean_text(label.Text or "")
+            if txt == "" then
+                if lastApplied ~= MIN_H then
+                    frame.Size = UDim2.new(0.96, 0, 0, MIN_H)
+                    lastApplied = MIN_H
+                    local sc = (type(find_scroll_frame)=="function" and find_scroll_frame()) or nil
+                    pcall(function() if type(update_canvas)=="function" then update_canvas(sc) end end)
+                end
+                return
+            end
+
+            -- short texts -> minimal height
+            if #txt <= 6 then
+                if lastApplied ~= MIN_H then
+                    frame.Size = UDim2.new(0.96, 0, 0, MIN_H)
+                    lastApplied = MIN_H
+                    local sc = (type(find_scroll_frame)=="function" and find_scroll_frame()) or nil
+                    pcall(function() if type(update_canvas)=="function" then update_canvas(sc) end end)
+                end
+                return
+            end
+
+            local avail = get_label_width()
+            local ok, dims = pcall(function()
+                return TextService:GetTextSize(txt, label.TextSize or 16, label.Font or Enum.Font.SourceSans, Vector2.new(avail, math.huge))
+            end)
+            local textHeight = (ok and dims and dims.Y) and dims.Y or (label.TextSize * 1.2)
+            local newH = math.ceil(textHeight) + 18
+            -- NO MAX limit here (user requested), only enforce min
+            if math.abs(newH - lastApplied) > 1 then
+                frame.Size = UDim2.new(0.96, 0, 0, newH)
+                lastApplied = newH
+                local sc = (type(find_scroll_frame)=="function" and find_scroll_frame()) or nil
+                pcall(function() if type(update_canvas)=="function" then update_canvas(sc) end end)
+            end
+        end)
+    end
+
+    task.spawn(function() task.wait(0.02); apply_size_now() end)
+
+    local conText = label:GetPropertyChangedSignal("Text"):Connect(function()
+        task.defer(function() task.wait(0.01); apply_size_now() end)
+    end)
+
+    local sc = (type(find_scroll_frame)=="function" and pcall(find_scroll_frame) and find_scroll_frame()) or nil
+    local conScroll = nil
+    if sc then
+        conScroll = sc:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            task.defer(function() task.wait(0.02); apply_size_now() end)
+        end)
+    end
+
+    local ancCon
+    ancCon = frame.AncestryChanged:Connect(function()
+        if not frame:IsDescendantOf(game) then
+            pcall(function()
+                if conText and conText.Disconnect then conText:Disconnect() end
+                if conScroll and conScroll.Disconnect then conScroll:Disconnect() end
+                if ancCon and ancCon.Disconnect then ancCon:Disconnect() end
+            end)
+        end
+    end)
+
+    return function()
+        pcall(function()
+            if conText and conText.Disconnect then conText:Disconnect() end
+            if conScroll and conScroll.Disconnect then conScroll:Disconnect() end
+            if ancCon and ancCon.Disconnect then ancCon:Disconnect() end
+        end)
+    end
+end
+
+-- alias ให้เรียกใช้งานโดยชื่อเดิม
+if type(attach_auto_resize) ~= "function" then
+    attach_auto_resize = safe_attach_auto_resize_no_auto
+end
+
+--// ===== TYPEWRITER EFFECT WITH SOUND + LOCK SYSTEM ===== \\--
+
+local isAITyping = false  -- ป้องกันการพิมพ์ซ้ำระหว่าง AI คิด
+
+-- เล่นเสียงง่าย ๆ
+local function playSound(soundId, parent)
+	if not soundId then return end
+	local s = Instance.new("Sound")
+	s.SoundId = "rbxassetid://" .. tostring(soundId)
+	s.Volume = 0.2
+	s.PlayOnRemove = true
+	s.Parent = parent or game:GetService("CoreGui")
+	s:Destroy()
+end
+
+-- พิมพ์ทีละตัวอักษร
+local function typewrite(label, fullText, delayPerChar, soundId, callback)
+	if not (label and label:IsA("TextLabel")) then
+		if callback then callback() end
+		return
+	end
+	fullText = tostring(fullText or "")
+	delayPerChar = tonumber(delayPerChar) or 0.02
+	label.Text = ""
+
+	task.spawn(function()
+		for i = 1, #fullText do
+			pcall(function()
+				label.Text = string.sub(fullText, 1, i)
+				playSound(soundId, label)
+			end)
+			task.wait(delayPerChar)
+		end
+		if callback then callback() end
+	end)
+end
+
+-- ล็อคช่องพิมพ์ระหว่าง AI ทำงาน
+local function lockTextbox(box, locked)
+	if not (box and box:IsA("TextBox")) then return end
+	pcall(function()
+		box.Active = not locked
+		box.Selectable = not locked
+		box.TextEditable = not locked
+		if locked then
+			box.PlaceholderText = "[Thinking...]"
+		else
+			box.PlaceholderText = "Ask anything..."
+		end
+	end)
+end
+--// ====== ฟังก์ชันแชท ====== \\--
+
+-- ai() – มีเสียงและพิมพ์ทีละตัว
+local function ai(Text, Offset)
+	isAITyping = true
+	lockTextbox(box, true)
+
+	Offset = tonumber(Offset) or 0
+	local ai = Instance.new("Frame")
+	ai.Name = "ai"
+	ai.BackgroundColor3 = Color3.fromRGB(255,255,255)
+	ai.BackgroundTransparency = 0.8
 	ai.Size = UDim2.new(0.96, 0, 0, Offset)
 	ai.Parent = Scroll
 	createUIListLayout(ai, 0, 10, HCenter, VCenter, SName, FillH)
@@ -282,96 +453,40 @@ local function plr(Text, Offset)
 end
 
 
--- SAFE mesg() replacement
--- usage: mesg(text, offset, R,G,B, R1,G1,B1)
+-- mesg() – ระบบข้อความสถานะ เช่น error หรือ log (patched to use safe_attach_auto_resize)
 local function mesg(Text, Offset, R, G, B, R1, G1, B1)
-    -- safe guards and normalise
-    Text = tostring(Text or "")
-    Offset = tonumber(Offset) or 60
-
-    -- find Scroll parent safely (prefer existing Scroll global if available)
-    local scroll = nil
-    pcall(function()
-        if Scroll and (type(Scroll)=="userdata" or type(Scroll)=="table") then
-            scroll = Scroll
-        elseif type(find_scroll_frame) == "function" then
-            local ok, s = pcall(find_scroll_frame)
-            if ok and s then scroll = s end
-        end
-    end)
-
-    -- create frame
+    Offset = tonumber(Offset) or 0
     local mesge = Instance.new("Frame")
     mesge.Name = "message"
-    mesge.BackgroundColor3 = Color3.fromRGB(R or 240, G or 240, B or 240)
+    mesge.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     mesge.BackgroundTransparency = 0.8
     mesge.Size = UDim2.new(0.96, 0, 0, Offset)
-    -- attach to Scroll if available, else fallback to CoreGui (very rare)
-    pcall(function()
-        if scroll and scroll.Parent then
-            mesge.Parent = scroll
-        else
-            local fallbackParent = game:GetService("CoreGui")
-            if fallbackParent then mesge.Parent = fallbackParent end
-        end
-    end)
+    mesge.Parent = Scroll
+    createUIListLayout(mesge, 0, 10, HCenter, VCenter, SName, FillH)
+    Stroke(mesge, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+    Corner(0, 8, mesge)
 
-    -- try to run helper functions safely (Stroke/Corner/createUIListLayout)
-    pcall(function() if type(createUIListLayout)=="function" then createUIListLayout(mesge, 0, 10, HCenter, VCenter, SName, FillH) end end)
-    pcall(function() if type(Stroke)=="function" then Stroke(mesge, ASMBorder, 255,255,255, LJMRound, 1, 0) end end)
-    pcall(function() if type(Corner)=="function" then Corner(0, 8, mesge) end end)
-
-    -- create text label
     local text = Instance.new("TextLabel")
     text.Name = "a1"
     text.Size = UDim2.new(0.88, 0, 1, 0)
     text.BackgroundTransparency = 1
     text.TextColor3 = Color3.fromRGB(R1 or 0, G1 or 0, B1 or 0)
+    text.AutomaticSize = Enum.AutomaticSize.Y
     text.TextSize = 15
     text.TextWrapped = true
     text.TextXAlignment = Enum.TextXAlignment.Center
     text.TextYAlignment = Enum.TextYAlignment.Center
     text.Parent = mesge
 
-    -- prepare TextService for measurement
-    local TextService = game:GetService("TextService")
+    typewrite(text, Text or "", 0.02, 263105619)
 
-    -- helper to measure height (pixel) for given text and label settings
-    local function measure_height_for(label, txt)
-        txt = tostring(txt or ""):gsub("\r",""):gsub("^%s+",""):gsub("%s+$","")
-        if txt == "" then return Offset end
-        local scW = 400
-        pcall(function()
-            if scroll and scroll.AbsoluteSize and scroll.AbsoluteSize.X then scW = scroll.AbsoluteSize.X end
-        end)
-        local avail = math.max(32, math.floor(scW * 0.88))
-        local ok, dims = pcall(function()
-            return TextService:GetTextSize(txt, label.TextSize or 15, label.Font or Enum.Font.SourceSans, Vector2.new(avail, math.huge))
-        end)
-        local h = (ok and dims and dims.Y) and dims.Y or (label.TextSize * 1.2)
-        return math.max(Offset, math.ceil(h) + 18)
-    end
-
-    -- set tentative size BEFORE typing (so frame won't jump)
-    local computed = measure_height_for(text, Text)
-    pcall(function() mesge.Size = UDim2.new(0.96, 0, 0, computed) end)
-    pcall(function() if type(update_canvas) == "function" then update_canvas(scroll) end end)
-
-    -- if typewrite exists, use it (it may also call attach_auto_resize on text changes)
-    if type(typewrite) == "function" then
-        -- typewrite will update text gradually; we already set size above
-        pcall(function() typewrite(text, Text, 0.02, 263105619) end)
-    else
-        -- fallback: set text immediately
-        pcall(function() text.Text = Text end)
-    end
-
-    -- finally, call attach_auto_resize safely if available (it will manage dynamic changes)
-    pcall(function() if type(attach_auto_resize) == "function" then attach_auto_resize(mesge, text) end end)
+    -- safe call (if attach_auto_resize exists it will be used; otherwise fallback)
+    safe_attach_auto_resize(mesge, text)
 
     return mesge
 end
 -- =====END FUNCTION AI AND PLAYER + END INSETFRAME=====
+
 
 -- [ INPUT ]
 local box = Instance.new("TextBox")
