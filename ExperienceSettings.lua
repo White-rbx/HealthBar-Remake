@@ -769,7 +769,7 @@ local gui_aV2 = game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.H
 
 -- interval config
 local CHECK_INTERVAL = 0.05 -- ระยะเวลาเช็ค (วินาที)
-local TIMEOUT = 0.05         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
+local TIMEOUT = 0.25         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
 
 -- เก็บตำแหน่งเริ่มต้น
 local wa1_initial_pos, hr_initial_size, mtb_initial_pos
