@@ -178,7 +178,7 @@ Scroll.Size = UDim2.new(0.96, 0, 0.96, 0)
 Scroll.BackgroundTransparency = 1
 Scroll.ScrollBarThickness = 0
 Scroll.ScrollingDirection = Enum.ScrollingDirection.Y
-Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+Scroll.CanvasSize = UDim2.new(1000, 0, 0, 0)
 Scroll.Visible = true
 Scroll.Parent = chat
 createUIListLayout(Scroll, 0, 5, HCenter, VTop, SLayout, FillV)
