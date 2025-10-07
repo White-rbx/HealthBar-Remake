@@ -295,7 +295,7 @@ local function tweenFillFull()
 		if xScale < 1 then
 			pcall(function()
 				local tweenInfo = TweenInfo.new(
-					0.3, -- ระยะเวลา 0.3 วิ
+					2.55, -- ระยะเวลา 0.3 วิ
 					Enum.EasingStyle.Quad,
 					Enum.EasingDirection.Out
 				)
