@@ -263,42 +263,58 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
--- 🔧 Force HealthBar.Fill full X scale (แก้ error nil)
-local RunService = game:GetService("RunService")
+-- LocalScript: Set HealthBar Fill full ONCE per respawn
+local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 
-local function getFill()
+local player = Players.LocalPlayer
+
+local function findFill()
 	local topBar = CoreGui:FindFirstChild("TopBarApp")
-	if not topBar then return end
+	if not topBar then return nil end
 	local nested = topBar:FindFirstChild("TopBarApp")
-	if not nested then return end
+	if not nested then return nil end
 	local unibar = nested:FindFirstChild("UnibarLeftFrame")
-	if not unibar then return end
+	if not unibar then return nil end
 	local hb = unibar:FindFirstChild("HealthBar")
-	if not hb then return end
+	if not hb then return nil end
 	local inner = hb:FindFirstChild("HealthBar")
-	if not inner then return end
+	if not inner then return nil end
 	return inner:FindFirstChild("Fill")
 end
 
-function setFullFill()
-	local fill = getFill()
-	if fill and fill:IsA("GuiObject") then
-		pcall(function()
-			fill.Size = UDim2.new(1, 0, 1, 0)
-		end)
+-- Try to set Fill full, but only once. Wait up to timeout for Fill to appear.
+local function setFillFullOnce(timeout)
+	timeout = timeout or 2 -- seconds
+	local elapsed = 0
+	local step = 0.08
+	while elapsed < timeout do
+		local fill = findFill()
+		if fill and fill:IsA("GuiObject") then
+			pcall(function()
+				fill.Size = UDim2.new(1, 0, 1, 0)
+			end)
+			return true
+		end
+		task.wait(step)
+		elapsed = elapsed + step
 	end
+	return false
 end
 
--- เรียกครั้งแรก
-setFullFill()
+-- Run once for each spawn
+local function onCharacterAdded(character)
+	-- defer to not block event; small initial wait to let UI creation start
+	task.defer(function()
+		task.wait(0.05)
+		setFillFullOnce(2) -- wait up to 2s for Fill to appear, then set once
+	end)
+end
 
--- ตรวจซ้ำเรื่อย ๆ เผื่อ Fill ถูกสร้างใหม่
-local t = 0
-RunService.RenderStepped:Connect(function(dt)
-	t += dt
-	if t >= 0.2 then
-		t = 0
-		setFullFill()
-	end
-end)
+-- Connect
+player.CharacterAdded:Connect(onCharacterAdded)
+
+-- Do for existing character on script start (once)
+if player.Character then
+	onCharacterAdded(player.Character)
+end
