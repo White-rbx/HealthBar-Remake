@@ -1,4 +1,4 @@
--- LocalScript: HealthBar + DamageOverlay (เต็ม) + fix spawn-full-health
+-- LocalScript: HealthBar + DamageOverlay (ปรับให้แก้เฉพาะ Fill)
 -- วางใน StarterPlayerScripts (LocalScript)
 
 local RunService = game:GetService("RunService")
@@ -10,8 +10,8 @@ local player = Players.LocalPlayer
 
 -- ========== CONFIG ==========
 local FORCE_FULL_ON_SPAWN = true
-local UICORNER_RADIUS = UDim.new(1, 0)            -- มุมตามที่ขอ
-local HEALTHBAR_IMAGE_TRANSPARENCY = 1           -- เฉพาะ inner HealthBar
+local UICORNER_RADIUS = UDim.new(1, 0)            -- ใส่ให้ Fill แทน inner
+local FILL_IMAGE_TRANSPARENCY = 1                -- ถ้า Fill เป็น Image จะตั้งเป็นค่านี้
 local OVERLAY_IMAGE_ASSET = "rbxassetid://89248890386154"
 local OVERLAY_DEFAULT_TRANSPARENCY = 1           -- default = 1 (invisible)
 local FLASH_HIGHHEALTH_TARGET = 0.5              -- target transparency when flashing (>=50%)
@@ -21,7 +21,7 @@ local LOWHEALTH_TWEEN_TIME = 0.18
 
 -- ========== STATE ==========
 local innerHealthBar = nil   -- HealthBar.HealthBar (inner)
-local Fill = nil             -- Fill inside inner
+local Fill = nil             -- Fill inside inner (we will modify ONLY this)
 local humanoid = nil
 local currentFillTween = nil
 local overlayGui = nil
@@ -44,7 +44,7 @@ local function findInnerAndFill()
 	return inner, fill
 end
 
--- Ensure UICorner on inner healthbar
+-- Ensure UICorner on target (we will call for Fill)
 local function ensureUICorner(target)
 	if not target or not target:IsA("GuiObject") then return end
 	local existing = target:FindFirstChildOfClass("UICorner")
@@ -59,11 +59,11 @@ local function ensureUICorner(target)
 	end
 end
 
--- Ensure ImageTransparency only on inner healthbar
-local function ensureHealthBarTransparency(gui)
-	if not gui or not gui:IsA("GuiObject") then return end
-	if gui:IsA("ImageLabel") or gui:IsA("ImageButton") then
-		pcall(function() gui.ImageTransparency = HEALTHBAR_IMAGE_TRANSPARENCY end)
+-- Ensure ImageTransparency only on Fill (if it's an Image)
+local function ensureFillTransparency(fill)
+	if not fill or not fill:IsA("GuiObject") then return end
+	if fill:IsA("ImageLabel") or fill:IsA("ImageButton") then
+		pcall(function() fill.ImageTransparency = FILL_IMAGE_TRANSPARENCY end)
 	end
 end
 
@@ -168,12 +168,12 @@ local function applyAllFixes()
 	innerHealthBar = inner
 	Fill = fill
 
-	if innerHealthBar and innerHealthBar:IsA("GuiObject") then
-		ensureUICorner(innerHealthBar)
-		ensureHealthBarTransparency(innerHealthBar)
-	end
-
+	-- apply only to Fill (NOT inner healthbar)
 	if Fill and Fill:IsA("GuiObject") then
+		-- put corner on Fill and set its image transparency if it's an image
+		ensureUICorner(Fill)
+		ensureFillTransparency(Fill)
+
 		if FORCE_FULL_ON_SPAWN then
 			forceFillFull(Fill)
 		end
