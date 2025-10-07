@@ -237,27 +237,29 @@ local function setupHumanoid(h)
 	end)
 end
 
--- อัปเดต Fill ให้เต็ม
+-- Replace the broken setFullFill / timer block with this:
+
 local function setFullFill()
-	local Fill = getFill()
-	if Fill and Fill:IsA("GuiObject") then
-		pcall(function()
-			Fill.Size = UDim2.new(1, 0, 1, 0)
-		end)
-	end
+    -- use the existing findInnerAndFill() to get fill safely
+    local _, fill = findInnerAndFill()
+    if fill and fill:IsA("GuiObject") then
+        pcall(function()
+            fill.Size = UDim2.new(1, 0, 1, 0)
+        end)
+    end
 end
 
--- เรียกครั้งแรก
+-- call once immediately
 setFullFill()
 
--- เฝ้าตรวจทุก ๆ 0.2 วิ เผื่อ Fill ถูก recreate
-local timer = 0
+-- check periodically (every 0.2s) in case Fill is recreated
+local _timer = 0
 RunService.RenderStepped:Connect(function(dt)
-	timer += dt
-	if timer >= 0.2 then
-		timer = 0
-		setFullFill()
-	end
+    _timer = _timer + dt
+    if _timer >= 0.2 then
+        _timer = 0
+        setFullFill()
+    end
 end)
 
 -- Init: CharacterAdded + existing character
