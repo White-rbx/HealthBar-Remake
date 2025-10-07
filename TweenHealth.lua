@@ -262,3 +262,26 @@ RunService.RenderStepped:Connect(function(dt)
 		applyAllFixes()
 	end
 end)
+
+-- อัปเดต Fill ให้เต็ม
+local function setFullFill()
+	local fill = getFill()
+	if fill and fill:IsA("GuiObject") then
+		pcall(function()
+			fill.Size = UDim2.new(1, 0, 1, 0)
+		end)
+	end
+end
+
+-- เรียกครั้งแรก
+setFullFill()
+
+-- เฝ้าตรวจทุก ๆ 0.2 วิ เผื่อ Fill ถูก recreate
+local timer = 0
+RunService.RenderStepped:Connect(function(dt)
+	timer += dt
+	if timer >= 0.2 then
+		timer = 0
+		setFullFill()
+	end
+end)
