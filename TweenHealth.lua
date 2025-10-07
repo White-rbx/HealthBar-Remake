@@ -81,7 +81,7 @@ local function tweenFill(percent)
 		currentFillTween = nil
 	end
 	pcall(function()
-		local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		local tweenInfo = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 		currentFillTween = TweenService:Create(Fill, tweenInfo, { Size = UDim2.new(math.clamp(percent, 0, 1), 0, 1, 0) })
 		currentFillTween:Play()
 	end)
