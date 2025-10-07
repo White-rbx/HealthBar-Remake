@@ -263,11 +263,12 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
--- LocalScript: Fill full ONLY once after respawn (not when dying)
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
+-- LocalScript: Auto-fix Fill size once after respawn
+-- วางใน StarterPlayerScripts หรือรวมในสคริปต์หลักก็ได้
 
-local player = Players.LocalPlayer
+local Players  = game:GetService("Players")
+local CoreGui  = game:GetService("CoreGui")
+local player   = Players.LocalPlayer
 
 local function findFill()
 	local topBar = CoreGui:FindFirstChild("TopBarApp")
@@ -283,38 +284,42 @@ local function findFill()
 	return inner:FindFirstChild("Fill")
 end
 
-local function setFillFullOnce()
+local function forceFillFull()
 	local fill = findFill()
 	if fill and fill:IsA("GuiObject") then
-		pcall(function()
-			fill.Size = UDim2.new(1, 0, 1, 0)
-		end)
+		local xScale = fill.Size.X.Scale
+		if xScale < 1 then
+			pcall(function()
+				fill.Size = UDim2.new(1, 0, 1, 0)
+			end)
+		end
 	end
 end
 
 local function onCharacterAdded(char)
 	task.defer(function()
-		-- รอ Humanoid จริง (ตอน spawn)
 		local humanoid = char:WaitForChild("Humanoid", 5)
 		if not humanoid then return end
 
-		-- รอจนกว่าเลือดจะ > 0 (หมายถึงเกิดใหม่แล้ว ไม่ใช่ตาย)
+		-- รอจนกว่าจะฟื้นชีวิตจริง ๆ (ไม่ใช่ตอนตาย)
 		while humanoid.Health <= 0 do
-			task.wait(0.1)
+			task.wait(0.05)
 		end
 
-		-- รอให้ TopBar สร้างเสร็จ
-		task.wait(0.1)
-
-		-- เซ็ต Fill เป็นเต็ม (ทำครั้งเดียว)
-		setFillFullOnce()
+		-- ตรวจซ้ำ Fill ทุก 0.05 วิ นาน 0.35 วิ หลังเกิด
+		local total, step = 0, 0.05
+		while total < 0.35 do
+			forceFillFull()
+			task.wait(step)
+			total += step
+		end
 	end)
 end
 
--- เชื่อม event
+-- เชื่อมต่อกับการเกิดใหม่
 player.CharacterAdded:Connect(onCharacterAdded)
 
--- ถ้ามีตัวอยู่แล้ว (เข้าเกมโดยไม่ตาย)
+-- ทำครั้งแรกถ้ามีตัวอยู่แล้วตอนเริ่มเกม
 if player.Character then
 	onCharacterAdded(player.Character)
 end
