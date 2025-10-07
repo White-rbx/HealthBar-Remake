@@ -237,31 +237,6 @@ local function setupHumanoid(h)
 	end)
 end
 
--- Replace the broken setFullFill / timer block with this:
-
-local function setFullFill()
-    -- use the existing findInnerAndFill() to get fill safely
-    local _, fill = findInnerAndFill()
-    if fill and fill:IsA("GuiObject") then
-        pcall(function()
-            fill.Size = UDim2.new(1, 0, 1, 0)
-        end)
-    end
-end
-
--- call once immediately
-setFullFill()
-
--- check periodically (every 0.2s) in case Fill is recreated
-local _timer = 0
-RunService.RenderStepped:Connect(function(dt)
-    _timer = _timer + dt
-    if _timer >= 0.2 then
-        _timer = 0
-        setFullFill()
-    end
-end)
-
 -- Init: CharacterAdded + existing character
 Players.LocalPlayer.CharacterAdded:Connect(function(char)
 	task.wait(0.08)
@@ -285,5 +260,45 @@ RunService.RenderStepped:Connect(function(dt)
 	local inner, fill = findInnerAndFill()
 	if inner ~= innerHealthBar or fill ~= Fill then
 		applyAllFixes()
+	end
+end)
+
+-- 🔧 Force HealthBar.Fill full X scale (แก้ error nil)
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+local function getFill()
+	local topBar = CoreGui:FindFirstChild("TopBarApp")
+	if not topBar then return end
+	local nested = topBar:FindFirstChild("TopBarApp")
+	if not nested then return end
+	local unibar = nested:FindFirstChild("UnibarLeftFrame")
+	if not unibar then return end
+	local hb = unibar:FindFirstChild("HealthBar")
+	if not hb then return end
+	local inner = hb:FindFirstChild("HealthBar")
+	if not inner then return end
+	return inner:FindFirstChild("Fill")
+end
+
+function setFullFill()
+	local fill = getFill()
+	if fill and fill:IsA("GuiObject") then
+		pcall(function()
+			fill.Size = UDim2.new(1, 0, 1, 0)
+		end)
+	end
+end
+
+-- เรียกครั้งแรก
+setFullFill()
+
+-- ตรวจซ้ำเรื่อย ๆ เผื่อ Fill ถูกสร้างใหม่
+local t = 0
+RunService.RenderStepped:Connect(function(dt)
+	t += dt
+	if t >= 0.2 then
+		t = 0
+		setFullFill()
 	end
 end)
