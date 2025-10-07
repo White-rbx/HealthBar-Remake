@@ -1,4 +1,4 @@
--- LocalScript: HealthBar + DamageOverlay control
+-- LocalScript: HealthBar + DamageOverlay (เต็ม)
 -- วางใน StarterPlayerScripts (LocalScript)
 
 local RunService = game:GetService("RunService")
@@ -8,27 +8,27 @@ local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 
--- Settings
+-- ========== CONFIG ==========
 local FORCE_FULL_ON_SPAWN = true
-local UICORNER_RADIUS = UDim.new(1, 0)
-local HEALTHBAR_IMAGE_TRANSPARENCY = 1 -- เฉพาะ HealthBar.HealthBar
+local UICORNER_RADIUS = UDim.new(1, 0)            -- มุมตามที่ขอ
+local HEALTHBAR_IMAGE_TRANSPARENCY = 1           -- เฉพาะ inner HealthBar
 local OVERLAY_IMAGE_ASSET = "rbxassetid://89248890386154"
-local OVERLAY_DEFAULT_TRANSPARENCY = 1 -- ถ้ต้องการ default เมื่อสร้าง
-local FLASH_HIGHHEALTH_TARGET = 0.5 -- target transparency เมื่อเลือด >= 50% (flash to 0.5)
+local OVERLAY_DEFAULT_TRANSPARENCY = 1           -- default = 1 (invisible)
+local FLASH_HIGHHEALTH_TARGET = 0.5              -- target transparency when flashing (>=50%)
 local FLASH_TO_FULL_TIME = 0.12
 local FLASH_BACK_TIME = 0.28
-local LOWHEALTH_TWEEN_TIME = 0.18 -- tween time when health < 50% (no flashing)
+local LOWHEALTH_TWEEN_TIME = 0.18
 
--- Internal
-local Fill = nil
-local innerHealthBar = nil
+-- ========== STATE ==========
+local innerHealthBar = nil   -- HealthBar.HealthBar (inner)
+local Fill = nil             -- Fill inside inner
 local humanoid = nil
-local currentTween = nil
-local overlayTween = nil
+local currentFillTween = nil
 local overlayGui = nil
 local overlayImage = nil
+local overlayTween = nil
 
--- Helper: safe find inner HealthBar and Fill
+-- Helper: safe find inner healthbar and fill
 local function findInnerAndFill()
 	local topBarApp = CoreGui:FindFirstChild("TopBarApp")
 	if not topBarApp then return nil, nil end
@@ -59,7 +59,7 @@ local function ensureUICorner(target)
 	end
 end
 
--- Ensure HealthBar (inner) ImageTransparency only
+-- Ensure ImageTransparency only on inner healthbar
 local function ensureHealthBarTransparency(gui)
 	if not gui or not gui:IsA("GuiObject") then return end
 	if gui:IsA("ImageLabel") or gui:IsA("ImageButton") then
@@ -67,33 +67,32 @@ local function ensureHealthBarTransparency(gui)
 	end
 end
 
--- Force Fill full size on spawn/detect
+-- Force Fill full (1,1)
 local function forceFillFull(fill)
 	if not fill or not fill:IsA("GuiObject") then return end
 	pcall(function() fill.Size = UDim2.new(1, 0, 1, 0) end)
 end
 
--- Tween Fill to percent (0..1)
+-- Tween Fill to percent
 local function tweenFill(percent)
 	if not Fill or not Fill:IsA("GuiObject") then return end
-	if currentTween then
-		pcall(function() currentTween:Cancel() end)
+	if currentFillTween then
+		pcall(function() currentFillTween:Cancel() end)
+		currentFillTween = nil
 	end
 	pcall(function()
 		local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		currentTween = TweenService:Create(Fill, tweenInfo, { Size = UDim2.new(math.clamp(percent, 0, 1), 0, 1, 0) })
-		currentTween:Play()
+		currentFillTween = TweenService:Create(Fill, tweenInfo, { Size = UDim2.new(math.clamp(percent, 0, 1), 0, 1, 0) })
+		currentFillTween:Play()
 	end)
 end
 
--- Create or get DamageOverlay under CoreGui
+-- Create or reuse DamageOverlay in CoreGui
 local function setupOverlay()
-	-- try find existing ScreenGui named DamageOverlay
 	local existing = CoreGui:FindFirstChild("DamageOverlay")
 	if existing and existing:IsA("ScreenGui") then
 		overlayGui = existing
-		overlayImage = overlayGui:FindFirstChildOfClass("ImageLabel") or overlayGui:FindFirstChildOfClass("ImageButton")
-		-- if no image, create one
+		overlayImage = overlayGui:FindFirstChild("OverlayImage") or overlayGui:FindFirstChildOfClass("ImageLabel") or overlayGui:FindFirstChildOfClass("ImageButton")
 	else
 		overlayGui = Instance.new("ScreenGui")
 		overlayGui.Name = "DamageOverlay"
@@ -104,22 +103,26 @@ local function setupOverlay()
 
 	if not overlayImage then
 		local ima = Instance.new("ImageLabel")
+		ima.Name = "OverlayImage"
 		ima.Size = UDim2.new(1, 0, 1, 0)
 		ima.BackgroundTransparency = 1
 		ima.Image = OVERLAY_IMAGE_ASSET
 		ima.Active = false
 		ima.ImageTransparency = OVERLAY_DEFAULT_TRANSPARENCY
-		ima.Name = "OverlayImage"
 		ima.Parent = overlayGui
 		overlayImage = ima
+	else
+		-- ensure default transparency set (default=1)
+		pcall(function() overlayImage.ImageTransparency = OVERLAY_DEFAULT_TRANSPARENCY end)
 	end
 end
 
--- Tween overlay transparency safely (cancel previous tween)
+-- Cancel and create overlay tween safely
 local function tweenOverlayTo(targetTransparency, timeSec)
 	if not overlayImage then return end
 	if overlayTween then
 		pcall(function() overlayTween:Cancel() end)
+		overlayTween = nil
 	end
 	pcall(function()
 		local ti = TweenInfo.new(timeSec or 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -128,42 +131,38 @@ local function tweenOverlayTo(targetTransparency, timeSec)
 	end)
 end
 
--- On damage event: decide behavior by newPercent
+-- Called when damage occurs; newPercent in [0,1]
 local function onDamageTriggered(newPercent)
-	-- newPercent is in [0,1]
 	if not overlayImage then return end
-
+	-- Low health (<50%): map [0..0.5] -> [0..1] where 0.5 => 1, 0 => 0
 	if newPercent < 0.5 then
-		-- Low health: set transparency proportional to percent (no flashing)
-		-- mapping: at percent=0.5 -> transparency = 1 ; at percent=0 -> transparency = 0
-		local t = newPercent / 0.5 -- 0..1
-		-- tween smoothly to target (not flashing)
-		tweenOverlayTo(t, LOWHEALTH_TWEEN_TIME)
+		local mapped = math.clamp(newPercent / 0.5, 0, 1)
+		-- Tween to mapped transparency (no flashing)
+		tweenOverlayTo(mapped, LOWHEALTH_TWEEN_TIME)
 	else
-		-- High health: flash between 0.5 and 1 smoothly
-		-- First tween to FLASH_HIGHHEALTH_TARGET quickly, then back to 1
+		-- High health: flash (0.5 -> 1)
+		-- Cancel previous tween and do sequence
 		tweenOverlayTo(FLASH_HIGHHEALTH_TARGET, FLASH_TO_FULL_TIME)
-		-- chain back
-		spawn(function()
-			-- wait until first tween roughly completes, then tween back
+		-- chain back in coroutine so we can re-evaluate health mid-flash
+		coroutine.wrap(function()
 			wait(FLASH_TO_FULL_TIME)
-			-- ensure player still has health >=50% (optional: only return if still >=50)
-			local stillPercent = 1
-			if humanoid and humanoid.MaxHealth > 0 then
-				stillPercent = humanoid.Health / humanoid.MaxHealth
+			local nowPercent = 1
+			if humanoid and humanoid.MaxHealth and humanoid.MaxHealth > 0 then
+				nowPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
 			end
-			if stillPercent >= 0.5 then
-				tweenOverlayTo(1, FLASH_BACK_TIME)
+			if nowPercent < 0.5 then
+				-- switched to low health during flash -> go to mapped state
+				local mapped = math.clamp(nowPercent / 0.5, 0, 1)
+				tweenOverlayTo(mapped, LOWHEALTH_TWEEN_TIME)
 			else
-				-- if dropped below 50% during flash, immediately set according to low-health rule
-				local t = stillPercent / 0.5
-				tweenOverlayTo(t, LOWHEALTH_TWEEN_TIME)
+				-- still >=50 -> tween back to invisible (1)
+				tweenOverlayTo(1, FLASH_BACK_TIME)
 			end
-		end)
+		end)()
 	end
 end
 
--- Apply fixes (inner healthbar, fill, overlay)
+-- Apply fixes to inner + fill + overlay
 local function applyAllFixes()
 	local inner, fill = findInnerAndFill()
 	innerHealthBar = inner
@@ -171,7 +170,7 @@ local function applyAllFixes()
 
 	if innerHealthBar and innerHealthBar:IsA("GuiObject") then
 		ensureUICorner(innerHealthBar)
-		ensureHealthBarTransparency(innerHealthBar) -- only inner gets ImageTransparency
+		ensureHealthBarTransparency(innerHealthBar)
 	end
 
 	if Fill and Fill:IsA("GuiObject") then
@@ -186,68 +185,63 @@ local function applyAllFixes()
 	end
 end
 
--- Setup humanoid connections for health tracking & damage detection
+-- Setup humanoid: health tracking + damage detection
 local function setupHumanoid(h)
 	if not h then return end
 	humanoid = h
 	local lastHealth = humanoid.Health
-	-- initial overlay state in case starting low
+
+	-- initial overlay state
 	if overlayImage then
-		local initialPercent = 1
+		local initPercent = 1
 		if humanoid.MaxHealth and humanoid.MaxHealth > 0 then
-			initialPercent = humanoid.Health / humanoid.MaxHealth
+			initPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
 		end
-		if initialPercent < 0.5 then
-			-- set according to low-health mapping directly (no flash)
-			local t = initialPercent / 0.5
-			pcall(function() overlayImage.ImageTransparency = math.clamp(t, 0, 1) end)
+		if initPercent < 0.5 then
+			local mapped = math.clamp(initPercent / 0.5, 0, 1)
+			pcall(function() overlayImage.ImageTransparency = mapped end)
 		else
-			-- keep overlay invisible (transparency = 1)
 			pcall(function() overlayImage.ImageTransparency = 1 end)
 		end
 	end
 
 	humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-		-- ensure Fill found
+		-- ensure Fill exists
 		if not Fill then
 			applyAllFixes()
 		end
-		-- compute percent
+
 		local percent = 1
 		if humanoid.MaxHealth and humanoid.MaxHealth > 0 then
-			percent = humanoid.Health / humanoid.MaxHealth
+			percent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
 		end
-		percent = math.clamp(percent, 0, 1)
 
-		-- if health decreased -> damage
+		-- damage detection
 		if lastHealth and humanoid.Health < lastHealth then
-			-- trigger overlay reaction for this damage event
 			onDamageTriggered(percent)
 		else
-			-- if healed, maybe update overlay if below 50% (keep consistent)
+			-- healed or unchanged: keep overlay in correct state if below 50%
 			if percent < 0.5 then
-				local t = percent / 0.5
-				tweenOverlayTo(t, LOWHEALTH_TWEEN_TIME)
+				local mapped = math.clamp(percent / 0.5, 0, 1)
+				tweenOverlayTo(mapped, LOWHEALTH_TWEEN_TIME)
 			else
-				-- if healed above 50, ensure overlay transparency returns to 1
+				-- if healed above 50 ensure invisible
 				tweenOverlayTo(1, LOWHEALTH_TWEEN_TIME)
 			end
 		end
 
-		-- update fill bar tween
+		-- update fill tween
 		tweenFill(percent)
 
 		lastHealth = humanoid.Health
 	end)
 end
 
--- Initialize: character/humanoid and UI
+-- Init: CharacterAdded + existing character
 Players.LocalPlayer.CharacterAdded:Connect(function(char)
 	task.wait(0.08)
 	local ok, h = pcall(function() return char:WaitForChild("Humanoid", 5) end)
-	if ok and h then
-		setupHumanoid(h)
-	end
+	if ok and h then setupHumanoid(h) end
 	applyAllFixes()
 end)
 
@@ -257,7 +251,7 @@ if Players.LocalPlayer.Character then
 	applyAllFixes()
 end
 
--- Watch for TopBar / Fill changes (respawn or TopBar re-creation)
+-- Monitor TopBar / Fill recreation (respawn or core gui change)
 local checkTimer = 0
 RunService.RenderStepped:Connect(function(dt)
 	checkTimer = checkTimer + dt
