@@ -1,4 +1,4 @@
--- LocalScript: HealthBar + DamageOverlay (เต็ม)
+-- LocalScript: HealthBar + DamageOverlay (เต็ม) + fix spawn-full-health
 -- วางใน StarterPlayerScripts (LocalScript)
 
 local RunService = game:GetService("RunService")
@@ -237,18 +237,59 @@ local function setupHumanoid(h)
 	end)
 end
 
+-- New: onCharacterSpawn - handle spawn timing and ensure Fill shows full until real values arrive
+local function onCharacterSpawn(char)
+	-- find Fill early
+	Fill, innerHealthBar = findInnerAndFill()
+	-- if Fill exists, force full to hide wrong empty bar
+	if Fill and Fill:IsA("GuiObject") and FORCE_FULL_ON_SPAWN then
+		pcall(function() Fill.Size = UDim2.new(1,0,1,0) end)
+	end
+
+	-- wait for humanoid (if not present)
+	local h = char:FindFirstChildOfClass("Humanoid")
+	if not h then
+		h = char:WaitForChild("Humanoid", 5)
+		if not h then return end
+	end
+
+	-- wait a short time for server/custom scripts to set MaxHealth/Health
+	local timeout = 2.0
+	local elapsed = 0
+	local step = 0.05
+	while elapsed < timeout do
+		-- if MaxHealth positive and Health is not nil, break
+		if h.MaxHealth and h.MaxHealth > 0 and h.Health ~= nil then
+			break
+		end
+		task.wait(step)
+		elapsed = elapsed + step
+	end
+
+	-- update references (in case UI created after)
+	Fill, innerHealthBar = findInnerAndFill()
+
+	-- now tween Fill to real percent (if valid)
+	if Fill and h.MaxHealth and h.MaxHealth > 0 then
+		local percent = math.clamp(h.Health / h.MaxHealth, 0, 1)
+		-- Tween from full to actual so it doesn't appear empty at spawn
+		tweenFill(percent)
+	end
+
+	-- finally setup humanoid connections (only once each spawn)
+	setupHumanoid(h)
+end
+
 -- Init: CharacterAdded + existing character
 Players.LocalPlayer.CharacterAdded:Connect(function(char)
 	task.wait(0.08)
-	local ok, h = pcall(function() return char:WaitForChild("Humanoid", 5) end)
-	if ok and h then setupHumanoid(h) end
 	applyAllFixes()
+	onCharacterSpawn(char)
 end)
 
 if Players.LocalPlayer.Character then
-	local h = Players.LocalPlayer.Character:FindFirstChild("Humanoid")
-	if h then setupHumanoid(h) end
 	applyAllFixes()
+	onCharacterSpawn(Players.LocalPlayer.Character)
 end
 
 -- Monitor TopBar / Fill recreation (respawn or core gui change)
