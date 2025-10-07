@@ -263,7 +263,7 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
--- LocalScript: Set HealthBar Fill full ONCE per respawn
+-- LocalScript: Fill full ONLY once after respawn (not when dying)
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 
@@ -283,38 +283,38 @@ local function findFill()
 	return inner:FindFirstChild("Fill")
 end
 
--- Try to set Fill full, but only once. Wait up to timeout for Fill to appear.
-local function setFillFullOnce(timeout)
-	timeout = timeout or 2 -- seconds
-	local elapsed = 0
-	local step = 0.08
-	while elapsed < timeout do
-		local fill = findFill()
-		if fill and fill:IsA("GuiObject") then
-			pcall(function()
-				fill.Size = UDim2.new(1, 0, 1, 0)
-			end)
-			return true
-		end
-		task.wait(step)
-		elapsed = elapsed + step
+local function setFillFullOnce()
+	local fill = findFill()
+	if fill and fill:IsA("GuiObject") then
+		pcall(function()
+			fill.Size = UDim2.new(1, 0, 1, 0)
+		end)
 	end
-	return false
 end
 
--- Run once for each spawn
-local function onCharacterAdded(character)
-	-- defer to not block event; small initial wait to let UI creation start
+local function onCharacterAdded(char)
 	task.defer(function()
-		task.wait(0.05)
-		setFillFullOnce(2) -- wait up to 2s for Fill to appear, then set once
+		-- รอ Humanoid จริง (ตอน spawn)
+		local humanoid = char:WaitForChild("Humanoid", 5)
+		if not humanoid then return end
+
+		-- รอจนกว่าเลือดจะ > 0 (หมายถึงเกิดใหม่แล้ว ไม่ใช่ตาย)
+		while humanoid.Health <= 0 do
+			task.wait(0.1)
+		end
+
+		-- รอให้ TopBar สร้างเสร็จ
+		task.wait(0.1)
+
+		-- เซ็ต Fill เป็นเต็ม (ทำครั้งเดียว)
+		setFillFullOnce()
 	end)
 end
 
--- Connect
+-- เชื่อม event
 player.CharacterAdded:Connect(onCharacterAdded)
 
--- Do for existing character on script start (once)
+-- ถ้ามีตัวอยู่แล้ว (เข้าเกมโดยไม่ตาย)
 if player.Character then
 	onCharacterAdded(player.Character)
 end
