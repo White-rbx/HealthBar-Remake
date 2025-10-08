@@ -82,7 +82,7 @@ local function setupValueGui()
     if not fm then
         fm = Instance.new("Frame")
         fm.Name = "point"
-        fm.Size = UDim2.new(0.955, 0, 0, 15)
+        fm.Size = UDim2.new(0.941, 0, 0, 15)
         fm.Position = UDim2.new(0, 0, 0, -50)
         fm.BackgroundTransparency = 1
         fm.Parent = gui
@@ -670,7 +670,7 @@ local MTB_X_OPEN   = 0 -- open => X = 0
 
 -- hr sizes in px for open/close
 local HR_WIDTH_OPEN  = 185
-local HR_WIDTH_CLOSE = 44
+local HR_WIDTH_CLOSE = 45
 
 -- safe setter for mtb position (uses tweenObject if available)
 local function setMtbX(open, instant)
@@ -861,12 +861,12 @@ task.spawn(function()
             if not isOpen then
                 print("[HRP-Watcher] HRP detected -> opening UI")
                 if ui_mtb and ui_mtb.Parent then
-                    safeTween(ui_mtb, { Position = UDim2.new(0.48, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28, Enum.EasingStyle.Quad)
+                    safeTween(ui_mtb, { Position = UDim2.new(0.47, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28, Enum.EasingStyle.Quad)
                 else
                     safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad)
                 end
 
-                safeTween(ui_hr, { Size = UDim2.new(0,44, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                safeTween(ui_hr, { Size = UDim2.new(0,45, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                 pcall(function()
                     if ui_Set  then ui_Set.Visible  = false end
                     if ui_hbm then ui_hbm.Visible = false end
