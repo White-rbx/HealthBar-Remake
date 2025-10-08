@@ -1,4 +1,4 @@
--- LocalScript: HealthBar + DamageOverlay (เต็ม)
+-- LocalScript: HealthBar + DamageOverlay (เต็ม) ...
 -- วางใน StarterPlayerScripts (LocalScript)
 
 local RunService = game:GetService("RunService")
