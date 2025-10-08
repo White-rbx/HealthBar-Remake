@@ -1,4 +1,4 @@
--- LocalScript: HealthBar + DamageOverlay o e ou a ah fa fa
+-- LocalScript: HealthBar + DamageOverlay o e ou a ah fa fa ba da bu be
 -- วางใน StarterPlayerScripts (LocalScript)
 locall RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
