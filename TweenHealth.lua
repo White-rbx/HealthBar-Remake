@@ -1,6 +1,7 @@
--- LocalScript: HealthBar + DamageOverlay o e ou a ah fa fa ba da bu be
+-- LocalScript: HealthBar + DamageOverlay
 -- วางใน StarterPlayerScripts (LocalScript)
-locall RunService = game:GetService("RunService")
+
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -130,64 +131,35 @@ local function tweenOverlayTo(targetTransparency, timeSec)
 	end)
 end
 
--- ปรับให้ปลอดภัย (ใช้ FLASH_BACK_TIME เป็น number เท่านั้น)
-local FLASH_BACK_TIME = 0.28
-
-local function safeCancelTween(t)
-	if t then
-		pcall(function() t:Cancel() end)
-	end
-end
-
+-- Called when damage occurs; newPercent in [0,1]
 local function onDamageTriggered(newPercent)
-	if not overlayImage or not TweenService then return end
-
-	local rt = 1
+	if not overlayImage then return end
+	-- Low health (<50%): map [0..0.5] -> [0..1] where 0.5 => 1, 0 => 0
 	if newPercent < 0.5 then
-		rt = math.clamp(newPercent / 0.5, 0, 1)
+		local mapped = math.clamp(newPercent / 0.5, 0, 1)
+		-- Tween to mapped transparency (no flashing)
+		tweenOverlayTo(mapped, LOWHEALTH_TWEEN_TIME)
 	else
-		rt = 1 - (math.clamp(newPercent, 0.5, 1) - 0.5) * 2
-		rt = math.clamp(rt, 0, 1)
+		-- High health: flash (0.5 -> 1)
+		-- Cancel previous tween and do sequence
+		tweenOverlayTo(FLASH_HIGHHEALTH_TARGET, FLASH_TO_FULL_TIME)
+		-- chain back in coroutine so we can re-evaluate health mid-flash
+		coroutine.wrap(function()
+			wait(FLASH_TO_FULL_TIME)
+			local nowPercent = 1
+			if humanoid and humanoid.MaxHealth and humanoid.MaxHealth > 0 then
+				nowPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+			end
+			if nowPercent < 0.5 then
+				-- switched to low health during flash -> go to mapped state
+				local mapped = math.clamp(nowPercent / 0.5, 0, 1)
+				tweenOverlayTo(mapped, LOWHEALTH_TWEEN_TIME)
+			else
+				-- still >=50 -> tween back to invisible (1)
+				tweenOverlayTo(1, FLASH_BACK_TIME)
+			end
+		end)()
 	end
-
-	-- ยกเลิก tween เก่าอย่างปลอดภัย
-	safeCancelTween(overlayTween)
-	overlayTween = nil
-
-	-- สร้างกระบวนการแฟลชแบบไม่ error
-	coroutine.wrap(function()
-		local flashInTime = 0.1
-		local flashBackTime = FLASH_BACK_TIME or 0.28 -- fallback ถ้าใครบังเอิญเซ็ต nil
-
-		-- สร้าง tween แรก (ให้แน่ใจ overlayImage ไม่ nil)
-		if not overlayImage then return end
-
-		local ok, t1 = pcall(function()
-			return TweenService:Create(overlayImage, TweenInfo.new(flashInTime), { ImageTransparency = 1 })
-		end)
-		if ok and t1 then
-			t1:Play()
-			t1.Completed:Wait()
-		end
-
-		local ok2, t2 = pcall(function()
-			return TweenService:Create(overlayImage, TweenInfo.new(flashBackTime), { ImageTransparency = rt })
-		end)
-		if ok2 and t2 then
-			t2:Play()
-			t2.Completed:Wait()
-		end
-
-		-- ผลลัพธ์สุดท้าย: ถ้า <50% ค้างที่ rt, ถ้า >=50% กลับโปร่งใส
-		if newPercent < 0.5 then
-			pcall(function() overlayImage.ImageTransparency = rt end)
-		else
-			local ok3, t3 = pcall(function()
-				return TweenService:Create(overlayImage, TweenInfo.new(flashBackTime), { ImageTransparency = 1 })
-			end)
-			if ok3 and t3 then t3:Play() end
-		end
-	end)()
 end
 
 -- Apply fixes to inner + fill + overlay
