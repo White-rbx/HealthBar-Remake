@@ -291,10 +291,8 @@ local function tweenFillFull()
 	if not fill or not fill:IsA("GuiObject") then return end
 
 	pcall(function()
-		-- ตรวจ Size ก่อน ถ้า X.Scale ~= 0 ให้รีเซ็ตเป็น 0
-		if fill.Size.X.Scale ~= 0 then
-			fill.Size = UDim2.new(0, 0, 1, 0)
-		end
+		-- ตั้งเริ่มต้นเป็น 0,0
+		fill.Size = UDim2.new(0, 0, 1, 0)
 
 		-- Tween ไป 1
 		local tweenInfo = TweenInfo.new(
@@ -319,8 +317,18 @@ local function onCharacterAdded(char)
 			task.wait(0.05)
 		end
 
-		-- Tween Fill full 1 ครั้ง
-		tweenFillFull()
+		-- 🔄 รอ Fill ถูกสร้าง
+		local fill = findFill()
+		local waitTime = 0
+		while not fill and waitTime < 5 do -- รอสูงสุด 5 วิ
+			task.wait(0.05)
+			waitTime += 0.05
+			fill = findFill()
+		end
+
+		if fill then
+			tweenFillFull()
+		end
 	end)
 end
 
