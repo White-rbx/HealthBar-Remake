@@ -1,4 +1,4 @@
--- LocalScript: HealthBar + DamageOverlay
+-- LocalScript: HealthBar + DamageOverlay o e ou a ah fa fa
 -- วางใน StarterPlayerScripts (LocalScript)
 locall RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -130,7 +130,15 @@ local function tweenOverlayTo(targetTransparency, timeSec)
 	end)
 end
 
--- Called when damage occurs; newPercent in [0,1]
+-- ปรับให้ปลอดภัย (ใช้ FLASH_BACK_TIME เป็น number เท่านั้น)
+local FLASH_BACK_TIME = 0.28
+
+local function safeCancelTween(t)
+	if t then
+		pcall(function() t:Cancel() end)
+	end
+end
+
 local function onDamageTriggered(newPercent)
 	if not overlayImage or not TweenService then return end
 
@@ -142,36 +150,42 @@ local function onDamageTriggered(newPercent)
 		rt = math.clamp(rt, 0, 1)
 	end
 
-	-- ยกเลิก Tween เก่าอย่างปลอดภัย
-	if overlayTween then
-		pcall(function()
-			overlayTween:Cancel()
-		end)
-		overlayTween = nil
-	end
+	-- ยกเลิก tween เก่าอย่างปลอดภัย
+	safeCancelTween(overlayTween)
+	overlayTween = nil
 
-	-- ⚡ สร้างเอฟเฟกต์กระพริบ
+	-- สร้างกระบวนการแฟลชแบบไม่ error
 	coroutine.wrap(function()
-		local flashIn = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		local flashOut = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+		local flashInTime = 0.1
+		local flashBackTime = FLASH_BACK_TIME or 0.28 -- fallback ถ้าใครบังเอิญเซ็ต nil
 
-		-- 1 → RT
-		local t1 = TweenService:Create(overlayImage, flashIn, { ImageTransparency = 1 })
-		t1:Play()
-		t1.Completed:Wait()
+		-- สร้าง tween แรก (ให้แน่ใจ overlayImage ไม่ nil)
+		if not overlayImage then return end
 
-		local t2 = TweenService:Create(overlayImage, flashOut, { ImageTransparency = rt })
-		t2:Play()
-		t2.Completed:Wait()
+		local ok, t1 = pcall(function()
+			return TweenService:Create(overlayImage, TweenInfo.new(flashInTime), { ImageTransparency = 1 })
+		end)
+		if ok and t1 then
+			t1:Play()
+			t1.Completed:Wait()
+		end
 
-		-- <50% = ค้างที่ RT / ≥50% = กลับ 1
+		local ok2, t2 = pcall(function()
+			return TweenService:Create(overlayImage, TweenInfo.new(flashBackTime), { ImageTransparency = rt })
+		end)
+		if ok2 and t2 then
+			t2:Play()
+			t2.Completed:Wait()
+		end
+
+		-- ผลลัพธ์สุดท้าย: ถ้า <50% ค้างที่ rt, ถ้า >=50% กลับโปร่งใส
 		if newPercent < 0.5 then
-			pcall(function()
-				overlayImage.ImageTransparency = rt
-			end)
+			pcall(function() overlayImage.ImageTransparency = rt end)
 		else
-			local t3 = TweenService:Create(overlayImage, flashOut, { ImageTransparency = 1 })
-			t3:Play()
+			local ok3, t3 = pcall(function()
+				return TweenService:Create(overlayImage, TweenInfo.new(flashBackTime), { ImageTransparency = 1 })
+			end)
+			if ok3 and t3 then t3:Play() end
 		end
 	end)()
 end
