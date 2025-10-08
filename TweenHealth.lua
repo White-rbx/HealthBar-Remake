@@ -263,25 +263,33 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
--- Outline
-local CO = game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.HealthBar
+-- Outline สำหรับ HealthBar
+local CoreGui = game:GetService("CoreGui")
+local healthBarParent = CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
+	:WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar"):WaitForChild("HealthBar")
 
-local Out = Instance.new("Frame")
-Out.Name = "Outline"
-Out.Size = UDim2.new(0.98, 0, 0.7, 0)
-Out.Position = UDim2.new(0.01, 0, 0.15, 0)
-Out.BackgroundTransparency = 1
-Out.Parent = CO
+-- ตรวจว่ามี Outline อยู่แล้วไหม
+if not healthBarParent:FindFirstChild("Outline") then
+	local outline = Instance.new("Frame")
+	outline.Name = "Outline"
+	-- กำหนดขนาดและตำแหน่งสัมพันธ์กับ HealthBar
+	outline.Size = UDim2.new(0.98, 0, 0.7, 0)
+	outline.Position = UDim2.new(0.01, 0, 0.15, 0)
+	outline.BackgroundTransparency = 1
+	outline.Parent = healthBarParent
 
-local con = Instance.new("UICorner")
-con.CornerRadius = UDim.new(1, 0)
-con.Parent = Out
+	-- UICorner ทำให้มุมโค้ง
+	local uicorner = Instance.new("UICorner")
+	uicorner.CornerRadius = UDim.new(1, 0)
+	uicorner.Parent = outline
 
-local str = Instance.new("UIStroke")
-str.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-str.Color = Color3.fromRGB(0,0,0)
-str.Thickness = 1.8
-str.Parent = Out
+	-- UIStroke สำหรับเส้นขอบ
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Color = Color3.fromRGB(0, 0, 0)
+	stroke.Thickness = 1.8
+	stroke.Parent = outline
+end
 
 -- LocalScript: Tween Fill full ONCE after respawn
 local Players = game:GetService("Players")
