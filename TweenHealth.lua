@@ -296,7 +296,7 @@ local function tweenFillFull()
 
 		-- Tween ไป 1
 		local tweenInfo = TweenInfo.new(
-			3.5, -- ระยะเวลา 3.5 วิ
+			3, -- ระยะเวลา
 			Enum.EasingStyle.Quad,
 			Enum.EasingDirection.Out
 		)
@@ -318,7 +318,7 @@ local function onCharacterAdded(char)
 		end
 
 		-- ⏱ รอ 1 วิให้ Fill ถูกสร้าง
-		task.wait(1)
+		task.wait(0.1)
 		tweenFillFull()
 	end)
 end
