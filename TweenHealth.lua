@@ -132,7 +132,7 @@ end
 
 -- Called when damage occurs; newPercent in [0,1]
 local function onDamageTriggered(newPercent)
-	if not overlayImage then return end
+	if not overlayImage or not TweenService then return end
 
 	local rt = 1
 	if newPercent < 0.5 then
@@ -142,31 +142,35 @@ local function onDamageTriggered(newPercent)
 		rt = math.clamp(rt, 0, 1)
 	end
 
-	-- ยกเลิก tween เก่า
+	-- ยกเลิก Tween เก่าอย่างปลอดภัย
 	if overlayTween then
-		pcall(function() overlayTween:Cancel() end)
+		pcall(function()
+			overlayTween:Cancel()
+		end)
 		overlayTween = nil
 	end
 
-	-- ⚡ ทุกครั้งที่โดนดาเมจ → กระพริบใหม่
+	-- ⚡ สร้างเอฟเฟกต์กระพริบ
 	coroutine.wrap(function()
-		local ti = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		local back = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+		local flashIn = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		local flashOut = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 
-		-- เริ่มกระพริบ
-		local t1 = TweenService:Create(overlayImage, ti, { ImageTransparency = 1 })
+		-- 1 → RT
+		local t1 = TweenService:Create(overlayImage, flashIn, { ImageTransparency = 1 })
 		t1:Play()
 		t1.Completed:Wait()
 
-		local t2 = TweenService:Create(overlayImage, back, { ImageTransparency = rt })
+		local t2 = TweenService:Create(overlayImage, flashOut, { ImageTransparency = rt })
 		t2:Play()
 		t2.Completed:Wait()
 
-		-- ถ้าเลือด < 50% ค้างไว้ที่ RT, ถ้ามากกว่าให้กลับโปร่งใส
+		-- <50% = ค้างที่ RT / ≥50% = กลับ 1
 		if newPercent < 0.5 then
-			pcall(function() overlayImage.ImageTransparency = rt end)
+			pcall(function()
+				overlayImage.ImageTransparency = rt
+			end)
 		else
-			local t3 = TweenService:Create(overlayImage, back, { ImageTransparency = 1 })
+			local t3 = TweenService:Create(overlayImage, flashOut, { ImageTransparency = 1 })
 			t3:Play()
 		end
 	end)()
