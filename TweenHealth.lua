@@ -324,7 +324,7 @@ local function onCharacterAdded(char)
 end
 
 -- 🔄 เชื่อมต่อกับการเกิดใหม่
-player.CharacteGetServiceLocalScded:Connect(onCharacterAdded)
+player.CharacterAdded:Connect(onCharacterAdded)
 
 -- เรียกครั้งแรกถ้ามีตัวอยู่แล้ว
 if player.Character then
