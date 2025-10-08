@@ -263,7 +263,7 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
--- LocalScript: Smoothly Tween Fill full ONCE after respawn
+-- LocalScript: Tween Fill full ONCE after respawn
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
@@ -291,7 +291,7 @@ local function tweenFillFull()
 	if not fill or not fill:IsA("GuiObject") then return end
 
 	pcall(function()
-		-- ตั้งเริ่มต้นเป็น 0,0
+		-- เริ่มต้นที่ 0
 		fill.Size = UDim2.new(0, 0, 1, 0)
 
 		-- Tween ไป 1
@@ -317,23 +317,14 @@ local function onCharacterAdded(char)
 			task.wait(0.05)
 		end
 
-		-- 🔄 รอ Fill ถูกสร้าง
-		local fill = findFill()
-		local waitTime = 0
-		while not fill and waitTime < 5 do -- รอสูงสุด 5 วิ
-			task.wait(0.05)
-			waitTime += 0.05
-			fill = findFill()
-		end
-
-		if fill then
-			tweenFillFull()
-		end
+		-- ⏱ รอ 1 วิให้ Fill ถูกสร้าง
+		task.wait(1)
+		tweenFillFull()
 	end)
 end
 
 -- 🔄 เชื่อมต่อกับการเกิดใหม่
-player.CharacterAdded:Connect(onCharacterAdded)
+player.CharacteGetServiceLocalScded:Connect(onCharacterAdded)
 
 -- เรียกครั้งแรกถ้ามีตัวอยู่แล้ว
 if player.Character then
