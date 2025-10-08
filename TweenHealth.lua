@@ -263,14 +263,14 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
--- LocalScript: Tween Fill full ONCE after respawn
+-- LocalScript: Smoothly Tween Fill full ONCE after respawn
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 
--- 🔍 หา Fill จาก TopBar
+-- 🔍 หา Fill
 local function findFill()
 	local topBar = CoreGui:FindFirstChild("TopBarApp")
 	if not topBar then return nil end
@@ -288,22 +288,24 @@ end
 -- 💫 Tween Fill จาก 0 → 1
 local function tweenFillFull()
 	local fill = findFill()
-	if fill and fill:IsA("GuiObject") then
-		pcall(function()
-			-- เริ่มที่ 0
-			fill.Size = UDim2.new(0, 0, 1, 0)
+	if not fill or not fill:IsA("GuiObject") then return end
 
-			-- Tween ไป 1
-			local tweenInfo = TweenInfo.new(
-				0.35, -- ระยะเวลา 0.35 วิ (ปรับตามชอบ)
-				Enum.EasingStyle.Quad,
-				Enum.EasingDirection.Out
-			)
-			local goal = { Size = UDim2.new(1, 0, 1, 0) }
-			local tween = TweenService:Create(fill, tweenInfo, goal)
-			tween:Play()
-		end)
-	end
+	pcall(function()
+		-- ตรวจ Size ก่อน ถ้า X.Scale ~= 0 ให้รีเซ็ตเป็น 0
+		if fill.Size.X.Scale ~= 0 then
+			fill.Size = UDim2.new(0, 0, 1, 0)
+		end
+
+		-- Tween ไป 1
+		local tweenInfo = TweenInfo.new(
+			3.5, -- ระยะเวลา 3.5 วิ
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		)
+		local goal = { Size = UDim2.new(1, 0, 1, 0) }
+		local tween = TweenService:Create(fill, tweenInfo, goal)
+		tween:Play()
+	end)
 end
 
 -- ⚙️ ตอนเกิดใหม่
