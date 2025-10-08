@@ -12,7 +12,7 @@ local player = Players.LocalPlayer
 local FORCE_FULL_ON_SPAWN = true
 local UICORNER_RADIUS = UDim.new(1, 0)            -- มุมตามที่ขอ
 local HEALTHBAR_IMAGE_TRANSPARENCY = 1           -- เฉพาะ inner HealthBar
-local OVERLAY_IMAGE_ASSET = "rbxassetid://89248890386154"
+local OVERLAY_IMAGE_ASSET = "rbxassetid://114133350704123"
 local OVERLAY_DEFAULT_TRANSPARENCY = 1           -- default = 1 (invisible)
 local FLASH_HIGHHEALTH_TARGET = 0.5              -- target transparency when flashing (>=50%)
 local FLASH_TO_FULL_TIME = 0.12
