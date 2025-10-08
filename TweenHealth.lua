@@ -1,7 +1,6 @@
 -- LocalScript: HealthBar + DamageOverlay
 -- วางใน StarterPlayerScripts (LocalScript)
-
-local RunService = game:GetService("RunService")
+locall RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
@@ -135,37 +134,42 @@ end
 local function onDamageTriggered(newPercent)
 	if not overlayImage then return end
 
+	local rt = 1
 	if newPercent < 0.5 then
-		local rt = math.clamp(newPercent / 0.5, 0, 1)
-
-		-- ยกเลิก tween เก่าก่อน
-		if overlayTween then
-			pcall(function() overlayTween:Cancel() end)
-			overlayTween = nil
-		end
-
-		coroutine.wrap(function()
-			local ti1 = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-			local ti2 = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-
-			local t1 = TweenService:Create(overlayImage, ti1, { ImageTransparency = 1 })
-			t1:Play()
-			t1.Completed:Wait()
-
-			local t2 = TweenService:Create(overlayImage, ti2, { ImageTransparency = rt })
-			t2:Play()
-			t2.Completed:Wait()
-
-			local t3 = TweenService:Create(overlayImage, ti1, { ImageTransparency = 1 })
-			t3:Play()
-			t3.Completed:Wait()
-
-			local t4 = TweenService:Create(overlayImage, ti2, { ImageTransparency = rt })
-			t4:Play()
-		end)()
+		rt = math.clamp(newPercent / 0.5, 0, 1)
 	else
-		tweenOverlayTo(1, LOWHEALTH_TWEEN_TIME)
+		rt = 1 - (math.clamp(newPercent, 0.5, 1) - 0.5) * 2
+		rt = math.clamp(rt, 0, 1)
 	end
+
+	-- ยกเลิก tween เก่า
+	if overlayTween then
+		pcall(function() overlayTween:Cancel() end)
+		overlayTween = nil
+	end
+
+	-- ⚡ ทุกครั้งที่โดนดาเมจ → กระพริบใหม่
+	coroutine.wrap(function()
+		local ti = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		local back = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+
+		-- เริ่มกระพริบ
+		local t1 = TweenService:Create(overlayImage, ti, { ImageTransparency = 1 })
+		t1:Play()
+		t1.Completed:Wait()
+
+		local t2 = TweenService:Create(overlayImage, back, { ImageTransparency = rt })
+		t2:Play()
+		t2.Completed:Wait()
+
+		-- ถ้าเลือด < 50% ค้างไว้ที่ RT, ถ้ามากกว่าให้กลับโปร่งใส
+		if newPercent < 0.5 then
+			pcall(function() overlayImage.ImageTransparency = rt end)
+		else
+			local t3 = TweenService:Create(overlayImage, back, { ImageTransparency = 1 })
+			t3:Play()
+		end
+	end)()
 end
 
 -- Apply fixes to inner + fill + overlay
