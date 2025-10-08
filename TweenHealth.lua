@@ -134,31 +134,37 @@ end
 -- Called when damage occurs; newPercent in [0,1]
 local function onDamageTriggered(newPercent)
 	if not overlayImage then return end
-	-- Low health (<50%): map [0..0.5] -> [0..1] where 0.5 => 1, 0 => 0
+
 	if newPercent < 0.5 then
-		local mapped = math.clamp(newPercent / 0.5, 0, 1)
-		-- Tween to mapped transparency (no flashing)
-		tweenOverlayTo(mapped, LOWHEALTH_TWEEN_TIME)
-	else
-		-- High health: flash (0.5 -> 1)
-		-- Cancel previous tween and do sequence
-		tweenOverlayTo(FLASH_HIGHHEALTH_TARGET, FLASH_TO_FULL_TIME)
-		-- chain back in coroutine so we can re-evaluate health mid-flash
+		local rt = math.clamp(newPercent / 0.5, 0, 1)
+
+		-- ยกเลิก tween เก่าก่อน
+		if overlayTween then
+			pcall(function() overlayTween:Cancel() end)
+			overlayTween = nil
+		end
+
 		coroutine.wrap(function()
-			wait(FLASH_TO_FULL_TIME)
-			local nowPercent = 1
-			if humanoid and humanoid.MaxHealth and humanoid.MaxHealth > 0 then
-				nowPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-			end
-			if nowPercent < 0.5 then
-				-- switched to low health during flash -> go to mapped state
-				local mapped = math.clamp(nowPercent / 0.5, 0, 1)
-				tweenOverlayTo(mapped, LOWHEALTH_TWEEN_TIME)
-			else
-				-- still >=50 -> tween back to invisible (1)
-				tweenOverlayTo(1, FLASH_BACK_TIME)
-			end
+			local ti1 = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			local ti2 = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+
+			local t1 = TweenService:Create(overlayImage, ti1, { ImageTransparency = 1 })
+			t1:Play()
+			t1.Completed:Wait()
+
+			local t2 = TweenService:Create(overlayImage, ti2, { ImageTransparency = rt })
+			t2:Play()
+			t2.Completed:Wait()
+
+			local t3 = TweenService:Create(overlayImage, ti1, { ImageTransparency = 1 })
+			t3:Play()
+			t3.Completed:Wait()
+
+			local t4 = TweenService:Create(overlayImage, ti2, { ImageTransparency = rt })
+			t4:Play()
 		end)()
+	else
+		tweenOverlayTo(1, LOWHEALTH_TWEEN_TIME)
 	end
 end
 
