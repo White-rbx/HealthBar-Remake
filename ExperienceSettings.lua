@@ -17,7 +17,7 @@ if not player then
 end
 
 -- เป้าหมายใหม่ของตำแหน่ง HealthBar (ปรับได้)
-local newHealthBarPosition = UDim2.new(0.874, 0, 0, 0)
+local newHealthBarPosition = UDim2.new(0.86, 0, 0, 0)
 local newHealthBarSize = UDim2.new(0.109, 0, 1, 0)
 local newInnerBarSize = UDim2.new(1.85, 0, 0, 10)
 
@@ -665,7 +665,7 @@ local OC_OPEN_IMAGE  = "rbxassetid://126759169574128" -- image when OPEN (show S
 local OC_CLOSE_IMAGE = "rbxassetid://96748873664437"  -- image when CLOSED (hide Set/hbm)
 
 -- target mtb X for "closed" (was 0.515 -> change to 0.48 as requested)
-local MTB_X_CLOSED = 0.48
+local MTB_X_CLOSED = 0.47
 local MTB_X_OPEN   = 0 -- open => X = 0
 
 -- hr sizes in px for open/close
@@ -929,7 +929,7 @@ end)
 local background = Instance.new("Frame")
 background.Name = "Background"
 background.Size = UDim2.new(0.35, 0, 0.9, 0)
-background.Position = UDim2.new(1, 0, 0.05, 0) -- offscreen
+background.Position = UDim2.new(1, 0, 0.1, 0) -- offscreen
 background.BackgroundColor3 = Color3.new(0, 0, 0)
 background.BackgroundTransparency = 0.5
 background.Active = true
