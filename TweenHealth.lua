@@ -1,4 +1,4 @@
--- LocalScript: HealthBar + DamageOverlay (🗨️)
+-- LocalScript: HealthBar + DamageOverlay
 -- วางใน StarterPlayerScripts (LocalScript)
 
 local RunService = game:GetService("RunService")
@@ -262,6 +262,26 @@ RunService.RenderStepped:Connect(function(dt)
 		applyAllFixes()
 	end
 end)
+
+-- Outline
+local CO = game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.HealthBar
+
+local Out = Instance.new("Frame")
+Out.Name = "Outline"
+Out.Size = UDim2.new(0.98, 0, 0.7, 0)
+Out.Position = UDim2.new(0.01, 0, 0.15, 0)
+Out.BackgroundTransparency = 1
+Out.Parent = CO
+
+local con = Instance.new("UICorner")
+con.CornerRadius = UDim.new(1, 0)
+con.Parent = Out
+
+local str = Instance.new("UIStroke")
+str.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+str.Color = Color3.fromRGB(0,0,0)
+str.Thickness = 1.8
+str.Parent = Out
 
 -- LocalScript: Tween Fill full ONCE after respawn
 local Players = game:GetService("Players")
