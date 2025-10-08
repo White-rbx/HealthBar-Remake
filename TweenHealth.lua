@@ -263,9 +263,7 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
--- LocalScript: Smoothly Tween Fill full ONCE after respawn
--- วางใน StarterPlayerScripts หรือรวมในสคริปต์หลักได้เลย
-
+-- LocalScript: Tween Fill full ONCE after respawn
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
@@ -287,44 +285,40 @@ local function findFill()
 	return inner:FindFirstChild("Fill")
 end
 
--- 💫 เติมเต็มแบบ Tween ถ้า Fill.X < 1
+-- 💫 Tween Fill จาก 0 → 1
 local function tweenFillFull()
 	local fill = findFill()
 	if fill and fill:IsA("GuiObject") then
-		local xScale = fill.Size.X.Scale
-		if xScale < 1 then
-			pcall(function()
-				local tweenInfo = TweenInfo.new(
-					2.55, -- ระยะเวลา 0.3 วิ
-					Enum.EasingStyle.Quad,
-					Enum.EasingDirection.Out
-				)
-				local goal = { Size = UDim2.new(1, 0, 1, 0) }
-				local tween = TweenService:Create(fill, tweenInfo, goal)
-				tween:Play()
-			end)
-		end
+		pcall(function()
+			-- เริ่มที่ 0
+			fill.Size = UDim2.new(0, 0, 1, 0)
+
+			-- Tween ไป 1
+			local tweenInfo = TweenInfo.new(
+				0.35, -- ระยะเวลา 0.35 วิ (ปรับตามชอบ)
+				Enum.EasingStyle.Quad,
+				Enum.EasingDirection.Out
+			)
+			local goal = { Size = UDim2.new(1, 0, 1, 0) }
+			local tween = TweenService:Create(fill, tweenInfo, goal)
+			tween:Play()
+		end)
 	end
 end
 
--- ⚙️ ตรวจเฉพาะตอนเกิดใหม่ (ไม่ทำตอนตาย)
+-- ⚙️ ตอนเกิดใหม่
 local function onCharacterAdded(char)
 	task.defer(function()
 		local humanoid = char:WaitForChild("Humanoid", 5)
 		if not humanoid then return end
 
-		-- รอจนกว่าจะเกิดจริง (ไม่ใช่ตอน Health = 0)
+		-- รอจนเกิดจริง
 		while humanoid.Health <= 0 do
 			task.wait(0.05)
 		end
 
-		-- ตรวจซ้ำ Fill ทุก 0.05 วิ นาน 0.35 วิ
-		local total, step = 0, 0.05
-		while total < 0.35 do
-			tweenFillFull()
-			task.wait(step)
-			total += step
-		end
+		-- Tween Fill full 1 ครั้ง
+		tweenFillFull()
 	end)
 end
 
