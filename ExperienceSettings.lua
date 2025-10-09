@@ -770,11 +770,11 @@ local CoreGui = game:GetService("CoreGui")
 local hb = CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
 	:WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar")
 
-local gui_aV2 = hb:FindFirstChild("ValueGui") or hb:FindFirstChild("ValueLabels")
+local gui_aV2 = hb:FindFirstChild("ValueGui")
 
 -- interval config
 local CHECK_INTERVAL = 0.05 -- ระยะเวลาเช็ค (วินาที)
-local TIMEOUT = 3.878      -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
+local TIMEOUT = 3      -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
 
 -- เก็บตำแหน่งเริ่มต้น
 local wa1_initial_pos, hr_initial_size, mtb_initial_pos
