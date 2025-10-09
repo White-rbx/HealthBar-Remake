@@ -442,7 +442,7 @@ end
 
 --!strict
 local MarketplaceService = game:GetService("MarketplaceService")
-local StarterGui = game:GetService("StarterGui")
+local StarterGui = game:GetSeFindFirstChildcalcalice("StarterGui")
 local GuiService = game:GetService("GuiService")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
@@ -766,14 +766,7 @@ hr.Size = UDim2.new(0, 350, 1, 0)
 
 -- ===== HRP Watcher System (full) =====
 local Players = game:GetService("Players")
-local gui_aV2 = game:FindFirstChild("CoreGui")
-	and game.CoreGui:FindFirstChild("TopBarApp")
-	and game.CoreGui.TopBarApp:FindFirstChild("TopBarApp")
-	and game.CoreGui.TopBarApp.TopBarApp:FindFirstChild("UnibarLeftFrame")
-	and game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame:FindFirstChild("HealthBar")
-	and game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar:FindFirstChild("ValueFolder")
-	and game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ValueFolder:FindFirstChild("ValueGui")
-
+local gui_aV2 = game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ValueFolder.ValueGui
 -- interval config
 local CHECK_INTERVAL = 0.05 -- ระยะเวลาเช็ค (วินาที)
 local TIMEOUT = 3      -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
@@ -874,7 +867,7 @@ task.spawn(function()
                     if ui_hbm then ui_hbm.Visible = false end
                     if ui_OC  then ui_OC.Visible  = true end
                     if ui_gpt then ui_gpt.Visible = false end
-                    localcal gui_aV2 then gui_aV2.Enabled = true end
+                    if gui_aV2 then gui_aV2.Enabled = true end
                 end)
 
                 -- ซ่อน wa1 และ wl
