@@ -669,7 +669,7 @@ local MTB_X_CLOSED = 0.47
 local MTB_X_OPEN   = 0 -- open => X = 0
 
 -- hr sizes in px for open/close
-local HR_WIDTH_OPEN  = 185
+local HR_WIDTH_OPEN  = 225
 local HR_WIDTH_CLOSE = 44
 
 -- safe setter for mtb position (uses tweenObject if available)
