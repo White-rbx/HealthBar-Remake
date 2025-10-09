@@ -766,20 +766,13 @@ hr.Size = UDim2.new(0, 350, 1, 0)
 
 -- ===== HRP Watcher System (full) =====
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
-
-local hb = CoreGui:WaitForChild("TopBarApp")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("UnibarLeftFrame")
-	:WaitForChild("HealthBar")
-
--- 🔍 ค้นหา ValueGui ภายใน ValueFolder
-local valueFolder = hb:FindFirstChild("ValueFolder")
-local gui_aV2 = nil
-
-if valueFolder then
-	gui_aV2 = valueFolder:FindFirstChild("ValueGui")
-end
+local gui_aV2 = game:FindFirstChild("CoreGui")
+	and game.CoreGui:FindFirstChild("TopBarApp")
+	and game.CoreGui.TopBarApp:FindFirstChild("TopBarApp")
+	and game.CoreGui.TopBarApp.TopBarApp:FindFirstChild("UnibarLeftFrame")
+	and game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame:FindFirstChild("HealthBar")
+	and game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar:FindFirstChild("ValueFolder")
+	and game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ValueFolder:FindFirstChild("ValueGui")
 
 -- interval config
 local CHECK_INTERVAL = 0.05 -- ระยะเวลาเช็ค (วินาที)
