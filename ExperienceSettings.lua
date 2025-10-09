@@ -769,6 +769,7 @@ local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local gui_aV2 = game.CoreGui
     :WaitForChild("TopBarApp")
+    :WaitForChild("TopBarApp")
     :WaitForChild("UnibarLeftFrame")
     :WaitForChild("HealthBar")
     :WaitForChild("ValueFolder")
