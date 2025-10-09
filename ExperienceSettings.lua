@@ -442,7 +442,7 @@ end
 
 --!strict
 local MarketplaceService = game:GetService("MarketplaceService")
-local StarterGui = game:GetSeFindFirstChildcalcalice("StarterGui")
+local StarterGui = game:GetService("StarterGui")
 local GuiService = game:GetService("GuiService")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
