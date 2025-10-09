@@ -15,7 +15,7 @@ local HEALTHBAR_IMAGE_TRANSPARENCY = 1           -- เฉพาะ inner Health
 local OVERLAY_IMAGE_ASSET = "rbxassetid://114133350704123"
 local OVERLAY_DEFAULT_TRANSPARENCY = 1           -- default = 1 (invisible)
 local FLASH_HIGHHEALTH_TARGET = 1 -- target transparency when flashing (>=50%)
-local FLASH_TO_FULL_TIME = 0.12
+local FLASH_TO_FULL_TIME = 0.3
 local FLASH_BACK_TIME = 0.28
 local LOWHEALTH_TWEEN_TIME = 0.18
 
