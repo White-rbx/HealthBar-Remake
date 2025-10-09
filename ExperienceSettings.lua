@@ -767,8 +767,12 @@ hr.Size = UDim2.new(0, 350, 1, 0)
 -- ===== HRP Watcher System (full) =====
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
-local ValueFolder = game.CoreGui.TopBarApp.UnibarLeftFrame.HealthBar:WaitForChild("ValueFolder")
-local gui_aV2 = ValueFolder:WaitForChild("ValueGui")
+local gui_aV2 = game.CoreGui
+    :WaitForChild("TopBarApp")
+    :WaitForChild("UnibarLeftFrame")
+    :WaitForChild("HealthBar")
+    :WaitForChild("ValueFolder")
+    :WaitForChild("ValueGui")
 
 -- interval config
 local CHECK_INTERVAL = 0.05 -- ระยะเวลาเช็ค (วินาที)
