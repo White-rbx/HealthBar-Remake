@@ -594,7 +594,7 @@ tb:GetPropertyChangedSignal("Size"):Connect(updateButtonsVisibility)
 -- Settings button (on hr)
 local Set = Instance.new("ImageButton")
 Set.Name = "a2_Settings"
-Set.Size = UDim2.new(0, 36, 0.8, 0)
+Set.Size = UDim2.new(0, 34, 0.8, 0)
 Set.Image = "rbxassetid://85613740372383"
 Set.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Set.BackgroundTransparency = 0.8
@@ -606,7 +606,7 @@ createUICorner(Set, 1, 0)
 -- Hamburger menu (hbm)
 local hbm = Instance.new("ImageButton")
 hbm.Name = "a9999_HamburgerMenu"
-hbm.Size = UDim2.new(0, 36, 0.8, 0)
+hbm.Size = UDim2.new(0, 34, 0.8, 0)
 hbm.Image = "rbxassetid://12214197591"
 hbm.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 hbm.BackgroundTransparency = 0.8
@@ -618,7 +618,7 @@ createUICorner(hbm, 1, 0)
 -- Open/Close
 local OC = Instance.new("ImageButton")
 OC.Name = "a1_Open/Close"
-OC.Size = UDim2.new(0, 36, 0.8, 0)
+OC.Size = UDim2.new(0, 34, 0.8, 0)
 OC.Image = "rbxassetid://8877547836"
 OC.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 OC.BackgroundTransparency = 0.8
@@ -630,7 +630,7 @@ createUICorner(OC, 1, 0)
 -- GPT
 local gpt = Instance.new("ImageButton")
 gpt.Name = "a3_ChatGPT"
-gpt.Size = UDim2.new(0, 36, 0.8, 0)
+gpt.Size = UDim2.new(0, 34, 0.8, 0)
 gpt.Image = "rbxassetid://15419312153"
 gpt.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 gpt.BackgroundTransparency = 0.8
@@ -670,7 +670,7 @@ local MTB_X_OPEN   = 0 -- open => X = 0
 
 -- hr sizes in px for open/close
 local HR_WIDTH_OPEN  = 185
-local HR_WIDTH_CLOSE = 45
+local HR_WIDTH_CLOSE = 44
 
 -- safe setter for mtb position (uses tweenObject if available)
 local function setMtbX(open, instant)
@@ -767,10 +767,19 @@ hr.Size = UDim2.new(0, 350, 1, 0)
 -- ===== HRP Watcher System (full) =====
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
-local hb = CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
-	:WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar")
 
-local gui_aV2 = hb:FindFirstChild("ValueGui")
+local hb = CoreGui:WaitForChild("TopBarApp")
+	:WaitForChild("TopBarApp")
+	:WaitForChild("UnibarLeftFrame")
+	:WaitForChild("HealthBar")
+
+-- 🔍 ค้นหา ValueGui ภายใน ValueFolder
+local valueFolder = hb:FindFirstChild("ValueFolder")
+local gui_aV2 = nil
+
+if valueFolder then
+	gui_aV2 = valueFolder:FindFirstChild("ValueGui")
+end
 
 -- interval config
 local CHECK_INTERVAL = 0.05 -- ระยะเวลาเช็ค (วินาที)
@@ -866,13 +875,13 @@ task.spawn(function()
                     safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad)
                 end
 
-                safeTween(ui_hr, { Size = UDim2.new(0,45, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                safeTween(ui_hr, { Size = UDim2.new(0,44, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                 pcall(function()
                     if ui_Set  then ui_Set.Visible  = false end
                     if ui_hbm then ui_hbm.Visible = false end
                     if ui_OC  then ui_OC.Visible  = true end
                     if ui_gpt then ui_gpt.Visible = false end
-                    if gui_aV2 then gui_aV2.Enabled = true end
+                    localcal gui_aV2 then gui_aV2.Enabled = true end
                 end)
 
                 -- ซ่อน wa1 และ wl
@@ -899,7 +908,7 @@ task.spawn(function()
                         safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
                     end
 
-                    safeTween(ui_hr, { Size = UDim2.new(0,400, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                    safeTween(ui_hr, { Size = UDim2.new(0,360, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                     pcall(function()
                         if ui_Set  then ui_Set.Visible  = false end
                         if ui_hbm then ui_hbm.Visible = false end
