@@ -1,6 +1,6 @@
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
--- More loadstring coming soon :3
+-- More loadstring coming soon... Awoo :3
 
 
 -- ========= HEALTHBAR AND SOUNDS ===========
@@ -1892,21 +1892,20 @@ do
 end
 
 -- ============== SeeAll: open Roblox settings and close background ==========
-local CoreGui = game:GetService("CoreGui")
+task.wait(2)
+local bg = (((game:GetService("CoreGui"):FindFirstChild("TopBarApp") or {})
+	:FindFirstChild("TopBarApp") or {})
+	:FindFirstChild("MenuIconHolder") or {})
+	:FindFirstChild("TriggerPoint")
 
-task.wait(2) -- เผื่อ Roblox UI โหลดไม่ทัน
-
-local topBar = CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
-local menuHolder = topBar:WaitForChild("MenuIconHolder")
-local trigger = menuHolder:WaitForChild("TriggerPoint")
-local background = trigger:WaitForChild("Background")
-
--- เมื่อปุ่ม SeeAll ถูกกด ให้กด Roblox Menu
-SeeAll.MouseButton1Click:Connect(function()
-	pcall(function()
-		background:Activate() -- จำลองการกดปุ่ม Roblox Menu
-	end)
-end)
+if bg then
+	bg = bg:FindFirstChild("Background")
+	if bg then
+		SeeAll.MouseButton1Click:Connect(function()
+			pcall(function() bg:Activate() end)
+		end)
+	end
+end
 
 -- ============== LE / Re / Rm behaviors ==========
 LE.MouseButton1Click:Connect(function()
