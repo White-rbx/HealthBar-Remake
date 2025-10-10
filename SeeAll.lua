@@ -21,7 +21,7 @@ local SeeAll = InnerTopBar:WaitForChild("UnibarLeftFrame")
 local MenuBackground = InnerTopBar.UnibarLeftFrame.HealthBar.ExperienceSettings.Menu.Background
 
 -- Tween info for closing the menu
-local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 -- Function to close Menu Background with Tween
 local function closeMenuBackground()
@@ -37,7 +37,7 @@ SeeAll.MouseButton1Click:Connect(function()
     
     -- Simulate click at fixed Offset (X=30, Y=30)
     local x = 30
-    local y = 30
+    local y = 60
     VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
     task.wait(0.05)
     VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
