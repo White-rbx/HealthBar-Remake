@@ -45,3 +45,4 @@ SeeAll.MouseButton1Click:Connect(function()
     -- Always run TweenService to maintain smoothness (even if visually X=1)
     tweenMenuBackground()
 end)
+-- ...
