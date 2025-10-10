@@ -15,7 +15,7 @@ local SeeAll = CG:WaitForChild("TopBarApp")
 
 -- Chained WaitForChild for Trigger Background
 local TriggerBackground = CG:WaitForChild("TopBarApp")
-                        :WaitForChild("TopBarApp")
+                        :WaitForChild("TopBarApp") -- you too, STUPID-
                         :WaitForChild("MenuIconHolder")
                         :WaitForChild("TriggerPoint")
                         :WaitForChild("Background")
