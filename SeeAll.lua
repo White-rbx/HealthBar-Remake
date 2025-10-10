@@ -57,3 +57,4 @@ game:GetService("UserInputService").InputBegan:Connect(function(input, gameProce
 end)
 
 -- GitHub always doesn't let my script to latest version.
+-- GITHUB PLEASE MAKE MY SCRIPT TO LATSET VERSION 
