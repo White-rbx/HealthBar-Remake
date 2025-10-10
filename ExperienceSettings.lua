@@ -1890,50 +1890,29 @@ do
 end
 
 -- ============== SeeAll: open Roblox settings and close background ==========
-local function tryOpenRobloxMenu()
-    -- try RobloxGui path first (set Visible)
-    local ok, settingsShield = pcall(function()
-        local rg = CoreGui:FindFirstChild("RobloxGui")
-        if not rg then return nil end
-        local sc = rg:FindFirstChild("SettingsClippingShield") or rg:FindFirstChild("SettingsShield")
-        if not sc then return nil end
-        local shield = sc:FindFirstChild("SettingsShield") or sc:FindFirstChild("Settings") or sc
-        if shield then
-            local menuContainer = shield:FindFirstChild("MenuContainer") or shield:FindFirstChild("SettingsMenu")
-            if menuContainer then
-                menuContainer.Visible = true
-                return true
-            end
-        end
-        return nil
-    end)
-    if ok and settingsShield then return true end
+-- ตัวอย่างใน LocalScript
+local CoreGui = game:GetService("CoreGui")
 
-    -- fallback: try GuiService/OpenInGameMenu or StarterGui SetCore
-    local ok1 = pcall(function() GuiService:OpenInGameMenu() end)
-    if ok1 then return true end
-    local ok2 = pcall(function() StarterGui:SetCore("ToggleGameMenu", true) end)
-    if ok2 then return true end
-    local ok3 = pcall(function() StarterGui:SetCore("OpenSettings") end)
-    if ok3 then return true end
+-- ปุ่ม SeeAll ของคุณ
+local SeeAll = script.Parent:WaitForChild("SeeAll")
 
-    -- last resort: try VirtualInputManager to send ESC if available
-    local vim = game:FindService("VirtualInputManager")
-    if vim then
-        local ok4 = pcall(function()
-            vim:SendKeyEvent(true, Enum.KeyCode.Escape, false, game)
-            task.wait(0.02)
-            vim:SendKeyEvent(false, Enum.KeyCode.Escape, false, game)
-        end)
-        if ok4 then return true end
-    end
+-- รอปุ่มเป้าหมายใน CoreGui
+local menuButton = CoreGui:WaitForChild("TopBarApp")
+    :WaitForChild("TopBarApp")
+    :WaitForChild("MenuIconHolder")
+    :WaitForChild("TriggerPoint")
+    :WaitForChild("Background")
 
-    return false
-end
-
-seeAll.MouseButton1Click:Connect(function()
-    setBackgroundState(false, false) -- close panel via tween (OFF)
-    tryOpenRobloxMenu()
+-- เมื่อกด SeeAll
+SeeAll.MouseButton1Click:Connect(function()
+	pcall(function()
+		-- ถ้าปุ่มนั้นมี MouseButton1Click (เป็น TextButton/ImageButton)
+		if menuButton:IsA("TextButton") or menuButton:IsA("ImageButton") then
+			menuButton:Activate()  -- จำลองการกด
+		else
+			warn("Target button is not clickable type.")
+		end
+	end)
 end)
 
 -- ============== LE / Re / Rm behaviors ==========
@@ -3093,6 +3072,7 @@ if toggleBtn and (toggleBtn:IsA("ImageButton") or toggleBtn:IsA("TextButton")) t
 
 -- Startup message
 appendSystem("ChatGPT UI ready. Use /Help for commands. Use /Ins to open the instancer or /Ins (<args>) for quick create.")
+appendSystem("[ChatGPT]: API now are cancelled, Please use only /Help to see all commands by you own.")
 _G.ExperienceSettings_GPT_STATE = STATE
 _G.ExperienceSettings_GPT_append = appendChat
 _G.ExperienceSettings_ToggleGPT = togglePanel
