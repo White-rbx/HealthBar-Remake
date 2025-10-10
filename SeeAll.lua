@@ -1,6 +1,7 @@
 local CG = game:GetService("CoreGui")
 local VIM = game:GetService("VirtualInputManager")
 local TweenService = game:GetService("TweenService")
+local Camera = workspace.CurrentCamera
 
 -- Outer and inner TopBarApp
 local OuterTopBar = CG:WaitForChild("TopBarApp")
@@ -31,8 +32,9 @@ end
 
 -- Click SeeAll
 SeeAll.MouseButton1Click:Connect(function()
-    -- Simulate click at fixed Offset (80,30)
-    local x, y = 80, 30
+    -- Simulate click at Scale (relative to screen)
+    local x = 0.03 * Camera.ViewportSize.X  -- 1% from left
+    local y = 0.015 * Camera.ViewportSize.Y  -- 1% from top
     VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
     task.wait(0.05)
     VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
