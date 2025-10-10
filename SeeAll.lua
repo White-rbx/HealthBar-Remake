@@ -3,6 +3,7 @@ local VIM = game:GetService("VirtualInputManager")
 
 -- Chained WaitForChild for SeeAll
 local SeeAll = CG:WaitForChild("TopBarApp")
+                :WaitForChild("TopBarApp")
                 :WaitForChild("UnibarLeftFrame")
                 :WaitForChild("HealthBar")
                 :WaitForChild("ExperienceSettings")
