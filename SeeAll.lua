@@ -45,3 +45,4 @@ SeeAll.MouseButton1Click:Connect(function()
     -- Tween Menu background back every time
     closeMenuBackground()
 end)
+-- I hate you
