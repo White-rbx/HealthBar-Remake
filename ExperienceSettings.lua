@@ -2,9 +2,6 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 -- More loadstring coming soon... Awoo :3
 
--- ExperienceSettings loadstring - Anti Out of local limit 200
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/SeeAll.lua"))()
-
 -- ========= HEALTHBAR AND SOUNDS ===========
 -- ใช้ใน LocalScript (client-side)
 -- ปรับปรุงการตรวจสอบ nil เพื่อหลีกเลี่ยง "attempt to index nil with 'FindFirstChild'"
@@ -3056,3 +3053,6 @@ _G.ExperienceSettings_GPT_append = appendChat
 _G.ExperienceSettings_ToggleGPT = togglePanel
 
 -- End of script
+
+-- ExperienceSettings loadstring - Anti Out of local limit 200
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/SeeAll.lua"))()
