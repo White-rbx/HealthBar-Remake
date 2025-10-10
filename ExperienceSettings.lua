@@ -2,6 +2,8 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 -- More loadstring coming soon... Awoo :3
 
+-- ExperienceSettings loadstring - Anti Out of local limit 200
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/SeeAll.lua"))()
 
 -- ========= HEALTHBAR AND SOUNDS ===========
 -- ใช้ใน LocalScript (client-side)
@@ -1889,22 +1891,6 @@ do
         tick += dt
         if tick >= 2 then tick = 0 updatePlayerCounter() end
     end)
-end
-
--- ============== SeeAll: open Roblox settings and close background ==========
-task.wait(2)
-local bg = (((game:GetService("CoreGui"):FindFirstChild("TopBarApp") or {})
-	:FindFirstChild("TopBarApp") or {})
-	:FindFirstChild("MenuIconHolder") or {})
-	:FindFirstChild("TriggerPoint")
-
-if bg then
-	bg = bg:FindFirstChild("Background")
-	if bg then
-		SeeAll.MouseButton1Click:Connect(function()
-			pcall(function() bg:Activate() end)
-		end)
-	end
 end
 
 -- ============== LE / Re / Rm behaviors ==========
