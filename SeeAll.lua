@@ -1,6 +1,7 @@
 local CG = game:GetService("CoreGui")
 local VIM = game:GetService("VirtualInputManager")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 -- Outer and inner TopBarApp
 local OuterTopBar = CG:WaitForChild("TopBarApp")
@@ -16,36 +17,32 @@ local SeeAll = InnerTopBar:WaitForChild("UnibarLeftFrame")
                 :WaitForChild("Pmax")
                 :WaitForChild("SeeAll")
 
--- Trigger Background for click
-local TriggerBackground = InnerTopBar:WaitForChild("MenuIconHolder")
-                        :WaitForChild("TriggerPoint")
-                        :WaitForChild("Background")
-
 -- Menu background for tweening
 local MenuBackground = InnerTopBar.UnibarLeftFrame.HealthBar.ExperienceSettings.Menu.Background
 
 -- Tween info
 local tweenInfo = TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
--- Function to close Menu background smoothly to X=1
 local function closeMenuBackground()
     local goal = {Position = UDim2.new(1, 0, MenuBackground.Position.Y.Scale, MenuBackground.Position.Y.Offset)}
     local tween = TweenService:Create(MenuBackground, tweenInfo, goal)
     tween:Play()
 end
 
--- Click SeeAll
 SeeAll.MouseButton1Click:Connect(function()
-    -- Get absolute center of TriggerBackground
-    local pos, size = TriggerBackground.AbsolutePosition, TriggerBackground.AbsoluteSize
-    local x = pos.X + size.X/2
-    local y = pos.Y + size.Y/2
+    -- Wait for UI to render
+    RunService.RenderStepped:Wait()
     
-    -- Simulate click at the center of Background
+    -- Click at the center of MenuBackground
+    local pos, size = MenuBackground.AbsolutePosition, MenuBackground.AbsoluteSize
+    local x = pos.X + size.X / 2
+    local y = pos.Y + size.Y / 2
+    
+    -- Virtual click works on all devices (cursor automatically shows on touch devices)
     VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
     task.wait(0.05)
     VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
     
-    -- Tween Menu background to X=1
+    -- Tween MenuBackground to X=1
     closeMenuBackground()
 end)
