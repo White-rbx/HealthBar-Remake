@@ -33,3 +33,5 @@ SeeAll.MouseButton1Click:Connect(function()
         VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
     end
 end)
+
+-- GitHub always let my script latest >:(
