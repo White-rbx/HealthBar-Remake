@@ -1,21 +1,33 @@
 local CG = game:GetService("CoreGui")
 local VIM = game:GetService("VirtualInputManager")
 
-local SeeAll = CG.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar
-	.ExperienceSettings.Menu.Background.Settings.Pmax.SeeAll
+-- Chained WaitForChild for SeeAll
+local SeeAll = CG:WaitForChild("TopBarApp")
+                :WaitForChild("UnibarLeftFrame")
+                :WaitForChild("HealthBar")
+                :WaitForChild("ExperienceSettings")
+                :WaitForChild("Menu")
+                :WaitForChild("Background")
+                :WaitForChild("Settings")
+                :WaitForChild("Pmax")
+                :WaitForChild("SeeAll")
+
+-- Chained WaitForChild for Trigger Background
+local TriggerBackground = CG:WaitForChild("TopBarApp")
+                        :WaitForChild("MenuIconHolder")
+                        :WaitForChild("TriggerPoint")
+                        :WaitForChild("Background")
 
 SeeAll.MouseButton1Click:Connect(function()
-	local menu = CG.TopBarApp.TopBarApp.MenuIconHolder.TriggerPoint.Background
-	local bg = CG.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar
-		.ExperienceSettings.Menu.Background
-	if menu and bg then
-		-- เลื่อน background ไป X = 1
-		bg.Position = UDim2.new(1, 0, bg.Position.Y.Scale, bg.Position.Y.Offset)
-		
-		-- จำลองคลิกเมนู Roblox
-		local p, s = menu.AbsolutePosition, menu.AbsoluteSize
-		local x, y = p.X + s.X/2, p.Y + s.Y/2
-		VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
-		VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
-	end
+    if TriggerBackground and SeeAll then
+        local bg = CG.TopBarApp.UnibarLeftFrame.HealthBar.ExperienceSettings.Menu.Background
+        -- เลื่อน background ไป X = 1
+        bg.Position = UDim2.new(1, 0, bg.Position.Y.Scale, bg.Position.Y.Offset)
+        
+        -- จำลองคลิกเมนู Roblox
+        local p, s = TriggerBackground.AbsolutePosition, TriggerBackground.AbsoluteSize
+        local x, y = p.X + s.X/2, p.Y + s.Y/2
+        VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
+        VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
+    end
 end)
