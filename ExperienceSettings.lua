@@ -1890,28 +1890,19 @@ do
 end
 
 -- ============== SeeAll: open Roblox settings and close background ==========
--- ตัวอย่างใน LocalScript
 local CoreGui = game:GetService("CoreGui")
 
--- ปุ่ม SeeAll ของคุณ
-local SeeAll = script.Parent:WaitForChild("SeeAll")
+task.wait(2) -- เผื่อ Roblox UI โหลดไม่ทัน
 
--- รอปุ่มเป้าหมายใน CoreGui
-local menuButton = CoreGui:WaitForChild("TopBarApp")
-    :WaitForChild("TopBarApp")
-    :WaitForChild("MenuIconHolder")
-    :WaitForChild("TriggerPoint")
-    :WaitForChild("Background")
+local topBar = CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
+local menuHolder = topBar:WaitForChild("MenuIconHolder")
+local trigger = menuHolder:WaitForChild("TriggerPoint")
+local background = trigger:WaitForChild("Background")
 
--- เมื่อกด SeeAll
+-- เมื่อปุ่ม SeeAll ถูกกด ให้กด Roblox Menu
 SeeAll.MouseButton1Click:Connect(function()
 	pcall(function()
-		-- ถ้าปุ่มนั้นมี MouseButton1Click (เป็น TextButton/ImageButton)
-		if menuButton:IsA("TextButton") or menuButton:IsA("ImageButton") then
-			menuButton:Activate()  -- จำลองการกด
-		else
-			warn("Target button is not clickable type.")
-		end
+		background:Activate() -- จำลองการกดปุ่ม Roblox Menu
 	end)
 end)
 
