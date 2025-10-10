@@ -55,3 +55,5 @@ game:GetService("UserInputService").InputBegan:Connect(function(input, gameProce
         closeMenuBackground()
     end
 end)
+
+-- GitHub always doesn't let my script to latest version.
