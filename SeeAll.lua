@@ -19,27 +19,29 @@ local SeeAll = InnerTopBar:WaitForChild("UnibarLeftFrame")
 -- Menu background for tweening
 local MenuBackground = InnerTopBar.UnibarLeftFrame.HealthBar.ExperienceSettings.Menu.Background
 
--- Tween info for closing the menu
+-- Tween info
 local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
--- Function to close Menu Background with Tween (back to X=0)
-local function closeMenuBackground()
-    local goal = {Position = UDim2.new(0, 0, MenuBackground.Position.Y.Scale, MenuBackground.Position.Y.Offset)}
+-- Function to tween Menu background (X=1, keep Y offset)
+local function tweenMenuBackground()
+    local goal = {
+        Position = UDim2.new(1, 0, MenuBackground.Position.Y.Scale, MenuBackground.Position.Y.Offset)
+    }
     local tween = TweenService:Create(MenuBackground, tweenInfo, goal)
     tween:Play()
 end
 
 -- Click SeeAll
 SeeAll.MouseButton1Click:Connect(function()
-    -- Move Menu Background instantly to X = 1
+    -- Instantly set X = 1
     MenuBackground.Position = UDim2.new(1, 0, MenuBackground.Position.Y.Scale, MenuBackground.Position.Y.Offset)
     
-    -- Simulate click at fixed Offset (X=30, Y=30)
-    local x, y = 30, 60
+    -- Simulate click at fixed Offset (30,30)
+    local x, y = 60, 30
     VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
     task.wait(0.05)
     VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
     
-    -- Tween Menu background back to X=0 every time
-    closeMenuBackground()
+    -- Always run TweenService to maintain smoothness (even if visually X=1)
+    tweenMenuBackground()
 end)
