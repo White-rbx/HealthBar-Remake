@@ -1,6 +1,7 @@
 local CG = game:GetService("CoreGui")
 local VIM = game:GetService("VirtualInputManager")
 local TweenService = game:GetService("TweenService")
+local Camera = workspace.CurrentCamera
 
 -- Outer and inner TopBarApp
 local OuterTopBar = CG:WaitForChild("TopBarApp")
@@ -24,7 +25,7 @@ local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection
 
 -- Function to close Menu Background with Tween
 local function closeMenuBackground()
-    local goal = {Position = UDim2.new(0, 0, MenuBackground.Position.Y.Scale, MenuBackground.Position.Y.Offset)}
+    local goal = {Position = UDim2.new(1, 0, MenuBackground.Position.Y.Scale, 0)}
     local tween = TweenService:Create(MenuBackground, tweenInfo, goal)
     tween:Play()
 end
@@ -34,8 +35,9 @@ SeeAll.MouseButton1Click:Connect(function()
     -- Move Menu Background to X = 1
     MenuBackground.Position = UDim2.new(1, 0, MenuBackground.Position.Y.Scale, MenuBackground.Position.Y.Offset)
     
-    -- Simulate click at top-left of screen (button is there)
-    local x, y = 0.01 * workspace.CurrentCamera.ViewportSize.X, 0.01 * workspace.CurrentCamera.ViewportSize.Y
+    -- Simulate click at fixed Offset (X=30, Y=30)
+    local x = 30
+    local y = 30
     VIM:SendMouseButtonEvent(x, y, 0, true, game, 0)
     task.wait(0.05)
     VIM:SendMouseButtonEvent(x, y, 0, false, game, 0)
@@ -43,5 +45,3 @@ SeeAll.MouseButton1Click:Connect(function()
     -- Tween Menu background back every time
     closeMenuBackground()
 end)
-
--- bro...
