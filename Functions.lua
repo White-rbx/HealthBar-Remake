@@ -224,4 +224,4 @@ local function createToggle(parent, text, callback, defaultState)
 end
 
 -- =====>> TOGGLE SWITCH <<=====
-
+-- ===== Just create toggle it you LITTLE CREATOR =====
