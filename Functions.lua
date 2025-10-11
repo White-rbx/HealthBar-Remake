@@ -4,7 +4,7 @@ local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("UnibarLeftFrame")
                    :WaitForChild("HealthBar")
-                   :WaitFirChild("ExperienceSettings")
+                   :WaitForChild("ExperienceSettings")
                    :WaitForChild("Menu")
                    :WaitForChild("Background")
 
