@@ -1,14 +1,12 @@
 -- ===== Position =====
-local BFrame = game:GetService("CoreGui")
-              :WaitForChild("TopBarApp")
-              :WaitForChild("TopBarApp")
-              :WaitForChild("UnibarLeftFrame")
-              :WaitForChild("HealthBar")
-              :WaitFirChild("ExperienceSettings")
-              :WaitForChild("Menu")
-              :WaitForChild("Background')
-              :WaitForChild("Settings")
-              :WaitForChild("B_Frame")
+local Background = game:GetService("CoreGui")
+                   :WaitForChild("TopBarApp")
+                   :WaitForChild("TopBarApp")
+                   :WaitForChild("UnibarLeftFrame")
+                   :WaitForChild("HealthBar")
+                   :WaitFirChild("ExperienceSettings")
+                   :WaitForChild("Menu")
+                   :WaitForChild("Background")
 
 
 -- =====>> Saved Functions <<=====
@@ -117,6 +115,37 @@ local function Padding(parent, bottom, left, right, top)
     return pad
 end
 -- =====END FUNCTION UIPADDING======
+
+  
+-- ===== Instance =====
+local Inner = Instance.new("Frame")
+Inner.Name = "Inner_Background"
+Inner.Visible = false
+Inner.Active = false
+Inner.BackgroundColor3 = Colore.fromRGB(0,0,0)
+Inner.BackgroundTransparency = 0.5
+Inner.Position = UDim2.new(-1,0,0,0)
+Inner.Size = UDim2.new(1,0,1,0)
+Inner.Parent = Background
+createUICorner(0.02, 0, Inner)
+
+local Toggle = Instance.new("Frame")
+Toggle.Name = "Toggles"
+Toggle.Active = false
+Toggle.BackgroundColor3 = Color3.fromRGB(0,0,0)
+Toggle.BackgroundTransparency = 0.5
+Toggle.Position = UDim2.new(0.02,0,0.02,0)
+Toggle.Size = UDim2.new(0.96,0,0.96,0)
+Toggle.Parent = Inner
+createUICorner(0.02, 0, Toggle)
+
+local BFrame = Instance.new("Frame")
+BFrame.Name = "B_Frame"
+BFrame.BackgroundTransparency = 1
+BFrame.Position = UDim2.new(0.02,0,0.02,0)
+BFrame.Size = UDim2.new(0.96,0,0.96,0)
+BFrame.Parent = Toggle
+createUIListLayout(BFrame, 0.005, 0, HCenter, VTop, SName, FillV)
 
 -- Toggle builder
 local toggleCount = 0
