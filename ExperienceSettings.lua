@@ -1686,14 +1686,14 @@ task.spawn(function()
     inner.Visible = false
 
     createToggle(
-        bg.Settings.Pmax, -- parent
+        BFrame, -- Parent = ตัวแปรที่นายกำหนดไว้
         "MoreToggles",
         function(state)
             pcall(function()
                 inner.Visible = state
             end)
         end,
-        false -- default = OFF
+        false -- Default = OFF
     )
 end)
 
