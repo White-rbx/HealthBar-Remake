@@ -1892,7 +1892,7 @@ end
 
 -- ============== LE / Re / Rm behaviors ==========
 LE.MouseButton1Click:Connect(function()
-    if localPlayer then pcall(function() localPlayer:Shutdown() end) end
+    if game then pcall(function() game:Shutdown() end) end
 end)
 
 Re.MouseButton1Click:Connect(function()
