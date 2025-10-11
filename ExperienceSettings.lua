@@ -1668,7 +1668,7 @@ local DamageOverlay = game:GetService("CoreGui"):WaitForChild("DamageOverlay")
 -- ใช้ฟังก์ชัน createToggle ที่คุณมีอยู่แล้ว
 createToggle(BFrame, "Damage Overlay", function(state)
 	DamageOverlay.Enabled = state
-end, true) -- true = เปิดเริ่มต้น
+end, false) -- true = เปิดเริ่มต้น
 
 -- ===== END DAMAGEOVERLAY =====
 
