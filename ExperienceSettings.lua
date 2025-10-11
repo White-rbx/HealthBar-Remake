@@ -1107,6 +1107,9 @@ local function createToggle(parent, text, callback, defaultState)
     return f
 end
 
+-- ===== Toggle loadstring() =====
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Functions.lua"))()
+
 -- ======== TOGGLE SWITCHS ===========
 
 -- ValueLabels toggle (safe wait)
@@ -1672,7 +1675,29 @@ end, false) -- true = เปิดเริ่มต้น
 
 -- ===== END DAMAGEOVERLAY =====
 
+task.spawn(function()
+    local core = game:GetService("CoreGui")
+    local bg = core:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
+        :WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar")
+        :WaitForChild("ExperienceSettings"):WaitForChild("Menu")
+        :WaitForChild("Background")
 
+    local inner = bg:WaitForChild("Inner_Background")
+    inner.Visible = false
+
+    createToggle(
+        bg.Settings.Pmax, -- parent
+        "MoreToggles",
+        function(state)
+            pcall(function()
+                inner.Visible = state
+            end)
+        end,
+        false -- default = OFF
+    )
+end)
+
+-- ===== END MORETOGGLES =====
 
 -- ============== IMAGE BUTTONS ==============
 -- helper: ImageButton creation (parented to tb by default)
