@@ -127,7 +127,7 @@ Inner.BackgroundTransparency = 0.5
 Inner.Position = UDim2.new(-1,0,0,0)
 Inner.Size = UDim2.new(1,0,1,0)
 Inner.Parent = Background
-createUICorner(0.02, 0, Inner)
+Corner(0.02, 0, Inner)
 
 local Toggle = Instance.new("Frame")
 Toggle.Name = "Toggles"
@@ -137,7 +137,7 @@ Toggle.BackgroundTransparency = 0.5
 Toggle.Position = UDim2.new(0.02,0,0.02,0)
 Toggle.Size = UDim2.new(0.96,0,0.96,0)
 Toggle.Parent = Inner
-createUICorner(0.02, 0, Toggle)
+Corner(0.02, 0, Toggle)
 
 local BFrame = Instance.new("Frame")
 BFrame.Name = "B_Frame"
