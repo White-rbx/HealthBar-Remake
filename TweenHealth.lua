@@ -97,6 +97,7 @@ local function setupOverlay()
 		overlayGui = Instance.new("ScreenGui")
 		overlayGui.Name = "DamageOverlay"
 		overlayGui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+     overlayGui.Enabled = false
 		overlayGui.Parent = CoreGui
 		overlayImage = nil
 	end
