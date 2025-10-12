@@ -1,4 +1,4 @@
--- ===== [ Service's ] ===== 
+-- ===== [ Services ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -318,7 +318,7 @@ createToggle(BFrame, "LighterCyan.ai (Dev Test)", function(state)
 end, false) -- default: ปิด
 -- <<===== END LIGHTERCYAN =====>>
 
-task.wait(0.5)
+task.wait(5)
 bk.Visible = false
 
 -- <<===== HEALTHBAR =====>>
