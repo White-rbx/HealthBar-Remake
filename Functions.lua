@@ -1,4 +1,4 @@
--- ===== [ Services ] =====
+-- ===== [ Service's ] =====
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -303,8 +303,6 @@ end
 -- <<===== LIGHTERCYAN.AI =====>>
 -- << main loadstring >>
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/LighterCyan.ai.lua"))()
-wait(0.5)
-bk.Visible = false
 -- หา LighterCyan.ai ด้วย WaitForChild
 local gui = game:GetService("CoreGui")
 	:WaitForChild("TopBarApp")
@@ -319,6 +317,9 @@ createToggle(BFrame, "LighterCyan.ai (Dev Test)", function(state)
 	gui.Enabled = state  -- เปิด/ปิดตามสวิตช์
 end, false) -- default: ปิด
 -- <<===== END LIGHTERCYAN =====>>
+
+task.wait(0.5)
+bk.Visible = false
 
 -- <<===== HEALTHBAR =====>>
 -- 🔍 หา HealthBar หลัก
