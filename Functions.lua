@@ -1,4 +1,4 @@
--- ===== [ Service ] =====
+-- ===== [ Services ] =====
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -204,7 +204,7 @@ wl.TextScaled = true
 wl.TextColor3 = Color3.fromRGB(255,255,255)
 wl.Parent = bk
 
-local skp = Instance.new+"TextButton")
+local skp = Instance.new("TextButton")
 skp.Name = "Skip"
 skp.BackgroundTransparency = 0.8
 skp.BackgroundColor3 = Color3.fromRGB(255,255,255)
