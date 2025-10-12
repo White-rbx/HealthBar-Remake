@@ -1,4 +1,4 @@
--- ===== [ Services ] =====
+-- ===== [ Service's ] =====
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -220,7 +220,7 @@ skp.Position = UDim2.new(0.02,0,0.8,0)
 skp.Size = UDim2.new(0.96,0,0.15,0)
 skp.Text = "Skip"
 skp.TextScaled = true
-skp.TextColor3 = Color3.from(255,255,255)
+skp.TextColor3 = Color3.fromRGB(255,255,255)
 skp.Parent = bk
 Corner(0,8,skp)
 Stroke(skp, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
