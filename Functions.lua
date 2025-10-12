@@ -224,8 +224,6 @@ local function createToggle(parent, text, callback, defaultState)
 end
 
 -- =====>> TOGGLE SWITCH <<=====
--- ===== Just create toggle it you LITTLE CREATOR =====
-
 -- <<===== LIGHTERCYAN.AI =====>>
 -- << main loadstring >>
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/LighterCyan.ai.lua"))()
