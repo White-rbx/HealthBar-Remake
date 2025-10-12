@@ -1,4 +1,4 @@
--- ===== [ Service's ] =====
+-- ===== [ Services ] =====
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -219,7 +219,7 @@ skp.BackgroundColor3 = Color3.fromRGB(255,255,255)
 skp.Position = UDim2.new(0.02,0,0.8,0)
 skp.Size = UDim2.new(0.96,0,0.15,0)
 skp.Text = "Skip"
-skp.TexrScaled = true
+skp.TextScaled = true
 skp.TextColor3 = Color3.from(255,255,255)
 skp.Parent = bk
 Corner(0,8,skp)
@@ -328,7 +328,7 @@ createToggle(BFrame, "LighterCyan.ai (Dev Test)", function(state)
 end, false) -- default: ปิด
 -- <<===== END LIGHTERCYAN =====>>
 
-task.wait(5)
+task.wait(0.1)
 bk.Visible = false
 
 -- <<===== HEALTHBAR =====>>
