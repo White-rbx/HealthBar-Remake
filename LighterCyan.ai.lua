@@ -1,4 +1,4 @@
--- string starting...//
+-- string starting..//
 -- 7 script (IMPORTANT)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/LigherCyan.ai/refs/heads/main/Loader.lua"))()
 
