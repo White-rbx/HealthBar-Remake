@@ -1,3 +1,8 @@
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
 -- ===== Position ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
@@ -154,7 +159,7 @@ local function createToggle(parent, text, callback, defaultState)
 
     local f = Instance.new("Frame")
     f.Name = "Frame" .. toggleCount
-    f.Size = UDim2.new(1,0,0.1,0)
+    f.Size = UDim2.new(1,0,0.05,0)
     f.BackgroundTransparency = 0
     f.Parent = parent
     Corner(0.3, 0, f)
