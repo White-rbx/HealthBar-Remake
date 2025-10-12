@@ -225,3 +225,20 @@ end
 
 -- =====>> TOGGLE SWITCH <<=====
 -- ===== Just create toggle it you LITTLE CREATOR =====
+
+-- <<===== LIGHTERCYAN.AI =====>>
+-- << main loadstring >>
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/LighterCyan.ai.lua"))()
+-- หา LighterCyan.ai ด้วย WaitForChild
+local gui = game:GetService("CoreGui")
+	:WaitForChild("TopBarApp")
+	:WaitForChild("TopBarApp")
+	:WaitForChild("UnibarLeftFrame")
+	:WaitForChild("HealthBar")
+	:WaitForChild("ExperienceSettings")
+	:WaitForChild("LighterCyan.ai")
+
+-- ใช้ toggle เดิมของนาย
+createToggle(BFrame, "LighterCyan.ai (Dev Test)", function(state)
+	gui.Enabled = state  -- เปิด/ปิดตามสวิตช์
+end, false) -- default: ปิด
