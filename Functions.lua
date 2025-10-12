@@ -1,4 +1,4 @@
--- ===== [ Service's ] =====
+-- ===== [ Service ] =====
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
