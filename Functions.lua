@@ -152,6 +152,76 @@ BFrame.Size = UDim2.new(0.96,0,0.96,0)
 BFrame.Parent = Toggle
 createUIListLayout(BFrame, 0.005, 0, HCenter, VTop, SName, FillV)
 
+-- =======================
+-- =====>> Loading <<=====
+local bk = Instance.new("Frame")
+bk.Name = "Load_Background")
+bk.Size = UDim2.new(0.4,0,0.4,0)
+bk.Position = UDim2.new(0.3,0,0.3,0)
+bk.BackgroundColo3 = Color3.fromRGB(0,0,0)
+bk.BackgroundTransparency = 0.5
+bk.Visible = true
+bk.Parent = Background
+Corner(0, 10, bk)
+Stroke(bk, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
+
+local line = Instance.new("Frame")
+line.Name = "Line"
+line.Position = UDim2.new(0.02,0,0.23,0)
+line.Size = UDim2.new(0.96,0,0,1)
+line.BackgroundColor3 = Color3.fromRGB(255,255,255)
+line.Parent = bk
+Corner(1,0,line)
+
+local lg = Instance.new("TextLabel")
+lg.Name = "Loading")
+lg.BackgroundTransparency = 1
+lg.Position = UDim2.new(0.02,0,0.02,0)
+lg.Size = UDim2.new(0.96,0,0.2,0)
+lg.Text = "Loading"
+lg.TextSize = 20
+lg.TextColor3 = Color3.fromRGB(255,255,255)
+lg.Parent = bk
+
+local wt = Instance.new("TextLabel")
+wt.Name = "Wait"
+wt.BackgroundTransparency = 1
+wt.Position = UDim2.new(0.02,0,0.25,0)
+wt.Size = UDim2.new(0.96,0,0.53,0)
+wt.Text = "Starting ExperienceSettings. Please wait..."
+wt.TextSize = 16
+wt.TextColor3 = Color3.fromRGB(255,255,255)
+wt.Parent = bk
+
+local wl = Instance.new("TextLabel")
+wl.Name = "Wait"
+wl.BackgroundTransparency = 1
+wl.Position = UDim2.new(0.02,0,0.13,0)
+wl.Size = UDim2.new(0.96,0,0.65,0)
+wl.Text = "Creator by @5teve on ScriptBlox"
+wl.TextScaled = true
+wl.TextColor3 = Color3.fromRGB(255,255,255)
+wl.Parent = bk
+
+local skp = Instance.new+"TextButton")
+skp.Name = "Skip"
+skp.BackgroundTransparency = 0.8
+skp.BackgroundColor3 = Color3.fromRGB(255,255,255)
+skp.Position = UDim2.new(0.02,0,0.8,0)
+skp.Size = UDim2.new(0.96,0,0.15,0)
+skp.Text = "Skip"
+skp.Parent = bk
+Corner(0,8,skp)
+Stroke(skp, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
+
+-- =====>> Script <<=====
+skp.MouseButton1Click:Connect(function()
+	if bk then
+		bk.Visible = false
+	end
+end)
+-- ===== END =====
+
 -- Toggle builder
 local toggleCount = 0
 local function createToggle(parent, text, callback, defaultState)
@@ -232,6 +302,8 @@ end
 -- <<===== LIGHTERCYAN.AI =====>>
 -- << main loadstring >>
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/LighterCyan.ai.lua"))()
+wait(0.5)
+bk.Visible = false
 -- หา LighterCyan.ai ด้วย WaitForChild
 local gui = game:GetService("CoreGui")
 	:WaitForChild("TopBarApp")
@@ -245,3 +317,25 @@ local gui = game:GetService("CoreGui")
 createToggle(BFrame, "LighterCyan.ai (Dev Test)", function(state)
 	gui.Enabled = state  -- เปิด/ปิดตามสวิตช์
 end, false) -- default: ปิด
+-- <<===== END LIGHTERCYAN =====>>
+
+-- <<===== HEALTHBAR =====>>
+-- 🔍 หา HealthBar หลัก
+local hb = game:GetService("CoreGui")
+	:WaitForChild("TopBarApp")
+	:WaitForChild("TopBarApp")
+	:WaitForChild("UnibarLeftFrame")
+	:WaitForChild("HealthBar")
+	:WaitForChild("HealthBar")
+
+-- 🟩 Toggle รวม HealthBar
+createToggle(BFrame, "HealthBar", function(state)
+	local fill = hb:FindFirstChild("Fill")
+	local outline = hb:FindFirstChild("Outline")
+	local stroke = hb:FindFirstChild("UIStroke")
+
+	if fill then fill.Visible = state end
+	if outline then outline.Visible = state end
+	if stroke then stroke.Transparency = state and 0 or 1 end
+end, true) -- default = ON
+-- <<===== END HEALTHBAR =====>>
