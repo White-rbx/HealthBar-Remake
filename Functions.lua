@@ -1,4 +1,4 @@
--- ===== [ Service's ] =====
+-- ===== [ Services ] =====
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -159,7 +159,7 @@ local bk = Instance.new("Frame")
 bk.Name = "Load_Background"
 bk.Size = UDim2.new(0.4,0,0.4,0)
 bk.Position = UDim2.new(0.3,0,0.3,0)
-bk.BackgroundColo3 = Color3.fromRGB(0,0,0)
+bk.BackgroundColor3 = Color3.fromRGB(0,0,0)
 bk.BackgroundTransparency = 0.5
 bk.Visible = true
 bk.Parent = Background
