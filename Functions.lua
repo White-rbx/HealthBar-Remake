@@ -1,4 +1,4 @@
--- ===== [ Services ] =====
+-- ===== [ Service's ] =====
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -13,6 +13,14 @@ local Background = game:GetService("CoreGui")
                    :WaitForChild("ExperienceSettings")
                    :WaitForChild("Menu")
                    :WaitForChild("Background")
+
+local Menu = game:GetService("CoreGui")
+                   :WaitForChild("TopBarApp")
+                   :WaitForChild("TopBarApp")
+                   :WaitForChild("UnibarLeftFrame")
+                   :WaitForChild("HealthBar")
+                   :WaitForChild("ExperienceSettings")
+                   :WaitForChild("Menu")
 
 
 -- =====>> Saved Functions <<=====
@@ -162,7 +170,7 @@ bk.Position = UDim2.new(0.3,0,0.3,0)
 bk.BackgroundColor3 = Color3.fromRGB(0,0,0)
 bk.BackgroundTransparency = 0.5
 bk.Visible = true
-bk.Parent = Background
+bk.Parent = Menu
 Corner(0, 10, bk)
 Stroke(bk, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
 
@@ -188,17 +196,17 @@ local wt = Instance.new("TextLabel")
 wt.Name = "Wait"
 wt.BackgroundTransparency = 1
 wt.Position = UDim2.new(0.02,0,0.25,0)
-wt.Size = UDim2.new(0.96,0,0.53,0)
+wt.Size = UDim2.new(0.96,0,0.35,0)
 wt.Text = "Starting ExperienceSettings. Please wait..."
-wt.TextSize = 16
+wt.TextScaled = true
 wt.TextColor3 = Color3.fromRGB(255,255,255)
 wt.Parent = bk
 
 local wl = Instance.new("TextLabel")
 wl.Name = "Credit"
 wl.BackgroundTransparency = 1
-wl.Position = UDim2.new(0.02,0,0.13,0)
-wl.Size = UDim2.new(0.96,0,0.65,0)
+wl.Position = UDim2.new(0.02,0,0.65,0)
+wl.Size = UDim2.new(0.96,0,0.13,0)
 wl.Text = "Creator by @5teve on ScriptBlox"
 wl.TextScaled = true
 wl.TextColor3 = Color3.fromRGB(255,255,255)
@@ -211,6 +219,8 @@ skp.BackgroundColor3 = Color3.fromRGB(255,255,255)
 skp.Position = UDim2.new(0.02,0,0.8,0)
 skp.Size = UDim2.new(0.96,0,0.15,0)
 skp.Text = "Skip"
+skp.TexrScaled = true
+skp.TextColor3 = Color3.from(255,255,255)
 skp.Parent = bk
 Corner(0,8,skp)
 Stroke(skp, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
