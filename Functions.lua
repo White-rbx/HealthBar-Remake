@@ -156,7 +156,7 @@ createUIListLayout(BFrame, 0.005, 0, HCenter, VTop, SName, FillV)
 -- =======================
 -- =====>> Loading <<=====
 local bk = Instance.new("Frame")
-bk.Name = "Load_Background")
+bk.Name = "Load_Background"
 bk.Size = UDim2.new(0.4,0,0.4,0)
 bk.Position = UDim2.new(0.3,0,0.3,0)
 bk.BackgroundColo3 = Color3.fromRGB(0,0,0)
@@ -175,7 +175,7 @@ line.Parent = bk
 Corner(1,0,line)
 
 local lg = Instance.new("TextLabel")
-lg.Name = "Loading")
+lg.Name = "Loading"
 lg.BackgroundTransparency = 1
 lg.Position = UDim2.new(0.02,0,0.02,0)
 lg.Size = UDim2.new(0.96,0,0.2,0)
@@ -195,7 +195,7 @@ wt.TextColor3 = Color3.fromRGB(255,255,255)
 wt.Parent = bk
 
 local wl = Instance.new("TextLabel")
-wl.Name = "Wait"
+wl.Name = "Credit"
 wl.BackgroundTransparency = 1
 wl.Position = UDim2.new(0.02,0,0.13,0)
 wl.Size = UDim2.new(0.96,0,0.65,0)
