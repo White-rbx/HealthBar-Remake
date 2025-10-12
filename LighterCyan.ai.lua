@@ -597,12 +597,6 @@ rec.Parent = input
 Corner(0, 8, rec)
 Stroke(rec, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
 
-mesg("Verison: Alpha Dev Test", 30, 76, 76, 76, 255, 255, 255)
-mesg("copyright © ExperienceSettings-ChatGPT 2025", 30, 76, 76, 76, 255, 255, 255)
-ai("I'm ready to chat with you!", 60)
-mesg(" --[ New Chat ]--", 30, 0, 0, 0, 255, 255, 255)
-mesg("Please Re-Chat before chatting.", 30, 0, 0, 0, 75, 75, 75)
-
 local option = Instance.new("Frame")
 option.Name = "a1_option"
 option.Size = UDim2.new(1, 0, 0, 50)
