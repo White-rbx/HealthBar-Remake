@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions ===== 
+-- ===== Position ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -349,11 +349,11 @@ local tip = Instance.new("TextLabel")
 tip.Name = "Help"
 tip.Active = false
 tip.Size = UDim2.new(1,0,0,30)
-tip.Postion = UDim2.new(0,0,0.88,0)
+tip.Position = UDim2.new(0,0,0.88,0)
 tip.BackgroundTransparency = 1
 tip.TextColor3 = Color3.fromRGB(255,255,255)
 tip.TextScaled = true
-tip.Text "Oh, if the ExperienceSettings was disabled. You can hide the text there -->>"
+tip.Text = "Oh, if the ExperienceSettings was disabled. You can hide the text there -->>"
 tip.Parent = In
 
 local hid = Instance.new("TextButton")
