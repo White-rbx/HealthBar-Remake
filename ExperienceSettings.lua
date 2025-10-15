@@ -594,7 +594,7 @@ tb:GetPropertyChangedSignal("Size"):Connect(updateButtonsVisibility)
 
 -- Settings button (on hr)
 local Set = Instance.new("ImageButton")
-Set.Name = "a2_Settings"
+Set.Name = "a3_Settings"
 Set.Size = UDim2.new(0, 34, 0.8, 0)
 Set.Image = "rbxassetid://85613740372383"
 Set.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -606,7 +606,7 @@ createUICorner(Set, 1, 0)
 
 -- Hamburger menu (hbm)
 local hbm = Instance.new("ImageButton")
-hbm.Name = "a9999_HamburgerMenu"
+hbm.Name = "z9_HamburgerMenu"
 hbm.Size = UDim2.new(0, 34, 0.8, 0)
 hbm.Image = "rbxassetid://12214197591"
 hbm.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -630,7 +630,7 @@ createUICorner(OC, 1, 0)
 
 -- GPT
 local gpt = Instance.new("ImageButton")
-gpt.Name = "a3_ChatGPT"
+gpt.Name = "z8_ChatGPT"
 gpt.Size = UDim2.new(0, 34, 0.8, 0)
 gpt.Image = "rbxassetid://15419312153"
 gpt.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -802,14 +802,14 @@ if type(resolveUI) ~= "function" then
 
         local rc_tb  = find("TopButtons") or find("TopBar") or find("TopBarApp")
         local rc_hr  = find("Holder") or find("HolderFrame") or find("a_holder")
-        local rc_Set = find("a2_Settings") or find("Set") or find("SettingsButton")
-        local rc_hbm = find("a9999_HamburgerMenu") or find("Hamburger") or find("hbm")
+        local rc_Set = find("a3_Settings") or find("Set") or find("SettingsButton")
+        local rc_hbm = find("z9_HamburgerMenu") or find("Hamburger") or find("hbm")
         local rc_OC  = find("a1_Open/Close") or find("OC") or find("OpenClose")
         local rc_wa1 = find("LoadFrame") or find("wa1") or find("WarningFrame")
         local rc_wl  = find("Warning & Load") or find("wl") or find("WaitLabel")
         local rc_bg  = find("Background") or find("bg")
         local rc_mtb = find("TopBar") or find("MainTopBar") or find("mtb")
-        local rc_gpt = find("a3_ChatGPT") or find("gpt") or find("ChatGPTButton")
+        local rc_gpt = find("z8_ChatGPT") or find("gpt") or find("ChatGPTButton")
 
         return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt
     end
