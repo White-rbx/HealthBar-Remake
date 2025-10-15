@@ -22,6 +22,8 @@ local Menu = game:GetService("CoreGui")
                    :WaitForChild("ExperienceSettings")
                    :WaitForChild("Menu")
 
+local hr = Menu:WaitForChild("TopBar")
+               :WaitForChild("Holder")
 
 -- =====>> Saved Functions <<=====
 
@@ -130,7 +132,20 @@ local function Padding(parent, bottom, left, right, top)
 end
 -- =====END FUNCTION UIPADDING======
 
-  
+-- About Button
+-- Settings button (on hr)
+local Abt = Instance.new("ImageButton")
+Abt.Name = "z7_About"
+Abt.Size = UDim2.new(0, 34, 0.8, 0)
+Abt.Image = "rbxassetid://9819724857"
+Abt.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Abt.BackgroundTransparency = 0.8
+Abt.Active = true
+Abt.Visible = true
+Abt.Parent = hr
+Corner(1, 0, Abt)
+
+
 -- ===== Instance =====
 local Inner = Instance.new("Frame")
 Inner.Name = "Inner_Background"
