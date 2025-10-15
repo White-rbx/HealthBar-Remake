@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position =====
+-- ===== Positions =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -274,7 +274,7 @@ imag.Active = false
 imag.Size = UDim2.new(0,100,0,100)
 imag.BackgroundTransparency = 0.3
 imag.Image = "rbxassetid://82570360462973"
-imag.Parent = in
+imag.Parent = in1
 Corner(0, 8, imag)
 
 local iN2 = Instance.new("Frame")
@@ -282,7 +282,7 @@ iN2.Name = "a2_txts"
 iN2.Active = false
 iN2.Size = UDim2.new(0.5,0,0,40)
 iN2.BackgroundTransparency  = 1
-iN2.Parent = in
+iN2.Parent = in1
 
 local txt = Instance.new("TextLabel")
 txt.Name = "Name"
@@ -292,7 +292,7 @@ txt.BackgroundTransparency = 1
 txt.Text = "@5teve"
 txt.TextColor3 = Colo3.fromRGB(255,255,255)
 txt.TextScaled =  true
-txt.Parent = iN
+txt.Parent = iN2
 
 local txt2 = Instance.new("TextLabel")
 txt2.Name = "Name"
@@ -303,8 +303,7 @@ txt2.BackgroundTransparency = 1
 txt2.Text = "“Creator of the ExperiencSettings.”"
 txt2.TextColor3 = Colo3.fromRGB(255,255,255)
 txt2.TextScaled =  true
-txt2.Parent = iN
-
+txt2.Parent = iN2
 local txt3 = Instance.new("TextLabel")
 txt3.Name = "Name"
 txt3.Active = false
@@ -314,7 +313,7 @@ txt3.BackgroundTransparency = 1
 txt3.Text = "[ User on ScriptBlox ]"
 txt3.TextColor3 = Colo3.fromRGB(255,255,255)
 txt3.TextScaled =  true
-txt3.Parent = iN
+txt3.Parent = iN2
 
 local bigt = Instance.new("TextLabel")
 bigt.Name = "About"
