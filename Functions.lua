@@ -337,8 +337,8 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
 bigt.TextScaled = true
-bigt.TextXAlignment = Enum.Alignment.Left
-bigt.TextYAlignment = Enum.Alignment.Top
+bigt.TextXAlignment = Eunm.TextXAlignment.Left
+bigt.TextYAlignment = Eunm.TextYAlignment.Top
 bigt.Parent = In
 Stroke(bigt, ASMBorder, 255,255,255, LSMRound, 1, 0.5)
 
