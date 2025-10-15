@@ -242,7 +242,7 @@ Stroke(skp, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
 
 -- =====>> Button About <<=====
 local Ab = Instance.new("Frame")
-Ab.Name = "Background"
+Ab.Name = "About_Background"
 Ab.Active = false
 Ab.Position = UDim2.new(0.25,0,1,0)
 Ab.Size = UDim2.new(0.5,0,0.7,0)
@@ -389,7 +389,7 @@ local aboutOpen = false
 local tweenInfo = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 aboutButton.MouseButton1Click:Connect(function()
-	local Ab = Background
+	local Ab = Ab
 	if not Ab then return end
 
 	aboutOpen = not aboutOpen
