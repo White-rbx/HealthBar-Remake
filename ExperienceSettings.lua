@@ -1,4 +1,4 @@
--- TweenHealth()
+-- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
 
@@ -666,7 +666,7 @@ local OC_OPEN_IMAGE  = "rbxassetid://126759169574128" -- image when OPEN (show S
 local OC_CLOSE_IMAGE = "rbxassetid://96748873664437"  -- image when CLOSED (hide Set/hbm)
 
 -- target mtb X for "closed" (was 0.515 -> change to 0.48 as requested)
-local MTB_X_CLOSED = 0.47
+local MTB_X_CLOSED = 0.46
 local MTB_X_OPEN   = 0 -- open => X = 0
 
 -- hr sizes in px for open/close
