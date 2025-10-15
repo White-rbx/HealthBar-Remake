@@ -18,7 +18,7 @@ if not player then
 end
 
 -- เป้าหมายใหม่ของตำแหน่ง HealthBar (ปรับได้)
-local newHealthBarPosition = UDim2.new(0.86, 0, 0, 0)
+local newHealthBarPosition = UDim2.new(0.835, 0, 0, 0)
 local newHealthBarSize = UDim2.new(0.109, 0, 1, 0)
 local newInnerBarSize = UDim2.new(1.85, 0, 0, 10)
 
