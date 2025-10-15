@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position ===== 
+-- ===== Positions ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -266,7 +266,7 @@ in1.Active = false
 in1.Size = UDim2.new(1,0,0,100)
 in1.BackgroundTransparency = 1
 in1.Parent = In
-createUIListLayout(in1, 0, 5, HLeft, VTop, SName, FillV)
+createUIListLayout(in1, 0, 5, HLeft, VTop, SName, FillH)
 
 local imag = Instance.new("ImageLabel")
 imag.Name = "a1_Icon"
@@ -287,6 +287,7 @@ iN2.Parent = in1
 local txt = Instance.new("TextLabel")
 txt.Name = "Name"
 txt.Active = false
+txt.TextXAlignment = Enum.TextXAlignment.Left
 txt.Size = UDim2.new(1,0,0,40)
 txt.BackgroundTransparency = 1
 txt.Text = "@5teve"
@@ -297,6 +298,7 @@ txt.Parent = iN2
 local txt2 = Instance.new("TextLabel")
 txt2.Name = "Name"
 txt2.Active = false
+txt2.TextXAlignment = Enum.TextXAlignment.Left
 txt2.Size = UDim2.new(1,0,0,35)
 txt2.Position = UDim2.new(0,0,0,36)
 txt2.BackgroundTransparency = 1
@@ -307,8 +309,9 @@ txt2.Parent = iN2
 local txt3 = Instance.new("TextLabel")
 txt3.Name = "Name"
 txt3.Active = false
-txt3.Size = UDim2.new(1,0,0,35)
-txt3.Position = UDim2.new(0,0,0,60)
+txt3.TextXAlignment = Enum.TextXAlignment.Left
+txt3.Size = UDim2.new(1,0,0,15)
+txt3.Position = UDim2.new(0,0,0,70)
 txt3.BackgroundTransparency = 1
 txt3.Text = "[ User on ScriptBlox ]"
 txt3.TextColor3 = Color3.fromRGB(255,255,255)
@@ -337,8 +340,8 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
 bigt.TextScaled = true
-bigt.TextXAlignment = Eunm.TextXAlignment.Left
-bigt.TextYAlignment = Eunm.TextYAlignment.Top
+bigt.TextXAlignment = Enum.TextXAlignment.Left
+bigt.TextYAlignment = Enum.TextYAlignment.Top
 bigt.Parent = In
 Stroke(bigt, ASMBorder, 255,255,255, LSMRound, 1, 0.5)
 
