@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position =====
+-- ===== Positions =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -349,7 +349,7 @@ Stroke(bigt, ASMBorder, 255,255,255, LSMRound, 1, 0.5)
 local tip = Instance.new("TextLabel")
 tip.Name = "Help"
 tip.Active = false
-tip.Size = UDim2.new(1,0,0,30)
+tip.Size = UDim2.new(0.8,0,0,30)
 tip.Position = UDim2.new(0,0,0.88,0)
 tip.BackgroundTransparency = 1
 tip.TextColor3 = Color3.fromRGB(255,255,255)
@@ -405,6 +405,88 @@ end)
 skp.MouseButton1Click:Connect(function()
 	if bk then
 		bk.Visible = false
+	end
+end)
+
+task.spawn(function()
+	local cg = game:GetService("CoreGui")
+	local top = cg:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
+	local unibar = top:WaitForChild("UnibarLeftFrame")
+	local hb = unibar:WaitForChild("HealthBar")
+	local exp = hb:WaitForChild("ExperienceSettings")
+	local menu = exp:WaitForChild("Menu")
+	local topbar = menu:WaitForChild("TopBar")
+	local holder = topbar:WaitForChild("Holder")            -- <-- Holder
+	local loadFrame = holder:WaitForChild("LoadFrame")      -- <-- LoadFrame
+	-- Hide button is inside Background -> Inside -> Hide (ตาม UI ที่สร้างไว้)
+	local bg = menu:WaitForChild("Background")
+	local inside = bg:WaitForChild("Inside")
+	local hideBtn = inside:WaitForChild("Hide")             -- <-- Hide (TextButton)
+
+	-- helper: enable/disable hide button (visual + interactive)
+	local function setHideEnabled(enabled)
+		if not hideBtn then return end
+		-- use simple visual cues + Active to control interactivity
+		pcall(function()
+			hideBtn.Active = enabled
+			if hideBtn:IsA("GuiButton") then
+				hideBtn.AutoButtonColor = enabled
+			end
+			-- subtle visual: dim text when disabled
+			hideBtn.TextTransparency = enabled and 0 or 0.6
+		end)
+	end
+
+	-- update initial state & listen for changes
+	local function updateState()
+		local ok, vis = pcall(function() return loadFrame.Visible end)
+		if ok and vis then
+			setHideEnabled(true)
+		else
+			setHideEnabled(false)
+		end
+	end
+
+	-- Watch LoadFrame.Visible changes
+	if loadFrame then
+		updateState()
+		-- property change signal (fires when Visible toggles)
+		local signalOK, err = pcall(function()
+			loadFrame:GetPropertyChangedSignal("Visible"):Connect(updateState)
+		end)
+		if not signalOK then
+			-- fallback polling if property signal unavailable
+			task.spawn(function()
+				local last = nil
+				while true do
+					local ok2, cur = pcall(function() return loadFrame.Visible end)
+					if ok2 and cur ~= last then
+						updateState()
+						last = cur
+					end
+					task.wait(0.25)
+				end
+			end)
+		end
+	end
+
+	-- Connect click (only acts when LoadFrame.Visible == true)
+	if hideBtn and hideBtn:IsA("GuiButton") then
+		hideBtn.MouseButton1Click:Connect(function()
+			local ok, cur = pcall(function() return loadFrame.Visible end)
+			if not ok or not cur then
+				-- not allowed to click if LoadFrame not visible
+				return
+			end
+			-- perform actions: hide LoadFrame and resize Holder
+			pcall(function()
+				loadFrame.Visible = false
+				holder.Size = UDim2.new(0, 44, 1, 0)
+				topbar.Position = UDim2.new(0.47, 0, 0.02, 0)
+			end)
+			-- update visual state immediately
+			setHideEnabled(false)
+		end)
 	end
 end)
 -- ===== END =====
