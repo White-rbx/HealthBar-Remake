@@ -290,7 +290,7 @@ txt.Active = false
 txt.Size = UDim2.new(1,0,0,40)
 txt.BackgroundTransparency = 1
 txt.Text = "@5teve"
-txt.TextColor3 = Colo3.fromRGB(255,255,255)
+txt.TextColor3 = Color3.fromRGB(255,255,255)
 txt.TextScaled =  true
 txt.Parent = iN2
 
@@ -301,7 +301,7 @@ txt2.Size = UDim2.new(1,0,0,35)
 txt2.Position = UDim2.new(0,0,0,36)
 txt2.BackgroundTransparency = 1
 txt2.Text = "“Creator of the ExperiencSettings.”"
-txt2.TextColor3 = Colo3.fromRGB(255,255,255)
+txt2.TextColor3 = Color3.fromRGB(255,255,255)
 txt2.TextScaled =  true
 txt2.Parent = iN2
 local txt3 = Instance.new("TextLabel")
@@ -311,7 +311,7 @@ txt3.Size = UDim2.new(1,0,0,35)
 txt3.Position = UDim2.new(0,0,0,60)
 txt3.BackgroundTransparency = 1
 txt3.Text = "[ User on ScriptBlox ]"
-txt3.TextColor3 = Colo3.fromRGB(255,255,255)
+txt3.TextColor3 = Color3.fromRGB(255,255,255)
 txt3.TextScaled =  true
 txt3.Parent = iN2
 
@@ -348,7 +348,7 @@ tip.Active = false
 tip.Size = UDim2.new(1,0,0,30)
 tip.Postion = UDim2.new(0,0,0.88,0)
 tip.BackgroundTransparency = 1
-tip.TextColor3 = Colo3.fromRGB(255,255,255)
+tip.TextColor3 = Color3.fromRGB(255,255,255)
 tip.TextScaled = true
 tip.Text "Oh, if the ExperienceSettings was disabled. You can hide the text there -->>"
 tip.Parent = In
