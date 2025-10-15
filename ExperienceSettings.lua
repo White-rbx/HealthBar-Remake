@@ -644,7 +644,7 @@ createUICorner(gpt, 1, 0) --
 local wa1 = Instance.new("Frame")
 wa1.Name = "LoadFrame"
 wa1.BackgroundTransparency = 1
-wa1.Size = UDim2.new(0.8, 0, 1, 0)
+wa1.Size = UDim2.new(0.84, 0, 1, 0)
 wa1.Active = false
 wa1.Visible = true
 wa1.Parent = hr
