@@ -83,7 +83,7 @@ local function setupValueGui()
     if not fm then
         fm = Instance.new("Frame")
         fm.Name = "point"
-        fm.Size = UDim2.new(0.941, 0, 0, 15)
+        fm.Size = UDim2.new(0.92, 0, 0, 15)
         fm.Position = UDim2.new(0, 0, 0, -50)
         fm.BackgroundTransparency = 1
         fm.Parent = gui
@@ -671,7 +671,7 @@ local MTB_X_OPEN   = 0 -- open => X = 0
 
 -- hr sizes in px for open/close
 local HR_WIDTH_OPEN  = 225
-local HR_WIDTH_CLOSE = 44
+local HR_WIDTH_CLOSE = 90
 
 -- safe setter for mtb position (uses tweenObject if available)
 local function setMtbX(open, instant)
@@ -870,7 +870,7 @@ task.spawn(function()
                     safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad)
                 end
 
-                safeTween(ui_hr, { Size = UDim2.new(0,44, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                safeTween(ui_hr, { Size = UDim2.new(0,90, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                 pcall(function()
                     if ui_Set  then ui_Set.Visible  = false end
                     if ui_hbm then ui_hbm.Visible = false end
