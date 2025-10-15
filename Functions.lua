@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position =====
+-- ===== Positions =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -338,6 +338,9 @@ Thank you for using ExperienceSettings!
 Creator: @5teve (Gui, Little Script)
 Helper: ChatGPT (Script) <-- He got a lot of complaints lol.
 Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
+
+📌 Updated: More Button
+ • Just add "Information" button to fixed annoy warn text.
 ]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
 bigt.TextScaled = true
