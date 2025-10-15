@@ -266,7 +266,7 @@ in1.Active = false
 in1.Size = UDim2.new(1,0,0,100)
 in1.BackgroundTransparency = 1
 in1.Parent = In
-createUIListLayout(in, 
+createUIListLayout(in, 0, 5, HLeft, VTop, SName, FillV)
 
 local imag = Instance.new("ImageLabel")
 imag.Name = "a1_Icon"
