@@ -322,7 +322,20 @@ bigt.Active = false
 bigt.Size = UDim2.new(1,0,0.6,0)
 bigt.Position = UDim2.new(0,0,0.26,0)
 bigt.BackgroundTransparency = 1
-bigt.Text = {""}
+bigt.Text = [[
+The ExperienceSettings is debug tools you can use on your own, there are a lot of tools!
+For HealthBar was a remake of better and smoother and ValueLabels for show values.
+If your ExperienceSettings was Disabled there are three reasons,
+ • HumanoidRootPart was removed too long.
+ • The Experience doesn't support the ExperienceSettings.
+ • Script failed to load.
+If you enjoy it, you can support me on ScriptBlox!
+Thank you for using ExperienceSettings!
+
+Creator: @5teve (Gui, Little Script)
+Helper: ChatGPT (Script) <-- He got a lot of complaints lol.
+Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
+]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
 bigt.TextScaled = true
 bigt.TextXAlignment = Enum.Alignment.Left
