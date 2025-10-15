@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions =====
+-- ===== Position =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -419,7 +419,7 @@ task.spawn(function()
 	local holder = topbar:WaitForChild("Holder")            -- <-- Holder
 	local loadFrame = holder:WaitForChild("LoadFrame")      -- <-- LoadFrame
 	-- Hide button is inside Background -> Inside -> Hide (ตาม UI ที่สร้างไว้)
-	local bg = menu:WaitForChild("Background")
+	local bg = menu:WaitForChild("About_Background")
 	local inside = bg:WaitForChild("Inside")
 	local hideBtn = inside:WaitForChild("Hide")             -- <-- Hide (TextButton)
 
