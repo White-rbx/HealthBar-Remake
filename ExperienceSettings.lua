@@ -3061,10 +3061,10 @@ pcall(function() if chatBox and chatBox:IsA("TextBox") then chatBox.FocusLost:Co
 local toggleBtn = nil
 pcall(function()
     if type(menuGui) == "Instance" and menuGui.Parent then
-        toggleBtn = menuGui:FindFirstChild("a3_ChatGPT", true) or menuGui:FindFirstChild("gpt", true)
+        toggleBtn = menuGui:FindFirstChild("z8_ChatGPT", true) or menuGui:FindFirstChild("gpt", true)
     end
     if not toggleBtn then
-        toggleBtn = targetMenu:FindFirstChild("a3_ChatGPT", true) or targetMenu:FindFirstChild("gpt", true)
+        toggleBtn = targetMenu:FindFirstChild("z8_ChatGPT", true) or targetMenu:FindFirstChild("gpt", true)
     end
 end)
 local panelOpen = false
