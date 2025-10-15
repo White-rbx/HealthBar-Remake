@@ -240,6 +240,151 @@ skp.Parent = bk
 Corner(0,8,skp)
 Stroke(skp, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
 
+-- =====>> Button About <<=====
+local Ab = Instance.new("Frame")
+Ab.Name = "Background"
+Ab.Active = false
+Ab.Position = UDim2.new(0.25,0,1,0)
+Ab.Size = UDim2.new(0.5,0,0.7,0)
+Ab.BackgroudColor3 = Color3.fromRGB(11,11,21)
+Ab.BackgroundTransparency = 0.3
+Ab.Parent = Menu
+Corner(0,12,Ab)
+Stroke(Ab, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
+
+local In = Instance.new("Frame")
+In.Name = "Inside"
+In.Active = false
+In.Size = UDim2.new(0.96,0,0.96,0)
+In.Position = UDim2.new(0.02,0,0.02,0)
+In.BackgroundTransparency = 1
+In.Parent = Ab
+
+local in = Instance.new("Frame")
+in.Name = "Inside.2"
+in.Active = false
+in.Size = UDim2.new(1,0,0,100)
+in.BackgroundTransparency = 1
+in.Parent = In
+createUIListLayout(in, 
+
+local imag = Instance.new("ImageLabel")
+imag.Name = "a1_Icon"
+imag.Active = false
+imag.Size = UDim2.new(0,100,0,100)
+imag.BackgroundTransparency = 0.3
+imag.Image = "rbxassetid://82570360462973"
+imag.Parent = in
+Corner(0, 8, imag)
+
+local iN = Instance.new("Frame")
+iN.Name = "a2_txts"
+iN.Active = false
+iN.Size = UDim2.new(0.5,0,0,40)
+iN.BackgroundTransparency  = 1
+iN.Parent = in
+
+local txt = Instance.new("TextLabel")
+txt.Name = "Name"
+txt.Active = false
+txt.Size = UDim2.new(1,0,0,40)
+txt.BackgroundTransparency = 1
+txt.Text = "@5teve"
+txt.TextColor3 = Colo3.fromRGB(255,255,255)
+txt.TextScaled =  true
+txt.Parent = iN
+
+local txt2 = Instance.new("TextLabel")
+txt2.Name = "Name"
+txt2.Active = false
+txt2.Size = UDim2.new(1,0,0,35)
+txt2.Position = UDim2.new(0,0,0,36)
+txt2.BackgroundTransparency = 1
+txt2.Text = "“Creator of the ExperiencSettings.”"
+txt2.TextColor3 = Colo3.fromRGB(255,255,255)
+txt2.TextScaled =  true
+txt2.Parent = iN
+
+local txt3 = Instance.new("TextLabel")
+txt3.Name = "Name"
+txt3.Active = false
+txt3.Size = UDim2.new(1,0,0,35)
+txt3.Position = UDim2.new(0,0,0,60)
+txt3.BackgroundTransparency = 1
+txt3.Text = "[ User on ScriptBlox ]"
+txt3.TextColor3 = Colo3.fromRGB(255,255,255)
+txt3.TextScaled =  true
+txt3.Parent = iN
+
+local bigt = Instance.new("TextLabel")
+bigt.Name = "About"
+bigt.Active = false
+bigt.Size = UDim2.new(1,0,0.6,0)
+bigt.Position = UDim2.new(0,0,0.26,0)
+bigt.BackgroundTransparency = 1
+bigt.Text = {""}
+bigt.TextColor3 = Color3.fromRGB(255,255,255)
+bigt.TextScaled = true
+bigt.TextXAlignment = Enum.Alignment.Left
+bigt.TextYAlignment = Enum.Alignment.Top
+bigt.Parent = In
+Stroke(bigt, ASMBorder, 255,255,255, LSMRound, 1, 0.5)
+
+local tip = Instance.new("TextLabel")
+tip.Name = "Help"
+tip.Active = false
+tip.Size = UDim2.new(1,0,0,30)
+tip.Postion = UDim2.new(0,0,0.88,0)
+tip.BackgroundTransparency = 1
+tip.TextColor3 = Colo3.fromRGB(255,255,255)
+tip.TextScaled = true
+tip.Text "Oh, if the ExperienceSettings was disabled. You can hide the text there -->>"
+tip.Parent = In
+
+local hid = Instance.new("TextButton")
+hid.Name = "Hide"
+hid.Active = true
+hid.Position = UDim2.new(0.8,0,0.88,0)
+hid.Size = UDm2.new(0.2,0,0,30)
+hid.BackgroundTransparency = 1
+hid.Text = "Hide"
+hid.TextScaled = true
+hid.TextColor3 = Color3.fromRGB(255,255,255)
+hid.Parent = In
+Corner(1,0,hid)
+Stroke(hid, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
+
+-- หาปุ่ม About ด้วย WaitForChild (ใน CoreGui)
+local aboutButton = game:GetService("CoreGui")
+	:WaitForChild("TopBarApp")
+	:WaitForChild("TopBarApp")
+	:WaitForChild("UnibarLeftFrame")
+	:WaitForChild("HealthBar")
+	:WaitForChild("ExperienceSettings")
+	:WaitForChild("Menu")
+	:WaitForChild("TopBar")
+	:WaitForChild("Holder")
+	:WaitForChild("z7_About")
+
+-- ตัวแปรสถานะเปิด/ปิด
+local aboutOpen = false
+
+-- Tween การเคลื่อนตำแหน่งของ Ab
+local tweenInfo = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+aboutButton.MouseButton1Click:Connect(function()
+	local Ab = Background
+	if not Ab then return end
+
+	aboutOpen = not aboutOpen
+
+	local targetPos = aboutOpen
+		and UDim2.new(0.25, 0, 0.2, 0)  -- เปิด
+		or  UDim2.new(0.25, 0, 1, 0)    -- ปิด
+
+	game:GetService("TweenService"):Create(Ab, tweenInfo, { Position = targetPos }):Play()
+end)
+
 -- =====>> Script <<=====
 skp.MouseButton1Click:Connect(function()
 	if bk then
