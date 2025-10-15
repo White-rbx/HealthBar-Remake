@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions ===== 
+-- ===== Position ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -246,7 +246,7 @@ Ab.Name = "Background"
 Ab.Active = false
 Ab.Position = UDim2.new(0.25,0,1,0)
 Ab.Size = UDim2.new(0.5,0,0.7,0)
-Ab.BackgroudColor3 = Color3.fromRGB(11,11,21)
+Ab.BackgroundColor3 = Color3.fromRGB(11,11,21)
 Ab.BackgroundTransparency = 0.3
 Ab.Parent = Menu
 Corner(0,12,Ab)
