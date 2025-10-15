@@ -260,12 +260,12 @@ In.Position = UDim2.new(0.02,0,0.02,0)
 In.BackgroundTransparency = 1
 In.Parent = Ab
 
-local in = Instance.new("Frame")
-in.Name = "Inside.2"
-in.Active = false
-in.Size = UDim2.new(1,0,0,100)
-in.BackgroundTransparency = 1
-in.Parent = In
+local in1 = Instance.new("Frame")
+in1.Name = "Inside.2"
+in1.Active = false
+in1.Size = UDim2.new(1,0,0,100)
+in1.BackgroundTransparency = 1
+in1.Parent = In
 createUIListLayout(in, 
 
 local imag = Instance.new("ImageLabel")
@@ -277,12 +277,12 @@ imag.Image = "rbxassetid://82570360462973"
 imag.Parent = in
 Corner(0, 8, imag)
 
-local iN = Instance.new("Frame")
-iN.Name = "a2_txts"
-iN.Active = false
-iN.Size = UDim2.new(0.5,0,0,40)
-iN.BackgroundTransparency  = 1
-iN.Parent = in
+local iN2 = Instance.new("Frame")
+iN2.Name = "a2_txts"
+iN2.Active = false
+iN2.Size = UDim2.new(0.5,0,0,40)
+iN2.BackgroundTransparency  = 1
+iN2.Parent = in
 
 local txt = Instance.new("TextLabel")
 txt.Name = "Name"
