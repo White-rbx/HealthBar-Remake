@@ -865,7 +865,7 @@ task.spawn(function()
             if not isOpen then
                 print("[HRP-Watcher] HRP detected -> opening UI")
                 if ui_mtb and ui_mtb.Parent then
-                    safeTween(ui_mtb, { Position = UDim2.new(0.47, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28, Enum.EasingStyle.Quad)
+                    safeTween(ui_mtb, { Position = UDim2.new(0.46, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28, Enum.EasingStyle.Quad)
                 else
                     safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28, Enum.EasingStyle.Quad)
                 end
