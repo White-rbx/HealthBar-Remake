@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position ===== 
+-- ===== Positions ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -306,6 +306,7 @@ txt2.Text = "“Creator of the ExperiencSettings.”"
 txt2.TextColor3 = Color3.fromRGB(255,255,255)
 txt2.TextScaled =  true
 txt2.Parent = iN2
+
 local txt3 = Instance.new("TextLabel")
 txt3.Name = "Name"
 txt3.Active = false
