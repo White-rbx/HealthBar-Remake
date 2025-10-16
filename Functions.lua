@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position =====
+-- ===== Positions =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -419,28 +419,23 @@ task.spawn(function()
 	local exp = hb:WaitForChild("ExperienceSettings")
 	local menu = exp:WaitForChild("Menu")
 	local topbar = menu:WaitForChild("TopBar")
-	local holder = topbar:WaitForChild("Holder")            -- <-- Holder
-	local loadFrame = holder:WaitForChild("LoadFrame")      -- <-- LoadFrame
-	-- Hide button is inside Background -> Inside -> Hide (ตาม UI ที่สร้างไว้)
+	local holder = topbar:WaitForChild("Holder")           
+	local loadFrame = holder:WaitForChild("LoadFrame")     
 	local bg = menu:WaitForChild("About_Background")
 	local inside = bg:WaitForChild("Inside")
-	local hideBtn = inside:WaitForChild("Hide")             -- <-- Hide (TextButton)
+	local hideBtn = inside:WaitForChild("Hide")             
 
-	-- helper: enable/disable hide button (visual + interactive)
 	local function setHideEnabled(enabled)
 		if not hideBtn then return end
-		-- use simple visual cues + Active to control interactivity
 		pcall(function()
 			hideBtn.Active = enabled
 			if hideBtn:IsA("GuiButton") then
 				hideBtn.AutoButtonColor = enabled
 			end
-			-- subtle visual: dim text when disabled
 			hideBtn.TextTransparency = enabled and 0 or 0.6
 		end)
 	end
 
-	-- update initial state & listen for changes
 	local function updateState()
 		local ok, vis = pcall(function() return loadFrame.Visible end)
 		if ok and vis then
@@ -450,15 +445,12 @@ task.spawn(function()
 		end
 	end
 
-	-- Watch LoadFrame.Visible changes
 	if loadFrame then
 		updateState()
-		-- property change signal (fires when Visible toggles)
-		local signalOK, err = pcall(function()
+		local sOK = pcall(function()
 			loadFrame:GetPropertyChangedSignal("Visible"):Connect(updateState)
 		end)
-		if not signalOK then
-			-- fallback polling if property signal unavailable
+		if not sOK then
 			task.spawn(function()
 				local last = nil
 				while true do
@@ -473,21 +465,20 @@ task.spawn(function()
 		end
 	end
 
-	-- Connect click (only acts when LoadFrame.Visible == true)
+	-- ✅ เฉพาะ holder และ topbar เท่านั้น
 	if hideBtn and hideBtn:IsA("GuiButton") then
 		hideBtn.MouseButton1Click:Connect(function()
 			local ok, cur = pcall(function() return loadFrame.Visible end)
-			if not ok or not cur then
-				-- not allowed to click if LoadFrame not visible
-				return
-			end
-			-- perform actions: hide LoadFrame and resize Holder
+			if not ok or not cur then return end
+
 			pcall(function()
+				local info = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+				TweenService:Create(holder, info, { Size = UDim2.new(0, 44, 1, 0) }):Play()
+				TweenService:Create(topbar, info, { Position = UDim2.new(0.47, 0, 0.02, 0) }):Play()
+				task.wait(0.3)
 				loadFrame.Visible = false
-				holder.Size = UDim2.new(0, 44, 1, 0)
-				topbar.Position = UDim2.new(0.47, 0, 0.02, 0)
 			end)
-			-- update visual state immediately
+
 			setHideEnabled(false)
 		end)
 	end
