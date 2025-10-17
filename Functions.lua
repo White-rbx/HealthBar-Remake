@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions =====
+-- ===== Position =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -139,10 +139,21 @@ Abt.Name = "z7_About"
 Abt.Size = UDim2.new(0, 34, 0.8, 0)
 Abt.Image = "rbxassetid://9819724857"
 Abt.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Abt.BackgroundTransparency = 0.8
+Abt.BackgroundTransparency = 1
 Abt.Active = true
 Abt.Visible = true
 Abt.Parent = hr
+Corner(1, 0, Abt)
+
+local sta = Instance.new("ImageButton")
+sta.Name = "a2_State"
+sta.Size = UDim2.new(0, 34, 0.8, 0)
+sta.Image = "rbxassetid://136632536925811"
+sta.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+sta.BackgroundTransparency = 1
+sta.Active = true
+sta.Visible = false
+sta.Parent = hr
 Corner(1, 0, Abt)
 
 
@@ -419,7 +430,28 @@ task.spawn(function()
 	local exp = hb:WaitForChild("ExperienceSettings")
 	local menu = exp:WaitForChild("Menu")
 	local topbar = menu:WaitForChild("TopBar")
-	local holder = topbar:WaitForChild("Holder")           
+	local holder = topbar:WaitForChild("Holder")
+	local sta = menu:WaitForChild("a2_State") -- 🔹 เปลี่ยนชื่อให้ตรงกับของนาย
+
+	-- ฟังก์ชันตรวจจับขนาด X
+	local function checkHolderSize()
+		local x = holder.Size.X.Offset
+		if x == 265 then
+			sta.Visible = true
+		elseif x == 90 then
+			sta.Visible = false
+		end
+	end
+
+	-- เรียกเช็กทันทีตอนเริ่ม
+	checkHolderSize()
+
+	-- ฟังการเปลี่ยนค่า Size ตลอดเวลา
+	holder:GetPropertyChangedSignal("Size"):Connect(checkHolderSize)
+end)
+
+task.spawn(function()
+    local holder = topbar:WaitForChild("Holder")   local   
 	local loadFrame = holder:WaitForChild("LoadFrame")     
 	local bg = menu:WaitForChild("About_Background")
 	local inside = bg:WaitForChild("Inside")
