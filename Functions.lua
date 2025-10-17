@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position =====
+-- ===== Positions =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -451,7 +451,7 @@ task.spawn(function()
 end)
 
 task.spawn(function()
-    local holder = topbar:WaitForChild("Holder")   local   
+    local holder = topbar:WaitForChild("Holder")
 	local loadFrame = holder:WaitForChild("LoadFrame")     
 	local bg = menu:WaitForChild("About_Background")
 	local inside = bg:WaitForChild("Inside")
