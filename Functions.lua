@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions =====
+-- ===== Position =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -154,7 +154,7 @@ sta.BackgroundTransparency = 1
 sta.Active = true
 sta.Visible = false
 sta.Parent = hr
-Corner(1, 0, Abt)
+Corner(1, 0, sta)
 
 
 -- ===== Instance =====
@@ -431,7 +431,7 @@ task.spawn(function()
 	local menu = exp:WaitForChild("Menu")
 	local topbar = menu:WaitForChild("TopBar")
 	local holder = topbar:WaitForChild("Holder")
-	local sta = menu:WaitForChild("a2_State") -- 🔹 เปลี่ยนชื่อให้ตรงกับของนาย
+	local sta = holder:WaitForChild("a2_State") -- 🔹 เปลี่ยนชื่อให้ตรงกับของนาย
 
 	-- ฟังก์ชันตรวจจับขนาด X
 	local function checkHolderSize()
