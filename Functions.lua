@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position ===== 
+-- ===== Positions ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -148,7 +148,7 @@ Corner(1, 0, Abt)
 local sta = Instance.new("ImageButton")
 sta.Name = "a2_Status"
 sta.Size = UDim2.new(0, 34, 0.8, 0)
-sta.Image = "rbxassetid://81797340836567"
+sta.Image = "rbxassetid://116259694864857"
 sta.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 sta.BackgroundTransparency = 1
 sta.Active = true
@@ -431,22 +431,21 @@ task.spawn(function()
 	local menu = exp:WaitForChild("Menu")
 	local topbar = menu:WaitForChild("TopBar")
 	local holder = topbar:WaitForChild("Holder")
-	local sta = holder:WaitForChild("a2_Status") -- 🔹 เปลี่ยนชื่อให้ตรงกับของนาย
+	local sta = holder:WaitForChild("a2_Status")
 
-	-- ฟังก์ชันตรวจจับขนาด X
 	local function checkHolderSize()
 		local x = holder.Size.X.Offset
-		if x > 21 then
+		if x > 91 then
 			sta.Visible = true
-		elseif x < 21 then
+		else
 			sta.Visible = false
 		end
 	end
 
-	-- เรียกเช็กทันทีตอนเริ่ม
+	-- ตรวจทันทีตอนเริ่ม
 	checkHolderSize()
 
-	-- ฟังการเปลี่ยนค่า Size ตลอดเวลา
+	-- อัปเดตเมื่อ Size เปลี่ยน
 	holder:GetPropertyChangedSignal("Size"):Connect(checkHolderSize)
 end)
 
