@@ -532,8 +532,8 @@ createUIListLayout(mtb, 0.005, 0, HCenter, VTop, FillH)
 local hr = Instance.new("Frame")
 hr.Name = "Holder"
 hr.Size = UDim2.new(0, 370, 1, 0)
-hr.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
-hr.BackgroundTransparency = 0.2
+hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+hr.BackgroundTransparency = 0.08
 hr.Parent = mtb
 createUICorner(hr, 1, 0)
 createUIListLayout(hr, 0, 10, HCenter, VCenter, FillH)
@@ -542,8 +542,8 @@ createUIListLayout(hr, 0, 10, HCenter, VCenter, FillH)
 local tb = Instance.new("ScrollingFrame")
 tb.Name = "TopButtons"
 tb.Size = UDim2.new(0, 0, 0, 0) -- start collapsed
-tb.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
-tb.BackgroundTransparency = 0.2
+tb.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+tb.BackgroundTransparency = 0.08
 tb.ScrollBarThickness = 4
 tb.CanvasSize = UDim2.new(0, 0, 0, 0)
 tb.ScrollingDirection = Enum.ScrollingDirection.XY
@@ -598,7 +598,7 @@ Set.Name = "a3_Settings"
 Set.Size = UDim2.new(0, 34, 0.8, 0)
 Set.Image = "rbxassetid://85613740372383"
 Set.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Set.BackgroundTransparency = 0.8
+Set.BackgroundTransparency = 1
 Set.Active = true
 Set.Visible = false
 Set.Parent = hr
@@ -610,7 +610,7 @@ hbm.Name = "z9_HamburgerMenu"
 hbm.Size = UDim2.new(0, 34, 0.8, 0)
 hbm.Image = "rbxassetid://12214197591"
 hbm.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-hbm.BackgroundTransparency = 0.8
+hbm.BackgroundTransparency = 1
 hbm.Active = true
 hbm.Visible = false
 hbm.Parent = hr
@@ -632,9 +632,9 @@ createUICorner(OC, 1, 0)
 local gpt = Instance.new("ImageButton")
 gpt.Name = "z8_ChatGPT"
 gpt.Size = UDim2.new(0, 34, 0.8, 0)
-gpt.Image = "rbxassetid://15419312153"
+gpt.Image = "rbxassetid://138929270283528"
 gpt.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-gpt.BackgroundTransparency = 0.8
+gpt.BackgroundTransparency = 1
 gpt.Active = true
 gpt.Visible = false
 gpt.Parent = hr
@@ -670,7 +670,7 @@ local MTB_X_CLOSED = 0.46
 local MTB_X_OPEN   = 0 -- open => X = 0
 
 -- hr sizes in px for open/close
-local HR_WIDTH_OPEN  = 225
+local HR_WIDTH_OPEN  = 265
 local HR_WIDTH_CLOSE = 90
 
 -- safe setter for mtb position (uses tweenObject if available)
