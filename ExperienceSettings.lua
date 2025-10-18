@@ -1,5 +1,6 @@
 -- TweenHealth()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
+print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
 
 -- ========= HEALTHBAR AND SOUNDS ===========
@@ -274,6 +275,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+print("[ HealthBar ] Successful loaded.")
 -- Image and sound pools (guarded usage)
 local imageIds = {
     96532568222291, 87031182561721, 98399849016295,
@@ -430,6 +432,7 @@ do
     end
 end
 
+print("[ HealthBar Death Sounds ] Successful loaded.")
 -- =========== AVAILABLE NOW ===============
 
 -- =========== CONTINUE EXPSETTINGS SCRPIT ======
@@ -661,6 +664,7 @@ wl.TextColor3 = Color3.fromRGB(255, 255, 255)
 wl.Visible = true
 wl.Parent = wa1
 
+print("[ Important Guis ] Successful loaded.")
 -- ===== OC (Open/Close) wiring - REPLACEMENT =====
 local OC_OPEN_IMAGE  = "rbxassetid://127874919517126" -- image when OPEN (show Set/hbm)
 local OC_CLOSE_IMAGE = "rbxassetid://124801473660620"  -- image when CLOSED (hide Set/hbm)
@@ -927,6 +931,7 @@ task.spawn(function()
     end
 end)
 
+print("[ Script_1 ] Successful loaded.")
 -- ========= END ==========
 
 -- Background panel (start OFFscreen to right)
@@ -1966,6 +1971,7 @@ local function toggleTB()
 end
 hbm.MouseButton1Click:Connect(toggleTB)
 
+print("[ Functions ] Successful loaded.")
 
 -- ChatGPT LocalScript (single-file) - unified /Ins + robust guards
 -- Language: English commands, UI messages localized in English-like lines for clarity.
@@ -3083,5 +3089,10 @@ _G.ExperienceSettings_ToggleGPT = togglePanel
 
 -- End of script
 
+print("[ ChatGPT ] Successful loaded.")
 -- ExperienceSettings loadstring - Anti Out of local limit 200
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/SeeAll.lua"))()
+print("[ SeeAll ] Successful loaded.")
+
+print("[ Background ] Successful loaded.")
+print("[ ExperienceSettings ] All Completely Successful.")
