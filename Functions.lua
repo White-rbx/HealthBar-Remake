@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions ===== 
+-- ===== Position ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -522,14 +522,21 @@ task.spawn(function()
 	end
 end)
 
--- ต้องมี TweenService อยู่แล้ว ถ้ามีให้ใช้ได้ (ไม่บังคับที่นี่)
+-- Full controls for ExperienceSettings TopBar buttons
+local TweenService = game:GetService("TweenService")
 local cg = game:GetService("CoreGui")
-local root = cg:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
-local holder = root:WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar")
-	:WaitForChild("ExperienceSettings"):WaitForChild("Menu")
-	:WaitForChild("TopBar"):WaitForChild("Holder")
 
--- ชื่อปุ่มที่อยู่ใน Holder (ตามที่คุณให้)
+-- Wait and get core UI pieces (safe)
+local root = cg:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
+local holder = root:WaitForChild("UnibarLeftFrame")
+	:WaitForChild("HealthBar"):WaitForChild("ExperienceSettings")
+	:WaitForChild("Menu"):WaitForChild("TopBar"):WaitForChild("Holder")
+
+local menu = holder.Parent.Parent -- TopBar -> Menu (convenience)
+local topbar = menu:WaitForChild("TopBar")
+local holderRef = holder
+
+-- BUTTON NAMES in Holder
 local BUTTON_NAMES = {
 	"z8_ChatGPT",
 	"z7_About",
@@ -537,7 +544,7 @@ local BUTTON_NAMES = {
 	"a2_Status",
 }
 
--- ICON mapping (OPEN / CLOSE) -- เปลี่ยนเป็นตัวจริงที่ให้มา
+-- ICON mapping (OPEN / CLOSE) from your data (already converted to rbxassetid)
 local ICONS = {
 	z8_ChatGPT = {
 		OPEN  = "rbxassetid://123382209639776",
@@ -557,61 +564,208 @@ local ICONS = {
 	},
 }
 
--- helper: หาปุ่มจาก Holder
+-- Optional: map button -> panel frame name (if you have panels to toggle)
+-- Eg: z7_About toggles "About_Background", z8_ChatGPT toggles "ChatGPT_Panel" (adjust to your actual names)
+local PANEL_MAP = {
+	z7_About = "About_Background",
+	z8_ChatGPT = "ChatGPT_Panel",
+	a3_Settings = "Settings_Background",
+	-- a2_Status is driven by LoadFrame, so not mapped here
+}
+
+-- convenience getter
 local function getBtn(name)
-	local ok, btn = pcall(function() return holder:FindFirstChild(name) end)
-	if ok and btn and (btn:IsA("ImageButton") or btn:IsA("ImageLabel") or btn:IsA("GuiButton")) then
-		return btn
+	local ok, v = pcall(function() return holderRef:FindFirstChild(name) end)
+	if ok and v and (v:IsA("ImageButton") or v:IsA("ImageLabel") or v:IsA("GuiButton")) then
+		return v
 	end
 	return nil
 end
 
--- set icon (open = true => OPEN asset, false => CLOSE asset)
+-- set icon image (open=true -> OPEN asset; false -> CLOSE)
 local function setButtonOpen(name, open)
 	local data = ICONS[name]
 	if not data then return end
 	local btn = getBtn(name)
 	if not btn then return end
-	pcall(function()
-		btn.Image = open and data.OPEN or data.CLOSE
-	end)
+	pcall(function() btn.Image = open and data.OPEN or data.CLOSE end)
 end
 
--- 1) ตั้งค่าเริ่มต้นเป็น CLOSE ให้ทุกปุ่ม
+-- initialize all icons to CLOSE (all default = CLOSE)
 for _, n in ipairs(BUTTON_NAMES) do
 	setButtonOpen(n, false)
 end
 
--- 2) ตัวอย่าง: สลับ a2_Status อัตโนมัติเมื่อ Holder.Size.X.Offset เปลี่ยน
---    (เงื่อนไข: >91 => OPEN, <=91 => CLOSE)
-local statusBtnName = "a2_Status"
-local function updateStatusIcon()
-	local ok, offset = pcall(function() return holder.Size.X.Offset end)
+-- ========== a2_Status logic: visibility opposite of LoadFrame.Visible ==========
+local loadFrame = holderRef:FindFirstChild("LoadFrame") -- should exist; we don't Wait here earlier but it's usually present
+local statusBtn = getBtn("a2_Status")
+
+local function updateStatusFromLoad()
+	if not statusBtn or not loadFrame then return end
+	local ok, vis = pcall(function() return loadFrame.Visible end)
 	if not ok then return end
-	setButtonOpen(statusBtnName, (offset > 160))
+	-- requirement: if LoadFrame.Visible == true => a2_Status.Visible = false
+	--             if LoadFrame.Visible == false => a2_Status.Visible = true
+	pcall(function() statusBtn.Visible = not vis end)
+	-- update icon accordingly (optional use of ICONS)
+	setButtonOpen("a2_Status", not vis)
 end
 
--- เรียกตอนเริ่ม และฟังการเปลี่ยนแปลง
-updateStatusIcon()
-holder:GetPropertyChangedSignal("Size"):Connect(updateStatusIcon)
+-- initial
+updateStatusFromLoad()
+-- listen for Visible change on LoadFrame
+if loadFrame then
+	pcall(function()
+		loadFrame:GetPropertyChangedSignal("Visible"):Connect(updateStatusFromLoad)
+	end)
+end
 
--- 3) การใช้งาน: ถ้าที่อื่นในโค้ดคุณเปิด/ปิด panel ให้เรียก
---    setButtonOpen("z7_About", true)  -- เปิด icon ของ About
---    setButtonOpen("z7_About", false) -- ปิดกลับเป็น CLOSE
+-- ========== a3_Settings logic: depends on Background.Position.X.Scale ==========
+-- Note: you asked Background variable exists; try to use it; fallback to find
+local Background = Background or menu:FindFirstChild("Background") or menu:FindFirstChild("About_Background") -- try variants
+local settingsBtn = getBtn("a3_Settings")
 
--- ตัวอย่างการเชื่อม (ถ้าคุณมีปุ่มจริงและอยากให้คลิกสลับไอคอน)
+local function updateSettingsFromBackground()
+	if not settingsBtn then return end
+	if not Background then
+		-- if no Background found, default to hidden
+		pcall(function() settingsBtn.Visible = false end)
+		setButtonOpen("a3_Settings", false)
+		return
+	end
+
+	local ok, pos = pcall(function() return Background.Position end)
+	if not ok or not pos then
+		pcall(function() settingsBtn.Visible = false end)
+		setButtonOpen("a3_Settings", false)
+		return
+	end
+
+	-- Use Scale if available; if pos.X.Scale exists use that, otherwise treat Offset >= 1 as closed
+	local xScale = nil
+	if pos and pos.X and pos.X.Scale ~= nil then
+		xScale = pos.X.Scale
+	else
+		-- fallback: offset (pixel). We interpret offset < 0.9*? (user wanted <0.90 means open)
+		-- But since offset is pixel, we treat offset < 1 as open (practical)
+		if pos and pos.X and pos.X.Offset ~= nil then
+			xScale = pos.X.Offset -- numeric, but we'll compare differently below
+		end
+	end
+
+	local open = false
+	if type(xScale) == "number" then
+		-- if xScale is fractional scale (0..1) then open when < 0.9
+		if xScale <= 1 and xScale >= 0 then
+			open = xScale < 0.9
+		else
+			-- it's offset; treat values < 1 (i.e. 0) as open, >=1 (100%?) as closed
+			open = xScale < 1
+		end
+	end
+
+	pcall(function()
+		settingsBtn.Visible = open
+		setButtonOpen("a3_Settings", open)
+	end)
+end
+
+-- initial and listener for Background position changes
+updateSettingsFromBackground()
+if Background then
+	pcall(function()
+		Background:GetPropertyChangedSignal("Position"):Connect(function() task.defer(updateSettingsFromBackground) end)
+	end)
+end
+
+-- ========== Click behavior: toggle icon + try to toggle related panel if exists ==========
 for _, name in ipairs(BUTTON_NAMES) do
 	local btn = getBtn(name)
 	if btn and btn:IsA("GuiButton") then
 		btn.MouseButton1Click:Connect(function()
-			-- สลับสถานะ (อ่าน asset ปัจจุบันแล้วสลับ)
-			local cur = tostring(btn.Image or "")
+			-- determine current icon state by comparing images (best-effort)
+			local curImg = tostring(btn.Image or "")
 			local openId = ICONS[name] and ICONS[name].OPEN or ""
-			local isOpen = (cur == openId)
+			local isOpen = (curImg == openId)
+
+			-- toggle visual icon
 			setButtonOpen(name, not isOpen)
+
+			-- try to toggle associated panel (if mapped and exists)
+			local panelName = PANEL_MAP[name]
+			if panelName then
+				local ok, panel = pcall(function() return menu:FindFirstChild(panelName) end)
+				if ok and panel and panel:IsA("GuiObject") then
+					pcall(function()
+						-- toggle visibility
+						panel.Visible = not panel.Visible
+					end)
+				end
+			end
 		end)
 	end
 end
+
+-- ========== Hide button (Tween holder/topbar) ==========
+do
+	-- find Hide button in your About/Background area (we try common locations)
+	local hideBtn = nil
+	-- try Menu.Background -> Inside -> Hide
+	pcall(function()
+		local bg = menu:FindFirstChild("Background") or menu:FindFirstChild("About_Background")
+		if bg then
+			local inside = bg:FindFirstChild("Inside")
+			if inside then hideBtn = inside:FindFirstChild("Hide") end
+		end
+	end)
+
+	if hideBtn and hideBtn:IsA("GuiButton") then
+		local function setHideEnabled(enabled)
+			pcall(function()
+				hideBtn.Active = enabled
+				hideBtn.AutoButtonColor = enabled
+				hideBtn.TextTransparency = enabled and 0 or 0.6
+			end)
+		end
+
+		-- enable only when LoadFrame.Visible == true (as you required earlier)
+		if loadFrame then
+			local function updateHideEnable()
+				local ok, vis = pcall(function() return loadFrame.Visible end)
+				if ok and vis then setHideEnabled(true) else setHideEnabled(false) end
+			end
+			updateHideEnable()
+			pcall(function() loadFrame:GetPropertyChangedSignal("Visible"):Connect(updateHideEnable) end)
+		end
+
+		-- click: tween holder and topbar then hide loadFrame
+		hideBtn.MouseButton1Click:Connect(function()
+			local ok, vis = pcall(function() return loadFrame and loadFrame.Visible end)
+			if not ok or not vis then return end -- disallow if loadFrame not visible
+
+			pcall(function()
+				local info = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+				TweenService:Create(holderRef, info, { Size = UDim2.new(0,44,1,0) }):Play()
+				TweenService:Create(topbar, info, { Position = UDim2.new(0.47,0,0.02,0) }):Play()
+				task.wait(0.32)
+				-- now actually hide
+				loadFrame.Visible = false
+				-- also update a2_Status to reflect loadFrame change
+				updateStatusFromLoad()
+			end)
+		end)
+	end
+end
+
+-- ========== Keep things safe: listen for holder size changes and update a2_Status (fallback) ==========
+holderRef:GetPropertyChangedSignal("Size"):Connect(function()
+	-- defer to avoid mid-layout reads
+	task.defer(function()
+		updateStatusFromLoad()
+	end)
+end)
+
+-- done
 -- ===== END =====
 
 -- Toggle builder
