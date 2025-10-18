@@ -596,7 +596,7 @@ tb:GetPropertyChangedSignal("Size"):Connect(updateButtonsVisibility)
 local Set = Instance.new("ImageButton")
 Set.Name = "a3_Settings"
 Set.Size = UDim2.new(0, 34, 0.8, 0)
-Set.Image = "rbxassetid://85613740372383"
+Set.Image = "rbxassetid://130405026545116"
 Set.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Set.BackgroundTransparency = 1
 Set.Active = true
@@ -608,7 +608,7 @@ createUICorner(Set, 1, 0)
 local hbm = Instance.new("ImageButton")
 hbm.Name = "z9_HamburgerMenu"
 hbm.Size = UDim2.new(0, 34, 0.8, 0)
-hbm.Image = "rbxassetid://12214197591"
+hbm.Image = "rbxassetid://87913047463488"
 hbm.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 hbm.BackgroundTransparency = 1
 hbm.Active = true
@@ -620,7 +620,7 @@ createUICorner(hbm, 1, 0)
 local OC = Instance.new("ImageButton")
 OC.Name = "a1_Open/Close"
 OC.Size = UDim2.new(0, 34, 0.8, 0)
-OC.Image = "rbxassetid://8877547836"
+OC.Image = "rbxassetid://125701627289702"
 OC.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 OC.BackgroundTransparency = 0.8
 OC.Active = true
@@ -632,7 +632,7 @@ createUICorner(OC, 1, 0)
 local gpt = Instance.new("ImageButton")
 gpt.Name = "z8_ChatGPT"
 gpt.Size = UDim2.new(0, 34, 0.8, 0)
-gpt.Image = "rbxassetid://138929270283528"
+gpt.Image = "rbxassetid://100183093743893"
 gpt.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 gpt.BackgroundTransparency = 1
 gpt.Active = true
@@ -662,8 +662,8 @@ wl.Visible = true
 wl.Parent = wa1
 
 -- ===== OC (Open/Close) wiring - REPLACEMENT =====
-local OC_OPEN_IMAGE  = "rbxassetid://126759169574128" -- image when OPEN (show Set/hbm)
-local OC_CLOSE_IMAGE = "rbxassetid://96748873664437"  -- image when CLOSED (hide Set/hbm)
+local OC_OPEN_IMAGE  = "rbxassetid://129712814123192" -- image when OPEN (show Set/hbm)
+local OC_CLOSE_IMAGE = "rbxassetid://125701627289702"  -- image when CLOSED (hide Set/hbm)
 
 -- target mtb X for "closed" (was 0.515 -> change to 0.48 as requested)
 local MTB_X_CLOSED = 0.46
@@ -1958,10 +1958,10 @@ local function toggleTB()
     tbOpen = not tbOpen
     if tbOpen then
         tweenObject(tb, { Size = UDim2.new(0.365, 0, 10, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        hbm.Image = "rbxassetid://10002398990"
+        hbm.Image = "rbxassetid://120294896493053"
     else
         tweenObject(tb, { Size = UDim2.new(0, 0, 0, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        hbm.Image = "rbxassetid://12214197591"
+        hbm.Image = "rbxassetid://87913047463488"
     end
 end
 hbm.MouseButton1Click:Connect(toggleTB)
