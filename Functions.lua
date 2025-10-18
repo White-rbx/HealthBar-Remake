@@ -582,6 +582,15 @@ for _, n in ipairs(BUTTON_NAMES) do
 	setButtonOpen(n, false)
 end
 
+-- 2) ตัวอย่าง: สลับ a2_Status อัตโนมัติเมื่อ Holder.Size.X.Offset เปลี่ยน
+--    (เงื่อนไข: >91 => OPEN, <=91 => CLOSE)
+local statusBtnName = "a2_Status"
+local function updateStatusIcon()
+	local ok, offset = pcall(function() return holder.Size.X.Offset end)
+	if not ok then return end
+	setButtonOpen(statusBtnName, (offset > 160))
+end
+
 -- เรียกตอนเริ่ม และฟังการเปลี่ยนแปลง
 updateStatusIcon()
 holder:GetPropertyChangedSignal("Size"):Connect(updateStatusIcon)
