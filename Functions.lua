@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions =====
+-- ===== Positions ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -435,7 +435,7 @@ task.spawn(function()
 
 	local function checkHolderSize()
 		local x = holder.Size.X.Offset
-		if x > 91 then
+		if x > 160 then
 			sta.Visible = true
 		else
 			sta.Visible = false
