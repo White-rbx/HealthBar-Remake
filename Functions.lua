@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions ===== 
+-- ===== Position ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -137,7 +137,7 @@ end
 local Abt = Instance.new("ImageButton")
 Abt.Name = "z7_About"
 Abt.Size = UDim2.new(0, 34, 0.8, 0)
-Abt.Image = "rbxassetid://9819724857"
+Abt.Image = "rbxassetid://97370032987773"
 Abt.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Abt.BackgroundTransparency = 1
 Abt.Active = true
