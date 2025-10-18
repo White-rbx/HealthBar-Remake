@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position =====
+-- ===== Positions =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -461,8 +461,7 @@ task.spawn(function()
 	local loadFrame = holder:WaitForChild("LoadFrame")     
 	local bg = menu:WaitForChild("About_Background")
 	local inside = bg:WaitForChild("Inside")
-	local inside2 = inside:WaitForChild("Inside2")
-	local hideBtn = inside2:WaitForChild("Hide")             
+	local hideBtn = inside:WaitForChild("Hide")             
 
 	local function setHideEnabled(enabled)
 		if not hideBtn then return end
