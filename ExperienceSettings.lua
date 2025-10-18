@@ -608,7 +608,7 @@ createUICorner(Set, 1, 0)
 local hbm = Instance.new("ImageButton")
 hbm.Name = "z9_HamburgerMenu"
 hbm.Size = UDim2.new(0, 34, 0.8, 0)
-hbm.Image = "rbxassetid://87913047463488"
+hbm.Image = "rbxassetid://90812069520281"
 hbm.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 hbm.BackgroundTransparency = 1
 hbm.Active = true
@@ -620,7 +620,7 @@ createUICorner(hbm, 1, 0)
 local OC = Instance.new("ImageButton")
 OC.Name = "a1_Open/Close"
 OC.Size = UDim2.new(0, 34, 0.8, 0)
-OC.Image = "rbxassetid://125701627289702"
+OC.Image = "rbxassetid://124801473660620"
 OC.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 OC.BackgroundTransparency = 0.8
 OC.Active = true
@@ -662,8 +662,8 @@ wl.Visible = true
 wl.Parent = wa1
 
 -- ===== OC (Open/Close) wiring - REPLACEMENT =====
-local OC_OPEN_IMAGE  = "rbxassetid://129712814123192" -- image when OPEN (show Set/hbm)
-local OC_CLOSE_IMAGE = "rbxassetid://125701627289702"  -- image when CLOSED (hide Set/hbm)
+local OC_OPEN_IMAGE  = "rbxassetid://127874919517126" -- image when OPEN (show Set/hbm)
+local OC_CLOSE_IMAGE = "rbxassetid://124801473660620"  -- image when CLOSED (hide Set/hbm)
 
 -- target mtb X for "closed" (was 0.515 -> change to 0.48 as requested)
 local MTB_X_CLOSED = 0.46
@@ -1961,7 +1961,7 @@ local function toggleTB()
         hbm.Image = "rbxassetid://120294896493053"
     else
         tweenObject(tb, { Size = UDim2.new(0, 0, 0, 0) }, 0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        hbm.Image = "rbxassetid://87913047463488"
+        hbm.Image = "rbxassetid://90812069520281"
     end
 end
 hbm.MouseButton1Click:Connect(toggleTB)
