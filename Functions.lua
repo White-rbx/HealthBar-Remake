@@ -521,6 +521,96 @@ task.spawn(function()
 		end)
 	end
 end)
+
+-- ต้องมี TweenService อยู่แล้ว ถ้ามีให้ใช้ได้ (ไม่บังคับที่นี่)
+local cg = game:GetService("CoreGui")
+local root = cg:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
+local holder = root:WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar")
+	:WaitForChild("ExperienceSettings"):WaitForChild("Menu")
+	:WaitForChild("TopBar"):WaitForChild("Holder")
+
+-- ชื่อปุ่มที่อยู่ใน Holder (ตามที่คุณให้)
+local BUTTON_NAMES = {
+	"z8_ChatGPT",
+	"z7_About",
+	"a3_Settings",
+	"a2_Status",
+}
+
+-- ICON mapping (OPEN / CLOSE) -- เปลี่ยนเป็นตัวจริงที่ให้มา
+local ICONS = {
+	z8_ChatGPT = {
+		OPEN  = "rbxassetid://123382209639776",
+		CLOSE = "rbxassetid://100183093743893",
+	},
+	z7_About = {
+		OPEN  = "rbxassetid://120837662459490",
+		CLOSE = "rbxassetid://97370032987773",
+	},
+	a3_Settings = {
+		OPEN  = "rbxassetid://124540552554487",
+		CLOSE = "rbxassetid://130405026545116",
+	},
+	a2_Status = {
+		OPEN  = "rbxassetid://107706370299068",
+		CLOSE = "rbxassetid://116259694864857",
+	},
+}
+
+-- helper: หาปุ่มจาก Holder
+local function getBtn(name)
+	local ok, btn = pcall(function() return holder:FindFirstChild(name) end)
+	if ok and btn and (btn:IsA("ImageButton") or btn:IsA("ImageLabel") or btn:IsA("GuiButton")) then
+		return btn
+	end
+	return nil
+end
+
+-- set icon (open = true => OPEN asset, false => CLOSE asset)
+local function setButtonOpen(name, open)
+	local data = ICONS[name]
+	if not data then return end
+	local btn = getBtn(name)
+	if not btn then return end
+	pcall(function()
+		btn.Image = open and data.OPEN or data.CLOSE
+	end)
+end
+
+-- 1) ตั้งค่าเริ่มต้นเป็น CLOSE ให้ทุกปุ่ม
+for _, n in ipairs(BUTTON_NAMES) do
+	setButtonOpen(n, false)
+end
+
+-- 2) ตัวอย่าง: สลับ a2_Status อัตโนมัติเมื่อ Holder.Size.X.Offset เปลี่ยน
+--    (เงื่อนไข: >91 => OPEN, <=91 => CLOSE)
+local statusBtnName = "a2_Status"
+local function updateStatusIcon()
+	local ok, offset = pcall(function() return holder.Size.X.Offset end)
+	if not ok then return end
+	setButtonOpen(statusBtnName, (offset > 91))
+end
+-- เรียกตอนเริ่ม และฟังการเปลี่ยนแปลง
+updateStatusIcon()
+holder:GetPropertyChangedSignal("Size"):Connect(updateStatusIcon)
+
+-- 3) การใช้งาน: ถ้าที่อื่นในโค้ดคุณเปิด/ปิด panel ให้เรียก
+--    setButtonOpen("z7_About", true)  -- เปิด icon ของ About
+--    setButtonOpen("z7_About", false) -- ปิดกลับเป็น CLOSE
+
+-- ตัวอย่างการเชื่อม (ถ้าคุณมีปุ่มจริงและอยากให้คลิกสลับไอคอน)
+for _, name in ipairs(BUTTON_NAMES) do
+	local btn = getBtn(name)
+	if btn and btn:IsA("GuiButton") then
+		btn.MouseButton1Click:Connect(function()
+			-- สลับสถานะ (อ่าน asset ปัจจุบันแล้วสลับ)
+			local cur = tostring(btn.Image or "")
+			local openId = ICONS[name] and ICONS[name].OPEN or ""
+			local isOpen = (cur == openId)
+			setButtonOpen(name, not isOpen)
+		end)
+	end
+end
 -- ===== END =====
 
 -- Toggle builder
