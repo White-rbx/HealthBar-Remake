@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions ===== 
+-- ===== Position ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -414,6 +414,15 @@ aboutButton.MouseButton1Click:Connect(function()
 
 	game:GetService("TweenService"):Create(Ab, tweenInfo, { Position = targetPos }):Play()
 end)
+
+-- =====>> Force Loop <<=====
+
+-- Continuously ensure Ab is visible
+while task.wait(0.5) do
+    if Ab.Visible == false then
+        Ab.Visible = true
+    end
+end
 
 -- =====>> Script <<=====
 skp.MouseButton1Click:Connect(function()
