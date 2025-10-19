@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- <<===== Positions =====>>
+-- ===== Positions =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -789,7 +789,7 @@ end
 
 --- Ensure Ab stays visible without blocking other code
 task.spawn(function()
-    while task.wait(0.5) do
+    while task.wait(0.005) do
         if Ab.Visible == false then
             Ab.Visible = true
         end
