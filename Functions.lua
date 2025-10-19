@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions =====
+-- <<°==== Positions =====>>
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -546,20 +546,20 @@ local BUTTON_NAMES = {
 -- ICONS (OPEN / CLOSE) — ใช้ id ที่ให้มา
 local ICONS = {
 	z8_ChatGPT = {
-		OPEN  = "rbxassetid://123382209639776",
+		OPEN  = "rbxassetid://73936905825225",
 		CLOSE = "rbxassetid://100183093743893",
 	},
 	z7_About = {
-		OPEN  = "rbxassetid://120837662459490",
+		OPEN  = "rbxassetid://132997296544985",
 		CLOSE = "rbxassetid://97370032987773",
 	},
 	a3_Settings = {
-		OPEN  = "rbxassetid://124540552554487",
+		OPEN  = "rbxassetid://137006295894798",
 		CLOSE = "rbxassetid://130405026545116",
 	},
 	a2_Status = {
-		OPEN  = "rbxassetid://107706370299068",
-		CLOSE = "rbxassetid://116259694864857",
+		OPEN  = "rbxassetid://116259694864857",
+		CLOSE = "rbxassetid://107706370299068",
 	},
 }
 
