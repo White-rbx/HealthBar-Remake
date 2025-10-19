@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- <<°==== Positions =====>>
+-- <<===== Positions =====>>
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -650,6 +650,9 @@ local function updateStatusVisibility()
 			setButtonOpen("a2_Status", false)
 		elseif offset == 90 then
 			pcall(function() statusBtn.Visible = false end)
+			setButtonOpen("a2_Status", false)
+		elseif offset == 44 then
+			pcall(function() statusBtn.Visible = false and)
 			setButtonOpen("a2_Status", false)
 		else
 			pcall(function() statusBtn.Visible = true end)
