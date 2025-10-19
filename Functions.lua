@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions ===== 
+-- <<===== Positions =====>>
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -785,6 +785,17 @@ end
 
 -- done
 
+-- =====>> Force Loop <<=====
+
+--- Ensure Ab stays visible without blocking other code
+task.spawn(function()
+    while task.wait(0.5) do
+        if Ab.Visible == false then
+            Ab.Visible = true
+        end
+    end
+end)
+
 -- ===== END =====
 
 -- Toggle builder
@@ -905,12 +916,3 @@ createToggle(BFrame, "HealthBar", function(state)
 	if stroke then stroke.Transparency = state and 0 or 1 end
 end, true) -- default = ON
 -- <<===== END HEALTHBAR =====>>
-
--- =====>> Force Loop <<=====
-
--- Continuously ensure Ab is visible
-while task.wait(0.5) do
-    if Ab.Visible == false then
-        Ab.Visible = true
-    end
-end
