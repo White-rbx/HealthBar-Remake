@@ -1,4 +1,4 @@
--- TweenHealth
+-- TweenHealth()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -625,7 +625,7 @@ OC.Name = "a1_Open/Close"
 OC.Size = UDim2.new(0, 34, 0.8, 0)
 OC.Image = "rbxassetid://124801473660620"
 OC.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-OC.BackgroundTransparency = 0.8
+OC.BackgroundTransparency = 1
 OC.Active = true
 OC.Visible = false
 OC.Parent = hr
