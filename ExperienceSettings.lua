@@ -666,8 +666,8 @@ wl.Parent = wa1
 
 print("[ Important Guis ] Successful loaded.")
 -- ===== OC (Open/Close) wiring - REPLACEMENT =====
-local OC_OPEN_IMAGE  = "rbxassetid://118485327852755" -- image when OPEN (show Set/hbm)
-local OC_CLOSE_IMAGE = "rbxassetid://124801473660620"  -- image when CLOSED (hide Set/hbm)
+local OC_OPEN_IMAGE  = "rbxassetid://126427519466832" -- image when OPEN (show Set/hbm)
+local OC_CLOSE_IMAGE = "rbxassetid://112166445155251"  -- image when CLOSED (hide Set/hbm)
 
 -- target mtb X for "closed" (was 0.515 -> change to 0.48 as requested)
 local MTB_X_CLOSED = 0.46
@@ -1112,9 +1112,9 @@ local function createToggle(parent, text, callback, defaultState)
     return f
 end
 
--- ===== Toggle loadstring() =====
+-- ===== Functions loadstring() =====
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Functions.lua"))()
-
+print("[ Functions Loadstring ] Successful loaded.")
 -- ======== TOGGLE SWITCHS ===========
 
 -- ValueLabels toggle (safe wait)
