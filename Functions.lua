@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- <<===== Positions =====>>
+-- ===== Positions =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -621,45 +621,44 @@ local function updateStatusVisibility()
 		return
 	end
 
-	-- get offset if available
+	-- safely try to read Offset and Scale
 	local offset = nil
-	if type(sizeX) == "userdata" and sizeX.Offset ~= nil then
+	local scale = nil
+	pcall(function()
+		-- sizeX may be a UDim; access in a pcall to avoid errors
 		offset = sizeX.Offset
-	elseif type(sizeX) == "table" and sizeX.Offset ~= nil then
-		offset = sizeX.Offset
-	elseif sizeX.Scale and type(sizeX.Scale) == "number" then
-		-- if using scale > 0 treat as expanded -> hide
-		if sizeX.Scale > 0 then
-			pcall(function() statusBtn.Visible = false end)
-			setButtonOpen("a2_Status", false)
-			return
-		end
+		scale = sizeX.Scale
+	end)
+
+	-- if Scale is present and > 0 treat as expanded -> hide
+	if type(scale) == "number" and scale > 0 then
+		pcall(function() statusBtn.Visible = false end)
+		setButtonOpen("a2_Status", false)
+		return
 	end
 
-	-- apply rules:
+	-- apply rules for Offset (numeric)
 	-- If Offset == 265 => Visible = true
-	-- If Offset > 265 => Visible = false
-	-- If Offset == 90 => Visible = false
+	-- If Offset > 265  => Visible = false
+	-- If Offset == 90  => Visible = false
+	-- If Offset == 44  => Visible = false
 	-- Else default true
-	if offset then
+	if type(offset) == "number" then
 		if offset == 265 then
 			pcall(function() statusBtn.Visible = true end)
 			setButtonOpen("a2_Status", true)
 		elseif offset > 265 then
 			pcall(function() statusBtn.Visible = false end)
 			setButtonOpen("a2_Status", false)
-		elseif offset == 90 then
+		elseif offset == 90 or offset == 44 then
 			pcall(function() statusBtn.Visible = false end)
-			setButtonOpen("a2_Status", false)
-		elseif offset == 44 then
-			pcall(function() statusBtn.Visible = false and)
 			setButtonOpen("a2_Status", false)
 		else
 			pcall(function() statusBtn.Visible = true end)
 			setButtonOpen("a2_Status", true)
 		end
 	else
-		-- fallback
+		-- fallback default
 		pcall(function() statusBtn.Visible = true end)
 		setButtonOpen("a2_Status", true)
 	end
