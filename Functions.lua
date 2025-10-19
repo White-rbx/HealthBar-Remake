@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position ===== 
+-- ===== Positions ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -414,15 +414,6 @@ aboutButton.MouseButton1Click:Connect(function()
 
 	game:GetService("TweenService"):Create(Ab, tweenInfo, { Position = targetPos }):Play()
 end)
-
--- =====>> Force Loop <<=====
-
--- Continuously ensure Ab is visible
-while task.wait(0.5) do
-    if Ab.Visible == false then
-        Ab.Visible = true
-    end
-end
 
 -- =====>> Script <<=====
 skp.MouseButton1Click:Connect(function()
@@ -914,3 +905,12 @@ createToggle(BFrame, "HealthBar", function(state)
 	if stroke then stroke.Transparency = state and 0 or 1 end
 end, true) -- default = ON
 -- <<===== END HEALTHBAR =====>>
+
+-- =====>> Force Loop <<=====
+
+-- Continuously ensure Ab is visible
+while task.wait(0.5) do
+    if Ab.Visible == false then
+        Ab.Visible = true
+    end
+end
