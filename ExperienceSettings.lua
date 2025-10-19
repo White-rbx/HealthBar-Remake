@@ -534,7 +534,7 @@ createUIListLayout(mtb, 0.005, 0, HCenter, VTop, FillH)
 -- Holder image area (left)
 local hr = Instance.new("Frame")
 hr.Name = "Holder"
-hr.Size = UDim2.new(0, 370, 1, 0)
+hr.Size = UDim2.new(0, 300, 1, 0)
 hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 hr.BackgroundTransparency = 0.08
 hr.Parent = mtb
@@ -647,7 +647,7 @@ createUICorner(gpt, 1, 0) --
 local wa1 = Instance.new("Frame")
 wa1.Name = "LoadFrame"
 wa1.BackgroundTransparency = 1
-wa1.Size = UDim2.new(0.73, 0, 1, 0)
+wa1.Size = UDim2.new(0.82, 0, 1, 0)
 wa1.Active = false
 wa1.Visible = true
 wa1.Parent = hr
@@ -767,7 +767,7 @@ end
 -- KEEP FORCING 
 
 mtb.Position = UDim2.new(0, 0, 0.02, 0)
-hr.Size = UDim2.new(0, 350, 1, 0)
+hr.Size = UDim2.new(0, 300, 1, 0)
 
 -- ===== HRP Watcher System (full) =====
 local Players = game:GetService("Players")
@@ -907,7 +907,7 @@ task.spawn(function()
                         safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
                     end
 
-                    safeTween(ui_hr, { Size = UDim2.new(0,360, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+                    safeTween(ui_hr, { Size = UDim2.new(0,300, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
                     pcall(function()
                         if ui_Set  then ui_Set.Visible  = false end
                         if ui_hbm then ui_hbm.Visible = false end
