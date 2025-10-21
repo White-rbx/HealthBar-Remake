@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Positions =====
+-- ===== Position =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -350,8 +350,21 @@ Creator: @5teve (Gui, Little Script)
 Helper: ChatGPT (Script) <-- He got a lot of complaints lol.
 Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 
-📌 Updated: More Button
- • Just add "Information" button to fixed annoy warn text.
+========================
+🔷 = Plan ahead for updates
+✅ = Done
+⚠️ = Have issues
+🟠 = Updating soon
+❌ = Bug
+⚫ = Cannot fix
+➖ = Disconnected or discontinued
+
+📌 Updated: Mini
+ ✅ Redraw Icons
+ ✅ Fixed Bug
+ 🟠 Updating AI Open Source (In develop)
+ ➖ ChatGPT has been disconnected
+ 🔷 Moveable HealthBar and ValueLabels
 ]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
 bigt.TextScaled = true
