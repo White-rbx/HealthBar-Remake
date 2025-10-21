@@ -3082,7 +3082,11 @@ if toggleBtn and (toggleBtn:IsA("ImageButton") or toggleBtn:IsA("TextButton")) t
 
 -- Startup message
 appendSystem("ChatGPT UI ready. Use /Help for commands. Use /Ins to open the instancer or /Ins (<args>) for quick create.")
-appendSystem("[ChatGPT]: API now are cancelled, Please use only /Help to see all commands by you own.")
+appendSystem("ChatGPT: API now are cancelled(?), Please use only /Help to see all commands by you own.")
+appendSystem("@5teve: Good News everyone! I find out how to Open Source. I will continue work on AI. I want to say...")
+appendError("DO NOT SHOW YOUR API CODE, FOR SAFELY API WILL NOT SHOW AFTER DONE TO USE API. AND GUIS WILL USE ON CoreGui. THANK YOU ALL")
+appendSystem("For notification: This Gui not update yet please wait for another update! I will remake onec.")
+
 _G.ExperienceSettings_GPT_STATE = STATE
 _G.ExperienceSettings_GPT_append = appendChat
 _G.ExperienceSettings_ToggleGPT = togglePanel
