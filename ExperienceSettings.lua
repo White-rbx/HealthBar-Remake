@@ -2099,17 +2099,17 @@ line.Parent = bk
 Corner(1,0,line)
 
 local lg = Instance.new("TextLabel")
-lg.Name = "Loading"
+lg.Name = "Disconnected"
 lg.BackgroundTransparency = 1
 lg.Position = UDim2.new(0.02,0,0.02,0)
 lg.Size = UDim2.new(0.96,0,0.2,0)
-lg.Text = "Loading"
+lg.Text = "Disconnected"
 lg.TextSize = 20
 lg.TextColor3 = Color3.fromRGB(255,255,255)
 lg.Parent = bk
 
 local wt = Instance.new("TextLabel")
-wt.Name = "Wait"
+wt.Name = "warn"
 wt.BackgroundTransparency = 1
 wt.Position = UDim2.new(0.02,0,0.25,0)
 wt.Size = UDim2.new(0.96,0,0.35,0)
@@ -2136,8 +2136,8 @@ wl.Parent = bk
 -- ตัวแปรที่มีอยู่แล้วจากโค้ดหลัก
 
 -- ค่าตำแหน่ง
-local POS_OFF = UDim2.new(0, 0, 1, 0)      -- ปิด (Y = 1)
-local POS_ON  = UDim2.new(0, 0, 0.23, 0)   -- เปิด (Y = 0.23)
+local POS_OFF = UDim2.new(0.3, 0, 1, 0)      -- ปิด (Y = 1)
+local POS_ON  = UDim2.new(0.3, 0, 0.3, 0)   -- เปิด (Y = 0.23)
 
 local TWEEN_TIME = 0.28
 local tweenInfo = TweenInfo.new(TWEEN_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
