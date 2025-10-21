@@ -2145,7 +2145,7 @@ local tweenInfo = TweenInfo.new(TWEEN_TIME, Enum.EasingStyle.Quad, Enum.EasingDi
 -- ฟังก์ชันเช็กสถานะ
 local function isBkOn()
 	local y = bk.Position.Y.Scale
-	return y <= 0.24 -- ถ้าอยู่ประมาณ 0.23 หรือต่ำกว่า ถือว่า "เปิด"
+	return y <= 0.31 -- ถ้าอยู่ประมาณ 0.23 หรือต่ำกว่า ถือว่า "เปิด"
 end
 
 -- ฟังก์ชันสลับตำแหน่ง
