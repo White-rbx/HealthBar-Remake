@@ -525,7 +525,7 @@ menuGui.Parent = expSettings
 -- Main TopBar holder (small)
 local mtb = Instance.new("Frame")
 mtb.Name = "TopBar"
-mtb.Position = UDim2.new(0, 0, 0.02, 0)
+mtb.Position = UDim2.new(0, 0, -1, 0)
 mtb.Size = UDim2.new(1, 0, 0, 43)
 mtb.BackgroundTransparency = 1
 mtb.Parent = menuGui
