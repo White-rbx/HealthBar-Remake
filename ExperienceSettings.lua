@@ -1,4 +1,4 @@
--- TweenHealth
+-- TweenHealth()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -766,7 +766,7 @@ end
 
 -- KEEP FORCING 
 
-mtb.Position = UDim2.new(0, 0, 0.02, 0)
+mtb.Position = UDim2.new(1, 0, 0.02, 0)
 hr.Size = UDim2.new(0, 300, 1, 0)
 
 -- ===== HRP Watcher System (full) =====
