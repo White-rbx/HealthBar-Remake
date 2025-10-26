@@ -1,4 +1,4 @@
--- TweenHealth() 
+-- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -525,7 +525,7 @@ menuGui.Parent = expSettings
 -- Main TopBar holder (small)
 local mtb = Instance.new("Frame")
 mtb.Name = "TopBar"
-mtb.Position = UDim2.new(0, 0, -1, 0)
+mtb.Position = UDim2.new(-2, 0, 0, 0)
 mtb.Size = UDim2.new(1, 0, 0, 43)
 mtb.BackgroundTransparency = 1
 mtb.Parent = menuGui
