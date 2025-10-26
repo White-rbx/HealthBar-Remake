@@ -1,4 +1,4 @@
--- TweenHealth()
+-- TweenHealth() 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -2092,7 +2092,7 @@ Stroke(bk, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
 
 local line = Instance.new("Frame")
 line.Name = "Line"
-line.Position = UDim2.new(0.02,0,1,0)
+line.Position = UDim2.new(0.02,0,0.2,0)
 line.Size = UDim2.new(0.96,0,0,1)
 line.BackgroundColor3 = Color3.fromRGB(255,255,255)
 line.Parent = bk
