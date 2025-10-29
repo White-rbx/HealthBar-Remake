@@ -358,13 +358,14 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ❌ = Bug
 ⚫ = Cannot fix
 ➖ = Disconnected or discontinued
-
-📌 Updated: Mini
- ✅ Redraw Icons
- ✅ Fixed Bug
+-------
+📌 Updated: Mistake
+ ❌ I'm busy at school, sorry guys. I'll make progress during the holidays.
+-------
+🔁 In progress:
  🟠 Updating AI Open Source (In develop)
- ➖ ChatGPT has been disconnected
  🔷 Moveable HealthBar and ValueLabels
+-------
 ]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
 bigt.TextScaled = true
