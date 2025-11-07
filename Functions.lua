@@ -937,7 +937,7 @@ createToggle(BFrame, "HealthBar", function(state)
 end, true) -- default = ON
 -- <<===== END HEALTHBAR =====>>
 
--- <<===== MUTED DEATH SOUNDS =====> (DUDE UPDATE DA RAW SCRIPT)
+-- <<===== MUTED DEATH SOUNDS =====>
 -- 🔇 muted
 createToggle(BFrame, "Disable Death Sound", function(state)
 	local Players = game:GetService("Players")
