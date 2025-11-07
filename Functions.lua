@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position =====
+-- ===== Positions =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -938,25 +938,32 @@ end, true) -- default = ON
 -- <<===== END HEALTHBAR =====>>
 
 -- <<===== MUTED DEATH SOUNDS =====>
--- 🔇 muted
-createToggle(BFrame, "Disable Death Sound", function(state)
+-- ตัวแปรควบคุม loop
+local deathSoundLoopRunning = false
+
+createToggle(parentFrame, "Disable Death Sound", function(state)
 	local Players = game:GetService("Players")
 	local player = Players.LocalPlayer
 
-	-- สร้าง loop ที่ตรวจจับตลอดเวลา
-	task.spawn(function()
-		while task.wait(0.5) do
-			if not state then break end -- OFF → หยุดลบ
-
-			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				for _, obj in ipairs(hrp:GetChildren()) do
-					if obj.Name == "DeathSoundClient" then
-						obj:Destroy()
+	if state then
+		-- เปิด: เริ่มตรวจจับ
+		deathSoundLoopRunning = true
+		task.spawn(function()
+			while deathSoundLoopRunning do
+				local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					for _, obj in ipairs(hrp:GetChildren()) do
+						if obj.Name == "DeathSoundClient" then
+							obj:Destroy()
+						end
 					end
 				end
+				task.wait(0.05)
 			end
-		end
-	end)
-end, false) -- default = OFF
+		end)
+	else
+		-- ปิด: หยุดลบเสียงทันที
+		deathSoundLoopRunning = false
+	end
+end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
