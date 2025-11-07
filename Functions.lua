@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== [ Position ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -969,125 +969,66 @@ createToggle(BFrame, "Disable Death Sound", function(state)
 end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
---// Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-
---// Variables
-local player = Players.LocalPlayer
-local camera = Workspace.CurrentCamera
-local camPart = nil
-local connections = {}
-local yaw, pitch = 0, 0
-local speed = 16
-local sensitivity = 0.002
-
---// Debug Helper
-local function dprint(...)
-	print("[ExperienceCamera DEBUG]", ...)
-end
-
---// ฟังก์ชันลบกล้อง
-local function disableExperienceCamera()
-	dprint("Disabling camera mode...")
-
-	for _, conn in ipairs(connections) do
-		conn:Disconnect()
-	end
-	table.clear(connections)
-
-	if camPart and camPart.Parent then
-		dprint("Destroying camPart")
-		camPart:Destroy()
-	end
-	camPart = nil
-
-	camera.CameraType = Enum.CameraType.Custom
-	camera.CameraMode = Enum.CameraMode.Classic
-	local char = player.Character or player.CharacterAdded:Wait()
-	camera.CameraSubject = char:FindFirstChildOfClass("Humanoid")
-
-	dprint("Returned to player camera")
-end
-
---// ฟังก์ชันเปิดกล้อง
-local function enableExperienceCamera()
-	dprint("Enabling camera mode...")
-
-	disableExperienceCamera()
-
-	local char = player.Character or player.CharacterAdded:Wait()
-	local head = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
-
-	if not head then
-		dprint("❌ Cannot find Head or HRP!")
-		return
-	end
-
-	dprint("✅ Found Head:", head.Name)
-
-	camPart = Instance.new("Part")
-	camPart.Name = "ExperienceSettingsCamera"
-	camPart.Size = Vector3.new(1, 1, 1)
-	camPart.Anchored = true
-	camPart.CanCollide = false
-	camPart.Transparency = 0.5
-	camPart.CFrame = head.CFrame
-	camPart.Locked = true
-	camPart.Parent = Workspace
-	dprint("✅ Created camPart in Workspace")
-
-	local poi = Instance.new("PointLight")
-	poi.Brightness = 2
-	poi.Range = 10
-	poi.Parent = camPart
-	dprint("✅ Added PointLight")
-
-	camera.CameraType = Enum.CameraType.Scriptable
-	camera.CameraMode = Enum.CameraMode.LockFirstPerson
-	yaw, pitch = 0, 0
-
-	dprint("🎥 Camera switched to Scriptable")
-
-	-- หมุนกล้องตามเมาส์
-	table.insert(connections, UserInputService.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement then
-			yaw -= input.Delta.X * sensitivity
-			pitch -= input.Delta.Y * sensitivity
-			pitch = math.clamp(pitch, -math.rad(80), math.rad(80))
-		end
-	end))
-
-	-- เคลื่อนที่
-	table.insert(connections, RunService.RenderStepped:Connect(function(dt)
-		if not camPart then return end
-		local look = CFrame.Angles(pitch, yaw, 0)
-		camera.CFrame = CFrame.new(camPart.Position) * look
-
-		local move = Vector3.zero
-		if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += Vector3.new(0, 0, -1) end
-		if UserInputService:IsKeyDown(Enum.KeyCode.S) then move += Vector3.new(0, 0, 1) end
-		if UserInputService:IsKeyDown(Enum.KeyCode.A) then move += Vector3.new(-1, 0, 0) end
-		if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += Vector3.new(1, 0, 0) end
-
-		if move.Magnitude > 0 then
-			move = (camera.CFrame:VectorToWorldSpace(move)).Unit
-			camPart.CFrame += move * dt * speed
-		end
-	end))
-
-	dprint("✅ Experience Camera fully enabled.")
-end
-
---// ใช้ toggle (parent = BFrame)
+-- ✅ ตัวอย่าง: Toggle สำหรับ ExperienceSettingsCamera (พร้อม debug)
 createToggle(BFrame, "Experience Camera", function(state)
-	dprint("Toggle pressed. State =", state)
+	print("[ExperienceCamera DEBUG] Toggle pressed. State =", state)
+
+	local Players = game:GetService("Players")
+	local LocalPlayer = Players.LocalPlayer
+	local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	local Head = Character:WaitForChild("Head", 5)
+	local Camera = workspace.CurrentCamera
+
 	if state then
-		enableExperienceCamera()
+		print("[ExperienceCamera DEBUG] Enabling camera mode...")
+
+		-- ลบของเก่าก่อนกันซ้ำ
+		local old = workspace:FindFirstChild("ExperienceSettingsCamera")
+		if old then
+			old:Destroy()
+		end
+
+		-- สร้าง part ใหม่
+		local part = Instance.new("Part")
+		part.Name = "ExperienceSettingsCamera"
+		part.Size = Vector3.new(1, 1, 1)
+		part.Anchored = true
+		part.Transparency = 0.5
+		part.Locked = true
+		part.CanCollide = false
+		part.CFrame = Head.CFrame
+		part.Parent = workspace
+		print("[ExperienceCamera DEBUG] Part created at:", tostring(part.Position))
+
+		-- เพิ่มไฟ
+		local light = Instance.new("PointLight")
+		light.Brightness = 1
+		light.Range = 8
+		light.Color = Color3.new(1, 1, 1)
+		light.Parent = part
+		print("[ExperienceCamera DEBUG] PointLight added")
+
+		-- ตั้งค่ากล้อง
+		Camera.CameraType = Enum.CameraType.Scriptable
+		Camera.CFrame = part.CFrame
+		LocalPlayer.CameraMaxZoomDistance = 0.5
+		LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+		print("[ExperienceCamera DEBUG] Camera switched to ExperienceSettingsCamera")
+
 	else
-		disableExperienceCamera()
+		print("[ExperienceCamera DEBUG] Disabling camera mode...")
+
+		-- ลบ part ถ้ามี
+		local part = workspace:FindFirstChild("ExperienceSettingsCamera")
+		if part then
+			part:Destroy()
+			print("[ExperienceCamera DEBUG] Removed ExperienceSettingsCamera")
+		end
+
+		-- คืนค่ากล้องปกติ
+		local Camera = workspace.CurrentCamera
+		Camera.CameraType = Enum.CameraType.Custom
+		LocalPlayer.CameraMode = Enum.CameraMode.Classic
+		print("[ExperienceCamera DEBUG] Camera reset to default mode")
 	end
-end, false)
+end, false) -- 🟢 default = OFF
