@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position ===== 
+-- ===== Position =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -937,7 +937,7 @@ createToggle(BFrame, "HealthBar", function(state)
 end, true) -- default = ON
 -- <<===== END HEALTHBAR =====>>
 
--- <<===== MUTED DEATH SOUNDS =====> (update raw script bruh it's not loaded)
+-- <<===== MUTED DEATH SOUNDS =====> (DUDE UPDATE DA RAW SCRIPT)
 -- 🔇 muted
 createToggle(BFrame, "Disable Death Sound", function(state)
 	local Players = game:GetService("Players")
