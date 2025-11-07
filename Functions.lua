@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -970,31 +970,30 @@ end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
 -- ✅ ตัวอย่าง: Toggle สำหรับ ExperienceSettingsCamera (พร้อม debug)
--- 🧩 Toggle: ExperienceSettingsCamera
+-- 🧩 Toggle: ExperienceSettingsCamera (cleaned + proper camera mode)
 createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
-	local TweenService = game:GetService("TweenService")
+	local UserInputService = game:GetService("UserInputService")
 
 	local player = Players.LocalPlayer
-	local cam = workspace.CurrentCamera
 	local char = player.Character or player.CharacterAdded:Wait()
 	local hrp = char:WaitForChild("HumanoidRootPart")
 	local humanoid = char:WaitForChild("Humanoid")
+	local cam = workspace.CurrentCamera
 
 	local existingPart = workspace:FindFirstChild("ExperienceSettingsCamera")
 
-	-- 🟢 เปิด (สร้าง Camera)
 	if state then
 		if existingPart then existingPart:Destroy() end
 
+		-- สร้าง Part กล้อง
 		local part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
 		part.Size = Vector3.new(1, 1, 1)
 		part.Anchored = true
-		part.Transparency = 0.5
-		part.Locked = true
 		part.CanCollide = false
+		part.Transparency = 0.5
 		part.CFrame = hrp.CFrame * CFrame.new(0, 2, -5)
 		part.Parent = workspace
 
@@ -1003,30 +1002,63 @@ createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 		light.Range = 16
 		light.Parent = part
 
-		-- ปิดการควบคุมตัวละคร
-		humanoid.WalkSpeed = 0
-		humanoid.JumpPower = 0
+		-- ปิดการเคลื่อนไหวตัวละคร (ไม่ยุ่ง WalkSpeed / JumpPower)
 		humanoid.AutoRotate = false
 		hrp.Anchored = true
 
-		-- ตั้งมุมกล้อง
+		-- ตั้งกล้อง
 		cam.CameraSubject = part
-		cam.CameraType = Enum.CameraType.Scriptable
 		cam.CameraMode = Enum.CameraMode.LockFirstPerson
 
-		-- ควบคุมด้วย Keyboard
-		local moveVector = Vector3.new()
-		local rotX, rotY = 0, 0
+		-- ฟังก์ชันสร้างปุ่ม Mobile
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "ExperienceCamMobile"
+		gui.IgnoreGuiInset = true
+		gui.ResetOnSpawn = false
+		gui.Parent = player:WaitForChild("PlayerGui")
 
-		local UserInputService = game:GetService("UserInputService")
+		local mobileKeys = {}
+		local function makeButton(name, text, pos)
+			local btn = Instance.new("TextButton")
+			btn.Name = name
+			btn.Text = text
+			btn.Size = UDim2.new(0, 90, 0, 90)
+			btn.Position = pos
+			btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+			btn.BackgroundTransparency = 0.5
+			btn.TextScaled = true
+			btn.TextColor3 = Color3.fromRGB(0,0,0)
+			btn.Font = Enum.Font.SourceSansBold
+			btn.Parent = gui
 
-		UserInputService.InputChanged:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseMovement then
-				rotX = rotX - input.Delta.Y * 0.2
-				rotY = rotY - input.Delta.X * 0.2
-			end
-		end)
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(0,8)
+			corner.Parent = btn
 
+			local stroke = Instance.new("UIStroke")
+			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			stroke.LineJoinMode = Enum.LineJoinMode.Round
+			stroke.Color = Color3.fromRGB(255,255,255)
+			stroke.Thickness = 1
+			stroke.Transparency = 0
+			stroke.Parent = btn
+
+			btn.MouseButton1Down:Connect(function() mobileKeys[name] = true end)
+			btn.MouseButton1Up:Connect(function() mobileKeys[name] = false end)
+			btn.TouchStarted:Connect(function() mobileKeys[name] = true end)
+			btn.TouchEnded:Connect(function() mobileKeys[name] = false end)
+		end
+
+		-- ปุ่มซ้าย (WASD)
+		makeButton("W", "W", UDim2.new(0.1, 0, 0.65, 0))
+		makeButton("A", "A", UDim2.new(0.02, 0, 0.75, 0))
+		makeButton("S", "S", UDim2.new(0.1, 0, 0.85, 0))
+		makeButton("D", "D", UDim2.new(0.18, 0, 0.75, 0))
+		-- ปุ่มขวา (Q,E)
+		makeButton("Q", "Q", UDim2.new(0.8, 0, 0.65, 0))
+		makeButton("E", "E", UDim2.new(0.8, 0, 0.85, 0))
+
+		-- คีย์บอร์ด
 		local moveKeys = {
 			W = Vector3.new(0, 0, -1),
 			S = Vector3.new(0, 0, 1),
@@ -1037,9 +1069,9 @@ createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 		}
 
 		local pressed = {}
-
 		UserInputService.InputBegan:Connect(function(input, gp)
-			if not gp and moveKeys[input.KeyCode.Name] then
+			if gp then return end
+			if moveKeys[input.KeyCode.Name] then
 				pressed[input.KeyCode.Name] = true
 			end
 		end)
@@ -1050,64 +1082,7 @@ createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 			end
 		end)
 
-		-- 🟠 ฟังก์ชันสร้างปุ่ม Mobile
-		local function createMobileButton(gui, name, text, pos, callback)
-			local btn = Instance.new("TextButton")
-			btn.Name = name
-			btn.Text = text
-			btn.TextScaled = true
-			btn.Size = UDim2.new(0, 50, 0, 50)
-			btn.Position = pos
-			btn.BackgroundTransparency = 0.5
-			btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			btn.TextColor3 = Color3.fromRGB(0, 0, 0)
-			btn.AutoButtonColor = true
-			btn.ZIndex = 10
-			btn.BorderSizePixel = 0
-			btn.Font = Enum.Font.SourceSansBold
-			btn.Parent = gui
-
-			local corner = Instance.new("UICorner")
-			corner.CornerRadius = UDim.new(0, 8)
-			corner.Parent = btn
-
-			local stroke = Instance.new("UIStroke")
-			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			stroke.LineJoinMode = Enum.LineJoinMode.Round
-			stroke.Color = Color3.fromRGB(255, 255, 255)
-			stroke.Thickness = 1
-			stroke.Transparency = 0
-			stroke.Parent = btn
-
-			btn.MouseButton1Down:Connect(function() callback(true) end)
-			btn.MouseButton1Up:Connect(function() callback(false) end)
-			btn.TouchStarted:Connect(function() callback(true) end)
-			btn.TouchEnded:Connect(function() callback(false) end)
-		end
-
-		-- 🟦 GUI ปุ่ม Mobile
-		local gui = Instance.new("ScreenGui")
-		gui.Name = "ExperienceCamMobile"
-		gui.IgnoreGuiInset = true
-		gui.ResetOnSpawn = false
-		gui.Parent = player:WaitForChild("PlayerGui")
-
-		local mobileKeys = {}
-
-		local function reg(name, text, pos)
-			createMobileButton(gui, name, text, pos, function(down)
-				mobileKeys[name] = down
-			end)
-		end
-
-		reg("W", "W", UDim2.new(0.1, 0, 0.65, 0))
-		reg("A", "A", UDim2.new(0.02, 0, 0.75, 0))
-		reg("S", "S", UDim2.new(0.1, 0, 0.85, 0))
-		reg("D", "D", UDim2.new(0.18, 0, 0.75, 0))
-		reg("Q", "Q", UDim2.new(0.8, 0, 0.65, 0))
-		reg("E", "E", UDim2.new(0.8, 0, 0.85, 0))
-
-		-- 🟣 อัปเดตการเคลื่อนที่
+		-- การเคลื่อนที่กล้อง (CFrame.Position)
 		RunService.RenderStepped:Connect(function(dt)
 			local dir = Vector3.new()
 			for key, vec in pairs(moveKeys) do
@@ -1115,32 +1090,22 @@ createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 					dir += vec
 				end
 			end
-
 			if dir.Magnitude > 0 then
 				dir = dir.Unit
 			end
-
-			local rot = CFrame.Angles(math.rad(rotX), math.rad(rotY), 0)
-			part.CFrame = part.CFrame * rot * CFrame.new(dir * dt * 10)
-			cam.CFrame = part.CFrame
+			part.CFrame = part.CFrame + dir * dt * 15
 		end)
 
-	-- 🔴 ปิด (กลับสู่ค่าเดิม)
 	else
+		-- 🔴 ปิด (OFF)
 		if existingPart then existingPart:Destroy() end
-
-		-- ลบ GUI
 		local gui = player.PlayerGui:FindFirstChild("ExperienceCamMobile")
 		if gui then gui:Destroy() end
 
-		-- คืนค่าตัวละคร
-		humanoid.WalkSpeed = 16
-		humanoid.JumpPower = 50
 		humanoid.AutoRotate = true
 		hrp.Anchored = false
 
-		cam.CameraSubject = humanoid
-		cam.CameraType = Enum.CameraType.Custom
 		cam.CameraMode = Enum.CameraMode.Classic
+		cam.CameraSubject = humanoid
 	end
 end, false)
