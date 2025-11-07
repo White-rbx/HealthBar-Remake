@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== Position =====
+-- ===== Positions =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -351,6 +351,9 @@ Helper: ChatGPT (Script) <-- He got a lot of complaints lol.
 Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 
 ========================
+➕ = Add something
+📢 = Announcements
+🔨 = In-develop
 🔷 = Plan ahead for updates
 ✅ = Done
 ⚠️ = Have issues
@@ -359,11 +362,12 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ⚫ = Cannot fix
 ➖ = Disconnected or discontinued
 -------
-📌 Updated: Mistake
- ❌ I'm busy at school, sorry guys. I'll make progress during the holidays.
+📌 Updated: Little update
+ ➕ Add muted death sounds switch
 -------
 🔁 In progress:
- 🟠 Updating AI Open Source (In develop)
+ 🔨 Creating Status Profile (Debug)
+ 🔨 Updating AI Open Source (In develop)
  🔷 Moveable HealthBar and ValueLabels
 -------
 ]]
@@ -932,3 +936,27 @@ createToggle(BFrame, "HealthBar", function(state)
 	if stroke then stroke.Transparency = state and 0 or 1 end
 end, true) -- default = ON
 -- <<===== END HEALTHBAR =====>>
+
+-- <<===== MUTED DEATH SOUNDS =====>
+-- 🔇 muted
+createToggle(parentFrame, "Disable Death Sound", function(state)
+	local Players = game:GetService("Players")
+	local player = Players.LocalPlayer
+
+	-- สร้าง loop ที่ตรวจจับตลอดเวลา
+	task.spawn(function()
+		while task.wait(0.5) do
+			if not state then break end -- OFF → หยุดลบ
+
+			local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				for _, obj in ipairs(hrp:GetChildren()) do
+					if obj.Name == "DeathSoundClient" then
+						obj:Destroy()
+					end
+				end
+			end
+		end
+	end)
+end, false) -- default = OFF
+-- <<===== END MUTED DEATH SOUNDS =====>
