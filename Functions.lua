@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== [ Position ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -969,74 +969,91 @@ createToggle(BFrame, "Disable Death Sound", function(state)
 end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
--- <<===== AlwaysShowHealthDisplay =====>>
+-- =======[ Experience Camera Toggle ]=======
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
-local savedDisplayTypes = {} -- เก็บค่า HealthDisplayType เดิม
-local AlwaysHealthOn = false -- Default: OFF
-local loopRunning = false
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local cameraPart
+local moveDirection = Vector3.zero
+local moveSpeed = 16
+local mouseSensitivity = 0.002
 
--- ฟังก์ชันหลัก
-local function updateAllPlayers()
-	for _, player in ipairs(Players:GetPlayers()) do
-		local char = player.Character
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			if AlwaysHealthOn then
-				-- ถ้ายังไม่มีบันทึกไว้ ให้เก็บก่อน
-				if not savedDisplayTypes[player] then
-					savedDisplayTypes[player] = hum.HealthDisplayType
-				end
-				-- ถ้ายังไม่เป็น AlwaysOn ให้เปลี่ยนเลย
-				if hum.HealthDisplayType ~= Enum.HumanoidHealthDisplayType.AlwaysOn then
-					hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
-				end
-			else
-				-- ถ้า OFF คืนค่าที่เก็บไว้
-				if savedDisplayTypes[player] then
-					hum.HealthDisplayType = savedDisplayTypes[player]
-				else
-					hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.DisplayWhenDamaged
-				end
-			end
-		end
-	end
+local function createExperienceCam()
+	-- ลบของเก่าถ้ามี
+	local existing = Workspace:FindFirstChild("ExperienceSettingsCamera")
+	if existing then existing:Destroy() end
+
+	local head = player.Character and player.Character:FindFirstChild("Head")
+	if not head then return end
+
+	cameraPart = Instance.new("Part")
+	cameraPart.Name = "ExperienceSettingsCamera"
+	cameraPart.Size = Vector3.new(1, 1, 1)
+	cameraPart.Transparency = 1
+	cameraPart.Anchored = true
+	cameraPart.CanCollide = false
+	cameraPart.CFrame = head.CFrame
+	cameraPart.Parent = Workspace
+
+	local light = Instance.new("PointLight")
+	light.Brightness = 2
+	light.Range = 12
+	light.Parent = cameraPart
+
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.CameraMode = Enum.CameraMode.LockFirstPerson
+	camera.CFrame = cameraPart.CFrame
+
+	moveDirection = Vector3.zero
+
+	-- 🧠 การควบคุมทิศทาง (PC)
+	UserInputService.InputBegan:Connect(function(input, gp)
+		if gp then return end
+		if input.KeyCode == Enum.KeyCode.W then moveDirection += Vector3.new(0, 0, -1) end
+		if input.KeyCode == Enum.KeyCode.S then moveDirection += Vector3.new(0, 0, 1) end
+		if input.KeyCode == Enum.KeyCode.A then moveDirection += Vector3.new(-1, 0, 0) end
+		if input.KeyCode == Enum.KeyCode.D then moveDirection += Vector3.new(1, 0, 0) end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.KeyCode == Enum.KeyCode.W then moveDirection -= Vector3.new(0, 0, -1) end
+		if input.KeyCode == Enum.KeyCode.S then moveDirection -= Vector3.new(0, 0, 1) end
+		if input.KeyCode == Enum.KeyCode.A then moveDirection -= Vector3.new(-1, 0, 0) end
+		if input.KeyCode == Enum.KeyCode.D then moveDirection -= Vector3.new(1, 0, 0) end
+	end)
+
+	-- 🎮 เคลื่อนที่และหมุนกล้อง
+	RunService.RenderStepped:Connect(function(dt)
+		if not cameraPart then return end
+		cameraPart.CFrame = cameraPart.CFrame * CFrame.new(moveDirection * moveSpeed * dt)
+
+		-- หมุนกล้องตามเมาส์ (PC)
+		local delta = UserInputService:GetMouseDelta()
+		cameraPart.CFrame *= CFrame.Angles(0, -delta.X * mouseSensitivity, 0)
+
+		-- ปรับมุมกล้อง
+		camera.CFrame = cameraPart.CFrame
+	end)
 end
 
--- ผู้เล่นใหม่เข้ามา
-Players.PlayerAdded:Connect(function(player)
-	player.CharacterAdded:Connect(function(char)
-		local hum = char:WaitForChild("Humanoid", 5)
-		if hum then
-			if AlwaysHealthOn then
-				savedDisplayTypes[player] = hum.HealthDisplayType
-				hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
-			end
-		end
-	end)
-end)
+local function disableExperienceCam()
+	local existing = Workspace:FindFirstChild("ExperienceSettingsCamera")
+	if existing then existing:Destroy() end
 
--- ลูปตรวจจับเรื่อย ๆ ตอนเปิด
-local function startLoop()
-	if loopRunning then return end
-	loopRunning = true
-	task.spawn(function()
-		while AlwaysHealthOn do
-			updateAllPlayers()
-			task.wait(1) -- อัปเดตทุก 1 วิ
-		end
-		loopRunning = false
-	end)
+	camera.CameraType = Enum.CameraType.Custom
+	camera.CameraMode = Enum.CameraMode.Classic
+	camera.CameraSubject = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 end
 
--- ปุ่ม Toggle ใช้ฟังก์ชันของคุณเอง (createToggle)
-createToggle(BFrame, "Always Show Health", false, function(state)
-	AlwaysHealthOn = state
+-- 🔘 ใช้ร่วมกับ createToggle
+createToggle(BFrame, "Experience Camera", false, function(state)
 	if state then
-		updateAllPlayers()
-		startLoop()
+		createExperienceCam()
 	else
-		updateAllPlayers()
+		disableExperienceCam()
 	end
 end)
--- <<===== End AlwaysShowHealthDisplay =====>>
