@@ -941,7 +941,7 @@ end, true) -- default = ON
 -- ตัวแปรควบคุม loop
 local deathSoundLoopRunning = false
 
-createToggle(parentFrame, "Disable Death Sound", function(state)
+createToggle(BFrame, "Disable Death Sound", function(state)
 	local Players = game:GetService("Players")
 	local player = Players.LocalPlayer
 
