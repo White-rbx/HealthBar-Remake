@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -989,7 +989,7 @@ local function createMobileButton(gui, name, text, pos, callback)
 	btn.Text = text
 	btn.TextScaled = true
 	btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-	btn.Size = UDim2.new(0.08, 0, 0.08, 0)
+	btn.Size = UDim2.new(0, 80, 80, 0)
 	btn.Position = pos
 	btn.TextColor3 = Color3.fromRGB(255,255,255)
 	btn.Parent = gui
@@ -1010,7 +1010,7 @@ createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 			activePart = Instance.new("Part")
 			activePart.Name = "ExperienceSettingsCamera"
 			activePart.Size = Vector3.new(1, 1, 1)
-			activePart.Anchored = false
+			activePart.Anchored = true
 			activePart.CanCollide = false
 			activePart.Transparency = 1
 			activePart.CFrame = head.CFrame
