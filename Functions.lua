@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -969,91 +969,102 @@ createToggle(BFrame, "Disable Death Sound", function(state)
 end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
--- =======[ Experience Camera Toggle ]=======
+--// ======= Experience Camera Toggle ======= //--
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
-local cameraPart
-local moveDirection = Vector3.zero
-local moveSpeed = 16
-local mouseSensitivity = 0.002
 
-local function createExperienceCam()
-	-- ลบของเก่าถ้ามี
-	local existing = Workspace:FindFirstChild("ExperienceSettingsCamera")
-	if existing then existing:Destroy() end
+local camPart = nil
+local moveDir = Vector3.zero
+local speed = 16
+local sensitivity = 0.002
+local yaw, pitch = 0, 0 -- เพิ่มแกนหมุน
 
-	local head = player.Character and player.Character:FindFirstChild("Head")
-	if not head then return end
+local connections = {}
 
-	cameraPart = Instance.new("Part")
-	cameraPart.Name = "ExperienceSettingsCamera"
-	cameraPart.Size = Vector3.new(1, 1, 1)
-	cameraPart.Transparency = 1
-	cameraPart.Anchored = true
-	cameraPart.CanCollide = false
-	cameraPart.CFrame = head.CFrame
-	cameraPart.Parent = Workspace
+-- ลบกล้อง
+local function disableExperienceCamera()
+	for _, c in ipairs(connections) do
+		c:Disconnect()
+	end
+	table.clear(connections)
 
-	local light = Instance.new("PointLight")
-	light.Brightness = 2
-	light.Range = 12
-	light.Parent = cameraPart
-
-	camera.CameraType = Enum.CameraType.Scriptable
-	camera.CameraMode = Enum.CameraMode.LockFirstPerson
-	camera.CFrame = cameraPart.CFrame
-
-	moveDirection = Vector3.zero
-
-	-- 🧠 การควบคุมทิศทาง (PC)
-	UserInputService.InputBegan:Connect(function(input, gp)
-		if gp then return end
-		if input.KeyCode == Enum.KeyCode.W then moveDirection += Vector3.new(0, 0, -1) end
-		if input.KeyCode == Enum.KeyCode.S then moveDirection += Vector3.new(0, 0, 1) end
-		if input.KeyCode == Enum.KeyCode.A then moveDirection += Vector3.new(-1, 0, 0) end
-		if input.KeyCode == Enum.KeyCode.D then moveDirection += Vector3.new(1, 0, 0) end
-	end)
-
-	UserInputService.InputEnded:Connect(function(input)
-		if input.KeyCode == Enum.KeyCode.W then moveDirection -= Vector3.new(0, 0, -1) end
-		if input.KeyCode == Enum.KeyCode.S then moveDirection -= Vector3.new(0, 0, 1) end
-		if input.KeyCode == Enum.KeyCode.A then moveDirection -= Vector3.new(-1, 0, 0) end
-		if input.KeyCode == Enum.KeyCode.D then moveDirection -= Vector3.new(1, 0, 0) end
-	end)
-
-	-- 🎮 เคลื่อนที่และหมุนกล้อง
-	RunService.RenderStepped:Connect(function(dt)
-		if not cameraPart then return end
-		cameraPart.CFrame = cameraPart.CFrame * CFrame.new(moveDirection * moveSpeed * dt)
-
-		-- หมุนกล้องตามเมาส์ (PC)
-		local delta = UserInputService:GetMouseDelta()
-		cameraPart.CFrame *= CFrame.Angles(0, -delta.X * mouseSensitivity, 0)
-
-		-- ปรับมุมกล้อง
-		camera.CFrame = cameraPart.CFrame
-	end)
-end
-
-local function disableExperienceCam()
-	local existing = Workspace:FindFirstChild("ExperienceSettingsCamera")
-	if existing then existing:Destroy() end
+	if camPart and camPart.Parent then
+		camPart:Destroy()
+	end
+	camPart = nil
 
 	camera.CameraType = Enum.CameraType.Custom
 	camera.CameraMode = Enum.CameraMode.Classic
 	camera.CameraSubject = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 end
 
--- 🔘 ใช้ร่วมกับ createToggle
-createToggle(BFrame, "Experience Camera", false, function(state)
+-- สร้างกล้อง
+local function enableExperienceCamera()
+	disableExperienceCamera()
+
+	local char = player.Character or player.CharacterAdded:Wait()
+	local head = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+	if not head then return end
+
+	camPart = Instance.new("Part")
+	camPart.Name = "ExperienceSettingsCamera"
+	camPart.Anchored = true
+	camPart.CanCollide = false
+	camPart.Transparency = 1
+	camPart.Size = Vector3.new(1, 1, 1)
+	camPart.CFrame = head.CFrame
+	camPart.Parent = Workspace
+
+	local light = Instance.new("PointLight")
+	light.Brightness = 2
+	light.Range = 10
+	light.Parent = camPart
+
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.CameraMode = Enum.CameraMode.LockFirstPerson
+
+	yaw, pitch = 0, 0
+
+	-- ควบคุมการหมุนกล้อง
+	table.insert(connections, UserInputService.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			yaw -= input.Delta.X * sensitivity
+			pitch -= input.Delta.Y * sensitivity
+			pitch = math.clamp(pitch, -math.rad(80), math.rad(80)) -- จำกัดไม่ให้หมุนเกินหัว
+		end
+	end))
+
+	-- ควบคุมทิศทางเดิน
+	table.insert(connections, RunService.RenderStepped:Connect(function(dt)
+		if not camPart then return end
+
+		local lookCFrame = CFrame.new(Vector3.zero)
+			* CFrame.Angles(pitch, yaw, 0)
+		camera.CFrame = CFrame.new(camPart.Position) * lookCFrame
+
+		local move = Vector3.new()
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += Vector3.new(0, 0, -1) end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then move += Vector3.new(0, 0, 1) end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then move += Vector3.new(-1, 0, 0) end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += Vector3.new(1, 0, 0) end
+
+		local moveWorld = (camera.CFrame:VectorToWorldSpace(move)).Unit
+		if move.Magnitude > 0 then
+			camPart.CFrame += moveWorld * dt * speed
+		end
+	end))
+end
+
+--// ปุ่ม Toggle (Default: OFF)
+createToggle(BFrame, "Experience Camera", function(state)
 	if state then
-		createExperienceCam()
+		enableExperienceCamera()
 	else
-		disableExperienceCam()
+		disableExperienceCamera()
 	end
-end)
+end, false)
