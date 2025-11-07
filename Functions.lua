@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== [ Position's ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -970,24 +970,25 @@ end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
 -- ✅ ตัวอย่าง: Toggle สำหรับ ExperienceSettingsCamera (พร้อม debug)
--- 🧩 Toggle: ExperienceSettingsCamera (cleaned + proper camera mode)
+-- 🧩 Toggle: ExperienceSettingsCamera
 createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
 
 	local player = Players.LocalPlayer
+	local cam = workspace.CurrentCamera
 	local char = player.Character or player.CharacterAdded:Wait()
 	local hrp = char:WaitForChild("HumanoidRootPart")
 	local humanoid = char:WaitForChild("Humanoid")
-	local cam = workspace.CurrentCamera
 
 	local existingPart = workspace:FindFirstChild("ExperienceSettingsCamera")
 
 	if state then
+		-- 🟢 เปิดระบบ
 		if existingPart then existingPart:Destroy() end
 
-		-- สร้าง Part กล้อง
+		-- สร้างกล้องจำลอง
 		local part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
 		part.Size = Vector3.new(1, 1, 1)
@@ -1002,20 +1003,22 @@ createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 		light.Range = 16
 		light.Parent = part
 
-		-- ปิดการเคลื่อนไหวตัวละคร (ไม่ยุ่ง WalkSpeed / JumpPower)
+		-- ปิดการหมุนและการขยับของตัวละคร
 		humanoid.AutoRotate = false
 		hrp.Anchored = true
 
-		-- ตั้งกล้อง
+		-- ตั้งค่ากล้อง
 		cam.CameraSubject = part
+		cam.CameraType = Enum.CameraType.Custom
 		cam.CameraMode = Enum.CameraMode.LockFirstPerson
 
-		-- ฟังก์ชันสร้างปุ่ม Mobile
+		-- 🟣 ปุ่ม Mobile UI (ใน CoreGui)
 		local gui = Instance.new("ScreenGui")
 		gui.Name = "ExperienceCamMobile"
 		gui.IgnoreGuiInset = true
 		gui.ResetOnSpawn = false
-		gui.Parent = player:WaitForChild("PlayerGui")
+		gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+		gui.Parent = game:GetService("CoreGui")
 
 		local mobileKeys = {}
 		local function makeButton(name, text, pos)
@@ -1024,21 +1027,21 @@ createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 			btn.Text = text
 			btn.Size = UDim2.new(0, 90, 0, 90)
 			btn.Position = pos
-			btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+			btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 			btn.BackgroundTransparency = 0.5
 			btn.TextScaled = true
-			btn.TextColor3 = Color3.fromRGB(0,0,0)
+			btn.TextColor3 = Color3.fromRGB(0, 0, 0)
 			btn.Font = Enum.Font.SourceSansBold
 			btn.Parent = gui
 
 			local corner = Instance.new("UICorner")
-			corner.CornerRadius = UDim.new(0,8)
+			corner.CornerRadius = UDim.new(0, 8)
 			corner.Parent = btn
 
 			local stroke = Instance.new("UIStroke")
 			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			stroke.LineJoinMode = Enum.LineJoinMode.Round
-			stroke.Color = Color3.fromRGB(255,255,255)
+			stroke.Color = Color3.fromRGB(255, 255, 255)
 			stroke.Thickness = 1
 			stroke.Transparency = 0
 			stroke.Parent = btn
@@ -1082,8 +1085,9 @@ createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 			end
 		end)
 
-		-- การเคลื่อนที่กล้อง (CFrame.Position)
+		-- อัปเดตกล้อง
 		RunService.RenderStepped:Connect(function(dt)
+			if not part or not part.Parent then return end
 			local dir = Vector3.new()
 			for key, vec in pairs(moveKeys) do
 				if pressed[key] or mobileKeys[key] then
@@ -1094,18 +1098,20 @@ createToggle(BFrame, "ExperienceSettingsCamera", function(state)
 				dir = dir.Unit
 			end
 			part.CFrame = part.CFrame + dir * dt * 15
+			cam.CFrame = part.CFrame
 		end)
 
 	else
-		-- 🔴 ปิด (OFF)
+		-- 🔴 ปิด (คืนสภาพ)
 		if existingPart then existingPart:Destroy() end
-		local gui = player.PlayerGui:FindFirstChild("ExperienceCamMobile")
+		local gui = game:GetService("CoreGui"):FindFirstChild("ExperienceCamMobile")
 		if gui then gui:Destroy() end
 
 		humanoid.AutoRotate = true
 		hrp.Anchored = false
 
-		cam.CameraMode = Enum.CameraMode.Classic
 		cam.CameraSubject = humanoid
+		cam.CameraType = Enum.CameraType.Custom
+		cam.CameraMode = Enum.CameraMode.Classic
 	end
 end, false)
