@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== Positions ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -968,3 +968,76 @@ createToggle(BFrame, "Disable Death Sound", function(state)
 	end
 end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
+
+-- <<===== AlwaysShowHealthDisplay =====>>
+local Players = game:GetService("Players")
+
+-- เก็บค่า HealthDisplayType เดิม
+local savedDisplayTypes = {}
+_G.AlwaysHealthOn = false -- เก็บสถานะ global
+
+-- ฟังก์ชันหลัก
+local function AlwaysShowHealthDisplay(isOn)
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.Character then
+			local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				if isOn then
+					-- ถ้ายังไม่มีบันทึกไว้ เก็บค่าปัจจุบันก่อน
+					if not savedDisplayTypes[player] then
+						savedDisplayTypes[player] = humanoid.HealthDisplayType
+					end
+					-- ถ้าไม่ใช่ AlwaysOn ให้เปลี่ยนเลย
+					if humanoid.HealthDisplayType ~= Enum.HumanoidHealthDisplayType.AlwaysOn then
+						humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
+					end
+				else
+					-- ปิด toggle คืนค่าที่บันทึกไว้
+					local savedType = savedDisplayTypes[player]
+					if savedType then
+						humanoid.HealthDisplayType = savedType
+					else
+						humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.DisplayWhenDamaged
+					end
+				end
+			end
+		end
+	end
+end
+
+-- ตรวจจับผู้เล่นเข้ามาใหม่
+Players.PlayerAdded:Connect(function(plr)
+	plr.CharacterAdded:Connect(function(char)
+		local hum = char:WaitForChild("Humanoid", 5)
+		if hum then
+			-- ถ้ามี toggle ON อยู่ ให้ตั้ง AlwaysOn ให้เลย
+			if _G.AlwaysHealthOn then
+				savedDisplayTypes[plr] = hum.HealthDisplayType
+				hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
+			end
+		end
+	end)
+end)
+
+-- ตรวจจับทุกเฟรม (กันหลุด)
+task.spawn(function()
+	while task.wait(2) do
+		if _G.AlwaysHealthOn then
+			for _, player in ipairs(Players:GetPlayers()) do
+				local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+				if hum then
+					if hum.HealthDisplayType ~= Enum.HumanoidHealthDisplayType.AlwaysOn then
+						hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOn
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- ปุ่ม Toggle (ใช้ระบบที่มีอยู่แล้ว)
+createToggle(BFrame, "Always Show Health", false, function(state)
+	_G.AlwaysHealthOn = state
+	AlwaysShowHealthDisplay(state)
+end)
+-- <<===== End AlwaysShowHealthDisplay =====>>
