@@ -939,7 +939,7 @@ end, true) -- default = ON
 
 -- <<===== MUTED DEATH SOUNDS =====>
 -- 🔇 muted
-createToggle(parentFrame, "Disable Death Sound", function(state)
+createToggle(BFrame, "Disable Death Sound", function(state)
 	local Players = game:GetService("Players")
 	local player = Players.LocalPlayer
 
