@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] =====
+-- ===== [ Position's ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -333,7 +333,7 @@ txt3.Parent = iN2
 local bigt = Instance.new("TextLabel")
 bigt.Name = "About"
 bigt.Active = false
-bigPositionst.Size = UDim2.new(1,0,0.6,0)
+big.Size = UDim2.new(1,0,0.6,0)
 bigt.Position = UDim2.new(0,0,0.26,0)
 bigt.BackgroundTransparency = 1
 bigt.Text = [[
