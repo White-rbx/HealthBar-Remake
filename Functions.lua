@@ -1,4 +1,4 @@
-Position'sion'sthub... JUST UPDATE THE F###ING RAW SCRIPT!!!
+-- github... JUST UPDATE THE F###ING RAW SCRIPT!!!
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
