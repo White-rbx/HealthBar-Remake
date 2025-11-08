@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -1146,4 +1146,4 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 		player.CameraMode = Enum.CameraMode.Classic
 		cam.CameraSubject = humanoid
 	end
-end, fFixed
+end, fFixed)
