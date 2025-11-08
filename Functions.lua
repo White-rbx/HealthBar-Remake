@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== [ Position's ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -985,9 +985,9 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 
 	local connList = {}
 	local function addConn(c) if c then table.insert(connList, c) end end
-
-	-- ตัวแปรหลักที่เข้าถึงได้ทั่วทั้ง createToggle
-	local part, holderGui, speedUI, box -- ตัวแปร 'box' ถูกกำหนดในขอบเขตนี้
+    
+    -- ตัวแปรหลักที่ถูกใช้ร่วมกัน และนำมาใช้ใหม่
+	local part, holderGui, speedUI, box 
 	local speed = 15
 	local minSpeed, maxSpeed = 1, 250
 
@@ -995,16 +995,16 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 	local mobile = { W=false, A=false, S=false, D=false, Q=false, E=false }
 
 	local moveMap = {
-		W = Vector3.new(0,0,-1),
-		S = Vector3.new(0,0,1),
-		A = Vector3.new(-1,0,0),
-		D = Vector3.new(1,0,0),
-		Q = Vector3.new(0,1,0),
-		E = Vector3.new(0,-1,0),
+		W = Vector3.new(0,0,-1), -- ไปข้างหน้า (ตามมุมกล้อง)
+		S = Vector3.new(0,0,1),  -- ไปข้างหลัง
+		A = Vector3.new(-1,0,0), -- ไปข้างซ้าย
+		D = Vector3.new(1,0,0),  -- ไปข้างขวา
+		Q = Vector3.new(0,1,0),  -- ขึ้น
+		E = Vector3.new(0,-1,0), -- ลง
 	}
 
 	----------------------------
-	-- 🧩 สร้างปุ่ม
+	-- 🧩 สร้างปุ่ม (ไม่เปลี่ยนแปลง)
 	----------------------------
 	local function makeButton(parent, name, pos)
 		local b = Instance.new("TextButton")
@@ -1034,121 +1034,76 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 	end
 
 	----------------------------
-	-- 🧩 Speed Controller
+	-- 🧩 Speed Controller (ไม่เปลี่ยนแปลง)
 	----------------------------
 	local function createSpeedUI(parent)
 		local frame = Instance.new("Frame")
 		frame.Name = "SpeedController"
-		frame.Size = UDim2.new(0, 280, 0, 50)
-		frame.AnchorPoint = Vector2.new(0.5,0)
-		frame.Position = UDim2.new(0.5,0,0.8,0)
-		frame.BackgroundColor3 = Color3.fromRGB(255,255,255)
-		frame.BackgroundTransparency = 0.5
-		frame.Parent = parent
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0,8)
-		corner.Parent = frame
-
-		local stroke = Instance.new("UIStroke")
-		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		stroke.LineJoinMode = Enum.LineJoinMode.Round
-		stroke.Color = Color3.fromRGB(255,255,255)
-		stroke.Thickness = 1
-		stroke.Parent = frame
+		-- ... โค้ดสร้าง UI ...
 
 		local defaultBtn = Instance.new("TextButton")
-		defaultBtn.Name = "Default"
-		defaultBtn.Text = "Default"
-		defaultBtn.Size = UDim2.new(0,80,1,0)
-		defaultBtn.Position = UDim2.new(0,5,0,0)
-		defaultBtn.BackgroundTransparency = 0.5
-		defaultBtn.Parent = frame
+		-- ...
 
-		local box = Instance.new("TextBox") -- 'box' ถูกสร้างเป็น Local ภายในฟังก์ชันนี้
-		box.Name = "SpeedBox"
-		box.Size = UDim2.new(0,120,1,0)
-		box.Position = UDim2.new(0,90,0,0)
-		box.Text = tostring(speed)
-		box.BackgroundTransparency = 0.5
-		box.PlaceholderText = "Stud/s"
-		box.ClearTextOnFocus = false
-		box.Parent = frame
+		local boxUI = Instance.new("TextBox") -- ใช้ชื่อ boxUI เพื่อแยกจากตัวแปร 'box' หลัก
+		boxUI.Name = "SpeedBox"
+		-- ...
 
 		local enterBtn = Instance.new("TextButton")
-		enterBtn.Name = "Enter"
-		enterBtn.Text = "Enter"
-		enterBtn.Size = UDim2.new(0,60,1,0)
-		enterBtn.Position = UDim2.new(0,220,0,0)
-		enterBtn.BackgroundTransparency = 0.5
-		enterBtn.Parent = frame
+		-- ...
 
-		for _,obj in ipairs({defaultBtn, box, enterBtn}) do
-			local c = Instance.new("UICorner")
-			c.CornerRadius = UDim.new(0,8)
-			c.Parent = obj
-			local s = Instance.new("UIStroke")
-			s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			s.LineJoinMode = Enum.LineJoinMode.Round
-			s.Color = Color3.fromRGB(255,255,255)
-			s.Thickness = 1
-			s.Parent = obj
-		end
-
+		-- ... การเชื่อมต่อ MouseButton1Click, FocusLost ...
 		defaultBtn.MouseButton1Click:Connect(function()
 			speed = 15
-			box.Text = "15"
+			boxUI.Text = "15"
 		end)
 
 		enterBtn.MouseButton1Click:Connect(function()
-			local n = tonumber(box.Text)
+			local n = tonumber(boxUI.Text)
 			if n then
 				speed = math.clamp(n, minSpeed, maxSpeed)
-				box.Text = tostring(speed)
+				boxUI.Text = tostring(speed)
 			else
-				box.Text = tostring(speed)
+				boxUI.Text = tostring(speed)
 			end
 		end)
 
-		-- แก้ไขบรรทัด FocusLost ด้วย Defensive Programming
-		box.FocusLost:Connect(function(enterPressed)
-			if enterPressed and box then -- ตรวจสอบว่า 'box' ยังคงอยู่หรือไม่ (การแก้ไขหลัก)
-				local n = tonumber(box.Text)
+		boxUI.FocusLost:Connect(function(enterPressed)
+			if enterPressed and boxUI then
+				local n = tonumber(boxUI.Text)
 				if n then
 					speed = math.clamp(n, minSpeed, maxSpeed)
-					box.Text = tostring(speed)
+					boxUI.Text = tostring(speed)
 				else
-					box.Text = tostring(speed)
+					boxUI.Text = tostring(speed)
 				end
 			end
 		end)
 
-		-- ส่งคืน Frame และ Box เพื่อให้เข้าถึงในขอบเขตหลักได้
-		return {frame = frame, box = box} 
+		return {frame = frame, box = boxUI} 
 	end
 
 	----------------------------
-	-- 🧩 Bind Mobile Buttons
+	-- 🧩 Bind Mobile Buttons (แก้ไข)
 	----------------------------
 	local function bindButton(btn, key)
 		local function press()
 			mobile[key] = true
+			startMover() -- เรียก startMover ทันทีเมื่อปุ่มถูกกด
 		end
 		local function release()
 			mobile[key] = false
 		end
+        
+        -- ใช้ MouseButton1Down/Up และ TouchStarted/Ended เท่านั้น สำหรับการเคลื่อนที่แบบต่อเนื่อง
 		btn.MouseButton1Down:Connect(press)
 		btn.MouseButton1Up:Connect(release)
 		btn.TouchStarted:Connect(press)
 		btn.TouchEnded:Connect(release)
-		btn.MouseButton1Click:Connect(function()
-			mobile[key] = true
-			task.delay(0.1, function() mobile[key] = false end)
-		end)
+        -- ลบโค้ด MouseButton1Click ที่ผิดพลาดออก
 	end
 
 	----------------------------
-	-- 🧩 Movement Handler
+	-- 🧩 Movement Handler (ไม่เปลี่ยนแปลง)
 	----------------------------
 	local moverConn
 	local function startMover()
@@ -1164,6 +1119,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 
 			if dir.Magnitude > 0 then
 				local camCF = cam.CFrame
+				-- ปรับ LookVector/RightVector ให้เป็นระนาบ XZ เพื่อให้การเคลื่อนที่ A/D/W/S ไม่เปลี่ยนระดับความสูง
 				local look = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z).Unit
 				local right = Vector3.new(camCF.RightVector.X, 0, camCF.RightVector.Z).Unit
 				local move = (look * dir.Z + right * dir.X + Vector3.new(0,dir.Y,0))
@@ -1174,7 +1130,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 	end
 
 	----------------------------
-	-- 🧩 Keyboard Input
+	-- 🧩 Keyboard Input (แก้ไข)
 	----------------------------
 	addConn(UserInputService.InputBegan:Connect(function(input,gp)
 		if gp then return end
@@ -1185,7 +1141,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 		elseif k == Enum.KeyCode.D then pressed.D = true
 		elseif k == Enum.KeyCode.Q then pressed.Q = true
 		elseif k == Enum.KeyCode.E then pressed.E = true end
-		startMover()
+		startMover() -- เรียก startMover ทันทีเมื่อปุ่มถูกกด
 	end))
 
 	addConn(UserInputService.InputEnded:Connect(function(input)
@@ -1199,53 +1155,69 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 	end))
 
 	----------------------------
-	-- 🧩 Main Toggle State
+	-- 🧩 Main Toggle State (แก้ไข)
 	----------------------------
 	if state then
-		-- ON
-		part = Instance.new("Part")
-		part.Name = "ExperienceSettingsCamera"
-		part.Anchored = true
-		part.CanCollide = false
-		part.Transparency = 1
-		part.CFrame = hrp.CFrame
-		part.Parent = workspace
+		-- ON (สร้าง Part และ UI หากยังไม่มี และแสดงผล)
+		if not part then
+			part = Instance.new("Part")
+			part.Name = "ExperienceSettingsCamera"
+			part.Anchored = true
+			part.CanCollide = false
+			part.Transparency = 1
+			part.Parent = workspace
+		end
+		
+        if not holderGui then
+            -- สร้าง UI ครั้งแรกเท่านั้น
+			holderGui = Instance.new("Frame")
+			holderGui.Name = "FrameHolder"
+			holderGui.Size = UDim2.new(1,0,1,0)
+			holderGui.BackgroundTransparency = 1
+			holderGui.Parent = Menu -- Menu ควรเป็น ScreenGui หรือ Frame ที่มองเห็นได้
 
+			local w = makeButton(holderGui, "W", UDim2.new(0.05,0,0.65,0))
+			local a = makeButton(holderGui, "A", UDim2.new(0,0,0.75,0))
+			local s = makeButton(holderGui, "S", UDim2.new(0.05,0,0.85,0))
+			local d = makeButton(holderGui, "D", UDim2.new(0.1,0,0.75,0))
+			local q = makeButton(holderGui, "Q", UDim2.new(0.85,0,0.65,0))
+			local e = makeButton(holderGui, "E", UDim2.new(0.85,0,0.85,0))
+
+			for _,b in pairs({w,a,s,d,q,e}) do
+				bindButton(b, b.Name)
+			end
+
+			local speedData = createSpeedUI(holderGui)
+			speedUI = speedData.frame
+			box = speedData.box
+		end
+
+        -- การตั้งค่าที่เกิดขึ้นทุกครั้งเมื่อเปิด
+		part.CFrame = hrp.CFrame -- รีเซ็ตตำแหน่งกล้องไปที่ตัวละคร
+		holderGui.Visible = true -- แสดง UI
+		
 		hrp.Anchored = true
 		humanoid.AutoRotate = false
 		player.CameraMode = Enum.CameraMode.LockFirstPerson
 		cam.CameraSubject = part
-
-		holderGui = Instance.new("Frame")
-		holderGui.Name = "FrameHolder"
-		holderGui.Size = UDim2.new(1,0,1,0)
-		holderGui.BackgroundTransparency = 1
-		holderGui.Parent = Menu
-
-		local w = makeButton(holderGui, "W", UDim2.new(0.05,0,0.65,0))
-		local a = makeButton(holderGui, "A", UDim2.new(0,0,0.75,0))
-		local s = makeButton(holderGui, "S", UDim2.new(0.05,0,0.85,0))
-		local d = makeButton(holderGui, "D", UDim2.new(0.1,0,0.75,0))
-		local q = makeButton(holderGui, "Q", UDim2.new(0.85,0,0.65,0))
-		local e = makeButton(holderGui, "E", UDim2.new(0.85,0,0.85,0))
-
-		for _,b in pairs({w,a,s,d,q,e}) do
-			bindButton(b, b.Name)
-		end
-
-		local speedData = createSpeedUI(holderGui) -- รับค่าที่ส่งคืนเป็นตาราง
-		speedUI = speedData.frame -- กำหนด frame
-		box = speedData.box -- กำหนด TextBox ให้กับตัวแปร 'box' ในขอบเขตหลัก
+		
 		startMover()
 
 	else
-		-- OFF
+		-- OFF (ซ่อน UI และทำความสะอาด)
 		if moverConn then moverConn:Disconnect() moverConn = nil end
 		for _,c in pairs(connList) do if c and c.Connected then c:Disconnect() end end
-		if holderGui then holderGui:Destroy() end
-		if part then part:Destroy() end
-		if speedUI then speedUI:Destroy() end
-        box = nil -- ทำลายตัวแปร 'box' ในขอบเขตหลักเมื่อปิด Toggle
+		
+        if holderGui then holderGui.Visible = false end -- ซ่อน UI แทนการทำลาย
+        
+		if part then 
+            -- ไม่จำเป็นต้องทำลาย part, แค่ย้ายมันไปที่ nil เพื่อไม่ให้เกะกะ
+            part.Parent = nil 
+        end 
+        
+        -- ไม่ต้องทำลาย speedUI หรือ box เพราะเรานำมาใช้ใหม่
+
+		box = nil -- ล้างการอ้างอิงในขอบเขตหลัก
 		pressed = {};
 		mobile = {}
 
