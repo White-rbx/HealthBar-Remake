@@ -97,7 +97,8 @@ local function setupOverlay()
 		overlayGui = Instance.new("ScreenGui")
 		overlayGui.Name = "DamageOverlay"
 		overlayGui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
-        overlayGui.Enabled = false
+        -- Enable the ScreenGui so tweens/visibility actually show up
+        overlayGui.Enabled = true
 		overlayGui.Parent = CoreGui
 		overlayImage = nil
 	end
@@ -110,11 +111,18 @@ local function setupOverlay()
 		ima.Image = OVERLAY_IMAGE_ASSET
 		ima.Active = false
 		ima.ImageTransparency = OVERLAY_DEFAULT_TRANSPARENCY
+		ima.ZIndex = 100 -- ensure on top
 		ima.Parent = overlayGui
 		overlayImage = ima
 	else
-		-- ensure default transparency set (default=1)
-		pcall(function() overlayImage.ImageTransparency = OVERLAY_DEFAULT_TRANSPARENCY end)
+		-- ensure default transparency set (default=1) and ensure visible
+		pcall(function()
+			overlayImage.ImageTransparency = OVERLAY_DEFAULT_TRANSPARENCY
+			overlayImage.ZIndex = overlayImage.ZIndex or 100
+			overlayImage.Visible = true
+		end)
+		-- also ensure the ScreenGui is enabled
+		pcall(function() overlayGui.Enabled = true end)
 	end
 end
 
