@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== [ Position's ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -970,7 +970,10 @@ end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
 -- ✅ ตัวอย่าง: Toggle สำหรับ ExperienceSettingsCamera (พร้อม debug)
--- 🧩 Toggle: ExperienceSettingsCamera (Fixed no Menu finder)
+-- Replaced/updated ExperienceSettingsCamera (FreeCam Test) toggle block to fix WASD + Q/E and GUI buttons
+-- (Only the toggle block is shown here — integrate into your Functions.lua at the same place)
+
+-- ✅ ExperienceSettingsCamera (FreeCam Test) - Improved input handling and connection cleanup
 createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
@@ -982,14 +985,65 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 	local hrp = char:WaitForChild("HumanoidRootPart")
 	local humanoid = char:WaitForChild("Humanoid")
 
-	local existingPart = workspace:FindFirstChild("ExperienceSettingsCamera")
+	-- Keep connection refs to disconnect later
+	local rsConn, kbBeganConn, kbEndedConn
+	local buttonConns = {} -- list of connections per GUI button
+
+	local part -- camera part for this instance
+	local holderGui -- GUI holder for on-screen buttons
+
+	-- helper to create GUI buttons
+	local function makeButton(parent, name, labelText, pos)
+		local b = Instance.new("TextButton")
+		b.Name = name
+		b.Text = labelText
+		b.Size = UDim2.new(0, 50, 0, 50)
+		b.Position = pos
+		b.BackgroundColor3 = Color3.fromRGB(255,255,255)
+		b.BackgroundTransparency = 0.5
+		b.TextColor3 = Color3.fromRGB(0,0,0)
+		b.TextScaled = true
+		b.Font = Enum.Font.SourceSansBold
+		b.BorderSizePixel = 0
+		b.Parent = parent
+		b.Active = true -- ensure the button receives Input events
+
+		local uc = Instance.new("UICorner")
+		uc.CornerRadius = UDim.new(0,8)
+		uc.Parent = b
+
+		local st = Instance.new("UIStroke")
+		st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		st.LineJoinMode = Enum.LineJoinMode.Round
+		st.Color = Color3.fromRGB(255,255,255)
+		st.Thickness = 1
+		st.Transparency = 0
+		st.Parent = b
+
+		return b
+	end
+
+	-- movement state tables
+	local mobileKeys = { W=false, A=false, S=false, D=false, Q=false, E=false }
+	local pressed = {}
+
+	-- movement map and speed
+	local moveMap = {
+		W = Vector3.new(0, 0, -1),
+		S = Vector3.new(0, 0, 1),
+		A = Vector3.new(-1, 0, 0),
+		D = Vector3.new(1, 0, 0),
+		Q = Vector3.new(0, 1, 0),
+		E = Vector3.new(0, -1, 0)
+	}
+	local speed = 16
 
 	if state then
-		-- 🔵 ON
+		-- ON: create or reset existing
+		local existingPart = workspace:FindFirstChild("ExperienceSettingsCamera")
 		if existingPart then existingPart:Destroy() end
 
-		-- สร้าง part กล้อง
-		local part = Instance.new("Part")
+		part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
 		part.Size = Vector3.new(1,1,1)
 		part.Anchored = true
@@ -1003,77 +1057,65 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 		light.Range = 14
 		light.Parent = part
 
-		-- Anchor ตัวละคร
+		-- anchor character and adjust camera
 		hrp.Anchored = true
 		humanoid.AutoRotate = false
 
-		-- เปลี่ยนโหมดกล้อง
+		-- Use Scriptable camera control by setting CameraType to Custom and manually setting cam.CFrame in RenderStepped.
 		player.CameraMode = Enum.CameraMode.LockFirstPerson
 		cam.CameraSubject = part
 		cam.CameraType = Enum.CameraType.Custom
 
-		-- 🎮 Container สำหรับปุ่ม
-		local holder = Menu:FindFirstChild("FrameHolder")
-		if not holder then
-			holder = Instance.new("Frame")
-			holder.Name = "FrameHolder"
-			holder.Size = UDim2.new(1, 0, 1, 0)
-			holder.BackgroundTransparency = 1
-			holder.Parent = Menu
+		-- create GUI holder
+		holderGui = Menu:FindFirstChild("FrameHolder")
+		if not holderGui then
+			holderGui = Instance.new("Frame")
+			holderGui.Name = "FrameHolder"
+			holderGui.Size = UDim2.new(1, 0, 1, 0)
+			holderGui.BackgroundTransparency = 1
+			holderGui.Parent = Menu
 		end
 
-		-- 🧱 ฟังก์ชันสร้างปุ่ม
-		local function makeButton(parent, name, labelText, pos)
-			local b = Instance.new("TextButton")
-			b.Name = name
-			b.Text = labelText
-			b.Size = UDim2.new(0, 50, 0, 50)
-			b.Position = pos
-			b.BackgroundColor3 = Color3.fromRGB(255,255,255)
-			b.BackgroundTransparency = 0.5
-			b.TextColor3 = Color3.fromRGB(0,0,0)
-			b.TextScaled = true
-			b.Font = Enum.Font.SourceSansBold
-			b.BorderSizePixel = 0
-			b.Parent = parent
+		-- create on-screen buttons
+		local w = makeButton(holderGui, "W", "W", UDim2.new(0.05, 0, 0.65, 0))
+		local a = makeButton(holderGui, "A", "A", UDim2.new(0, 0, 0.75, 0))
+		local s = makeButton(holderGui, "S", "S", UDim2.new(0.05, 0, 0.85, 0))
+		local d = makeButton(holderGui, "D", "D", UDim2.new(0.1, 0, 0.75, 0))
+		local q = makeButton(holderGui, "Q", "Q", UDim2.new(0.85, 0, 0.65, 0))
+		local e = makeButton(holderGui, "E", "E", UDim2.new(0.85, 0, 0.85, 0))
 
-			local uc = Instance.new("UICorner")
-			uc.CornerRadius = UDim.new(0,8)
-			uc.Parent = b
-
-			local st = Instance.new("UIStroke")
-			st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			st.LineJoinMode = Enum.LineJoinMode.Round
-			st.Color = Color3.fromRGB(255,255,255)
-			st.Thickness = 1
-			st.Transparency = 0
-			st.Parent = b
-
-			return b
-		end
-
-		-- 📱 ปุ่ม Mobile
-		local mobileKeys = { W=false, A=false, S=false, D=false, Q=false, E=false }
-
-		local w = makeButton(holder, "W", "W", UDim2.new(0.05, 0, 0.65, 0))
-		local a = makeButton(holder, "A", "A", UDim2.new(0, 0, 0.75, 0))
-		local s = makeButton(holder, "S", "S", UDim2.new(0.05, 0, 0.85, 0))
-		local d = makeButton(holder, "D", "D", UDim2.new(0.1, 0, 0.75, 0))
-		local q = makeButton(holder, "Q", "Q", UDim2.new(0.85, 0, 0.65, 0))
-		local e = makeButton(holder, "E", "E", UDim2.new(0.85, 0, 0.85, 0))
-
+		-- robust binding helper:
 		local function bind(btn, key)
-			btn.MouseButton1Down:Connect(function() mobileKeys[key] = true end)
-			btn.MouseButton1Up:Connect(function() mobileKeys[key] = false end)
-			btn.TouchStarted:Connect(function() mobileKeys[key] = true end)
-			btn.TouchEnded:Connect(function() mobileKeys[key] = false end)
+			-- InputBegan/InputEnded on GuiObject handles Mouse and Touch consistently
+			local conB = btn.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					mobileKeys[key] = true
+				end
+			end)
+			local conE = btn.InputEnded:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					mobileKeys[key] = false
+				end
+			end)
+			-- also listen to MouseButton1Down/Up for desktop compatibility (some platforms)
+			local conDown = btn.MouseButton1Down:Connect(function() mobileKeys[key] = true end)
+			local conUp = btn.MouseButton1Up:Connect(function() mobileKeys[key] = false end)
+			-- TouchStarted/Ended as an extra fallback
+			local conTs = btn.TouchStarted:Connect(function() mobileKeys[key] = true end)
+			local conTe = btn.TouchEnded:Connect(function() mobileKeys[key] = false end)
+
+			table.insert(buttonConns, conB)
+			table.insert(buttonConns, conE)
+			table.insert(buttonConns, conDown)
+			table.insert(buttonConns, conUp)
+			table.insert(buttonConns, conTs)
+			table.insert(buttonConns, conTe)
 		end
 
 		for _, v in pairs({w,a,s,d,q,e}) do bind(v, v.Name) end
 
-		-- 💻 คีย์บอร์ด
-		local pressed = {}
-		UserInputService.InputBegan:Connect(function(input, gp)
+		-- Keyboard handlers (store connections to disconnect later)
+		kbBeganConn = UserInputService.InputBegan:Connect(function(input, gp)
 			if gp then return end
 			if input.UserInputType == Enum.UserInputType.Keyboard then
 				local kc = input.KeyCode
@@ -1087,7 +1129,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 			end
 		end)
 
-		UserInputService.InputEnded:Connect(function(input)
+		kbEndedConn = UserInputService.InputEnded:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.Keyboard then
 				local kc = input.KeyCode
 				if kc == Enum.KeyCode.W then pressed.W = false
@@ -1100,22 +1142,11 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 			end
 		end)
 
-		-- 📦 เคลื่อนที่
-		local moveMap = {
-			W = Vector3.new(0, 0, -1),
-			S = Vector3.new(0, 0, 1),
-			A = Vector3.new(-1, 0, 0),
-			D = Vector3.new(1, 0, 0),
-			Q = Vector3.new(0, 1, 0),
-			E = Vector3.new(0, -1, 0)
-		}
-
-		local speed = 16
-
-		RunService.RenderStepped:Connect(function(dt)
+		-- RenderStepped movement (save connection so we can disconnect cleanly)
+		rsConn = RunService.RenderStepped:Connect(function(dt)
 			if not part or not part.Parent then return end
-			local dir = Vector3.new(0,0,0)
 
+			local dir = Vector3.new(0,0,0)
 			for k, v in pairs(moveMap) do
 				if pressed[k] or mobileKeys[k] then
 					dir += v
@@ -1126,24 +1157,42 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 				dir = dir.Unit
 				local forward = cam.CFrame.LookVector
 				local right = cam.CFrame.RightVector
+				-- Note: moveMap uses Z = -1 for forward (W) so we apply forward * dir.Z directly
 				local move = (forward * dir.Z + right * dir.X) + Vector3.new(0, dir.Y, 0)
 				part.CFrame = part.CFrame + move * (speed * dt)
+				-- keep camera aligned with the part
 				cam.CFrame = part.CFrame
 			end
 		end)
-
 	else
-		-- 🔴 OFF
-		local part = workspace:FindFirstChild("ExperienceSettingsCamera")
-		if part then part:Destroy() end
+		-- OFF: cleanup created objects and disconnect everything
+		local existingPart = workspace:FindFirstChild("ExperienceSettingsCamera")
+		if existingPart then existingPart:Destroy() end
 
-		local holder = Menu:FindFirstChild("FrameHolder")
-		if holder then holder:Destroy() end
+		-- remove GUI holder
+		local oldHolder = Menu:FindFirstChild("FrameHolder")
+		if oldHolder then oldHolder:Destroy() end
 
-		-- คืนค่ากล้องและตัวละคร
-		humanoid.AutoRotate = true
-		hrp.Anchored = false
-		player.CameraMode = Enum.CameraMode.Classic
-		cam.CameraSubject = humanoid
+		-- disconnect all stored connections
+		if rsConn and rsConn.Connected then rsConn:Disconnect() end
+		if kbBeganConn and kbBeganConn.Connected then kbBeganConn:Disconnect() end
+		if kbEndedConn and kbEndedConn.Connected then kbEndedConn:Disconnect() end
+		for _, c in ipairs(buttonConns) do
+			if c and c.Connected then
+				c:Disconnect()
+			end
+		end
+		buttonConns = {}
+
+		-- restore character and camera
+		pcall(function()
+			humanoid.AutoRotate = true
+			hrp.Anchored = false
+			player.CameraMode = Enum.CameraMode.Classic
+			-- restore camera subject to humanoid if valid
+			if humanoid and humanoid.Parent then
+				cam.CameraSubject = humanoid
+			end
+		end)
 	end
-end, fFixed)
+end, false)
