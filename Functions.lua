@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -909,7 +909,7 @@ local gui = game:GetService("CoreGui")
 	:WaitForChild("LighterCyan.ai")
 
 -- ใช้ toggle เดิมของนาย
-createToggle(BFrame, "LighterCyan.ai (Dev Test)", function(state)
+createToggle(BFrame, "LighterCyan.ai (Discontinued)", function(state)
 	gui.Enabled = state  -- เปิด/ปิดตามสวิตช์
 end, false) -- default: ปิด
 -- <<===== END LIGHTERCYAN =====>>
@@ -927,7 +927,7 @@ local hb = game:GetService("CoreGui")
 	:WaitForChild("HealthBar")
 
 -- 🟩 Toggle รวม HealthBar
-createToggle(BFrame, "HealthBar", function(state)
+createToggle(BFrame, "Disable HealthBar", function(state)
 	local fill = hb:FindFirstChild("Fill")
 	local outline = hb:FindFirstChild("Outline")
 	local stroke = hb:FindFirstChild("UIStroke")
@@ -972,8 +972,6 @@ end, false) -- default OFF
 -- ==============================
 -- ✅ ExperienceSettingsCamera (Final Fixed)
 -- รองรับ: Mobile + Keyboard
--- หมายเหตุ: ใช้ตัวแปร Menu ที่มีอยู่แล้ว
-
 createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
@@ -988,7 +986,8 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 	local connList = {}
 	local function addConn(c) if c then table.insert(connList, c) end end
 
-	local part, holderGui, speedUI
+	-- ตัวแปรหลักที่เข้าถึงได้ทั่วทั้ง createToggle
+	local part, holderGui, speedUI, box -- ตัวแปร 'box' ถูกกำหนดในขอบเขตนี้
 	local speed = 15
 	local minSpeed, maxSpeed = 1, 250
 
@@ -1066,7 +1065,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 		defaultBtn.BackgroundTransparency = 0.5
 		defaultBtn.Parent = frame
 
-		local box = Instance.new("TextBox")
+		local box = Instance.new("TextBox") -- 'box' ถูกสร้างเป็น Local ภายในฟังก์ชันนี้
 		box.Name = "SpeedBox"
 		box.Size = UDim2.new(0,120,1,0)
 		box.Position = UDim2.new(0,90,0,0)
@@ -1111,12 +1110,12 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 			end
 		end)
 
-				box.FocusLost:Connect(function(enterPressed)
-			-- เพิ่มการตรวจสอบ 'box' ก่อนเข้าถึง 'box.Text'
-			if enterPressed and box then
+		-- แก้ไขบรรทัด FocusLost ด้วย Defensive Programming
+		box.FocusLost:Connect(function(enterPressed)
+			if enterPressed and box then -- ตรวจสอบว่า 'box' ยังคงอยู่หรือไม่ (การแก้ไขหลัก)
 				local n = tonumber(box.Text)
 				if n then
-					[span_1](start_span)speed = math.clamp(n, minSpeed, maxSpeed)[span_1](end_span)
+					speed = math.clamp(n, minSpeed, maxSpeed)
 					box.Text = tostring(speed)
 				else
 					box.Text = tostring(speed)
@@ -1124,7 +1123,8 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 			end
 		end)
 
-		return frame
+		-- ส่งคืน Frame และ Box เพื่อให้เข้าถึงในขอบเขตหลักได้
+		return {frame = frame, box = box} 
 	end
 
 	----------------------------
@@ -1233,7 +1233,9 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 			bindButton(b, b.Name)
 		end
 
-		speedUI = createSpeedUI(holderGui)
+		local speedData = createSpeedUI(holderGui) -- รับค่าที่ส่งคืนเป็นตาราง
+		speedUI = speedData.frame -- กำหนด frame
+		box = speedData.box -- กำหนด TextBox ให้กับตัวแปร 'box' ในขอบเขตหลัก
 		startMover()
 
 	else
@@ -1243,11 +1245,13 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 		if holderGui then holderGui:Destroy() end
 		if part then part:Destroy() end
 		if speedUI then speedUI:Destroy() end
-		pressed = {}; mobile = {}
+        box = nil -- ทำลายตัวแปร 'box' ในขอบเขตหลักเมื่อปิด Toggle
+		pressed = {};
+		mobile = {}
 
 		hrp.Anchored = false
 		humanoid.AutoRotate = true
 		player.CameraMode = Enum.CameraMode.Classic
 		cam.CameraSubject = humanoid
 	end
-end, false)
+end, false)HealthBarealthBarealthBar
