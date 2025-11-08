@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== [ Position's ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -323,7 +323,7 @@ local txt3 = Instance.new("TextLabel")
 txt3.Name = "Name"
 txt3.Active = false
 txt3.TextXAlignment = Enum.TextXAlignment.Left
-txt3.Size Positionsew(1,0,0,15)
+txt3.Size = UDim2.new(1,0,0,15)
 txt3.Position = UDim2.new(0,0,0,70)
 txt3.BackgroundTransparency = 1
 txt3.Text = "[ User on ScriptBlox ]"
