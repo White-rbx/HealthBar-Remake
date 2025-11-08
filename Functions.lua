@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== [ Position's ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -969,8 +969,9 @@ createToggle(BFrame, "Disable Death Sound", function(state)
 end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
+
 -- ✅ ตัวอย่าง: Toggle สำหรับ ExperienceSettingsCamera (พร้อม debug)
--- Revised ExperienceSettingsCamera (FreeCam Test) toggle block
+-- 🧩 Toggle: ExperienceSettingsCamera (Fixed WASD + Q/E + GUI buttons + camera-aligned forward)
 createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
@@ -982,13 +983,10 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 	local hrp = char:WaitForChild("HumanoidRootPart")
 	local humanoid = char:WaitForChild("Humanoid")
 
-	-- keep connection references
-	local rsConn, kbBeganConn, kbEndedConn
+	-- connection storage for cleanup
 	local connList = {}
-
-	-- camera part + holder GUI (per toggle instance)
-	local part
-	local holderGui
+	local part -- camera anchor part
+	local holderGui -- GUI holder
 
 	-- helper to create GUI buttons
 	local function makeButton(parent, name, labelText, pos)
@@ -1028,22 +1026,22 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 	local mobileKeys = { W=false, A=false, S=false, D=false, Q=false, E=false }
 	local pressed = {}
 
+	-- movement mapping: dir.Z = forward/back, dir.X = right/left, dir.Y = up/down (world Y)
 	local moveMap = {
-		W = Vector3.new(0, 0, -1),
-		S = Vector3.new(0, 0, 1),
-		A = Vector3.new(-1, 0, 0),
-		D = Vector3.new(1, 0, 0),
-		Q = Vector3.new(0, 1, 0),
-		E = Vector3.new(0, -1, 0)
+		W = Vector3.new(0, 0, 1),   -- forward (positive Z component)
+		S = Vector3.new(0, 0, -1),  -- backward
+		A = Vector3.new(-1, 0, 0),  -- left
+		D = Vector3.new(1, 0, 0),   -- right
+		Q = Vector3.new(0, 1, 0),   -- up
+		E = Vector3.new(0, -1, 0)   -- down
 	}
 	local speed = 16
 
-	-- small helper to add connections to list for cleanup
-	local function addConn(conn)
-		if conn then table.insert(connList, conn) end
+	local function addConn(c)
+		if c then table.insert(connList, c) end
 	end
 
-	-- movement coroutine fallback (ensures GUI-driven movement works even if a platform doesn't dispatch expected events immediately)
+	-- movement loop coroutine reference
 	local movingCoroutine = nil
 	local function ensureMovementLoop()
 		if movingCoroutine then return end
@@ -1064,20 +1062,31 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 				end
 
 				if dir.Magnitude > 0 then
-					dir = dir.Unit
-					local forward = cam.CFrame.LookVector
-					local right = cam.CFrame.RightVector
-					local move = (forward * dir.Z + right * dir.X) + Vector3.new(0, dir.Y, 0)
+					-- compute forward/right from camera yaw (ignore pitch)
+					local cf = cam.CFrame
+					local look = cf.LookVector
+					local rightVec = cf.RightVector
+
+					local forward = Vector3.new(look.X, 0, look.Z)
+					local right = Vector3.new(rightVec.X, 0, rightVec.Z)
+
+					if forward.Magnitude > 0.0001 then forward = forward.Unit else forward = Vector3.new(0,0,-1) end
+					if right.Magnitude > 0.0001 then right = right.Unit else right = Vector3.new(1,0,0) end
+
+					local move = forward * dir.Z + right * dir.X + Vector3.new(0, dir.Y, 0)
 					part.CFrame = part.CFrame + move * (speed * dt)
-					-- also update camera instantly so user sees movement immediately
-					pcall(function() cam.CFrame = part.CFrame end)
+
+					-- keep camera at the part position, preserve camera look direction
+					pcall(function()
+						local lookVec = cam.CFrame.LookVector
+						cam.CFrame = CFrame.new(part.Position, part.Position + lookVec)
+					end)
 				end
 
-				-- if nothing is pressed, yield a bit longer
+				-- small wait: tight loop while moving, longer when idle
 				if dir.Magnitude == 0 then
 					task.wait(0.05)
 				else
-					-- keep tight when moving
 					RunService.Heartbeat:Wait()
 				end
 			end
@@ -1086,7 +1095,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 	end
 
 	if state then
-		-- ON: create part and GUI
+		-- ON: create or recreate part + GUI + handlers
 		local existingPart = workspace:FindFirstChild("ExperienceSettingsCamera")
 		if existingPart then existingPart:Destroy() end
 
@@ -1107,6 +1116,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 		hrp.Anchored = true
 		humanoid.AutoRotate = false
 
+		-- set camera to custom and use part as subject (we manually update cam.CFrame to preserve look)
 		player.CameraMode = Enum.CameraMode.LockFirstPerson
 		cam.CameraSubject = part
 		cam.CameraType = Enum.CameraType.Custom
@@ -1121,7 +1131,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 			holderGui.Parent = Menu
 		end
 
-		-- create buttons
+		-- create on-screen buttons
 		local w = makeButton(holderGui, "W", "W", UDim2.new(0.05, 0, 0.65, 0))
 		local a = makeButton(holderGui, "A", "A", UDim2.new(0, 0, 0.75, 0))
 		local s = makeButton(holderGui, "S", "S", UDim2.new(0.05, 0, 0.85, 0))
@@ -1131,10 +1141,8 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 
 		-- robust binding helper (InputBegan/InputEnded primary + fallbacks)
 		local function bind(btn, key)
-			-- primary: InputBegan/InputEnded (covers mouse + touch)
 			addConn(btn.InputBegan:Connect(function(input)
 				if input.UserInputState == Enum.UserInputState.Begin then
-					-- only accept mouse/touch/pen/gamepad activation
 					if input.UserInputType == Enum.UserInputType.MouseButton1
 					or input.UserInputType == Enum.UserInputType.Touch
 					or input.UserInputType == Enum.UserInputType.Touch then
@@ -1152,7 +1160,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 					end
 				end
 			end))
-			-- fallbacks for compatibility
+			-- fallbacks
 			addConn(btn.MouseButton1Down:Connect(function() mobileKeys[key] = true ensureMovementLoop() end))
 			addConn(btn.MouseButton1Up:Connect(function() mobileKeys[key] = false end))
 			addConn(btn.TouchStarted:Connect(function() mobileKeys[key] = true ensureMovementLoop() end))
@@ -1162,7 +1170,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 		for _, v in pairs({w,a,s,d,q,e}) do bind(v, v.Name) end
 
 		-- keyboard handlers
-		kbBeganConn = UserInputService.InputBegan:Connect(function(input, gp)
+		addConn(UserInputService.InputBegan:Connect(function(input, gp)
 			if gp then return end
 			if input.UserInputType == Enum.UserInputType.Keyboard then
 				local kc = input.KeyCode
@@ -1175,10 +1183,9 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 				end
 				ensureMovementLoop()
 			end
-		end)
-		addConn(kbBeganConn)
+		end))
 
-		kbEndedConn = UserInputService.InputEnded:Connect(function(input)
+		addConn(UserInputService.InputEnded:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.Keyboard then
 				local kc = input.KeyCode
 				if kc == Enum.KeyCode.W then pressed.W = false
@@ -1189,46 +1196,45 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 				elseif kc == Enum.KeyCode.E then pressed.E = false
 				end
 			end
-		end)
-		addConn(kbEndedConn)
+		end))
 
-		-- keep a RenderStepped safety connection to keep camera synced (we still rely mostly on the coroutine)
-		rsConn = RunService.RenderStepped:Connect(function(dt)
+		-- keep camera synced to the part each frame (safety)
+		addConn(RunService.RenderStepped:Connect(function(dt)
 			if not part or not part.Parent then return end
-			-- small correction: ensure camera is placed at the part so LookVector/right are meaningful
-			pcall(function() cam.CFrame = part.CFrame end)
-		end)
-		addConn(rsConn)
+			pcall(function()
+				local lookVec = cam.CFrame.LookVector
+				cam.CFrame = CFrame.new(part.Position, part.Position + lookVec)
+			end)
+		end))
 
 	else
-		-- OFF: clean up world + connections
+		-- OFF: cleanup
 		local existingPart = workspace:FindFirstChild("ExperienceSettingsCamera")
 		if existingPart then existingPart:Destroy() end
 
 		local oldHolder = Menu:FindFirstChild("FrameHolder")
 		if oldHolder then oldHolder:Destroy() end
 
-		-- disconnect stored connections
 		for _, c in ipairs(connList) do
-			if c and c.Connected then pcall(function() c:Disconnect() end) end
+			if c and c.Connected then
+				pcall(function() c:Disconnect() end)
+			end
 		end
 		connList = {}
 
-		-- also disconnect keyboard/coroutine if present
-		if kbBeganConn and kbBeganConn.Connected then pcall(function() kbBeganConn:Disconnect() end) end
-		if kbEndedConn and kbEndedConn.Connected then pcall(function() kbEndedConn:Disconnect() end) end
-		if rsConn and rsConn.Connected then pcall(function() rsConn:Disconnect() end) end
-
-		-- stop movement coroutine by removing part parent (the coroutine checks part.Parent)
+		-- ensure coroutine will exit (it checks part)
 		if part and part.Parent then part:Destroy() end
 		part = nil
+		movingCoroutine = nil
 
-		-- restore character/camera
+		-- restore character and camera
 		pcall(function()
 			humanoid.AutoRotate = true
 			hrp.Anchored = false
 			player.CameraMode = Enum.CameraMode.Classic
-			if humanoid and humanoid.Parent then cam.CameraSubject = humanoid end
+			if humanoid and humanoid.Parent then
+				cam.CameraSubject = humanoid
+			end
 		end)
 	end
 end, false)
