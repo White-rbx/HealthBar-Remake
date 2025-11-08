@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] =====
+-- ===== [ Positions ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -1291,33 +1291,35 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
         player.CameraMode = Enum.CameraMode.Classic
         cam.CameraSubject = humanoid
     end
-end, false)		-- start move loop when something pressed (startMoveLoop called by bindings)
-	else
-		-- OFF: cleanup everything created and restore camera & character
-		-- disconnect conns
-		for _,c in ipairs(conns) do
-			if c and c.Connected then
-				pcall(function() c:Disconnect() end)
-			end
-		end
-		conns = {}
+end, false) -- start move loop if keys already pressed
+    startMove()
 
-		-- destroy GUI holder if present (FrameHolder)
-		local fh = Menu:FindFirstChild("FrameHolder")
-		if fh then fh:Destroy() end
+else
+    -- OFF: cleanup everything created and restore camera & character
+    -- disconnect conns
+    for _,c in ipairs(conns) do
+        if c and c.Connected then
+            pcall(function() c:Disconnect() end)
+        end
+    end
+    conns = {}
 
-		-- destroy part
-		if part and part.Parent then part:Destroy() end
-		part = nil
+    -- destroy GUI holder if present (FrameHolder)
+    local fh = Menu:FindFirstChild("FrameHolder")
+    if fh then fh:Destroy() end
 
-		-- reset input state
-		for k,_ in pairs(pressed) do pressed[k] = false end
-		for k,_ in pairs(mobile) do mobile[k] = false end
+    -- destroy part
+    if part and part.Parent then part:Destroy() end
+    part = nil
 
-		-- restore character & camera
-		humanoid.AutoRotate = true
-		hrp.Anchored = false
-		player.CameraMode = Enum.CameraMode.Classic
-		cam.CameraSubject = humanoid
-	end
+    -- reset input state
+    for k,_ in pairs(pressed) do pressed[k] = false end
+    for k,_ in pairs(mobileKeys) do mobileKeys[k] = false end
+
+    -- restore character & camera
+    humanoid.AutoRotate = true
+    hrp.Anchored = false
+    player.CameraMode = Enum.CameraMode.Classic
+    cam.CameraSubject = humanoid
+end -- ← ปิด if state
 end, false)
