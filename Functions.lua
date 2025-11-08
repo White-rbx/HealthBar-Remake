@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -969,16 +969,11 @@ createToggle(BFrame, "Disable Death Sound", function(state)
 end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
--- ========================================
--- ✅ Full: ExperienceSettingsCamera (Merged + Fixed + Speed UI)
--- - ใช้ createToggle(BFrame, ...)
--- - สร้าง/ลบ FrameHolder, Part, ปุ่มมือถือ
--- - Keyboard (W A S D Q E) + Mobile buttons
--- - Movement aligned to camera yaw
--- - Speed controller UI (Default / Enter)
--- ========================================
-
-createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
+-- ==============================
+-- ExperienceSettingsCamera (Fixed: input binds + movement + Speed UI)
+-- ใช้ createToggle(BFrame, ...)
+-- ==============================
+createToggle(BFrame, "ExperienceSettingsCamera (Full Fixed)", function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
@@ -989,17 +984,15 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 	local hrp = char:WaitForChild("HumanoidRootPart")
 	local humanoid = char:WaitForChild("Humanoid")
 
-	-- connection storage + state
+	-- state & conns
 	local connList = {}
+	local function addConn(c) if c then table.insert(connList, c) end end
 	local part = nil
 	local holderGui = nil
 	local speedFrame = nil
+	local moverConn = nil
 
-	local function addConn(c)
-		if c then table.insert(connList, c) end
-	end
-
-	-- movement maps (unit directions; Z forward/back)
+	-- movement maps: unit directions (Z = forward/back, X = right/left, Y = up/down)
 	local moveMap = {
 		W = Vector3.new(0, 0, 1),
 		S = Vector3.new(0, 0, -1),
@@ -1008,14 +1001,13 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 		Q = Vector3.new(0, 1, 0),
 		E = Vector3.new(0, -1, 0),
 	}
-	local speed = 15 -- default studs/sec
+	local speed = 15
 	local minSpeed, maxSpeed = 1, 250
 
-	-- input states
 	local pressed = { W=false, A=false, S=false, D=false, Q=false, E=false }
 	local mobileKeys = { W=false, A=false, S=false, D=false, Q=false, E=false }
 
-	-- helper: create mobile button
+	-- create mobile button helper
 	local function makeButton(parent, name, labelText, pos)
 		local b = Instance.new("TextButton")
 		b.Name = name
@@ -1029,6 +1021,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 		b.Font = Enum.Font.SourceSansBold
 		b.BorderSizePixel = 0
 		b.Active = true
+		b.AutoButtonColor = true
 		b.Parent = parent
 
 		local uc = Instance.new("UICorner"); uc.CornerRadius = UDim.new(0,8); uc.Parent = b
@@ -1037,9 +1030,8 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 		return b
 	end
 
-	-- create speed UI
+	-- Speed UI
 	local function createSpeedUI(parent)
-		-- cleanup old
 		local old = parent:FindFirstChild("SpeedController")
 		if old then old:Destroy() end
 
@@ -1099,61 +1091,93 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 			end
 		end
 
-		enterBtn.MouseButton1Click:Connect(function()
+		addConn(enterBtn.MouseButton1Click:Connect(function()
 			setSpeedFromString(speedBox.Text)
-		end)
-		defaultBtn.MouseButton1Click:Connect(function()
+		end))
+		addConn(defaultBtn.MouseButton1Click:Connect(function()
 			speed = 15
 			speedBox.Text = tostring(speed)
-		end)
-		speedBox.FocusLost:Connect(function(enterPressed)
+		end))
+		addConn(speedBox.FocusLost:Connect(function(enterPressed)
 			if enterPressed then setSpeedFromString(speedBox.Text) end
-		end)
+		end))
 
 		return frame
 	end
 
-	-- robust bind for mobile buttons
+	-- robust binding (all useful events)
 	local function bindMobileButton(btn, key)
 		if not btn or not btn:IsA("GuiObject") then return end
 		if btn:GetAttribute("ESC_Bound") then return end
 		btn:SetAttribute("ESC_Bound", true)
 
-		-- InputBegan/InputEnded covers many device inputs
-		local c1 = btn.InputBegan:Connect(function(input)
+		-- InputBegan/InputEnded (touch/mouse)
+		addConn(btn.InputBegan:Connect(function(input)
 			if input.UserInputState == Enum.UserInputState.Begin then
 				local t = input.UserInputType
 				if t == Enum.UserInputType.Touch or t == Enum.UserInputType.MouseButton1 then
 					mobileKeys[key] = true
 				end
 			end
-		end)
-		addConn(c1)
-		local c2 = btn.InputEnded:Connect(function(input)
+		end))
+		addConn(btn.InputEnded:Connect(function(input)
 			if input.UserInputState == Enum.UserInputState.End then
 				local t = input.UserInputType
 				if t == Enum.UserInputType.Touch or t == Enum.UserInputType.MouseButton1 then
 					mobileKeys[key] = false
 				end
 			end
-		end)
-		addConn(c2)
+		end))
 
-		-- fallbacks
+		-- Mouse down/up, Touch start/end, Activated, Click as fallback
 		addConn(btn.MouseButton1Down:Connect(function() mobileKeys[key] = true end))
 		addConn(btn.MouseButton1Up:Connect(function() mobileKeys[key] = false end))
 		addConn(btn.TouchStarted:Connect(function() mobileKeys[key] = true end))
 		addConn(btn.TouchEnded:Connect(function() mobileKeys[key] = false end))
+		addConn(btn.Activated:Connect(function() -- Activated fires for many input types (tap/click)
+			-- small tap -> briefly set and unset to allow click-step movement
+			mobileKeys[key] = true
+			task.delay(0.08, function() mobileKeys[key] = false end)
+		end))
+		addConn(btn.MouseButton1Click:Connect(function()
+			-- click fallback (ensures instant reaction)
+			mobileKeys[key] = true
+			task.delay(0.08, function() mobileKeys[key] = false end)
+		end))
 	end
 
-	-- movement loop (RenderStepped)
-	local moverConn
+	-- keyboard handlers
+	addConn(UserInputService.InputBegan:Connect(function(input, gp)
+		if gp then return end
+		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+		local kc = input.KeyCode
+		if kc == Enum.KeyCode.W then pressed.W = true
+		elseif kc == Enum.KeyCode.S then pressed.S = true
+		elseif kc == Enum.KeyCode.A then pressed.A = true
+		elseif kc == Enum.KeyCode.D then pressed.D = true
+		elseif kc == Enum.KeyCode.Q then pressed.Q = true
+		elseif kc == Enum.KeyCode.E then pressed.E = true
+		end
+	end))
+	addConn(UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+		local kc = input.KeyCode
+		if kc == Enum.KeyCode.W then pressed.W = false
+		elseif kc == Enum.KeyCode.S then pressed.S = false
+		elseif kc == Enum.KeyCode.A then pressed.A = false
+		elseif kc == Enum.KeyCode.D then pressed.D = false
+		elseif kc == Enum.KeyCode.Q then pressed.Q = false
+		elseif kc == Enum.KeyCode.E then pressed.E = false
+		end
+	end))
+
+	-- mover (RenderStepped)
 	local function startMover()
 		if moverConn and moverConn.Connected then return end
 		moverConn = RunService.RenderStepped:Connect(function(dt)
 			if not part or not part.Parent then return end
 
-			-- accumulate dir
+			-- sum directional intent
 			local dir = Vector3.new(0,0,0)
 			for k,v in pairs(moveMap) do
 				if (pressed[k] and pressed[k] == true) or (mobileKeys[k] and mobileKeys[k] == true) then
@@ -1163,23 +1187,22 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 
 			if dir.Magnitude > 0 then
 				local dirUnit = dir.Unit
-				-- camera horizontal forward/right
+				-- get camera forward/right on XZ plane
 				local camCF = cam.CFrame
 				local forward = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z)
 				local right   = Vector3.new(camCF.RightVector.X, 0, camCF.RightVector.Z)
-				if forward.Magnitude < 0.0001 then forward = Vector3.new(0,0,-1) end
+				if forward.Magnitude < 0.0001 then forward = Vector3.new(0,0,1) end
 				if right.Magnitude < 0.0001 then right = Vector3.new(1,0,0) end
 				forward = forward.Unit
 				right = right.Unit
 
-				-- dirUnit: X=right, Y=up, Z=forward (as moveMap defined)
+				-- dirUnit: X=right, Y=up, Z=forward
 				local moveWorld = right * dirUnit.X + Vector3.new(0, dirUnit.Y, 0) + forward * dirUnit.Z
 				local delta = moveWorld * (speed * dt)
 
-				-- update part and keep camera look direction
 				local newPos = part.Position + delta
+				-- update part and camera (keep look direction)
 				part.CFrame = CFrame.new(newPos)
-				-- keep camera looking same direction (so LockFirstPerson feeling)
 				pcall(function()
 					cam.CFrame = CFrame.new(newPos, newPos + cam.CFrame.LookVector)
 				end)
@@ -1188,46 +1211,35 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 		addConn(moverConn)
 	end
 
-	-- cleanup helper
-	local function cleanup()
-		-- disconnect all stored conns
+	-- cleanup
+	local function cleanupAll()
 		for _,c in ipairs(connList) do
 			if c and c.Connected then
 				pcall(function() c:Disconnect() end)
 			end
 		end
 		connList = {}
-
-		-- destroy speed UI
-		if speedFrame and speedFrame.Parent then
-			pcall(function() speedFrame:Destroy() end)
-		end
-
-		-- unbind attribute marks on buttons
+		if speedFrame and speedFrame.Parent then pcall(function() speedFrame:Destroy() end) end
 		if holderGui and holderGui.Parent then
 			for _,k in pairs({"W","A","S","D","Q","E"}) do
 				local b = holderGui:FindFirstChild(k)
-				if b then b:SetAttribute("ESC_Bound", nil) end
+				if b and b:GetAttribute("ESC_Bound") then b:SetAttribute("ESC_Bound", nil) end
 			end
 		end
-
-		-- stop mover if active
-		if moverConn and moverConn.Connected then
-			pcall(function() moverConn:Disconnect() end)
-			moverConn = nil
-		end
+		if moverConn and moverConn.Connected then pcall(function() moverConn:Disconnect() end) end
+		moverConn = nil
 	end
 
-	-- === START / STOP logic ===
+	-- === ON / OFF behavior ===
 	if state then
-		-- ON
-		-- cleanup any leftovers
-		local existingPart = workspace:FindFirstChild("ExperienceSettingsCamera")
-		if existingPart then pcall(function() existingPart:Destroy() end) end
-		local oldHolder = Menu:FindFirstChild("FrameHolder")
-		if oldHolder then pcall(function() oldHolder:Destroy() end) end
+		-- ON: create part, holder, buttons
+		if workspace:FindFirstChild("ExperienceSettingsCamera") then
+			pcall(function() workspace:FindFirstChild("ExperienceSettingsCamera"):Destroy() end)
+		end
+		if Menu:FindFirstChild("FrameHolder") then
+			pcall(function() Menu:FindFirstChild("FrameHolder"):Destroy() end)
+		end
 
-		-- create part
 		part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
 		part.Size = Vector3.new(1,1,1)
@@ -1242,16 +1254,14 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 		light.Range = 14
 		light.Parent = part
 
-		-- freeze HRP
 		hrp.Anchored = true
 		humanoid.AutoRotate = false
 
-		-- set camera
 		player.CameraMode = Enum.CameraMode.LockFirstPerson
-		cam.CameraSubject = part
 		cam.CameraType = Enum.CameraType.Custom
+		cam.CameraSubject = part
 
-		-- build holder
+		-- holder
 		holderGui = Menu:FindFirstChild("FrameHolder")
 		if not holderGui then
 			holderGui = Instance.new("Frame")
@@ -1261,7 +1271,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 			holderGui.Parent = Menu
 		end
 
-		-- create mobile buttons
+		-- create buttons
 		local w = makeButton(holderGui, "W", "W", UDim2.new(0.05, 0, 0.65, 0))
 		local a = makeButton(holderGui, "A", "A", UDim2.new(0, 0, 0.75, 0))
 		local s = makeButton(holderGui, "S", "S", UDim2.new(0.05, 0, 0.85, 0))
@@ -1269,7 +1279,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 		local q = makeButton(holderGui, "Q", "Q", UDim2.new(0.85, 0, 0.65, 0))
 		local e = makeButton(holderGui, "E", "E", UDim2.new(0.85, 0, 0.85, 0))
 
-		-- bind mobile buttons
+		-- bind all buttons (adds multiple event types incl MouseButton1Click)
 		bindMobileButton(w, "W")
 		bindMobileButton(a, "A")
 		bindMobileButton(s, "S")
@@ -1277,7 +1287,8 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 		bindMobileButton(q, "Q")
 		bindMobileButton(e, "E")
 
-		-- keyboard bindings
+		-- keyboard: start mover on input and stop when release
+		-- (connections already added above; call startMover if any key active)
 		addConn(UserInputService.InputBegan:Connect(function(input, gp)
 			if gp then return end
 			if input.UserInputType == Enum.UserInputType.Keyboard then
@@ -1290,19 +1301,6 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 				elseif kc == Enum.KeyCode.E then pressed.E = true
 				end
 				startMover()
-			end
-		end))
-
-		addConn(UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.Keyboard then
-				local kc = input.KeyCode
-				if kc == Enum.KeyCode.W then pressed.W = false
-				elseif kc == Enum.KeyCode.S then pressed.S = false
-				elseif kc == Enum.KeyCode.A then pressed.A = false
-				elseif kc == Enum.KeyCode.D then pressed.D = false
-				elseif kc == Enum.KeyCode.Q then pressed.Q = false
-				elseif kc == Enum.KeyCode.E then pressed.E = false
-				end
 			end
 		end))
 
@@ -1319,21 +1317,15 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 		end))
 
 	else
-		-- OFF
-		-- destroy part & UI & conns
-		if part and part.Parent then
-			pcall(function() part:Destroy() end)
-		end
+		-- OFF: cleanup
+		if part and part.Parent then pcall(function() part:Destroy() end) end
 		part = nil
-
-		if holderGui and holderGui.Parent then
-			pcall(function() holderGui:Destroy() end)
-		end
+		if holderGui and holderGui.Parent then pcall(function() holderGui:Destroy() end) end
 		holderGui = nil
 
-		cleanup()
+		cleanupAll()
 
-		-- restore player
+		-- restore player/camera
 		pcall(function()
 			humanoid.AutoRotate = true
 			hrp.Anchored = false
@@ -1341,4 +1333,5 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Full)", function(state)
 			cam.CameraSubject = humanoid
 		end)
 	end
+
 end, false)
