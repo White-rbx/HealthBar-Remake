@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -969,55 +969,227 @@ end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
 -- ==============================
--- Final: use existing FrameHolder buttons if present (paths you gave)
+-- ExperienceSettingsCamera (Final, fixed, full)
+-- - Holdable mobile buttons + keyboard
+-- - SpeedType TextBox (name = "SpeedType")
+-- - Cleanup when OFF (FrameHolder, part, connections)
+-- - Prefers existing CoreGui FrameHolder buttons if present
+-- - Expects createToggle and BFrame to exist already
+-- ==============================
+
 createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
+	-- Services
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
 	local CoreGui = game:GetService("CoreGui")
 
+	-- Player / Camera / Character
 	local player = Players.LocalPlayer
 	local cam = workspace.CurrentCamera
 	local char = player.Character or player.CharacterAdded:Wait()
 	local hrp = char:WaitForChild("HumanoidRootPart")
 	local humanoid = char:WaitForChild("Humanoid")
 
-	-- try get Menu and FrameHolder using exact path you provided
-	local function getMenu()
-		local ok, top = pcall(function()
-			return CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
-		end)
-		if not ok or not top then return nil end
-		local ok2, unibar = pcall(function() return top:WaitForChild("UnibarLeftFrame") end)
-		if not ok2 or not unibar then return nil end
+	-- Attempt to reuse global Menu if available, otherwise try to find it in CoreGui
+	local existingMenu = (type(Menu) == "table" or type(Menu) == "userdata") and Menu
+	local Menu = existingMenu or (pcall(function()
+		-- Use FindFirstChild chain to avoid long yields; fallback to nil if missing
+		local top = CoreGui:FindFirstChild("TopBarApp")
+		if not top then return nil end
+		local nested = top:FindFirstChild("TopBarApp")
+		if not nested then return nil end
+		local unibar = nested:FindFirstChild("UnibarLeftFrame")
+		if not unibar then return nil end
 		local hb = unibar:FindFirstChild("HealthBar")
 		if not hb then return nil end
 		local exp = hb:FindFirstChild("ExperienceSettings")
 		if not exp then return nil end
 		local menu = exp:FindFirstChild("Menu")
 		return menu
-	end
-	local Menu = getMenu() -- may be nil; code will fallback to creating if needed
+	end) and (CoreGui.TopBarApp and CoreGui.TopBarApp.TopBarApp and CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame and CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar and CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ExperienceSettings and CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ExperienceSettings.Menu) or nil)
 
-	-- state stores
-	local conns = {}
-	local part = nil
-	local holder = nil
+	-- State
+	local conns = {}           -- connections to disconnect
+	local part = nil           -- camera anchor part
+	local holder = nil         -- FrameHolder or fallback holder
 	local moveConn = nil
+	local syncConn = nil
 
-	-- input states
 	local pressed = { W=false, A=false, S=false, D=false, Q=false, E=false }
 	local mobile = { W=false, A=false, S=false, D=false, Q=false, E=false }
 
-	-- speed
+	-- Speed config
 	local speed = 15
 	local minSpeed, maxSpeed = 1, 400
 
-	local function addConn(c) if c then table.insert(conns, c) end end
+	-- helper: store connection
+	local function addConn(c)
+		if c then table.insert(conns, c) end
+	end
 
-	-- create fallback FrameHolder under Menu or PlayerGui (only if not present)
+	-- Styled button creator (50x50)
+	local function makeButton(parent, name, labelText, pos)
+		local b = Instance.new("TextButton")
+		b.Name = name
+		b.Text = labelText
+		b.Size = UDim2.new(0,50,0,50)
+		b.Position = pos or UDim2.new(0,0,0,0)
+		b.BackgroundColor3 = Color3.fromRGB(255,255,255)
+		b.BackgroundTransparency = 0.5
+		b.TextColor3 = Color3.fromRGB(0,0,0)
+		b.TextScaled = true
+		b.Font = Enum.Font.SourceSansBold
+		b.BorderSizePixel = 0
+		b.Active = true
+		b.Parent = parent
+
+		local uc = Instance.new("UICorner"); uc.CornerRadius = UDim.new(0,8); uc.Parent = b
+		local st = Instance.new("UIStroke"); st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; st.LineJoinMode = Enum.LineJoinMode.Round; st.Color = Color3.fromRGB(255,255,255); st.Thickness = 1; st.Parent = b
+
+		return b
+	end
+
+	-- Speed UI creator
+	local function createSpeedUI(parent)
+		local old = parent:FindFirstChild("SpeedController")
+		if old then old:Destroy() end
+
+		local frame = Instance.new("Frame")
+		frame.Name = "SpeedController"
+		frame.Size = UDim2.new(0,270,0,60)
+		frame.Position = UDim2.new(0.12,0,0.56,0)
+		frame.BackgroundColor3 = Color3.fromRGB(255,255,255)
+		frame.BackgroundTransparency = 0.6
+		frame.Parent = parent
+
+		local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0,8); corner.Parent = frame
+		local stroke = Instance.new("UIStroke"); stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; stroke.LineJoinMode = Enum.LineJoinMode.Round; stroke.Color = Color3.fromRGB(255,255,255); stroke.Thickness = 1; stroke.Parent = frame
+
+		local defaultBtn = Instance.new("TextButton")
+		defaultBtn.Name = "Default"
+		defaultBtn.Text = "Default"
+		defaultBtn.Size = UDim2.new(0,80,1,0)
+		defaultBtn.Position = UDim2.new(0,8,0,0)
+		defaultBtn.BackgroundTransparency = 0.5
+		defaultBtn.Parent = frame
+
+		local speedBox = Instance.new("TextBox")
+		speedBox.Name = "SpeedType" -- important: user's expected name
+		speedBox.PlaceholderText = "SpeedType"
+		speedBox.Text = tostring(speed)
+		speedBox.Size = UDim2.new(0,110,1,0)
+		speedBox.Position = UDim2.new(0,100,0,0)
+		speedBox.BackgroundTransparency = 0.5
+		speedBox.Parent = frame
+
+		local enterBtn = Instance.new("TextButton")
+		enterBtn.Name = "Enter"
+		enterBtn.Text = "Enter"
+		enterBtn.Size = UDim2.new(0,60,1,0)
+		enterBtn.Position = UDim2.new(0,216,0,0)
+		enterBtn.BackgroundTransparency = 0.5
+		enterBtn.Parent = frame
+
+		for _, child in ipairs({defaultBtn, speedBox, enterBtn}) do
+			local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,8); c.Parent = child
+			local s = Instance.new("UIStroke"); s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; s.LineJoinMode = Enum.LineJoinMode.Round; s.Color = Color3.fromRGB(255,255,255); s.Thickness = 1; s.Parent = child
+			if not child:IsA("TextBox") then child.TextScaled = true end
+			child.Font = Enum.Font.SourceSansBold
+			child.TextColor3 = Color3.fromRGB(0,0,0)
+		end
+
+		local function setSpeedFromString(str)
+			local n = tonumber(str)
+			if n and n >= minSpeed and n <= maxSpeed then
+				speed = math.clamp(n, minSpeed, maxSpeed)
+				speedBox.Text = tostring(speed)
+			else
+				speedBox.Text = tostring(speed)
+			end
+		end
+
+		addConn(enterBtn.MouseButton1Click:Connect(function() setSpeedFromString(speedBox.Text) end))
+		addConn(defaultBtn.MouseButton1Click:Connect(function() speed = 15; speedBox.Text = tostring(speed) end))
+		addConn(speedBox.FocusLost:Connect(function(enterPressed) if enterPressed then setSpeedFromString(speedBox.Text) end end))
+
+		return frame, speedBox, defaultBtn, enterBtn
+	end
+
+	-- Movement unit directions (Z=forward, X=right, Y=up)
+	local moveMap = {
+		W = Vector3.new(0,0,1),
+		S = Vector3.new(0,0,-1),
+		A = Vector3.new(-1,0,0),
+		D = Vector3.new(1,0,0),
+		Q = Vector3.new(0,1,0),
+		E = Vector3.new(0,-1,0)
+	}
+
+	-- bind hold semantics for GUI button (mouse/touch/fallbacks)
+	local function bindHoldButton(btn, key)
+		if not btn or not btn:IsA("GuiObject") then return end
+		if btn:GetAttribute("ESCBound") then return end
+		btn:SetAttribute("ESCBound", true)
+
+		-- InputBegan/InputEnded (broad coverage)
+		addConn(btn.InputBegan:Connect(function(input)
+			if input.UserInputState == Enum.UserInputState.Begin then
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					mobile[key] = true
+				end
+			end
+		end))
+
+		addConn(btn.InputEnded:Connect(function(input)
+			if input.UserInputState == Enum.UserInputState.End then
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					mobile[key] = false
+				end
+			end
+		end))
+
+		-- fallbacks
+		addConn(btn.MouseButton1Down:Connect(function() mobile[key] = true end))
+		addConn(btn.MouseButton1Up:Connect(function() mobile[key] = false end))
+		addConn(btn.TouchStarted:Connect(function() mobile[key] = true end))
+		addConn(btn.TouchEnded:Connect(function() mobile[key] = false end))
+
+		-- harmless keepalive if click exists
+		if btn.MouseButton1Click then addConn(btn.MouseButton1Click:Connect(function() end)) end
+	end
+
+	-- Keyboard handlers
+	addConn(UserInputService.InputBegan:Connect(function(input, gp)
+		if gp then return end
+		if input.UserInputType == Enum.UserInputType.Keyboard then
+			local kc = input.KeyCode
+			if kc == Enum.KeyCode.W then pressed.W = true
+			elseif kc == Enum.KeyCode.S then pressed.S = true
+			elseif kc == Enum.KeyCode.A then pressed.A = true
+			elseif kc == Enum.KeyCode.D then pressed.D = true
+			elseif kc == Enum.KeyCode.Q then pressed.Q = true
+			elseif kc == Enum.KeyCode.E then pressed.E = true
+			end
+		end
+	end))
+
+	addConn(UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Keyboard then
+			local kc = input.KeyCode
+			if kc == Enum.KeyCode.W then pressed.W = false
+			elseif kc == Enum.KeyCode.S then pressed.S = false
+			elseif kc == Enum.KeyCode.A then pressed.A = false
+			elseif kc == Enum.KeyCode.D then pressed.D = false
+			elseif kc == Enum.KeyCode.Q then pressed.Q = false
+			elseif kc == Enum.KeyCode.E then pressed.E = false
+			end
+		end
+	end))
+
+	-- ensure holder under Menu or fallback
 	local function ensureHolder()
-		if Menu then
+		if Menu and Menu.Parent then
 			holder = Menu:FindFirstChild("FrameHolder") or Menu:FindFirstChild("FrameHolderFallback")
 			if not holder then
 				holder = Instance.new("Frame")
@@ -1027,41 +1199,42 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 				holder.Parent = Menu
 			end
 		else
-			-- fallback under PlayerGui if CoreGui path missing
+			-- fallback under PlayerGui
 			local pg = player:FindFirstChild("PlayerGui")
-			holder = pg:FindFirstChild("FrameHolderFallback")
+			holder = pg and pg:FindFirstChild("FrameHolderFallback")
 			if not holder then
-				holder = Instance.new("ScreenGui")
-				holder.Name = "FrameHolderFallback"
-				holder.ResetOnSpawn = false
-				holder.Parent = pg or player
+				local sg = Instance.new("ScreenGui")
+				sg.Name = "FrameHolderFallback"
+				sg.ResetOnSpawn = false
+				sg.Parent = pg or player
+				holder = sg
 			end
 		end
 		return holder
 	end
 
-	-- helper to create a button only if missing (but prefer existing one at exact CoreGui path)
+	-- create button only if missing; prefer exact CoreGui path first
 	local function makeButtonIfMissing(name, pos)
-		-- first try exact CoreGui path: TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ExperienceSettings.Menu.FrameHolder.<name>
-		local tryBtn = nil
+		-- try exact core path
+		local coreBtn = nil
 		local ok, top = pcall(function() return CoreGui:FindFirstChild("TopBarApp") and CoreGui.TopBarApp:FindFirstChild("TopBarApp") end)
 		if ok and top then
 			local unibar = top:FindFirstChild("UnibarLeftFrame")
 			if unibar then
 				local hb = unibar:FindFirstChild("HealthBar")
-				if hb then
-					local exp = hb:FindFirstChild("ExperienceSettings")
-					if exp and exp:FindFirstChild("Menu") and exp.Menu:FindFirstChild("FrameHolder") then
-						tryBtn = exp.Menu.FrameHolder:FindFirstChild(name)
-						if tryBtn then return tryBtn end
-					end
+				if hb and hb:FindFirstChild("ExperienceSettings") and hb.ExperienceSettings:FindFirstChild("Menu") then
+					local fh = hb.ExperienceSettings.Menu:FindFirstChild("FrameHolder")
+					if fh then coreBtn = fh:FindFirstChild(name) end
 				end
 			end
 		end
-		-- if not found, create under holder (ensure holder exists)
+		if coreBtn then return coreBtn end
+
+		-- fallback: create under holder
 		holder = holder or ensureHolder()
 		local existing = holder:FindFirstChild(name)
 		if existing then return existing end
+
 		local b = Instance.new("TextButton")
 		b.Name = name
 		b.Text = name
@@ -1074,63 +1247,14 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 		b.Font = Enum.Font.SourceSansBold
 		b.Active = true
 		b.Parent = holder
+
 		local uc = Instance.new("UICorner"); uc.CornerRadius = UDim.new(0,8); uc.Parent = b
 		local st = Instance.new("UIStroke"); st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; st.LineJoinMode = Enum.LineJoinMode.Round; st.Color = Color3.fromRGB(255,255,255); st.Thickness = 1; st.Parent = b
+
 		return b
 	end
 
-	-- bind hold behavior (mouse/touch/keyboard fallbacks)
-	local function bindHold(btn, key)
-		if not btn or not btn:IsA("GuiObject") then return end
-		if btn:GetAttribute("ESC_BOUND") then return end
-		btn:SetAttribute("ESC_BOUND", true)
-
-		-- InputBegan/InputEnded on GUI
-		addConn(btn.InputBegan:Connect(function(input)
-			if input.UserInputState == Enum.UserInputState.Begin then
-				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-					mobile[key] = true
-				end
-			end
-		end))
-		addConn(btn.InputEnded:Connect(function(input)
-			if input.UserInputState == Enum.UserInputState.End then
-				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-					mobile[key] = false
-				end
-			end
-		end))
-
-		-- MouseDown/Up fallback
-		addConn(btn.MouseButton1Down:Connect(function() mobile[key] = true end))
-		addConn(btn.MouseButton1Up:Connect(function() mobile[key] = false end))
-
-		-- Touch fallback
-		addConn(btn.TouchStarted:Connect(function() mobile[key] = true end))
-		addConn(btn.TouchEnded:Connect(function() mobile[key] = false end))
-
-		-- optional click keep (harmless)
-		if btn.MouseButton1Click then addConn(btn.MouseButton1Click:Connect(function() end)) end
-	end
-
-	-- keyboard handlers
-	addConn(UserInputService.InputBegan:Connect(function(input, gp)
-		if gp then return end
-		if input.UserInputType == Enum.UserInputType.Keyboard then
-			for k,_ in pairs({W=true,A=true,S=true,D=true,Q=true,E=true}) do
-				if input.KeyCode == Enum.KeyCode[k] then pressed[k] = true end
-			end
-		end
-	end))
-	addConn(UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Keyboard then
-			for k,_ in pairs({W=true,A=true,S=true,D=true,Q=true,E=true}) do
-				if input.KeyCode == Enum.KeyCode[k] then pressed[k] = false end
-			end
-		end
-	end))
-
-	-- movement heartbeat
+	-- movement loop (heartbeat)
 	local function startMovement()
 		if moveConn and moveConn.Connected then return end
 		moveConn = RunService.Heartbeat:Connect(function(dt)
@@ -1140,17 +1264,17 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 				return
 			end
 
-			-- build dir
+			-- accumulate dir
 			local dir = Vector3.new(0,0,0)
-			if pressed.W or mobile.W then dir += Vector3.new(0,0,1) end
-			if pressed.S or mobile.S then dir += Vector3.new(0,0,-1) end
-			if pressed.A or mobile.A then dir += Vector3.new(-1,0,0) end
-			if pressed.D or mobile.D then dir += Vector3.new(1,0,0) end
-			if pressed.Q or mobile.Q then dir += Vector3.new(0,1,0) end
-			if pressed.E or mobile.E then dir += Vector3.new(0,-1,0) end
+			if pressed.W or mobile.W then dir += moveMap.W end
+			if pressed.S or mobile.S then dir += moveMap.S end
+			if pressed.A or mobile.A then dir += moveMap.A end
+			if pressed.D or mobile.D then dir += moveMap.D end
+			if pressed.Q or mobile.Q then dir += moveMap.Q end
+			if pressed.E or mobile.E then dir += moveMap.E end
 
 			if dir.Magnitude > 0 then
-				-- camera-aligned move (ignore pitch)
+				-- camera aligned forward/right (ignore pitch)
 				local camCF = cam.CFrame
 				local forward = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z)
 				local right = Vector3.new(camCF.RightVector.X, 0, camCF.RightVector.Z)
@@ -1170,49 +1294,24 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 		addConn(moveConn)
 	end
 
-	-- Speed UI creation (keeps textbox named SpeedType)
-	local function createSpeedController(parent)
-		-- destroy if exists
-		local old = parent:FindFirstChild("SpeedController")
-		if old then old:Destroy() end
-
-		local frame = Instance.new("Frame")
-		frame.Name = "SpeedController"
-		frame.Size = UDim2.new(0,270,0,60)
-		frame.Position = UDim2.new(0.12,0,0.56,0)
-		frame.BackgroundColor3 = Color3.fromRGB(255,255,255)
-		frame.BackgroundTransparency = 0.6
-		frame.Parent = parent
-
-		local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0,8); corner.Parent = frame
-		local stroke = Instance.new("UIStroke"); stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; stroke.LineJoinMode = Enum.LineJoinMode.Round; stroke.Color = Color3.fromRGB(255,255,255); stroke.Thickness = 1; stroke.Parent = frame
-
-		local defaultBtn = Instance.new("TextButton"); defaultBtn.Name = "Default"; defaultBtn.Text = "Default"; defaultBtn.Size = UDim2.new(0,80,1,0); defaultBtn.Position = UDim2.new(0,8,0,0); defaultBtn.BackgroundTransparency = 0.5; defaultBtn.Parent = frame
-		local speedBox = Instance.new("TextBox"); speedBox.Name = "SpeedType"; speedBox.PlaceholderText = "SpeedType"; speedBox.Text = tostring(speed); speedBox.Size = UDim2.new(0,110,1,0); speedBox.Position = UDim2.new(0,100,0,0); speedBox.BackgroundTransparency = 0.5; speedBox.Parent = frame
-		local enterBtn = Instance.new("TextButton"); enterBtn.Name = "Enter"; enterBtn.Text = "Enter"; enterBtn.Size = UDim2.new(0,60,1,0); enterBtn.Position = UDim2.new(0,216,0,0); enterBtn.BackgroundTransparency = 0.5; enterBtn.Parent = frame
-
-		for _,v in ipairs({defaultBtn, speedBox, enterBtn}) do
-			local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0,8); c.Parent = v
-			local s = Instance.new("UIStroke"); s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; s.LineJoinMode = Enum.LineJoinMode.Round; s.Color = Color3.fromRGB(255,255,255); s.Thickness = 1; s.Parent = v
-			if not v:IsA("TextBox") then v.TextScaled = true end
-			v.Font = Enum.Font.SourceSansBold
-			v.TextColor3 = Color3.fromRGB(0,0,0)
-		end
-
-		enterBtn.MouseButton1Click:Connect(function()
-			local n = tonumber(speedBox.Text)
-			if n then speed = math.clamp(n, minSpeed, maxSpeed); speedBox.Text = tostring(speed) end
+	-- keep camera synced to part each frame
+	local function startSync()
+		if syncConn and syncConn.Connected then return end
+		syncConn = RunService.RenderStepped:Connect(function()
+			if part and part.Parent then
+				local lookVec = cam.CFrame.LookVector
+				cam.CFrame = CFrame.new(part.Position, part.Position + lookVec)
+			end
 		end)
-		defaultBtn.MouseButton1Click:Connect(function() speed = 15; speedBox.Text = tostring(speed) end)
-		speedBox.FocusLost:Connect(function(entered) if entered then local n = tonumber(speedBox.Text); if n then speed = math.clamp(n, minSpeed, maxSpeed); speedBox.Text = tostring(speed) end end)
+		addConn(syncConn)
 	end
 
 	-- MAIN toggle
 	if state then
-		-- ensure holder/Menu
+		-- ON
 		holder = ensureHolder()
 
-		-- create or reuse part
+		-- create/destroy existing part as needed
 		if workspace:FindFirstChild("ExperienceSettingsCamera") then workspace.ExperienceSettingsCamera:Destroy() end
 		part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
@@ -1225,13 +1324,15 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 
 		local pl = Instance.new("PointLight"); pl.Brightness = 1.2; pl.Range = 16; pl.Parent = part
 
+		-- immobilize player
 		hrp.Anchored = true
 		humanoid.AutoRotate = false
+
+		-- camera lock-like behaviour
 		player.CameraMode = Enum.CameraMode.LockFirstPerson
 		cam.CameraSubject = part
 
-		-- attempt to use exact CoreGui buttons first
-		local corePathExists = false
+		-- prefer existing CoreGui FrameHolder if present
 		local coreFrameHolder = nil
 		local ok, top = pcall(function() return CoreGui:FindFirstChild("TopBarApp") and CoreGui.TopBarApp:FindFirstChild("TopBarApp") end)
 		if ok and top then
@@ -1240,13 +1341,11 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 				local hb = unibar:FindFirstChild("HealthBar")
 				if hb and hb:FindFirstChild("ExperienceSettings") and hb.ExperienceSettings:FindFirstChild("Menu") then
 					coreFrameHolder = hb.ExperienceSettings.Menu:FindFirstChild("FrameHolder")
-					if coreFrameHolder then corePathExists = true end
 				end
 			end
 		end
 
-		-- get or create buttons; prefer coreFrameHolder buttons if present
-		local posTable = {
+		local positions = {
 			W = UDim2.new(0.05,0,0.65,0),
 			A = UDim2.new(0,0,0.75,0),
 			S = UDim2.new(0.05,0,0.85,0),
@@ -1254,59 +1353,46 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 			Q = UDim2.new(0.85,0,0.65,0),
 			E = UDim2.new(0.85,0,0.85,0)
 		}
+
+		-- get or create buttons (prefer coreFrameHolder buttons)
 		local btns = {}
-		for _,k in ipairs({"W","A","S","D","Q","E"}) do
+		for _, k in ipairs({"W","A","S","D","Q","E"}) do
 			local b = nil
-			if corePathExists and coreFrameHolder then
-				b = coreFrameHolder:FindFirstChild(k)
-			end
-			if not b then
-				-- if not found in core path, try holder
-				b = holder:FindFirstChild(k)
-			end
-			if not b then
-				-- create under holder at posTable
-				b = makeButtonIfMissing(k, posTable[k])
-			end
+			if coreFrameHolder then b = coreFrameHolder:FindFirstChild(k) end
+			if not b then b = holder:FindFirstChild(k) end
+			if not b then b = makeButtonIfMissing(k, positions[k]) end
 			btns[k] = b
 		end
 
-		-- bind every button to hold behavior and ensure movement starts on pointer down/click
-		for k,b in pairs(btns) do
-			bindHold(b, k)
+		-- bind each and ensure startMovement on pointer down
+		for k, b in pairs(btns) do
+			bindHoldButton(b, k)
 			addConn(b.MouseButton1Down:Connect(function() startMovement() end))
 			addConn(b.TouchStarted:Connect(function() startMovement() end))
-			-- extra: some clients deliver MouseButton1Click reliably, keep it
 			if b.MouseButton1Click then addConn(b.MouseButton1Click:Connect(function() end)) end
 		end
 
-		-- create speed UI under holder (ensures textbox name SpeedType exists)
-		createSpeedController(holder)
+		-- create speed UI under holder
+		createSpeedUI(holder)
 
-		-- keep camera synced per-frame
-		addConn(RunService.RenderStepped:Connect(function()
-			if part and part.Parent then
-				local lookVec = cam.CFrame.LookVector
-				cam.CFrame = CFrame.new(part.Position, part.Position + lookVec)
-			end
-		end))
-
-		-- start movement loop if keys pressed
+		-- start sync & movement
+		startSync()
 		startMovement()
 	else
-		-- OFF: cleanup
-		for _,c in ipairs(conns) do
+		-- OFF: cleanup & restore
+		for _, c in ipairs(conns) do
 			if c and c.Connected then
 				pcall(function() c:Disconnect() end)
 			end
 		end
 		conns = {}
 
-		-- destroy core FrameHolder if exists or fallback holder
-		if Menu then
+		-- destroy FrameHolder under Menu if created (do not delete CoreGui originals if you prefer; this destroys only holder created under Menu)
+		if Menu and Menu.Parent then
 			local fh = Menu:FindFirstChild("FrameHolder")
 			if fh then fh:Destroy() end
 		end
+		-- destroy fallback holder if created
 		local fb = player:FindFirstChild("FrameHolderFallback")
 		if fb and fb.Parent then fb:Destroy() end
 
@@ -1314,11 +1400,11 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 		if part and part.Parent then part:Destroy() end
 		part = nil
 
-		-- reset input states
+		-- reset inputs
 		for k,_ in pairs(pressed) do pressed[k] = false end
 		for k,_ in pairs(mobile) do mobile[k] = false end
 
-		-- restore
+		-- restore player & camera
 		humanoid.AutoRotate = true
 		hrp.Anchored = false
 		player.CameraMode = Enum.CameraMode.Classic
