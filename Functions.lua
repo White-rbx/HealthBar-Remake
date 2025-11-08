@@ -1,11 +1,11 @@
--- github... JUST UPDATE THE F###ING RAW SCRIPT!!!
+Position'sion'sthub... JUST UPDATE THE F###ING RAW SCRIPT!!!
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -625,7 +625,7 @@ local function updateStatusVisibility()
 
 	-- 1) priority: LoadFrame.Visible == true -> status.Visible = false
 	local okLoad, loadVisible = pcall(function() return loadFrame and loadFrame.Visible end)
-	if okLoad and loadVisible then
+	if okLoad and lonupisible then
 		pcall(function() statusBtn.Visible = false end)
 		setButtonOpen("a2_Status", false)
 		return
@@ -969,8 +969,7 @@ createToggle(BFrame, "Disable Death Sound", function(state)
 end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
-
--- <<========================================>>
+-- ========================================
 -- 🔧 Addon (Fixed): Speed Controller + Move Fix (Full)
 -- - ต่อท้าย Copilot's ExperienceSettingsCamera script
 -- - ไม่แก้สคริปต์หลัก (safe)
@@ -985,6 +984,8 @@ local Menu = game.CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.Experien
 
 -- wait a bit for the main toggle to create FrameHolder & part
 task.wait(0.6)
+
+createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 
 local holderGui = Menu:FindFirstChild("FrameHolder")
 local part = workspace:FindFirstChild("ExperienceSettingsCamera")
@@ -1268,3 +1269,5 @@ end)
 holderGui:SetAttribute("ESC_AddonActive", true)
 
 print("[ESC-Addon] Loaded. Speed:", speed)
+
+end, false)
