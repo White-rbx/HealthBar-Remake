@@ -1,4 +1,3 @@
--- github... JUST UPDATE THE F###ING RAW SCRIPT!!!
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -1028,12 +1027,12 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 
 	-- movement mapping: dir.Z = forward/back, dir.X = right/left, dir.Y = up/down (world Y)
 	local moveMap = {
-		W = Vector3.new(0, 0, 10),   -- forward (positive Z component)
-		S = Vector3.new(0, 0, -10),  -- backward
-		A = Vector3.new(-10, 0, 0),  -- left
-		D = Vector3.new(10, 0, 0),   -- right
-		Q = Vector3.new(0, 10, 0),   -- up
-		E = Vector3.new(0, -10, 0)   -- down
+		W = Vector3.new(0, 0, 3),   -- forward (positive Z component)
+		S = Vector3.new(0, 0, -3),  -- backward
+		A = Vector3.new(-3, 0, 0),  -- left
+		D = Vector3.new(3, 0, 0),   -- right
+		Q = Vector3.new(0, 3, 0),   -- up
+		E = Vector3.new(0, -3, 0)   -- down
 	}
 	local speed = 16
 
