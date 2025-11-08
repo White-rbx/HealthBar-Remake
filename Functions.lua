@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -970,8 +970,8 @@ end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
 -- ✅ ตัวอย่าง: Toggle สำหรับ ExperienceSettingsCamera (พร้อม debug)
--- 🧩 Toggle: ExperienceSettingsCamera (Mobile + PC Fixed)
-createToggle(BFrame, "ExperienceSettingsCamera (Beta)", function(state)
+-- 🧩 Toggle: ExperienceSettingsCamera (Fixed no Menu finder)
+createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
@@ -984,150 +984,166 @@ createToggle(BFrame, "ExperienceSettingsCamera (Beta)", function(state)
 
 	local existingPart = workspace:FindFirstChild("ExperienceSettingsCamera")
 
-	-- 🟢 เปิด (ON)
 	if state then
+		-- 🔵 ON
 		if existingPart then existingPart:Destroy() end
 
-		-- 🧱 สร้างกล้อง
+		-- สร้าง part กล้อง
 		local part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
-		part.Size = Vector3.new(1, 1, 1)
+		part.Size = Vector3.new(1,1,1)
 		part.Anchored = true
 		part.CanCollide = false
-		part.Transparency = 0.5
-		part.Locked = true
-		part.CFrame = hrp.CFrame * CFrame.new(0, 2, -5)
+		part.Transparency = 1
+		part.CFrame = hrp.CFrame
 		part.Parent = workspace
 
 		local light = Instance.new("PointLight")
 		light.Brightness = 2
-		light.Range = 16
+		light.Range = 14
 		light.Parent = part
 
-		-- 🔒 ตัวละครหยุดนิ่ง
-		humanoid.AutoRotate = false
+		-- Anchor ตัวละคร
 		hrp.Anchored = true
+		humanoid.AutoRotate = false
 
-		-- 🔭 ตั้งมุมกล้อง
-		cam.CameraSubject = part
+		-- เปลี่ยนโหมดกล้อง
 		player.CameraMode = Enum.CameraMode.LockFirstPerson
+		cam.CameraSubject = part
+		cam.CameraType = Enum.CameraType.Custom
 
-		-- 🎮 ระบบควบคุม
-		local moveDir = Vector3.zero
-		local rotX, rotY = 0, 0
-		local pressed, mobileKeys = {}, {}
+		-- 🎮 Container สำหรับปุ่ม
+		local holder = Menu:FindFirstChild("FrameHolder")
+		if not holder then
+			holder = Instance.new("Frame")
+			holder.Name = "FrameHolder"
+			holder.Size = UDim2.new(1, 0, 1, 0)
+			holder.BackgroundTransparency = 1
+			holder.Parent = Menu
+		end
 
-		local moveKeys = {
+		-- 🧱 ฟังก์ชันสร้างปุ่ม
+		local function makeButton(parent, name, labelText, pos)
+			local b = Instance.new("TextButton")
+			b.Name = name
+			b.Text = labelText
+			b.Size = UDim2.new(0, 50, 0, 50)
+			b.Position = pos
+			b.BackgroundColor3 = Color3.fromRGB(255,255,255)
+			b.BackgroundTransparency = 0.5
+			b.TextColor3 = Color3.fromRGB(0,0,0)
+			b.TextScaled = true
+			b.Font = Enum.Font.SourceSansBold
+			b.BorderSizePixel = 0
+			b.Parent = parent
+
+			local uc = Instance.new("UICorner")
+			uc.CornerRadius = UDim.new(0,8)
+			uc.Parent = b
+
+			local st = Instance.new("UIStroke")
+			st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			st.LineJoinMode = Enum.LineJoinMode.Round
+			st.Color = Color3.fromRGB(255,255,255)
+			st.Thickness = 1
+			st.Transparency = 0
+			st.Parent = b
+
+			return b
+		end
+
+		-- 📱 ปุ่ม Mobile
+		local mobileKeys = { W=false, A=false, S=false, D=false, Q=false, E=false }
+
+		local w = makeButton(holder, "W", "W", UDim2.new(0.05, 0, 0.65, 0))
+		local a = makeButton(holder, "A", "A", UDim2.new(0, 0, 0.75, 0))
+		local s = makeButton(holder, "S", "S", UDim2.new(0.05, 0, 0.85, 0))
+		local d = makeButton(holder, "D", "D", UDim2.new(0.1, 0, 0.75, 0))
+		local q = makeButton(holder, "Q", "Q", UDim2.new(0.85, 0, 0.65, 0))
+		local e = makeButton(holder, "E", "E", UDim2.new(0.85, 0, 0.85, 0))
+
+		local function bind(btn, key)
+			btn.MouseButton1Down:Connect(function() mobileKeys[key] = true end)
+			btn.MouseButton1Up:Connect(function() mobileKeys[key] = false end)
+			btn.TouchStarted:Connect(function() mobileKeys[key] = true end)
+			btn.TouchEnded:Connect(function() mobileKeys[key] = false end)
+		end
+
+		for _, v in pairs({w,a,s,d,q,e}) do bind(v, v.Name) end
+
+		-- 💻 คีย์บอร์ด
+		local pressed = {}
+		UserInputService.InputBegan:Connect(function(input, gp)
+			if gp then return end
+			if input.UserInputType == Enum.UserInputType.Keyboard then
+				local kc = input.KeyCode
+				if kc == Enum.KeyCode.W then pressed.W = true
+				elseif kc == Enum.KeyCode.S then pressed.S = true
+				elseif kc == Enum.KeyCode.A then pressed.A = true
+				elseif kc == Enum.KeyCode.D then pressed.D = true
+				elseif kc == Enum.KeyCode.Q then pressed.Q = true
+				elseif kc == Enum.KeyCode.E then pressed.E = true
+				end
+			end
+		end)
+
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Keyboard then
+				local kc = input.KeyCode
+				if kc == Enum.KeyCode.W then pressed.W = false
+				elseif kc == Enum.KeyCode.S then pressed.S = false
+				elseif kc == Enum.KeyCode.A then pressed.A = false
+				elseif kc == Enum.KeyCode.D then pressed.D = false
+				elseif kc == Enum.KeyCode.Q then pressed.Q = false
+				elseif kc == Enum.KeyCode.E then pressed.E = false
+				end
+			end
+		end)
+
+		-- 📦 เคลื่อนที่
+		local moveMap = {
 			W = Vector3.new(0, 0, -1),
-			A = Vector3.new(-1, 0, 0),
 			S = Vector3.new(0, 0, 1),
+			A = Vector3.new(-1, 0, 0),
 			D = Vector3.new(1, 0, 0),
 			Q = Vector3.new(0, 1, 0),
 			E = Vector3.new(0, -1, 0)
 		}
 
-		-- 🧠 Mouse look
-		UserInputService.InputChanged:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseMovement then
-				rotX = math.clamp(rotX - input.Delta.Y * 0.25, -80, 80)
-				rotY -= input.Delta.X * 0.25
-			end
-		end)
+		local speed = 16
 
-		-- 🖥 Keyboard
-		UserInputService.InputBegan:Connect(function(input, gp)
-			if not gp and moveKeys[input.KeyCode.Name] then
-				pressed[input.KeyCode.Name] = true
-			end
-		end)
-		UserInputService.InputEnded:Connect(function(input)
-			if moveKeys[input.KeyCode.Name] then
-				pressed[input.KeyCode.Name] = false
-			end
-		end)
-
-		-- 📱 ปุ่มบนจอ
-		local function createMobileButton(parent, name, text, pos, callback)
-			local btn = Instance.new("TextButton")
-			btn.Name = name
-			btn.Text = text
-			btn.TextScaled = true
-			btn.Size = UDim2.new(0, 50, 0, 50)
-			btn.Position = pos
-			btn.BackgroundTransparency = 0.5
-			btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			btn.TextColor3 = Color3.fromRGB(0, 0, 0)
-			btn.AutoButtonColor = true
-			btn.Font = Enum.Font.SourceSansBold
-			btn.ZIndex = 10
-			btn.Parent = parent
-
-			local corner = Instance.new("UICorner")
-			corner.CornerRadius = UDim.new(0, 8)
-			corner.Parent = btn
-
-			local stroke = Instance.new("UIStroke")
-			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			stroke.LineJoinMode = Enum.LineJoinMode.Round
-			stroke.Color = Color3.fromRGB(255, 255, 255)
-			stroke.Thickness = 1
-			stroke.Transparency = 0
-			stroke.Parent = btn
-
-			btn.MouseButton1Down:Connect(function() callback(true) end)
-			btn.MouseButton1Up:Connect(function() callback(false) end)
-			btn.TouchStarted:Connect(function() callback(true) end)
-			btn.TouchEnded:Connect(function() callback(false) end)
-		end
-
-		-- 🧱 Frame Holder (อยู่ใน Menu)
-		local holder = Instance.new("Frame")
-		holder.Name = "FrameHolder"
-		holder.BackgroundTransparency = 1
-		holder.Size = UDim2.new(1, 0, 1, 0)
-		holder.Parent = Menu
-
-		local function reg(name, text, pos)
-			createMobileButton(holder, name, text, pos, function(down)
-				mobileKeys[name] = down
-			end)
-		end
-
-		-- 🔘 ปุ่มเคลื่อนที่ (ซ้าย)
-		reg("W", "W", UDim2.new(0.08, 0, 0.68, 0))
-		reg("A", "A", UDim2.new(0.02, 0, 0.76, 0))
-		reg("S", "S", UDim2.new(0.08, 0, 0.84, 0))
-		reg("D", "D", UDim2.new(0.14, 0, 0.76, 0))
-		-- 🔘 ปุ่มขึ้นลง (ขวา)
-		reg("Q", "Q", UDim2.new(0.85, 0, 0.68, 0))
-		reg("E", "E", UDim2.new(0.85, 0, 0.84, 0))
-
-		-- ⚙️ Render loop
 		RunService.RenderStepped:Connect(function(dt)
+			if not part or not part.Parent then return end
 			local dir = Vector3.zero
-			for key, vec in pairs(moveKeys) do
-				if pressed[key] or mobileKeys[key] then
-					dir += vec
+
+			for k, v in pairs(moveMap) do
+				if pressed[k] or mobileKeys[k] then
+					dir += v
 				end
 			end
-			if dir.Magnitude > 0 then dir = dir.Unit end
 
-			local moveSpeed = 20
-			local rot = CFrame.Angles(math.rad(rotX), math.rad(rotY), 0)
-			part.CFrame = CFrame.new(part.Position) * rot * CFrame.new(dir * moveSpeed * dt)
-			cam.CFrame = part.CFrame
+			if dir.Magnitude > 0 then
+				dir = dir.Unit
+				local forward = cam.CFrame.LookVector
+				local right = cam.CFrame.RightVector
+				local move = (forward * dir.Z + right * dir.X) + Vector3.new(0, dir.Y, 0)
+				part.CFrame = part.CFrame + move * (speed * dt)
+				cam.CFrame = part.CFrame
+			end
 		end)
 
 	else
-		-- 🔴 ปิด (OFF)
-		if existingPart then existingPart:Destroy() end
+		-- 🔴 OFF
+		local part = workspace:FindFirstChild("ExperienceSettingsCamera")
+		if part then part:Destroy() end
+
 		local holder = Menu:FindFirstChild("FrameHolder")
 		if holder then holder:Destroy() end
 
+		-- คืนค่ากล้องและตัวละคร
 		humanoid.AutoRotate = true
 		hrp.Anchored = false
-
 		player.CameraMode = Enum.CameraMode.Classic
 		cam.CameraSubject = humanoid
 	end
-end, false)
+end, fFixed
