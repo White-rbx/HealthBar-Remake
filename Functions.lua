@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== [ Position's ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -1114,7 +1114,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 
 		RunService.RenderStepped:Connect(function(dt)
 			if not part or not part.Parent then return end
-			local dir = Vector3.zero
+			local dir = Vector3.new(0,0,0)
 
 			for k, v in pairs(moveMap) do
 				if pressed[k] or mobileKeys[k] then
