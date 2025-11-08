@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -1008,7 +1008,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 		b.Selectable = false
 
 		local uc = Instance.new("UICorner")
-		uc.CornerRadius = UDim.new(0,8)
+		uc.CornerRadius = UDim.new(1, 0)
 		uc.Parent = b
 
 		local st = Instance.new("UIStroke")
@@ -1028,12 +1028,12 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Test)", function(state)
 
 	-- movement mapping: dir.Z = forward/back, dir.X = right/left, dir.Y = up/down (world Y)
 	local moveMap = {
-		W = Vector3.new(0, 0, 1),   -- forward (positive Z component)
-		S = Vector3.new(0, 0, -1),  -- backward
-		A = Vector3.new(-1, 0, 0),  -- left
-		D = Vector3.new(1, 0, 0),   -- right
-		Q = Vector3.new(0, 1, 0),   -- up
-		E = Vector3.new(0, -1, 0)   -- down
+		W = Vector3.new(0, 0, 25),   -- forward (positive Z component)
+		S = Vector3.new(0, 0, -25),  -- backward
+		A = Vector3.new(-25, 0, 0),  -- left
+		D = Vector3.new(25, 0, 0),   -- right
+		Q = Vector3.new(0, 25, 0),   -- up
+		E = Vector3.new(0, -25, 0)   -- down
 	}
 	local speed = 16
 
