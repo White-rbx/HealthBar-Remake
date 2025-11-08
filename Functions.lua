@@ -1111,11 +1111,12 @@ createToggle(BFrame, "ExperienceSettingsCamera (Final Fixed)", function(state)
 			end
 		end)
 
-		box.FocusLost:Connect(function(enterPressed)
-			if enterPressed then
+				box.FocusLost:Connect(function(enterPressed)
+			-- เพิ่มการตรวจสอบ 'box' ก่อนเข้าถึง 'box.Text'
+			if enterPressed and box then
 				local n = tonumber(box.Text)
 				if n then
-					speed = math.clamp(n, minSpeed, maxSpeed)
+					[span_1](start_span)speed = math.clamp(n, minSpeed, maxSpeed)[span_1](end_span)
 					box.Text = tostring(speed)
 				else
 					box.Text = tostring(speed)
