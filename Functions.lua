@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] =====
+-- ===== [ Position's ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -1038,8 +1038,8 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 	local function createSpeedController(parent)
 		local frame = Instance.new("Frame")
 		frame.Name = "SpeedController"
-		frame.Size = UDim2.new(0, 270, 0, 60)
-		frame.Position = UDim2.new(0.35, 0, 0.56, 0)
+		frame.Size = UDim2.new(0, 290, 0, 60)
+		frame.Position = UDim2.new(0.33, 0, 0.1, 0)
 		frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		frame.BackgroundTransparency = 0.6
 		frame.Parent = parent
@@ -1067,6 +1067,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 		speedBox.Name = "SpeedType"
 		speedBox.PlaceholderText = "SpeedType"
 		speedBox.Text = tostring(speed)
+		speedbox.TextScaled = true
 		speedBox.Size = UDim2.new(0, 110, 1, 0)
 		speedBox.Position = UDim2.new(0, 100, 0, 0)
 		speedBox.BackgroundTransparency = 0.5
@@ -1076,7 +1077,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 		enterBtn.Name = "Enter"
 		enterBtn.Text = "Enter"
 		enterBtn.Size = UDim2.new(0, 60, 1, 0)
-		enterBtn.Position = UDim2.new(0, 216, 0, 0)
+		enterBtn.Position = UDim2.new(0, 220, 0, 0)
 		enterBtn.BackgroundTransparency = 0.5
 		enterBtn.Parent = frame
 
