@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== [ Position's ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -1038,8 +1038,8 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Final)", function(state)
 	local function createSpeedController(parent)
 		local frame = Instance.new("Frame")
 		frame.Name = "SpeedController"
-		frame.Size = UDim2.new(0, 270, 0, 60)
-		frame.Position = UDim2.new(0.35, 0, 0.1, 0)
+		frame.Size = UDim2.new(0, 285, 0, 60)
+		frame.Position = UDim2.new(0.385, 0, 0.1, 0)
 		frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		frame.BackgroundTransparency = 0.6
 		frame.Parent = parent
@@ -1174,7 +1174,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Final)", function(state)
 		part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
 		part.Size = Vector3.new(1, 1, 1)
-		part.Transparency = 1 -- ✅ Changed as requested
+		part.Transparency = 1
 		part.Anchored = true
 		part.CanCollide = false
 		part.CFrame = hrp.CFrame
