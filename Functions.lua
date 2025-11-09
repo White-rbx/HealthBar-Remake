@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] =====
+-- ===== [ Positions ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -1182,7 +1182,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 		part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
 		part.Size = Vector3.new(1, 1, 1)
-		part.Transparency = 0.8
+		part.Transparency = 1
 		part.Anchored = true
 		part.CanCollide = false
 		part.CFrame = hrp.CFrame
