@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] =====
+-- ===== [ Position's ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -968,9 +968,9 @@ end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
 -- ==============================
--- ✅ ExperienceSettingsCamera (Final Fixed + Direction Fix)
--- White Edition
-createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", function(state)
+-- ✅ ExperienceSettingsCamera (FreeCam Final - White Edition)
+-- รองรับ Mobile + Keyboard + Speed UI + Direction Fix
+createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Final)", function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
@@ -1002,7 +1002,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 		connList = {}
 	end
 
-	-- UI creation helper
+	-- helper: make button
 	local function makeButton(parent, name, labelText, pos)
 		local b = Instance.new("TextButton")
 		b.Name = name
@@ -1038,8 +1038,8 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 	local function createSpeedController(parent)
 		local frame = Instance.new("Frame")
 		frame.Name = "SpeedController"
-		frame.Size = UDim2.new(0, 290, 0, 60)
-		frame.Position = UDim2.new(0.33, 0, 0.1, 0)
+		frame.Size = UDim2.new(0, 270, 0, 60)
+		frame.Position = UDim2.new(0.35, 0, 0.56, 0)
 		frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		frame.BackgroundTransparency = 0.6
 		frame.Parent = parent
@@ -1067,17 +1067,17 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 		speedBox.Name = "SpeedType"
 		speedBox.PlaceholderText = "SpeedType"
 		speedBox.Text = tostring(speed)
-		speedbox.TextScaled = true
 		speedBox.Size = UDim2.new(0, 110, 1, 0)
 		speedBox.Position = UDim2.new(0, 100, 0, 0)
 		speedBox.BackgroundTransparency = 0.5
+		speedBox.TextScaled = true -- ✅ Added as requested
 		speedBox.Parent = frame
 
 		local enterBtn = Instance.new("TextButton")
 		enterBtn.Name = "Enter"
 		enterBtn.Text = "Enter"
 		enterBtn.Size = UDim2.new(0, 60, 1, 0)
-		enterBtn.Position = UDim2.new(0, 220, 0, 0)
+		enterBtn.Position = UDim2.new(0, 216, 0, 0)
 		enterBtn.BackgroundTransparency = 0.5
 		enterBtn.Parent = frame
 
@@ -1114,7 +1114,6 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 
 	-- movement state
 	local mobileKeys = { W=false, A=false, S=false, D=false, Q=false, E=false }
-	local pressed = {}
 
 	local function ensureMovementLoop()
 		if mobileKeys.__loop then return end
@@ -1122,21 +1121,15 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 			while part and part.Parent do
 				local dt = RunService.RenderStepped:Wait()
 				local dir = Vector3.zero
-				for k, v in pairs(mobileKeys) do
-					if v == true then
-						if k == "W" then dir += Vector3.new(0,0,1)
-						elseif k == "S" then dir -= Vector3.new(0,0,1)
-						elseif k == "A" then dir -= Vector3.new(1,0,0)
-						elseif k == "D" then dir += Vector3.new(1,0,0)
-						elseif k == "Q" then dir += Vector3.new(0,1,0)
-						elseif k == "E" then dir -= Vector3.new(0,1,0)
-						end
-					end
-				end
+				if mobileKeys.W then dir += Vector3.new(0,0,1) end
+				if mobileKeys.S then dir -= Vector3.new(0,0,1) end
+				if mobileKeys.A then dir -= Vector3.new(1,0,0) end
+				if mobileKeys.D then dir += Vector3.new(1,0,0) end
+				if mobileKeys.Q then dir += Vector3.new(0,1,0) end
+				if mobileKeys.E then dir -= Vector3.new(0,1,0) end
 
 				if dir.Magnitude > 0 then
 					dir = dir.Unit
-					-- 🧭 เคลื่อนที่ตามมุมกล้องจริง
 					local look = cam.CFrame.LookVector
 					local right = cam.CFrame.RightVector
 					local forward = Vector3.new(look.X, 0, look.Z).Unit
@@ -1150,7 +1143,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 		end)
 	end
 
-	-- create + bind button
+	-- button binding
 	local function bindButton(btn, key)
 		btn.MouseButton1Down:Connect(function()
 			mobileKeys[key] = true
@@ -1163,13 +1156,12 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 		end)
 	end
 
-	-- MAIN toggle ON/OFF
+	-- MAIN toggle
 	if state then
 		local existing = workspace:FindFirstChild("ExperienceSettingsCamera")
 		if existing then existing:Destroy() end
 
-		local frames = CoreGui:GetDescendants()
-		for _,v in ipairs(frames) do
+		for _,v in ipairs(CoreGui:GetDescendants()) do
 			if v.Name == "FrameHolder" then v:Destroy() end
 		end
 
@@ -1182,7 +1174,7 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 		part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
 		part.Size = Vector3.new(1, 1, 1)
-		part.Transparency = 1
+		part.Transparency = 1 -- ✅ Changed as requested
 		part.Anchored = true
 		part.CanCollide = false
 		part.CFrame = hrp.CFrame
