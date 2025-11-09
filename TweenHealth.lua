@@ -356,3 +356,5 @@ if FORCE_FULL_ON_SPAWN then
 		spawnFillTweenOnce()
 	end
 end
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth-Small.lua"))()
