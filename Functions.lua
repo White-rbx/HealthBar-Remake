@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] =====
+-- ===== [ Position's ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -323,8 +323,7 @@ txt3.Name = "Name"
 txt3.Active = false
 txt3.TextXAlignment = Enum.TextXAlignment.Left
 txt3.Size = UDim2.new(1,0,0,15)
-txt3.Position = UDim2.new(0,0,0,70)
-txt3.BackgroundTransparency = 1
+txt3.Position = UDim2.new(0,0,Positions3.BackgroundTransparency = 1
 txt3.Text = "[ User on ScriptBlox ]"
 txt3.TextColor3 = Color3.fromRGB(255,255,255)
 txt3.TextScaled =  true
@@ -968,14 +967,13 @@ end, false) -- default OFF
 -- <<===== END MUTED DEATH SOUNDS =====>
 
 -- ==============================
--- ✅ ExperienceSettingsCamera (Final Safe Local Version)
--- No CoreGui usage | Full Mobile + Keyboard | Has SpeedType | Button Animation
-
+-- ✅ ExperienceSettingsCamera (Final Fixed + Direction Fix)
+-- White Edition
 createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
-	local TweenService = game:GetService("TweenService")
+	local CoreGui = game:GetService("CoreGui")
 
 	local player = Players.LocalPlayer
 	local cam = workspace.CurrentCamera
@@ -983,244 +981,234 @@ createToggle(BFrame, "ExperienceSettingsCamera (FreeCam) [⚠️:PlayerGui]", fu
 	local hrp = char:WaitForChild("HumanoidRootPart")
 	local humanoid = char:WaitForChild("Humanoid")
 
-	local conns = {}
+	local connList = {}
 	local part
-	local gui
+	local holderGui
 	local speed = 16
-	local minSpeed, maxSpeed = 1, 400
-	local pressed = {W=false, A=false, S=false, D=false, Q=false, E=false}
-	local mobile = {W=false, A=false, S=false, D=false, Q=false, E=false}
+	local minSpeed, maxSpeed = 1, 300
 
+	-- helper: disconnect safely
 	local function addConn(c)
-		if c then table.insert(conns, c) end
+		if c then table.insert(connList, c) end
 	end
 
-	-- 🧩 Create GUI safely in PlayerGui
-	local function createGui()
-		if player:FindFirstChild("PlayerGui"):FindFirstChild("FreeCamUI") then
-			player.PlayerGui.FreeCamUI:Destroy()
+	local function disconnectAll()
+		for _, c in ipairs(connList) do
+			if c and c.Connected then
+				pcall(function() c:Disconnect() end)
+			end
 		end
-
-		local sg = Instance.new("ScreenGui")
-		sg.Name = "FreeCamUI"
-		sg.IgnoreGuiInset = true
-		sg.ResetOnSpawn = false
-		sg.Parent = player.PlayerGui
-
-		return sg
+		connList = {}
 	end
 
-	-- 🧭 Create button with animation
-	local function makeButton(parent, name, label, pos)
+	-- UI creation helper
+	local function makeButton(parent, name, labelText, pos)
 		local b = Instance.new("TextButton")
 		b.Name = name
-		b.Text = label
+		b.Text = labelText
 		b.Size = UDim2.new(0, 50, 0, 50)
 		b.Position = pos
-		b.BackgroundColor3 = Color3.fromRGB(255,255,255)
+		b.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		b.BackgroundTransparency = 0.5
-		b.TextColor3 = Color3.new(0,0,0)
+		b.TextColor3 = Color3.fromRGB(0, 0, 0)
 		b.TextScaled = true
 		b.Font = Enum.Font.SourceSansBold
+		b.BorderSizePixel = 0
+		b.Active = true
+		b.Selectable = false
 		b.Parent = parent
 
-		local corner = Instance.new("UICorner", b)
-		corner.CornerRadius = UDim.new(0, 10)
-		local stroke = Instance.new("UIStroke", b)
-		stroke.Thickness = 1
+		local uc = Instance.new("UICorner")
+		uc.CornerRadius = UDim.new(0, 8)
+		uc.Parent = b
 
-		local pressTween = TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		local releaseTween = TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-		addConn(b.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				TweenService:Create(b, pressTween, {Size = UDim2.new(0, 55, 0, 55)}):Play()
-				mobile[name] = true
-			end
-		end))
-		addConn(b.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				TweenService:Create(b, releaseTween, {Size = UDim2.new(0, 50, 0, 50)}):Play()
-				mobile[name] = false
-			end
-		end))
+		local st = Instance.new("UIStroke")
+		st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		st.LineJoinMode = Enum.LineJoinMode.Round
+		st.Color = Color3.fromRGB(255, 255, 255)
+		st.Thickness = 1
+		st.Transparency = 0
+		st.Parent = b
 
 		return b
 	end
 
-	-- 🧩 Create Speed UI
-	local function makeSpeedUI(parent)
+	-- Speed controller UI
+	local function createSpeedController(parent)
 		local frame = Instance.new("Frame")
 		frame.Name = "SpeedController"
-		frame.Size = UDim2.new(0, 260, 0, 50)
-		frame.AnchorPoint = Vector2.new(0.5, 0)
-		frame.Position = UDim2.new(0.5, 0, 0.05, 0)
-		frame.BackgroundColor3 = Color3.fromRGB(255,255,255)
+		frame.Size = UDim2.new(0, 270, 0, 60)
+		frame.Position = UDim2.new(0.35, 0, 0.56, 0)
+		frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		frame.BackgroundTransparency = 0.6
 		frame.Parent = parent
 
-		local corner = Instance.new("UICorner", frame)
+		local corner = Instance.new("UICorner")
 		corner.CornerRadius = UDim.new(0, 8)
-		local stroke = Instance.new("UIStroke", frame)
-		stroke.Thickness = 1
+		corner.Parent = frame
 
-		local default = Instance.new("TextButton")
-		default.Text = "Default"
-		default.Size = UDim2.new(0,80,1,0)
-		default.Position = UDim2.new(0,10,0,0)
-		default.Parent = frame
+		local stroke = Instance.new("UIStroke")
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.LineJoinMode = Enum.LineJoinMode.Round
+		stroke.Color = Color3.fromRGB(255, 255, 255)
+		stroke.Thickness = 1
+		stroke.Parent = frame
+
+		local defaultBtn = Instance.new("TextButton")
+		defaultBtn.Name = "Default"
+		defaultBtn.Text = "Default"
+		defaultBtn.Size = UDim2.new(0, 80, 1, 0)
+		defaultBtn.Position = UDim2.new(0, 8, 0, 0)
+		defaultBtn.BackgroundTransparency = 0.5
+		defaultBtn.Parent = frame
 
 		local speedBox = Instance.new("TextBox")
 		speedBox.Name = "SpeedType"
-		speedBox.PlaceholderText = "Speed"
+		speedBox.PlaceholderText = "SpeedType"
 		speedBox.Text = tostring(speed)
-		speedBox.Size = UDim2.new(0,100,1,0)
-		speedBox.Position = UDim2.new(0,95,0,0)
+		speedBox.Size = UDim2.new(0, 110, 1, 0)
+		speedBox.Position = UDim2.new(0, 100, 0, 0)
+		speedBox.BackgroundTransparency = 0.5
 		speedBox.Parent = frame
 
-		local enter = Instance.new("TextButton")
-		enter.Text = "Enter"
-		enter.Size = UDim2.new(0,60,1,0)
-		enter.Position = UDim2.new(0,200,0,0)
-		enter.Parent = frame
+		local enterBtn = Instance.new("TextButton")
+		enterBtn.Name = "Enter"
+		enterBtn.Text = "Enter"
+		enterBtn.Size = UDim2.new(0, 60, 1, 0)
+		enterBtn.Position = UDim2.new(0, 216, 0, 0)
+		enterBtn.BackgroundTransparency = 0.5
+		enterBtn.Parent = frame
 
-		for _,v in ipairs({default,speedBox,enter}) do
-			v.BackgroundTransparency = 0.5
-			v.Font = Enum.Font.SourceSansBold
-			v.TextColor3 = Color3.new(0,0,0)
-			v.TextScaled = true
-			local c = Instance.new("UICorner", v)
-			c.CornerRadius = UDim.new(0,8)
-			local s = Instance.new("UIStroke", v)
+		for _, v in ipairs({ defaultBtn, speedBox, enterBtn }) do
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(0, 8)
+			c.Parent = v
+			local s = Instance.new("UIStroke")
+			s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			s.LineJoinMode = Enum.LineJoinMode.Round
+			s.Color = Color3.fromRGB(255, 255, 255)
 			s.Thickness = 1
+			s.Parent = v
+			if not v:IsA("TextBox") then
+				v.TextScaled = true
+			end
+			v.Font = Enum.Font.SourceSansBold
+			v.TextColor3 = Color3.fromRGB(0, 0, 0)
 		end
 
-		default.MouseButton1Click:Connect(function()
-			speed = 16
-			speedBox.Text = tostring(speed)
-		end)
-		enter.MouseButton1Click:Connect(function()
+		enterBtn.MouseButton1Click:Connect(function()
 			local n = tonumber(speedBox.Text)
 			if n then
 				speed = math.clamp(n, minSpeed, maxSpeed)
 				speedBox.Text = tostring(speed)
 			end
 		end)
-		speedBox.FocusLost:Connect(function(enterPressed)
-			if enterPressed then
-				local n = tonumber(speedBox.Text)
-				if n then
-					speed = math.clamp(n, minSpeed, maxSpeed)
-					speedBox.Text = tostring(speed)
-				end
-			end
+
+		defaultBtn.MouseButton1Click:Connect(function()
+			speed = 16
+			speedBox.Text = tostring(speed)
 		end)
 	end
 
-	-- 🧭 Movement loop
-	local function moveLoop()
-		addConn(RunService.Heartbeat:Connect(function(dt)
-			if not part then return end
-			local dir = Vector3.zero
-			if pressed.W or mobile.W then dir += Vector3.new(0,0,-1) end
-			if pressed.S or mobile.S then dir += Vector3.new(0,0,1) end
-			if pressed.A or mobile.A then dir += Vector3.new(-1,0,0) end
-			if pressed.D or mobile.D then dir += Vector3.new(1,0,0) end
-			if pressed.Q or mobile.Q then dir += Vector3.new(0,1,0) end
-			if pressed.E or mobile.E then dir += Vector3.new(0,-1,0) end
+	-- movement state
+	local mobileKeys = { W=false, A=false, S=false, D=false, Q=false, E=false }
+	local pressed = {}
 
-			if dir.Magnitude > 0 then
-				local camCF = cam.CFrame
-				local forward = Vector3.new(camCF.LookVector.X, 0, camCF.LookVector.Z).Unit
-				local right = Vector3.new(camCF.RightVector.X, 0, camCF.RightVector.Z).Unit
-				local move = (right * dir.X + forward * dir.Z + Vector3.new(0,dir.Y,0)).Unit * speed * dt
-				part.CFrame = part.CFrame + move
-				cam.CFrame = CFrame.new(part.Position, part.Position + cam.CFrame.LookVector)
+	local function ensureMovementLoop()
+		if mobileKeys.__loop then return end
+		mobileKeys.__loop = task.spawn(function()
+			while part and part.Parent do
+				local dt = RunService.RenderStepped:Wait()
+				local dir = Vector3.zero
+				for k, v in pairs(mobileKeys) do
+					if v == true then
+						if k == "W" then dir += Vector3.new(0,0,1)
+						elseif k == "S" then dir -= Vector3.new(0,0,1)
+						elseif k == "A" then dir -= Vector3.new(1,0,0)
+						elseif k == "D" then dir += Vector3.new(1,0,0)
+						elseif k == "Q" then dir += Vector3.new(0,1,0)
+						elseif k == "E" then dir -= Vector3.new(0,1,0)
+						end
+					end
+				end
+
+				if dir.Magnitude > 0 then
+					dir = dir.Unit
+					-- 🧭 เคลื่อนที่ตามมุมกล้องจริง
+					local look = cam.CFrame.LookVector
+					local right = cam.CFrame.RightVector
+					local forward = Vector3.new(look.X, 0, look.Z).Unit
+					local rightVec = Vector3.new(right.X, 0, right.Z).Unit
+
+					local move = forward * dir.Z + rightVec * dir.X + Vector3.new(0, dir.Y, 0)
+					part.CFrame += move * speed * dt
+				end
 			end
-		end))
+			mobileKeys.__loop = nil
+		end)
 	end
 
-	-- keyboard input
-	addConn(UserInputService.InputBegan:Connect(function(input,gp)
-		if gp then return end
-		if input.UserInputType == Enum.UserInputType.Keyboard then
-			local k = input.KeyCode
-			if k == Enum.KeyCode.W then pressed.W = true
-			elseif k == Enum.KeyCode.S then pressed.S = true
-			elseif k == Enum.KeyCode.A then pressed.A = true
-			elseif k == Enum.KeyCode.D then pressed.D = true
-			elseif k == Enum.KeyCode.Q then pressed.Q = true
-			elseif k == Enum.KeyCode.E then pressed.E = true
-			end
-		end
-	end))
-	addConn(UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Keyboard then
-			local k = input.KeyCode
-			if k == Enum.KeyCode.W then pressed.W = false
-			elseif k == Enum.KeyCode.S then pressed.S = false
-			elseif k == Enum.KeyCode.A then pressed.A = false
-			elseif k == Enum.KeyCode.D then pressed.D = false
-			elseif k == Enum.KeyCode.Q then pressed.Q = false
-			elseif k == Enum.KeyCode.E then pressed.E = false
-			end
-		end
-	end))
+	-- create + bind button
+	local function bindButton(btn, key)
+		btn.MouseButton1Down:Connect(function()
+			mobileKeys[key] = true
+			btn:TweenSize(UDim2.new(0, 55, 0, 55), "Out", "Sine", 0.1, true)
+			ensureMovementLoop()
+		end)
+		btn.MouseButton1Up:Connect(function()
+			mobileKeys[key] = false
+			btn:TweenSize(UDim2.new(0, 50, 0, 50), "Out", "Sine", 0.1, true)
+		end)
+	end
 
-	-- ==============================
-	-- MAIN
+	-- MAIN toggle ON/OFF
 	if state then
-		gui = createGui()
+		local existing = workspace:FindFirstChild("ExperienceSettingsCamera")
+		if existing then existing:Destroy() end
+
+		local frames = CoreGui:GetDescendants()
+		for _,v in ipairs(frames) do
+			if v.Name == "FrameHolder" then v:Destroy() end
+		end
+
+		holderGui = Instance.new("Frame")
+		holderGui.Name = "FrameHolder"
+		holderGui.Size = UDim2.new(1, 0, 1, 0)
+		holderGui.BackgroundTransparency = 1
+		holderGui.Parent = Menu
 
 		part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
+		part.Size = Vector3.new(1, 1, 1)
+		part.Transparency = 0.8
 		part.Anchored = true
 		part.CanCollide = false
-		part.Transparency = 0.8
-		part.Size = Vector3.new(1,1,1)
 		part.CFrame = hrp.CFrame
 		part.Parent = workspace
 
-		local pl = Instance.new("PointLight", part)
-		pl.Range = 14; pl.Brightness = 1
-
-		humanoid.AutoRotate = false
 		hrp.Anchored = true
+		humanoid.AutoRotate = false
 		player.CameraMode = Enum.CameraMode.LockFirstPerson
 		cam.CameraSubject = part
 
-		makeSpeedUI(gui)
+		local w = makeButton(holderGui, "W", "↑", UDim2.new(0.05, 0, 0.65, 0))
+		local a = makeButton(holderGui, "A", "←", UDim2.new(0, 0, 0.75, 0))
+		local s = makeButton(holderGui, "S", "↓", UDim2.new(0.05, 0, 0.85, 0))
+		local d = makeButton(holderGui, "D", "→", UDim2.new(0.1, 0, 0.75, 0))
+		local q = makeButton(holderGui, "Q", "Up", UDim2.new(0.85, 0, 0.65, 0))
+		local e = makeButton(holderGui, "E", "Down", UDim2.new(0.85, 0, 0.85, 0))
 
-		local positions = {
-			W = UDim2.new(0.05,0,0.65,0),
-			A = UDim2.new(0,0,0.75,0),
-			S = UDim2.new(0.05,0,0.85,0),
-			D = UDim2.new(0.1,0,0.75,0),
-			Q = UDim2.new(0.85,0,0.65,0),
-			E = UDim2.new(0.85,0,0.85,0)
-		}
-		local labels = {W="↑",S="↓",A="←",D="→",Q="Up",E="Down"}
+		for _,b in ipairs({w,a,s,d,q,e}) do bindButton(b,b.Name) end
+		createSpeedController(holderGui)
 
-		for k,pos in pairs(positions) do
-			local b = makeButton(gui,k,labels[k],pos)
-		end
-
-		moveLoop()
 	else
-		for _,c in ipairs(conns) do
-			if c and c.Connected then c:Disconnect() end
-		end
-		conns = {}
+		disconnectAll()
+		local old = Menu:FindFirstChild("FrameHolder")
+		if old then old:Destroy() end
+		if part and part.Parent then part:Destroy() end
 
-		if player.PlayerGui:FindFirstChild("FreeCamUI") then
-			player.PlayerGui.FreeCamUI:Destroy()
-		end
-
-		local ex = workspace:FindFirstChild("ExperienceSettingsCamera")
-		if ex then ex:Destroy() end
-
-		humanoid.AutoRotate = true
 		hrp.Anchored = false
+		humanoid.AutoRotate = true
 		player.CameraMode = Enum.CameraMode.Classic
 		cam.CameraSubject = humanoid
 	end
