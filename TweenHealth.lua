@@ -1,6 +1,6 @@
--- LocalScript: HealthBar + DamageOverlay (แก้ไขเพื่อให้ Fill tween ทำงาน)
+-- LocalScript: HealthBar + DamageOverlay (Smart Size-change tween)
 -- วางใน StarterPlayerScripts (LocalScript)
--- Fixed
+-- ใช้กับ Fill ที่ตำแหน่ง: game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.HealthBar.Fill
 
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -10,26 +10,32 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 
 -- ========== CONFIG ==========
-local FORCE_FULL_ON_SPAWN = true          -- ถาต้องการ tween จาก 0->1 ตอนเกิดใหม่ ให้ true
-local SPAWN_FILL_TIME = 3.5               -- เวลา tween ตอนเกิดใหม่ (0 -> 1)
-local FILL_TWEEN_TIME = 0.35              -- เวลา tween เมื่อเปลี่ยนเลือดปกติ
+local FORCE_FULL_ON_SPAWN = true
+local SPAWN_FILL_TIME = 3.5
+local FILL_TWEEN_TIME = 0.35
 local UICORNER_RADIUS = UDim.new(1, 0)
 local HEALTHBAR_IMAGE_TRANSPARENCY = 1
 local OVERLAY_IMAGE_ASSET = "rbxassetid://114133350704123"
 local OVERLAY_DEFAULT_TRANSPARENCY = 1
-local FLASH_HIGHHEALTH_TARGET = 0         -- target transparency when flashing (>=50%)
+local FLASH_HIGHHEALTH_TARGET = 0
 local FLASH_TO_FULL_TIME = 0.12
 local FLASH_BACK_TIME = 0.28
 local LOWHEALTH_TWEEN_TIME = 0.18
 
 -- ========== STATE ==========
-local innerHealthBar = nil   -- inner GUI
-local Fill = nil             -- Fill inside inner
+local innerHealthBar = nil
+local Fill = nil
 local humanoid = nil
-local currentFillTween = nil
 local overlayGui = nil
 local overlayImage = nil
 local overlayTween = nil
+
+-- Smart tween state
+local currentFillTween = nil
+local ignoreSizeChange = false
+local SaveValue = nil -- NumberValue to persist last known scale
+local pendingTarget = nil
+local tweening = false
 
 -- Helper: safe find inner healthbar and fill
 local function findInnerAndFill()
@@ -45,6 +51,158 @@ local function findInnerAndFill()
 	if not inner then return nil, nil end
 	local fill = inner:FindFirstChild("Fill")
 	return inner, fill
+end
+
+-- small helpers
+local function ensureNumberSave()
+	if SaveValue and SaveValue.Parent then return end
+	SaveValue = Instance.new("NumberValue")
+	SaveValue.Name = "SaveValue"
+	SaveValue.Value = 1
+	SaveValue.Parent = script
+end
+
+local function readFillScale()
+	if Fill and Fill:IsA("GuiObject") then
+		local ok, s = pcall(function() return Fill.Size.X.Scale end)
+		if ok and type(s) == "number" then
+			return s
+		end
+	end
+	if SaveValue then return SaveValue.Value end
+	return 1
+end
+
+local function safeCancel(tw)
+	if not tw then return end
+	pcall(function()
+		if type(tw.Cancel) == "function" then tw:Cancel() end
+	end)
+end
+
+-- Smart tween to targetPercent
+local function smartTweenTo(targetPercent)
+	if not targetPercent then return end
+	targetPercent = math.clamp(targetPercent, 0, 1)
+	ensureNumberSave()
+
+	-- if Fill not ready, just save and return (will apply later)
+	if not Fill or not Fill:IsA("GuiObject") then
+		SaveValue.Value = targetPercent
+		pendingTarget = nil
+		return
+	end
+
+	-- if currently tweening, replace pending target and return
+	if tweening then
+		pendingTarget = targetPercent
+		return
+	end
+
+	-- compute current
+	local cur = readFillScale()
+	SaveValue.Value = cur
+
+	-- nothing to do?
+	if math.abs(cur - targetPercent) < 0.001 then
+		SaveValue.Value = targetPercent
+		return
+	end
+
+	-- start tween
+	tweening = true
+	-- cancel previous tween if any
+	if currentFillTween then
+		safeCancel(currentFillTween)
+		currentFillTween = nil
+	end
+
+	-- set ignore so handler won't react to our tween set
+	ignoreSizeChange = true
+	local dur = math.clamp(math.abs(cur - targetPercent) * 0.6, 0.06, 0.8)
+	local ok, tw = pcall(function()
+		return TweenService:Create(Fill, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = UDim2.new(targetPercent, 0, 1, 0)
+		})
+	end)
+	if not ok or not tw then
+		-- fallback: set directly
+		pcall(function() Fill.Size = UDim2.new(targetPercent, 0, 1, 0) end)
+		SaveValue.Value = targetPercent
+		ignoreSizeChange = false
+		tweening = false
+		-- if any pending target, handle
+		if pendingTarget and math.abs(pendingTarget - targetPercent) > 0.001 then
+			local next = pendingTarget; pendingTarget = nil
+			smartTweenTo(next)
+		end
+		return
+	end
+
+	currentFillTween = tw
+	tw:Play()
+
+	-- when finished
+	spawn(function()
+		-- wait for completion (robust)
+		tw.Completed:Wait()
+		SaveValue.Value = targetPercent
+		currentFillTween = nil
+		ignoreSizeChange = false
+		tweening = false
+		-- if pending target different, start next tween
+		if pendingTarget and math.abs(pendingTarget - targetPercent) > 0.001 then
+			local next = pendingTarget; pendingTarget = nil
+			smartTweenTo(next)
+		end
+	end)
+end
+
+-- Attach Size-change watcher to Fill
+local sizeWatcherConn = nil
+local function attachFillWatcher()
+	if not Fill or not Fill:IsA("GuiObject") then return end
+	if sizeWatcherConn then return end
+
+	ensureNumberSave()
+	-- initialize SaveValue to current scale
+	local init = readFillScale()
+	SaveValue.Value = init
+
+	sizeWatcherConn = Fill:GetPropertyChangedSignal("Size"):Connect(function()
+		-- ignore if we set it ourselves
+		if ignoreSizeChange then return end
+		-- read new scale
+		local ok, newScale = pcall(function() return Fill.Size.X.Scale end)
+		if not ok or type(newScale) ~= "number" then return end
+
+		-- read last known (previous) scale
+		local prev = SaveValue and SaveValue.Value or newScale
+
+		-- if practically equal, just update SaveValue and return
+		if math.abs(prev - newScale) < 0.001 then
+			SaveValue.Value = newScale
+			return
+		end
+
+		-- Immediately revert to previous value (so we can tween from prev -> newScale)
+		ignoreSizeChange = true
+		pcall(function()
+			Fill.Size = UDim2.new(prev, 0, 1, 0)
+		end)
+		ignoreSizeChange = false
+
+		-- now tween smoothly to newScale
+		smartTweenTo(newScale)
+	end)
+end
+
+-- Stop watcher (cleanup)
+local function detachFillWatcher()
+	if sizeWatcherConn then
+		pcall(function() sizeWatcherConn:Disconnect() end)
+		sizeWatcherConn = nil
+	end
 end
 
 -- Ensure UICorner on inner healthbar
@@ -70,57 +228,7 @@ local function ensureHealthBarTransparency(gui)
 	end
 end
 
--- safe cancel helper
-local function safeCancelTween(tw)
-	if not tw then return end
-	pcall(function()
-		if tw.PlaybackState then
-			-- Use Cancel if available (robust)
-			if type(tw.Cancel) == "function" then
-				tw:Cancel()
-			end
-		else
-			-- nothing
-		end
-	end)
-end
-
--- Tween Fill to percent (with safe cancel + completed handler)
-local function tweenFill(percent)
-	if not Fill or not Fill:IsA("GuiObject") then return end
-	percent = math.clamp(percent or 0, 0, 1)
-
-	-- get current scale (safe)
-	local curScale = 0
-	pcall(function() curScale = Fill.Size.X.Scale or 0 end)
-	-- if already extremely close -> do nothing
-	if math.abs(curScale - percent) < 0.001 then
-		return
-	end
-
-	-- cancel existing tween safely
-	if currentFillTween then
-		safeCancelTween(currentFillTween)
-		currentFillTween = nil
-	end
-
-	-- create tween
-	local ok, tw = pcall(function()
-		local ti = TweenInfo.new(FILL_TWEEN_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		return TweenService:Create(Fill, ti, { Size = UDim2.new(percent, 0, 1, 0) })
-	end)
-	if not ok or not tw then return end
-
-	currentFillTween = tw
-	-- ensure we clear reference when finished
-	tw.Completed:Connect(function(status)
-		-- status is Enum.PlaybackState.Completed or Cancelled - clear ref either way
-		currentFillTween = nil
-	end)
-	tw:Play()
-end
-
--- Create or reuse DamageOverlay in CoreGui
+-- Overlay setup (unchanged)
 local function setupOverlay()
 	local existing = CoreGui:FindFirstChild("DamageOverlay")
 	if existing and existing:IsA("ScreenGui") then
@@ -156,7 +264,6 @@ local function setupOverlay()
 	end
 end
 
--- Cancel and create overlay tween safely
 local function tweenOverlayTo(targetTransparency, timeSec)
 	if not overlayImage then return end
 	if overlayTween then
@@ -170,14 +277,12 @@ local function tweenOverlayTo(targetTransparency, timeSec)
 	end)
 end
 
--- Called when damage occurs; newPercent in [0,1]
 local function onDamageTriggered(newPercent)
 	if not overlayImage then return end
 	if newPercent < 0.5 then
 		local mapped = math.clamp(newPercent / 0.5, 0, 1)
 		tweenOverlayTo(mapped, LOWHEALTH_TWEEN_TIME)
 	else
-		-- flash from 1 -> RT (where RT = real transparency)
 		tweenOverlayTo(FLASH_HIGHHEALTH_TARGET, FLASH_TO_FULL_TIME)
 		coroutine.wrap(function()
 			wait(FLASH_TO_FULL_TIME)
@@ -195,7 +300,7 @@ local function onDamageTriggered(newPercent)
 	end
 end
 
--- Apply fixes to inner + fill + overlay (do NOT force-set fill to full here)
+-- Apply fixes to inner + fill + overlay (add watcher attach)
 local function applyAllFixes()
 	local inner, fill = findInnerAndFill()
 	innerHealthBar = inner
@@ -206,26 +311,21 @@ local function applyAllFixes()
 		ensureHealthBarTransparency(innerHealthBar)
 	end
 
-	-- if Fill exists, ensure it's a GuiObject. Do NOT immediately set to full
-	-- we'll handle spawn animation separately to avoid race conditions
-	-- but ensure Fill.Size is valid (if nil, set to percent=1 safe)
 	if Fill and Fill:IsA("GuiObject") then
-		-- nothing that overrides tween here
+		attachFillWatcher()
 	end
 
-	-- ensure overlay exists
 	if not overlayGui or not overlayImage then
 		setupOverlay()
 	end
 end
 
--- Setup humanoid: health tracking + damage detection
+-- Setup humanoid
 local function setupHumanoid(h)
 	if not h then return end
 	humanoid = h
 	local lastHealth = humanoid.Health
 
-	-- initial overlay state
 	if overlayImage then
 		local initPercent = 1
 		if humanoid.MaxHealth and humanoid.MaxHealth > 0 then
@@ -240,21 +340,16 @@ local function setupHumanoid(h)
 	end
 
 	humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-		-- ensure Fill exists
-		if not Fill then
-			applyAllFixes()
-		end
+		if not Fill then applyAllFixes() end
 
 		local percent = 1
 		if humanoid.MaxHealth and humanoid.MaxHealth > 0 then
 			percent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
 		end
 
-		-- damage detection
 		if lastHealth and humanoid.Health < lastHealth then
 			onDamageTriggered(percent)
 		else
-			-- healed or unchanged: keep overlay in correct state if below 50%
 			if percent < 0.5 then
 				local mapped = math.clamp(percent / 0.5, 0, 1)
 				tweenOverlayTo(mapped, LOWHEALTH_TWEEN_TIME)
@@ -263,14 +358,14 @@ local function setupHumanoid(h)
 			end
 		end
 
-		-- update fill tween
-		tweenFill(percent)
+		-- instead of directly setting, call smartTweenTo
+		smartTweenTo(percent)
 
 		lastHealth = humanoid.Health
 	end)
 end
 
--- Init: CharacterAdded + existing character
+-- Init
 Players.LocalPlayer.CharacterAdded:Connect(function(char)
 	task.wait(0.08)
 	local ok, h = pcall(function() return char:WaitForChild("Humanoid", 5) end)
@@ -284,7 +379,7 @@ if Players.LocalPlayer.Character then
 	applyAllFixes()
 end
 
--- Monitor TopBar / Fill recreation (respawn or core gui change)
+-- Monitor TopBar / Fill recreation
 local checkTimer = 0
 RunService.RenderStepped:Connect(function(dt)
 	checkTimer = checkTimer + dt
@@ -292,16 +387,46 @@ RunService.RenderStepped:Connect(function(dt)
 	checkTimer = 0
 	local inner, fill = findInnerAndFill()
 	if inner ~= innerHealthBar or fill ~= Fill then
+		-- detach old and apply new
+		detachFillWatcher()
 		applyAllFixes()
 	end
 end)
 
--- Outline สำหรับ HealthBar (unchanged)
-local healthBarParentOK, healthBarParent = pcall(function()
+-- Respawn spawn-tween: use smartTweenTo to avoid conflicts
+local function spawnFillTweenOnce()
+	task.wait(0.9)
+	local inner, fill = findInnerAndFill()
+	if not fill or not fill:IsA("GuiObject") then return end
+	-- set immediate 0 (ignore handler while setting)
+	ignoreSizeChange = true
+	pcall(function() fill.Size = UDim2.new(0, 0, 1, 0) end)
+	ignoreSizeChange = false
+	-- then tween to full via smartTweenTo
+	smartTweenTo(1)
+end
+
+if FORCE_FULL_ON_SPAWN then
+	Players.LocalPlayer.CharacterAdded:Connect(function(char)
+		task.defer(function()
+			local ok, h = pcall(function() return char:WaitForChild("Humanoid", 5) end)
+			if ok and h then
+				while h.Health <= 0 do task.wait(0.05) end
+				spawnFillTweenOnce()
+			end
+		end)
+	end)
+	if player.Character and player.Character:FindFirstChild("Humanoid") then
+		spawnFillTweenOnce()
+	end
+end
+
+-- Outline for HealthBar (unchanged)
+local okHB, healthBarParent = pcall(function()
 	return CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
 		:WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar"):WaitForChild("HealthBar")
 end)
-if healthBarParentOK and healthBarParent and not healthBarParent:FindFirstChild("Outline") then
+if okHB and healthBarParent and not healthBarParent:FindFirstChild("Outline") then
 	local outline = Instance.new("Frame")
 	outline.Name = "Outline"
 	outline.Size = UDim2.new(0.98, 0, 0.7, 0)
@@ -319,42 +444,3 @@ if healthBarParentOK and healthBarParent and not healthBarParent:FindFirstChild(
 	stroke.Thickness = 1.8
 	stroke.Parent = outline
 end
-
--- --- Respawn spawn-tween: ถ้าต้องการให้เกิด tween จาก 0->1 ตอนเกิดใหม่ ให้ใช้โค้ดนี้ (รวมในสคริปต์เดียว)
--- ถูกเรียกเมื่อ CharacterAdded (หลัง applyAllFixes)
-local function spawnFillTweenOnce()
-	-- small delay to allow TopBar to create widgets
-	task.wait(0.9) -- รอให้ UI สร้างก่อน
-	local inner, fill = findInnerAndFill()
-	if not fill or not fill:IsA("GuiObject") then return end
-	-- Start from zero width (do a direct set once) then tween to full
-	pcall(function() fill.Size = UDim2.new(0, 0, 1, 0) end)
-	-- cancel any existing tween
-	if currentFillTween then safeCancelTween(currentFillTween); currentFillTween = nil end
-	pcall(function()
-		local ti = TweenInfo.new(SPAWN_FILL_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		currentFillTween = TweenService:Create(fill, ti, { Size = UDim2.new(1, 0, 1, 0) })
-		currentFillTween.Completed:Connect(function() currentFillTween = nil end)
-		currentFillTween:Play()
-	end)
-end
-
--- Hook respawn spawn tween if desired
-if FORCE_FULL_ON_SPAWN then
-	Players.LocalPlayer.CharacterAdded:Connect(function(char)
-		-- wait until humanoid is alive
-		task.defer(function()
-			local ok, h = pcall(function() return char:WaitForChild("Humanoid", 5) end)
-			if ok and h then
-				while h.Health <= 0 do task.wait(0.05) end
-				spawnFillTweenOnce()
-			end
-		end)
-	end)
-	-- if already alive at script start, run once
-	if player.Character and player.Character:FindFirstChild("Humanoid") then
-		spawnFillTweenOnce()
-	end
-end
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth-Small.lua"))()
