@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] ===== 
+-- ===== [ Positions ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -970,7 +970,7 @@ end, false) -- default OFF
 -- ==============================
 -- ✅ ExperienceSettingsCamera (FreeCam Final - White Edition)
 -- รองรับ Mobile + Keyboard + Speed UI + Direction Fix
-createToggle(BFrame, "ExperienceSettingsCamera (FreeCam Final)", function(state)
+createToggle(BFrame, "FreeCam (Mobile)", function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
