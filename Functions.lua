@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] ===== 
+-- ===== [ Position's ] ===== 
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -986,7 +986,7 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 	local part
 	local holderGui
 	local speed = 16
-	local minSpeed, maxSpeed = 1, 300
+	local minSpeed, maxSpeed = 1, 5000
 
 	-- helper: disconnect safely
 	local function addConn(c)
