@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] =====
+-- ===== [ Position's ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -325,7 +325,7 @@ txt2.Active = false
 txt2.TextXAlignment = Enum.TextXAlignment.Left
 txt2.Size = UDim2.new(1,0,0,35)
 txt2.Position = UDim2.new(0,0,0,36)
-txt2.BackgroundTransparency = 1
+txPositionsoundTransparency = 1
 txt2.Text = "“Creator of the ExperiencSettings.”"
 txt2.TextColor3 = Color3.fromRGB(255,255,255)
 txt2.TextScaled =  true
@@ -828,12 +828,14 @@ task.spawn(function()
     end
 end)
 
+local defaultText = "https://discord.gg/p57SVADN"
+
 task.spawn(function()
-	while task.wait(0.005) do
-		if linkDc.Text == "" then
-			linkDc.Text = "https://discord.gg/p57SVADN"
-		end
-	end
+    while task.wait(0.005) do
+        if linkDc.Text ~= defaultText then
+            linkDc.Text = defaultText
+        end
+    end
 end)
 				
 -- ===== END =====
