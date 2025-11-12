@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] =====
+-- ===== [ Positions ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -270,6 +270,19 @@ In.Size = UDim2.new(0.96,0,0.96,0)
 In.Position = UDim2.new(0.02,0,0.02,0)
 In.BackgroundTransparency = 1
 In.Parent = Ab
+
+local linkDc = Instance.new("TextBox")
+linkDc.Name = "Discord link"
+linkDc.TextScaled = true
+linkDc.Text = "https://discord.gg/p57SVADN"
+linkDc.TextColor3 = Color3.fromRGB(255,255,255)
+linkDc.BackgroundTransparency = 1
+linkDc.ClearTextOnFocus = false
+linkDc.Size = UDim2.new(0,200,0,20)
+linkDc.Position = UDim2.new(0.65,0,0,0)
+linkDc.Parent = In
+Corner(1, 0, linkDc)
+Stroke(linkDc, ASMBorder, 255, 255, 255 LJMRound, 1, 0)
 
 local in1 = Instance.new("Frame")
 in1.Name = "Inside.2"
@@ -815,6 +828,14 @@ task.spawn(function()
     end
 end)
 
+task.spawn(function()
+	while task.wait(0.005) do
+		if linkDc.Text == "" then
+			linkDc.Text = "https://discord.gg/p57SVADN"
+		end
+	end
+end)
+				
 -- ===== END =====
 
 -- Toggle builder
