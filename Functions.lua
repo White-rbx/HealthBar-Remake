@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] =====
+-- ===== [ Positions ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -282,7 +282,7 @@ linkDc.Size = UDim2.new(0,200,0,20)
 linkDc.Position = UDim2.new(0.65,0,0,0)
 linkDc.Parent = In
 Corner(1, 0, linkDc)
-Stroke(linkDc, ASMBorder, 255, 255, 255 LJMRound, 1, 0)
+Stroke(linkDc, ASMBorder, 255, 255, 255 LSMRound, 1, 0)
 
 local in1 = Instance.new("Frame")
 in1.Name = "Inside.2"
