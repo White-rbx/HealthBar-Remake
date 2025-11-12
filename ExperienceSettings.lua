@@ -1,4 +1,4 @@
--- TweenHealth
+-- TweenHealth()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -772,103 +772,132 @@ hr.Size = UDim2.new(0, 300, 1, 0)
 --========================================================--
 -- [ HRP Watcher System - Reliable Version (Full Script) ]
 --========================================================--
+--// HRP Watcher System (Full Safe Version)
+--// Detect HumanoidRootPart (HRP) and manage UI visibility safely
+--// Works with TopBarApp / ExperienceSettings systems
 
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
 
--- CONFIG
+local gui_aV2 = CoreGui
+    :WaitForChild("TopBarApp")
+    :WaitForChild("TopBarApp")
+    :WaitForChild("UnibarLeftFrame")
+    :WaitForChild("HealthBar")
+    :WaitForChild("ValueFolder")
+    :WaitForChild("ValueGui")
+
+--// Config
 local CHECK_INTERVAL = 0.05
 local TIMEOUT = 3
-local WAIT_TIMEOUT = 10
 
--- STATE VARIABLES
-local isOpen = false          -- ✅ ตัวนี้อยู่ตรงนี้เลย! ใช้ควบคุมว่าตอนนี้ UI เปิดอยู่ไหม
-local timerMissing = 0        -- เวลา accumulative ว่า HRP หายไปนานเท่าไร
+--// State
+local wa1_initial_pos, hr_initial_size, mtb_initial_pos
+pcall(function()
+    if wa1 then wa1_initial_pos = wa1.Position end
+    if hr  then hr_initial_size = hr.Size end
+    if mtb then mtb_initial_pos = mtb.Position end
+end)
 
---===== Helper: Find UI safely =====--
-local function resolveUI()
-	local root = CoreGui:FindFirstChild("TopBarApp")
-	if not root then return end
-
-	local inner = root:FindFirstChild("TopBarApp")
-	if not inner then return end
-
-	local unibar = inner:FindFirstChild("UnibarLeftFrame")
-	if not unibar then return end
-
-	local healthBar = unibar:FindFirstChild("HealthBar")
-	if not healthBar then return end
-
-	local rc_tb  = healthBar:FindFirstChild("TopButtons") or healthBar:FindFirstChild("TopBar")
-	local rc_hr  = healthBar:FindFirstChild("Holder") or healthBar:FindFirstChild("a_holder")
-	local rc_Set = healthBar:FindFirstChild("a3_Settings") or healthBar:FindFirstChild("SettingsButton")
-	local rc_hbm = healthBar:FindFirstChild("z9_HamburgerMenu") or healthBar:FindFirstChild("hbm")
-	local rc_OC  = healthBar:FindFirstChild("a1_Open/Close") or healthBar:FindFirstChild("OC")
-	local rc_wa1 = healthBar:FindFirstChild("LoadFrame") or healthBar:FindFirstChild("wa1")
-	local rc_wl  = healthBar:FindFirstChild("WaitLabel") or healthBar:FindFirstChild("wl")
-	local rc_bg  = healthBar:FindFirstChild("Background") or healthBar:FindFirstChild("bg")
-	local rc_mtb = healthBar:FindFirstChild("MainTopBar") or healthBar:FindFirstChild("mtb")
-	local rc_gpt = healthBar:FindFirstChild("z8_ChatGPT") or healthBar:FindFirstChild("gpt")
-
-	return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt
-end
-
---===== Safe Tween =====--
+--// --- safeTween (fixed) ---
 local function safeTween(obj, props, time, style)
-	if not obj or not obj.Parent then return end
-	pcall(function()
-		local tweenInfo = TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		local tw = TweenService:Create(obj, tweenInfo, props)
-		tw:Play()
-	end)
+    if not obj or not obj.Parent then
+        warn("[HRP-Watcher] safeTween: target missing or has no parent")
+        return
+    end
+    local ok, err = pcall(function()
+        local tweenInfo = TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tw = TweenService:Create(obj, tweenInfo, props)
+        tw:Play()
+    end)
+    if not ok then
+        warn("[HRP-Watcher] safeTween failed:", tostring(err))
+    end
 end
 
---===== Wait for HRP (reliable) =====--
-local function waitForHRP(player, timeout)
-	local start = tick()
-	repeat
-		task.wait(0.1)
-		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			return player.Character.HumanoidRootPart
+--// --- Fallback resolveUI() ---
+if type(resolveUI) ~= "function" then
+	function resolveUI()
+		local root = menuGui or expSettings or healthBar or CoreGui
+		if not root then return nil end
+
+		local function find(name)
+			local ok, res = pcall(function() return root:FindFirstChild(name, true) end)
+			if ok then return res end
+			return nil
 		end
-	until (tick() - start) > (timeout or WAIT_TIMEOUT)
-	return nil
+
+		local rc_tb  = find("TopButtons") or find("TopBar") or find("TopBarApp")
+		local rc_hr  = find("Holder") or find("HolderFrame") or find("a_holder")
+		local rc_Set = find("a3_Settings") or find("Set") or find("SettingsButton")
+		local rc_hbm = find("z9_HamburgerMenu") or find("Hamburger") or find("hbm")
+		local rc_OC  = find("a1_Open/Close") or find("OC") or find("OpenClose")
+		local rc_wa1 = find("LoadFrame") or find("wa1") or find("WarningFrame")
+		local rc_wl  = find("Warning & Load") or find("wl") or find("WaitLabel")
+		local rc_bg  = find("Background") or find("bg")
+		local rc_mtb = find("TopBar") or find("MainTopBar") or find("mtb")
+		local rc_gpt = find("z8_ChatGPT") or find("gpt") or find("ChatGPTButton")
+
+		return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt
+	end
+
+	warn("[HRP-Watcher] Fallback resolveUI() injected (was missing).")
 end
 
---===== Init =====--
-local player = Players.LocalPlayer
-local gui_aV2 = CoreGui:WaitForChild("TopBarApp")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("UnibarLeftFrame")
-	:WaitForChild("HealthBar")
-	:WaitForChild("ValueFolder")
-	:WaitForChild("ValueGui")
-
--- Cache UI
+--// --- Variables ---
 local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
+local timerMissing = 0
+local isOpen = false
 
---===== Watcher Loop =====--
+--// --- HRP Check ---
+local function characterHasHRP(plr)
+	if not plr or not plr.Character then return false end
+	local char = plr.Character
+	if char:FindFirstChild("HumanoidRootPart") then return true end
+	if char.PrimaryPart and char.PrimaryPart:IsA("BasePart") then return true end
+	for _, c in ipairs(char:GetChildren()) do
+		if c:IsA("BasePart") and (string.find(c.Name, "Root") or string.find(c.Name, "Humanoid") or string.find(c.Name, "Head")) then
+			return true
+		end
+	end
+	return false
+end
+
+--// --- Main Loop ---
 task.spawn(function()
 	while true do
 		task.wait(CHECK_INTERVAL)
 
-		local hrp = waitForHRP(player, 0.3)
-		if hrp then
+		-- Attempt to resolve UI if missing
+		if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1 and ui_wl) then
+			ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
+
+			if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1 and ui_wl) then
+				timerMissing = timerMissing + CHECK_INTERVAL
+				if timerMissing >= TIMEOUT then
+					warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s - waiting for UI")
+				end
+				continue
+			else
+				timerMissing = 0
+			end
+		end
+
+		local pl = Players.LocalPlayer
+		local hasHRP = characterHasHRP(pl)
+
+		if hasHRP then
 			timerMissing = 0
 			if not isOpen then
-				print("[HRP-Watcher] ✅ HRP detected -> opening UI")
-				isOpen = true
-
-				-- OPEN UI
+				print("[HRP-Watcher] HRP detected -> opening UI")
 				if ui_mtb and ui_mtb.Parent then
 					safeTween(ui_mtb, { Position = UDim2.new(0.46, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28)
-				elseif ui_tb then
-					safeTween(ui_tb, { Position = UDim2.new(0,0,0,0) }, 0.28)
+				elseif ui_tb and ui_tb.Parent then
+					safeTween(ui_tb, { Position = UDim2.new(0, 0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
 				end
 
-				if ui_hr then safeTween(ui_hr, { Size = UDim2.new(0,90, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28) end
-
+				safeTween(ui_hr, { Size = UDim2.new(0, 90, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
 				pcall(function()
 					if ui_Set  then ui_Set.Visible  = false end
 					if ui_hbm then ui_hbm.Visible = false end
@@ -877,40 +906,53 @@ task.spawn(function()
 					if gui_aV2 then gui_aV2.Enabled = true end
 				end)
 
-				if ui_wa1 then ui_wa1.Visible = false end
-				if ui_wl then ui_wl.Visible = false end
-			end
-		else
-			timerMissing += CHECK_INTERVAL
-			if timerMissing >= TIMEOUT and isOpen then
-				print("[HRP-Watcher] ⚠️ HRP missing >"..TIMEOUT.."s -> closing UI")
-				isOpen = false
-
-				-- CLOSE UI
-				if ui_mtb and ui_mtb.Parent then
-					safeTween(ui_mtb, { Position = UDim2.new(0,0, 0.02, 0) }, 0.28)
-				elseif ui_tb then
-					safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
+				if ui_wa1 and ui_wa1.Parent then
+					ui_wa1.Visible = false
+					if wa1_initial_pos then
+						pcall(function() safeTween(ui_wa1, { Position = wa1_initial_pos }, 0.22) end)
+					end
+				end
+				if ui_wl and ui_wl.Parent then
+					ui_wl.Visible = false
 				end
 
-				if ui_hr then safeTween(ui_hr, { Size = UDim2.new(0,300, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28) end
+				isOpen = true
+			end
+		else
+			timerMissing = timerMissing + CHECK_INTERVAL
+			if timerMissing >= TIMEOUT then
+				if isOpen then
+					print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI")
+					if ui_mtb and ui_mtb.Parent then
+						safeTween(ui_mtb, { Position = UDim2.new(0,0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28)
+					elseif ui_tb and ui_tb.Parent then
+						safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
+					end
 
-				pcall(function()
-					if ui_Set  then ui_Set.Visible  = false end
-					if ui_hbm then ui_hbm.Visible = false end
-					if ui_OC  then ui_OC.Visible  = false end
-					if ui_gpt then ui_gpt.Visible = false end
-					if gui_aV2 then gui_aV2.Enabled = false end
-				end)
+					safeTween(ui_hr, { Size = UDim2.new(0,300, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+					pcall(function()
+						if ui_Set  then ui_Set.Visible  = false end
+						if ui_hbm then ui_hbm.Visible = false end
+						if ui_OC  then ui_OC.Visible  = false end
+						if ui_gpt then ui_gpt.Visible = false end
+						if gui_aV2 then gui_aV2.Enabled = false end
+					end)
 
-				if ui_wa1 then ui_wa1.Visible = true end
-				if ui_wl then ui_wl.Visible = true end
+					if ui_wa1 and ui_wa1.Parent then
+						ui_wa1.Visible = true
+					end
+					if ui_wl and ui_wl.Parent then
+						ui_wl.Visible = true
+					end
+
+					isOpen = false
+				end
 			end
 		end
 	end
 end)
 
-print("[✅ HRP-Watcher] Script successfully initialized.")
+print("[ Script_1 ] HRP-Watcher loaded successfully.")
 -- ========= END ==========
 
 -- Background panel (start OFFscreen to right)
