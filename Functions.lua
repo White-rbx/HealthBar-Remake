@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] =====
+-- ===== [ Positions ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -278,7 +278,7 @@ linkDc.Text = "https://discord.gg/p57SVADN"
 linkDc.TextColor3 = Color3.fromRGB(255,255,255)
 linkDc.BackgroundTransparency = 1
 linkDc.ClearTextOnFocus = false
-linkDc.Size = UDim2.new(0,200,0,20)
+linkDc.Size = UDim2.new(0.34,0,0,20)
 linkDc.Position = UDim2.new(0.65,0,0,0)
 linkDc.Parent = In
 Corner(1, 0, linkDc)
@@ -325,7 +325,7 @@ txt2.Active = false
 txt2.TextXAlignment = Enum.TextXAlignment.Left
 txt2.Size = UDim2.new(1,0,0,35)
 txt2.Position = UDim2.new(0,0,0,36)
-txPositionsoundTransparency = 1
+txt2.BackgroundTransparency = 1
 txt2.Text = "“Creator of the ExperiencSettings.”"
 txt2.TextColor3 = Color3.fromRGB(255,255,255)
 txt2.TextScaled =  true
