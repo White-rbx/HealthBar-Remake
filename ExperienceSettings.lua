@@ -1,4 +1,4 @@
--- TweenHealth
+-- TweenHealth()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -772,15 +772,14 @@ hr.Size = UDim2.new(0, 300, 1, 0)
 --========================================================--
 -- [ HRP Watcher System - Reliable Version (Full Script) ]
 --========================================================--
---// Detect HumanoidRootPart / Torso / UpperTorso / Humanoid accurately
---// Auto self-reset if ExperienceSettings folder missing (2nd execution+)
+--// HRP Watcher System (Full Safe Version)
+--// Detect HumanoidRootPart (HRP) and manage UI visibility safely
 --// Works with TopBarApp / ExperienceSettings systems
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
-local player = Players.LocalPlayer
 local gui_aV2 = CoreGui
     :WaitForChild("TopBarApp")
     :WaitForChild("TopBarApp")
@@ -792,28 +791,29 @@ local gui_aV2 = CoreGui
 --// Config
 local CHECK_INTERVAL = 0.05
 local TIMEOUT = 3
-local EXEC_COUNT = _G.HRPWatcher_ExecCount or 0
-_G.HRPWatcher_ExecCount = EXEC_COUNT + 1
 
 --// State
 local wa1_initial_pos, hr_initial_size, mtb_initial_pos
 pcall(function()
-	if wa1 then wa1_initial_pos = wa1.Position end
-	if hr  then hr_initial_size = hr.Size end
-	if mtb then mtb_initial_pos = mtb.Position end
+    if wa1 then wa1_initial_pos = wa1.Position end
+    if hr  then hr_initial_size = hr.Size end
+    if mtb then mtb_initial_pos = mtb.Position end
 end)
 
 --// --- safeTween (fixed) ---
 local function safeTween(obj, props, time, style)
-	if not obj or not obj.Parent then return end
-	local ok, err = pcall(function()
-		local tweenInfo = TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-		local tw = TweenService:Create(obj, tweenInfo, props)
-		tw:Play()
-	end)
-	if not ok then
-		warn("[HRP-Watcher] safeTween failed:", tostring(err))
-	end
+    if not obj or not obj.Parent then
+        warn("[HRP-Watcher] safeTween: target missing or has no parent")
+        return
+    end
+    local ok, err = pcall(function()
+        local tweenInfo = TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tw = TweenService:Create(obj, tweenInfo, props)
+        tw:Play()
+    end)
+    if not ok then
+        warn("[HRP-Watcher] safeTween failed:", tostring(err))
+    end
 end
 
 --// --- Fallback resolveUI() ---
@@ -841,55 +841,27 @@ if type(resolveUI) ~= "function" then
 
 		return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt
 	end
+
+	warn("[HRP-Watcher] Fallback resolveUI() injected (was missing).")
 end
 
 --// --- Variables ---
 local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
 local timerMissing = 0
 local isOpen = false
-local selfResetting = false
 
---// --- HRP Check (Improved) ---
+--// --- HRP Check ---
 local function characterHasHRP(plr)
 	if not plr or not plr.Character then return false end
 	local char = plr.Character
 	if char:FindFirstChild("HumanoidRootPart") then return true end
-	if char:FindFirstChild("UpperTorso") then return true end
-	if char:FindFirstChild("Torso") then return true end
-	if char:FindFirstChild("Humanoid") then return true end
 	if char.PrimaryPart and char.PrimaryPart:IsA("BasePart") then return true end
 	for _, c in ipairs(char:GetChildren()) do
-		if c:IsA("BasePart") and (c.Name:find("Root") or c.Name:find("Torso") or c.Name:find("Humanoid") or c.Name:find("Head")) then
+		if c:IsA("BasePart") and (string.find(c.Name, "Root") or string.find(c.Name, "Humanoid") or string.find(c.Name, "Head")) then
 			return true
 		end
 	end
 	return false
-end
-
---// --- Self-reset if ExperienceSettings missing ---
-local function checkAndResetIfMissing()
-	local top = CoreGui:FindFirstChild("TopBarApp")
-	if not top then return end
-	local nested = top:FindFirstChild("TopBarApp")
-	if not nested then return end
-	local unibar = nested:FindFirstChild("UnibarLeftFrame")
-	if not unibar then return end
-	local hb = unibar:FindFirstChild("HealthBar")
-	if not hb then return end
-
-	local exp = hb:FindFirstChild("ExperienceSettings")
-
-	-- ถ้าไม่มี ExperienceSettings และรันเกิน 1 ครั้งขึ้นไป
-	if not exp and _G.HRPWatcher_ExecCount > 1 and not selfResetting then
-		selfResetting = true
-		warn("[HRP-Watcher] ExperienceSettings missing. Restarting HRP Watcher...")
-
-		task.defer(function()
-			task.wait(1)
-			_G.HRPWatcher_ExecCount = 0
-			loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/ExperienceSettings.lua"))()
-		end)
-	end
 end
 
 --// --- Main Loop ---
@@ -897,12 +869,10 @@ task.spawn(function()
 	while true do
 		task.wait(CHECK_INTERVAL)
 
-		-- ตรวจว่ามี ExperienceSettings ไหม
-		checkAndResetIfMissing()
-
 		-- Attempt to resolve UI if missing
 		if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1 and ui_wl) then
 			ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
+
 			if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1 and ui_wl) then
 				timerMissing = timerMissing + CHECK_INTERVAL
 				if timerMissing >= TIMEOUT then
@@ -920,7 +890,7 @@ task.spawn(function()
 		if hasHRP then
 			timerMissing = 0
 			if not isOpen then
-				print("[HRP-Watcher] HRP detected → opening UI")
+				print("[HRP-Watcher] HRP detected -> opening UI")
 				if ui_mtb and ui_mtb.Parent then
 					safeTween(ui_mtb, { Position = UDim2.new(0.46, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28)
 				elseif ui_tb and ui_tb.Parent then
@@ -952,7 +922,7 @@ task.spawn(function()
 			timerMissing = timerMissing + CHECK_INTERVAL
 			if timerMissing >= TIMEOUT then
 				if isOpen then
-					print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s → closing UI")
+					print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI")
 					if ui_mtb and ui_mtb.Parent then
 						safeTween(ui_mtb, { Position = UDim2.new(0,0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28)
 					elseif ui_tb and ui_tb.Parent then
@@ -982,7 +952,8 @@ task.spawn(function()
 	end
 end)
 
-print("[HRP-Watcher] Loaded successfully. ExecCount =", _G.HRPWatcher_ExecCount)-- ========= END ==========
+print("[ Script_1 ] HRP-Watcher loaded successfully.")
+-- ========= END ==========
 
 -- Background panel (start OFFscreen to right)
 local background = Instance.new("Frame")
