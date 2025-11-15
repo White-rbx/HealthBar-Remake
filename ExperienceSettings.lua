@@ -1147,7 +1147,7 @@ local lder = game:GetService("CoreGui"):WaitForChild("TopBarApp")
                                       :WaitForChild("Skip")
                                       :WaitForChild("Loader")
 
-local bk = game:GetService("CoreGui"):WaitForChild("TopBarApp")
+local bkload = game:GetService("CoreGui"):WaitForChild("TopBarApp")
                                       :WaitForChild("TopBarApp")
                                       :WaitForChild("UnibarLeftFrame")
                                       :WaitForChild("HealthBar")
@@ -2204,4 +2204,4 @@ bk.Position = POS_OFF
 gpt.MouseButton1Click:Connect(toggleBk)
 
 lder.Size = UDim2.new(1,0,1,0)
-bk.Visible = false
+bkload.Visible = false
