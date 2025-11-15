@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] =====
+-- ===== [ Position's ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -944,9 +944,6 @@ createToggle(BFrame, "LighterCyan.ai (Discontinued)", function(state)
 	gui.Enabled = state  -- เปิด/ปิดตามสวิตช์
 end, false) -- default: ปิด
 -- <<===== END LIGHTERCYAN =====>>
-
-task.wait(0.1)
-bk.Visible = false
 
 -- <<===== HEALTHBAR =====>>
 -- 🔍 หา HealthBar หลัก
