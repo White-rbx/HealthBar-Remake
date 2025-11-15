@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] =====
+-- ===== [ Positions ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -250,6 +250,14 @@ skp.TextColor3 = Color3.fromRGB(255,255,255)
 skp.Parent = bk
 Corner(0,8,skp)
 Stroke(skp, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
+
+local lder = Instance.new("Frame")
+lder.Name = "Loader"
+lder.BackgroundTransparency = 0.8
+lder.BackgroundColor3 = Color3.fromRGB(255,255,255)
+lder.Size = UDim2.new(0.2,0,1,0)
+lder.Parent = skp
+Corner(0, 8, lder)
 
 -- =====>> Button About <<=====
 local Ab = Instance.new("Frame")
@@ -552,6 +560,8 @@ task.spawn(function()
 		end)
 	end
 end)
+
+lder.Size = UDim2.new(0.25,0,1,0)
 
 -- Full ExperienceSettings TopBar controls (LocalScript)
 local TweenService = game:GetService("TweenService")
@@ -1230,3 +1240,5 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		cam.CameraSubject = humanoid
 	end
 end, false)
+
+lder.Size = UDim2.new(0.3,0,1,0)
