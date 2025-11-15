@@ -1,4 +1,4 @@
--- TweenHealth()
+-- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -1175,7 +1175,7 @@ task.wait(0.1)
 lder.Size = UDim2.new(0.42,0,1,0)
 task.wait(0.1)
 lder.Size = UDim2.new(0.46,0,1,0)
-tasm.wait(0.1)
+task.wait(0.1)
 lder.Size = UDim2.new(0.5,0,1,0)
 
 -- ======== TOGGLE SWITCHS ===========
