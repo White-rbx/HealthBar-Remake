@@ -1,4 +1,4 @@
--- TweenHealth()
+-- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -1136,6 +1136,26 @@ end
 -- ===== Functions loadstring() =====
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Functions.lua"))()
 print("[ Functions Loadstring ] Successful loaded.")
+
+local lder = game:GetService("CoreGui"):WaitForChild("TopBarApp")
+                                      :WaitForChild("TopBarApp")
+                                      :WaitForChild("UnibarLeftFrame")
+                                      :WaitForChild("HealthBar")
+                                      :WaitForChild("ExperienceSettings")
+                                      :WaitForChild("Menu")
+                                      :WaitForChild("Load_Background")
+                                      :WaitForChild("Skip")
+                                      :WaitForChild("Loader")
+
+local bk = game:GetService("CoreGui"):WaitForChild("TopBarApp")
+                                      :WaitForChild("TopBarApp")
+                                      :WaitForChild("UnibarLeftFrame")
+                                      :WaitForChild("HealthBar")
+                                      :WaitForChild("ExperienceSettings")
+                                      :WaitForChild("Menu")
+                                      :WaitForChild("Load_Background")
+
+lder.Size = UDim2.new(0.5,0,1,0)
 -- ======== TOGGLE SWITCHS ===========
 
 -- ValueLabels toggle (safe wait)
@@ -1689,6 +1709,7 @@ _G.DisableESP = disableESP
 -- (example) start disabled by default — caller should call enableESP()
 -- enableESP()
 
+lder.Size = UDim2.new(0.65,0,1,0)
 -- ===== END ESP implementation =====
 
 -- ===== เข้าถึง DamageOverlay โดยตรงใน CoreGui =====
@@ -1869,6 +1890,7 @@ local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg
     return txtb
 end
 
+lder.Size = UDim2.new(0.8,0,1,0)
 -- ============== Background open/close functions ==============
 local BG_X_ON = 0.65
 local BG_X_OFF = 1
@@ -2099,6 +2121,8 @@ local function Padding(parent, bottom, left, right, top)
 end
 -- =====END FUNCTION UIPADDING=====bbbk
 
+lder.Size = UDim2.new(0.9,0,1,0)
+
 -- ===== ChatGPT =====
 local bk = Instance.new("Frame")
 bk.Name = "ChatGPT"
@@ -2178,3 +2202,6 @@ bk.Position = POS_OFF
 
 -- 🔸 เมื่อกดที่ gpt ให้สลับตำแหน่งได้เรื่อย ๆ
 gpt.MouseButton1Click:Connect(toggleBk)
+
+lder.Size = UDim2.new(1,0,1,0)
+bk.Visible = false
