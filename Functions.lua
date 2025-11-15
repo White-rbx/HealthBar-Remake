@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] =====
+-- ===== [ Positions ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -192,7 +192,7 @@ createUIListLayout(BFrame, 0.005, 0, HCenter, VTop, SName, FillV)
 local bk = Instance.new("Frame")
 bk.Name = "Load_Background"
 bk.Size = UDim2.new(0.4,0,0.4,0)
-bk.Position = UDim2.new(0.3,0,0.3,0)
+bk.Position = UDim2.new(0.01,0,0.1,0)
 bk.BackgroundColor3 = Color3.fromRGB(0,0,0)
 bk.BackgroundTransparency = 0.5
 bk.Visible = true
