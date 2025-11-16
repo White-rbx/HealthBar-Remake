@@ -1,4 +1,4 @@
--- TweenHealth 
+-- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -1185,7 +1185,7 @@ local valueGuiOK, ValueGui = pcall(function()
     return CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp"):WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar"):WaitForChild("ValueFolder"):WaitForChild("ValueGui")
 end)
 
-createToggle(BFrame, "ValueLabels", function(state)
+createToggle(BFrame, "Enable ValueLabels", function(state)
     if valueGuiOK and ValueGui then
         pcall(function() ValueGui.Enabled = state end)
     end
@@ -2277,5 +2277,5 @@ task.wait(0.1)
 lder.Size = UDim2.new(0.99,0,1,0)
 task.wait(0.5)
 lder.Size = UDim2.new(1,0,1,0)
-task.wait(1.5)
+task.wait(0.5)
 bkload.Visible = false
