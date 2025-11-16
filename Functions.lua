@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] =====
+-- ===== [ Positions ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -305,7 +305,7 @@ imag.Name = "a1_Icon"
 imag.Active = false
 imag.Size = UDim2.new(0,100,0,100)
 imag.BackgroundTransparency = 0.3
-imag.Image = "rbxassetid://95374448095239"
+imag.Image = "rbxassetid://106411805549573"
 imag.Parent = in1
 Corner(0, 8, imag)
 
