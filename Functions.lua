@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] =====
+-- ===== [ Position's ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -233,7 +233,7 @@ wl.Name = "Credit"
 wl.BackgroundTransparency = 1
 wl.Position = UDim2.new(0.02,0,0.65,0)
 wl.Size = UDim2.new(0.96,0,0.13,0)
-wl.Text = "Creator by @5teve on ScriptBlox"
+wl.Text = "Creator by @5teve3019D on ScriptBlox"
 wl.TextScaled = true
 wl.TextColor3 = Color3.fromRGB(255,255,255)
 wl.Parent = bk
@@ -322,7 +322,7 @@ txt.Active = false
 txt.TextXAlignment = Enum.TextXAlignment.Left
 txt.Size = UDim2.new(1,0,0,40)
 txt.BackgroundTransparency = 1
-txt.Text = "@5teve"
+txt.Text = "@5teve3019D"
 txt.TextColor3 = Color3.fromRGB(255,255,255)
 txt.TextScaled =  true
 txt.Parent = iN2
@@ -367,8 +367,9 @@ If your ExperienceSettings was Disabled there are three reasons,
 If you enjoy it, you can support me on ScriptBlox!
 Thank you for using ExperienceSettings!
 
-Creator: @5teve (Gui, Little Script)
+Creator: @5teve3019D (Gui, Little Script)
 Helper: ChatGPT (Script) <-- He got a lot of complaints lol.
+Little Helper: Copilot of GitHub (Script)
 Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 
 ========================
