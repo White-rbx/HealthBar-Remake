@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Position's ] =====
+-- ===== [ Positions ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -1257,6 +1257,33 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		cam.CameraSubject = humanoid
 	end
 end, false)
+
+-- <<===== ALMOST ENDLESS FALLEN (-50K STUDS) =====>>
+
+local SavedFallen = workspace.FallenPartsDestroyHeight  
+local FallenToggleState = false  -- default = OFF
+
+createToggle(BFrame, "Almost Endless Fallen (-50K)", function(state)
+
+    if state then
+        -- ON Mode (ไม่บันทึกค่า)
+        FallenToggleState = true
+        workspace.FallenPartsDestroyHeight = -50000
+    else
+        -- OFF Mode
+        -- Save เฉพาะตอน OFF → OFF
+        if FallenToggleState == false then
+            SavedFallen = workspace.FallenPartsDestroyHeight
+        end
+
+        -- Restore ค่าเดิม
+        workspace.FallenPartsDestroyHeight = SavedFallen
+        FallenToggleState = false
+    end
+
+end, false)
+
+-- <<===== END ALMOST ENDLESS FALLEN =====>>
 
 task.wait(0.1)
 lder.Size = UDim2.new(0.11,0,1,0)
