@@ -1,4 +1,4 @@
--- TweenHealth
+-- TweenHealth()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -770,60 +770,51 @@ mtb.Position = UDim2.new(1, 0, 0.02, 0)
 hr.Size = UDim2.new(0, 300, 1, 0)
 
 --========================================================--
--- [ HRP Watcher System - Reliable Version (Full Script) ]
+-- [ HRP Watcher System - No Debug / Clean Production ]
 --========================================================--
---// HRP Watcher System (Full Safe Version)
---// Detect HumanoidRootPart (HRP) and manage UI visibility safely
---// Works with TopBarApp / ExperienceSettings systems
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
 local gui_aV2 = CoreGui
-    :WaitForChild("TopBarApp")
-    :WaitForChild("TopBarApp")
-    :WaitForChild("UnibarLeftFrame")
-    :WaitForChild("HealthBar")
-    :WaitForChild("ValueFolder")
-    :WaitForChild("ValueGui")
+	:WaitForChild("TopBarApp")
+	:WaitForChild("TopBarApp")
+	:WaitForChild("UnibarLeftFrame")
+	:WaitForChild("HealthBar")
+	:WaitForChild("ValueFolder")
+	:WaitForChild("ValueGui")
 
---// Config
 local CHECK_INTERVAL = 0.05
 local TIMEOUT = 3
 
---// State
 local wa1_initial_pos, hr_initial_size, mtb_initial_pos
 pcall(function()
-    if wa1 then wa1_initial_pos = wa1.Position end
-    if hr  then hr_initial_size = hr.Size end
-    if mtb then mtb_initial_pos = mtb.Position end
+	if wa1 then wa1_initial_pos = wa1.Position end
+	if hr  then hr_initial_size = hr.Size end
+	if mtb then mtb_initial_pos = mtb.Position end
 end)
 
---// --- safeTween (fixed) ---
 local function safeTween(obj, props, time, style)
-    if not obj or not obj.Parent then
-        warn("[HRP-Watcher] safeTween: target missing or has no parent")
-        return
-    end
-    local ok, err = pcall(function()
-        local tweenInfo = TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        local tw = TweenService:Create(obj, tweenInfo, props)
-        tw:Play()
-    end)
-    if not ok then
-        warn("[HRP-Watcher] safeTween failed:", tostring(err))
-    end
+	if not obj or not obj.Parent then
+		return
+	end
+	pcall(function()
+		local tweenInfo = TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		local tw = TweenService:Create(obj, tweenInfo, props)
+		tw:Play()
+	end)
 end
 
---// --- Fallback resolveUI() ---
 if type(resolveUI) ~= "function" then
 	function resolveUI()
 		local root = menuGui or expSettings or healthBar or CoreGui
 		if not root then return nil end
 
 		local function find(name)
-			local ok, res = pcall(function() return root:FindFirstChild(name, true) end)
+			local ok, res = pcall(function()
+				return root:FindFirstChild(name, true)
+			end)
 			if ok then return res end
 			return nil
 		end
@@ -841,16 +832,12 @@ if type(resolveUI) ~= "function" then
 
 		return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt
 	end
-
-	warn("[HRP-Watcher] Fallback resolveUI() injected (was missing).")
 end
 
---// --- Variables ---
 local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
 local timerMissing = 0
 local isOpen = false
 
---// --- HRP Check ---
 local function characterHasHRP(plr)
 	if not plr or not plr.Character then return false end
 	local char = plr.Character
@@ -864,20 +851,16 @@ local function characterHasHRP(plr)
 	return false
 end
 
---// --- Main Loop ---
 task.spawn(function()
 	while true do
 		task.wait(CHECK_INTERVAL)
 
-		-- Attempt to resolve UI if missing
 		if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1 and ui_wl) then
 			ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
 
 			if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1 and ui_wl) then
-				timerMissing = timerMissing + CHECK_INTERVAL
-				if timerMissing >= TIMEOUT then
-					warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s - waiting for UI")
-				end
+				timerMissing += CHECK_INTERVAL
+				if timerMissing >= TIMEOUT then end
 				continue
 			else
 				timerMissing = 0
@@ -890,7 +873,6 @@ task.spawn(function()
 		if hasHRP then
 			timerMissing = 0
 			if not isOpen then
-				print("[HRP-Watcher] HRP detected -> opening UI")
 				if ui_mtb and ui_mtb.Parent then
 					safeTween(ui_mtb, { Position = UDim2.new(0.46, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28)
 				elseif ui_tb and ui_tb.Parent then
@@ -909,7 +891,9 @@ task.spawn(function()
 				if ui_wa1 and ui_wa1.Parent then
 					ui_wa1.Visible = false
 					if wa1_initial_pos then
-						pcall(function() safeTween(ui_wa1, { Position = wa1_initial_pos }, 0.22) end)
+						pcall(function()
+							safeTween(ui_wa1, { Position = wa1_initial_pos }, 0.22)
+						end)
 					end
 				end
 				if ui_wl and ui_wl.Parent then
@@ -919,17 +903,16 @@ task.spawn(function()
 				isOpen = true
 			end
 		else
-			timerMissing = timerMissing + CHECK_INTERVAL
+			timerMissing += CHECK_INTERVAL
 			if timerMissing >= TIMEOUT then
 				if isOpen then
-					print("[HRP-Watcher] HRP missing >"..TIMEOUT.."s -> closing UI")
 					if ui_mtb and ui_mtb.Parent then
-						safeTween(ui_mtb, { Position = UDim2.new(0,0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28)
+						safeTween(ui_mtb, { Position = UDim2.new(0, 0, ui_mtb.Position.Y.Scale, ui_mtb.Position.Y.Offset) }, 0.28)
 					elseif ui_tb and ui_tb.Parent then
-						safeTween(ui_tb, { Position = UDim2.new(-5,0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
+						safeTween(ui_tb, { Position = UDim2.new(-5, 0, ui_tb.Position.Y.Scale, ui_tb.Position.Y.Offset) }, 0.28)
 					end
 
-					safeTween(ui_hr, { Size = UDim2.new(0,300, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
+					safeTween(ui_hr, { Size = UDim2.new(0, 300, ui_hr.Size.Y.Scale, ui_hr.Size.Y.Offset) }, 0.28)
 					pcall(function()
 						if ui_Set  then ui_Set.Visible  = false end
 						if ui_hbm then ui_hbm.Visible = false end
