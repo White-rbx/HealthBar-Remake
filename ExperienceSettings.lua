@@ -1,4 +1,4 @@
--- TweenHealth()
+-- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
@@ -1855,7 +1855,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/InfernusScripts/Execu
 end
 
 -- CTB9
-local ctb9 = createImageButton("a9_REM", 0, 165, 0, 0.2, "91782079102380", false)
+local ctb9 = createImageButton("a9_REM", 50, 50, 50, 0.2, "91782079102380", false)
 if ctb9 then
     ctb9.MouseButton1Click:Connect(function()
         pcall(function()
@@ -1872,6 +1872,16 @@ if ctb10 then
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Joystickplays/gameprober-lua/main/gp.lua"))()
         end)
     end)
+end
+
+-- CTB11
+local ctb11 = createImageButton("b2_AudioPlayer", 50, 50, 50, 0.2, "93917898537008", false)
+if ctb11 then
+	ctb11.MouseButton1Click:Connect(function()
+			pcall(function()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/Emerson2-creator/Scripts-Roblox/refs/heads/main/audioPlayer.lua'))()
+		end)
+	end)
 end
 
 -- ===== TEXT BUTTONS =======
