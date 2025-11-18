@@ -1,4 +1,4 @@
--- So uhm just a script lol. 2
+-- So uhm just a script lol. 2.5
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -1504,7 +1504,7 @@ local function stopESP()
 end
 
 
-createToggle(BFrame, "ESP Highlight Players & Non-Players", function(state)
+createToggle(BFrame, "ESP Highlight Players & Non-Players (DO NOT TOGGLE I'M FIXING THIS)", function(state)
     if state then
         startESP()
     else
