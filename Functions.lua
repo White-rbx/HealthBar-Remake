@@ -1,4 +1,4 @@
--- So uhm just a script lol.
+-- So uhm just a script lol. 1
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -1339,7 +1339,7 @@ createToggle(BFrame, "Flashlight (FirstPerson & GFX 6+)", function(state)
         --------------------------------------------------
         local pl = Instance.new("PointLight")
         pl.Brightness = 1.5
-        pl.Range = 10
+        pl.Range = 6
         pl.Shadows = true
         pl.Color = Color3.fromRGB(255,255,255)
         pl.Parent = flashlightPart
