@@ -1,4 +1,4 @@
--- So uhm just a script lol. 1
+-- So uhm just a script lol. 2
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -385,7 +385,11 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ⚫ = Cannot fix
 ➖ = Disconnected or discontinued
 -------
-📌 Updated:Nothing
+📌 Updated: More Toggles & One More Button in Hamburger menu 
+ ➕ ESP Highlight Players and Non-Players Toggle
+ ➕ Almost Endless Fallen -50K Studs Toggle
+ ➕ Flashlight Toggle
+ ➕ Audio Player Button
 -------
 🔁 In progress:
  🔨 Creating FreeCam for all devices
@@ -1395,6 +1399,120 @@ createToggle(BFrame, "Flashlight (FirstPerson & GFX 6+)", function(state)
 end, false)
 
 -- <<===== END FLASHLIGHT =====>>
+
+-- <<===== ESP Highlight Players & Non-Players =====>>
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local espFolder = Instance.new("Folder")
+espFolder.Name = "ESP_ExpSettings"
+espFolder.Parent = workspace
+
+local espConnections = {}
+local running = false
+
+local function makeESP(char, isPlayer)
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    -- Part
+    local box = Instance.new("Part")
+    box.Name = isPlayer and "Player(ExpSettings)" or "Non-Player(ExpSettings)"
+    box.Anchored = false
+    box.CanCollide = false
+    box.CanTouch = false
+    box.Size = hrp.Size
+    box.Transparency = 0.5
+    box.TopSurface = Enum.SurfaceType.Studs
+    box.BottomSurface = Enum.SurfaceType.Inlet
+    box.LeftSurface = Enum.SurfaceType.Glue
+    box.RightSurface = Enum.SurfaceType.Glue
+    box.Parent = espFolder
+
+    -- Weld เพื่อให้ตาม HRP เสมอ
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = box
+    weld.Part1 = hrp
+    weld.Parent = box
+    box.CFrame = hrp.CFrame
+
+    -- Highlight
+    local h = Instance.new("Highlight")
+    h.Adornee = box
+    h.FillTransparency = 1
+    h.OutlineTransparency = 0
+    h.OutlineColor = isPlayer and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,0,0)
+    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    h.Parent = box
+
+    return box
+end
+
+
+local function startESP()
+    running = true
+
+    -- ติด ESP ให้ Players จริง
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character then
+            makeESP(plr.Character, true)
+        end
+
+        espConnections[plr] = plr.CharacterAdded:Connect(function(char)
+            makeESP(char, true)
+        end)
+    end
+
+    -- ติด ESP ให้ NPC (non-players)
+    espConnections["NPC_SCAN"] = RunService.Heartbeat:Connect(function()
+        for _, model in ipairs(workspace:GetChildren()) do
+            if model:IsA("Model") and not Players:GetPlayerFromCharacter(model) then
+                local hrp = model:FindFirstChild("HumanoidRootPart")
+                local hum = model:FindFirstChildWhichIsA("Humanoid")
+                if hrp and hum then
+                    -- หลีกเลี่ยง duplicate
+                    if not espFolder:FindFirstChild(model.Name .. "_NPCTag") then
+                        local tag = Instance.new("Folder")
+                        tag.Name = model.Name .. "_NPCTag"
+                        tag.Parent = espFolder
+
+                        local box = makeESP(model, false)
+                        if box then box.Parent = tag end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+
+local function stopESP()
+    running = false
+
+    -- ลบ ESP ทั้งหมด
+    espFolder:ClearAllChildren()
+
+    -- Disconnect all listeners
+    for _, c in pairs(espConnections) do
+        if typeof(c) == "RBXScriptConnection" then
+            c:Disconnect()
+        end
+    end
+
+    espConnections = {}
+end
+
+
+createToggle(BFrame, "ESP Highlight Players & Non-Players", function(state)
+    if state then
+        startESP()
+    else
+        stopESP()
+    end
+end, false)
+
+-- <<===== END ESP =====>>
 
 task.wait(0.1)
 lder.Size = UDim2.new(0.11,0,1,0)
