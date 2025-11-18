@@ -1,3 +1,4 @@
+-- So uhm just a script lol.
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -1285,7 +1286,7 @@ end, false)
 
 -- <<===== END ALMOST ENDLESS FALLEN =====>>
 
--- <<===== FLASHLIGHT (FirstPerson Spotlight) — TOGGLE =====>>
+-- <<===== FLASHLIGHT (FirstPerson + Spotlight + PointLight) =====>>
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -1295,11 +1296,13 @@ local Camera = workspace.CurrentCamera
 local flashlightPart = nil
 local flashlightConn = nil
 
-createToggle(BFrame, "Flashlight (FirstPerson & recommend gfx 6+)", function(state)
+createToggle(BFrame, "Flashlight (FirstPerson & GFX 6+)", function(state)
     if state then
-        -- ON: สร้าง part + spotlight, ตามกล้อง และล็อกเป็น FirstPerson
+        --------------------------------------------------
+        --                    ON
+        --------------------------------------------------
 
-        -- ถ้ามีตัวเก่าอยู่ ให้ทำลายก่อน (ป้องกัน duplicate)
+        -- ล้างของเก่า
         if flashlightConn then
             flashlightConn:Disconnect()
             flashlightConn = nil
@@ -1309,6 +1312,7 @@ createToggle(BFrame, "Flashlight (FirstPerson & recommend gfx 6+)", function(sta
             flashlightPart = nil
         end
 
+        -- สร้าง Part
         flashlightPart = Instance.new("Part")
         flashlightPart.Name = "FlashlightHeading(ExpSettings)"
         flashlightPart.Size = Vector3.new(1, 1, 1)
@@ -1318,36 +1322,63 @@ createToggle(BFrame, "Flashlight (FirstPerson & recommend gfx 6+)", function(sta
         flashlightPart.CanTouch = false
         flashlightPart.Parent = workspace
 
+        --------------------------------------------------
+        --               SPOTLIGHT (หลัก)
+        --------------------------------------------------
         local sp = Instance.new("SpotLight")
         sp.Angle = 60
         sp.Brightness = 1.5
         sp.Range = 60
         sp.Face = Enum.NormalId.Front
         sp.Color = Color3.fromRGB(255,255,255)
+        sp.Shadows = true
         sp.Parent = flashlightPart
 
-        -- หากสามารถตรวจระดับกราฟิกได้ ให้ลดค่าถ้าต่ำกว่า 6 (silent check)
+        --------------------------------------------------
+        --               POINTLIGHT (เพิ่มเงานุ่ม)
+        --------------------------------------------------
+        local pl = Instance.new("PointLight")
+        pl.Brightness = 1.5
+        pl.Range = 10
+        pl.Shadows = true
+        pl.Color = Color3.fromRGB(255,255,255)
+        pl.Parent = flashlightPart
+
+        --------------------------------------------------
+        --      ปรับค่าตามของเครื่องกราฟิกต่ำ (silent)
+        --------------------------------------------------
         pcall(function()
-            local ok, val = pcall(function() return settings().Rendering.QualityLevel end)
-            if ok and type(val) == "number" and val < 6 then
+            local ok, q = pcall(function()
+                return settings().Rendering.QualityLevel
+            end)
+
+            if ok and typeof(q) == "number" and q < 6 then
                 sp.Brightness = 1
                 sp.Range = 40
+                pl.Brightness = 1
+                pl.Range = 6
             end
         end)
 
-        -- Lock first-person
+        --------------------------------------------------
+        --          Lock เป็น FirstPerson
+        --------------------------------------------------
         LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
 
+        --------------------------------------------------
+        --      ติดตามตำแหน่งและมุมของกล้องทุกเฟรม
+        --------------------------------------------------
         flashlightConn = RunService.RenderStepped:Connect(function()
-            local cam = workspace.CurrentCamera
-            if not cam then return end
             if flashlightPart and flashlightPart.Parent then
-                flashlightPart.CFrame = cam.CFrame
+                flashlightPart.CFrame = Camera.CFrame
             end
         end)
 
     else
-        -- OFF: disconnect loop, ลบ part, คืนค่า Camera
+        --------------------------------------------------
+        --                    OFF
+        --------------------------------------------------
+
         if flashlightConn then
             flashlightConn:Disconnect()
             flashlightConn = nil
@@ -1357,13 +1388,13 @@ createToggle(BFrame, "Flashlight (FirstPerson & recommend gfx 6+)", function(sta
             flashlightPart = nil
         end
 
-        -- ปรับ MaxZoom และ กลับเป็น Classic camera mode
+        -- กลับค่า Camera
         LocalPlayer.CameraMaxZoomDistance = 128
         LocalPlayer.CameraMode = Enum.CameraMode.Classic
     end
 end, false)
 
--- <<===== END FLASHLIGHT TOGGLE =====>>
+-- <<===== END FLASHLIGHT =====>>
 
 task.wait(0.1)
 lder.Size = UDim2.new(0.11,0,1,0)
