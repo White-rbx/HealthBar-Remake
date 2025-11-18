@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- ===== [ Positions ] =====
+-- ===== [ Position's ] =====
 local Background = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -1284,6 +1284,86 @@ createToggle(BFrame, "Almost Endless Fallen (-50K)", function(state)
 end, false)
 
 -- <<===== END ALMOST ENDLESS FALLEN =====>>
+
+-- <<===== FLASHLIGHT (FirstPerson Spotlight) — TOGGLE =====>>
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local flashlightPart = nil
+local flashlightConn = nil
+
+createToggle(BFrame, "Flashlight (FirstPerson & recommend gfx 6+)", function(state)
+    if state then
+        -- ON: สร้าง part + spotlight, ตามกล้อง และล็อกเป็น FirstPerson
+
+        -- ถ้ามีตัวเก่าอยู่ ให้ทำลายก่อน (ป้องกัน duplicate)
+        if flashlightConn then
+            flashlightConn:Disconnect()
+            flashlightConn = nil
+        end
+        if flashlightPart and flashlightPart.Parent then
+            flashlightPart:Destroy()
+            flashlightPart = nil
+        end
+
+        flashlightPart = Instance.new("Part")
+        flashlightPart.Name = "FlashlightHeading(ExpSettings)"
+        flashlightPart.Size = Vector3.new(1, 1, 1)
+        flashlightPart.Transparency = 1
+        flashlightPart.Anchored = true
+        flashlightPart.CanCollide = false
+        flashlightPart.CanTouch = false
+        flashlightPart.Parent = workspace
+
+        local sp = Instance.new("SpotLight")
+        sp.Angle = 60
+        sp.Brightness = 1.5
+        sp.Range = 60
+        sp.Face = Enum.NormalId.Front
+        sp.Color = Color3.fromRGB(255,255,255)
+        sp.Parent = flashlightPart
+
+        -- หากสามารถตรวจระดับกราฟิกได้ ให้ลดค่าถ้าต่ำกว่า 6 (silent check)
+        pcall(function()
+            local ok, val = pcall(function() return settings().Rendering.QualityLevel end)
+            if ok and type(val) == "number" and val < 6 then
+                sp.Brightness = 1
+                sp.Range = 40
+            end
+        end)
+
+        -- Lock first-person
+        LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+
+        flashlightConn = RunService.RenderStepped:Connect(function()
+            local cam = workspace.CurrentCamera
+            if not cam then return end
+            if flashlightPart and flashlightPart.Parent then
+                flashlightPart.CFrame = cam.CFrame
+            end
+        end)
+
+    else
+        -- OFF: disconnect loop, ลบ part, คืนค่า Camera
+        if flashlightConn then
+            flashlightConn:Disconnect()
+            flashlightConn = nil
+        end
+        if flashlightPart and flashlightPart.Parent then
+            flashlightPart:Destroy()
+            flashlightPart = nil
+        end
+
+        -- ปรับ MaxZoom และ กลับเป็น Classic camera mode
+        LocalPlayer.CameraMaxZoomDistance = 128
+        LocalPlayer.CameraMode = Enum.CameraMode.Classic
+    end
+end, false)
+
+-- <<===== END FLASHLIGHT TOGGLE =====>>
 
 task.wait(0.1)
 lder.Size = UDim2.new(0.11,0,1,0)
