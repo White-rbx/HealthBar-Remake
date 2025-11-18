@@ -1,4 +1,4 @@
--- So uhm just a script lol. 2.5
+-- So uhm just a script lol. 2.75
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -1400,119 +1400,114 @@ end, false)
 
 -- <<===== END FLASHLIGHT =====>>
 
--- <<===== ESP Highlight Players & Non-Players =====>>
+--========================================================--
+-- ESP Highlight Players & Non-Players (FULL TOGGLE)
+--========================================================--
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
-local espFolder = Instance.new("Folder")
-espFolder.Name = "ESP_ExpSettings"
-espFolder.Parent = workspace
+local ESP_Objects = {}
+local espLoopRunning = false
 
-local espConnections = {}
-local running = false
-
-local function makeESP(char, isPlayer)
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    -- Part
-    local box = Instance.new("Part")
-    box.Name = isPlayer and "Player(ExpSettings)" or "Non-Player(ExpSettings)"
-    box.Anchored = false
-    box.CanCollide = false
-    box.CanTouch = false
-    box.Size = hrp.Size
-    box.Transparency = 0.5
-    box.TopSurface = Enum.SurfaceType.Studs
-    box.BottomSurface = Enum.SurfaceType.Inlet
-    box.LeftSurface = Enum.SurfaceType.Glue
-    box.RightSurface = Enum.SurfaceType.Glue
-    box.Parent = espFolder
-
-    -- Weld เพื่อให้ตาม HRP เสมอ
-    local weld = Instance.new("WeldConstraint")
-    weld.Part0 = box
-    weld.Part1 = hrp
-    weld.Parent = box
-    box.CFrame = hrp.CFrame
-
-    -- Highlight
-    local h = Instance.new("Highlight")
-    h.Adornee = box
-    h.FillTransparency = 1
-    h.OutlineTransparency = 0
-    h.OutlineColor = isPlayer and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,0,0)
-    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    h.Parent = box
-
-    return box
+-- ลบ highlight ทั้งหมด + ตั้ง transparency = 1
+local function clearESP()
+	for hrp, data in pairs(ESP_Objects) do
+		if hrp and hrp.Parent then
+			pcall(function()
+				if data.highlight then
+					data.highlight:Destroy()
+				end
+				hrp.Transparency = 1  -- OFF = 1
+			end)
+		end
+	end
+	ESP_Objects = {}
 end
 
+-- ใส่ highlight ลง HRP โดยตรง
+local function applyHighlight(hrp, isRealPlayer)
+	if not hrp or not hrp.Parent then return end
+	if ESP_Objects[hrp] then return end
 
-local function startESP()
-    running = true
+	hrp.Transparency = 0.5  -- ON = 0.5
 
-    -- ติด ESP ให้ Players จริง
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr.Character then
-            makeESP(plr.Character, true)
-        end
+	local h = Instance.new("Highlight")
+	h.Parent = hrp
+	h.FillTransparency = 1
+	h.OutlineTransparency = 0
+	h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 
-        espConnections[plr] = plr.CharacterAdded:Connect(function(char)
-            makeESP(char, true)
-        end)
-    end
+	if isRealPlayer then
+		h.OutlineColor = Color3.fromRGB(0, 255, 0) -- ผู้เล่นจริง → เขียว
+	else
+		h.OutlineColor = Color3.fromRGB(255, 0, 0) -- NPC → แดง
+	end
 
-    -- ติด ESP ให้ NPC (non-players)
-    espConnections["NPC_SCAN"] = RunService.Heartbeat:Connect(function()
-        for _, model in ipairs(workspace:GetChildren()) do
-            if model:IsA("Model") and not Players:GetPlayerFromCharacter(model) then
-                local hrp = model:FindFirstChild("HumanoidRootPart")
-                local hum = model:FindFirstChildWhichIsA("Humanoid")
-                if hrp and hum then
-                    -- หลีกเลี่ยง duplicate
-                    if not espFolder:FindFirstChild(model.Name .. "_NPCTag") then
-                        local tag = Instance.new("Folder")
-                        tag.Name = model.Name .. "_NPCTag"
-                        tag.Parent = espFolder
-
-                        local box = makeESP(model, false)
-                        if box then box.Parent = tag end
-                    end
-                end
-            end
-        end
-    end)
+	ESP_Objects[hrp] = { highlight = h }
 end
 
+-- สแกน NPC
+local function scanNPC()
+	for _, hum in ipairs(workspace:GetDescendants()) do
+		if hum:IsA("Humanoid") then
+			local model = hum.Parent
+			if model and not Players:GetPlayerFromCharacter(model) then
+				local hrp = model:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					applyHighlight(hrp, false)
+				end
+			end
+		end
+	end
+end
 
+-- สแกน Player จริง
+local function scanPlayers()
+	for _, plr in ipairs(Players:GetPlayers()) do
+		local char = plr.Character
+		if char then
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				applyHighlight(hrp, true)
+			end
+		end
+	end
+end
+
+-- เริ่มการทำงาน ESP
+local function startESPLoop()
+	if espLoopRunning then return end
+	espLoopRunning = true
+
+	task.spawn(function()
+		while espLoopRunning do
+			scanPlayers()
+			scanNPC()
+			task.wait(0.2)
+		end
+	end)
+end
+
+-- หยุด ESP
 local function stopESP()
-    running = false
-
-    -- ลบ ESP ทั้งหมด
-    espFolder:ClearAllChildren()
-
-    -- Disconnect all listeners
-    for _, c in pairs(espConnections) do
-        if typeof(c) == "RBXScriptConnection" then
-            c:Disconnect()
-        end
-    end
-
-    espConnections = {}
+	espLoopRunning = false
+	clearESP()
 end
 
+--========================================================--
+-- 🔘 TOGGLE BUTTON (พร้อมใช้งาน)
+--========================================================--
 
-createToggle(BFrame, "ESP Highlight Players & Non-Players (DO NOT TOGGLE I'M FIXING THIS)", function(state)
-    if state then
-        startESP()
-    else
-        stopESP()
-    end
-end, false)
+createToggle(BFrame, "ESP Highlight Players & Non-Players", function(state)
+	if state then
+		startESPLoop()   -- เปิด
+	else
+		stopESP()        -- ปิด
+	end
+end, false) -- default OFF
 
--- <<===== END ESP =====>>
+-- ========== END ESP ==========
 
 task.wait(0.1)
 lder.Size = UDim2.new(0.11,0,1,0)
