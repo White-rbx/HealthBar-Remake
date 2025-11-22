@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.05
+-- So uhm just a script lol. 3.1
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -878,30 +878,101 @@ end)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ProfileStatus.lua"))()
 
 -- ==== PROFILESTATUS ======
+-- Sta image-driven toggle for ProfileStatus tween
 local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
 
-local ProfileStatus = Menu:WaitForChild("ProfileStatus")
+local ON_ID  = "107706370299068"
+local OFF_ID = "116259694864857"
 
-local sta = false -- default OFF
+local profilePath = CoreGui
+    :WaitForChild("TopBarApp")
+    :WaitForChild("TopBarApp")
+    :WaitForChild("UnibarLeftFrame")
+    :WaitForChild("HealthBar")
+    :WaitForChild("ExperienceSettings")
+    :WaitForChild("Menu")
+local ProfileStatus = profilePath:WaitForChild("ProfileStatus")
 
 local tweenInfo = TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local posOn  = UDim2.new(0.155, 0, 0.155, 0)
+local posOff = UDim2.new(0.155, 0, 1, 0)
 
-local function UpdateStatus()
-    local targetPos
-
-    if sta then
-        -- ON
-        targetPos = UDim2.new(0.155, 0, 0.155, 0)
-    else
-        -- OFF (DEFAULT)
-        targetPos = UDim2.new(0.155, 0, 1, 0)
-    end
-
-    TweenService:Create(ProfileStatus, tweenInfo, {
-        Position = targetPos
-    }):Play()
+local function extractId(imageProp)
+    if not imageProp then return nil end
+    local s = tostring(imageProp)
+    local id = s:match("(%d+)")
+    return id
 end
--- ===============
+
+-- หา object ที่มี image เป็นหนึ่งในสองไอดี (ลงค้นหาใน ProfileStatus เฉพาะ)
+local function findStaObject(root)
+    for _, v in ipairs(root:GetDescendants()) do
+        if v:IsA("ImageLabel") or v:IsA("ImageButton") then
+            local id = extractId(v.Image)
+            if id == ON_ID or id == OFF_ID then
+                return v
+            end
+        end
+    end
+    return nil
+end
+
+local staObj = findStaObject(profilePath) or findStaObject(ProfileStatus)
+
+-- ถ้าไม่เจอ ให้ลองค้นหาใน Menu เผื่อว่าวางไว้ที่อื่น
+if not staObj then
+    staObj = findStaObject(profilePath.Parent or profilePath)
+end
+
+-- init state by image (default OFF if unknown)
+local isOn = false
+if staObj then
+    local cur = extractId(staObj.Image)
+    if cur == ON_ID then
+        isOn = true
+    else
+        isOn = false
+    end
+else
+    -- ไม่พบวัตถุภาพที่มีไอดี — กำหนด default OFF
+    isOn = false
+end
+
+local function applyPosition(on)
+    local target = on and posOn or posOff
+    TweenService:Create(ProfileStatus, tweenInfo, { Position = target }):Play()
+end
+
+local function setStaImage(on)
+    if not staObj then return end
+    staObj.Image = "rbxassetid://" .. (on and ON_ID or OFF_ID)
+end
+
+-- เรียกตั้ง initial
+applyPosition(isOn)
+setStaImage(isOn)
+
+-- เชื่อม event เมื่อเป็น ImageButton / TextButton
+if staObj and staObj:IsA("GuiButton") then
+    staObj.MouseButton1Click:Connect(function()
+        isOn = not isOn
+        applyPosition(isOn)
+        setStaImage(isOn)
+    end)
+else
+    -- ถ้าพบ ImageLabel แต่อยากให้มันคลิกได้ ให้ฟัง InputBegan (ต้องเป็น GuiObject ที่รับ Input)
+    if staObj and staObj:IsA("GuiObject") then
+        staObj.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                isOn = not isOn
+                applyPosition(isOn)
+                setStaImage(isOn)
+            end
+        end)
+    end
+end
+-- ==========
 
 -- Toggle builder
 local toggleCount = 0
