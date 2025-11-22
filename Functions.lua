@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3
+-- So uhm just a script lol. 3.05
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -880,11 +880,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-R
 -- ==== PROFILESTATUS ======
 local TweenService = game:GetService("TweenService")
 
-local ProfileStatus = game:GetService("CoreGui")
-    .TopBarApp.TopBarApp
-    .UnibarLeftFrame.HealthBar
-    .ExperienceSettings.Menu
-    .ProfileStatus
+local ProfileStatus = Menu:WaitForChild("ProfileStatus")
 
 local sta = false -- default OFF
 
