@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.1
+-- So uhm just a script lol. 3.101
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -882,8 +882,8 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-R
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
-local ON_ID  = "107706370299068"
-local OFF_ID = "116259694864857"
+local ON_ID  = "116259694864857"
+local OFF_ID = "107706370299068"
 
 local profilePath = CoreGui
     :WaitForChild("TopBarApp")
