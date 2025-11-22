@@ -1,4 +1,4 @@
--- So uhm just a script lol. 2.75
+-- So uhm just a script lol. 3
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -874,6 +874,38 @@ task.spawn(function()
 end)
 				
 -- ===== END =====
+-- Loadstring ProfileStatus
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ProfileStatus.lua"))()
+
+-- ==== PROFILESTATUS ======
+local TweenService = game:GetService("TweenService")
+
+local ProfileStatus = game:GetService("CoreGui")
+    .TopBarApp.TopBarApp
+    .UnibarLeftFrame.HealthBar
+    .ExperienceSettings.Menu
+    .ProfileStatus
+
+local sta = false -- default OFF
+
+local tweenInfo = TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local function UpdateStatus()
+    local targetPos
+
+    if sta then
+        -- ON
+        targetPos = UDim2.new(0.155, 0, 0.155, 0)
+    else
+        -- OFF (DEFAULT)
+        targetPos = UDim2.new(0.155, 0, 1, 0)
+    end
+
+    TweenService:Create(ProfileStatus, tweenInfo, {
+        Position = targetPos
+    }):Play()
+end
+-- ===============
 
 -- Toggle builder
 local toggleCount = 0
