@@ -1,3 +1,5 @@
+-- Script ahh 1.1
+
 -- =====>> Saved Functions <<=====
 
 -- ====FUNCTION CORNER=====
@@ -121,7 +123,7 @@ local Menu = game.CoreGui:WaitForChild("TopBarApp")
 -- =====>> Instance <<=====
 local pro = Instance.new("Frame")
 pro.Name = "ProfileStatus"
-pro.Position = UDim2.new(0.155,0,0.155,0)
+pro.Position = UDim2.new(0.155,0,1,0)
 pro.Size = UDim2.new(0.7,0,0.7,0)
 pro.BackgroundColor3 = Color3.fromRGB(0,0,0)
 pro.BackgroundTransparency = 0.3
