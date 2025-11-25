@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.105
+-- So uhm just a script lol. 3.2
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -435,6 +435,35 @@ hrfr.Size = UDim2.new(1, 0, 0.9, 0)
 hrfr.BackgroundTransparency = 1
 hrfr.Active = false
 hrfr.Parent = Menu
+
+local sh = Instance.new("Frame")
+sh.Name = "Shift_Lock"
+sh.Size = UDim2.new(0, 90, 0, 43)
+sh.Position = UDim2.new(0, 750, 0, 250)
+sh.Visble = false
+sh.Active = false
+sh.BackgroundTransparency = 0.08
+sh.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
+sh.Parent = hrfr
+Corner(1, 0, sh)
+createUIListLayout(sh, 0, 10, HCenter, VCenter, SName, FillH)
+
+local shl = Instance.new("ImageLabel")
+shl.Name = "a1_Shift"
+shl.BackgroundTransparency = 1
+shl.Image = "rbxassetid://137719322669506"
+shl.Size = UDim2.new(0, 35, 0, 35)
+shl.Parent = sh
+Corner(1, 0, shl)
+
+local dr = Instance.new("ImageLabel")
+dr.Name = "a2_Dragger"
+dr.Image = "rbxassetid://99025662889813"
+dr.BackgroundTransparency = 1
+dr.Size = UDim2.new(0, 35, 0, 35)
+dr.Parent = sh
+Corner(1, 0, dr)
+
 -- ================
 -- หาปุ่ม About ด้วย WaitForChild (ใน CoreGui)
 local aboutButton = game:GetService("CoreGui")
