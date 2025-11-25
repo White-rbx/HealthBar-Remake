@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.101
+-- So uhm just a script lol. 3.105
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -385,17 +385,15 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ⚫ = Cannot fix
 ➖ = Disconnected or discontinued
 -------
-📌 Updated: More Toggles & One More Button in Hamburger menu 
- ➕ ESP Highlight Players and Non-Players Toggle
- ➕ Almost Endless Fallen -50K Studs Toggle
- ➕ Flashlight Toggle
- ➕ Audio Player Button
+📌 Updated: That all just nothing new....
 -------
 🔁 In progress:
- 🔨 Creating FreeCam for all devices
+ 🔨 Creating Shift Lock
  🔨 Creating Status Profile (Debug)
  🔨 Updating AI Open Source (In develop)
- 🔷 Moveable HealthBar and ValueLabels
+-------
+❌ Failed:
+ ➖ Moveable HealthBar and ValueLabels
 -------
 ]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
@@ -429,6 +427,15 @@ hid.Parent = In
 Corner(1,0,hid)
 Stroke(hid, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
 
+-- ================
+local hrfr = Instance.new("Frame")
+hrfr.Name = "HolderScreen"
+hrfr.Position = UDim2.new(0, 0, 0.1, 0)
+hrfr.Size = UDim2.new(1, 0, 0.9, 0)
+hrfr.BackgroundTransparency = 1
+hrfr.Active = false
+hrfr.Parent = Menu
+-- ================
 -- หาปุ่ม About ด้วย WaitForChild (ใน CoreGui)
 local aboutButton = game:GetService("CoreGui")
 	:WaitForChild("TopBarApp")
