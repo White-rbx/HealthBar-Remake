@@ -466,51 +466,71 @@ dr.Parent = sh
 Corner(1, 0, dr)
 
 -- === Dragger ===
+-- Dragger = dr
+-- Frame ที่จะขยับ = sh
+
 local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local dragging = false
 local dragStart
 local startPos
 
+local dragSpeed = 0.12 -- ลื่นแบบกำลังดี
+
+local function updateInput(input)
+    if not dragging then return end
+    
+    local delta = input.Position - dragStart
+
+    local new = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
+
+    --====== ป้องกัน UI หลุดจอ ======--
+    local screen = workspace.CurrentCamera.ViewportSize
+    local w = sh.AbsoluteSize.X
+    local h = sh.AbsoluteSize.Y
+
+    local x = math.clamp(new.X.Offset, 0, screen.X - w)
+    local y = math.clamp(new.Y.Offset, 0, screen.Y - h)
+
+    TweenService:Create(sh, TweenInfo.new(dragSpeed), {
+        Position = UDim2.new(0, x, 0, y)
+    }):Play()
+end
+
+
+--====== Start Drag on DRAGGER ONLY ======--
 dr.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = true
-		dragStart = input.Position
-		startPos = sh.Position  -- ตัวแม่ (Frame Shift_Lock)
-	end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 
+    or input.UserInputType == Enum.UserInputType.Touch then
+
+        dragging = true
+        dragStart = input.Position
+        startPos = sh.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
 end)
 
-dr.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = false
-	end
-end)
 
+--====== Update while dragging ======--
 UIS.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
-
-		local delta = input.Position - dragStart
-		local newPos = UDim2.new(
-			startPos.X.Scale,
-			startPos.X.Offset + delta.X,
-			startPos.Y.Scale,
-			startPos.Y.Offset + delta.Y
-		)
-
-		-- ======== ป้องกันออกนอกจอ (Clamp) ========
-		local screen = workspace.CurrentCamera.ViewportSize
-		local frameW = sh.AbsoluteSize.X
-		local frameH = sh.AbsoluteSize.Y
-
-		local x = math.clamp(newPos.X.Offset, 0, screen.X - frameW)
-		local y = math.clamp(newPos.Y.Offset, 0, screen.Y - frameH)
-
-		sh.Position = UDim2.new(0, x, 0, y)
-	end
+    if input.UserInputType == Enum.UserInputType.MouseMovement 
+    or input.UserInputType == Enum.UserInputType.Touch then
+        updateInput(input)
+    end
 end)
-
 -- ================
+
 -- หาปุ่ม About ด้วย WaitForChild (ใน CoreGui)
 local aboutButton = game:GetService("CoreGui")
 	:WaitForChild("TopBarApp")
