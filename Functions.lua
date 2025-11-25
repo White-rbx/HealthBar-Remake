@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.2
+-- So uhm just a script lol. 3.21
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -440,7 +440,7 @@ local sh = Instance.new("Frame")
 sh.Name = "Shift_Lock"
 sh.Size = UDim2.new(0, 90, 0, 43)
 sh.Position = UDim2.new(0, 750, 0, 250)
-sh.Visble = false
+sh.Visible = false
 sh.Active = false
 sh.BackgroundTransparency = 0.08
 sh.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
