@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.2105
+-- So uhm just a script lol. 3.215
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -1643,6 +1643,12 @@ createToggle(BFrame, "ESP Highlight Players & Non-Players", function(state)
 end, false) -- default OFF
 
 -- ========== END ESP ==========
+
+-- ======== SHIFT LOCK =======
+createToggle(BFrame, "Shift Lock (In-develop)", function(state)
+    sh.Visible = state
+end, false)
+-- ====== END SHIFT LOCK =====
 
 task.wait(0.1)
 lder.Size = UDim2.new(0.11,0,1,0)
