@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3
+-- So uhm just a script lol. 3.305
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -448,7 +448,7 @@ sh.Parent = hrfr
 Corner(1, 0, sh)
 createUIListLayout(sh, 0, 10, HCenter, VCenter, SName, FillH)
 
-local shl = Instance.new("ImageLabel")
+local shl = Instance.new("ImageButton")
 shl.Name = "a1_Shift"
 shl.BackgroundTransparency = 1
 shl.Image = "rbxassetid://137719322669506"
@@ -456,7 +456,7 @@ shl.Size = UDim2.new(0, 35, 0, 35)
 shl.Parent = sh
 Corner(1, 0, shl)
 
-local dr = Instance.new("ImageLabel")
+local dr = Instance.new("ImageButton")
 dr.Name = "a2_Dragger"
 dr.Image = "rbxassetid://99025662889813"
 dr.BackgroundTransparency = 1
