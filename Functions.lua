@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.215
+-- So uhm just a script lol. 3.3
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -463,6 +463,51 @@ dr.BackgroundTransparency = 1
 dr.Size = UDim2.new(0, 35, 0, 35)
 dr.Parent = sh
 Corner(1, 0, dr)
+
+-- === Dragger ===
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local dragging = false
+local dragStart
+local startPos
+
+dr.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = sh.Position  -- ตัวแม่ (Frame Shift_Lock)
+	end
+end)
+
+dr.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+
+UIS.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+
+		local delta = input.Position - dragStart
+		local newPos = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+
+		-- ======== ป้องกันออกนอกจอ (Clamp) ========
+		local screen = workspace.CurrentCamera.ViewportSize
+		local frameW = sh.AbsoluteSize.X
+		local frameH = sh.AbsoluteSize.Y
+
+		local x = math.clamp(newPos.X.Offset, 0, screen.X - frameW)
+		local y = math.clamp(newPos.Y.Offset, 0, screen.Y - frameH)
+
+		sh.Position = UDim2.new(0, x, 0, y)
+	end
+end)
 
 -- ================
 -- หาปุ่ม About ด้วย WaitForChild (ใน CoreGui)
