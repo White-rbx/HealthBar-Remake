@@ -1,3 +1,4 @@
+-- Ok 1.1
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1785,7 +1786,7 @@ if ctb1 then
 end
 
 -- CTB2
-local ctb2 = createImageButton("a2_Dex", 50, 50, 50, 0.2, "102148729694907", false)
+local ctb2 = createImageButton("a2_Dex", 255, 0, 0, 0.2, "102148729694907", false)
 if ctb2 then
     ctb2.MouseButton1Click:Connect(function()
         pcall(function()
