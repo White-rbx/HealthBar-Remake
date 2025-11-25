@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3062
+-- So uhm just a script lol. 3.307
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -459,6 +459,7 @@ Corner(1, 0, shl)
 local dr = Instance.new("ImageButton")
 dr.Name = "a2_Dragger"
 dr.Image = "rbxassetid://99025662889813"
+dr.AutoButtonColor = false
 dr.BackgroundTransparency = 1
 dr.Size = UDim2.new(0, 35, 0, 35)
 dr.Parent = sh
