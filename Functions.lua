@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3525
+-- So uhm just a script lol. 3.353
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -627,10 +627,15 @@ RunService.RenderStepped:Connect(function()
 	)
 
 	-- OFFSET SHIFT-LOCK แบบ Roblox (กล้องเอียงขวา)
-	local offset = CFrame.new(2, 1, 0)
+	-- OFFSET SHIFT-LOCK แบบ Roblox (เอียงมุมขวาเล็กน้อย)
+    local offset = Vector3.new(2, 1, 0)
 
-	camera.CFrame =
-		CFrame.new(camera.CFrame.Position, root.Position + flat) * offset
+    camera.CFrame =
+    	CFrame.new(
+	    	camera.CFrame.Position,
+	    	root.Position + flat
+	    )
+	    * CFrame.new(offset)
 end)
 
 --========================================================--
