@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.35105
+-- So uhm just a script lol. 3.3516
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -428,6 +428,24 @@ Corner(1,0,hid)
 Stroke(hid, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
 
 -- ================
+local mfr = Instance.new("Frame")
+mfr.Name = "MiddleScreen"
+mfr.Position = UDim2.new(0, 0, 0, 0)
+mfr.Size = UDim2.new(1, 0, 1, 0)
+mfr.BackgroundTransparency = 1
+mfr.Active = false
+mfr.Parent = Menu
+createUIListLayout(mfr, 0, 0, HCenter, VCenter, SName, FillH)
+-- =================
+local ts = Instance.new("ImageLabel")
+ts.Name = "TargetShift"
+ts.Size = UDim2.new(0, 50, 0, 50)
+ts.BackgroundTransparency = 1
+ts.Active = false
+ts.Visible = false
+ts.Image = "rbxassetid://118624373632520"
+ts.Parent = mfr
+-- =================
 local hrfr = Instance.new("Frame")
 hrfr.Name = "HolderScreen"
 hrfr.Position = UDim2.new(0, 0, 0.1, 0)
