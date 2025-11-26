@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3539
+-- So uhm just a script lol. 3.35391
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -388,7 +388,7 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 📌 Updated: That all just nothing new....
 -------
 🔁 In progress:
- 🔨 Creating Shift Lock
+ ⚠️ Creating Shift Lock
  🔨 Creating Status Profile (Debug)
  🔨 Updating AI Open Source (In develop)
 -------
@@ -616,22 +616,24 @@ RunService.RenderStepped:Connect(function()
 
 	if not humanoid or not root then return end
 
-	-- หมุนตัวละครตามกล้อง (รวมแกน Y ด้วย)
-	local look = camera.CFrame.LookVector.Unit
+	-- หมุนตัวละครตามกล้อง
+	local look = camera.CFrame.LookVector
+	local flat = Vector3.new(look.X, look.Y, look.Z).Unit
 
 	humanoid.AutoRotate = false
 	root.CFrame = CFrame.new(
 		root.Position,
-		root.Position + look
+		root.Position + flat
 	)
 
-	-- OFFSET SHIFT-LOCK แบบ Roblox (กล้องเอียงขวาเล็กน้อย)
+	-- OFFSET SHIFT-LOCK แบบ Roblox (กล้องเอียงขวา)
+	-- OFFSET SHIFT-LOCK แบบ Roblox (เอียงมุมขวาเล็กน้อย)
     local offset = Vector3.new(2, 0, 0)
 
     camera.CFrame =
     	CFrame.new(
 	    	camera.CFrame.Position,
-	    	root.Position + look
+	    	root.Position + flat
 	    )
 	    * CFrame.new(offset)
 end)
