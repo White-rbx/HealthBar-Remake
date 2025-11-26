@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.35393
+-- So uhm just a script lol. 3.35394
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -614,28 +614,33 @@ RunService.RenderStepped:Connect(function()
 		return
 	end
 
-	if not humanoid or not root then return end
+	if not humanoid or not root or not camera then return end
 
-	-- หมุนตัวละครตามกล้อง เฉพาะแกน XZ
-	local look = camera.CFrame.LookVector
-	local flat = Vector3.new(look.X, 0, look.Z)
-	if flat.Magnitude > 0 then
+	-- หมุนตัวละครเฉพาะแกน XZ ตามกล้อง
+	local camLook = camera.CFrame.LookVector
+	local flat = Vector3.new(camLook.X, 0, camLook.Z)
+	if flat.Magnitude > 0.001 then
 		flat = flat.Unit
 		humanoid.AutoRotate = false
-		root.CFrame = CFrame.new(
-			root.Position,
-			root.Position + flat
-		)
+		root.CFrame = CFrame.new(root.Position, root.Position + flat)
 	end
 
-	-- OFFSET SHIFT LOCK แบบ Roblox (เอียงขวาเล็กน้อย)
-	local offset = Vector3.new(1.5, 0, 0)
+	-- OFFSET SHIFT LOCK (เอียงขวาเล็กน้อย แบบ Roblox)
+	local offset = Vector3.new(2, 1, 0)
 
-	-- กล้องมองขึ้นลงอิสระ → ไม่บังคับแกน Y
-	camera.CFrame = CFrame.new(
-		camera.CFrame.Position,
-		root.Position -- ให้กล้องเป้าหมายที่ตัวละคร
-	) * CFrame.new(offset)
+	-- สำคัญ: สร้างทิศทางกล้องใหม่โดยใช้ XZ จาก root-ward (flat)
+	-- แต่เก็บค่า Y (pitch) ของกล้องปัจจุบันไว้ เพื่อให้มองขึ้น/ลงได้อิสระ
+	local currentPitchY = camLook.Y
+	local desiredDir = Vector3.new(flat.X, currentPitchY, flat.Z)
+	if desiredDir.Magnitude < 0.001 then
+		-- safety fallback: ถ้าเกิดเป็น 0 ให้ใช้ camLook ทั้งหมด
+		desiredDir = camLook
+	else
+		desiredDir = desiredDir.Unit
+	end
+
+	-- ใช้ CFrame.lookAt (equivalent) — ให้กล้องหันตาม desiredDir โดยไม่แก้ Y ของกล้อง
+	camera.CFrame = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + desiredDir) * CFrame.new(offset)
 end)
 
 --========================================================--
