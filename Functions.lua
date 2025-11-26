@@ -550,45 +550,70 @@ end)
 -- ================
 -- Shift Lolocal
 
+-- Services
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
+
+-- ตัวละคร
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
+
+-- กล้อง (แก้ปัญหา Camera nil)
 local camera = workspace.CurrentCamera
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	camera = workspace.CurrentCamera
+end)
 
-local shiftEnabled = false
+-- UI ที่นายสร้าง
+local sh    = hrfr.Shift_Lock        -- frame หลัก
+local shl   = sh:WaitForChild("a1_Shift") -- ปุ่มสลับ
+local ts    = Menu.MiddleScreen.TargetShift -- crosshair จุดกลาง
 
+-- ไอคอน ON/OFF
 local ICON_ON  = "rbxassetid://138164639115707"
 local ICON_OFF = "rbxassetid://137719322669506"
 
--- ฟังก์ชันอัปเดตตัวละครเมื่อเกิดใหม่
+-- สถานะ
+local shiftEnabled = false
+
+
+-- เมื่อเกิดใหม่ อัปเดต humanoid
 player.CharacterAdded:Connect(function(char)
 	character = char
 	humanoid = char:WaitForChild("Humanoid")
 end)
 
--- ฟังก์ชันเปิด/ปิด Shift Lock ของ Roblox จริง
+
+-- ⭐ ฟังก์ชันสลับ Shift Lock
 local function updateShiftLock(state)
 	shiftEnabled = state
 	
-	if shiftEnabled then
+	if state then
+		-- UI
+		sh.Visible = true
 		shl.Image = ICON_ON
-		
-		-- กล้องต้องเป็นแบบปกติ
-		camera.CameraMode = Enum.CameraMode.Classic
-		camera.CameraType = Enum.CameraType.Custom
-		
+		ts.Visible = true
+
+		-- กล้องต้องเป็น Classic เท่านั้น
+		if camera then
+			camera.CameraType = Enum.CameraType.Custom
+			camera.CameraMode = Enum.CameraMode.Classic
+		end
+
 		-- ล็อกเมาส์กลางหน้าจอ (PC เท่านั้น)
 		pcall(function()
 			UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
 		end)
-		
+
 	else
+		-- UI
+		sh.Visible = false
 		shl.Image = ICON_OFF
-		
+		ts.Visible = false
+
 		-- คืนค่าเมาส์
 		pcall(function()
 			UIS.MouseBehavior = Enum.MouseBehavior.Default
@@ -596,17 +621,18 @@ local function updateShiftLock(state)
 	end
 end
 
--- ระบบหมุนตัวตามเมาส์ (หัวใจหลักของ Shift Lock จริง)
+
+-- ⭐ การหมุนตัวละครตามมุมกล้อง (เหมือน Roblox)
 RunService.RenderStepped:Connect(function()
-	if shiftEnabled and humanoid then
-		local lookVector = camera.CFrame.LookVector
-		local y = Vector3.new(lookVector.X, 0, lookVector.Z).Unit
+	if shiftEnabled and humanoid and camera then
+		local look = camera.CFrame.LookVector
+		local flat = Vector3.new(look.X, 0, look.Z).Unit
 		
-		humanoid.AutoRotate = false -- ไม่ให้ Roblox หมุนเอง
-		humanoid.RootPart.CFrame = CFrame.new(
-			humanoid.RootPart.Position,
-			humanoid.RootPart.Position + y
-		)
+		local root = humanoid.RootPart
+		if root then
+			humanoid.AutoRotate = false
+			root.CFrame = CFrame.new(root.Position, root.Position + flat)
+		end
 	else
 		if humanoid then
 			humanoid.AutoRotate = true
@@ -614,10 +640,12 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- เมื่อกดไอคอน shl
+
+-- ⭐ กดไอคอนเพื่อเปิด/ปิด
 shl.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1
 	or input.UserInputType == Enum.UserInputType.Touch then
+
 		updateShiftLock(not shiftEnabled)
 	end
 end)
@@ -1803,64 +1831,8 @@ end, false) -- default OFF
 -- ========== END ESP ==========
 
 -- ======== SHIFT LOCK =======
--- ต้องมีตัวแปรเหล่านี้อยู่แล้ว
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-
-local player = Players.LocalPlayer
-local cam = workspace.CurrentCamera
-
-local humanoid
-local shiftLockOn = false
-
--- crosshair UI ที่นายสร้างไว้
-local ts = Menu.MiddleScreen.TargetShift
-
--- อัปเดต humanoid เมื่อเกิดใหม่
-local function updateChar()
-	local char = player.Character or player.CharacterAdded:Wait()
-	humanoid = char:WaitForChild("Humanoid")
-end
-updateChar()
-player.CharacterAdded:Connect(updateChar)
-
--- ฟังก์ชันเปิด/ปิด shift lock
-local function applyShiftLock(state)
-	shiftLockOn = state
-
-	if not humanoid then return end
-
-	if state then
-		-- เปิด shift lock
-		ts.Visible = true
-		humanoid.AutoRotate = false
-
-		TweenService:Create(cam, TweenInfo.new(.25), {CameraOffset = Vector3.new(1.5, 0, 0)}):Play()
-
-	else
-		-- ปิด shift lock
-		ts.Visible = false
-		humanoid.AutoRotate = true
-
-		TweenService:Create(cam, TweenInfo.new(.25), {CameraOffset = Vector3.new(0, 0, 0)}):Play()
-	end
-end
-
--- หมุนตัวตามกล้อง (แบบ Roblox จริง)
-RunService.RenderStepped:Connect(function()
-	if shiftLockOn and humanoid then
-		local root = humanoid.Parent:FindFirstChild("HumanoidRootPart")
-		if root then
-			root.CFrame = CFrame.new(root.Position, Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z) + root.Position)
-		end
-	end
-end)
-
--- ⛔ ไม่มีการสร้าง Instance เพิ่ม
--- ตรงนี้แค่ต่อเข้ากับ createToggle ของนาย
-createToggle(BFrame, "Shift Lock (Mobile)", function(state)
-	applyShiftLock(state)
+createToggle(BFrame, "Shift Lock (Beta)", function(state)
+    sh.Visible = state
 end, false)
 -- ====== END SHIFT LOCK =====
 
