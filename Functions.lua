@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3518
+-- So uhm just a script lol. 3.352
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -1803,8 +1803,64 @@ end, false) -- default OFF
 -- ========== END ESP ==========
 
 -- ======== SHIFT LOCK =======
-createToggle(BFrame, "Shift Lock (Beta)", function(state)
-    sh.Visible = state
+-- ต้องมีตัวแปรเหล่านี้อยู่แล้ว
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local cam = workspace.CurrentCamera
+
+local humanoid
+local shiftLockOn = false
+
+-- crosshair UI ที่นายสร้างไว้
+local ts = Menu.MiddleScreen.TargetShift
+
+-- อัปเดต humanoid เมื่อเกิดใหม่
+local function updateChar()
+	local char = player.Character or player.CharacterAdded:Wait()
+	humanoid = char:WaitForChild("Humanoid")
+end
+updateChar()
+player.CharacterAdded:Connect(updateChar)
+
+-- ฟังก์ชันเปิด/ปิด shift lock
+local function applyShiftLock(state)
+	shiftLockOn = state
+
+	if not humanoid then return end
+
+	if state then
+		-- เปิด shift lock
+		ts.Visible = true
+		humanoid.AutoRotate = false
+
+		TweenService:Create(cam, TweenInfo.new(.25), {CameraOffset = Vector3.new(1.5, 0, 0)}):Play()
+
+	else
+		-- ปิด shift lock
+		ts.Visible = false
+		humanoid.AutoRotate = true
+
+		TweenService:Create(cam, TweenInfo.new(.25), {CameraOffset = Vector3.new(0, 0, 0)}):Play()
+	end
+end
+
+-- หมุนตัวตามกล้อง (แบบ Roblox จริง)
+RunService.RenderStepped:Connect(function()
+	if shiftLockOn and humanoid then
+		local root = humanoid.Parent:FindFirstChild("HumanoidRootPart")
+		if root then
+			root.CFrame = CFrame.new(root.Position, Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z) + root.Position)
+		end
+	end
+end)
+
+-- ⛔ ไม่มีการสร้าง Instance เพิ่ม
+-- ตรงนี้แค่ต่อเข้ากับ createToggle ของนาย
+createToggle(HolderScreen, "Shift Lock", function(state)
+	applyShiftLock(state)
 end, false)
 -- ====== END SHIFT LOCK =====
 
