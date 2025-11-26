@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3516
+-- So uhm just a script lol. 3.3518
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -457,7 +457,7 @@ hrfr.Parent = Menu
 local sh = Instance.new("Frame")
 sh.Name = "Shift_Lock"
 sh.Size = UDim2.new(0, 90, 0, 43)
-sh.Position = UDim2.new(0, 750, 0, 250)
+sh.Position = UDim2.new(0, 0, 0, 250)
 sh.Visible = false
 sh.Active = false
 sh.BackgroundTransparency = 0.08
