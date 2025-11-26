@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.351
+-- So uhm just a script lol. 3.35105
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -173,7 +173,7 @@ Corner(0.02, 0, Inner)
 local Toggle = Instance.new("Frame")
 Toggle.Name = "Toggles"
 Toggle.Active = false
-Toggle.BackgroundColor3 = Color3.fromRGgamealal,0,0)
+Toggle.BackgroundColor3 = Color3.fromRGB(0,0,0)
 Toggle.BackgroundTransparency = 0.5
 Toggle.Position = UDim2.new(0.02,0,0.02,0)
 Toggle.Size = UDim2.new(0.96,0,0.96,0)
