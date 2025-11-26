@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.352
+-- So uhm just a script lol. 3.3521
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -1859,7 +1859,7 @@ end)
 
 -- ⛔ ไม่มีการสร้าง Instance เพิ่ม
 -- ตรงนี้แค่ต่อเข้ากับ createToggle ของนาย
-createToggle(HolderScreen, "Shift Lock", function(state)
+createToggle(BFrame, "Shift Lock (Mobile)", function(state)
 	applyShiftLock(state)
 end, false)
 -- ====== END SHIFT LOCK =====
