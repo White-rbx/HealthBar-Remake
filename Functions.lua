@@ -616,33 +616,28 @@ RunService.RenderStepped:Connect(function()
 
 	if not humanoid or not root then return end
 
-	-- หมุนตัวละครตามกล้อง (เฉพาะแกน XZ)
+	-- หมุนตัวละครตามกล้อง เฉพาะแกน XZ
 	local look = camera.CFrame.LookVector
-	local flat = Vector3.new(look.X, 0, look.Z).Unit
-
-	humanoid.AutoRotate = false
-	root.CFrame = CFrame.new(
-		root.Position,
-		root.Position + flat
-	)
-
-	-- OFFSET SHIFT LOCK (กล้องเอียงขวา)
-	local offset = Vector3.new(2, 0, 0)
-
-	-- *** FIX สำคัญ: ใช้ Y ของกล้อง ไม่ใช้ Y ของ root ***
-	local target = Vector3.new(
-		root.Position.X + flat.X,
-		camera.CFrame.Position.Y,
-		root.Position.Z + flat.Z
-	)
-
-	camera.CFrame =
-		CFrame.new(
-			camera.CFrame.Position,
-			target
+	local flat = Vector3.new(look.X, 0, look.Z)
+	if flat.Magnitude > 0 then
+		flat = flat.Unit
+		humanoid.AutoRotate = false
+		root.CFrame = CFrame.new(
+			root.Position,
+			root.Position + flat
 		)
-		* CFrame.new(offset)
+	end
+
+	-- OFFSET SHIFT LOCK แบบ Roblox (เอียงขวาเล็กน้อย)
+	local offset = Vector3.new(1.5, 0, 0)
+
+	-- กล้องมองขึ้นลงอิสระ → ไม่บังคับแกน Y
+	camera.CFrame = CFrame.new(
+		camera.CFrame.Position,
+		root.Position -- ให้กล้องเป้าหมายที่ตัวละคร
+	) * CFrame.new(offset)
 end)
+
 --========================================================--
 -- เมื่อกดปุ่ม UI (shl)
 --========================================================--
