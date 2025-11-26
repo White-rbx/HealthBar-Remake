@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3521
+-- So uhm just a script lol. 3.3525
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -547,105 +547,98 @@ UIS.InputChanged:Connect(function(input)
         updateInput(input)
     end
 end)
--- ================
--- Shift Lolocal
+--========================================================--
+-- SHIFT-LOCK SYSTEM (Full Realistic Version - No sh.Visible)
+--========================================================--
 
--- Services
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-
--- ตัวละคร
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-
--- กล้อง (แก้ปัญหา Camera nil)
 local camera = workspace.CurrentCamera
-workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-	camera = workspace.CurrentCamera
-end)
 
--- UI ที่นายสร้าง
-local sh    = hrfr.Shift_Lock        -- frame หลัก
-local shl   = sh:WaitForChild("a1_Shift") -- ปุ่มสลับ
-local ts    = Menu.MiddleScreen.TargetShift -- crosshair จุดกลาง
+-- UI ของนาย
+-- shl = ไอคอนเปิดปิด (ImageLabel)
+-- ts  = จุดกลางหน้าจอ (TargetShift)
 
--- ไอคอน ON/OFF
 local ICON_ON  = "rbxassetid://138164639115707"
 local ICON_OFF = "rbxassetid://137719322669506"
 
--- สถานะ
 local shiftEnabled = false
+local humanoid
+local root
 
+-- อัปเดต humanoid ทุกครั้งที่เกิดใหม่
+local function bindCharacter(char)
+	humanoid = char:WaitForChild("Humanoid", 5)
+	root = char:WaitForChild("HumanoidRootPart", 5)
+end
 
--- เมื่อเกิดใหม่ อัปเดต humanoid
-player.CharacterAdded:Connect(function(char)
-	character = char
-	humanoid = char:WaitForChild("Humanoid")
-end)
+bindCharacter(player.Character or player.CharacterAdded:Wait())
+player.CharacterAdded:Connect(bindCharacter)
 
-
--- ⭐ ฟังก์ชันสลับ Shift Lock
+--========================================================--
+-- ฟังก์ชันเปิด/ปิด SHIFT LOCK
+--========================================================--
 local function updateShiftLock(state)
 	shiftEnabled = state
-	
-	if state then
-		-- UI
-		sh.Visible = true
+
+	if shiftEnabled then
 		shl.Image = ICON_ON
 		ts.Visible = true
-
-		-- กล้องต้องเป็น Classic เท่านั้น
-		if camera then
-			camera.CameraType = Enum.CameraType.Custom
-			camera.CameraMode = Enum.CameraMode.Classic
-		end
-
-		-- ล็อกเมาส์กลางหน้าจอ (PC เท่านั้น)
+		
+		camera.CameraType = Enum.CameraType.Custom
+		camera.CameraMode = Enum.CameraMode.Classic
+		
 		pcall(function()
 			UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
 		end)
 
 	else
-		-- UI
-		sh.Visible = false
 		shl.Image = ICON_OFF
 		ts.Visible = false
 
-		-- คืนค่าเมาส์
 		pcall(function()
 			UIS.MouseBehavior = Enum.MouseBehavior.Default
 		end)
 	end
 end
 
-
--- ⭐ การหมุนตัวละครตามมุมกล้อง (เหมือน Roblox)
+--========================================================--
+-- ระบบหมุนตัว + กล้องเอียงขวาแบบ Roblox SHIFT LOCK
+--========================================================--
 RunService.RenderStepped:Connect(function()
-	if shiftEnabled and humanoid and camera then
-		local look = camera.CFrame.LookVector
-		local flat = Vector3.new(look.X, 0, look.Z).Unit
-		
-		local root = humanoid.RootPart
-		if root then
-			humanoid.AutoRotate = false
-			root.CFrame = CFrame.new(root.Position, root.Position + flat)
-		end
-	else
-		if humanoid then
-			humanoid.AutoRotate = true
-		end
+	if not shiftEnabled then
+		if humanoid then humanoid.AutoRotate = true end
+		return
 	end
+
+	if not humanoid or not root then return end
+
+	-- หมุนตัวละครตามกล้อง
+	local look = camera.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z).Unit
+
+	humanoid.AutoRotate = false
+	root.CFrame = CFrame.new(
+		root.Position,
+		root.Position + flat
+	)
+
+	-- OFFSET SHIFT-LOCK แบบ Roblox (กล้องเอียงขวา)
+	local offset = CFrame.new(2, 1, 0)
+
+	camera.CFrame =
+		CFrame.new(camera.CFrame.Position, root.Position + flat) * offset
 end)
 
-
--- ⭐ กดไอคอนเพื่อเปิด/ปิด
+--========================================================--
+-- เมื่อกดปุ่ม UI (shl)
+--========================================================--
 shl.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1
 	or input.UserInputType == Enum.UserInputType.Touch then
-
 		updateShiftLock(not shiftEnabled)
 	end
 end)
