@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.353
+-- So uhm just a script lol. 3.3539
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -616,24 +616,22 @@ RunService.RenderStepped:Connect(function()
 
 	if not humanoid or not root then return end
 
-	-- หมุนตัวละครตามกล้อง
-	local look = camera.CFrame.LookVector
-	local flat = Vector3.new(look.X, 0, look.Z).Unit
+	-- หมุนตัวละครตามกล้อง (รวมแกน Y ด้วย)
+	local look = camera.CFrame.LookVector.Unit
 
 	humanoid.AutoRotate = false
 	root.CFrame = CFrame.new(
 		root.Position,
-		root.Position + flat
+		root.Position + look
 	)
 
-	-- OFFSET SHIFT-LOCK แบบ Roblox (กล้องเอียงขวา)
-	-- OFFSET SHIFT-LOCK แบบ Roblox (เอียงมุมขวาเล็กน้อย)
-    local offset = Vector3.new(2, 1, 0)
+	-- OFFSET SHIFT-LOCK แบบ Roblox (กล้องเอียงขวาเล็กน้อย)
+    local offset = Vector3.new(2, 0, 0)
 
     camera.CFrame =
     	CFrame.new(
 	    	camera.CFrame.Position,
-	    	root.Position + flat
+	    	root.Position + look
 	    )
 	    * CFrame.new(offset)
 end)
