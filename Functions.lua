@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.35392
+-- So uhm just a script lol. 3.35393
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -616,7 +616,7 @@ RunService.RenderStepped:Connect(function()
 
 	if not humanoid or not root then return end
 
-	-- หมุนตัวละครตามกล้อง
+	-- หมุนตัวละครตามกล้อง (เฉพาะแกน XZ)
 	local look = camera.CFrame.LookVector
 	local flat = Vector3.new(look.X, 0, look.Z).Unit
 
@@ -626,18 +626,23 @@ RunService.RenderStepped:Connect(function()
 		root.Position + flat
 	)
 
-	-- OFFSET SHIFT-LOCK แบบ Roblox (กล้องเอียงขวา)
-	-- OFFSET SHIFT-LOCK แบบ Roblox (เอียงมุมขวาเล็กน้อย)
-    local offset = Vector3.new(2, 0, 0)
+	-- OFFSET SHIFT LOCK (กล้องเอียงขวา)
+	local offset = Vector3.new(2, 0, 0)
 
-    camera.CFrame =
-    	CFrame.new(
-	    	camera.CFrame.Position,
-	    	root.Position + flat
-	    )
-	    * CFrame.new(offset)
+	-- *** FIX สำคัญ: ใช้ Y ของกล้อง ไม่ใช้ Y ของ root ***
+	local target = Vector3.new(
+		root.Position.X + flat.X,
+		camera.CFrame.Position.Y,
+		root.Position.Z + flat.Z
+	)
+
+	camera.CFrame =
+		CFrame.new(
+			camera.CFrame.Position,
+			target
+		)
+		* CFrame.new(offset)
 end)
-
 --========================================================--
 -- เมื่อกดปุ่ม UI (shl)
 --========================================================--
