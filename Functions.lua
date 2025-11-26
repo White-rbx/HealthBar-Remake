@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.307
+-- So uhm just a script lol. 3.35
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -527,6 +527,54 @@ UIS.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement 
     or input.UserInputType == Enum.UserInputType.Touch then
         updateInput(input)
+    end
+end)
+-- ================
+-- Shift Lock 
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local shiftEnabled = false -- สถานะปัจจุบัน
+
+local ICON_ON  = "rbxassetid://138164639115707"
+local ICON_OFF = "rbxassetid://137719322669506"
+
+-- ฟังก์ชันเปิด / ปิด Shift Lock
+local function updateShiftLock(state)
+    shiftEnabled = state
+    
+    if shiftEnabled then
+        -- เปลี่ยนไอคอน
+        shl.Image = ICON_ON
+        
+        -- ล็อกกล้องเข้า FirstPerson
+        camera.CameraMode = Enum.CameraMode.LockFirstPerson
+        
+        -- PC เท่านั้น (Executor บางตัวอาจบล็อก)
+        pcall(function()
+            UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+        end)
+        
+    else
+        shl.Image = ICON_OFF
+        
+        -- ยกเลิกล็อก
+        camera.CameraMode = Enum.CameraMode.Classic
+        
+        pcall(function()
+            UIS.MouseBehavior = Enum.MouseBehavior.Default
+        end)
+    end
+end
+
+-- ปุ่ม ShiftLock ที่กดได้
+shl.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 
+    or input.UserInputType == Enum.UserInputType.Touch then
+        updateShiftLock(not shiftEnabled)
     end
 end)
 -- ================
@@ -1711,7 +1759,7 @@ end, false) -- default OFF
 -- ========== END ESP ==========
 
 -- ======== SHIFT LOCK =======
-createToggle(BFrame, "Shift Lock (In-develop)", function(state)
+createToggle(BFrame, "Shift Lock (Beta)", function(state)
     sh.Visible = state
 end, false)
 -- ====== END SHIFT LOCK =====
