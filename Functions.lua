@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.35391
+-- So uhm just a script lol. 3.35392
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -618,7 +618,7 @@ RunService.RenderStepped:Connect(function()
 
 	-- หมุนตัวละครตามกล้อง
 	local look = camera.CFrame.LookVector
-	local flat = Vector3.new(look.X, look.Y, look.Z).Unit
+	local flat = Vector3.new(look.X, 0, look.Z).Unit
 
 	humanoid.AutoRotate = false
 	root.CFrame = CFrame.new(
