@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3505
+-- So uhm just a script lol. 3.351
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -173,7 +173,7 @@ Corner(0.02, 0, Inner)
 local Toggle = Instance.new("Frame")
 Toggle.Name = "Toggles"
 Toggle.Active = false
-Toggle.BackgroundColor3 = Color3.fromRGB(0,0,0)
+Toggle.BackgroundColor3 = Color3.fromRGgamealal,0,0)
 Toggle.BackgroundTransparency = 0.5
 Toggle.Position = UDim2.new(0.02,0,0.02,0)
 Toggle.Size = UDim2.new(0.96,0,0.96,0)
@@ -530,52 +530,78 @@ UIS.InputChanged:Connect(function(input)
     end
 end)
 -- ================
--- Shift Lock 
+-- Shift Lolocal
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
 local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
 local camera = workspace.CurrentCamera
 
-local shiftEnabled = false -- สถานะปัจจุบัน
+local shiftEnabled = false
 
 local ICON_ON  = "rbxassetid://138164639115707"
 local ICON_OFF = "rbxassetid://137719322669506"
 
--- ฟังก์ชันเปิด / ปิด Shift Lock
+-- ฟังก์ชันอัปเดตตัวละครเมื่อเกิดใหม่
+player.CharacterAdded:Connect(function(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+end)
+
+-- ฟังก์ชันเปิด/ปิด Shift Lock ของ Roblox จริง
 local function updateShiftLock(state)
-    shiftEnabled = state
-    
-    if shiftEnabled then
-        -- เปลี่ยนไอคอน
-        shl.Image = ICON_ON
-        
-        -- ล็อกกล้องเข้า FirstPerson
-        camera.CameraMode = Enum.CameraMode.LockFirstPerson
-        
-        -- PC เท่านั้น (Executor บางตัวอาจบล็อก)
-        pcall(function()
-            UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
-        end)
-        
-    else
-        shl.Image = ICON_OFF
-        
-        -- ยกเลิกล็อก
-        camera.CameraMode = Enum.CameraMode.Classic
-        
-        pcall(function()
-            UIS.MouseBehavior = Enum.MouseBehavior.Default
-        end)
-    end
+	shiftEnabled = state
+	
+	if shiftEnabled then
+		shl.Image = ICON_ON
+		
+		-- กล้องต้องเป็นแบบปกติ
+		camera.CameraMode = Enum.CameraMode.Classic
+		camera.CameraType = Enum.CameraType.Custom
+		
+		-- ล็อกเมาส์กลางหน้าจอ (PC เท่านั้น)
+		pcall(function()
+			UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+		end)
+		
+	else
+		shl.Image = ICON_OFF
+		
+		-- คืนค่าเมาส์
+		pcall(function()
+			UIS.MouseBehavior = Enum.MouseBehavior.Default
+		end)
+	end
 end
 
--- ปุ่ม ShiftLock ที่กดได้
+-- ระบบหมุนตัวตามเมาส์ (หัวใจหลักของ Shift Lock จริง)
+RunService.RenderStepped:Connect(function()
+	if shiftEnabled and humanoid then
+		local lookVector = camera.CFrame.LookVector
+		local y = Vector3.new(lookVector.X, 0, lookVector.Z).Unit
+		
+		humanoid.AutoRotate = false -- ไม่ให้ Roblox หมุนเอง
+		humanoid.RootPart.CFrame = CFrame.new(
+			humanoid.RootPart.Position,
+			humanoid.RootPart.Position + y
+		)
+	else
+		if humanoid then
+			humanoid.AutoRotate = true
+		end
+	end
+end)
+
+-- เมื่อกดไอคอน shl
 shl.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 
-    or input.UserInputType == Enum.UserInputType.Touch then
-        updateShiftLock(not shiftEnabled)
-    end
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+	or input.UserInputType == Enum.UserInputType.Touch then
+		updateShiftLock(not shiftEnabled)
+	end
 end)
 -- ================
 
