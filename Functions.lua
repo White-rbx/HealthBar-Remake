@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3539947
+-- So uhm just a script lol. 3.3539948
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -546,9 +546,8 @@ UIS.InputChanged:Connect(function(input)
     or input.UserInputType == Enum.UserInputType.Touch then
         updateInput(input)
     end
-end)
---========================================================--
--- SHIFT-LOCK SYSTEM (Full Realistic Version)
+end)--========================================================--
+-- SHIFT-LOCK SYSTEM (Correct Logic for shl / ts)
 --========================================================--
 
 local Players = game:GetService("Players")
@@ -559,15 +558,15 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 -- UI
--- shl = ไอคอนเปิดปิด (ImageLabel)
--- ts  = จุดกลางหน้าจอ (TargetShift)
+-- shl = ปุ่มกดเปิด/ปิด Shift Lock (ImageButton / ImageLabel)
+-- ts  = ไอคอนกลางหน้าจอ (ตัวบอกสถานะเท่านั้น)
 
--- ICON CONFIG (UPDATED)
-local ICON_SHL_OFF  = "rbxassetid://76497283419961"
-local ICON_SHL_ON   = "rbxassetid://78128157612905"
+-- ICON CONFIG
+local SHL_OFF = "rbxassetid://76497283419961"
+local SHL_ON  = "rbxassetid://78128157612905"
 
-local ICON_ENABLE_NO_TOOL = "rbxassetid://100460721272551"
-local ICON_ENABLE_TOOL    = "rbxassetid://120266558538428"
+local TS_NO_TOOL = "rbxassetid://100460721272551"
+local TS_TOOL    = "rbxassetid://120266558538428"
 
 local shiftEnabled = false
 local humanoid
@@ -575,7 +574,7 @@ local root
 local equippedTool = nil
 
 --========================================================--
--- อัปเดต humanoid ทุกครั้งที่เกิดใหม่
+-- อัปเดต character
 --========================================================--
 local function bindCharacter(char)
 	humanoid = char:WaitForChild("Humanoid", 5)
@@ -586,41 +585,51 @@ bindCharacter(player.Character or player.CharacterAdded:Wait())
 player.CharacterAdded:Connect(bindCharacter)
 
 --========================================================--
+-- ฟังก์ชันอัปเดต UI ts (สถานะเท่านั้น)
+--========================================================--
+local function updateTS()
+	if not shiftEnabled then
+		ts.Visible = false
+		return
+	end
+
+	ts.Visible = true
+
+	if equippedTool then
+		ts.Image = TS_TOOL
+	else
+		ts.Image = TS_NO_TOOL
+	end
+end
+
+--========================================================--
 -- ฟังก์ชันเปิด/ปิด SHIFT LOCK
 --========================================================--
 local function updateShiftLock(state)
 	shiftEnabled = state
 
 	if shiftEnabled then
-		-- shl = ใช้ไอคอน เปิด (ON)
-		shl.Image = ICON_SHL_ON
-
-		-- ts = เลือกภาพตามว่าถือ Tool หรือไม่
-		if equippedTool then
-			ts.Image = ICON_ENABLE_TOOL
-		else
-			ts.Image = ICON_ENABLE_NO_TOOL
-		end
-
-		ts.Visible = true
+		shl.Image = SHL_ON
+		UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
 
 		camera.CameraType = Enum.CameraType.Custom
 		camera.CameraMode = Enum.CameraMode.Classic
-
-		pcall(function()
-			UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
-		end)
 	else
-		-- shl = ใช้ไอคอน ปิด (OFF)
-		shl.Image = ICON_SHL_OFF
-
-		ts.Visible = false
-
-		pcall(function()
-			UIS.MouseBehavior = Enum.MouseBehavior.Default
-		end)
+		shl.Image = SHL_OFF
+		UIS.MouseBehavior = Enum.MouseBehavior.Default
 	end
+
+	updateTS()
 end
+
+--========================================================--
+-- ปุ่ม shl = ใช้กดเปิด/ปิด
+--========================================================--
+shl.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		updateShiftLock(not shiftEnabled)
+	end
+end)
 
 --========================================================--
 -- ตรวจจับ Tool Equip / Unequip
@@ -630,21 +639,20 @@ local function bindTool(tool)
 
 	tool.Equipped:Connect(function()
 		equippedTool = tool
-		updateShiftLock(true)  -- เปิด + ใช้ไอคอน TOOL
+		updateTS() -- ts เปลี่ยนภาพตาม Tool
 	end)
 
 	tool.Unequipped:Connect(function()
 		equippedTool = nil
-		updateShiftLock(false) -- ปิดกลับ
+		updateTS()
 	end)
 end
 
--- Bind Tool ที่มีอยู่ใน Backpack
+-- Bind tools ที่มีอยู่ใน Backpack
 for _, tool in ipairs(player.Backpack:GetChildren()) do
 	bindTool(tool)
 end
 
--- Bind Tool ที่เพิ่มเข้ามาใหม่
 player.Backpack.ChildAdded:Connect(bindTool)
 --========================================================--
 -- ระบบหมุนตัว + กล้องเอียงขวาแบบ Roblox SHIFT LOCK
