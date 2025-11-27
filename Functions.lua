@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.35395
+-- So uhm just a script lol. 3.35396
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -385,10 +385,10 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ⚫ = Cannot fix
 ➖ = Disconnected or discontinued
 -------
-📌 Updated: That all just nothing new....
+📌 Updated: Shift Lock
+ ✅ Shift Lock for mobile.
 -------
 🔁 In progress:
- ⚠️ Creating Shift Lock
  🔨 Creating Status Profile (Debug)
  🔨 Updating AI Open Source (In develop)
 -------
@@ -1825,7 +1825,7 @@ end, false) -- default OFF
 -- ========== END ESP ==========
 
 -- ======== SHIFT LOCK =======
-createToggle(BFrame, "Shift Lock (Beta)", function(state)
+createToggle(BFrame, "Shift Lock (Mobile)", function(state)
     sh.Visible = state
 end, false)
 -- ====== END SHIFT LOCK =====
