@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.35398
+-- So uhm just a script lol. 3.35399
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -548,7 +548,7 @@ UIS.InputChanged:Connect(function(input)
     end
 end)
 --========================================================--
--- SHIFT-LOCK SYSTEM (Full Realistic Version)
+-- SHIFT-LOCK SYSTEM (Full Realistic Version - TS image control)
 --========================================================--
 
 local Players = game:GetService("Players")
@@ -559,8 +559,8 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 -- UI
--- shl = ไอคอนเปิดปิด (ImageLabel)
--- ts  = จุดกลางหน้าจอ (TargetShift)
+-- ts  = จุดกลางหน้าจอ (TargetShift) -> ImageLabel/ImageButton ที่เราจะเปลี่ยนภาพ
+-- (สมมติว่า ts ถูกสร้างไว้แล้วใน PlayerGui; ถ้ายังไม่มี ให้สร้างก่อนใช้)
 
 -- ICON CONFIG
 local ICON_ENABLE_NO_TOOL = "rbxassetid://138164639115707"
@@ -571,6 +571,11 @@ local shiftEnabled = false
 local humanoid
 local root
 local equippedTool = nil
+
+-- ต้องแน่ใจว่า ts มีอยู่ (ผู้ใช้สร้างไว้แล้วใน UI)
+-- ถ้านายเก็บ ts ไว้ที่ไหน ให้แก้เส้นนี้ให้ตรงกับตำแหน่งจริงของ UI
+local ts = player:WaitForChild("PlayerGui"):FindFirstChild("TargetShift", true)
+-- ถ้าไม่พบ ให้ระวังว่าจะเกิด error; แต่ผมใช้ FindFirstChild(true) เพื่อค้นหาแบบ recursive
 
 --========================================================--
 -- อัปเดต humanoid ทุกครั้งที่เกิดใหม่
@@ -584,7 +589,7 @@ bindCharacter(player.Character or player.CharacterAdded:Wait())
 player.CharacterAdded:Connect(bindCharacter)
 
 --========================================================--
--- ฟังก์ชันเปิด/ปิด SHIFT LOCK
+-- ฟังก์ชันเปิด/ปิด SHIFT LOCK (แก้ใช้ ts.Image)
 --========================================================--
 local function updateShiftLock(state)
 	shiftEnabled = state
@@ -592,12 +597,12 @@ local function updateShiftLock(state)
 	if shiftEnabled then
 		-- เลือกภาพตามว่าถือ Tool หรือไม่
 		if equippedTool then
-			shl.Image = ICON_ENABLE_TOOL
+			if ts then ts.Image = ICON_ENABLE_TOOL end
 		else
-			shl.Image = ICON_ENABLE_NO_TOOL
+			if ts then ts.Image = ICON_ENABLE_NO_TOOL end
 		end
 
-		ts.Visible = true
+		if ts then ts.Visible = true end
 
 		camera.CameraType = Enum.CameraType.Custom
 		camera.CameraMode = Enum.CameraMode.Classic
@@ -606,8 +611,8 @@ local function updateShiftLock(state)
 			UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
 		end)
 	else
-		shl.Image = ICON_DISABLE
-		ts.Visible = false
+		if ts then ts.Image = ICON_DISABLE end
+		if ts then ts.Visible = false end
 
 		pcall(function()
 			UIS.MouseBehavior = Enum.MouseBehavior.Default
@@ -616,6 +621,29 @@ local function updateShiftLock(state)
 end
 
 --========================================================--
+-- ตรวจจับ Tool Equip / Unequip
+--========================================================--
+local function bindTool(tool)
+	if tool.ClassName ~= "Tool" then return end
+
+	tool.Equipped:Connect(function()
+		equippedTool = tool
+		updateShiftLock(true) -- เปิดด้วยไอคอนสำหรับ Tool
+	end)
+
+	tool.Unequipped:Connect(function()
+		equippedTool = nil
+		updateShiftLock(false) -- ปิดกลับ
+	end)
+end
+
+-- Bind Tool ที่มีอยู่ใน Backpack
+for _, tool in ipairs(player.Backpack:GetChildren()) do
+	bindTool(tool)
+end
+
+-- Bind Tool ที่เพิ่มเข้ามาใหม่
+player.Backpack.ChildAdded:Connect(bindTool)local======================================================--
 -- ตรวจจับ Tool Equip / Unequip
 --========================================================--
 local function bindTool(tool)
