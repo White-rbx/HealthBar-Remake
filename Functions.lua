@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3539948
+-- So uhm just a script lol. 3.3539949
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -613,10 +613,13 @@ local function updateShiftLock(state)
 		UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
 
 		camera.CameraType = Enum.CameraType.Custom
-		camera.CameraMode = Enum.CameraMode.Classic
+		player.CameraMode = Enum.CameraMode.Classic  -- ✔แก้ตรงนี้
+
 	else
 		shl.Image = SHL_OFF
 		UIS.MouseBehavior = Enum.MouseBehavior.Default
+
+		player.CameraMode = Enum.CameraMode.Classic  -- ไม่ต้องลบ ใช้ได้ปกติ
 	end
 
 	updateTS()
