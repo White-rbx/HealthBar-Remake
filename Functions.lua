@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3539949
+-- So uhm just a script lol. 3.353995
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -562,11 +562,11 @@ local camera = workspace.CurrentCamera
 -- ts  = ไอคอนกลางหน้าจอ (ตัวบอกสถานะเท่านั้น)
 
 -- ICON CONFIG
-local SHL_OFF = "rbxassetid://76497283419961"
-local SHL_ON  = "rbxassetid://78128157612905"
+local SHL_OFF = "rbxassetid://137719322669506"
+local SHL_ON  = "rbxassetid://138164639115707"
 
-local TS_NO_TOOL = "rbxassetid://100460721272551"
-local TS_TOOL    = "rbxassetid://120266558538428"
+local TS_NO_TOOL = "rbxassetid://118624373632520"
+local TS_TOOL    = "rbxassetid://73868291781876"
 
 local shiftEnabled = false
 local humanoid
