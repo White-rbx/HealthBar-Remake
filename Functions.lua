@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3539946
+-- So uhm just a script lol. 3.3539947
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -562,10 +562,12 @@ local camera = workspace.CurrentCamera
 -- shl = ไอคอนเปิดปิด (ImageLabel)
 -- ts  = จุดกลางหน้าจอ (TargetShift)
 
--- ICON CONFIG
-local ICON_ENABLE_NO_TOOL = "rbxassetid://138164639115707"
-local ICON_ENABLE_TOOL    = "rbxassetid://73868291781876"
-local ICON_DISABLE        = "rbxassetid://137719322669506"
+-- ICON CONFIG (UPDATED)
+local ICON_SHL_OFF  = "rbxassetid://76497283419961"
+local ICON_SHL_ON   = "rbxassetid://78128157612905"
+
+local ICON_ENABLE_NO_TOOL = "rbxassetid://100460721272551"
+local ICON_ENABLE_TOOL    = "rbxassetid://120266558538428"
 
 local shiftEnabled = false
 local humanoid
@@ -590,8 +592,10 @@ local function updateShiftLock(state)
 	shiftEnabled = state
 
 	if shiftEnabled then
-		-- เลือกภาพตามว่าถือ Tool หรือไม่
-        -- **แก้จาก shl.Image → ts.Image**
+		-- shl = ใช้ไอคอน เปิด (ON)
+		shl.Image = ICON_SHL_ON
+
+		-- ts = เลือกภาพตามว่าถือ Tool หรือไม่
 		if equippedTool then
 			ts.Image = ICON_ENABLE_TOOL
 		else
@@ -607,8 +611,9 @@ local function updateShiftLock(state)
 			UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
 		end)
 	else
-        -- **แก้จาก shl.Image → ts.Image**
-		ts.Image = ICON_DISABLE
+		-- shl = ใช้ไอคอน ปิด (OFF)
+		shl.Image = ICON_SHL_OFF
+
 		ts.Visible = false
 
 		pcall(function()
@@ -625,7 +630,7 @@ local function bindTool(tool)
 
 	tool.Equipped:Connect(function()
 		equippedTool = tool
-		updateShiftLock(true) -- เปิดด้วยไอคอนสำหรับ Tool
+		updateShiftLock(true)  -- เปิด + ใช้ไอคอน TOOL
 	end)
 
 	tool.Unequipped:Connect(function()
