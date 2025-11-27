@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.35399
+-- So uhm just a script lol. 3.353991
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -548,7 +548,7 @@ UIS.InputChanged:Connect(function(input)
     end
 end)
 --========================================================--
--- SHIFT-LOCK SYSTEM (Full Realistic Version - TS image control)
+-- SHIFT-LOCK SYSTEM (Full Realistic Version - No sh.Visible)
 --========================================================--
 
 local Players = game:GetService("Players")
@@ -558,28 +558,18 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- UI
--- ts  = จุดกลางหน้าจอ (TargetShift) -> ImageLabel/ImageButton ที่เราจะเปลี่ยนภาพ
--- (สมมติว่า ts ถูกสร้างไว้แล้วใน PlayerGui; ถ้ายังไม่มี ให้สร้างก่อนใช้)
+-- UI ของนาย
+-- shl = ไอคอนเปิดปิด (ImageLabel)
+-- ts  = จุดกลางหน้าจอ (TargetShift)
 
--- ICON CONFIG
-local ICON_ENABLE_NO_TOOL = "rbxassetid://138164639115707"
-local ICON_ENABLE_TOOL    = "rbxassetid://73868291781876"
-local ICON_DISABLE        = "rbxassetid://137719322669506"
+local ICON_ON  = "rbxassetid://138164639115707"
+local ICON_OFF = "rbxassetid://137719322669506"
 
 local shiftEnabled = false
 local humanoid
 local root
-local equippedTool = nil
 
--- ต้องแน่ใจว่า ts มีอยู่ (ผู้ใช้สร้างไว้แล้วใน UI)
--- ถ้านายเก็บ ts ไว้ที่ไหน ให้แก้เส้นนี้ให้ตรงกับตำแหน่งจริงของ UI
-local ts = player:WaitForChild("PlayerGui"):FindFirstChild("TargetShift", true)
--- ถ้าไม่พบ ให้ระวังว่าจะเกิด error; แต่ผมใช้ FindFirstChild(true) เพื่อค้นหาแบบ recursive
-
---========================================================--
 -- อัปเดต humanoid ทุกครั้งที่เกิดใหม่
---========================================================--
 local function bindCharacter(char)
 	humanoid = char:WaitForChild("Humanoid", 5)
 	root = char:WaitForChild("HumanoidRootPart", 5)
@@ -589,30 +579,25 @@ bindCharacter(player.Character or player.CharacterAdded:Wait())
 player.CharacterAdded:Connect(bindCharacter)
 
 --========================================================--
--- ฟังก์ชันเปิด/ปิด SHIFT LOCK (แก้ใช้ ts.Image)
+-- ฟังก์ชันเปิด/ปิด SHIFT LOCK
 --========================================================--
 local function updateShiftLock(state)
 	shiftEnabled = state
 
 	if shiftEnabled then
-		-- เลือกภาพตามว่าถือ Tool หรือไม่
-		if equippedTool then
-			if ts then ts.Image = ICON_ENABLE_TOOL end
-		else
-			if ts then ts.Image = ICON_ENABLE_NO_TOOL end
-		end
-
-		if ts then ts.Visible = true end
-
+		shl.Image = ICON_ON
+		ts.Visible = true
+		
 		camera.CameraType = Enum.CameraType.Custom
 		camera.CameraMode = Enum.CameraMode.Classic
-
+		
 		pcall(function()
 			UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
 		end)
+
 	else
-		if ts then ts.Image = ICON_DISABLE end
-		if ts then ts.Visible = false end
+		shl.Image = ICON_OFF
+		ts.Visible = false
 
 		pcall(function()
 			UIS.MouseBehavior = Enum.MouseBehavior.Default
@@ -620,53 +605,6 @@ local function updateShiftLock(state)
 	end
 end
 
---========================================================--
--- ตรวจจับ Tool Equip / Unequip
---========================================================--
-local function bindTool(tool)
-	if tool.ClassName ~= "Tool" then return end
-
-	tool.Equipped:Connect(function()
-		equippedTool = tool
-		updateShiftLock(true) -- เปิดด้วยไอคอนสำหรับ Tool
-	end)
-
-	tool.Unequipped:Connect(function()
-		equippedTool = nil
-		updateShiftLock(false) -- ปิดกลับ
-	end)
-end
-
--- Bind Tool ที่มีอยู่ใน Backpack
-for _, tool in ipairs(player.Backpack:GetChildren()) do
-	bindTool(tool)
-end
-
--- Bind Tool ที่เพิ่มเข้ามาใหม่
-player.Backpack.ChildAdded:Connect(bindTool)local======================================================--
--- ตรวจจับ Tool Equip / Unequip
---========================================================--
-local function bindTool(tool)
-	if tool.ClassName ~= "Tool" then return end
-
-	tool.Equipped:Connect(function()
-		equippedTool = tool
-		updateShiftLock(true) -- เปิดด้วยไอคอนสำหรับ Tool
-	end)
-
-	tool.Unequipped:Connect(function()
-		equippedTool = nil
-		updateShiftLock(false) -- ปิดกลับ
-	end)
-end
-
--- Bind Tool ที่มีอยู่ใน Backpack
-for _, tool in ipairs(player.Backpack:GetChildren()) do
-	bindTool(tool)
-end
-
--- Bind Tool ที่เพิ่มเข้ามาใหม่
-player.Backpack.ChildAdded:Connect(bindTool)
 --========================================================--
 -- ระบบหมุนตัว + กล้องเอียงขวาแบบ Roblox SHIFT LOCK
 --========================================================--
@@ -705,6 +643,7 @@ shl.InputBegan:Connect(function(input)
 		updateShiftLock(not shiftEnabled)
 	end
 end)
+
 -- ================
 
 -- หาปุ่ม About ด้วย WaitForChild (ใน CoreGui)
