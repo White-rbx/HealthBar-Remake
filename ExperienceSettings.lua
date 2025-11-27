@@ -1,4 +1,4 @@
--- Ok 1.1
+-- Ok 2.0
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1776,7 +1776,7 @@ local function createImageButton(name, r, g, b, bt, imageId, visible, parentFram
 end
 
 -- CTB1
-local ctb1 = createImageButton("a1_INF YIELD", 50, 50, 50, 0.2, "116464551513962", false)
+local ctb1 = createImageButton("a1_INF YIELD", 50, 50, 50, 0.2, "139665085719816", false)
 if ctb1 then
     ctb1.MouseButton1Click:Connect(function()
         pcall(function()
@@ -1786,11 +1786,11 @@ if ctb1 then
 end
 
 -- CTB2
-local ctb2 = createImageButton("a2_Dex", 255, 0, 0, 0.2, "102148729694907", false)
+local ctb2 = createImageButton("a2_Dex", 50, 50, 50, 0.2, "112062985804784", false)
 if ctb2 then
     ctb2.MouseButton1Click:Connect(function()
         pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/MITUMAxDev/Tools/refs/heads/main/Dex-Explorer.lua"))()
+            loadstring(game:HttpGet("https://github.com/AZYsGithub/DexPlusPlus/releases/latest/download/out.lua"))()
         end)
     end)
 end
@@ -1905,7 +1905,11 @@ local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg
     createUICorner(txtb, 1, 0)
     return txtb
 end
+-- ========
 
+
+
+-- ========
 task.wait(0.1)
 lder.Size = UDim2.new(0.55,0,1,0)
 task.wait(0.1)
