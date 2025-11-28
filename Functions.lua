@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3562
+-- So uhm just a script lol. 3.3563
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -478,7 +478,7 @@ local aim = Instance.new("ImageButton")
 aim.Name = "a2_Aim"
 aim.Image = "rbxassetid://74510217089631"
 aim.Size = UDim2.new(0, 35, 0, 35)
-aim.Transparency = 1
+aim.BackgroundTransparency = 1
 aim.Visible = false
 aim.Parent = sh
 Corner(1, 0, aim)
