@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.35665
+-- So uhm just a script lol. 3.3567
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -444,6 +444,8 @@ ts.BackgroundTransparency = 1
 ts.Active = false
 ts.Visible = false
 ts.Image = "rbxassetid://118624373632520"
+ts.AnchorPoint = Vector2.new(0.5, 0.5)
+ts.Position = UDim2.new(0.5, 0, 0.5, 0)
 ts.Parent = mfr
 -- =================
 local hrfr = Instance.new("Frame")
