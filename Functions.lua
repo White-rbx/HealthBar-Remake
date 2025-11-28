@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.353999
+-- So uhm just a script lol. 3.354
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -555,20 +555,23 @@ UIS.InputChanged:Connect(function(input)
     or input.UserInputType == Enum.UserInputType.Touch then
         updateInput(input)
     end
-end)--========================================================--
--- SHIFT-LOCK SYSTEM (Correct Logic for shl / ts)
+end)
+--========================================================--
+-- SHIFT-LOCK (FULL SYSTEM) + AIM + Tween
 --========================================================--
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 -- UI
--- shl = ปุ่มกดเปิด/ปิด Shift Lock (ImageButton / ImageLabel)
--- ts  = ไอคอนกลางหน้าจอ (ตัวบอกสถานะเท่านั้น)
+-- shl = ปุ่ม ShiftLock
+-- ts  = ไอคอนกลางบอกสถานะ
+-- sh  = Frame ด้านล่าง
+-- aim = ปุ่มเล็ง
 
 -- ICON CONFIG
 local SHL_OFF = "rbxassetid://137719322669506"
@@ -577,24 +580,35 @@ local SHL_ON  = "rbxassetid://138164639115707"
 local TS_NO_TOOL = "rbxassetid://118624373632520"
 local TS_TOOL    = "rbxassetid://73868291781876"
 
+local AIM_OFF = "rbxassetid://74510217089631"
+local AIM_ON  = "rbxassetid://127391106123970"
+
 local shiftEnabled = false
-local humanoid
-local root
+local aimEnabled = false
 local equippedTool = nil
 
+local humanoid
+local root
+
 --========================================================--
--- อัปเดต character
+-- Tween Helper
+--========================================================--
+local function tween(obj, t, data)
+	return TweenService:Create(obj, TweenInfo.new(t, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), data):Play()
+end
+
+--========================================================--
+-- อัปเดต Character
 --========================================================--
 local function bindCharacter(char)
 	humanoid = char:WaitForChild("Humanoid", 5)
 	root = char:WaitForChild("HumanoidRootPart", 5)
 end
-
 bindCharacter(player.Character or player.CharacterAdded:Wait())
 player.CharacterAdded:Connect(bindCharacter)
 
 --========================================================--
--- ฟังก์ชันอัปเดต UI ts (สถานะเท่านั้น)
+-- อัปเดต ts (สถานะอย่างเดียว)
 --========================================================--
 local function updateTS()
 	if not shiftEnabled then
@@ -603,7 +617,6 @@ local function updateTS()
 	end
 
 	ts.Visible = true
-
 	if equippedTool then
 		ts.Image = TS_TOOL
 	else
@@ -612,7 +625,32 @@ local function updateTS()
 end
 
 --========================================================--
--- ฟังก์ชันเปิด/ปิด SHIFT LOCK
+-- AIM SYSTEM
+--========================================================--
+local function updateAim(state)
+	aimEnabled = state
+
+	if not shiftEnabled then
+		aimEnabled = false
+	end
+
+	if aimEnabled then
+		aim.Visible = true
+		aim.Image = AIM_ON
+	else
+		aim.Visible = false
+		aim.Image = AIM_OFF
+	end
+end
+
+aim.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		updateAim(not aimEnabled)
+	end
+end)
+
+--========================================================--
+-- เปิด/ปิด Shift Lock
 --========================================================--
 local function updateShiftLock(state)
 	shiftEnabled = state
@@ -622,20 +660,31 @@ local function updateShiftLock(state)
 		UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
 
 		camera.CameraType = Enum.CameraType.Custom
-		player.CameraMode = Enum.CameraMode.Classic  -- ✔แก้ตรงนี้
+		player.CameraMode = Enum.CameraMode.Classic
+
+		-- sh Frame ขยายเป็น 135
+		tween(sh, 0.25, {Size = UDim2.new(0, 135, 0, sh.Size.Y.Offset)})
+
+		aim.Visible = true
 
 	else
 		shl.Image = SHL_OFF
 		UIS.MouseBehavior = Enum.MouseBehavior.Default
 
-		player.CameraMode = Enum.CameraMode.Classic  -- ไม่ต้องลบ ใช้ได้ปกติ
+		player.CameraMode = Enum.CameraMode.Classic
+
+		-- sh Frame หดเป็น 90
+		tween(sh, 0.25, {Size = UDim2.new(0, 90, 0, sh.Size.Y.Offset)})
+
+		aim.Visible = false
+		aimEnabled = false
 	end
 
 	updateTS()
 end
 
 --========================================================--
--- ปุ่ม shl = ใช้กดเปิด/ปิด
+-- ปุ่ม shl
 --========================================================--
 shl.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -644,14 +693,14 @@ shl.InputBegan:Connect(function(input)
 end)
 
 --========================================================--
--- ตรวจจับ Tool Equip / Unequip
+-- Tool Detect
 --========================================================--
 local function bindTool(tool)
 	if tool.ClassName ~= "Tool" then return end
 
 	tool.Equipped:Connect(function()
 		equippedTool = tool
-		updateTS() -- ts เปลี่ยนภาพตาม Tool
+		updateTS()
 	end)
 
 	tool.Unequipped:Connect(function()
@@ -660,11 +709,9 @@ local function bindTool(tool)
 	end)
 end
 
--- Bind tools ที่มีอยู่ใน Backpack
 for _, tool in ipairs(player.Backpack:GetChildren()) do
 	bindTool(tool)
 end
-
 player.Backpack.ChildAdded:Connect(bindTool)
 --========================================================--
 -- ระบบหมุนตัว + กล้องเอียงขวาแบบ Roblox SHIFT LOCK
