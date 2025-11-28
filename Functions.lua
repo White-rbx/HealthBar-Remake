@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3539985
+-- So uhm just a script lol. 3.353999
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -456,7 +456,7 @@ hrfr.Parent = Menu
 
 local sh = Instance.new("Frame")
 sh.Name = "Shift_Lock"
-sh.Size = UDim2.new(0, 135, 0, 43)
+sh.Size = UDim2.new(0, 90, 0, 43) -- off = 90, on = 135
 sh.Position = UDim2.new(0, 0, 0, 250)
 sh.Visible = false
 sh.Active = false
@@ -479,6 +479,7 @@ aim.Name = "a2_Aim"
 aim.Image = "rbxassetid://74510217089631"
 aim.Size = UDim2.new(0, 35, 0, 35)
 aim.Transparency = 1
+aim.Visible = false
 aim.Parent = sh
 Corner(1, 0, aim)
 
