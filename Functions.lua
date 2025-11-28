@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3568
+-- So uhm just a script lol. 3.3569
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -678,6 +678,7 @@ local function updateShiftLock(state)
 
 		aim.Visible = false
 		aimEnabled = false
+		updateAim(false)
 	end
 
 	updateTS()
@@ -758,7 +759,22 @@ shl.InputBegan:Connect(function(input)
 	end
 end)
 
--- ================
+--=========================--
+-- เล็ง 
+--=========================--
+
+local UserInputService = game:GetService("UserInputService")
+
+UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+	and not gameProcessedEvent
+	and aimEnabled then
+
+		PerformAimRaycast()
+	end
+end)
+
+--===========================
 
 -- หาปุ่ม About ด้วย WaitForChild (ใน CoreGui)
 local aboutButton = game:GetService("CoreGui")
