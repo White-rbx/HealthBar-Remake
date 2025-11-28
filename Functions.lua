@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3567
+-- So uhm just a script lol. 3.3568
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -718,6 +718,11 @@ player.Backpack.ChildAdded:Connect(bindTool)
 -- ระบบหมุนตัว + กล้องเอียงขวาแบบ Roblox SHIFT LOCK
 --========================================================--
 RunService.RenderStepped:Connect(function()
+
+    if ts and ts.Visible then
+		ts.Position = UDim2.new(0.5, 0, 0.5, 0)
+	end
+		
 	if not shiftEnabled then
 		if humanoid then humanoid.AutoRotate = true end
 		return
