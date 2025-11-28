@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.353995
+-- So uhm just a script lol. 3.353997
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -456,7 +456,7 @@ hrfr.Parent = Menu
 
 local sh = Instance.new("Frame")
 sh.Name = "Shift_Lock"
-sh.Size = UDim2.new(0, 90, 0, 43)
+sh.Size = UDim2.new(0, 135, 0, 43)
 sh.Position = UDim2.new(0, 0, 0, 250)
 sh.Visible = false
 sh.Active = false
@@ -474,8 +474,15 @@ shl.Size = UDim2.new(0, 35, 0, 35)
 shl.Parent = sh
 Corner(1, 0, shl)
 
+local aim = Instance.new("ImageButton")
+aim.Name = "Aim"
+aim.Image = "rbxassetid://74510217089631"
+aim.Size = UDim2.new(0, 35, 0, 35)
+aim.Parent = sh
+Corner(1, 0, aim)
+
 local dr = Instance.new("ImageButton")
-dr.Name = "a2_Dragger"
+dr.Name = "a3_Dragger"
 dr.Image = "rbxassetid://99025662889813"
 dr.AutoButtonColor = false
 dr.BackgroundTransparency = 1
