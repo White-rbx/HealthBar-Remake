@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3564
+-- So uhm just a script lol. 3.3565
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -647,6 +647,7 @@ end
 aim.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		updateAim(not aimEnabled)
+		input:PreventDefault()
 	end
 end)
 
