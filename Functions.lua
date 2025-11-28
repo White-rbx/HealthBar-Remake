@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3563
+-- So uhm just a script lol. 3.3564
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -474,15 +474,6 @@ shl.Size = UDim2.new(0, 35, 0, 35)
 shl.Parent = sh
 Corner(1, 0, shl)
 
-local aim = Instance.new("ImageButton")
-aim.Name = "a2_Aim"
-aim.Image = "rbxassetid://74510217089631"
-aim.Size = UDim2.new(0, 35, 0, 35)
-aim.BackgroundTransparency = 1
-aim.Visible = false
-aim.Parent = sh
-Corner(1, 0, aim)
-
 local dr = Instance.new("ImageButton")
 dr.Name = "a3_Dragger"
 dr.Image = "rbxassetid://99025662889813"
@@ -491,6 +482,15 @@ dr.BackgroundTransparency = 1
 dr.Size = UDim2.new(0, 35, 0, 35)
 dr.Parent = sh
 Corner(1, 0, dr)
+
+local aim = Instance.new("ImageButton")
+aim.Name = "a2_Aim"
+aim.Image = "rbxassetid://74510217089631"
+aim.Size = UDim2.new(0, 35, 0, 35)
+aim.BackgroundTransparency = 1
+aim.Visible = false
+aim.Parent = sh
+Corner(1, 0, aim)
 
 -- === Dragger ===
 -- Dragger = dr
