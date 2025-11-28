@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.356
+-- So uhm just a script lol. 3.3561
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -471,6 +471,7 @@ shl.Name = "a1_Shift"
 shl.BackgroundTransparency = 1
 shl.Image = "rbxassetid://137719322669506"
 shl.Size = UDim2.new(0, 35, 0, 35)
+sh.ZIndex = 3
 shl.Parent = sh
 Corner(1, 0, shl)
 
@@ -480,6 +481,7 @@ aim.Image = "rbxassetid://74510217089631"
 aim.Size = UDim2.new(0, 35, 0, 35)
 aim.Transparency = 1
 aim.Visible = false
+aim.ZIndex = 2
 aim.Parent = sh
 Corner(1, 0, aim)
 
@@ -489,6 +491,7 @@ dr.Image = "rbxassetid://99025662889813"
 dr.AutoButtonColor = false
 dr.BackgroundTransparency = 1
 dr.Size = UDim2.new(0, 35, 0, 35)
+dr.ZIndex = 1
 dr.Parent = sh
 Corner(1, 0, dr)
 
