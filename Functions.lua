@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3566
+-- So uhm just a script lol. 3.35665
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -639,7 +639,6 @@ local function updateAim(state)
 		aim.Visible = true
 		aim.Image = AIM_ON
 	else
-		aim.Visible = false
 		aim.Image = AIM_OFF
 	end
 end
