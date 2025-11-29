@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.357
+-- So uhm just a script lol. 3.358
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -348,7 +348,7 @@ txt3.Size = UDim2.new(1,0,0,15)
 txt3.Position = UDim2.new(0,0,0,70)
 txt3.BackgroundTransparency = 1
 txt3.Text = "[ User on ScriptBlox ]"
-txt3.TextColor3 = Color3.fromRGB(255,255,255)
+txt3.Texthen.fromRGB(255,255,255)
 txt3.TextScaled =  true
 txt3.Parent = iN2
 
@@ -643,6 +643,8 @@ local function updateAim(state)
 	else
 		aim.Image = AIM_OFF
 	end
+
+	updateTS()
 end
 
 aim.MouseButton1Click:Connect(function()
@@ -654,6 +656,7 @@ end)
 --========================================================--
 local function updateShiftLock(state)
 	shiftEnabled = state
+	updateTS()
 
 	if shiftEnabled then
 		shl.Image = SHL_ON
@@ -720,7 +723,7 @@ player.Backpack.ChildAdded:Connect(bindTool)
 --========================================================--
 RunService.RenderStepped:Connect(function()
 
-    if ts and ts.Visible then
+    if ts then
 		ts.Position = UDim2.new(0.5, 0, 0.5, 0)
 	end
 		
