@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.35886
+-- So uhm just a script lol. 4.315886
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -165,7 +165,7 @@ Inner.Visible = false
 Inner.Active = false
 Inner.BackgroundColor3 = Color3.fromRGB(0,0,0)
 Inner.BackgroundTransparency = 0.5
-Inner.Position = UDim2.new(-1,0,0,0)
+Inner.Position = UDim2.new(-0.8,0,0,0)
 Inner.Size = UDim2.new(0.8,0,1,0)
 Inner.Parent = Background
 Corner(0.02, 0, Inner)
