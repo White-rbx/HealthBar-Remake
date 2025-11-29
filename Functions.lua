@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.35886
+-- So uhm just a script lol. 4.35886
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -166,7 +166,7 @@ Inner.Active = false
 Inner.BackgroundColor3 = Color3.fromRGB(0,0,0)
 Inner.BackgroundTransparency = 0.5
 Inner.Position = UDim2.new(-1,0,0,0)
-Inner.Size = UDim2.new(1,0,1,0)
+Inner.Size = UDim2.new(0.8,0,1,0)
 Inner.Parent = Background
 Corner(0.02, 0, Inner)
 
@@ -187,6 +187,37 @@ BFrame.Position = UDim2.new(0.02,0,0.02,0)
 BFrame.Size = UDim2.new(0.96,0,0.96,0)
 BFrame.Parent = Toggle
 createUIListLayout(BFrame, 0.005, 0, HCenter, VTop, SName, FillV)
+
+--
+
+local Inner2 = Instance.new("Frame")
+Inner2.Name = "Inner2_Background"
+Inner2.Visible = false
+Inner2.Active = false
+Inner2.BackgroundColor3 = Color3.fromRGB(0,0,0)
+Inner2.BackgroundTransparency = 0.5
+Inner2.Position = UDim2.new(-1.6,0,0,0)
+Inner2.Size = UDim2.new(0.8,0,1,0)
+Inner2.Parent = Background
+Corner(0.02, 0, Inner2)
+
+local Toggle2 = Instance.new("Frame")
+Toggle2.Name = "Toggles"
+Toggle2.Active = false
+Toggle2.BackgroundColor3 = Color3.fromRGB(0,0,0)
+Toggle2.BackgroundTransparency = 0.5
+Toggle2.Position = UDim2.new(0.02,0,0.02,0)
+Toggle2.Size = UDim2.new(0.96,0,0.96,0)
+Toggle2.Parent = Inner2
+Corner(0.02, 0, Toggle2)
+
+local BFrame2 = Instance.new("Frame")
+BFrame2.Name = "B_Frame"
+BFrame2.BackgroundTransparency = 1
+BFrame2.Position = UDim2.new(0.02,0,0.02,0)
+BFrame2.Size = UDim2.new(0.96,0,0.96,0)
+BFrame2.Parent = Toggle2
+createUIListLayout(BFrame2, 0.005, 0, HCenter, VTop, SName, FillV)
 
 -- =======================
 -- =====>> Loading <<=====
