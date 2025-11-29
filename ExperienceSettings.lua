@@ -1,4 +1,4 @@
--- Ok 2.0
+-- Ok 2.1
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1933,7 +1933,7 @@ lder.Size = UDim2.new(0.8,0,1,0)
 
 -- ============== Background open/close functions ==============
 local BG_X_ON = 0.65
-local BG_X_OFF = 1
+local BG_X_OFF = 1.6
 local function backgroundIsOpen()
     return math.abs(background.Position.X.Scale - BG_X_ON) < 0.01
 end
