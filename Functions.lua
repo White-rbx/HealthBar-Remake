@@ -1,4 +1,4 @@
--- So uhm just a script lol. 3.3586
+-- So uhm just a script lol. 3.3587
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
