@@ -1,4 +1,4 @@
--- Ok 4.1
+-- Ok 4.2
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -2244,9 +2244,14 @@ bk.Position = POS_OFF
 gpt.MouseButton1Click:Connect(toggleBk)
 
 -- Location
-expSetting.Parent = CoreGui
-folder.Parent = CoreGui
-addons.Parent = CoreGui
+local expsting = game:GetService("CoreGui")
+                   :WaitForChild("TopBarApp")
+                   :WaitForChild("TopBarApp")
+                   :WaitForChild("UnibarLeftFrame")
+                   :WaitForChild("HealthBar")
+                   :WaitForChild("ExperienceSettings")
+
+expsting.Parent = CoreGui
 
 task.wait(0.1)
 lder.Size = UDim2.new(0.81,0,1,0)
