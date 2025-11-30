@@ -1,4 +1,4 @@
--- Well 1.1
+-- Well 1.2
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -90,6 +90,7 @@ end)
 -- ==============
 
 -- Location
+task.wait(20)
 local expsting = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
