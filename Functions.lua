@@ -1,4 +1,8 @@
--- So uhm just a script lol. 4.32589
+-- So uhm just a script lol. 4.42589
+
+-- Loadstring
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
+
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
