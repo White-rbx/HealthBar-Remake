@@ -1,4 +1,4 @@
--- Ok 4.2
+-- Ok 2.3
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -2242,16 +2242,6 @@ bk.Position = POS_OFF
 
 -- 🔸 เมื่อกดที่ gpt ให้สลับตำแหน่งได้เรื่อย ๆ
 gpt.MouseButton1Click:Connect(toggleBk)
-
--- Location
-local expsting = game:GetService("CoreGui")
-                   :WaitForChild("TopBarApp")
-                   :WaitForChild("TopBarApp")
-                   :WaitForChild("UnibarLeftFrame")
-                   :WaitForChild("HealthBar")
-                   :WaitForChild("ExperienceSettings")
-
-expsting.Parent = CoreGui
 
 task.wait(0.1)
 lder.Size = UDim2.new(0.81,0,1,0)
