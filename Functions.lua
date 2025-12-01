@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.4359
+-- So uhm just a script lol. 4.436
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1518,7 +1518,7 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 	local player = Players.LocalPlayer
 	local cam = workspace.CurrentCamera
 	local char = player.Character or player.CharacterAdded:Wait()
-	local hrp = char:WaitForChild("HumanoidRootPart")
+	local hrp = char:WaitForChild("HumanoidRootPart") or char:WaitForChild("Torso") or char:WaitForChild("LowerTorso")
 	local humanoid = char:WaitForChild("Humanoid")
 
 	local connList = {}
