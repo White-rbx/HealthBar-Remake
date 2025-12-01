@@ -90,7 +90,7 @@ end)
 -- ==============
 
 -- Location
-task.wait(20)
+task.wait(12.5)
 local expsting = game:GetService("CoreGui")
                    :WaitForChild("TopBarApp")
                    :WaitForChild("TopBarApp")
@@ -99,3 +99,15 @@ local expsting = game:GetService("CoreGui")
                    :WaitForChild("ExperienceSettings")
 
 expsting.Parent = CoreGui
+
+task.wait(1)
+local menu = expsting:WaitForChild("Menu")
+
+menu.ChildAdded:Connect(function(child)
+	if child.Name == "Load_Background" then
+		child:Destroy()
+	end
+end)
+
+local first = menu:FindFirstChild("Load_Background")
+if first then first:Destroy() end
