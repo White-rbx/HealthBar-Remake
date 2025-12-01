@@ -1,4 +1,4 @@
--- Well 1.39
+-- Well 1.4
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -90,15 +90,21 @@ end)
 -- ==============
 
 -- Location
-task.wait(50)
-
-local CoreGui = game:GetService("CoreGui")
 local expsting = CoreGui:WaitForChild("TopBarApp")
     :WaitForChild("TopBarApp")
     :WaitForChild("UnibarLeftFrame")
     :WaitForChild("HealthBar")
     :WaitForChild("ExperienceSettings")
 
--- Move folder
-expsting.Parent = CoreGui
+-- ตรวจสอบ Loader
+local success, loader = pcall(function()
+    return expsting:WaitForChild("Menu")
+        :WaitForChild("Load_Background")
+        :WaitForChild("Skip")
+        :WaitForChild("Loader")
+end)
 
+if success and loader and loader.Size == UDim2.new(1,0,1,0) then
+    -- Loader มีขนาด 1,0,1,0 --> ต่อสคริปถัดไป
+    expsting.Parent = CoreGui
+end
