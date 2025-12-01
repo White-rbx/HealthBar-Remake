@@ -1,4 +1,4 @@
--- Well 1.2
+-- Well 1.3
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -90,24 +90,28 @@ end)
 -- ==============
 
 -- Location
-task.wait(12.5)
-local expsting = game:GetService("CoreGui")
-                   :WaitForChild("TopBarApp")
-                   :WaitForChild("TopBarApp")
-                   :WaitForChild("UnibarLeftFrame")
-                   :WaitForChild("HealthBar")
-                   :WaitForChild("ExperienceSettings")
+task.wait(15.5)
 
+local CoreGui = game:GetService("CoreGui")
+local expsting = CoreGui:WaitForChild("TopBarApp")
+    :WaitForChild("TopBarApp")
+    :WaitForChild("UnibarLeftFrame")
+    :WaitForChild("HealthBar")
+    :WaitForChild("ExperienceSettings")
+
+-- Move folder
 expsting.Parent = CoreGui
 
-task.wait(1)
+-- Find menu
 local menu = expsting:WaitForChild("Menu")
 
-menu.ChildAdded:Connect(function(child)
-	if child.Name == "Load_Background" then
-		child:Destroy()
+-- Auto destroy Load_Background forever (client side only)
+task.spawn(function()
+	while true do
+		local bg = menu:FindFirstChild("Load_Background")
+		if bg then
+			bg:Destroy()
+		end
+		task.wait(0.1)
 	end
 end)
-
-local first = menu:FindFirstChild("Load_Background")
-if first then first:Destroy() end
