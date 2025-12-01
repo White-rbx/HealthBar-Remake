@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.43589
+-- So uhm just a script lol. 4.4359
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2025,47 +2025,32 @@ lder.Size = UDim2.new(0.2,0,1,0)
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- ฟังก์ชันหา HumanoidRootPart ของผู้เล่น
-local function getHRP()
-    local char = workspace:FindFirstChild(player.Name)
-    if char then
-        return char:FindFirstChild("HumanoidRootPart")
-    end
-    return nil
-end
-
--- ฟังก์ชันลบ DeathSoundClient เกิน
-local function cleanDeathSounds(hrp)
-    if not hrp then return end
-    local deathSounds = {}
-    for _, child in ipairs(hrp:GetChildren()) do
-        if child.Name == "DeathSoundClient" then
-            table.insert(deathSounds, child)
+-- ฟังก์ชันลบ DeathSoundClient ส่วนเกิน
+local function cleanDeathSounds()
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local deathSounds = {}
+        for _, obj in ipairs(hrp:GetChildren()) do
+            if obj.Name == "DeathSoundClient" then
+                table.insert(deathSounds, obj)
+            end
         end
-    end
-    if #deathSounds > 1 then
-        for i = 2, #deathSounds do
-            deathSounds[i]:Destroy()
+
+        -- ถ้ามากกว่า 1 ตัว ให้ลบตัวที่เกิน
+        if #deathSounds > 1 then
+            for i = 2, #deathSounds do
+                pcall(function()
+                    deathSounds[i]:Destroy()
+                end)
+            end
         end
     end
 end
 
--- ฟังก์ชันตรวจสอบและเฝ้าดู
-local function monitorDeathSounds()
+-- loop ตรวจจับและลบส่วนเกินทุก 0.05 วินาที
+task.spawn(function()
     while true do
-        local hrp = getHRP()
-        cleanDeathSounds(hrp)
-        if hrp then
-            -- เฝ้าดูการเพิ่มลูกใหม่
-            hrp.ChildAdded:Connect(function(child)
-                if child.Name == "DeathSoundClient" then
-                    cleanDeathSounds(hrp)
-                end
-            end)
-            break
-        end
-        task.wait(0.5) -- รอหา HumanoidRootPart ใหม่ทุกครึ่งวินาที
+        cleanDeathSounds()
+        task.wait(0.05)
     end
-end
-
-monitorDeathSounds()
+end)
