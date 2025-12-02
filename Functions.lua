@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.436
+-- So uhm just a script lol. 4.437
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1712,7 +1712,7 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 
 		part = Instance.new("Part")
 		part.Name = "ExperienceSettingsCamera"
-		part.Size = Vector3.new(1, 1, 1)
+		part.Size = Vector3.new(0, 0, 0)
 		part.Transparency = 1
 		part.Anchored = true
 		part.CanCollide = false
