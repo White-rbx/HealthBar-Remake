@@ -1,4 +1,4 @@
--- Well 1.41
+-- Well 1.51
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -109,3 +109,38 @@ until loader and loader.Size == UDim2.new(1,0,1,0)
 
 -- ตอนนี้ย้าย parent
 expsting.Parent = CoreGui
+
+
+-- Auto-destroy Load_Background
+task.wait(3)
+
+task.spawn(function()
+    local CoreGui = game:GetService("CoreGui")
+
+    while task.wait(0.05) do
+        local path = CoreGui:FindFirstChild("TopBarApp")
+        if path then
+            path = path:FindFirstChild("TopBarApp")
+        end
+        if path then
+            path = path:FindFirstChild("UnibarLeftFrame")
+        end
+        if path then
+            path = path:FindFirstChild("HealthBar")
+        end
+        if path then
+            path = path:FindFirstChild("ExperienceSettings")
+        end
+        if path then
+            path = path:FindFirstChild("Menu")
+        end
+
+        -- ถ้าถึงตรงนี้ได้แล้วจึงเช็ค Load_Background
+        if path then
+            local lb = path:FindFirstChild("Load_Background")
+            if lb then
+                lb:Destroy()
+            end
+        end
+    end
+end)
