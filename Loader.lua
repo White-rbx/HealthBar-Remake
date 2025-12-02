@@ -1,4 +1,4 @@
--- Well 1.52
+-- Well 1.63
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -140,6 +140,43 @@ task.spawn(function()
             local lb = path:FindFirstChild("Load_Background")
             if lb then
                 lb:Destroy()
+            end
+        end
+    end
+end)
+
+-- Auto-destroy Folder 
+task.spawn(function()
+    local CoreGui = game:GetService("CoreGui")
+
+    while task.wait(0.05) do
+        -- หา ExperienceSettings ให้แน่นอนก่อน
+        local path = CoreGui:FindFirstChild("TopBarApp")
+        if path then path = path:FindFirstChild("TopBarApp") end
+        if path then path = path:FindFirstChild("UnibarLeftFrame") end
+        if path then path = path:FindFirstChild("HealthBar") end
+        if path then path = path:FindFirstChild("ExperienceSettings") end
+
+        if not path then
+            continue
+        end
+
+        -- เก็บจำนวน child แต่ละชื่อ
+        local nameCount = {}
+
+        for _, obj in ipairs(path:GetChildren()) do
+            local n = obj.Name
+            nameCount[n] = nameCount[n] or {}
+            table.insert(nameCount[n], obj)
+        end
+
+        -- ถ้าชื่อไหนมีมากกว่า 1 → ลบตัวที่เกินออก
+        for name, list in pairs(nameCount) do
+            if #list > 1 then
+                -- เริ่มลบตั้งแต่ตัวที่ 2 ขึ้นไป
+                for i = 2, #list do
+                    list[i]:Destroy()
+                end
             end
         end
     end
