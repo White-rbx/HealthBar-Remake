@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 -- =====>> Saved Functions <<=====
 
@@ -156,6 +156,7 @@ local function addtextnoti(icon, textValue)
 	text.Parent = notiF
 	
 	Corner(1,0,text)
+	TweenAutoSize(text, 30)
 	return text
 end
 
@@ -188,6 +189,7 @@ local function addsendnoti(textValue)
 	btn.Parent = input
 
 	Corner(1,0,btn)
+	TweenAutoSize(input, 60)
 	return input, btn
 end
 
@@ -227,7 +229,7 @@ local function addqusnoti(icon, textValue)
 	btn2.Text = "Agree"
 	btn2.Parent = text1
        Corner(1,0,btn2)
-
+	TweenAutoSize(text1, 120)
 
 	return text1, btn1, btn2
 end
@@ -251,9 +253,3 @@ local function TweenAutoSize(obj, padding)
         { Size = UDim2.new(scaleX, 0, 0, obj.AbsoluteSize.Y) }
     ):Play()
 end
-
-TweenAutoSize(text, 30)
-
-TweenAutoSize(input, 60)
-
-TweenAutoSize(text1, 120)
