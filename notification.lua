@@ -1,4 +1,4 @@
--- Version 1.2
+-- Version 1.3
 
 -- =====>> Saved Functions <<=====
 
@@ -157,6 +157,11 @@ local function addtextnoti(icon, textValue)
 	
 	Corner(1,0,text)
 	TweenAutoSize(text, 30)
+
+    text:GetPropertyChangedSignal("Text"):Connect(function()
+     	task.wait() -- รอให้ TextBounds อัปเดต
+    	TweenAutoSize(text, 30)
+    end)
 	return text
 end
 
@@ -167,7 +172,7 @@ local function addsendnoti(textValue)
 
 	local input = Instance.new("TextBox")
 	input.Name = "sendnoti"
-	input.Size = UDim2.new(0, 100, 0, 30)
+	input.Size = UDim2.new(0, 150, 0, 30)
 	input.BackgroundColor3 = Color3.fromRGB(r, g, b)
 	input.BackgroundTransparency = 0.08
 	input.Text = tostring(textValue or "")
@@ -190,6 +195,11 @@ local function addsendnoti(textValue)
 
 	Corner(1,0,btn)
 	TweenAutoSize(input, 60)
+
+    input:GetPropertyChangedSignal("Text"):Connect(function()
+    	task.wait()
+    	TweenAutoSize(input, 60)
+    end)
 	return input, btn
 end
 
@@ -231,6 +241,11 @@ local function addqusnoti(icon, textValue)
        Corner(1,0,btn2)
 	TweenAutoSize(text1, 120)
 
+    text1:GetPropertyChangedSignal("Text"):Connect(function()
+    	task.wait()
+    	TweenAutoSize(text1, 120)
+    end)
+
 	return text1, btn1, btn2
 end
 
@@ -252,4 +267,4 @@ local function TweenAutoSize(obj, padding)
         TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
         { Size = UDim2.new(scaleX, 0, 0, obj.AbsoluteSize.Y) }
     ):Play()
-end
+e100
