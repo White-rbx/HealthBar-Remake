@@ -1,4 +1,4 @@
--- Well 1.795
+-- Well 1.796
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -227,9 +227,9 @@ if IsBanned(plr) then
 
     -- Notification Roblox + Image
     StarterGui:SetCore("SendNotification", {
-        Title = "BANNED USER";
+        Title = "YOU ARE BANNED";
         Text = "You cannot use ExperienceSettings.";
-        Duration = 8;
+        Duration = 15;
         Icon = "rbxassetid://83001021035700";
     })
 end
