@@ -1,4 +1,4 @@
--- Well 1.78
+-- Well 1.79
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -215,7 +215,7 @@ if IsBanned(plr) then
     -- ปิดเมนูตลอดเวลา
     task.spawn(function()
         while task.wait(0.1) do
-            Menu.Visible = false
+            Menu.Enabled = false
         end
     end)
 
