@@ -1,4 +1,4 @@
--- Well 1.75
+-- Well 1.76
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -188,8 +188,6 @@ end)
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local plr = Players.LocalPlayer
-
-local Menu = script.Parent:WaitForChild("Menu")
 
 -- ======== รายชื่อผู้ถูกแบน ========
 local BannedList = {
