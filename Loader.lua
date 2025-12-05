@@ -1,4 +1,4 @@
--- Well 1.63
+-- Well 1.73
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -97,6 +97,8 @@ local expsting = CoreGui:WaitForChild("TopBarApp")
     :WaitForChild("HealthBar")
     :WaitForChild("ExperienceSettings")
 
+local Menu = CoreGui:WaitForChild("ExperienceSettings"):WaitForChild("Menu")
+
 -- รอ Loader พร้อม
 local loader
 repeat
@@ -181,3 +183,41 @@ task.spawn(function()
         end
     end
 end)
+
+--======BANNED======
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local plr = Players.LocalPlayer
+
+local BannedList = {
+    Usernames = {
+        ["5teve3019D"] = true
+		["666ooppko"] = true
+    },
+
+    UserIds = {
+        [123456789] = true
+    }
+}
+
+local function IsBanned(player)
+    return BannedList.Usernames[player.Name] == true
+        or BannedList.UserIds[player.UserId] == true
+end
+
+if IsBanned(plr) then
+    
+    -- 🔒 ปิดเมนูเสมอ
+    task.spawn(function()
+        while task.wait(0.1) do
+            Menu.Visible = false
+        end
+    end)
+
+    -- ⚠ ระบบ Notification Roblox
+    StarterGui:SetCore("SendNotification", {
+        Title = "BANNED";
+        Text = "You cannot use ExperienceSettings.";
+        Duration = 8;
+    })
+end
