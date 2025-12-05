@@ -233,4 +233,27 @@ local function addqusnoti(icon, textValue)
 end
 
 --====== END FUNCTIONS ========--
+local TweenService = game:GetService("TweenService")
 
+local function TweenAutoSize(obj, padding)
+    padding = padding or 20  -- เพิ่มพื้นที่เผื่อปุ่ม/ระยะห่าง
+
+    task.wait()  -- รอ 1 frame ให้ TextBounds คำนวณ
+
+    local parentSize = obj.Parent.AbsoluteSize.X
+    local textWidth = obj.TextBounds.X + padding
+
+    local scaleX = math.clamp(textWidth / parentSize, 0, 1)
+
+    TweenService:Create(
+        obj,
+        TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Size = UDim2.new(scaleX, 0, 0, obj.AbsoluteSize.Y) }
+    ):Play()
+end
+
+TweenAutoSize(text, 30)
+
+TweenAutoSize(input, 60)
+
+TweenAutoSize(text1, 120)
