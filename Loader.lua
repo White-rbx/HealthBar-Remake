@@ -1,4 +1,4 @@
--- Well 1.792
+-- Well 1.793
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -186,8 +186,8 @@ end)
 task.wait(5)
 --======BANNED======
 local Menu = CoreGui:WaitForChild("ExperienceSettings", 10):WaitForChild("Menu", 10)
-local valueGui = CoreGui:WaitForChild("TopBarApp, 10)
-	:WaitForChild("TopBarApp, 10)
+local valueGui = CoreGui:WaitForChild("TopBarApp", 10)
+	:WaitForChild("TopBarApp", 10)
 	:WaitForChild("UnibarLeftFrame", 10)
 	:WaitForChild("HealthBar", 10)
 	:WaitForChild("ValueFolder", 10):WaitForChild("ValueGui", 10)
