@@ -1,9 +1,11 @@
--- function
+-- Version 1.0
+
+-- =====>> Saved Functions <<=====
 
 -- ====FUNCTION CORNER=====
 local function Corner(Scale, Offset, Parent)
   local Corner = Instance.new("UICorner")
-  Corner.Padding = UDim2.new(Scale, Offset)
+  Corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
   Corner.Parent = Parent
   return Corner
 end
@@ -18,13 +20,17 @@ local HRight = Enum.HorizontalAlignment.Right
 local VBottom = Enum.VerticalAlignment.Bottom
 local FillH = Enum.FillDirection.Horizontal
 local FillV = Enum.FillDirection.Vertical
+local SCustom = Enum.SortOrder.Custom
+local SLayout = Enum.SortOrder.LayoutOrder
+local SName = Enum.SortOrder.Name
 
-local function createUIListLayout(parent, scale, offset, HZ, VT, FILL)
+local function createUIListLayout(parent, scale, offset, HZ, VT, SO, FILL)
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
     list.FillDirection = FILL or FillH
     list.HorizontalAlignment = HZ or HCenter
     list.VerticalAlignment = VT or VCenter
+    list.SortOrder = SO or SName
     list.Parent = parent
     return list
 end
@@ -39,7 +45,7 @@ local LJMMiter = Enum.LineJoinMode.Miter
 local LJMRound = Enum.LineJoinMode.Round
 
 local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
-    local stroke = Instance.new("UIStroke")
+    local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
     stroke.ApplyStrokeMode = ASM or ASMBorder
     stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
     stroke.LineJoinMode = LJM or LJMRound
@@ -52,7 +58,7 @@ end
 
 -- ====FUNCTION UIGRADIENT=====
 local function Gradient(parent, rotation, offsetX, offsetY, ...)
-    local grad = Instance.new("UIGradient")
+    local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
     grad.Rotation = rotation or 0
     grad.Offset = Vector2.new(offsetX or 0, offsetY or 0)
 
@@ -78,8 +84,7 @@ end
 
 -- ====FUNCTION UIPADDING (ตามลำดับ Roblox)=====
 local function Padding(parent, bottom, left, right, top)
-    local pad = Instance.new("UIPadding")
-
+    local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
     local function toUDim(value)
         if typeof(value) == "UDim" then
             return value
@@ -100,7 +105,8 @@ local function Padding(parent, bottom, left, right, top)
     pad.Parent = parent
     return pad
 end
--- =====END FUNCTION UIPADDING=====
+-- =====END FUNCTION UIPADDING======
+
 
 local HolderScreen = game:GetService("CoreGui").ExperienceSettings.Menu.HolderScreen
 
@@ -132,42 +138,44 @@ local square = "#️⃣: "
 local thing = "💭: "
 local fire = "🔥: "
 local ann = "📢: "
+local nan = ""
 
-local function addtextnoti(parent, icon, textValue)
+local function addtextnoti(icon, textValue)
 	-- แปลงสี Roblox Theme
 	local r, g, b = string.match(rbxT, "(%d+),(%d+),(%d+)")
 	r, g, b = tonumber(r), tonumber(g), tonumber(b)
 
 	local text = Instance.new("TextLabel")
 	text.Name = "textnoti"
-	text.Size = UDim2.new(1, 0, 0, 30)
+	text.Size = UDim2.new(0, 0, 0, 30)
 	text.BackgroundColor3 = Color3.fromRGB(r, g, b)
 	text.BackgroundTransparency = 0.08
 	text.Text = tostring(icon)..tostring(textValue)
 	text.TextColor3 = Color3.fromRGB(255,255,255)
 	text.Active = false
-	text.Parent = parent
+	text.Parent = notiF
 	
 	Corner(1,0,text)
 	return text
 end
 
-local function addsendnoti(parent, icon, textValue)
+local function addsendnoti(textValue)
 	-- แปลงสี Roblox Theme
 	local r, g, b = string.match(rbxT, "(%d+),(%d+),(%d+)")
 	r, g, b = tonumber(r), tonumber(g), tonumber(b)
 
 	local input = Instance.new("TextBox")
 	input.Name = "sendnoti"
-	input.Size = UDim2.new(1, 0, 0, 30)
+	input.Size = UDim2.new(0, 100, 0, 30)
 	input.BackgroundColor3 = Color3.fromRGB(r, g, b)
 	input.BackgroundTransparency = 0.08
-	input.Text = tostring(icon)..tostring(textValue or "")
+	input.Text = tostring(textValue or "")
 	input.ClearTextOnFocus = false
 	input.PlaceholderText = "Type anything..."
 	input.TextColor3 = Color3.fromRGB(255,255,255)
-	input.Active = false
-	input.Parent = parent
+	input.Active = true
+       input.TextXAlignment = Enum.TextXAlignment.Left
+	input.Parent = notiF
 
 	Corner(1,0,input)
 
@@ -183,4 +191,46 @@ local function addsendnoti(parent, icon, textValue)
 	return input, btn
 end
 
-addsendnoti(notiF, ann, "Bruh)
+local function addqusnoti(icon, textValue)
+	-- แปลงสี Roblox Theme
+	local r, g, b = string.match(rbxT, "(%d+),(%d+),(%d+)")
+	r, g, b = tonumber(r), tonumber(g), tonumber(b)
+
+	local text1 = Instance.new("TextLabel")
+	text1.Name = "textnoti"
+	text1.Size = UDim2.new(0.15,0, 0, 30)
+	text1.BackgroundColor3 = Color3.fromRGB(r, g, b)
+	text1.BackgroundTransparency = 0.08
+	text1.Text = tostring(icon)..tostring(textValue)
+	text1.TextColor3 = Color3.fromRGB(255,255,255)
+       text1.TextXAlignment = Enum.TextXAlignment.Left
+	text1.Active = false
+	text1.Parent = notiF
+	
+	Corner(1,0,text1)
+
+       local btn1 = Instance.new("TextButton")
+	btn1.Name = "Cancel"
+	btn1.Size = UDim2.new(0,50,0,27)
+	btn1.Position = UDim2.new(1,-52,0,2)
+	btn1.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+       btn1.TextColor3 = Color3.fromRGB(255,255,255)
+	btn1.Text = "Cancel"
+	btn1.Parent = text1
+       Corner(1,0,btn1)
+
+       local btn2 = Instance.new("TextButton")
+	btn2.Name = "Agree"
+	btn2.Size = UDim2.new(0,50,0,27)
+	btn2.Position = UDim2.new(1,-103,0,2)
+	btn2.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+	btn2.Text = "Agree"
+	btn2.Parent = text1
+       Corner(1,0,btn2)
+
+
+	return text1, btn1, btn2
+end
+
+--====== END FUNCTIONS ========--
+
