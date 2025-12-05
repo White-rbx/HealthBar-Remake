@@ -1,4 +1,4 @@
--- Well 1.76
+-- Well 1.77
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -184,6 +184,8 @@ task.spawn(function()
     end
 end)
 
+
+task.wait(5)
 --======BANNED======
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
