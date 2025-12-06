@@ -1,4 +1,4 @@
--- Version 1.43
+-- Version 1.46
 
 -- =====>> Saved Functions <<=====
 
@@ -106,53 +106,58 @@ local function Padding(parent, bottom, left, right, top)
     return pad
 end
 -- =====END FUNCTION UIPADDING======
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local function BindAutoResize(textbox, padding)
-    padding = padding or 20
-    local tweening = false
-    local lastText = ""
+local function BindAutoResize(obj, padding, charWidth)
+	padding = padding or 20
+	charWidth = charWidth or 8  -- ความกว้างเฉลี่ยตัวอักษร
 
-    local function resize()
-        if tweening then return end
-        tweening = true
+	local lastLength = 0
+	local tween = nil
 
-        -- ให้ TextBounds อัปเดตก่อน
-        RunService.Heartbeat:Wait()
+	local function update()
+		local text = obj.Text or ""
+		local len = #text
 
-        local bounds = textbox.TextBounds.X
-        if bounds < 1 then
-            bounds = textbox.AbsoluteSize.X
-        end
+		-- ไม่เปลี่ยน → ไม่ต้องทำอะไร
+		if len == lastLength then return end
+		lastLength = len
 
-        local newX = bounds + padding
-        if newX < 50 then newX = 50 end
+		-- คำนวณความกว้างใหม่
+		local targetWidth = (len * charWidth) + padding
 
-        TweenService:Create(
-            textbox,
-            TweenInfo.new(0.08, Enum.EasingStyle.Linear),
-            { Size = UDim2.fromOffset(newX, textbox.AbsoluteSize.Y) }
-        ):Play()
+		-- กันเล็กเกิน
+		if targetWidth < 40 then
+			targetWidth = 40
+		end
 
-        tweening = false
-    end
+		-- ยกเลิก tween ก่อนหน้า
+		if tween then
+			tween:Cancel()
+		end
 
-    -- รันครั้งแรก
-    resize()
+		tween = TweenService:Create(
+			obj,
+			TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{
+				Size = UDim2.new(
+					0,
+					targetWidth,
+					0,
+					obj.AbsoluteSize.Y > 0 and obj.AbsoluteSize.Y or 30
+				)
+			}
+		)
 
-    -- อัปเดตเมื่อ Text เปลี่ยน
-    textbox:GetPropertyChangedSignal("Text"):Connect(function()
-        if textbox.Text ~= lastText then
-            lastText = textbox.Text
-            resize()
-        end
-    end)
+		tween:Play()
+	end
+
+	-- Run หลังสร้าง
+	update()
+
+	-- TextBox = real-time update
+	obj:GetPropertyChangedSignal("Text"):Connect(update)
 end
-
--- =============== ใช้งาน ===============
--- แก้ชื่อ InputBox ให้ตรงของนาย
-BindAutoResize(script.Parent.InputBox)
 
 local HolderScreen = game:GetService("CoreGui").ExperienceSettings.Menu.HolderScreen
 
@@ -162,7 +167,7 @@ notiF.Size = UDim2.new(1,0,0.3,0)
 notiF.Transparency = 1
 notiF.Active = false
 notiF.Parent = HolderScreen
-createUIListLayout(notiF, 0, 3, HCenter, VTop, SLayout, FillV)
+createUIListLayout(notiF, 0, 3, HLeft, VTop, SLayout, FillV)
 
 -- Roblox Theme Color Default
 local rbxT = "18,18,21"
@@ -229,10 +234,12 @@ local function addsendnoti(textValue)
 	input.BackgroundColor3 = Color3.fromRGB(r, g, b)
 	input.BackgroundTransparency = 0.08
 	input.Text = textValue or ""
-       input.PlaceholderText = "Type anything..."
+	input.PlaceholderText = "Type anything..."
 	input.TextColor3 = Color3.fromRGB(255,255,255)
 	input.ClearTextOnFocus = false
 	input.TextXAlignment = Enum.TextXAlignment.Left
+	input.RichText = false
+	input.AutomaticSize = Enum.AutomaticSize.X
 	input.Parent = notiF
 
 	Corner(1,0,input)
@@ -246,7 +253,7 @@ local function addsendnoti(textValue)
 	btn.Parent = input
 	Corner(1,0,btn)
 
-	BindAutoResize(input, 60)
+	BindAutoResize(input, 5)
 
 	btn.MouseButton1Click:Connect(function()
 		input.Text = ""
@@ -317,4 +324,5 @@ local function addqusnoti(icon, textValue)
 end
 --====== END FUNCTIONS ========--
 
+-- test
 addsendnoti()
