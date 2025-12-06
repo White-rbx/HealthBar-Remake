@@ -1,4 +1,4 @@
--- Well 1.7991
+-- Well 1.7992
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -184,11 +184,7 @@ end)
 
 task.spawn(function()
 	local StarterGui = game:GetService("StarterGui")
-    -- รอให้ SetCore พร้อม (สำคัญมาก)
-    repeat task.wait() until pcall(function()
-        StarterGui:SetCore("SendNotification", {Title=""; Text=""; Duration=1})
-    end)
-
+    
     -- #1 Notification (Success)
     StarterGui:SetCore("SendNotification", {
         Title = "Successful loaded.";
@@ -226,7 +222,6 @@ local valueGui = CoreGui:WaitForChild("TopBarApp", 10)
 -- ======== รายชื่อผู้ถูกแบน ========
 local BannedList = {
     Usernames = {
-        ["5teve3019D"] = true,
         ["108ooppko"] = true,
     },
     UserIds = {
