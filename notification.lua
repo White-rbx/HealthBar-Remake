@@ -1,4 +1,4 @@
--- Version 1.3
+-- Version 1.4
 
 -- =====>> Saved Functions <<=====
 
@@ -106,7 +106,38 @@ local function Padding(parent, bottom, left, right, top)
     return pad
 end
 -- =====END FUNCTION UIPADDING======
+local TweenService = game:GetService("TweenService")
 
+local function BindAutoResize(obj, padding)
+    padding = padding or 20
+
+    local function update()
+        task.wait() -- เพื่อให้ TextBounds อัปเดตก่อน
+
+        local parentX = obj.Parent.AbsoluteSize.X
+        local textX = obj.TextBounds.X + padding
+        local scaleX = math.clamp(textX / parentX, 0, 1)
+
+        TweenService:Create(
+            obj,
+            TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            { Size = UDim2.new(scaleX, 0, 0, obj.AbsoluteSize.Y) }
+        ):Play()
+    end
+
+    -- ทำงานทันที
+    update()
+
+    -- TextLabel = Text changed signal
+    if obj:IsA("TextLabel") then
+        obj:GetPropertyChangedSignal("Text"):Connect(update)
+    end
+
+    -- TextBox = Real-time typing → ใช้ .Changed("Text")
+    if obj:IsA("TextBox") then
+        obj:GetPropertyChangedSignal("Text"):Connect(update)
+    end
+end
 
 local HolderScreen = game:GetService("CoreGui").ExperienceSettings.Menu.HolderScreen
 
@@ -141,8 +172,7 @@ local ann = "📢: "
 local nan = ""
 
 local function addtextnoti(icon, textValue)
-	-- แปลงสี Roblox Theme
-	local r, g, b = string.match(rbxT, "(%d+),(%d+),(%d+)")
+	local r, g, b = rbxT:match("(%d+),(%d+),(%d+)")
 	r, g, b = tonumber(r), tonumber(g), tonumber(b)
 
 	local text = Instance.new("TextLabel")
@@ -150,121 +180,123 @@ local function addtextnoti(icon, textValue)
 	text.Size = UDim2.new(0, 0, 0, 30)
 	text.BackgroundColor3 = Color3.fromRGB(r, g, b)
 	text.BackgroundTransparency = 0.08
-	text.Text = tostring(icon)..tostring(textValue)
+	text.Text = tostring(icon) .. tostring(textValue)
 	text.TextColor3 = Color3.fromRGB(255,255,255)
-	text.Active = false
 	text.Parent = notiF
 	
 	Corner(1,0,text)
-	TweenAutoSize(text, 30)
 
-    text:GetPropertyChangedSignal("Text"):Connect(function()
-     	task.wait() -- รอให้ TextBounds อัปเดต
-    	TweenAutoSize(text, 30)
-    end)
+	BindAutoResize(text, 30)
+
+	-- 10 วิ แล้วหาย
+	task.delay(10, function()
+		text.Text = ""
+
+		TweenService:Create(text,
+			TweenInfo.new(0.25),
+			{Size = UDim2.new(0,0,0,30)}
+		):Play()
+
+		task.wait(0.25)
+		text:Destroy()
+	end)
+
 	return text
 end
 
 local function addsendnoti(textValue)
-	-- แปลงสี Roblox Theme
-	local r, g, b = string.match(rbxT, "(%d+),(%d+),(%d+)")
+	local r, g, b = rbxT:match("(%d+),(%d+),(%d+)")
 	r, g, b = tonumber(r), tonumber(g), tonumber(b)
 
 	local input = Instance.new("TextBox")
 	input.Name = "sendnoti"
-	input.Size = UDim2.new(0, 150, 0, 30)
+	input.Size = UDim2.new(0, 100, 0, 30)
 	input.BackgroundColor3 = Color3.fromRGB(r, g, b)
 	input.BackgroundTransparency = 0.08
-	input.Text = tostring(textValue or "")
-	input.ClearTextOnFocus = false
-	input.PlaceholderText = "Type anything..."
+	input.Text = textValue or ""
 	input.TextColor3 = Color3.fromRGB(255,255,255)
-	input.Active = true
-       input.TextXAlignment = Enum.TextXAlignment.Left
+	input.ClearTextOnFocus = false
+	input.TextXAlignment = Enum.TextXAlignment.Left
 	input.Parent = notiF
 
 	Corner(1,0,input)
 
 	local btn = Instance.new("TextButton")
 	btn.Name = "send"
-	btn.Size = UDim2.new(0,50,0,27)
-	btn.Position = UDim2.new(1,-52,0,2)
 	btn.BackgroundColor3 = Color3.fromRGB(163, 162, 165)
 	btn.Text = "Send"
+	btn.Size = UDim2.new(0,50,0,27)
+	btn.Position = UDim2.new(1,-52,0,2)
 	btn.Parent = input
-
 	Corner(1,0,btn)
-	TweenAutoSize(input, 60)
 
-    input:GetPropertyChangedSignal("Text"):Connect(function()
-    	task.wait()
-    	TweenAutoSize(input, 60)
-    end)
+	BindAutoResize(input, 60)
+
+	btn.MouseButton1Click:Connect(function()
+		input.Text = ""
+
+		TweenService:Create(input,
+			TweenInfo.new(0.25),
+			{Size = UDim2.new(0,0,0,30)}
+		):Play()
+
+		task.wait(0.25)
+		input:Destroy()
+	end)
+
 	return input, btn
 end
 
 local function addqusnoti(icon, textValue)
-	-- แปลงสี Roblox Theme
-	local r, g, b = string.match(rbxT, "(%d+),(%d+),(%d+)")
+	local r, g, b = rbxT:match("(%d+),(%d+),(%d+)")
 	r, g, b = tonumber(r), tonumber(g), tonumber(b)
 
-	local text1 = Instance.new("TextLabel")
-	text1.Name = "textnoti"
-	text1.Size = UDim2.new(0.15,0, 0, 30)
-	text1.BackgroundColor3 = Color3.fromRGB(r, g, b)
-	text1.BackgroundTransparency = 0.08
-	text1.Text = tostring(icon)..tostring(textValue)
-	text1.TextColor3 = Color3.fromRGB(255,255,255)
-       text1.TextXAlignment = Enum.TextXAlignment.Left
-	text1.Active = false
-	text1.Parent = notiF
-	
-	Corner(1,0,text1)
+	local box = Instance.new("TextLabel")
+	box.Name = "qusnoti"
+	box.Size = UDim2.new(0,0,0,30)
+	box.BackgroundColor3 = Color3.fromRGB(r,g,b)
+	box.BackgroundTransparency = 0.08
+	box.TextColor3 = Color3.new(1,1,1)
+	box.TextXAlignment = Enum.TextXAlignment.Left
+	box.Text = tostring(icon) .. tostring(textValue)
+	box.Parent = notiF
+	Corner(1,0,box)
 
-       local btn1 = Instance.new("TextButton")
-	btn1.Name = "Cancel"
-	btn1.Size = UDim2.new(0,50,0,27)
-	btn1.Position = UDim2.new(1,-52,0,2)
-	btn1.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-       btn1.TextColor3 = Color3.fromRGB(255,255,255)
-	btn1.Text = "Cancel"
-	btn1.Parent = text1
-       Corner(1,0,btn1)
+	local cancel = Instance.new("TextButton")
+	cancel.Size = UDim2.new(0,50,0,27)
+	cancel.Position = UDim2.new(1,-52,0,2)
+	cancel.Text = "Cancel"
+	cancel.BackgroundColor3 = Color3.fromRGB(255,0,0)
+	cancel.TextColor3 = Color3.new(1,1,1)
+	cancel.Parent = box
+	Corner(1,0,cancel)
 
-       local btn2 = Instance.new("TextButton")
-	btn2.Name = "Agree"
-	btn2.Size = UDim2.new(0,50,0,27)
-	btn2.Position = UDim2.new(1,-103,0,2)
-	btn2.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-	btn2.Text = "Agree"
-	btn2.Parent = text1
-       Corner(1,0,btn2)
-	TweenAutoSize(text1, 120)
+	local agree = Instance.new("TextButton")
+	agree.Size = UDim2.new(0,50,0,27)
+	agree.Position = UDim2.new(1,-103,0,2)
+	agree.Text = "Agree"
+	agree.BackgroundColor3 = Color3.fromRGB(0,255,0)
+	agree.TextColor3 = Color3.new(1,1,1)
+	agree.Parent = box
+	Corner(1,0,agree)
 
-    text1:GetPropertyChangedSignal("Text"):Connect(function()
-    	task.wait()
-    	TweenAutoSize(text1, 120)
-    end)
+	BindAutoResize(box, 120)
 
-	return text1, btn1, btn2
+	local function close()
+		box.Text = ""
+
+		TweenService:Create(box,
+			TweenInfo.new(0.25),
+			{Size = UDim2.new(0,0,0,30)}
+		):Play()
+
+		task.wait(0.25)
+		box:Destroy()
+	end
+
+	cancel.MouseButton1Click:Connect(close)
+	agree.MouseButton1Click:Connect(close)
+
+	return box, cancel, agree
 end
-
 --====== END FUNCTIONS ========--
-local TweenService = game:GetService("TweenService")
-
-local function TweenAutoSize(obj, padding)
-    padding = padding or 20  -- เพิ่มพื้นที่เผื่อปุ่ม/ระยะห่าง
-
-    task.wait()  -- รอ 1 frame ให้ TextBounds คำนวณ
-
-    local parentSize = obj.Parent.AbsoluteSize.X
-    local textWidth = obj.TextBounds.X + padding
-
-    local scaleX = math.clamp(textWidth / parentSize, 0, 1)
-
-    TweenService:Create(
-        obj,
-        TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        { Size = UDim2.new(scaleX, 0, 0, obj.AbsoluteSize.Y) }
-    ):Play()
-e100
