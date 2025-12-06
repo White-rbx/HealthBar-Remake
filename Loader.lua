@@ -1,4 +1,4 @@
--- Well 1.7978
+-- Well 1.7979
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -182,6 +182,29 @@ task.spawn(function()
     end
 end)
 
+task.spawn(function()
+	local StarterGui = game:GetService("StarterGui")
+    -- รอให้ SetCore พร้อม (สำคัญมาก)
+    repeat task.wait() until pcall(function()
+        StarterGui:SetCore("SendNotification", {Title=""; Text=""; Duration=1})
+    end)
+
+    -- #1 Notification (Success)
+    StarterGui:SetCore("SendNotification", {
+        Title = "Successful loaded.";
+        Text = "Thanks for using!";
+        Duration = 5;
+        Icon = "rbxassetid://131296854308169";
+    })
+    task.wait(5)
+    -- #2 Notification (Info / Beta)
+    StarterGui:SetCore("SendNotification", {
+        Title = "Beta";
+        Text = "Script is still beta.";
+        Duration = 5;
+        Icon = "rbxassetid://110099691300745";
+    })
+end)
 
 task.wait(5)
 --======BANNED======
@@ -193,7 +216,6 @@ local valueGui = CoreGui:WaitForChild("TopBarApp", 10)
 	:WaitForChild("ValueFolder", 10):WaitForChild("ValueGui", 10)
 
 local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
 local plr = Players.LocalPlayer
 
 -- ======== รายชื่อผู้ถูกแบน ========
@@ -236,25 +258,3 @@ if IsBanned(plr) then
     })
 end
 
-task.spawn(function()
-    -- รอให้ SetCore พร้อม (สำคัญมาก)
-    repeat task.wait() until pcall(function()
-        StarterGui:SetCore("SendNotification", {Title=""; Text=""; Duration=1})
-    end)
-
-    -- #1 Notification (Success)
-    StarterGui:SetCore("SendNotification", {
-        Title = "Successful loaded.";
-        Text = "Thanks for using!";
-        Duration = 5;
-        Icon = "rbxassetid://131296854308169";
-    })
-    task.wait(1)
-    -- #2 Notification (Info / Beta)
-    StarterGui:SetCore("SendNotification", {
-        Title = "Beta";
-        Text = "Script is still beta.";
-        Duration = 5;
-        Icon = "rbxassetid://110099691300745";
-    })
-end)
