@@ -1,4 +1,4 @@
--- Version 1.4
+-- Version 1.41
 
 -- =====>> Saved Functions <<=====
 
@@ -208,43 +208,80 @@ local function addsendnoti(textValue)
 	local r, g, b = rbxT:match("(%d+),(%d+),(%d+)")
 	r, g, b = tonumber(r), tonumber(g), tonumber(b)
 
+	-- 👇 Frame ครอบทั้งหมด (สำคัญ!!)
+	local holder = Instance.new("Frame")
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.new(1,0,0,30)
+	holder.Parent = notiF
+
+	-- 👇 Layout เพื่อให้ขยายแบบ Auto (ไม่ผิดตำแหน่ง)
+	local uiList = Instance.new("UIListLayout")
+	uiList.FillDirection = Enum.FillDirection.Horizontal
+	uiList.VerticalAlignment = Enum.VerticalAlignment.Center
+	uiList.SortOrder = Enum.SortOrder.LayoutOrder
+	uiList.Parent = holder
+
+	-- 👇 Input Box
 	local input = Instance.new("TextBox")
 	input.Name = "sendnoti"
-	input.Size = UDim2.new(0, 100, 0, 30)
+	input.Size = UDim2.new(0,100,0,30)
 	input.BackgroundColor3 = Color3.fromRGB(r, g, b)
 	input.BackgroundTransparency = 0.08
 	input.Text = textValue or ""
-	input.TextColor3 = Color3.fromRGB(255,255,255)
+	input.PlaceholderText = "Type anything..."
 	input.ClearTextOnFocus = false
 	input.TextXAlignment = Enum.TextXAlignment.Left
-	input.Parent = notiF
-
+	input.TextColor3 = Color3.new(1,1,1)
+	input.Parent = holder
 	Corner(1,0,input)
 
+	-- 👇 Send Button (อยู่นอก Input!)
 	local btn = Instance.new("TextButton")
 	btn.Name = "send"
-	btn.BackgroundColor3 = Color3.fromRGB(163, 162, 165)
+	btn.Size = UDim2.new(0,50,0,30)
+	btn.BackgroundColor3 = Color3.fromRGB(163,162,165)
 	btn.Text = "Send"
-	btn.Size = UDim2.new(0,50,0,27)
-	btn.Position = UDim2.new(1,-52,0,2)
-	btn.Parent = input
+	btn.Parent = holder
 	Corner(1,0,btn)
 
-	BindAutoResize(input, 60)
+	---------------------------------------------------------------------
+	-- Real-time Auto Size (ไม่บัคอีกแล้ว เพราะไม่มีลูกใน TextBox)
+	---------------------------------------------------------------------
+	local function update()
+		task.wait()
 
+		local textX = input.TextBounds.X + 20 -- padding Input
+		local totalX = textX + btn.AbsoluteSize.X + 10
+
+		local parentSize = holder.Parent.AbsoluteSize.X
+		local scaleX = math.clamp(totalX / parentSize, 0, 1)
+
+		TweenService:Create(
+			holder,
+			TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Size = UDim2.new(scaleX, 0, 0, 30) }
+		):Play()
+	end
+
+	input:GetPropertyChangedSignal("Text"):Connect(update)
+	update()
+
+	---------------------------------------------------------------------
+	-- Destroy เมื่อกด Send
+	---------------------------------------------------------------------
 	btn.MouseButton1Click:Connect(function()
 		input.Text = ""
 
-		TweenService:Create(input,
+		TweenService:Create(holder,
 			TweenInfo.new(0.25),
-			{Size = UDim2.new(0,0,0,30)}
+			{ Size = UDim2.new(0,0,0,30) }
 		):Play()
 
 		task.wait(0.25)
-		input:Destroy()
+		holder:Destroy()
 	end)
 
-	return input, btn
+	return holder, input, btn
 end
 
 local function addqusnoti(icon, textValue)
