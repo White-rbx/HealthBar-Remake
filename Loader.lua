@@ -221,7 +221,7 @@ local plr = Players.LocalPlayer
 -- ======== รายชื่อผู้ถูกแบน ========
 local BannedList = {
     Usernames = {
-		["666ooppko"] = true,
+		["5teve3019D"] = true,
 		["108ooppko"] = true,
 		
     },
