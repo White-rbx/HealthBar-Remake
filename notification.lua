@@ -1,4 +1,4 @@
--- Version 1.42
+-- Version 1.43
 
 -- =====>> Saved Functions <<=====
 
@@ -106,7 +106,7 @@ local function Padding(parent, bottom, left, right, top)
     return pad
 end
 -- =====END FUNCTION UIPADDING======
-llocal RunService = game:GetService("RunService")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local function BindAutoResize(textbox, padding)
