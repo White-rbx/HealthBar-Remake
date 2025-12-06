@@ -1,4 +1,4 @@
--- Well 1.7977
+-- Well 1.7978
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -232,6 +232,29 @@ if IsBanned(plr) then
         Title = "YOU ARE BANNED";
         Text = "You cannot use ExperienceSettings.";
         Duration = 15;
-        Icon = "rbxassetid://83001021035700";
+        Icon = "rbxassetid://117179620345399";
     })
 end
+
+task.spawn(function()
+    -- รอให้ SetCore พร้อม (สำคัญมาก)
+    repeat task.wait() until pcall(function()
+        StarterGui:SetCore("SendNotification", {Title=""; Text=""; Duration=1})
+    end)
+
+    -- #1 Notification (Success)
+    StarterGui:SetCore("SendNotification", {
+        Title = "Successful loaded.";
+        Text = "Thanks for using!";
+        Duration = 5;
+        Icon = "rbxassetid://131296854308169";
+    })
+    task.wait(1)
+    -- #2 Notification (Info / Beta)
+    StarterGui:SetCore("SendNotification", {
+        Title = "Beta";
+        Text = "Script is still beta.";
+        Duration = 5;
+        Icon = "rbxassetid://110099691300745";
+    })
+end)
