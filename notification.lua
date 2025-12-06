@@ -1,4 +1,4 @@
--- Version 1.41
+-- Version 1.42
 
 -- =====>> Saved Functions <<=====
 
@@ -106,38 +106,53 @@ local function Padding(parent, bottom, left, right, top)
     return pad
 end
 -- =====END FUNCTION UIPADDING======
+llocal RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local function BindAutoResize(obj, padding)
+local function BindAutoResize(textbox, padding)
     padding = padding or 20
+    local tweening = false
+    local lastText = ""
 
-    local function update()
-        task.wait() -- เพื่อให้ TextBounds อัปเดตก่อน
+    local function resize()
+        if tweening then return end
+        tweening = true
 
-        local parentX = obj.Parent.AbsoluteSize.X
-        local textX = obj.TextBounds.X + padding
-        local scaleX = math.clamp(textX / parentX, 0, 1)
+        -- ให้ TextBounds อัปเดตก่อน
+        RunService.Heartbeat:Wait()
+
+        local bounds = textbox.TextBounds.X
+        if bounds < 1 then
+            bounds = textbox.AbsoluteSize.X
+        end
+
+        local newX = bounds + padding
+        if newX < 50 then newX = 50 end
 
         TweenService:Create(
-            obj,
-            TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            { Size = UDim2.new(scaleX, 0, 0, obj.AbsoluteSize.Y) }
+            textbox,
+            TweenInfo.new(0.08, Enum.EasingStyle.Linear),
+            { Size = UDim2.fromOffset(newX, textbox.AbsoluteSize.Y) }
         ):Play()
+
+        tweening = false
     end
 
-    -- ทำงานทันที
-    update()
+    -- รันครั้งแรก
+    resize()
 
-    -- TextLabel = Text changed signal
-    if obj:IsA("TextLabel") then
-        obj:GetPropertyChangedSignal("Text"):Connect(update)
-    end
-
-    -- TextBox = Real-time typing → ใช้ .Changed("Text")
-    if obj:IsA("TextBox") then
-        obj:GetPropertyChangedSignal("Text"):Connect(update)
-    end
+    -- อัปเดตเมื่อ Text เปลี่ยน
+    textbox:GetPropertyChangedSignal("Text"):Connect(function()
+        if textbox.Text ~= lastText then
+            lastText = textbox.Text
+            resize()
+        end
+    end)
 end
+
+-- =============== ใช้งาน ===============
+-- แก้ชื่อ InputBox ให้ตรงของนาย
+BindAutoResize(script.Parent.InputBox)
 
 local HolderScreen = game:GetService("CoreGui").ExperienceSettings.Menu.HolderScreen
 
@@ -208,80 +223,44 @@ local function addsendnoti(textValue)
 	local r, g, b = rbxT:match("(%d+),(%d+),(%d+)")
 	r, g, b = tonumber(r), tonumber(g), tonumber(b)
 
-	-- 👇 Frame ครอบทั้งหมด (สำคัญ!!)
-	local holder = Instance.new("Frame")
-	holder.BackgroundTransparency = 1
-	holder.Size = UDim2.new(1,0,0,30)
-	holder.Parent = notiF
-
-	-- 👇 Layout เพื่อให้ขยายแบบ Auto (ไม่ผิดตำแหน่ง)
-	local uiList = Instance.new("UIListLayout")
-	uiList.FillDirection = Enum.FillDirection.Horizontal
-	uiList.VerticalAlignment = Enum.VerticalAlignment.Center
-	uiList.SortOrder = Enum.SortOrder.LayoutOrder
-	uiList.Parent = holder
-
-	-- 👇 Input Box
 	local input = Instance.new("TextBox")
 	input.Name = "sendnoti"
-	input.Size = UDim2.new(0,100,0,30)
+	input.Size = UDim2.new(0, 100, 0, 30)
 	input.BackgroundColor3 = Color3.fromRGB(r, g, b)
 	input.BackgroundTransparency = 0.08
 	input.Text = textValue or ""
-	input.PlaceholderText = "Type anything..."
+       input.PlaceholderText = "Type anything..."
+	input.TextColor3 = Color3.fromRGB(255,255,255)
 	input.ClearTextOnFocus = false
 	input.TextXAlignment = Enum.TextXAlignment.Left
-	input.TextColor3 = Color3.new(1,1,1)
-	input.Parent = holder
+	input.Parent = notiF
+
 	Corner(1,0,input)
 
-	-- 👇 Send Button (อยู่นอก Input!)
 	local btn = Instance.new("TextButton")
 	btn.Name = "send"
-	btn.Size = UDim2.new(0,50,0,30)
-	btn.BackgroundColor3 = Color3.fromRGB(163,162,165)
+	btn.BackgroundColor3 = Color3.fromRGB(163, 162, 165)
 	btn.Text = "Send"
-	btn.Parent = holder
+	btn.Size = UDim2.new(0,50,0,27)
+	btn.Position = UDim2.new(1,-52,0,2)
+	btn.Parent = input
 	Corner(1,0,btn)
 
-	---------------------------------------------------------------------
-	-- Real-time Auto Size (ไม่บัคอีกแล้ว เพราะไม่มีลูกใน TextBox)
-	---------------------------------------------------------------------
-	local function update()
-		task.wait()
+	BindAutoResize(input, 60)
 
-		local textX = input.TextBounds.X + 20 -- padding Input
-		local totalX = textX + btn.AbsoluteSize.X + 10
-
-		local parentSize = holder.Parent.AbsoluteSize.X
-		local scaleX = math.clamp(totalX / parentSize, 0, 1)
-
-		TweenService:Create(
-			holder,
-			TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ Size = UDim2.new(scaleX, 0, 0, 30) }
-		):Play()
-	end
-
-	input:GetPropertyChangedSignal("Text"):Connect(update)
-	update()
-
-	---------------------------------------------------------------------
-	-- Destroy เมื่อกด Send
-	---------------------------------------------------------------------
 	btn.MouseButton1Click:Connect(function()
 		input.Text = ""
 
-		TweenService:Create(holder,
+		TweenService:Create(input,
 			TweenInfo.new(0.25),
-			{ Size = UDim2.new(0,0,0,30) }
+			{Size = UDim2.new(0,0,0,30)}
 		):Play()
 
 		task.wait(0.25)
-		holder:Destroy()
+		input:Destroy()
 	end)
 
-	return holder, input, btn
+	return input, btn
 end
 
 local function addqusnoti(icon, textValue)
@@ -337,3 +316,5 @@ local function addqusnoti(icon, textValue)
 	return box, cancel, agree
 end
 --====== END FUNCTIONS ========--
+
+addsendnoti()
