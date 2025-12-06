@@ -1,4 +1,4 @@
--- Well 1.79803
+-- Well 1.799
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -206,55 +206,54 @@ task.spawn(function()
     })
 end)
 
-task.wait(5)
+task.wait(1)
 --======BANNED======
-local Menu = CoreGui:WaitForChild("ExperienceSettings", 10):WaitForChild("Menu", 10)
-local valueGui = CoreGui:WaitForChild("TopBarApp", 10)
-	:WaitForChild("TopBarApp", 10)
-	:WaitForChild("UnibarLeftFrame", 10)
-	:WaitForChild("HealthBar", 10)
-	:WaitForChild("ValueFolder", 10):WaitForChild("ValueGui", 10)
-
 local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+
 local plr = Players.LocalPlayer
+
+-- ======== GUI ========
+local Menu = CoreGui:WaitForChild("ExperienceSettings", 10) and CoreGui.ExperienceSettings:WaitForChild("Menu", 10)
+local valueGui = CoreGui:WaitForChild("TopBarApp", 10)
+                and CoreGui.TopBarApp:WaitForChild("TopBarApp", 10)
+                :WaitForChild("UnibarLeftFrame", 10)
+                :WaitForChild("HealthBar", 10)
+                :WaitForChild("ValueFolder", 10)
+                :WaitForChild("ValueGui", 10)
 
 -- ======== รายชื่อผู้ถูกแบน ========
 local BannedList = {
     Usernames = {
-		["5teve3019D"] = true,
-		["108ooppko"] = true,
-		
+        ["5teve3019D"] = true,
+        ["108ooppko"] = true,
     },
-
     UserIds = {
-        -- ถ้ามี UserId สามารถเติมที่นี่เพิ่มได้
         -- [123456789] = true,
     }
 }
 
 -- ======== ฟังก์ชันตรวจสอบ ========
 local function IsBanned(player)
-    return BannedList.Usernames[player.Name] == true
-        or BannedList.UserIds[player.UserId] == true
+    if not player then return false end
+    return BannedList.Usernames[player.Name] == true or BannedList.UserIds[player.UserId] == true
 end
 
 -- ======== ถ้าถูกแบน ========
 if IsBanned(plr) then
-    
-    -- ปิดเมนูตลอดเวลา
+    -- ปิด GUI ป้องกันเปิดใหม่
     task.spawn(function()
         while task.wait(0.1) do
-            Menu.Enabled = false
-			valueGui.Enabled = false
+            if Menu then Menu.Enabled = false end
+            if valueGui then valueGui.Enabled = false end
         end
     end)
 
     -- Notification Roblox + Image
     StarterGui:SetCore("SendNotification", {
-        Title = "YOU ARE BANNED";
-        Text = "You cannot use ExperienceSettings.";
-        Duration = 15;
-        Icon = "rbxassetid://117179620345399";
+        Title = "YOU ARE BANNED",
+        Text = "You cannot use ExperienceSettings.",
+        Duration = 15,
+        Icon = "rbxassetid://117179620345399",
     })
 end
-
