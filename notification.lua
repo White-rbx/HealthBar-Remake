@@ -1,4 +1,4 @@
--- Version 1.47
+-- Version 1.48
 
 -- =====>> Saved Functions <<=====
 
@@ -323,56 +323,236 @@ local function addqusnoti(icon, textValue)
 	return box, cancel, agree
 end
 --====== END FUNCTIONS ========--
--- ===== Notification detectors (BadWord removed) =====
--- Put this AFTER: --====== END FUNCTIONS ========--
+-- ============================================
+-- FULL NOTIFICATION DETECTORS (VC + STT + AFK)
+-- FIXED FOR REAL ROBLOX API (NO IsReady)
+-- ============================================
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TeleportService = game:GetService("TeleportService")
 local plr = Players.LocalPlayer
 
--- defensive voice service handling (API varies by client/updates)
-local VoiceService = nil
-pcall(function()
-    VoiceService = game:GetService("VoiceChatService")
+-----------------------------------------------------
+-- SHORTCUTS FOR NOTIFICATION API
+-----------------------------------------------------
+local function T(icon, text)
+	if addtextnoti then
+		pcall(addtextnoti, icon, text)
+	else
+		warn("[NOTI] addtextnoti missing")
+	end
+end
+
+local function Q(icon, text)
+	if addqusnoti then
+		pcall(addqusnoti, icon, text)
+	else
+		warn("[NOTI] addqusnoti missing")
+	end
+end
+
+local function S(text)
+	if addsendnoti then
+		pcall(addsendnoti, text)
+	else
+		warn("[NOTI] addsendnoti missing")
+	end
+end
+
+-----------------------------------------------------
+-- === AUDIO SPEECH TO TEXT (VC → TEXT) ============
+-----------------------------------------------------
+
+local function setupSTT(character)
+	print("\n=============================")
+	print("[STT] Setup for character:", character)
+	print("=============================")
+
+	-------------------------------------
+	-- 1) AudioDeviceInput
+	-------------------------------------
+	local mic = plr:FindFirstChildOfClass("AudioDeviceInput")
+	if not mic then
+		print("[STT] Creating AudioDeviceInput...")
+		local ok, err = pcall(function()
+			mic = Instance.new("AudioDeviceInput")
+			mic.Player = plr
+			mic.Name = "AudioDeviceInput"
+			mic.Parent = plr
+		end)
+		print("[STT] AudioDeviceInput:", ok, err or "")
+	else
+		print("[STT] Reusing existing AudioDeviceInput")
+	end
+
+	-------------------------------------
+	-- 2) Create AudioSpeechToText
+	-------------------------------------
+	if character:FindFirstChild("AudioSpeechToText") then
+		print("[STT] Removing old AudioSpeechToText...")
+		character.AudioSpeechToText:Destroy()
+	end
+
+	print("[STT] Creating AudioSpeechToText...")
+	local stt
+	local ok, err = pcall(function()
+		stt = Instance.new("AudioSpeechToText")
+		stt.Name = "AudioSpeechToText"
+		stt.Enabled = true
+		stt.Parent = character
+	end)
+	print("[STT] STT init:", ok, err or "")
+
+	if not ok then return end
+
+	task.wait(0.1)
+
+	-------------------------------------
+	-- 3) Connect Wire
+	-------------------------------------
+	print("[STT] Connecting Wire...")
+	local ok2, err2 = pcall(function()
+		local w = Instance.new("Wire")
+		w.SourceInstance = mic
+		w.TargetInstance = stt
+		w.Parent = stt
+	end)
+	print("[STT] Wire connect:", ok2, err2 or "")
+
+	-------------------------------------
+	-- 4) Debug: WiringChanged
+	-------------------------------------
+	stt.WiringChanged:Connect(function()
+		local wires = stt:GetConnectedWires()
+		print("[STT] WiringChanged → wires:", #wires)
+	end)
+
+	-------------------------------------
+	-- 5) Debug: Voice Detected
+	-------------------------------------
+	stt:GetPropertyChangedSignal("VoiceDetected"):Connect(function()
+		print("[STT] VoiceDetected:", stt.VoiceDetected)
+
+		if stt.VoiceDetected then
+			T(vc, "Voice detected…")
+		else
+			T(vc, "Voice stopped.")
+		end
+	end)
+
+	-------------------------------------
+	-- 6) Debug: Text (Speech result)
+	-------------------------------------
+	stt:GetPropertyChangedSignal("Text"):Connect(function()
+		if stt.Text ~= "" then
+			print("[STT] TEXT →", stt.Text)
+			T(vc, stt.Text)
+			stt.Text = "" -- reset
+		end
+	end)
+
+    -------------------------------------
+    -- 7) Live debug (SAFE VERSION)
+    -------------------------------------
+    task.spawn(function()
+    	while character.Parent do
+    		local ok, wires = pcall(function()
+    			return stt:GetConnectedWires()
+    		end)
+
+    		if not ok or type(wires) ~= "table" then
+    			wires = {}
+    		end
+
+    		print("[STT-TICK] Enabled:", stt.Enabled,
+    		      "| VoiceDetected:", stt.VoiceDetected,
+    		      "| Wires:", #wires)
+
+	    	task.wait(1.2)
+    	end
+    end)
+
+-----------------------------------------------------
+-- CHARACTER HOOK
+-----------------------------------------------------
+plr.CharacterAdded:Connect(function(char)
+	print("[STT] CharacterAdded")
+	task.wait(1)
+	setupSTT(char)
 end)
 
--- default icons (if not defined earlier)
-vc     = vc     or "🎙️: "
-tpps   = tpps   or "🏙️: "
-warn   = warn   or "⚠️: "
-cross  = cross  or "❌: "
-int    = int    or "🛜: "
-sle    = sle    or "💤: "
-gre    = gre    or "🟢: "
-warn2  = warn2  or "❗: "
-
-local Detectors = {}
-
-local function safeAddText(icon, text)
-    if type(addtextnoti) == "function" then
-        pcall(addtextnoti, icon, text)
-    else
-        warn("addtextnoti not found")
-    end
+if plr.Character then
+	print("[STT] Initial Character Found")
+	task.wait(1)
+	setupSTT(plr.Character)
 end
 
-local function safeAddSend(initial)
-    if type(addsendnoti) == "function" then
-        local ok, input, btn = pcall(addsendnoti, initial)
-        if ok then return input, btn end
-    else
-        warn("addsendnoti not found")
-    end
-    return nil
+
+-----------------------------------------------------
+-- === AFK DETECTOR (uses addqusnoti) ===============
+-----------------------------------------------------
+local AFK = {}
+AFK.running = false
+
+local function startAFK()
+	if AFK.running then return end
+	AFK.running = true
+
+	local last = tick()
+	local flag = {t2=false,t10=false,t15=false,t18=false}
+	local limit = {t2=120,t10=600,t15=900,t18=1080}
+
+	local function active()
+		last = tick()
+		if flag.t2 or flag.t10 or flag.t15 or flag.t18 then
+			Q("🟢: ", "You are no longer AFK.")
+		end
+		flag = {t2=false,t10=false,t15=false,t18=false}
+	end
+
+	UserInputService.InputBegan:Connect(active)
+	UserInputService.InputEnded:Connect(active)
+	UserInputService.InputChanged:Connect(active)
+
+	-- Movement
+	task.spawn(function()
+		while AFK.running do
+			task.wait(1)
+			local char = plr.Character
+			if char then
+				local hrp = char:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					local lastPos = hrp.Position
+					while AFK.running and char.Parent do
+						task.wait(1)
+						if (hrp.Position - lastPos).Magnitude > 1 then
+							active()
+						end
+						lastPos = hrp.Position
+					end
+				end
+			end
+		end
+	end)
+
+	-- Notifications
+	task.spawn(function()
+		while AFK.running do
+			local d = tick() - last
+			if d >= limit.t2 and not flag.t2 then flag.t2 = true; Q(sle,"You are now AFK (2m ago)") end
+			if d >= limit.t10 and not flag.t10 then flag.t10 = true; Q(sle,"AFK for 10 minutes now") end
+			if d >= limit.t15 and not flag.t15 then flag.t15 = true; Q(sle,"AFK for 15 minutes") end
+			if d >= limit.t18 and not flag.t18 then flag.t18 = true; Q(sle,"AFK for 18 minutes") end
+			task.wait(2)
+		end
+	end)
 end
 
-local function safeAddQ(icon, text)
-    if type(addqusnoti) == "function" then
-        pcall(addqusnoti, icon, text)
-    else
-        warn("addqusnoti not found")
+startAFK()
+
+-----------------------------------------------------
+-- END SYSTEM
+-----------------------------------------------------dqusnoti not found")
     end
 end
 
