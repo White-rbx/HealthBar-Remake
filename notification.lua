@@ -1,4 +1,4 @@
--- Version 1.48
+-- Version 1.49
 
 -- =====>> Saved Functions <<=====
 
@@ -323,431 +323,82 @@ local function addqusnoti(icon, textValue)
 	return box, cancel, agree
 end
 --====== END FUNCTIONS ========--
--- ============================================
--- FULL NOTIFICATION DETECTORS (VC + STT + AFK)
--- FIXED FOR REAL ROBLOX API (NO IsReady)
--- ============================================
-
+----------------------------------------------------------------
+-- AFK DETECTOR (New Timeline Version + gre on return)
+----------------------------------------------------------------
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+
 local plr = Players.LocalPlayer
+local sle = sle or "💤: "
+local gre = gre or "🟢: "  -- important: online message uses this
 
------------------------------------------------------
--- SHORTCUTS FOR NOTIFICATION API
------------------------------------------------------
-local function T(icon, text)
-	if addtextnoti then
-		pcall(addtextnoti, icon, text)
-	else
-		warn("[NOTI] addtextnoti missing")
-	end
-end
-
-local function Q(icon, text)
-	if addqusnoti then
-		pcall(addqusnoti, icon, text)
-	else
-		warn("[NOTI] addqusnoti missing")
-	end
-end
-
-local function S(text)
-	if addsendnoti then
-		pcall(addsendnoti, text)
-	else
-		warn("[NOTI] addsendnoti missing")
-	end
-end
-
------------------------------------------------------
--- === AUDIO SPEECH TO TEXT (VC → TEXT) ============
------------------------------------------------------
-
-local function setupSTT(character)
-	print("\n=============================")
-	print("[STT] Setup for character:", character)
-	print("=============================")
-
-	-------------------------------------
-	-- 1) AudioDeviceInput
-	-------------------------------------
-	local mic = plr:FindFirstChildOfClass("AudioDeviceInput")
-	if not mic then
-		print("[STT] Creating AudioDeviceInput...")
-		local ok, err = pcall(function()
-			mic = Instance.new("AudioDeviceInput")
-			mic.Player = plr
-			mic.Name = "AudioDeviceInput"
-			mic.Parent = plr
-		end)
-		print("[STT] AudioDeviceInput:", ok, err or "")
-	else
-		print("[STT] Reusing existing AudioDeviceInput")
-	end
-
-	-------------------------------------
-	-- 2) Create AudioSpeechToText
-	-------------------------------------
-	if character:FindFirstChild("AudioSpeechToText") then
-		print("[STT] Removing old AudioSpeechToText...")
-		character.AudioSpeechToText:Destroy()
-	end
-
-	print("[STT] Creating AudioSpeechToText...")
-	local stt
-	local ok, err = pcall(function()
-		stt = Instance.new("AudioSpeechToText")
-		stt.Name = "AudioSpeechToText"
-		stt.Enabled = true
-		stt.Parent = character
-	end)
-	print("[STT] STT init:", ok, err or "")
-
-	if not ok then return end
-
-	task.wait(0.1)
-
-	-------------------------------------
-	-- 3) Connect Wire
-	-------------------------------------
-	print("[STT] Connecting Wire...")
-	local ok2, err2 = pcall(function()
-		local w = Instance.new("Wire")
-		w.SourceInstance = mic
-		w.TargetInstance = stt
-		w.Parent = stt
-	end)
-	print("[STT] Wire connect:", ok2, err2 or "")
-
-	-------------------------------------
-	-- 4) Debug: WiringChanged
-	-------------------------------------
-	stt.WiringChanged:Connect(function()
-		local wires = stt:GetConnectedWires()
-		print("[STT] WiringChanged → wires:", #wires)
-	end)
-
-	-------------------------------------
-	-- 5) Debug: Voice Detected
-	-------------------------------------
-	stt:GetPropertyChangedSignal("VoiceDetected"):Connect(function()
-		print("[STT] VoiceDetected:", stt.VoiceDetected)
-
-		if stt.VoiceDetected then
-			T(vc, "Voice detected…")
-		else
-			T(vc, "Voice stopped.")
-		end
-	end)
-
-	-------------------------------------
-	-- 6) Debug: Text (Speech result)
-	-------------------------------------
-	stt:GetPropertyChangedSignal("Text"):Connect(function()
-		if stt.Text ~= "" then
-			print("[STT] TEXT →", stt.Text)
-			T(vc, stt.Text)
-			stt.Text = "" -- reset
-		end
-	end)
-
-    -------------------------------------
-    -- 7) Live debug (SAFE VERSION)
-    -------------------------------------
-    task.spawn(function()
-    	while character.Parent do
-    		local ok, wires = pcall(function()
-    			return stt:GetConnectedWires()
-    		end)
-
-    		if not ok or type(wires) ~= "table" then
-    			wires = {}
-    		end
-
-    		print("[STT-TICK] Enabled:", stt.Enabled,
-    		      "| VoiceDetected:", stt.VoiceDetected,
-    		      "| Wires:", #wires)
-
-	    	task.wait(1.2)
-    	end
-    end)
-
------------------------------------------------------
--- CHARACTER HOOK
------------------------------------------------------
-plr.CharacterAdded:Connect(function(char)
-	print("[STT] CharacterAdded")
-	task.wait(1)
-	setupSTT(char)
-end)
-
-if plr.Character then
-	print("[STT] Initial Character Found")
-	task.wait(1)
-	setupSTT(plr.Character)
-end
-
-
------------------------------------------------------
--- === AFK DETECTOR (uses addqusnoti) ===============
------------------------------------------------------
 local AFK = {}
-AFK.running = false
-
-local function startAFK()
-	if AFK.running then return end
-	AFK.running = true
-
-	local last = tick()
-	local flag = {t2=false,t10=false,t15=false,t18=false}
-	local limit = {t2=120,t10=600,t15=900,t18=1080}
-
-	local function active()
-		last = tick()
-		if flag.t2 or flag.t10 or flag.t15 or flag.t18 then
-			Q("🟢: ", "You are no longer AFK.")
-		end
-		flag = {t2=false,t10=false,t15=false,t18=false}
-	end
-
-	UserInputService.InputBegan:Connect(active)
-	UserInputService.InputEnded:Connect(active)
-	UserInputService.InputChanged:Connect(active)
-
-	-- Movement
-	task.spawn(function()
-		while AFK.running do
-			task.wait(1)
-			local char = plr.Character
-			if char then
-				local hrp = char:FindFirstChild("HumanoidRootPart")
-				if hrp then
-					local lastPos = hrp.Position
-					while AFK.running and char.Parent do
-						task.wait(1)
-						if (hrp.Position - lastPos).Magnitude > 1 then
-							active()
-						end
-						lastPos = hrp.Position
-					end
-				end
-			end
-		end
-	end)
-
-	-- Notifications
-	task.spawn(function()
-		while AFK.running do
-			local d = tick() - last
-			if d >= limit.t2 and not flag.t2 then flag.t2 = true; Q(sle,"You are now AFK (2m ago)") end
-			if d >= limit.t10 and not flag.t10 then flag.t10 = true; Q(sle,"AFK for 10 minutes now") end
-			if d >= limit.t15 and not flag.t15 then flag.t15 = true; Q(sle,"AFK for 15 minutes") end
-			if d >= limit.t18 and not flag.t18 then flag.t18 = true; Q(sle,"AFK for 18 minutes") end
-			task.wait(2)
-		end
-	end)
-end
-
-startAFK()
-
------------------------------------------------------
--- END SYSTEM
------------------------------------------------------dqusnoti not found")
-    end
-end
-
--- Voice Detector
-Detectors.Voice = {}
-function Detectors.Voice.Start(opts)
-    opts = opts or {}
-    local threshold = opts.threshold or 0.27
-    local debounce = opts.debounce or 3
-
-    if not VoiceService then
-        warn("Voice service unavailable on this client; Voice.Detector disabled.")
-        return
-    end
-
-    local last = 0
-    Detectors.Voice._running = true
-    task.spawn(function()
-        while Detectors.Voice._running do
-            task.wait(0.12)
-            local ok, level = pcall(function()
-                if VoiceService.GetVoiceIndicator then
-                    return VoiceService:GetVoiceIndicator(plr)
-                elseif VoiceService.GetVoiceLevel then
-                    return VoiceService:GetVoiceLevel(plr.UserId)
-                else
-                    return nil
-                end
-            end)
-
-            if ok and type(level) == "number" and level > threshold then
-                if tick() - last > debounce then
-                    last = tick()
-                    safeAddText(vc, "Voice detected (" .. tostring(math.floor(level * 100)) .. "%)")
-                end
-            end
-        end
-    end)
-end
-function Detectors.Voice.Stop() Detectors.Voice._running = false end
-
--- Teleport helper
-Detectors.Teleport = {}
-function Detectors.Teleport.NotifyHeading(placeId)
-    safeAddText(tpps, 'You\'re heading to "' .. tostring(placeId) .. '"')
-end
-
--- ToS / Spam Detector (keeps invite/links + spam detection)
-Detectors.ToS = {}
-Detectors.ToS._inviteKeywords = {
-    "discord","dc","disc","discorn","ip",".com",".xyz",".org",".onion",".io","web",
-    ".gg",".shop",".net","http","https","giveaway","want admin","want free","free robux","free robu"
+AFK.Timeline = {
+    {40,  "Hey, are you starting to be AFK right?"},
+    {60,  "No response yet.. where are you?"},
+    {120, "Hello?"},
+    {300, "Dude it's too long! You may getting kick!"},
+    {600, "See you then..."},
+    {1080,"Bro come back."},
+    {1140,"You're cooked."},
+    {1170,"You're really cooked, bye!"}
 }
-Detectors.ToS._recentMsgs = {}
-Detectors.ToS._window = 5
-Detectors.ToS._limitCount = 5
 
-function Detectors.ToS.OnLocalChat(msg)
-    if not msg or msg == "" then return false end
-    local lower = string.lower(msg)
+AFK._running = false
+AFK._lastActivity = tick()
+AFK._sent = {}
 
-    for _, kw in ipairs(Detectors.ToS._inviteKeywords) do
-        if string.find(lower, kw, 1, true) then
-            safeAddText(warn, "You have break the Terms of Service | Reason: Invitation/Link: " .. tostring(kw))
-            return true
-        end
+local function markActivity()
+    AFK._lastActivity = tick()
+
+    -- ถ้ากลับมา → ส่งข้อความ green
+    local anySent = false
+    for _, v in pairs(AFK._sent) do
+        if v == true then anySent = true break end
     end
 
-    local now = tick()
-    table.insert(Detectors.ToS._recentMsgs, {t=now, m=msg})
-    for i = #Detectors.ToS._recentMsgs, 1, -1 do
-        if now - Detectors.ToS._recentMsgs[i].t > Detectors.ToS._window then
-            table.remove(Detectors.ToS._recentMsgs, i)
-        end
+    if anySent then
+        -- ⬇⬇⬇ เปลี่ยนเป็น gre ตามที่นายต้องการ
+        addtextnoti(gre, "Hey, welcome back! What have you been doing?")
     end
 
-    if #Detectors.ToS._recentMsgs >= Detectors.ToS._limitCount then
-        safeAddText(warn, "You have break the Terms of Service | Reason: Spamming Chat")
-        Detectors.ToS._recentMsgs = {}
-        return true
-    end
-
-    return false
+    -- รีเซ็ตสถานะทั้งหมด
+    AFK._sent = {}
 end
 
--- Internet status
-Detectors.Internet = {}
-Detectors.Internet._lastStatus = nil
-function Detectors.Internet.SetStatus(status)
-    if status == Detectors.Internet._lastStatus then return end
-    Detectors.Internet._lastStatus = status
-    if status == "disconnected" then
-        safeAddText(int, "Internet Disconnected. Please re-connect or check and try again.")
-    elseif status == "connected" then
-        safeAddText(int, "Internet Connected")
-    elseif status == "low" then
-        safeAddText(int, "Low internet detected, please check your connection")
-    else
-        safeAddText(int, tostring(status))
-    end
-end
+-- detect user input
+UserInputService.InputBegan:Connect(markActivity)
+UserInputService.InputChanged:Connect(markActivity)
+UserInputService.InputEnded:Connect(markActivity)
 
--- AFK detector
-Detectors.AFK = {}
-function Detectors.AFK.Start()
-    if Detectors.AFK._running then return end
-    Detectors.AFK._running = true
-
-    local lastActivity = tick()
-    local notified = { t2=false, t10=false, t15=false, t18=false }
-    local thresholds = { t2=2*60, t10=10*60, t15=15*60, t18=18*60 }
-
-    local function markActivity()
-        lastActivity = tick()
-        if notified.t2 or notified.t10 or notified.t15 or notified.t18 then
-            local msgs = {
-                "Are you farming?",
-                "Are you eating dinner?",
-                "Are you sleeping?",
-                "Are you playing another game?",
-                "Are you bored?",
-                "Are you still alive?",
-                "Are you tired?"
-            }
-            safeAddText(gre, "You are now no longer AFK. " .. msgs[math.random(1,#msgs)])
-        end
-        notified.t2=false; notified.t10=false; notified.t15=false; notified.t18=false
-    end
-
-    UserInputService.InputBegan:Connect(markActivity)
-    UserInputService.InputChanged:Connect(markActivity)
-    UserInputService.InputEnded:Connect(markActivity)
+AFK.Start = function()
+    if AFK._running then return end
+    AFK._running = true
 
     task.spawn(function()
-        while Detectors.AFK._running and plr and plr.Parent do
-            local char = plr.Character
-            if char then
-                local root = char:FindFirstChild("HumanoidRootPart")
-                if root then
-                    local lastPos = root.Position
-                    while char and char.Parent and Detectors.AFK._running do
-                        task.wait(1)
-                        local nowPos = root.Position
-                        if (nowPos - lastPos).Magnitude > 0.5 then
-                            markActivity()
-                        end
-                        lastPos = nowPos
-                    end
+        while AFK._running do
+            local diff = tick() - AFK._lastActivity
+
+            for _, info in ipairs(AFK.Timeline) do
+                local t = info[1]
+                local msg = info[2]
+
+                if diff >= t and not AFK._sent[t] then
+                    AFK._sent[t] = true
+                    addqusnoti(sle, msg)
                 end
             end
+
             task.wait(1)
         end
     end)
-
-    task.spawn(function()
-        while Detectors.AFK._running do
-            local diff = tick() - lastActivity
-            if diff >= thresholds.t2 and not notified.t2 then
-                safeAddText(sle, "You are now AFK (2m ago)")
-                notified.t2 = true
-            end
-            if diff >= thresholds.t10 and not notified.t10 then
-                safeAddText(sle, "You being AFK 10 minutes now, come back before too late.")
-                notified.t10 = true
-            end
-            if diff >= thresholds.t15 and not notified.t15 then
-                safeAddText(sle, "You being AFK 15 minutes now, please come back before too late.")
-                notified.t15 = true
-            end
-            if diff >= thresholds.t18 and not notified.t18 then
-                safeAddText(sle, "You being AFK 18 minutes now, please come back before too late.")
-                notified.t18 = true
-            end
-            task.wait(5)
-        end
-    end)
-end
-function Detectors.AFK.Stop() Detectors.AFK._running = false end
-
--- Hook for local chat: now only runs ToS/spam checks
-function Detectors.OnLocalChat(msg)
-    if not msg then return false end
-    local tos = Detectors.ToS.OnLocalChat(msg) or false
-    return tos
 end
 
--- Init
-function Detectors.Init(opts)
-    opts = opts or {}
-    if opts.voice ~= false then pcall(function() Detectors.Voice.Start({ threshold = opts.voiceThreshold or 0.27, debounce = opts.voiceDebounce or 3 }) end) end
-    if opts.afk ~= false then pcall(function() Detectors.AFK.Start() end) end
-    return Detectors
+AFK.Stop = function()
+    AFK._running = false
 end
 
--- Example usage (remove/comment in production):
--- Detectors.Init({ voice = true, afk = true })
--- Detectors.Teleport.NotifyHeading("PLACE_ID_1234567890")
--- safeAddText(warn, "Test ToS warning")
+task.defer(function()
+    AFK.Start()
+end)
