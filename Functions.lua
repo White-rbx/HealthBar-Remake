@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.447
+-- So uhm just a script lol. 4.448
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -227,8 +227,8 @@ createUIListLayout(BFrame2, 0.005, 0, HCenter, VTop, SName, FillV)
 -- =====>> Loading <<=====
 local bk = Instance.new("Frame")
 bk.Name = "Load_Background"
-bk.Size = UDim2.new(0.4,0,0.4,0)
-bk.Position = UDim2.new(0.01,0,0.1,0)
+bk.Size = UDim2.new(0.4,0,0.2,0)
+bk.Position = UDim2.new(0.3,0,0.75,0)
 bk.BackgroundColor3 = Color3.fromRGB(0,0,0)
 bk.BackgroundTransparency = 0.5
 bk.Visible = true
@@ -278,8 +278,8 @@ local skp = Instance.new("TextButton")
 skp.Name = "Skip"
 skp.BackgroundTransparency = 0.8
 skp.BackgroundColor3 = Color3.fromRGB(255,255,255)
-skp.Position = UDim2.new(0.02,0,0.8,0)
-skp.Size = UDim2.new(0.96,0,0.15,0)
+skp.Position = UDim2.new(0.02,0,0.85,0)
+skp.Size = UDim2.new(0.96,0,0.1,0)
 skp.Text = "Skip"
 skp.TextScaled = true
 skp.TextColor3 = Color3.fromRGB(255,255,255)
