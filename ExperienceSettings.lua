@@ -1,4 +1,4 @@
--- Ok 2.3
+-- Ok 2.35
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1906,6 +1906,16 @@ local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg
     return txtb
 end
 -- ========
+
+-- CTL1
+local ctl1 = createTextButton("b3_EmoteSelect", 50, 50, 50, 0.2, "Emote Select", true, false)
+if ctl1 then
+	ctl1.MouseButton1Click:Connect(function()
+			pcall(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/Branch/GUIS/Emotes.lua"))()
+		end)
+	end)
+end
 
 
 
