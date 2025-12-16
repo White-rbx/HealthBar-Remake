@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.449
+-- So uhm just a script lol. 4.45
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1280,7 +1280,7 @@ local profilePath = CoreGui
 local ProfileStatus = profilePath:WaitForChild("ProfileStatus")
 
 local tweenInfo = TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local posOn  = UDim2.new(0.155, 0, 0.155, 0)
+local posOn  = UDim2.new(0.25, 0, 0.155, 0)
 local posOff = UDim2.new(0.25, 0, 1, 0)
 
 local function extractId(imageProp)
