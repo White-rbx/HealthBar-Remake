@@ -1,4 +1,4 @@
--- Script ahh 1.20
+-- Script ahh 1.21
 
 -- =====>> Saved Functions <<=====
 
@@ -292,26 +292,25 @@ task.spawn(function()
     user.Text = tostring(display) .. " (@" .. tostring(real) .. ")"
 end)
 
+--===================--
 local UserInputService = game:GetService("UserInputService")
 
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 
-local humanoid = nil
+local humanoid
+local character
 
-local function hookCharacter(char)
-	if not char then return end
+local function bindCharacter(char)
+	character = char
 	humanoid = char:WaitForChild("Humanoid", 10)
 end
 
--- ครั้งแรก
 if lp.Character then
-	hookCharacter(lp.Character)
+	bindCharacter(lp.Character)
 end
-
--- ทุกครั้งที่เกิดใหม่
-lp.CharacterAdded:Connect(hookCharacter)
-
+lp.CharacterAdded:Connect(bindCharacter)
+						
 ------------------------------------------------
 -- AFK TIMER CORE
 ------------------------------------------------
@@ -419,7 +418,7 @@ Button(
 	end
 )
 
-						Button(
+Button(
 	scr,
 	"PlayerAge",
 	"PlayerAge: Getting API...",
@@ -488,69 +487,71 @@ Button(
 ------------------------------------------------
 -- WalkSpeed
 ------------------------------------------------
-Text(
+local wsText = Text(
 	scr,
 	"WalkSpeed",
 	"WalkSpeed: ...",
-	false,                 -- Active = false
-	120,180,255,           -- สีฟ้า
-	120,180,255,           -- Stroke สีฟ้า
-	nil,nil,nil,
-	function(txt)
-		if humanoid then
-			txt.Text = "WalkSpeed: " .. tostring(math.floor(humanoid.WalkSpeed))
-		else
-			txt.Text = "WalkSpeed: N/A"
-		end
-	end,
-	nil
+	false,
+	120,180,255,
+	120,180,255
 )
+
+local function updateWS()
+	if humanoid then
+		wsText.Text = "WalkSpeed: " .. math.floor(humanoid.WalkSpeed)
+	end
+end
+
+task.spawn(function()
+	while not humanoid do task.wait() end
+	updateWS()
+	humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(updateWS)
+end)
 ------------------------------------------------
 -- JumpPower
 ------------------------------------------------
-Text(
+local jpText = Text(
 	scr,
 	"JumpPower",
-	"JumpPower: ...",
-	false,                 -- Active = false
-	255,120,120,           -- สีแดง
-	255,120,120,           -- Stroke สีแดง
-	nil,nil,nil,
-	function(txt)
-		if humanoid then
-			if humanoid.UseJumpPower then
-				txt.Text = "JumpPower: " .. tostring(math.floor(humanoid.JumpPower))
-			else
-				txt.Text = "JumpHeight: " .. tostring(math.floor(humanoid.JumpHeight))
-			end
-		else
-			txt.Text = "Jump: N/A"
-		end
-	end,
-	nil
+	"Jump: ...",
+	false,
+	255,120,120,
+	255,120,120
 )
+
+local function updateJump()
+	if not humanoid then return end
+	if humanoid.UseJumpPower then
+		jpText.Text = "JumpPower: " .. math.floor(humanoid.JumpPower)
+	else
+		jpText.Text = "JumpHeight: " .. math.floor(humanoid.JumpHeight)
+	end
+end
+
+task.spawn(function()
+	while not humanoid do task.wait() end
+	updateJump()
+	humanoid:GetPropertyChangedSignal("JumpPower"):Connect(updateJump)
+	humanoid:GetPropertyChangedSignal("JumpHeight"):Connect(updateJump)
+end)
 ------------------------------------------------
 -- CameraMode
 ------------------------------------------------
-Text(
+local camText = Text(
 	scr,
 	"CameraMode",
-	"CameraMode: Unknown",
+	"CameraMode: ...",
 	false,
 	255,255,255,
-	200,200,200,
-	nil,nil,nil,
-	function(txt)
-		local mode = lp.CameraMode
-		if mode == Enum.CameraMode.LockFirstPerson then
-			txt.Text = "CameraMode: FirstPerson (Locked)"
-		else
-			txt.Text = "CameraMode: Classic"
-		end
-	end,
-	nil
+	255,255,255
 )
-						
+
+local function updateCam()
+	camText.Text = "CameraMode: " .. tostring(lp.CameraMode)
+end
+
+updateCam()
+lp:GetPropertyChangedSignal("CameraMode"):Connect(updateCam)						
 ------------------------------------------------
 -- PlaceID
 ------------------------------------------------
@@ -618,111 +619,65 @@ Button(
 ------------------------------------------------
 -- Damage Tracker
 ------------------------------------------------
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
-
-local lastHealth = nil
-local bestDamage = 0
+local lastHealth
+local totalDamage = 0
 local lastDamage = 0
 
--- reset เมื่อ respawn
-local function hookHumanoid()
-	local char = lp.Character
-	if not char then return end
-
-	local hum = char:WaitForChild("Humanoid", 5)
-	if not hum then return end
-
-	lastHealth = hum.Health
-	bestDamage = 0
-	lastDamage = 0
-
-	hum.HealthChanged:Connect(function(newHealth)
-		if lastHealth then
-			local diff = lastHealth - newHealth
-			if diff > 0 then
-				lastDamage = math.floor(diff)
-				if diff > bestDamage then
-					bestDamage = math.floor(diff)
-				end
-			end
-		end
-		lastHealth = newHealth
-	end)
-end
-
-if lp.Character then hookHumanoid() end
-lp.CharacterAdded:Connect(hookHumanoid)
-
--- UI
-Text(
+local dmgText = Text(
 	scr,
-	"DamageInfo",
+	"Damage",
 	"BestDamage: 0 | LastDamage: 0",
 	false,
-	255,120,120,        -- Text (Red)
-	255,80,80,          -- Stroke (Red)
-	nil,nil,nil,
-	function(txt)
-		txt.Text = string.format(
-			"BestDamage: %d | LastDamage: %d",
-			bestDamage,
-			lastDamage
-		)
-	end,
-	nil
+	255,80,80,
+	255,80,80
 )
+
+local function onHealthChanged(hp)
+	if lastHealth and hp < lastHealth then
+		local dmg = math.floor(lastHealth - hp)
+		lastDamage = dmg
+		totalDamage += dmg
+
+		dmgText.Text =
+			"BestDamage: "..totalDamage.." | LastDamage: "..lastDamage
+	end
+	lastHealth = hp
+end
+
+task.spawn(function()
+	while not humanoid do task.wait() end
+	lastHealth = humanoid.Health
+	humanoid.HealthChanged:Connect(onHealthChanged)
+end)
 
 ------------------------------------------------
 -- Heal Tracker
 ------------------------------------------------
-local lastHealthH = nil
-local bestHeal = 0
+local totalHeal = 0
 local lastHeal = 0
 
-local function hookHealHumanoid()
-	local char = lp.Character
-	if not char then return end
-
-	local hum = char:WaitForChild("Humanoid", 5)
-	if not hum then return end
-
-	lastHealthH = hum.Health
-	bestHeal = 0
-	lastHeal = 0
-
-	hum.HealthChanged:Connect(function(newHealth)
-		if lastHealthH then
-			local diff = newHealth - lastHealthH
-			if diff > 0 then
-				lastHeal = math.floor(diff)
-				if diff > bestHeal then
-					bestHeal = math.floor(diff)
-				end
-			end
-		end
-		lastHealthH = newHealth
-	end)
-end
-
-if lp.Character then hookHealHumanoid() end
-lp.CharacterAdded:Connect(hookHealHumanoid)
-
--- UI
-Text(
+local healText = Text(
 	scr,
-	"HealInfo",
+	"Heal",
 	"BestHeal: 0 | LastHeal: 0",
 	false,
-	120,255,160,        -- Text (Green)
-	80,220,140,         -- Stroke (Green)
-	nil,nil,nil,
-	function(txt)
-		txt.Text = string.format(
-			"BestHeal: %d | LastHeal: %d",
-			bestHeal,
-			lastHeal
-		)
-	end,
-	nil
+	80,255,120,
+	80,255,120
 )
+
+local function onHealChanged(hp)
+	if lastHealth and hp > lastHealth then
+		local heal = math.floor(hp - lastHealth)
+		lastHeal = heal
+		totalHeal += heal
+
+		healText.Text =
+			"BestHeal: "..totalHeal.." | LastHeal: "..lastHeal
+	end
+	lastHealth = hp
+end
+
+task.spawn(function()
+	while not humanoid do task.wait() end
+	humanoid.HealthChanged:Connect(onHealChanged)
+end)
