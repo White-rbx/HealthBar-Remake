@@ -1,4 +1,4 @@
--- Script ahh 1.14
+-- Script ahh 1.145
 
 -- =====>> Saved Functions <<=====
 
@@ -299,16 +299,23 @@ local UserInputService = game:GetService("UserInputService")
 ------------------------------------------------
 -- AFK TIMER CORE
 ------------------------------------------------
+
 local lastInput = os.clock()
 
--- รีเซ็ต AFK เมื่อมี input
 local function resetAFK()
 	lastInput = os.clock()
 end
 
+-- กดปุ่ม = ไม่ AFK
 UserInputService.InputBegan:Connect(resetAFK)
-UserInputService.InputChanged:Connect(resetAFK)
 
+-- เปลี่ยน input แต่ "ไม่ใช่" การขยับเมาส์
+UserInputService.InputChanged:Connect(function(input)
+	if input.UserInputType ~= Enum.UserInputType.MouseMovement then
+		resetAFK()
+	end
+end)
+						
 local afkText = Text(
 	scr,
 	"AFKTime",
