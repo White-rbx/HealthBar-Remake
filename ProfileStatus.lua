@@ -1,4 +1,4 @@
--- Script ahh 1.21
+-- Script ahh 1.23
 
 -- =====>> Saved Functions <<=====
 
@@ -312,8 +312,9 @@ end
 lp.CharacterAdded:Connect(bindCharacter)
 						
 ------------------------------------------------
--- AFK TIMER CORE
+-- AFK TIMER (FIXED)
 ------------------------------------------------
+local UserInputService = game:GetService("UserInputService")
 
 local lastInput = os.clock()
 
@@ -321,32 +322,20 @@ local function resetAFK()
 	lastInput = os.clock()
 end
 
--- ⌨️ Keyboard / Mouse click
-UserInputService.InputBegan:Connect(function(input, gp)
-	if gp then return end
+-- ทุก input (รวมมือถือ)
+UserInputService.InputBegan:Connect(resetAFK)
+UserInputService.InputChanged:Connect(resetAFK)
 
-	local t = input.UserInputType
-
-	if t == Enum.UserInputType.Keyboard
-	or t == Enum.UserInputType.MouseButton1
-	or t == Enum.UserInputType.MouseButton2
-	or t == Enum.UserInputType.Gamepad1
-	or t == Enum.UserInputType.Touch then
-		resetAFK()
-	end
-end)
-						
-local afkText = Text(
+Text(
 	scr,
 	"AFKTime",
 	"AFK: 0 minute 0 second",
 	false,
-	255,255,255,        -- Text color
-	255,255,255,        -- Stroke start color
-	nil,nil,nil,        -- ✅ R1 G1 B1 (ข้าม)
-	function(txt)       -- ✅ Workin (ตำแหน่งถูกต้อง)
+	255,255,255,
+	255,255,255,
+	nil,nil,nil,
+	function(txt)
 		local afk = math.floor(os.clock() - lastInput)
-
 		local min = math.floor(afk / 60)
 		local sec = afk % 60
 
@@ -370,8 +359,7 @@ local afkText = Text(
 		else
 			stroke.Color = Color3.fromRGB(140,0,0)
 		end
-	end,
-	nil                 -- Function (ไม่ใช้)
+	end
 )
 						
 ------------------------------------------------
@@ -617,11 +605,15 @@ Button(
 )
 
 ------------------------------------------------
--- Damage Tracker
+-- DAMAGE & HEAL TRACKER (CORRECT LOGIC)
 ------------------------------------------------
-local lastHealth
 local totalDamage = 0
 local lastDamage = 0
+
+local totalHeal = 0
+local lastHeal = 0
+
+local previousHealth
 
 local dmgText = Text(
 	scr,
@@ -632,30 +624,6 @@ local dmgText = Text(
 	255,80,80
 )
 
-local function onHealthChanged(hp)
-	if lastHealth and hp < lastHealth then
-		local dmg = math.floor(lastHealth - hp)
-		lastDamage = dmg
-		totalDamage += dmg
-
-		dmgText.Text =
-			"BestDamage: "..totalDamage.." | LastDamage: "..lastDamage
-	end
-	lastHealth = hp
-end
-
-task.spawn(function()
-	while not humanoid do task.wait() end
-	lastHealth = humanoid.Health
-	humanoid.HealthChanged:Connect(onHealthChanged)
-end)
-
-------------------------------------------------
--- Heal Tracker
-------------------------------------------------
-local totalHeal = 0
-local lastHeal = 0
-
 local healText = Text(
 	scr,
 	"Heal",
@@ -665,19 +633,35 @@ local healText = Text(
 	80,255,120
 )
 
-local function onHealChanged(hp)
-	if lastHealth and hp > lastHealth then
-		local heal = math.floor(hp - lastHealth)
-		lastHeal = heal
-		totalHeal += heal
+local function bindHumanoid(humanoid)
+	previousHealth = humanoid.Health
 
-		healText.Text =
-			"BestHeal: "..totalHeal.." | LastHeal: "..lastHeal
-	end
-	lastHealth = hp
+	humanoid.HealthChanged:Connect(function(hp)
+		-- DAMAGE
+		if hp < previousHealth then
+			local dmg = math.floor(previousHealth - hp)
+			lastDamage = dmg
+			totalDamage += dmg
+
+			dmgText.Text =
+				"BestDamage: "..totalDamage.." | LastDamage: "..lastDamage
+
+		-- HEAL
+		elseif hp > previousHealth then
+			local heal = math.floor(hp - previousHealth)
+			lastHeal = heal
+			totalHeal += heal
+
+			healText.Text =
+				"BestHeal: "..totalHeal.." | LastHeal: "..lastHeal
+		end
+
+		previousHealth = hp
+	end)
 end
 
+-- bind character / respawn-safe
 task.spawn(function()
 	while not humanoid do task.wait() end
-	humanoid.HealthChanged:Connect(onHealChanged)
+	bindHumanoid(humanoid)
 end)
