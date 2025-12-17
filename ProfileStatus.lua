@@ -1,4 +1,4 @@
--- Script ahh 1.25
+-- Script ahh 1.26
 
 -- =====>> Saved Functions <<=====
 
@@ -314,6 +314,8 @@ lp.CharacterAdded:Connect(bindCharacter)
 ------------------------------------------------
 -- AFK CORE (Stable / Mobile-safe)
 ------------------------------------------------
+local UserInputService = game:GetService("UserInputService")
+
 local AFK = {}
 AFK.LastActivity = tick()
 
@@ -349,17 +351,18 @@ Text(
         local stroke = txt:FindFirstChildOfClass("UIStroke")
         if not stroke then return end
 
-        if sec < 300 then
+        if min < 5 then
             stroke.Color = Color3.fromRGB(255,255,255)
-        elseif sec < 600 then
-            stroke.Color = Color3.fromRGB(255,180,180)
-        elseif sec < 900 then
-            stroke.Color = Color3.fromRGB(255,120,120)
+        elseif min < 10 then
+            stroke.Color = Color3.fromRGB(255,190,190)
+        elseif min < 15 then
+            stroke.Color = Color3.fromRGB(255,110,110)
         else
             stroke.Color = Color3.fromRGB(200,0,0)
         end
     end
 )
+
 ------------------------------------------------
 -- PlayerID
 ------------------------------------------------
@@ -603,79 +606,85 @@ Button(
 )
 
 ------------------------------------------------
--- DAMAGE & HEAL TRACKER (CORRECT LOGIC)
-------------------------------------------------
-local totalDamage = 0
-local lastDamage = 0
-
-local totalHeal = 0
-local lastHeal = 0
-
-local previousHealth
-
-local dmgText = Text(
-	scr,
-	"Damage",
-	"BestDamage: 0 | LastDamage: 0",
-	false,
-	255,80,80,
-	255,80,80
-)
-
-local healText = Text(
-	scr,
-	"Heal",
-	"BestHeal: 0 | LastHeal: 0",
-	false,
-	80,255,120,
-	80,255,120
-)
-
-local function bindHumanoid(humanoid)
-	previousHealth = humanoid.Health
-
-	humanoid.HealthChanged:Connect(function(hp)
-		-- DAMAGE
-		if hp < previousHealth then
-			local dmg = math.floor(previousHealth - hp)
-			lastDamage = dmg
-			totalDamage += dmg
-
-			dmgText.Text =
-				"BestDamage: "..totalDamage.." | LastDamage: "..lastDamage
-
-		-- HEAL
-		elseif hp > previousHealth then
-			local heal = math.floor(hp - previousHealth)
-			lastHeal = heal
-			totalHeal += heal
-
-			healText.Text =
-				"BestHeal: "..totalHeal.." | LastHeal: "..lastHeal
-		end
-
-		previousHealth = hp
-	end)
-end
-
--- bind character / respawn-safe
-task.spawn(function()
-	while not humanoid do task.wait() end
-	bindHumanoid(humanoid)
-end)
-
-
-						------------------------------------------------
--- DEATHS CORE (Client / Real-time)
+-- DAMAGE & HEAL CORE (Respawn-safe)
 ------------------------------------------------
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 
-local Deaths = {
-    Count = 0
-}
+local totalDamage = 0
+local lastDamage = 0
+local totalHeal = 0
+local lastHeal = 0
 
-local function bindCharacter(char)
+local lastHealth
+local humanoid
+
+local function bindHumanoid(char)
+    humanoid = char:WaitForChild("Humanoid", 10)
+    if not humanoid then return end
+
+    lastHealth = humanoid.Health
+
+    humanoid.HealthChanged:Connect(function(hp)
+        if not lastHealth then
+            lastHealth = hp
+            return
+        end
+
+        if hp < lastHealth then
+            local dmg = math.floor(lastHealth - hp)
+            lastDamage = dmg
+            totalDamage += dmg
+
+        elseif hp > lastHealth then
+            local heal = math.floor(hp - lastHealth)
+            lastHeal = heal
+            totalHeal += heal
+        end
+
+        lastHealth = hp
+    end)
+end
+
+if lp.Character then
+    bindHumanoid(lp.Character)
+end
+lp.CharacterAdded:Connect(bindHumanoid)
+
+Text(
+    scr,
+    "Damage",
+    "BestDamage: 0 | LastDamage: 0",
+    false,
+    255,80,80,
+    255,80,80,
+    nil,nil,nil,
+    function(txt)
+        txt.Text =
+            "AllDamage: "..totalDamage.." | LastDamage: "..lastDamage
+    end
+)
+
+Text(
+    scr,
+    "Heal",
+    "BestHeal: 0 | LastHeal: 0",
+    false,
+    80,255,120,
+    80,255,120,
+    nil,nil,nil,
+    function(txt)
+        txt.Text =
+            "AllHeal: "..totalHeal.." | LastHeal: "..lastHeal
+    end
+)
+
+------------------------------------------------
+-- DEATHS CORE (Client / Respawn-safe)
+------------------------------------------------
+local Deaths = { Count = 0 }
+
+local function bindDeath(char)
     local hum = char:WaitForChild("Humanoid", 10)
     if not hum then return end
 
@@ -684,26 +693,20 @@ local function bindCharacter(char)
     end)
 end
 
--- bind ปัจจุบัน
 if lp.Character then
-    bindCharacter(lp.Character)
+    bindDeath(lp.Character)
 end
+lp.CharacterAdded:Connect(bindDeath)
 
--- bind ตอนเกิดใหม่
-lp.CharacterAdded:Connect(bindCharacter)
-
-------------------------------------------------
--- DEATHS TEXT
-------------------------------------------------
 Text(
     scr,
     "Deaths",
     "Deaths: 0",
-    false,              -- Active = false
-    255,80,80,          -- Text color (Red)
-    255,80,80,          -- Stroke color (Red)
+    false,
+    255,80,80,
+    255,80,80,
     nil,nil,nil,
-    function(txt)       -- Workin (Real-time)
-        txt.Text = "Deaths: " .. tostring(Deaths.Count)
+    function(txt)
+        txt.Text = "Deaths: "..Deaths.Count
     end
 )
