@@ -1,4 +1,4 @@
--- Script ahh 1.145
+-- Script ahh 1.15
 
 -- =====>> Saved Functions <<=====
 
@@ -285,8 +285,6 @@ task.spawn(function()
 end)
 -- Load Username
 
-Text(scr, "Soon", "More soon!")
-
 task.spawn(function()
     local lp = Players.LocalPlayer
     local display = lp.DisplayName or lp.Name
@@ -306,12 +304,17 @@ local function resetAFK()
 	lastInput = os.clock()
 end
 
--- กดปุ่ม = ไม่ AFK
-UserInputService.InputBegan:Connect(resetAFK)
+-- ⌨️ Keyboard / Mouse click
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
 
--- เปลี่ยน input แต่ "ไม่ใช่" การขยับเมาส์
-UserInputService.InputChanged:Connect(function(input)
-	if input.UserInputType ~= Enum.UserInputType.MouseMovement then
+	local t = input.UserInputType
+
+	if t == Enum.UserInputType.Keyboard
+	or t == Enum.UserInputType.MouseButton1
+	or t == Enum.UserInputType.MouseButton2
+	or t == Enum.UserInputType.Gamepad1
+	or t == Enum.UserInputType.Touch then
 		resetAFK()
 	end
 end)
@@ -394,6 +397,88 @@ Button(
 					stroke.Color = Color3.fromRGB(180,180,255)
 				end
 			end)
+		end
+	end
+)
+
+						Button(
+	scr,
+	"PlayerAge",
+	"PlayerAge: Getting API...",
+	true,                 -- Active
+	255,255,255,          -- Text color
+	200,200,255,          -- Stroke color
+	function(btn)         -- Workin
+		if lp then
+			btn.Text = "PlayerAge: " .. tostring(lp.AccountAge) .. " day"
+		end
+	end,
+	function(btn)         -- Callback (Copy)
+		local age = tostring(lp.AccountAge)
+
+		if setclipboard then
+			setclipboard(age)
+		elseif toclipboard then
+			toclipboard(age)
+		elseif syn and syn.set_clipboard then
+			syn.set_clipboard(age)
+		end
+	end
+)
+
+Button(
+	scr,
+	"PlayerBirth",
+	"PlayerBirth: Calculating...",
+	true,
+	255,255,255,
+	200,255,200,
+	function(btn) -- Workin
+		if not lp then return end
+
+		local ageDays = lp.AccountAge
+		local now = os.time()
+		local birth = now - (ageDays * 86400)
+
+		local d = os.date("*t", birth)
+		local text = string.format(
+			"PlayerBirth: %02d/%02d/%04d",
+			d.day, d.month, d.year
+		)
+
+		btn.Text = text
+	end,
+	function(btn) -- Copy
+		local ageDays = lp.AccountAge
+		local birth = os.time() - (ageDays * 86400)
+		local d = os.date("*t", birth)
+
+		local copyText = string.format(
+			"%02d/%02d/%04d",
+			d.day, d.month, d.year
+		)
+
+		if setclipboard then
+			setclipboard(copyText)
+		elseif toclipboard then
+			toclipboard(copyText)
+		elseif syn and syn.set_clipboard then
+			syn.set_clipboard(copyText)
+		end
+	end
+)
+
+Text(
+	scr,
+	"CameraMode",
+	"CameraMode: Getting...",
+	false,                -- ❌ Active = false
+	255,255,255,          -- Text color
+	180,180,180,          -- Stroke color
+	nil,nil,nil,
+	function(txt)         -- Workin
+		if lp then
+			txt.Text = "CameraMode: " .. tostring(lp.CameraMode)
 		end
 	end
 )
