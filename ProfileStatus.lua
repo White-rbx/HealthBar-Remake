@@ -1,4 +1,4 @@
--- Script ahh 1.11
+-- Script ahh 1.12
 
 -- =====>> Saved Functions <<=====
 
@@ -285,7 +285,7 @@ task.spawn(function()
 end)
 -- Load Username
 
-Text(scr, "Soon", "Working in progress. Please wait for the next update!")
+Text(scr, "Soon", "More soon!")
 
 task.spawn(function()
     local lp = Players.LocalPlayer
@@ -294,3 +294,68 @@ task.spawn(function()
     user.Text = tostring(display) .. " (@" .. tostring(real) .. ")"
 end)
 
+local UserInputService = game:GetService("UserInputService")
+
+------------------------------------------------
+-- AFK TIMER CORE
+------------------------------------------------
+local lastInput = os.clock()
+
+-- รีเซ็ต AFK เมื่อมี input
+local function resetAFK()
+	lastInput = os.clock()
+end
+
+UserInputService.InputBegan:Connect(resetAFK)
+UserInputService.InputChanged:Connect(resetAFK)
+
+------------------------------------------------
+-- AFK TEXT
+------------------------------------------------
+Text(
+	scr,
+	"AFKTime",
+	"AFK: 0 minute 0 second",
+	false, -- Active = false
+	255,255,255, -- Text color (คงที่)
+	255,255,255, -- Stroke เริ่มต้น
+	nil,
+	function(txt) -- Workin
+		local afk = math.floor(os.clock() - lastInput)
+
+		local min = math.floor(afk / 60)
+		local sec = afk % 60
+
+		txt.Text = string.format("AFK: %d minute %d second", min, sec)
+
+		------------------------------------------------
+		-- COLOR REACTION (Stroke)
+		------------------------------------------------
+		local stroke = txt:FindFirstChildOfClass("UIStroke")
+		if not stroke then return end
+
+		-- 1–5 minutes → White
+		if min < 5 then
+			stroke.Color = Color3.fromRGB(255,255,255)
+
+		-- 5–10 → White red (pink)
+		elseif min < 10 then
+			stroke.Color = Color3.fromRGB(255,180,180)
+
+		-- 13–15 → Almost red
+		elseif min < 15 then
+			stroke.Color = Color3.fromRGB(255,120,120)
+
+		-- 15–17 → Red
+		elseif min < 17 then
+			stroke.Color = Color3.fromRGB(255,60,60)
+
+		-- 17–19.50 → REALLY RED
+		elseif min < 19 or (min == 19 and sec <= 30) then
+			stroke.Color = Color3.fromRGB(200,0,0)
+
+		else
+			stroke.Color = Color3.fromRGB(150,0,0)
+		end
+	end
+)
