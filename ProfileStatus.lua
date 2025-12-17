@@ -1,4 +1,4 @@
--- Script ahh 1.23
+-- Script ahh 1.25
 
 -- =====>> Saved Functions <<=====
 
@@ -312,56 +312,54 @@ end
 lp.CharacterAdded:Connect(bindCharacter)
 						
 ------------------------------------------------
--- AFK TIMER (FIXED)
+-- AFK CORE (Stable / Mobile-safe)
 ------------------------------------------------
-local UserInputService = game:GetService("UserInputService")
+local AFK = {}
+AFK.LastActivity = tick()
 
-local lastInput = os.clock()
-
-local function resetAFK()
-	lastInput = os.clock()
+function AFK.Mark()
+    AFK.LastActivity = tick()
 end
 
--- ทุก input (รวมมือถือ)
-UserInputService.InputBegan:Connect(resetAFK)
-UserInputService.InputChanged:Connect(resetAFK)
+UserInputService.InputBegan:Connect(AFK.Mark)
+UserInputService.InputChanged:Connect(AFK.Mark)
+UserInputService.InputEnded:Connect(AFK.Mark)
+
+function AFK.GetSeconds()
+    return math.floor(tick() - AFK.LastActivity)
+end
 
 Text(
-	scr,
-	"AFKTime",
-	"AFK: 0 minute 0 second",
-	false,
-	255,255,255,
-	255,255,255,
-	nil,nil,nil,
-	function(txt)
-		local afk = math.floor(os.clock() - lastInput)
-		local min = math.floor(afk / 60)
-		local sec = afk % 60
+    scr,
+    "AFKTime",
+    "AFK: 0 sec (0 min)",
+    false,
+    255,255,255,
+    255,255,255,
+    nil,nil,nil,
+    function(txt)
+        local sec = AFK.GetSeconds()
+        local min = math.floor(sec / 60)
 
-		txt.Text = string.format("AFK: %d minute %d second", min, sec)
+        txt.Text = string.format(
+            "AFK: %d sec (%d min)",
+            sec, min
+        )
 
-		local stroke = txt:FindFirstChildOfClass("UIStroke")
-		if not stroke then return end
+        local stroke = txt:FindFirstChildOfClass("UIStroke")
+        if not stroke then return end
 
-		if min < 5 then
-			stroke.Color = Color3.fromRGB(255,255,255)
-		elseif min < 10 then
-			stroke.Color = Color3.fromRGB(255,190,190)
-		elseif min < 13 then
-			stroke.Color = Color3.fromRGB(255,150,150)
-		elseif min < 15 then
-			stroke.Color = Color3.fromRGB(255,110,110)
-		elseif min < 17 then
-			stroke.Color = Color3.fromRGB(255,60,60)
-		elseif min < 19 or (min == 19 and sec <= 30) then
-			stroke.Color = Color3.fromRGB(200,0,0)
-		else
-			stroke.Color = Color3.fromRGB(140,0,0)
-		end
-	end
+        if sec < 300 then
+            stroke.Color = Color3.fromRGB(255,255,255)
+        elseif sec < 600 then
+            stroke.Color = Color3.fromRGB(255,180,180)
+        elseif sec < 900 then
+            stroke.Color = Color3.fromRGB(255,120,120)
+        else
+            stroke.Color = Color3.fromRGB(200,0,0)
+        end
+    end
 )
-						
 ------------------------------------------------
 -- PlayerID
 ------------------------------------------------
@@ -665,3 +663,47 @@ task.spawn(function()
 	while not humanoid do task.wait() end
 	bindHumanoid(humanoid)
 end)
+
+
+						------------------------------------------------
+-- DEATHS CORE (Client / Real-time)
+------------------------------------------------
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+local Deaths = {
+    Count = 0
+}
+
+local function bindCharacter(char)
+    local hum = char:WaitForChild("Humanoid", 10)
+    if not hum then return end
+
+    hum.Died:Connect(function()
+        Deaths.Count += 1
+    end)
+end
+
+-- bind ปัจจุบัน
+if lp.Character then
+    bindCharacter(lp.Character)
+end
+
+-- bind ตอนเกิดใหม่
+lp.CharacterAdded:Connect(bindCharacter)
+
+------------------------------------------------
+-- DEATHS TEXT
+------------------------------------------------
+Text(
+    scr,
+    "Deaths",
+    "Deaths: 0",
+    false,              -- Active = false
+    255,80,80,          -- Text color (Red)
+    255,80,80,          -- Stroke color (Red)
+    nil,nil,nil,
+    function(txt)       -- Workin (Real-time)
+        txt.Text = "Deaths: " .. tostring(Deaths.Count)
+    end
+)
