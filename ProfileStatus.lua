@@ -1,4 +1,4 @@
--- Script ahh 1.26
+-- Script ahh 1.265
 
 -- =====>> Saved Functions <<=====
 
@@ -292,6 +292,8 @@ task.spawn(function()
     user.Text = tostring(display) .. " (@" .. tostring(real) .. ")"
 end)
 
+
+Text(scr, "Beta", "It might have bug and it still in beta.", false, 255, 131, 131, 255, 0, 0)
 --===================--
 local UserInputService = game:GetService("UserInputService")
 
