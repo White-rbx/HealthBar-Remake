@@ -1,4 +1,4 @@
--- Script ahh 1.12
+-- Script ahh 1.14
 
 -- =====>> Saved Functions <<=====
 
@@ -194,6 +194,8 @@ scr.Parent = pchar
 ListLayout(scr, 0, 5, HCenter, VTop, SLayout, FillV)
 
 -- [ function Text ]
+local TextExtraFunction = {}
+
 local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Workin, Function)
     local txt = Instance.new("TextLabel")
     txt.Name = tostring(Name)
@@ -208,7 +210,7 @@ local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Work
     Corner(0, 8, txt)
     Stroke(txt, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
 
-    -- Workin loop (ไม่มี debug)
+    -- Workin loop (สคริปต์หลัก)
     if typeof(Workin) == "function" then
         task.spawn(function()
             while txt.Parent do
@@ -218,16 +220,14 @@ local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Work
         end)
     end
 
-    -- Manual function
+    -- Function เสริม (เก็บแยก)
     if typeof(Function) == "function" then
-        txt.Function = function(...)
-            return Function(txt, ...)
-        end
+        TextExtraFunction[txt] = Function
     end
 
     return txt
 end
-
+			
 -- [ pro.pchar.scr.woof ]
 local wf = Instance.new("Frame")
 wf.Name = "There's nothing woof!"
@@ -309,18 +309,15 @@ end
 UserInputService.InputBegan:Connect(resetAFK)
 UserInputService.InputChanged:Connect(resetAFK)
 
-------------------------------------------------
--- AFK TEXT
-------------------------------------------------
-Text(
+local afkText = Text(
 	scr,
 	"AFKTime",
 	"AFK: 0 minute 0 second",
-	false, -- Active = false
-	255,255,255, -- Text color (คงที่)
-	255,255,255, -- Stroke เริ่มต้น
-	nil,
-	function(txt) -- Workin
+	false,
+	255,255,255,        -- Text color
+	255,255,255,        -- Stroke start color
+	nil,nil,nil,        -- ✅ R1 G1 B1 (ข้าม)
+	function(txt)       -- ✅ Workin (ตำแหน่งถูกต้อง)
 		local afk = math.floor(os.clock() - lastInput)
 
 		local min = math.floor(afk / 60)
@@ -328,34 +325,68 @@ Text(
 
 		txt.Text = string.format("AFK: %d minute %d second", min, sec)
 
-		------------------------------------------------
-		-- COLOR REACTION (Stroke)
-		------------------------------------------------
 		local stroke = txt:FindFirstChildOfClass("UIStroke")
 		if not stroke then return end
 
-		-- 1–5 minutes → White
 		if min < 5 then
 			stroke.Color = Color3.fromRGB(255,255,255)
-
-		-- 5–10 → White red (pink)
 		elseif min < 10 then
-			stroke.Color = Color3.fromRGB(255,180,180)
-
-		-- 13–15 → Almost red
+			stroke.Color = Color3.fromRGB(255,190,190)
+		elseif min < 13 then
+			stroke.Color = Color3.fromRGB(255,150,150)
 		elseif min < 15 then
-			stroke.Color = Color3.fromRGB(255,120,120)
-
-		-- 15–17 → Red
+			stroke.Color = Color3.fromRGB(255,110,110)
 		elseif min < 17 then
 			stroke.Color = Color3.fromRGB(255,60,60)
-
-		-- 17–19.50 → REALLY RED
 		elseif min < 19 or (min == 19 and sec <= 30) then
 			stroke.Color = Color3.fromRGB(200,0,0)
-
 		else
-			stroke.Color = Color3.fromRGB(150,0,0)
+			stroke.Color = Color3.fromRGB(140,0,0)
+		end
+	end,
+	nil                 -- Function (ไม่ใช้)
+)
+						
+------------------------------------------------
+-- PlayerID
+------------------------------------------------
+
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+Button(
+	scr,
+	"PlayerID",
+	"PlayerID: Getting API...",
+	true,
+	255,255,255,        -- Text color
+	180,180,255,        -- Stroke color
+	function(btn)       -- Workin
+		if lp and lp.UserId then
+			btn.Text = "PlayerID: " .. tostring(lp.UserId)
+		end
+	end,
+	function(btn)       -- Callback (คลิก)
+		local id = tostring(lp.UserId)
+
+		-- Copy (รองรับหลาย executor)
+		if setclipboard then
+			setclipboard(id)
+		elseif toclipboard then
+			toclipboard(id)
+		elseif syn and syn.set_clipboard then
+			syn.set_clipboard(id)
+		end
+
+		-- Feedback
+		local stroke = btn:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Color = Color3.fromRGB(0,255,150)
+			task.delay(0.4, function()
+				if stroke then
+					stroke.Color = Color3.fromRGB(180,180,255)
+				end
+			end)
 		end
 	end
 )
