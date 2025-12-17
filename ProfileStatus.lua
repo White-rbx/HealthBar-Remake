@@ -1,4 +1,4 @@
--- Script ahh 1.15
+-- Script ahh 1.19
 
 -- =====>> Saved Functions <<=====
 
@@ -468,17 +468,249 @@ Button(
 	end
 )
 
+------------------------------------------------
+-- WalkSpeed
+------------------------------------------------
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+Text(
+	scr,
+	"WalkSpeed",
+	"WalkSpeed: 0",
+	false,
+	120,180,255,          -- Text (Blue)
+	120,180,255,          -- Stroke (Blue)
+	nil,nil,nil,
+	function(txt)
+		local char = lp.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			txt.Text = "WalkSpeed: " .. math.floor(hum.WalkSpeed)
+		end
+	end,
+	nil
+)
+
+------------------------------------------------
+-- JumpPower
+------------------------------------------------
+Text(
+	scr,
+	"JumpPower",
+	"JumpPower: 0",
+	false,
+	255,120,120,          -- Text (Red)
+	255,120,120,          -- Stroke (Red)
+	nil,nil,nil,
+	function(txt)
+		local char = lp.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			if hum.UseJumpPower then
+				txt.Text = "JumpPower: " .. math.floor(hum.JumpPower)
+			else
+				txt.Text = "JumpHeight: " .. string.format("%.1f", hum.JumpHeight)
+			end
+		end
+	end,
+	nil
+)
+
+------------------------------------------------
+-- CameraMode (Player Property)
+------------------------------------------------
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
 Text(
 	scr,
 	"CameraMode",
 	"CameraMode: Getting...",
-	false,                -- ❌ Active = false
-	255,255,255,          -- Text color
-	180,180,180,          -- Stroke color
-	nil,nil,nil,
-	function(txt)         -- Workin
+	false,                 -- Active = false
+	255,255,255,           -- Text color
+	180,180,180,           -- Stroke color
+	nil,nil,nil,           -- ไม่ใช้สีเพิ่ม
+	function(txt)          -- Workin
 		if lp then
 			txt.Text = "CameraMode: " .. tostring(lp.CameraMode)
 		end
+	end,
+	nil                    -- Function (ไม่ใช้)
+)
+
+------------------------------------------------
+-- PlaceID
+------------------------------------------------
+Button(
+	scr,
+	"PlaceID",
+	"PlaceID: Getting...",
+	true,
+	255,255,255,
+	180,180,255,
+	function(btn)
+		btn.Text = "PlaceID: " .. tostring(game.PlaceId)
+	end,
+	function(btn)
+		local id = tostring(game.PlaceId)
+		if setclipboard then setclipboard(id)
+		elseif toclipboard then toclipboard(id)
+		elseif syn and syn.set_clipboard then syn.set_clipboard(id) end
 	end
+)
+
+------------------------------------------------
+-- CreatorName
+------------------------------------------------
+Button(
+	scr,
+	"CreatorName",
+	"Creator: Getting...",
+	true,
+	255,255,255,
+	255,220,150,
+	function(btn)
+		local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+		local name = info.Creator.Name
+		btn.Text = "Creator: " .. name .. " (@" .. name .. ")"
+	end,
+	function(btn)
+		local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+		if setclipboard then setclipboard(info.Creator.Name) end
+	end
+)
+
+------------------------------------------------
+-- CreatorID
+------------------------------------------------
+Button(
+	scr,
+	"CreatorID",
+	"CreatorID: Getting...",
+	true,
+	255,255,255,
+	255,200,200,
+	function(btn)
+		local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+		btn.Text = "CreatorID: " .. tostring(info.Creator.CreatorTargetId)
+	end,
+	function(btn)
+		local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+		if setclipboard then
+			setclipboard(tostring(info.Creator.CreatorTargetId))
+		end
+	end
+)
+
+------------------------------------------------
+-- Damage Tracker
+------------------------------------------------
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+local lastHealth = nil
+local bestDamage = 0
+local lastDamage = 0
+
+-- reset เมื่อ respawn
+local function hookHumanoid()
+	local char = lp.Character
+	if not char then return end
+
+	local hum = char:WaitForChild("Humanoid", 5)
+	if not hum then return end
+
+	lastHealth = hum.Health
+	bestDamage = 0
+	lastDamage = 0
+
+	hum.HealthChanged:Connect(function(newHealth)
+		if lastHealth then
+			local diff = lastHealth - newHealth
+			if diff > 0 then
+				lastDamage = math.floor(diff)
+				if diff > bestDamage then
+					bestDamage = math.floor(diff)
+				end
+			end
+		end
+		lastHealth = newHealth
+	end)
+end
+
+if lp.Character then hookHumanoid() end
+lp.CharacterAdded:Connect(hookHumanoid)
+
+-- UI
+Text(
+	scr,
+	"DamageInfo",
+	"BestDamage: 0 | LastDamage: 0",
+	false,
+	255,120,120,        -- Text (Red)
+	255,80,80,          -- Stroke (Red)
+	nil,nil,nil,
+	function(txt)
+		txt.Text = string.format(
+			"BestDamage: %d | LastDamage: %d",
+			bestDamage,
+			lastDamage
+		)
+	end,
+	nil
+)
+
+------------------------------------------------
+-- Heal Tracker
+------------------------------------------------
+local lastHealthH = nil
+local bestHeal = 0
+local lastHeal = 0
+
+local function hookHealHumanoid()
+	local char = lp.Character
+	if not char then return end
+
+	local hum = char:WaitForChild("Humanoid", 5)
+	if not hum then return end
+
+	lastHealthH = hum.Health
+	bestHeal = 0
+	lastHeal = 0
+
+	hum.HealthChanged:Connect(function(newHealth)
+		if lastHealthH then
+			local diff = newHealth - lastHealthH
+			if diff > 0 then
+				lastHeal = math.floor(diff)
+				if diff > bestHeal then
+					bestHeal = math.floor(diff)
+				end
+			end
+		end
+		lastHealthH = newHealth
+	end)
+end
+
+if lp.Character then hookHealHumanoid() end
+lp.CharacterAdded:Connect(hookHealHumanoid)
+
+-- UI
+Text(
+	scr,
+	"HealInfo",
+	"BestHeal: 0 | LastHeal: 0",
+	false,
+	120,255,160,        -- Text (Green)
+	80,220,140,         -- Stroke (Green)
+	nil,nil,nil,
+	function(txt)
+		txt.Text = string.format(
+			"BestHeal: %d | LastHeal: %d",
+			bestHeal,
+			lastHeal
+		)
+	end,
+	nil
 )
