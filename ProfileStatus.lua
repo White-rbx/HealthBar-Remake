@@ -1,4 +1,4 @@
--- Script ahh 1.19
+-- Script ahh 1.20
 
 -- =====>> Saved Functions <<=====
 
@@ -187,7 +187,7 @@ scr.Name = "Scroll"
 scr.Size = UDim2.new(1,0,0.79,0)
 scr.Position = UDim2.new(0,0,0.21,0)
 scr.CanvasSize = UDim2.new(0,0,5000,0)
-scr.ScrollingDirection = Enum.ScrollingDirection.X
+scr.ScrollingDirection = Enum.ScrollingDirection.Y
 scr.ScrollBarThickness = 0
 scr.BackgroundTransparency = 1
 scr.Parent = pchar
@@ -293,6 +293,24 @@ task.spawn(function()
 end)
 
 local UserInputService = game:GetService("UserInputService")
+
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+local humanoid = nil
+
+local function hookCharacter(char)
+	if not char then return end
+	humanoid = char:WaitForChild("Humanoid", 10)
+end
+
+-- ครั้งแรก
+if lp.Character then
+	hookCharacter(lp.Character)
+end
+
+-- ทุกครั้งที่เกิดใหม่
+lp.CharacterAdded:Connect(hookCharacter)
 
 ------------------------------------------------
 -- AFK TIMER CORE
@@ -467,78 +485,72 @@ Button(
 		end
 	end
 )
-
 ------------------------------------------------
 -- WalkSpeed
 ------------------------------------------------
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
-
 Text(
 	scr,
 	"WalkSpeed",
-	"WalkSpeed: 0",
-	false,
-	120,180,255,          -- Text (Blue)
-	120,180,255,          -- Stroke (Blue)
+	"WalkSpeed: ...",
+	false,                 -- Active = false
+	120,180,255,           -- สีฟ้า
+	120,180,255,           -- Stroke สีฟ้า
 	nil,nil,nil,
 	function(txt)
-		local char = lp.Character
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			txt.Text = "WalkSpeed: " .. math.floor(hum.WalkSpeed)
+		if humanoid then
+			txt.Text = "WalkSpeed: " .. tostring(math.floor(humanoid.WalkSpeed))
+		else
+			txt.Text = "WalkSpeed: N/A"
 		end
 	end,
 	nil
 )
-
 ------------------------------------------------
 -- JumpPower
 ------------------------------------------------
 Text(
 	scr,
 	"JumpPower",
-	"JumpPower: 0",
-	false,
-	255,120,120,          -- Text (Red)
-	255,120,120,          -- Stroke (Red)
+	"JumpPower: ...",
+	false,                 -- Active = false
+	255,120,120,           -- สีแดง
+	255,120,120,           -- Stroke สีแดง
 	nil,nil,nil,
 	function(txt)
-		local char = lp.Character
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			if hum.UseJumpPower then
-				txt.Text = "JumpPower: " .. math.floor(hum.JumpPower)
+		if humanoid then
+			if humanoid.UseJumpPower then
+				txt.Text = "JumpPower: " .. tostring(math.floor(humanoid.JumpPower))
 			else
-				txt.Text = "JumpHeight: " .. string.format("%.1f", hum.JumpHeight)
+				txt.Text = "JumpHeight: " .. tostring(math.floor(humanoid.JumpHeight))
 			end
+		else
+			txt.Text = "Jump: N/A"
 		end
 	end,
 	nil
 )
-
 ------------------------------------------------
--- CameraMode (Player Property)
+-- CameraMode
 ------------------------------------------------
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
-
 Text(
 	scr,
 	"CameraMode",
-	"CameraMode: Getting...",
-	false,                 -- Active = false
-	255,255,255,           -- Text color
-	180,180,180,           -- Stroke color
-	nil,nil,nil,           -- ไม่ใช้สีเพิ่ม
-	function(txt)          -- Workin
-		if lp then
-			txt.Text = "CameraMode: " .. tostring(lp.CameraMode)
+	"CameraMode: Unknown",
+	false,
+	255,255,255,
+	200,200,200,
+	nil,nil,nil,
+	function(txt)
+		local mode = lp.CameraMode
+		if mode == Enum.CameraMode.LockFirstPerson then
+			txt.Text = "CameraMode: FirstPerson (Locked)"
+		else
+			txt.Text = "CameraMode: Classic"
 		end
 	end,
-	nil                    -- Function (ไม่ใช้)
+	nil
 )
-
+						
 ------------------------------------------------
 -- PlaceID
 ------------------------------------------------
