@@ -1,4 +1,4 @@
--- Script ahh 1.269
+-- Script ahh 1.2695
 
 -- =====>> Saved Functions <<=====
 
@@ -296,29 +296,18 @@ end)
 Text(scr, "Beta", "It might have bug and it still in beta.", false, 255, 131, 131, 255, 0, 0)
 --===================--
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
 local lp = Players.LocalPlayer
 
 local Character = nil
 local Humanoid = nil
 
-local function ResolveHumanoid()
-	if Character then
-		local h = Character:FindFirstChildOfClass("Humanoid")
-		if h then
-			Humanoid = h
-		end
-	end
-end
-
 local function BindCharacter(char)
 	Character = char
 	Humanoid = nil
 
-	-- รอ Root ก่อน (สำคัญ)
+	-- รอ Root ให้ชัวร์ (มือถือสำคัญมาก)
 	char:WaitForChild("HumanoidRootPart", 10)
-	ResolveHumanoid()
+	Humanoid = char:WaitForChild("Humanoid", 10)
 end
 
 if lp.Character then
@@ -326,14 +315,7 @@ if lp.Character then
 end
 
 lp.CharacterAdded:Connect(BindCharacter)
-
--- กันกรณี Humanoid ถูก replace
-RunService.Heartbeat:Connect(function()
-	if Character and (not Humanoid or not Humanoid.Parent) then
-		ResolveHumanoid()
-	end
-end)
-						
+                        
 ------------------------------------------------
 -- PlayerID
 ------------------------------------------------
@@ -526,94 +508,232 @@ Button(
 	end
 )
 
-Text(
-	scr,
-	"WalkSpeed",
-	"Walkspeed: --",
-	false,
-	120,180,255,
-	120,180,255,
-	nil,nil,nil,
-	function(txt)
-		if Humanoid then
-			txt.Text = "Walkspeed: "..Humanoid.WalkSpeed
-		else
-			txt.Text = "Walkspeed: --"
-		end
-	end
-)
-
-Text(
-	scr,
-	"JumpPower",
-	"Jumppower: --",
-	false,
-	255,120,120,
-	255,120,120,
-	nil,nil,nil,
-	function(txt)
-		if Humanoid then
-			txt.Text = "Jumppower: "..Humanoid.JumpPower
-		else
-			txt.Text = "Jumppower: --"
-		end
-	end
-)
-
-local deaths = 0
-local wasAlive = true
-
-game:GetService("RunService").Heartbeat:Connect(function()
-	if Humanoid then
-		if Humanoid.Health <= 0 and wasAlive then
-			deaths += 1
-			wasAlive = false
-		elseif Humanoid.Health > 0 then
-			wasAlive = true
-		end
-	end
-end)
-
-Text(
-	scr,
-	"Deaths",
-	"Deaths: 0",
-	false,
-	255,80,80,
-	255,80,80,
-	nil,nil,nil,
-	function(txt)
-		txt.Text = "Deaths: "..deaths
-	end
-)
-
+-- ===== ProfileStatus runtime helpers (paste after your Text/Button + scr setup) =====
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local AFK = {}
-AFK.LastInput = tick()
+local lp = Players.LocalPlayer
 
-local function MarkActivity()
-	AFK.LastInput = tick()
+local debugMode = true -- false to quiet prints
+
+-- state
+local CurrentCharacter = nil
+local CurrentHumanoid = nil
+local CurrentHRP = nil
+
+-- trackers
+local lastHealth = nil
+local totalDamage = 0
+local lastDamage = 0
+local totalHeal = 0
+local lastHeal = 0
+local deathsCount = 0
+
+-- AFK
+local lastActivity = tick()
+local function markActivity() lastActivity = tick() end
+UserInputService.InputBegan:Connect(function(...) markActivity() end)
+UserInputService.InputChanged:Connect(function(...) markActivity() end)
+UserInputService.InputEnded:Connect(function(...) markActivity() end)
+
+-- utility safe call
+local function safe(fn, ...)
+    local ok, err = pcall(fn, ...)
+    if not ok and debugMode then warn("[ProfileStatus] error:", err) end
+    return ok, err
 end
 
-UserInputService.InputBegan:Connect(MarkActivity)
-UserInputService.InputChanged:Connect(MarkActivity)
-UserInputService.InputEnded:Connect(MarkActivity)
+-- UI Text elements (expects your Text() function + scr exist)
+-- create or reuse: AFK (MM:SS), Walkspeed, Jumppower, Damage, Heal, Deaths
+local afkLabel = Text(scr, "AFKTime", "AFK: 00:00", false, 255,255,255, 255,255,255, nil)
+local wsLabel  = Text(scr, "WalkSpeed", "WalkSpeed: -", false, 160,200,255, 180,180,255, nil)
+local jpLabel  = Text(scr, "JumpPower", "JumpPower: -", false, 255,150,150, 255,150,150, nil)
+local dmgLabel = Text(scr, "Damage", "BestDamage: 0 | LastDamage: 0", false, 255,80,80, 255,80,80, nil)
+local healLabel= Text(scr, "Heal", "BestHeal: 0 | LastHeal: 0", false, 80,255,120, 80,255,120, nil)
+local deathLabel = Text(scr, "Deaths", "Deaths: 0", false, 255,80,80, 255,80,80, nil)
 
+-- update UI helpers
+local function updateWalkJump()
+    if CurrentHumanoid then
+        local ws = CurrentHumanoid.WalkSpeed or 0
+        local jp = nil
+        if CurrentHumanoid.UseJumpPower then
+            jp = CurrentHumanoid.JumpPower
+        else
+            jp = CurrentHumanoid.JumpHeight
+        end
+        safe(function() wsLabel.Text = "WalkSpeed: "..tostring(ws) end)
+        safe(function() jpLabel.Text = "JumpPower: "..tostring(jp) end)
+    else
+        safe(function() wsLabel.Text = "WalkSpeed: -" end)
+        safe(function() jpLabel.Text = "JumpPower: -" end)
+    end
+end
+
+-- health change handlers
+local function onHealthChanged(hp)
+    if lastHealth == nil then lastHealth = hp; return end
+
+    if hp < lastHealth then
+        local dmg = math.floor(lastHealth - hp)
+        lastDamage = dmg
+        totalDamage = totalDamage + dmg
+        dmgLabel.Text = "BestDamage: "..tostring(totalDamage).." | LastDamage: "..tostring(lastDamage)
+        if debugMode then print("[ProfileStatus] damage", dmg, "total", totalDamage) end
+    elseif hp > lastHealth then
+        local heal = math.floor(hp - lastHealth)
+        lastHeal = heal
+        totalHeal = totalHeal + heal
+        healLabel.Text = "BestHeal: "..tostring(totalHeal).." | LastHeal: "..tostring(lastHeal)
+        if debugMode then print("[ProfileStatus] heal", heal, "total", totalHeal) end
+    end
+
+    lastHealth = hp
+end
+
+local function onDied()
+    deathsCount = deathsCount + 1
+    deathLabel.Text = "Deaths: "..tostring(deathsCount)
+    if debugMode then print("[ProfileStatus] died. deaths=", deathsCount) end
+end
+
+-- bind character (attach events, init values)
+local function BindCharacter(char)
+    if not char then return end
+    CurrentCharacter = char
+
+    -- try find HRP and Humanoid
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+
+    -- if not present, wait a short time (but don't block forever)
+    if not hum then
+        hum = char:WaitForChild("Humanoid", 6)
+    end
+    if not hrp then
+        hrp = char:WaitForChild("HumanoidRootPart", 6) or char:FindFirstChildWhichIsA("BasePart")
+    end
+
+    CurrentHumanoid = hum
+    CurrentHRP = hrp
+
+    -- reset trackers for the new spawn
+    lastHealth = nil
+    lastDamage = 0
+    lastHeal = 0
+    totalDamage = 0
+    totalHeal = 0
+
+    -- init values
+    if CurrentHumanoid then
+        lastHealth = CurrentHumanoid.Health
+        updateWalkJump()
+        safe(function()
+            CurrentHumanoid.HealthChanged:Connect(onHealthChanged)
+        end)
+        safe(function()
+            CurrentHumanoid.Died:Connect(onDied)
+        end)
+        -- property watchers
+        safe(function()
+            CurrentHumanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(updateWalkJump)
+        end)
+        safe(function()
+            CurrentHumanoid:GetPropertyChangedSignal("JumpPower"):Connect(updateWalkJump)
+            CurrentHumanoid:GetPropertyChangedSignal("JumpHeight"):Connect(updateWalkJump)
+            CurrentHumanoid:GetPropertyChangedSignal("UseJumpPower"):Connect(updateWalkJump)
+        end)
+    end
+
+    if debugMode then
+        print("[ProfileStatus] Bound character:", char.Name, "Humanoid:", tostring(CurrentHumanoid), "HRP:", tostring(CurrentHRP))
+    end
+end
+
+-- watch for character add / respawn
+if lp then
+    if lp.Character then
+        BindCharacter(lp.Character)
+    end
+    lp.CharacterAdded:Connect(function(c) BindCharacter(c) end)
+else
+    warn("[ProfileStatus] LocalPlayer not found")
+end
+
+-- also try to re-bind if humanoidrootpart appears later
+task.spawn(function()
+    while true do
+        if CurrentCharacter and (not CurrentHRP or not CurrentHumanoid) then
+            local hrp = CurrentCharacter:FindFirstChild("HumanoidRootPart") or CurrentCharacter:FindFirstChildWhichIsA("BasePart")
+            local hum = CurrentCharacter:FindFirstChildOfClass("Humanoid")
+            if hum and hrp then
+                BindCharacter(CurrentCharacter)
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- AFK UI update loop (MM:SS)
+task.spawn(function()
+    while true do
+        local secs = math.floor(tick() - lastActivity)
+        local mm = math.floor(secs/60)
+        local ss = secs % 60
+        afkLabel.Text = string.format("AFK: %02d:%02d", mm, ss)
+        task.wait(1)
+    end
+end)
+
+-- optional debug/heartbeat summary (toggle debugMode)
+if debugMode then
+    task.spawn(function()
+        while true do
+            local humState = CurrentHumanoid and ("H:"..tostring(CurrentHumanoid.Health)) or "H:-"
+            print("[ProfileStatus][debug] HRP:", tostring(CurrentHRP) .. " Humanoid:", humState, "lastActivity:", math.floor(tick()-lastActivity))
+            task.wait(3)
+        end
+    end)
+end
+
+-- end of ProfileStatus runtime helpers
+
+                        ------------------------------------------------
+-- PLAYING TIME CORE
+------------------------------------------------
+local startTick = tick()
+
+local function formatTime(sec)
+	local days = math.floor(sec / 86400)
+	sec %= 86400
+
+	local hours = math.floor(sec / 3600)
+	sec %= 3600
+
+	local minutes = math.floor(sec / 60)
+	local seconds = math.floor(sec % 60)
+
+	return string.format(
+		"%03d:%02d:%02d:%02d",
+		days, hours, minutes, seconds
+	)
+end
+
+------------------------------------------------
+-- PLAYING TIME TEXT
+------------------------------------------------
 Text(
 	scr,
-	"AFK",
-	"AFK: 00:00",
-	false,
-	255,255,255,
-	255,255,255,
+	"PlayingTime",
+	"PlayingTime: 000:00:00:00",
+	false,                 -- Active = false
+	180,220,255,           -- Text color (soft blue)
+	180,220,255,           -- Stroke color
 	nil,nil,nil,
-	function(txt)
-		local sec = math.floor(tick() - AFK.LastInput)
-		txt.Text = string.format(
-			"AFK: %02d:%02d",
-			math.floor(sec/60),
-			sec % 60
-		)
-	end
+	function(txt)          -- Workin (real-time)
+		local elapsed = math.floor(tick() - startTick)
+		txt.Text = "PlayingTime: " .. formatTime(elapsed)
+	end,
+	nil
 )
