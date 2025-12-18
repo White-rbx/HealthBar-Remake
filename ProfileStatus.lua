@@ -1,4 +1,4 @@
--- Script ahh 1.2695
+-- Script ahh 1.27
 
 -- =====>> Saved Functions <<=====
 
@@ -699,41 +699,170 @@ end
 
 -- end of ProfileStatus runtime helpers
 
-                        ------------------------------------------------
--- PLAYING TIME CORE
 ------------------------------------------------
-local startTick = tick()
+-- PLAYING TIME CORE (SAFE)
+------------------------------------------------
+_G.__PLAYING_TIME_START__ = _G.__PLAYING_TIME_START__ or tick()
+local startTick = _G.__PLAYING_TIME_START__
 
 local function formatTime(sec)
 	local days = math.floor(sec / 86400)
 	sec %= 86400
-
 	local hours = math.floor(sec / 3600)
 	sec %= 3600
-
 	local minutes = math.floor(sec / 60)
 	local seconds = math.floor(sec % 60)
 
-	return string.format(
-		"%03d:%02d:%02d:%02d",
-		days, hours, minutes, seconds
-	)
+	return string.format("%03d:%02d:%02d:%02d", days, hours, minutes, seconds)
 end
 
-------------------------------------------------
--- PLAYING TIME TEXT
-------------------------------------------------
 Text(
 	scr,
 	"PlayingTime",
 	"PlayingTime: 000:00:00:00",
-	false,                 -- Active = false
-	180,220,255,           -- Text color (soft blue)
-	180,220,255,           -- Stroke color
+	false,
+	200,220,255,
+	200,220,255,
 	nil,nil,nil,
-	function(txt)          -- Workin (real-time)
+	function(txt)
 		local elapsed = math.floor(tick() - startTick)
 		txt.Text = "PlayingTime: " .. formatTime(elapsed)
 	end,
 	nil
 )
+
+------------------------------------------------
+-- Inventory (Backpack Tools)
+------------------------------------------------
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+local backpack = lp:WaitForChild("Backpack")
+
+local invText = Text(
+	scr,
+	"Inventory",
+	"Tools: 0",
+	false,
+	255,255,255,
+	255,255,255
+)
+
+local function updateBackpack()
+	local count = 0
+	for _, v in ipairs(backpack:GetChildren()) do
+		if v:IsA("Tool") then
+			count += 1
+		end
+	end
+	invText.Text = "Tools: " .. count
+end
+
+-- initial
+updateBackpack()
+
+-- realtime
+backpack.ChildAdded:Connect(updateBackpack)
+backpack.ChildRemoved:Connect(updateBackpack)
+
+------------------------------------------------
+-- Holding Tool
+------------------------------------------------
+local holdingText = Text(
+	scr,
+	"HoldingTool",
+	"HoldingTool: none",
+	false,
+	255,255,255,
+	255,255,255
+)
+
+local function updateHolding(character)
+	if not character then
+		holdingText.Text = "HoldingTool: none"
+		return
+	end
+
+	local tool = character:FindFirstChildOfClass("Tool")
+	if tool then
+		holdingText.Text = "HoldingTool: " .. tool.Name
+	else
+		holdingText.Text = "HoldingTool: none"
+	end
+end
+
+-- realtime scan (safe)
+task.spawn(function()
+	while true do
+		if Character then
+			updateHolding(Character)
+		end
+		task.wait(0.1)
+	end
+end)
+
+------------------------------------------------
+-- MaxHealth
+------------------------------------------------
+local maxHpText = Text(
+	scr,
+	"MaxHealth",
+	"MaxHealth: --",
+	false,
+	255,80,80,
+	255,80,80
+)
+
+local lastMax
+
+local function bindMaxHealth(hum)
+	lastMax = hum.MaxHealth
+	maxHpText.Text = "MaxHealth: " .. math.floor(hum.MaxHealth)
+
+	hum:GetPropertyChangedSignal("MaxHealth"):Connect(function()
+		if hum.MaxHealth ~= lastMax then
+			lastMax = hum.MaxHealth
+			maxHpText.Text = "MaxHealth: " .. math.floor(hum.MaxHealth)
+		end
+	end)
+end
+
+-- bind when humanoid ready
+task.spawn(function()
+	while true do
+		if Humanoid then
+			bindMaxHealth(Humanoid)
+			break
+		end
+		task.wait()
+	end
+end)
+
+------------------------------------------------
+-- StandingOn (FloorMaterial)
+------------------------------------------------
+local standingText = Text(
+	scr,
+	"StandingOn",
+	"StandingOn: Air",
+	false,
+	80,255,120,     -- Green
+	80,255,120
+)
+
+task.spawn(function()
+	while true do
+		if Humanoid then
+			local mat = Humanoid.FloorMaterial
+
+			if mat == Enum.Material.Air then
+				standingText.Text = "StandingOn: Air"
+			else
+				-- ตัด Enum.Material.
+				local name = tostring(mat):gsub("Enum.Material.", "")
+				standingText.Text = "StandingOn: " .. name
+			end
+		end
+
+		task.wait(0.1)
+	end
+end)
