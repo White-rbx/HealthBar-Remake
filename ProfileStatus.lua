@@ -1,4 +1,4 @@
--- Script ahh 1.27
+-- Script ahh 1.30
 
 -- =====>> Saved Functions <<=====
 
@@ -295,574 +295,482 @@ end)
 
 Text(scr, "Beta", "It might have bug and it still in beta.", false, 255, 131, 131, 255, 0, 0)
 --===================--
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
 
+--====================================================
+-- SERVICES
+--====================================================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local lp = Players.LocalPlayer
+--====================================================
+-- CHARACTER BIND (ULTRA SAFE / MOBILE)
+--====================================================
 local Character = nil
 local Humanoid = nil
+local HRP = nil
 
-local function BindCharacter(char)
-	Character = char
+local function ClearCharacter()
+	Character = nil
 	Humanoid = nil
-
-	-- รอ Root ให้ชัวร์ (มือถือสำคัญมาก)
-	char:WaitForChild("HumanoidRootPart", 10)
-	Humanoid = char:WaitForChild("Humanoid", 10)
+	HRP = nil
 end
 
+local function BindCharacter(char)
+	ClearCharacter()
+	if not char then return end
+
+	Character = char
+
+	-- รอแบบปลอดภัย (ไม่ค้าง thread)
+	task.spawn(function()
+		HRP = char:WaitForChild("HumanoidRootPart", 15)
+	end)
+
+	task.spawn(function()
+		Humanoid = char:WaitForChild("Humanoid", 15)
+	end)
+end
+
+-- initial
 if lp.Character then
 	BindCharacter(lp.Character)
 end
 
+-- respawn
 lp.CharacterAdded:Connect(BindCharacter)
-                        
-------------------------------------------------
+lp.CharacterRemoving:Connect(ClearCharacter)
+
+-- watchdog (กันกรณี Humanoid/HRP หายกลางทาง)
+task.spawn(function()
+	while true do
+		if Character then
+			if not Humanoid or not Humanoid.Parent then
+				Humanoid = Character:FindFirstChildOfClass("Humanoid")
+			end
+			if not HRP or not HRP.Parent then
+				HRP = Character:FindFirstChild("HumanoidRootPart")
+			end
+		end
+		task.wait(0.2)
+	end
+end)
+
+--====================================================
+-- PLAYER BASIC INFO
+--====================================================
 -- PlayerID
-------------------------------------------------
-
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
-
-Button(
-	scr,
-	"PlayerID",
-	"PlayerID: Getting API...",
-	true,
-	255,255,255,        -- Text color
-	180,180,255,        -- Stroke color
-	function(btn)       -- Workin
-		if lp and lp.UserId then
-			btn.Text = "PlayerID: " .. tostring(lp.UserId)
-		end
+Button(scr,"PlayerID","PlayerID: ...",true,255,255,255,180,180,255,
+	function(btn)
+		btn.Text = "PlayerID: "..lp.UserId
 	end,
-	function(btn)       -- Callback (คลิก)
-		local id = tostring(lp.UserId)
-
-		-- Copy (รองรับหลาย executor)
-		if setclipboard then
-			setclipboard(id)
-		elseif toclipboard then
-			toclipboard(id)
-		elseif syn and syn.set_clipboard then
-			syn.set_clipboard(id)
-		end
-
-		-- Feedback
-		local stroke = btn:FindFirstChildOfClass("UIStroke")
-		if stroke then
-			stroke.Color = Color3.fromRGB(0,255,150)
-			task.delay(0.4, function()
-				if stroke then
-					stroke.Color = Color3.fromRGB(180,180,255)
-				end
-			end)
-		end
+	function()
+		if setclipboard then setclipboard(tostring(lp.UserId)) end
 	end
 )
 
-Button(
-	scr,
-	"PlayerAge",
-	"PlayerAge: Getting API...",
-	true,                 -- Active
-	255,255,255,          -- Text color
-	200,200,255,          -- Stroke color
-	function(btn)         -- Workin
-		if lp then
-			btn.Text = "PlayerAge: " .. tostring(lp.AccountAge) .. " day"
-		end
+-- PlayerAge
+Button(scr,"PlayerAge","PlayerAge: ...",true,255,255,255,200,200,255,
+	function(btn)
+		btn.Text = "PlayerAge: "..lp.AccountAge.." day"
 	end,
-	function(btn)         -- Callback (Copy)
-		local age = tostring(lp.AccountAge)
-
-		if setclipboard then
-			setclipboard(age)
-		elseif toclipboard then
-			toclipboard(age)
-		elseif syn and syn.set_clipboard then
-			syn.set_clipboard(age)
-		end
+	function()
+		if setclipboard then setclipboard(tostring(lp.AccountAge)) end
 	end
 )
 
-Button(
-	scr,
-	"PlayerBirth",
-	"PlayerBirth: Calculating...",
-	true,
-	255,255,255,
-	200,255,200,
-	function(btn) -- Workin
-		if not lp then return end
-
-		local ageDays = lp.AccountAge
-		local now = os.time()
-		local birth = now - (ageDays * 86400)
-
+-- PlayerBirth
+Button(scr,"PlayerBirth","PlayerBirth: ...",true,255,255,255,200,255,200,
+	function(btn)
+		local birth = os.time() - (lp.AccountAge * 86400)
 		local d = os.date("*t", birth)
-		local text = string.format(
-			"PlayerBirth: %02d/%02d/%04d",
-			d.day, d.month, d.year
-		)
-
-		btn.Text = text
+		btn.Text = string.format("PlayerBirth: %02d/%02d/%04d", d.day,d.month,d.year)
 	end,
-	function(btn) -- Copy
-		local ageDays = lp.AccountAge
-		local birth = os.time() - (ageDays * 86400)
+	function()
+		local birth = os.time() - (lp.AccountAge * 86400)
 		local d = os.date("*t", birth)
-
-		local copyText = string.format(
-			"%02d/%02d/%04d",
-			d.day, d.month, d.year
-		)
-
 		if setclipboard then
-			setclipboard(copyText)
-		elseif toclipboard then
-			toclipboard(copyText)
-		elseif syn and syn.set_clipboard then
-			syn.set_clipboard(copyText)
+			setclipboard(string.format("%02d/%02d/%04d", d.day,d.month,d.year))
 		end
 	end
 )
+
+--====================================================
+-- CAMERA MODE
+--====================================================
+local camText = Text(scr,"CameraMode","CameraMode: ...",false,255,255,255,255,255,255)
+local function updateCam()
+	camText.Text = "CameraMode: "..tostring(lp.CameraMode)
+end
+updateCam()
+lp:GetPropertyChangedSignal("CameraMode"):Connect(updateCam)
+
+--====================================================
+-- PLACE / CREATOR
+--====================================================
+Button(scr,"PlaceID","PlaceID: ...",true,255,255,255,180,180,255,
+	function(btn) btn.Text = "PlaceID: "..game.PlaceId end,
+	function() if setclipboard then setclipboard(tostring(game.PlaceId)) end end
+)
+
+local placeInfo
+pcall(function()
+	placeInfo = MarketplaceService:GetProductInfo(game.PlaceId)
+end)
+
+Button(scr,"CreatorName","Creator: ...",true,255,255,255,255,220,150,
+	function(btn)
+		if placeInfo then
+			btn.Text = "Creator: "..placeInfo.Creator.Name
+		end
+	end,
+	function()
+		if placeInfo and setclipboard then
+			setclipboard(placeInfo.Creator.Name)
+		end
+	end
+)
+
+Button(scr,"CreatorID","CreatorID: ...",true,255,255,255,255,200,200,
+	function(btn)
+		if placeInfo then
+			btn.Text = "CreatorID: "..placeInfo.Creator.CreatorTargetId
+		end
+	end,
+	function()
+		if placeInfo and setclipboard then
+			setclipboard(tostring(placeInfo.Creator.CreatorTargetId))
+		end
+	end
+)
+
 ------------------------------------------------
--- CameraMode
+-- AFK CORE (WITH LAST AFK)
 ------------------------------------------------
-local camText = Text(
+local UserInputService = game:GetService("UserInputService")
+
+local AFK = {}
+AFK.LastActivity = tick()
+AFK.LastAFKDuration = 0
+AFK.IsAFK = false
+
+local function markActivity()
+	local now = tick()
+
+	if AFK.IsAFK then
+		AFK.LastAFKDuration = math.floor(now - AFK.LastActivity)
+	end
+
+	AFK.LastActivity = now
+	AFK.IsAFK = false
+end
+
+UserInputService.InputBegan:Connect(markActivity)
+UserInputService.InputChanged:Connect(markActivity)
+UserInputService.InputEnded:Connect(markActivity)
+
+------------------------------------------------
+-- AFK UI
+------------------------------------------------
+local afkText = Text(
 	scr,
-	"CameraMode",
-	"CameraMode: ...",
+	"AFK",
+	"AFK: 00:00 | LastAFK: 00:00",
 	false,
 	255,255,255,
 	255,255,255
 )
 
-local function updateCam()
-	camText.Text = "CameraMode: " .. tostring(lp.CameraMode)
+local function fmt(sec)
+	return string.format("%02d:%02d", math.floor(sec/60), sec%60)
 end
 
-updateCam()
-lp:GetPropertyChangedSignal("CameraMode"):Connect(updateCam)						
-------------------------------------------------
--- PlaceID
-------------------------------------------------
-Button(
-	scr,
-	"PlaceID",
-	"PlaceID: Getting...",
-	true,
-	255,255,255,
-	180,180,255,
-	function(btn)
-		btn.Text = "PlaceID: " .. tostring(game.PlaceId)
-	end,
-	function(btn)
-		local id = tostring(game.PlaceId)
-		if setclipboard then setclipboard(id)
-		elseif toclipboard then toclipboard(id)
-		elseif syn and syn.set_clipboard then syn.set_clipboard(id) end
-	end
-)
+task.spawn(function()
+	while afkText.Parent do
+		local now = tick()
+		local diff = math.floor(now - AFK.LastActivity)
 
-------------------------------------------------
--- CreatorName
-------------------------------------------------
-Button(
-	scr,
-	"CreatorName",
-	"Creator: Getting...",
-	true,
-	255,255,255,
-	255,220,150,
-	function(btn)
-		local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
-		local name = info.Creator.Name
-		btn.Text = "Creator: " .. name .. " (@" .. name .. ")"
-	end,
-	function(btn)
-		local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
-		if setclipboard then setclipboard(info.Creator.Name) end
-	end
-)
-
-------------------------------------------------
--- CreatorID
-------------------------------------------------
-Button(
-	scr,
-	"CreatorID",
-	"CreatorID: Getting...",
-	true,
-	255,255,255,
-	255,200,200,
-	function(btn)
-		local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
-		btn.Text = "CreatorID: " .. tostring(info.Creator.CreatorTargetId)
-	end,
-	function(btn)
-		local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
-		if setclipboard then
-			setclipboard(tostring(info.Creator.CreatorTargetId))
+		if diff >= 1 then
+			AFK.IsAFK = true
 		end
+
+		afkText.Text =
+			"AFK: "..fmt(diff)..
+			" | LastAFK: "..fmt(AFK.LastAFKDuration)
+
+		task.wait(1)
 	end
-)
-
--- ===== ProfileStatus runtime helpers (paste after your Text/Button + scr setup) =====
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-
-local lp = Players.LocalPlayer
-
-local debugMode = true -- false to quiet prints
-
--- state
-local CurrentCharacter = nil
-local CurrentHumanoid = nil
-local CurrentHRP = nil
-
--- trackers
-local lastHealth = nil
-local totalDamage = 0
-local lastDamage = 0
-local totalHeal = 0
-local lastHeal = 0
-local deathsCount = 0
-
--- AFK
-local lastActivity = tick()
-local function markActivity() lastActivity = tick() end
-UserInputService.InputBegan:Connect(function(...) markActivity() end)
-UserInputService.InputChanged:Connect(function(...) markActivity() end)
-UserInputService.InputEnded:Connect(function(...) markActivity() end)
-
--- utility safe call
-local function safe(fn, ...)
-    local ok, err = pcall(fn, ...)
-    if not ok and debugMode then warn("[ProfileStatus] error:", err) end
-    return ok, err
-end
-
--- UI Text elements (expects your Text() function + scr exist)
--- create or reuse: AFK (MM:SS), Walkspeed, Jumppower, Damage, Heal, Deaths
-local afkLabel = Text(scr, "AFKTime", "AFK: 00:00", false, 255,255,255, 255,255,255, nil)
-local wsLabel  = Text(scr, "WalkSpeed", "WalkSpeed: -", false, 160,200,255, 180,180,255, nil)
-local jpLabel  = Text(scr, "JumpPower", "JumpPower: -", false, 255,150,150, 255,150,150, nil)
-local dmgLabel = Text(scr, "Damage", "BestDamage: 0 | LastDamage: 0", false, 255,80,80, 255,80,80, nil)
-local healLabel= Text(scr, "Heal", "BestHeal: 0 | LastHeal: 0", false, 80,255,120, 80,255,120, nil)
-local deathLabel = Text(scr, "Deaths", "Deaths: 0", false, 255,80,80, 255,80,80, nil)
-
--- update UI helpers
-local function updateWalkJump()
-    if CurrentHumanoid then
-        local ws = CurrentHumanoid.WalkSpeed or 0
-        local jp = nil
-        if CurrentHumanoid.UseJumpPower then
-            jp = CurrentHumanoid.JumpPower
-        else
-            jp = CurrentHumanoid.JumpHeight
-        end
-        safe(function() wsLabel.Text = "WalkSpeed: "..tostring(ws) end)
-        safe(function() jpLabel.Text = "JumpPower: "..tostring(jp) end)
-    else
-        safe(function() wsLabel.Text = "WalkSpeed: -" end)
-        safe(function() jpLabel.Text = "JumpPower: -" end)
-    end
-end
-
--- health change handlers
-local function onHealthChanged(hp)
-    if lastHealth == nil then lastHealth = hp; return end
-
-    if hp < lastHealth then
-        local dmg = math.floor(lastHealth - hp)
-        lastDamage = dmg
-        totalDamage = totalDamage + dmg
-        dmgLabel.Text = "BestDamage: "..tostring(totalDamage).." | LastDamage: "..tostring(lastDamage)
-        if debugMode then print("[ProfileStatus] damage", dmg, "total", totalDamage) end
-    elseif hp > lastHealth then
-        local heal = math.floor(hp - lastHealth)
-        lastHeal = heal
-        totalHeal = totalHeal + heal
-        healLabel.Text = "BestHeal: "..tostring(totalHeal).." | LastHeal: "..tostring(lastHeal)
-        if debugMode then print("[ProfileStatus] heal", heal, "total", totalHeal) end
-    end
-
-    lastHealth = hp
-end
-
-local function onDied()
-    deathsCount = deathsCount + 1
-    deathLabel.Text = "Deaths: "..tostring(deathsCount)
-    if debugMode then print("[ProfileStatus] died. deaths=", deathsCount) end
-end
-
--- bind character (attach events, init values)
-local function BindCharacter(char)
-    if not char then return end
-    CurrentCharacter = char
-
-    -- try find HRP and Humanoid
-    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-
-    -- if not present, wait a short time (but don't block forever)
-    if not hum then
-        hum = char:WaitForChild("Humanoid", 6)
-    end
-    if not hrp then
-        hrp = char:WaitForChild("HumanoidRootPart", 6) or char:FindFirstChildWhichIsA("BasePart")
-    end
-
-    CurrentHumanoid = hum
-    CurrentHRP = hrp
-
-    -- reset trackers for the new spawn
-    lastHealth = nil
-    lastDamage = 0
-    lastHeal = 0
-    totalDamage = 0
-    totalHeal = 0
-
-    -- init values
-    if CurrentHumanoid then
-        lastHealth = CurrentHumanoid.Health
-        updateWalkJump()
-        safe(function()
-            CurrentHumanoid.HealthChanged:Connect(onHealthChanged)
-        end)
-        safe(function()
-            CurrentHumanoid.Died:Connect(onDied)
-        end)
-        -- property watchers
-        safe(function()
-            CurrentHumanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(updateWalkJump)
-        end)
-        safe(function()
-            CurrentHumanoid:GetPropertyChangedSignal("JumpPower"):Connect(updateWalkJump)
-            CurrentHumanoid:GetPropertyChangedSignal("JumpHeight"):Connect(updateWalkJump)
-            CurrentHumanoid:GetPropertyChangedSignal("UseJumpPower"):Connect(updateWalkJump)
-        end)
-    end
-
-    if debugMode then
-        print("[ProfileStatus] Bound character:", char.Name, "Humanoid:", tostring(CurrentHumanoid), "HRP:", tostring(CurrentHRP))
-    end
-end
-
--- watch for character add / respawn
-if lp then
-    if lp.Character then
-        BindCharacter(lp.Character)
-    end
-    lp.CharacterAdded:Connect(function(c) BindCharacter(c) end)
-else
-    warn("[ProfileStatus] LocalPlayer not found")
-end
-
--- also try to re-bind if humanoidrootpart appears later
-task.spawn(function()
-    while true do
-        if CurrentCharacter and (not CurrentHRP or not CurrentHumanoid) then
-            local hrp = CurrentCharacter:FindFirstChild("HumanoidRootPart") or CurrentCharacter:FindFirstChildWhichIsA("BasePart")
-            local hum = CurrentCharacter:FindFirstChildOfClass("Humanoid")
-            if hum and hrp then
-                BindCharacter(CurrentCharacter)
-            end
-        end
-        task.wait(0.5)
-    end
 end)
-
--- AFK UI update loop (MM:SS)
-task.spawn(function()
-    while true do
-        local secs = math.floor(tick() - lastActivity)
-        local mm = math.floor(secs/60)
-        local ss = secs % 60
-        afkLabel.Text = string.format("AFK: %02d:%02d", mm, ss)
-        task.wait(1)
-    end
-end)
-
--- optional debug/heartbeat summary (toggle debugMode)
-if debugMode then
-    task.spawn(function()
-        while true do
-            local humState = CurrentHumanoid and ("H:"..tostring(CurrentHumanoid.Health)) or "H:-"
-            print("[ProfileStatus][debug] HRP:", tostring(CurrentHRP) .. " Humanoid:", humState, "lastActivity:", math.floor(tick()-lastActivity))
-            task.wait(3)
-        end
-    end)
-end
-
--- end of ProfileStatus runtime helpers
-
 ------------------------------------------------
--- PLAYING TIME CORE (SAFE)
+-- PLAYING TIME (HARD LOOP / NEVER STOP)
 ------------------------------------------------
 _G.__PLAYING_TIME_START__ = _G.__PLAYING_TIME_START__ or tick()
 local startTick = _G.__PLAYING_TIME_START__
 
-local function formatTime(sec)
-	local days = math.floor(sec / 86400)
-	sec %= 86400
-	local hours = math.floor(sec / 3600)
-	sec %= 3600
-	local minutes = math.floor(sec / 60)
-	local seconds = math.floor(sec % 60)
-
-	return string.format("%03d:%02d:%02d:%02d", days, hours, minutes, seconds)
-end
-
-Text(
+local playingText = Text(
 	scr,
 	"PlayingTime",
 	"PlayingTime: 000:00:00:00",
 	false,
 	200,220,255,
-	200,220,255,
-	nil,nil,nil,
-	function(txt)
+	200,220,255
+)
+
+local function formatTime(sec)
+	local d = math.floor(sec / 86400)
+	sec %= 86400
+	local h = math.floor(sec / 3600)
+	sec %= 3600
+	local m = math.floor(sec / 60)
+	local s = sec % 60
+	return string.format("%03d:%02d:%02d:%02d", d,h,m,s)
+end
+
+task.spawn(function()
+	while playingText.Parent do
 		local elapsed = math.floor(tick() - startTick)
-		txt.Text = "PlayingTime: " .. formatTime(elapsed)
-	end,
-	nil
-)
-
-------------------------------------------------
--- Inventory (Backpack Tools)
-------------------------------------------------
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
-local backpack = lp:WaitForChild("Backpack")
-
-local invText = Text(
-	scr,
-	"Inventory",
-	"Tools: 0",
-	false,
-	255,255,255,
-	255,255,255
-)
-
-local function updateBackpack()
-	local count = 0
-	for _, v in ipairs(backpack:GetChildren()) do
-		if v:IsA("Tool") then
-			count += 1
-		end
+		playingText.Text = "PlayingTime: " .. formatTime(elapsed)
+		task.wait(1)
 	end
-	invText.Text = "Tools: " .. count
-end
+end)
 
--- initial
-updateBackpack()
+--====================================================
+-- WALKSPEED / JUMPPOWER (REALTIME)
+--====================================================
+local wsText = Text(scr,"WalkSpeed","WalkSpeed: -",false,160,200,255,160,200,255)
+local jpText = Text(scr,"JumpPower","JumpPower: -",false,255,150,150,255,150,150)
 
--- realtime
-backpack.ChildAdded:Connect(updateBackpack)
-backpack.ChildRemoved:Connect(updateBackpack)
-
-------------------------------------------------
--- Holding Tool
-------------------------------------------------
-local holdingText = Text(
-	scr,
-	"HoldingTool",
-	"HoldingTool: none",
-	false,
-	255,255,255,
-	255,255,255
-)
-
-local function updateHolding(character)
-	if not character then
-		holdingText.Text = "HoldingTool: none"
-		return
-	end
-
-	local tool = character:FindFirstChildOfClass("Tool")
-	if tool then
-		holdingText.Text = "HoldingTool: " .. tool.Name
-	else
-		holdingText.Text = "HoldingTool: none"
-	end
-end
-
--- realtime scan (safe)
 task.spawn(function()
 	while true do
-		if Character then
-			updateHolding(Character)
+		if Humanoid then
+			wsText.Text = "WalkSpeed: "..Humanoid.WalkSpeed
+			jpText.Text = "JumpPower: "..(Humanoid.UseJumpPower and Humanoid.JumpPower or Humanoid.JumpHeight)
 		end
 		task.wait(0.1)
 	end
 end)
 
-------------------------------------------------
--- MaxHealth
-------------------------------------------------
-local maxHpText = Text(
-	scr,
-	"MaxHealth",
-	"MaxHealth: --",
-	false,
-	255,80,80,
-	255,80,80
-)
+--====================================================
+-- DAMAGE / HEAL (RESPAWN SAFE)
+--====================================================
+local lastHp
+local totalDmg, lastDmg = 0,0
+local totalHeal, lastHeal = 0,0
 
-local lastMax
+local dmgText  = Text(scr,"Damage","BestDamage: 0 | LastDamage: 0",false,255,80,80,255,80,80)
+local healText = Text(scr,"Heal","BestHeal: 0 | LastHeal: 0",false,80,255,120,80,255,120)
 
-local function bindMaxHealth(hum)
-	lastMax = hum.MaxHealth
-	maxHpText.Text = "MaxHealth: " .. math.floor(hum.MaxHealth)
+local function bindHealth()
+	if not Humanoid then return end
+	lastHp = Humanoid.Health
 
-	hum:GetPropertyChangedSignal("MaxHealth"):Connect(function()
-		if hum.MaxHealth ~= lastMax then
-			lastMax = hum.MaxHealth
-			maxHpText.Text = "MaxHealth: " .. math.floor(hum.MaxHealth)
+	Humanoid.HealthChanged:Connect(function(hp)
+		if hp < lastHp then
+			lastDmg = math.floor(lastHp-hp)
+			totalDmg += lastDmg
+			dmgText.Text = "BestDamage: "..totalDmg.." | LastDamage: "..lastDmg
+		elseif hp > lastHp then
+			lastHeal = math.floor(hp-lastHp)
+			totalHeal += lastHeal
+			healText.Text = "BestHeal: "..totalHeal.." | LastHeal: "..lastHeal
 		end
+		lastHp = hp
 	end)
 end
 
--- bind when humanoid ready
+lp.CharacterAdded:Connect(function()
+	task.wait(1)
+	bindHealth()
+end)
+if Humanoid then bindHealth() end
+
+--====================================================
+-- DEATHS
+--====================================================
+local deaths = 0
+local deathText = Text(scr,"Deaths","Deaths: 0",false,255,80,80,255,80,80)
+
+local function bindDeaths()
+	if not Humanoid then return end
+	Humanoid.Died:Connect(function()
+		deaths += 1
+		deathText.Text = "Deaths: "..deaths
+	end)
+end
+
+lp.CharacterAdded:Connect(function()
+	task.wait(1)
+	bindDeaths()
+end)
+if Humanoid then bindDeaths() end
+
+--====================================================
+-- INVENTORY
+--====================================================
+local backpack = lp:WaitForChild("Backpack")
+local invText = Text(scr,"Inventory","Tools: 0",false,255,255,255,255,255,255)
+
+local function updateInv()
+	local c = 0
+	for _,v in ipairs(backpack:GetChildren()) do
+		if v:IsA("Tool") then c+=1 end
+	end
+	invText.Text = "Tools: "..c
+end
+
+backpack.ChildAdded:Connect(updateInv)
+backpack.ChildRemoved:Connect(updateInv)
+updateInv()
+
+--====================================================
+-- HOLDING TOOL
+--====================================================
+local holdText = Text(scr,"HoldingTool","HoldingTool: none",false,255,255,255,255,255,255)
+
 task.spawn(function()
 	while true do
-		if Humanoid then
-			bindMaxHealth(Humanoid)
-			break
+		if Character then
+			local tool = Character:FindFirstChildOfClass("Tool")
+			holdText.Text = tool and ("HoldingTool: "..tool.Name) or "HoldingTool: none"
 		end
-		task.wait()
+		task.wait(0.1)
 	end
 end)
 
-------------------------------------------------
--- StandingOn (FloorMaterial)
-------------------------------------------------
-local standingText = Text(
-	scr,
-	"StandingOn",
-	"StandingOn: Air",
-	false,
-	80,255,120,     -- Green
-	80,255,120
-)
+--====================================================
+-- MAX HEALTH
+--====================================================
+local maxText = Text(scr,"MaxHealth","MaxHealth: -",false,255,80,80,255,80,80)
+
+task.spawn(function()
+	while true do
+		if Humanoid then
+			maxText.Text = "MaxHealth: "..math.floor(Humanoid.MaxHealth)
+		end
+		task.wait(0.2)
+	end
+end)
+
+--====================================================
+-- STANDING ON (FloorMaterial)
+--====================================================
+local standText = Text(scr,"StandingOn","StandingOn: Air",false,80,255,120,80,255,120)
 
 task.spawn(function()
 	while true do
 		if Humanoid then
 			local mat = Humanoid.FloorMaterial
+			standText.Text = "StandingOn: "..(mat==Enum.Material.Air and "Air" or tostring(mat):gsub("Enum.Material.",""))
+		end
+		task.wait(0.1)
+	end
+end)------------------------------------------------
+-- Position Of Character (COPYABLE)
+------------------------------------------------
+local posButton = Button(
+	scr,
+	"PositionOfCharacter",
+	"Position: X: - | Y: - | Z: -",
+	true,                 -- Active (กดได้)
+	120,255,255,          -- Text color (Cyan)
+	120,255,255,          -- Stroke color
+	nil,                  -- Workin (ใช้ loop ด้านล่างแทน)
+	function(btn)         -- Callback (Copy)
+		if HRP and HRP.Parent then
+			local p = HRP.Position
+			local text = string.format(
+				"X: %.2f | Y: %.2f | Z: %.2f",
+				p.X, p.Y, p.Z
+			)
 
-			if mat == Enum.Material.Air then
-				standingText.Text = "StandingOn: Air"
-			else
-				-- ตัด Enum.Material.
-				local name = tostring(mat):gsub("Enum.Material.", "")
-				standingText.Text = "StandingOn: " .. name
+			-- copy รองรับหลาย executor
+			if setclipboard then
+				setclipboard(text)
+			elseif toclipboard then
+				toclipboard(text)
+			elseif syn and syn.set_clipboard then
+				syn.set_clipboard(text)
 			end
 		end
+	end
+)
 
+-- real-time update
+task.spawn(function()
+	while posButton.Parent do
+		if HRP and HRP.Parent then
+			local p = HRP.Position
+			posButton.Text = string.format(
+				"Position: X: %.2f | Y: %.2f | Z: %.2f",
+				p.X, p.Y, p.Z
+			)
+		else
+			posButton.Text = "Position: X: - | Y: - | Z: -"
+		end
 		task.wait(0.1)
+	end
+end)
+------------------------------------------------
+-- CharacterType (FIXED)
+------------------------------------------------
+local charTypeText = Text(
+	scr,
+	"CharacterType",
+	"CharacterType: -",
+	false,
+	255,255,255,
+	255,255,255
+)
+
+task.spawn(function()
+	while charTypeText.Parent do
+		if Humanoid then
+			if Humanoid.RigType == Enum.HumanoidRigType.R6 then
+				charTypeText.Text = "CharacterType: R6"
+			elseif Humanoid.RigType == Enum.HumanoidRigType.R15 then
+				charTypeText.Text = "CharacterType: R15"
+			else
+				charTypeText.Text = "CharacterType: Unknown"
+			end
+		else
+			charTypeText.Text = "CharacterType: -"
+		end
+		task.wait(0.3)
+	end
+end)
+
+------------------------------------------------
+-- Time Of Day
+------------------------------------------------
+local Lighting = game:GetService("Lighting")
+
+local timeText = Button(
+	scr,
+	"TimeOfDay",
+	"TimeOfDay: 00:00:00",
+	true,
+	255,230,120,       -- Yellow
+	255,230,120
+)
+
+task.spawn(function()
+	while timeText.Parent do
+		timeText.Text = "TimeOfDay: " .. tostring(Lighting.TimeOfDay)
+		task.wait(0.5)
+	end
+end)
+
+-- Copy
+timeText.MouseButton1Click:Connect(function()
+	local t = tostring(Lighting.TimeOfDay)
+
+	if setclipboard then
+		setclipboard(t)
+	elseif toclipboard then
+		toclipboard(t)
+	elseif syn and syn.set_clipboard then
+		syn.set_clipboard(t)
 	end
 end)
