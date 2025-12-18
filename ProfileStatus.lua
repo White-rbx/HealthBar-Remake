@@ -1,4 +1,4 @@
--- Script ahh 1.268 no 67 allowed 
+-- Script ahh 1.269
 
 -- =====>> Saved Functions <<=====
 
@@ -295,23 +295,44 @@ end)
 
 Text(scr, "Beta", "It might have bug and it still in beta.", false, 255, 131, 131, 255, 0, 0)
 --===================--
-local UserInputService = game:GetService("UserInputService")
-
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
 local lp = Players.LocalPlayer
 
-local humanoid
-local character
+local Character = nil
+local Humanoid = nil
 
-local function bindCharacter(char)
-	character = char
-	humanoid = char:WaitForChild("Humanoid", 10)
+local function ResolveHumanoid()
+	if Character then
+		local h = Character:FindFirstChildOfClass("Humanoid")
+		if h then
+			Humanoid = h
+		end
+	end
+end
+
+local function BindCharacter(char)
+	Character = char
+	Humanoid = nil
+
+	-- รอ Root ก่อน (สำคัญ)
+	char:WaitForChild("HumanoidRootPart", 10)
+	ResolveHumanoid()
 end
 
 if lp.Character then
-	bindCharacter(lp.Character)
+	BindCharacter(lp.Character)
 end
-lp.CharacterAdded:Connect(bindCharacter)
+
+lp.CharacterAdded:Connect(BindCharacter)
+
+-- กันกรณี Humanoid ถูก replace
+RunService.Heartbeat:Connect(function()
+	if Character and (not Humanoid or not Humanoid.Parent) then
+		ResolveHumanoid()
+	end
+end)
 						
 ------------------------------------------------
 -- PlayerID
@@ -505,294 +526,94 @@ Button(
 	end
 )
 
--- ======= Live stats + AFK + Damage/Heal/Deaths (HRP-first binding) =======
-local DEBUG = false -- true -> print debug
+Text(
+	scr,
+	"WalkSpeed",
+	"Walkspeed: --",
+	false,
+	120,180,255,
+	120,180,255,
+	nil,nil,nil,
+	function(txt)
+		if Humanoid then
+			txt.Text = "Walkspeed: "..Humanoid.WalkSpeed
+		else
+			txt.Text = "Walkspeed: --"
+		end
+	end
+)
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+Text(
+	scr,
+	"JumpPower",
+	"Jumppower: --",
+	false,
+	255,120,120,
+	255,120,120,
+	nil,nil,nil,
+	function(txt)
+		if Humanoid then
+			txt.Text = "Jumppower: "..Humanoid.JumpPower
+		else
+			txt.Text = "Jumppower: --"
+		end
+	end
+)
+
+local deaths = 0
+local wasAlive = true
+
+game:GetService("RunService").Heartbeat:Connect(function()
+	if Humanoid then
+		if Humanoid.Health <= 0 and wasAlive then
+			deaths += 1
+			wasAlive = false
+		elseif Humanoid.Health > 0 then
+			wasAlive = true
+		end
+	end
+end)
+
+Text(
+	scr,
+	"Deaths",
+	"Deaths: 0",
+	false,
+	255,80,80,
+	255,80,80,
+	nil,nil,nil,
+	function(txt)
+		txt.Text = "Deaths: "..deaths
+	end
+)
+
 local UserInputService = game:GetService("UserInputService")
 
-local lp = Players.LocalPlayer
+local AFK = {}
+AFK.LastInput = tick()
 
--- storage
-local Current = {
-    Character = nil,
-    Humanoid = nil,
-    HRP = nil,
-    Conn = {}, -- store connections to clean on respawn
-}
-
--- combat / health trackers (persist across spawns)
-local Stats = {
-    TotalDamage = 0,
-    LastDamage = 0,
-    TotalHeal = 0,
-    LastHeal = 0,
-    Deaths = 0,
-    LastHealth = nil,
-}
-
--- AFK tracker
-local AFK = { LastActivity = tick() }
 local function MarkActivity()
-    AFK.LastActivity = tick()
-    if DEBUG then print("[AFK] marked at", AFK.LastActivity) end
+	AFK.LastInput = tick()
 end
 
--- Input hooks
-UserInputService.InputBegan:Connect(function(input, processed)
-    if not processed then MarkActivity() end
-end)
+UserInputService.InputBegan:Connect(MarkActivity)
 UserInputService.InputChanged:Connect(MarkActivity)
 UserInputService.InputEnded:Connect(MarkActivity)
 
--- Safe disconnect helper
-local function ClearConns()
-    for _, c in pairs(Current.Conn) do
-        if c and typeof(c) == "RBXScriptConnection" then
-            pcall(function() c:Disconnect() end)
-        end
-    end
-    Current.Conn = {}
-end
-
--- Bind to humanoid events
-local function BindToHumanoid(hum)
-    if not hum then return end
-    ClearConns()
-    Current.Humanoid = hum
-    Stats.LastHealth = hum.Health
-
-    -- HealthChanged -> damage/heal
-    local hc = hum.HealthChanged:Connect(function(hp)
-        if Stats.LastHealth == nil then
-            Stats.LastHealth = hp
-            return
-        end
-
-        if hp < Stats.LastHealth then
-            local dmg = math.floor((Stats.LastHealth - hp) + 0.5)
-            Stats.LastDamage = dmg
-            Stats.TotalDamage = Stats.TotalDamage + dmg
-            if DEBUG then print("[Dmg] ", dmg, "total", Stats.TotalDamage) end
-        elseif hp > Stats.LastHealth then
-            local heal = math.floor((hp - Stats.LastHealth) + 0.5)
-            Stats.LastHeal = heal
-            Stats.TotalHeal = Stats.TotalHeal + heal
-            if DEBUG then print("[Heal]", heal, "total", Stats.TotalHeal) end
-        end
-
-        Stats.LastHealth = hp
-    end)
-    table.insert(Current.Conn, hc)
-
-    -- Died -> increment deaths and clear lasthealth
-    local dc = hum.Died:Connect(function()
-        Stats.Deaths = Stats.Deaths + 1
-        Stats.LastHealth = nil
-        if DEBUG then print("[Death] total", Stats.Deaths) end
-        -- Keep conns cleared on next binding (CharacterAdded will rebind)
-    end)
-    table.insert(Current.Conn, dc)
-end
-
--- Bind character: find HRP first (robust waiting), then Humanoid, then movement monitor
-local function BindCharacter(char)
-    if not char then return end
-
-    -- clear previous conns to avoid duplicates
-    ClearConns()
-    Current.Character = char
-    Current.HRP = nil
-    Current.Humanoid = nil
-
-    -- robustly wait for HumanoidRootPart and Humanoid (short timeout loop)
-    local hrp, hum
-    local attempts = 0
-    while attempts < 30 do -- ~30 * 0.05 = 1.5s total attempt
-        hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso")
-        hum = hum or char:FindFirstChildOfClass("Humanoid")
-        if hrp and hum then break end
-        attempts = attempts + 1
-        task.wait(0.05)
-    end
-
-    -- if still missing, try WaitForChild short (handles some edge cases)
-    if not hrp then
-        pcall(function() hrp = char:WaitForChild("HumanoidRootPart", 1) end)
-    end
-    if not hum then
-        pcall(function() hum = char:WaitForChildOfClass("Humanoid", 1) end)
-    end
-
-    if hrp then
-        Current.HRP = hrp
-    end
-    if hum then
-        BindToHumanoid(hum)
-    end
-
-    -- Movement monitor marks AFK as activity
-    if Current.HRP then
-        local lastPos = Current.HRP.Position
-        local mvConn
-        mvConn = RunService.Heartbeat:Connect(function()
-            if not Current.Character or not Current.Character.Parent then
-                if mvConn then pcall(function() mvConn:Disconnect() end) end
-                return
-            end
-            local p = Current.HRP
-            if p and p.Parent then
-                local pos = p.Position
-                if (pos - lastPos).Magnitude > 0.5 then
-                    MarkActivity()
-                end
-                lastPos = pos
-            end
-        end)
-        table.insert(Current.Conn, mvConn)
-    else
-        if DEBUG then warn("[BindCharacter] HRP not found for character") end
-    end
-
-    if DEBUG then
-        print("[BindCharacter] done. HRP:", tostring(Current.HRP), "Humanoid:", tostring(Current.Humanoid))
-    end
-end
-
--- CharacterAdded hookup and initial
-if lp then
-    if lp.Character then
-        task.spawn(function() BindCharacter(lp.Character) end)
-    end
-    lp.CharacterAdded:Connect(function(c)
-        task.wait(0.04)
-        BindCharacter(c)
-    end)
-end
-
--- Fallback watcher in case HRP/Humanoid appear late
-task.spawn(function()
-    while true do
-        local char = lp and lp.Character
-        if char and (not Current.Humanoid or not Current.HRP) then
-            -- attempt bind again
-            BindCharacter(char)
-        end
-        task.wait(0.2)
-    end
-end)
-
--- ========== UI TEXTS ========== --
--- AFK: MM:SS
-local afkText = Text(
-    scr,
-    "AFKTime",
-    "AFK: 00:00",
-    false,
-    255,255,255,
-    255,255,255,
-    nil, nil, nil,
-    function(txt)
-        local s = math.floor(tick() - AFK.LastActivity)
-        local mm = math.floor(s / 60)
-        local ss = s % 60
-        txt.Text = string.format("AFK: %02d:%02d", mm, ss)
-    end
+Text(
+	scr,
+	"AFK",
+	"AFK: 00:00",
+	false,
+	255,255,255,
+	255,255,255,
+	nil,nil,nil,
+	function(txt)
+		local sec = math.floor(tick() - AFK.LastInput)
+		txt.Text = string.format(
+			"AFK: %02d:%02d",
+			math.floor(sec/60),
+			sec % 60
+		)
+	end
 )
-
--- WalkSpeed
-local walkText = Text(
-    scr,
-    "WalkSpeed",
-    "Walkspeed: --",
-    false,
-    120,150,255,
-    120,150,255,
-    nil, nil, nil,
-    function(txt)
-        local hum = Current.Humanoid
-        if hum then
-            txt.Text = "Walkspeed: " .. tostring(math.floor(hum.WalkSpeed * 100)/100)
-        else
-            txt.Text = "Walkspeed: --"
-        end
-    end
-)
-
--- JumpPower / JumpHeight
-local jumpText = Text(
-    scr,
-    "JumpPower",
-    "Jumppower: --",
-    false,
-    255,120,120,
-    255,120,120,
-    nil, nil, nil,
-    function(txt)
-        local hum = Current.Humanoid
-        if hum then
-            if hum.UseJumpPower then
-                txt.Text = "Jumppower: " .. tostring(math.floor(hum.JumpPower * 100)/100)
-            else
-                txt.Text = "JumpHeight: " .. tostring(math.floor(hum.JumpHeight * 100)/100)
-            end
-        else
-            txt.Text = "Jumppower: --"
-        end
-    end
-)
-
--- Damage Text
-local dmgText = Text(
-    scr,
-    "Damage",
-    "BestDamage: 0 | LastDamage: 0",
-    false,
-    255,80,80,
-    255,80,80,
-    nil, nil, nil,
-    function(txt)
-        txt.Text = "BestDamage: "..tostring(Stats.TotalDamage).." | LastDamage: "..tostring(Stats.LastDamage)
-    end
-)
-
--- Heal Text
-local healText = Text(
-    scr,
-    "Heal",
-    "BestHeal: 0 | LastHeal: 0",
-    false,
-    80,255,120,
-    80,255,120,
-    nil, nil, nil,
-    function(txt)
-        txt.Text = "BestHeal: "..tostring(Stats.TotalHeal).." | LastHeal: "..tostring(Stats.LastHeal)
-    end
-)
-
--- Deaths
-local deathsText = Text(
-    scr,
-    "Deaths",
-    "Deaths: 0",
-    false,
-    255,80,80,
-    255,80,80,
-    nil, nil, nil,
-    function(txt)
-        txt.Text = "Deaths: "..tostring(Stats.Deaths)
-    end
-)
-
--- DEBUG ticker
-if DEBUG then
-    task.spawn(function()
-        while true do
-            print("[DBG] HRP:", tostring(Current.HRP), "Humanoid:", tostring(Current.Humanoid), "LastHealth:", tostring(Stats.LastHealth))
-            task.wait(1)
-        end
-    end)
-end
-
--- note: Stats persist across respawns; reset Stats.* manually if you want clear on death.
