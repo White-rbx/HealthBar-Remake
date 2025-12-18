@@ -1,4 +1,4 @@
--- Script ahh 1.267
+-- Script ahh 1.268 no 67 allowed 
 
 -- =====>> Saved Functions <<=====
 
@@ -505,8 +505,8 @@ Button(
 	end
 )
 
--- ======= Live stats + AFK + Damage/Heal/Deaths (HRP-safe) =======
-local DEBUG = false -- set true to print debug lines
+-- ======= Live stats + AFK + Damage/Heal/Deaths (HRP-first binding) =======
+local DEBUG = false -- true -> print debug
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -533,41 +533,37 @@ local Stats = {
 }
 
 -- AFK tracker
-local AFK = {
-    LastActivity = tick()
-}
+local AFK = { LastActivity = tick() }
 local function MarkActivity()
     AFK.LastActivity = tick()
-    if DEBUG then print("[AFK] marked") end
+    if DEBUG then print("[AFK] marked at", AFK.LastActivity) end
 end
 
--- input hooks for AFK
-UserInputService.InputBegan:Connect(function(_, gpe) if not gpe then MarkActivity() end end)
-UserInputService.InputChanged:Connect(function() MarkActivity() end)
-UserInputService.InputEnded:Connect(function() MarkActivity() end)
+-- Input hooks
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed then MarkActivity() end
+end)
+UserInputService.InputChanged:Connect(MarkActivity)
+UserInputService.InputEnded:Connect(MarkActivity)
 
--- movement marks AFK too (we'll detect via HRP monitoring below)
-
--- Utility: safely disconnect conns
+-- Safe disconnect helper
 local function ClearConns()
     for _, c in pairs(Current.Conn) do
-        if c and c.Disconnect then
-            pcall(function() c:Disconnect() end)
-        elseif c and typeof(c) == "RBXScriptConnection" then
+        if c and typeof(c) == "RBXScriptConnection" then
             pcall(function() c:Disconnect() end)
         end
     end
     Current.Conn = {}
 end
 
--- Bind to humanoid when found
+-- Bind to humanoid events
 local function BindToHumanoid(hum)
     if not hum then return end
     ClearConns()
     Current.Humanoid = hum
     Stats.LastHealth = hum.Health
 
-    -- HealthChanged -> detect damage/heal
+    -- HealthChanged -> damage/heal
     local hc = hum.HealthChanged:Connect(function(hp)
         if Stats.LastHealth == nil then
             Stats.LastHealth = hp
@@ -578,69 +574,76 @@ local function BindToHumanoid(hum)
             local dmg = math.floor((Stats.LastHealth - hp) + 0.5)
             Stats.LastDamage = dmg
             Stats.TotalDamage = Stats.TotalDamage + dmg
-            if DEBUG then print("[Dmg] got", dmg, "total", Stats.TotalDamage) end
+            if DEBUG then print("[Dmg] ", dmg, "total", Stats.TotalDamage) end
         elseif hp > Stats.LastHealth then
             local heal = math.floor((hp - Stats.LastHealth) + 0.5)
             Stats.LastHeal = heal
             Stats.TotalHeal = Stats.TotalHeal + heal
-            if DEBUG then print("[Heal] got", heal, "total", Stats.TotalHeal) end
+            if DEBUG then print("[Heal]", heal, "total", Stats.TotalHeal) end
         end
 
         Stats.LastHealth = hp
     end)
     table.insert(Current.Conn, hc)
 
-    -- Died -> increment deaths and reset lasthealth to nil (humanoid will be replaced soon)
+    -- Died -> increment deaths and clear lasthealth
     local dc = hum.Died:Connect(function()
         Stats.Deaths = Stats.Deaths + 1
-        if DEBUG then print("[Death] total", Stats.Deaths) end
-        -- ensure lastHealth cleared so next humanoid bind will initialize
         Stats.LastHealth = nil
+        if DEBUG then print("[Death] total", Stats.Deaths) end
+        -- Keep conns cleared on next binding (CharacterAdded will rebind)
     end)
     table.insert(Current.Conn, dc)
-
-    -- monitor HRP movement to mark AFK as activity
-    -- (we'll attach movement monitor in the character binder)
 end
 
--- Character binder (detect HRP + Humanoid, re-bind reliably)
+-- Bind character: find HRP first (robust waiting), then Humanoid, then movement monitor
 local function BindCharacter(char)
     if not char then return end
+
+    -- clear previous conns to avoid duplicates
+    ClearConns()
     Current.Character = char
+    Current.HRP = nil
+    Current.Humanoid = nil
 
-    -- try to wait a bit for parts
-    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-
-    -- if not found yet, wait a short while (handles slow spawns on mobile)
-    if not hrp or not hum then
-        -- try a few times quickly
-        for i=1,10 do
-            if not hrp then hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso") end
-            if not hum then hum = char:FindFirstChildOfClass("Humanoid") end
-            if hrp and hum then break end
-            task.wait(0.08)
-        end
+    -- robustly wait for HumanoidRootPart and Humanoid (short timeout loop)
+    local hrp, hum
+    local attempts = 0
+    while attempts < 30 do -- ~30 * 0.05 = 1.5s total attempt
+        hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("LowerTorso") or char:FindFirstChild("Torso")
+        hum = hum or char:FindFirstChildOfClass("Humanoid")
+        if hrp and hum then break end
+        attempts = attempts + 1
+        task.wait(0.05)
     end
 
-    -- if still missing, we'll keep trying in the main monitor loop
+    -- if still missing, try WaitForChild short (handles some edge cases)
+    if not hrp then
+        pcall(function() hrp = char:WaitForChild("HumanoidRootPart", 1) end)
+    end
+    if not hum then
+        pcall(function() hum = char:WaitForChildOfClass("Humanoid", 1) end)
+    end
+
+    if hrp then
+        Current.HRP = hrp
+    end
     if hum then
         BindToHumanoid(hum)
     end
 
-    -- movement monitor: spawn a loop that checks HRP pos and marks activity
-    if hrp then
-        local lastPos = hrp.Position
+    -- Movement monitor marks AFK as activity
+    if Current.HRP then
+        local lastPos = Current.HRP.Position
         local mvConn
         mvConn = RunService.Heartbeat:Connect(function()
-            if not char.Parent then
-                if mvConn then
-                    pcall(function() mvConn:Disconnect() end)
-                end
+            if not Current.Character or not Current.Character.Parent then
+                if mvConn then pcall(function() mvConn:Disconnect() end) end
                 return
             end
-            if hrp and hrp.Parent then
-                local pos = hrp.Position
+            local p = Current.HRP
+            if p and p.Parent then
+                local pos = p.Position
                 if (pos - lastPos).Magnitude > 0.5 then
                     MarkActivity()
                 end
@@ -648,38 +651,33 @@ local function BindCharacter(char)
             end
         end)
         table.insert(Current.Conn, mvConn)
+    else
+        if DEBUG then warn("[BindCharacter] HRP not found for character") end
+    end
+
+    if DEBUG then
+        print("[BindCharacter] done. HRP:", tostring(Current.HRP), "Humanoid:", tostring(Current.Humanoid))
     end
 end
 
--- monitor CharacterAdded + initial character
+-- CharacterAdded hookup and initial
 if lp then
     if lp.Character then
-        BindCharacter(lp.Character)
+        task.spawn(function() BindCharacter(lp.Character) end)
     end
-    lp.CharacterAdded:Connect(function(char)
-        -- small delay to allow parts to exist
-        task.wait(0.06)
-        BindCharacter(char)
+    lp.CharacterAdded:Connect(function(c)
+        task.wait(0.04)
+        BindCharacter(c)
     end)
 end
 
--- Main watcher: look for HRP/humanoid changes (covers cases where they spawn slowly)
+-- Fallback watcher in case HRP/Humanoid appear late
 task.spawn(function()
     while true do
         local char = lp and lp.Character
-        if char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            -- if hum exists but not yet bound or changed, bind
-            if hum and hum ~= Current.Humanoid then
-                if DEBUG then print("[Binder] new humanoid found") end
-                BindCharacter(char)
-                -- ensure BindToHumanoid called inside BindCharacter when appropriate
-                if Current.Humanoid ~= hum then
-                    -- double-check and bind directly if missed
-                    BindToHumanoid(hum)
-                end
-            end
+        if char and (not Current.Humanoid or not Current.HRP) then
+            -- attempt bind again
+            BindCharacter(char)
         end
         task.wait(0.2)
     end
@@ -691,10 +689,10 @@ local afkText = Text(
     scr,
     "AFKTime",
     "AFK: 00:00",
-    false,              -- Active = false
-    255,255,255,        -- text color
-    255,255,255,        -- stroke
-    nil, nil, nil,      -- (R1,G1,B1 omitted)
+    false,
+    255,255,255,
+    255,255,255,
+    nil, nil, nil,
     function(txt)
         local s = math.floor(tick() - AFK.LastActivity)
         local mm = math.floor(s / 60)
@@ -709,7 +707,7 @@ local walkText = Text(
     "WalkSpeed",
     "Walkspeed: --",
     false,
-    120,150,255,        -- blue-ish
+    120,150,255,
     120,150,255,
     nil, nil, nil,
     function(txt)
@@ -722,7 +720,7 @@ local walkText = Text(
     end
 )
 
--- JumpPower / JumpHeight (choose correct property)
+-- JumpPower / JumpHeight
 local jumpText = Text(
     scr,
     "JumpPower",
@@ -787,16 +785,14 @@ local deathsText = Text(
     end
 )
 
--- Optional debug ticker so you can see binding state (only when DEBUG=true)
+-- DEBUG ticker
 if DEBUG then
     task.spawn(function()
         while true do
-            local humOk = Current.Humanoid and true or false
-            print("[DBG] Humanoid bound:", humOk, "LastHealth:", Stats.LastHealth, "Deaths:", Stats.Deaths)
-            task.wait(1.0)
+            print("[DBG] HRP:", tostring(Current.HRP), "Humanoid:", tostring(Current.Humanoid), "LastHealth:", tostring(Stats.LastHealth))
+            task.wait(1)
         end
     end)
 end
 
--- final note: this script keeps totals (Damage/Heal/Deaths) across respawns.
--- If you want reset on respawn, clear Stats.* when Died occurs (remove persistence).
+-- note: Stats persist across respawns; reset Stats.* manually if you want clear on death.
