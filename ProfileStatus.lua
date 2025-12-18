@@ -1,4 +1,4 @@
--- Script ahh 1.265
+-- Script ahh 1.266
 
 -- =====>> Saved Functions <<=====
 
@@ -314,25 +314,25 @@ end
 lp.CharacterAdded:Connect(bindCharacter)
 						
 ------------------------------------------------
--- AFK CORE (Stable / Mobile-safe)
+-- AFK CORE (Text-driven)
 ------------------------------------------------
+local AFK = {}
+AFK.Last = tick()
+
 local UserInputService = game:GetService("UserInputService")
 
-local AFK = {}
-AFK.LastActivity = tick()
-
-function AFK.Mark()
-    AFK.LastActivity = tick()
+local function mark()
+	AFK.Last = tick()
 end
 
-UserInputService.InputBegan:Connect(AFK.Mark)
-UserInputService.InputChanged:Connect(AFK.Mark)
-UserInputService.InputEnded:Connect(AFK.Mark)
+UserInputService.InputBegan:Connect(mark)
+UserInputService.InputChanged:Connect(mark)
+UserInputService.InputEnded:Connect(mark)
 
-function AFK.GetSeconds()
-    return math.floor(tick() - AFK.LastActivity)
+function AFK.Get()
+	return math.floor(tick() - AFK.Last)
 end
-
+						
 Text(
     scr,
     "AFKTime",
@@ -608,7 +608,7 @@ Button(
 )
 
 ------------------------------------------------
--- DAMAGE & HEAL CORE (Respawn-safe)
+-- DAMAGE & HEAL (HRP Real-time Safe)
 ------------------------------------------------
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
@@ -618,97 +618,108 @@ local lastDamage = 0
 local totalHeal = 0
 local lastHeal = 0
 
-local lastHealth
-local humanoid
+local boundHumanoid = nil
+local lastHealth = nil
 
-local function bindHumanoid(char)
-    humanoid = char:WaitForChild("Humanoid", 10)
-    if not humanoid then return end
+task.spawn(function()
+	while true do
+		local char = lp.Character
+		if char then
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			local hum = char:FindFirstChildOfClass("Humanoid")
 
-    lastHealth = humanoid.Health
+			-- ตรวจว่ามี HRP + Humanoid และยังไม่ bind
+			if hrp and hum and hum ~= boundHumanoid then
+				boundHumanoid = hum
+				lastHealth = hum.Health
 
-    humanoid.HealthChanged:Connect(function(hp)
-        if not lastHealth then
-            lastHealth = hp
-            return
-        end
+				hum.HealthChanged:Connect(function(hp)
+					if not lastHealth then
+						lastHealth = hp
+						return
+					end
 
-        if hp < lastHealth then
-            local dmg = math.floor(lastHealth - hp)
-            lastDamage = dmg
-            totalDamage += dmg
+					if hp < lastHealth then
+						local dmg = math.floor(lastHealth - hp)
+						lastDamage = dmg
+						totalDamage += dmg
 
-        elseif hp > lastHealth then
-            local heal = math.floor(hp - lastHealth)
-            lastHeal = heal
-            totalHeal += heal
-        end
+					elseif hp > lastHealth then
+						local heal = math.floor(hp - lastHealth)
+						lastHeal = heal
+						totalHeal += heal
+					end
 
-        lastHealth = hp
-    end)
-end
-
-if lp.Character then
-    bindHumanoid(lp.Character)
-end
-lp.CharacterAdded:Connect(bindHumanoid)
-
+					lastHealth = hp
+				end)
+			end
+		end
+		task.wait(0.2)
+	end
+end)
+						
 Text(
-    scr,
-    "Damage",
-    "BestDamage: 0 | LastDamage: 0",
-    false,
-    255,80,80,
-    255,80,80,
-    nil,nil,nil,
-    function(txt)
-        txt.Text =
-            "AllDamage: "..totalDamage.." | LastDamage: "..lastDamage
-    end
+	scr,
+	"Damage",
+	"BestDamage: 0 | LastDamage: 0",
+	false,
+	255,80,80,
+	255,80,80,
+	nil,nil,nil,
+	function(txt)
+		txt.Text =
+			"BestDamage: "..totalDamage.." | LastDamage: "..lastDamage
+	end
 )
 
 Text(
-    scr,
-    "Heal",
-    "BestHeal: 0 | LastHeal: 0",
-    false,
-    80,255,120,
-    80,255,120,
-    nil,nil,nil,
-    function(txt)
-        txt.Text =
-            "AllHeal: "..totalHeal.." | LastHeal: "..lastHeal
-    end
+	scr,
+	"Heal",
+	"BestHeal: 0 | LastHeal: 0",
+	false,
+	80,255,120,
+	80,255,120,
+	nil,nil,nil,
+	function(txt)
+		txt.Text =
+			"BestHeal: "..totalHeal.." | LastHeal: "..lastHeal
+	end
 )
-
+						
 ------------------------------------------------
--- DEATHS CORE (Client / Respawn-safe)
+-- DEATHS (HRP Real-time Safe)
 ------------------------------------------------
 local Deaths = { Count = 0 }
+local boundHumanoid = nil
 
-local function bindDeath(char)
-    local hum = char:WaitForChild("Humanoid", 10)
-    if not hum then return end
+task.spawn(function()
+	while true do
+		local char = lp.Character
+		if char then
+			local hrp = char:FindFirstChild("HumanoidRootPart")
+			local hum = char:FindFirstChildOfClass("Humanoid")
 
-    hum.Died:Connect(function()
-        Deaths.Count += 1
-    end)
-end
+			if hrp and hum and hum ~= boundHumanoid then
+				boundHumanoid = hum
 
-if lp.Character then
-    bindDeath(lp.Character)
-end
-lp.CharacterAdded:Connect(bindDeath)
+				hum.Died:Connect(function()
+					Deaths.Count += 1
+				end)
+			end
+		end
+		task.wait(0.2)
+	end
+end)
 
 Text(
-    scr,
-    "Deaths",
-    "Deaths: 0",
-    false,
-    255,80,80,
-    255,80,80,
-    nil,nil,nil,
-    function(txt)
-        txt.Text = "Deaths: "..Deaths.Count
-    end
+	scr,
+	"Deaths",
+	"Deaths: 0",
+	false,
+	255,80,80,
+	255,80,80,
+	nil,nil,nil,
+	function(txt)
+		txt.Text = "Deaths: "..Deaths.Count
+	end
 )
