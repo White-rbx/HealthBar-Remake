@@ -1,4 +1,4 @@
--- Script ahh 1.31
+-- Script ahh 1.315
 
 -- =====>> Saved Functions <<=====
 
@@ -801,7 +801,7 @@ timeText.MouseButton1Click:Connect(function()
 end)
 
 ------------------------------------------------
--- Developer Console Button (F9)
+-- Developer Console Button (FIXED)
 ------------------------------------------------
 local StarterGui = game:GetService("StarterGui")
 
@@ -809,11 +809,11 @@ Button(
 	scr,
 	"DeveloperConsole",
 	"Open Developer console",
-	false,                 -- non-copyable
-	180,220,255,           -- Light blue sky (Text)
-	180,220,255,           -- Light blue sky (Stroke)
-	function(btn)          -- Workin
-		-- เปิด Developer Console (เหมือนกด F9)
+	false,
+	180,220,255,          -- Light blue sky
+	180,220,255,
+	nil,                  -- ❌ Workin = ไม่ใช้
+	function(btn)         -- ✅ Callback = ตอนกดจริง
 		pcall(function()
 			StarterGui:SetCore("DevConsoleVisible", true)
 		end)
