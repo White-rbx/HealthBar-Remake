@@ -1,4 +1,4 @@
--- Script ahh 1.315
+-- Script ahh 1.32
 
 -- =====>> Saved Functions <<=====
 
@@ -691,7 +691,8 @@ task.spawn(function()
 		end
 		task.wait(0.1)
 	end
-end)------------------------------------------------
+end)
+------------------------------------------------
 -- Position Of Character (COPYABLE)
 ------------------------------------------------
 local posButton = Button(
@@ -734,7 +735,7 @@ task.spawn(function()
 		else
 			posButton.Text = "Position: X: - | Y: - | Z: -"
 		end
-		task.wait(0.1)
+		task.wait(0.001)
 	end
 end)
 ------------------------------------------------
@@ -817,5 +818,118 @@ Button(
 		pcall(function()
 			StarterGui:SetCore("DevConsoleVisible", true)
 		end)
+	end
+)
+
+------------------------------------------------
+-- Drop tool and Drop all tools
+------------------------------------------------
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
+local function getCharacter()
+	return lp.Character
+end
+
+local function getHumanoid()
+	local c = getCharacter()
+	return c and c:FindFirstChildOfClass("Humanoid")
+end
+
+local function getEquippedTool()
+	local c = getCharacter()
+	if not c then return nil end
+	return c:FindFirstChildOfClass("Tool")
+end
+
+local function warnStroke(ui, color)
+	local stroke = ui:FindFirstChildOfClass("UIStroke")
+	if not stroke then return end
+
+	local old = stroke.Color
+	stroke.Color = color
+	task.delay(1, function()
+		if stroke then
+			stroke.Color = old
+		end
+	end)
+end
+
+Button(
+	scr,
+	"DropTool",
+	"Drop Tool",
+	true,
+	255,255,0,          -- Yellow text
+	255,220,120,        -- Yellow stroke
+	nil,                -- Workin (ไม่ต้อง loop)
+	function(btn)       -- Callback
+		local tool = getEquippedTool()
+		local char = getCharacter()
+
+		if not tool or not char then
+			-- ❌ ไม่มี tool
+			warnStroke(btn, Color3.fromRGB(255,0,0))
+			return
+		end
+
+		if tool.CanBeDropped == false then
+			-- ❌ Tool drop ไม่ได้
+			warnStroke(btn, Color3.fromRGB(255,0,0))
+			return
+		end
+
+		-- ✅ Drop
+		tool.Parent = workspace
+	end
+)
+
+Button(
+	scr,
+	"DropTools",
+	"Drop all tools",
+	true,
+	255,120,150,        -- Pink-red text
+	255,80,80,          -- Red-pink stroke
+	nil,
+	function(btn)
+		local char = getCharacter()
+		local backpack = lp:FindFirstChild("Backpack")
+
+		if not char or not backpack then
+			warnStroke(btn, Color3.fromRGB(200,0,0))
+			return
+		end
+
+		local droppedAny = false
+		local failed = false
+
+		-- 🔹 Tool ที่ถืออยู่
+		local equipped = char:FindFirstChildOfClass("Tool")
+		if equipped then
+			if equipped.CanBeDropped then
+				equipped.Parent = workspace
+				droppedAny = true
+			else
+				failed = true
+			end
+		end
+
+		-- 🔹 Tool ใน Backpack
+		for _,tool in ipairs(backpack:GetChildren()) do
+			if tool:IsA("Tool") then
+				if tool.CanBeDropped then
+					tool.Parent = workspace
+					droppedAny = true
+				else
+					failed = true
+				end
+			end
+		end
+
+		-- ❌ มีอย่างน้อย 1 อัน drop ไม่ได้
+		if failed then
+			warnStroke(btn, Color3.fromRGB(150,0,0)) -- really red
+		end
 	end
 )
