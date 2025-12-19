@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.45
+-- So uhm just a script lol. 4.451
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -228,7 +228,7 @@ createUIListLayout(BFrame2, 0.005, 0, HCenter, VTop, SName, FillV)
 local bk = Instance.new("Frame")
 bk.Name = "Load_Background"
 bk.Size = UDim2.new(0.4,0,0.2,0)
-bk.Position = UDim2.new(0.3,0,0.75,0)
+bk.Position = UDim2.new(0.3,0,0.70,0)
 bk.BackgroundColor3 = Color3.fromRGB(0,0,0)
 bk.BackgroundTransparency = 0.5
 bk.Visible = true
