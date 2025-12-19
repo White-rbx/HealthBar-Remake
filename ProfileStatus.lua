@@ -1,4 +1,4 @@
--- Script ahh 1.305
+-- Script ahh 1.31
 
 -- =====>> Saved Functions <<=====
 
@@ -799,3 +799,23 @@ timeText.MouseButton1Click:Connect(function()
 		syn.set_clipboard(t)
 	end
 end)
+
+------------------------------------------------
+-- Developer Console Button (F9)
+------------------------------------------------
+local StarterGui = game:GetService("StarterGui")
+
+Button(
+	scr,
+	"DeveloperConsole",
+	"Open Developer console",
+	false,                 -- non-copyable
+	180,220,255,           -- Light blue sky (Text)
+	180,220,255,           -- Light blue sky (Stroke)
+	function(btn)          -- Workin
+		-- เปิด Developer Console (เหมือนกด F9)
+		pcall(function()
+			StarterGui:SetCore("DevConsoleVisible", true)
+		end)
+	end
+)
