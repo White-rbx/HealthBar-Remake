@@ -1,4 +1,4 @@
--- Script ahh 1.30
+-- Script ahh 1.305
 
 -- =====>> Saved Functions <<=====
 
@@ -607,23 +607,48 @@ end)
 if Humanoid then bindDeaths() end
 
 --====================================================
--- INVENTORY
+-- INVENTORY (RESPAWN SAFE)
 --====================================================
-local backpack = lp:WaitForChild("Backpack")
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+
 local invText = Text(scr,"Inventory","Tools: 0",false,255,255,255,255,255,255)
 
-local function updateInv()
-	local c = 0
-	for _,v in ipairs(backpack:GetChildren()) do
-		if v:IsA("Tool") then c+=1 end
+local backpackConnAdd
+local backpackConnRemove
+
+local function bindBackpack()
+	-- disconnect ของเก่า
+	if backpackConnAdd then backpackConnAdd:Disconnect() end
+	if backpackConnRemove then backpackConnRemove:Disconnect() end
+
+	local backpack = lp:WaitForChild("Backpack")
+
+	local function updateInv()
+		local c = 0
+		for _, v in ipairs(backpack:GetChildren()) do
+			if v:IsA("Tool") then
+				c += 1
+			end
+		end
+		invText.Text = "Tools: "..c
 	end
-	invText.Text = "Tools: "..c
+
+	backpackConnAdd = backpack.ChildAdded:Connect(updateInv)
+	backpackConnRemove = backpack.ChildRemoved:Connect(updateInv)
+
+	updateInv()
 end
 
-backpack.ChildAdded:Connect(updateInv)
-backpack.ChildRemoved:Connect(updateInv)
-updateInv()
+-- initial
+bindBackpack()
 
+-- IMPORTANT: rebinding when respawn
+lp.CharacterAdded:Connect(function()
+	task.wait(0.1) -- กัน race condition บนมือถือ
+	bindBackpack()
+end)
+						
 --====================================================
 -- HOLDING TOOL
 --====================================================
@@ -758,7 +783,7 @@ local timeText = Button(
 task.spawn(function()
 	while timeText.Parent do
 		timeText.Text = "TimeOfDay: " .. tostring(Lighting.TimeOfDay)
-		task.wait(0.5)
+		task.wait(0.001)
 	end
 end)
 
