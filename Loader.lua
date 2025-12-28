@@ -1,4 +1,4 @@
--- Well 1.79961
+-- Well 1.79965
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -181,78 +181,6 @@ task.spawn(function()
         end
     end
 end)
-
---====================================================
--- SERVICES
---====================================================
-local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
-
---====================================================
--- PATH (SAFE WAIT)
---====================================================
-local holder =
-    CoreGui:WaitForChild("ExperienceSettings", 10)
-    :WaitForChild("Menu", 10)
-    :WaitForChild("TopBar", 10)
-    :WaitForChild("Holder", 10)
-
---====================================================
--- TWEEN INFO
---====================================================
-local tweenInfo = TweenInfo.new(
-    0.5, -- time
-    Enum.EasingStyle.Quad,
-    Enum.EasingDirection.Out
-)
-
---====================================================
--- SETUP FUNCTION
---====================================================
-local function setupButton(btn)
-	if not btn:IsA("ImageButton") then return end
-
-	-- default state
-	btn.BackgroundTransparency = 1
-	btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
-
-	local tweenIn
-	local tweenOut
-
-	-- PRESS
-	btn.MouseButton1Down:Connect(function()
-		if tweenOut then tweenOut:Cancel() end
-		tweenIn = TweenService:Create(
-			btn,
-			tweenInfo,
-			{ BackgroundTransparency = 0.1 }
-		)
-		tweenIn:Play()
-	end)
-
-	-- RELEASE
-	btn.MouseButton1Up:Connect(function()
-		if tweenIn then tweenIn:Cancel() end
-		tweenOut = TweenService:Create(
-			btn,
-			tweenInfo,
-			{ BackgroundTransparency = 1 }
-		)
-		tweenOut:Play()
-	end)
-end
-
---====================================================
--- APPLY TO ALL IMAGEBUTTONS
---====================================================
-for _,v in ipairs(holder:GetChildren()) do
-	setupButton(v)
-end
-
--- รองรับปุ่มที่ถูกเพิ่มมาทีหลัง
-holder.ChildAdded:Connect(setupButton)
---====================================================
-
 
 task.spawn(function()
 	local StarterGui = game:GetService("StarterGui")
