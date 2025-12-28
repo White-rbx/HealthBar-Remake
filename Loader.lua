@@ -1,4 +1,4 @@
--- Well 1.79959
+-- Well 1.7996
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -118,26 +118,26 @@ task.spawn(function()
     local CoreGui = game:GetService("CoreGui")
 
     while task.wait(0.05) do
-        local path = CoreGui:FindFirstChild("TopBarApp")
+        local path = CoreGui:FindFirstChild("TopBarApp", 10)
         if path then
-            path = path:FindFirstChild("TopBarApp")
+            path = path:FindFirstChild("TopBarApp", 10)
         end
         if path then
-            path = path:FindFirstChild("UnibarLeftFrame")
+            path = path:FindFirstChild("UnibarLeftFrame", 10)
         end
         if path then
-            path = path:FindFirstChild("HealthBar")
+            path = path:FindFirstChild("HealthBar", 10)
         end
         if path then
-            path = path:FindFirstChild("ExperienceSettings")
+            path = path:FindFirstChild("ExperienceSettings", 10)
         end
         if path then
-            path = path:FindFirstChild("Menu")
+            path = path:FindFirstChild("Menu", 10)
         end
 
         -- ถ้าถึงตรงนี้ได้แล้วจึงเช็ค Load_Background
         if path then
-            local lb = path:FindFirstChild("Load_Background")
+            local lb = path:FindFirstChild("Load_Background", 10)
             if lb then
                 lb:Destroy()
             end
@@ -151,11 +151,11 @@ task.spawn(function()
 
     while task.wait(0.05) do
         -- หา ExperienceSettings ให้แน่นอนก่อน
-        local path = CoreGui:FindFirstChild("TopBarApp")
-        if path then path = path:FindFirstChild("TopBarApp") end
-        if path then path = path:FindFirstChild("UnibarLeftFrame") end
-        if path then path = path:FindFirstChild("HealthBar") end
-        if path then path = path:FindFirstChild("ExperienceSettings") end
+        local path = CoreGui:FindFirstChild("TopBarApp", 10)
+        if path then path = path:FindFirstChild("TopBarApp", 10) end
+        if path then path = path:FindFirstChild("UnibarLeftFrame", 10) end
+        if path then path = path:FindFirstChild("HealthBar", 10) end
+        if path then path = path:FindFirstChild("ExperienceSettings", 10) end
 
         if not path then
             continue
@@ -181,6 +181,78 @@ task.spawn(function()
         end
     end
 end)
+
+--====================================================
+-- SERVICES
+--====================================================
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+--====================================================
+-- PATH (SAFE WAIT)
+--====================================================
+local holder =
+    CoreGui:WaitForChild("ExperienceSettings", 10)
+    :WaitForChild("Menu", 10)
+    :WaitForChild("TopBar", 10)
+    :WaitForChild("Holder", 10)
+
+--====================================================
+-- TWEEN INFO
+--====================================================
+local tweenInfo = TweenInfo.new(
+    0.5, -- time
+    Enum.EasingStyle.Quad,
+    Enum.EasingDirection.Out
+)
+
+--====================================================
+-- SETUP FUNCTION
+--====================================================
+local function setupButton(btn)
+	if not btn:IsA("ImageButton") then return end
+
+	-- default state
+	btn.BackgroundTransparency = 1
+	btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+
+	local tweenIn
+	local tweenOut
+
+	-- PRESS
+	btn.MouseButton1Down:Connect(function()
+		if tweenOut then tweenOut:Cancel() end
+		tweenIn = TweenService:Create(
+			btn,
+			tweenInfo,
+			{ BackgroundTransparency = 0.1 }
+		)
+		tweenIn:Play()
+	end)
+
+	-- RELEASE
+	btn.MouseButton1Up:Connect(function()
+		if tweenIn then tweenIn:Cancel() end
+		tweenOut = TweenService:Create(
+			btn,
+			tweenInfo,
+			{ BackgroundTransparency = 1 }
+		)
+		tweenOut:Play()
+	end)
+end
+
+--====================================================
+-- APPLY TO ALL IMAGEBUTTONS
+--====================================================
+for _,v in ipairs(holder:GetChildren()) do
+	setupButton(v)
+end
+
+-- รองรับปุ่มที่ถูกเพิ่มมาทีหลัง
+holder.ChildAdded:Connect(setupButton)
+--====================================================
+
 
 task.spawn(function()
 	local StarterGui = game:GetService("StarterGui")
