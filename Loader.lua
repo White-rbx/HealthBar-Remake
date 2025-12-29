@@ -1,4 +1,4 @@
--- Well 1.79965
+-- Well 1.7997
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -181,6 +181,9 @@ task.spawn(function()
         end
     end
 end)
+
+-- BouncyAndHiglightImagsButton
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/BouncyAndHighlightImageButton.lua"))()
 
 task.spawn(function()
 	local StarterGui = game:GetService("StarterGui")
