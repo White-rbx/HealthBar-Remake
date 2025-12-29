@@ -1,4 +1,4 @@
--- Demo Test 3.5
+-- Demo Test 3.6
 
 --====================================================
 -- SERVICES
@@ -27,7 +27,7 @@ local ShiftLockHolder =
 --====================================================
 -- TWEEN INFO
 --====================================================
-local PRESS_TWEEN = TweenInfo.new(0.01, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local PRESS_TWEEN = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local RELEASE_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local RELEASE_UISTROKE = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
