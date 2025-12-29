@@ -1,4 +1,4 @@
--- Demo Test 3
+-- Demo Test 3.2
 
 --====================================================
 -- SERVICES
@@ -28,6 +28,7 @@ local ShiftLockHolder =
 --====================================================
 local PRESS_TWEEN   = TweenInfo.new(0.01, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local RELEASE_TWEEN = TweenInfo.new(0.5,  Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local RELEASE_TWEEN2 = TweenInfo.new(0.15,  Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 --====================================================
 -- STATES
@@ -49,7 +50,7 @@ local currentPressedButton = nil
 local function resetButton(btn)
 	if not btn then return end
 
-	TweenService:Create(btn, RELEASE_TWEEN, {
+	TweenService:Create(btn, RELEASE_TWEEN2, {
 		BackgroundTransparency = NORMAL_TRANSPARENCY,
 		Size = NORMAL_SIZE
 	}):Play()
