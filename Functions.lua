@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.451
+-- So uhm just a script lol. 4.452
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -421,14 +421,15 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ➖ = Disconnected or discontinued
 -------
 📌 Updated: Shift Lock
- ✅ Shift Lock for mobile.
+ ✅ Add BouncyAndHiglightImagsButton 
 -------
 🔁 In progress:
  🔨 Creating Status Profile (Debug)
  🔨 Updating AI Open Source (In develop)
+ 🔷 Moveable ValueLabels
 -------
 ❌ Failed:
- ➖ Moveable HealthBar and ValueLabels
+ ➖ Moveable HealthBar
 -------
 ]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
