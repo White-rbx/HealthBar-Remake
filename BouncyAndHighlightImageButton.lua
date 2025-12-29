@@ -1,4 +1,4 @@
--- Demo Test 2
+-- Demo Test 2.5
 
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
@@ -13,8 +13,8 @@ local targets = {
     get("Menu"):WaitForChild("HolderScreen", 10):WaitForChild("Shift_Lock", 10)
 }
 
-local HIGHLIGHT_IN = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local HIGHLIGHT_OUT = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local HIGHLIGHT_IN = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local HIGHLIGHT_OUT = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local BOUNCE = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
 local function apply(btn: ImageButton)
@@ -40,7 +40,7 @@ local function apply(btn: ImageButton)
         if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
             TweenService:Create(btn, HIGHLIGHT_IN, {
-                BackgroundTransparency = 0.6
+                BackgroundTransparency = 0.2
             }):Play()
 
             TweenService:Create(btn, BOUNCE, {
