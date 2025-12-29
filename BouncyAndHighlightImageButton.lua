@@ -1,56 +1,70 @@
--- Demo Test 1
+-- Demo Test 2
 
--- SERVICES
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
--- PATH
-local Holder =
-	CoreGui
-	:WaitForChild("ExperienceSettings", 10)
-	:WaitForChild("Menu", 10)
-	:WaitForChild("TopBar", 10)
-	:WaitForChild("Holder", 10)
+local function get(path)
+    return CoreGui:WaitForChild("ExperienceSettings", 10)
+        and CoreGui.ExperienceSettings:WaitForChild(path, 10)
+end
 
--- TWEEN INFO
-local pressTweenInfo  = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local releaseTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local targets = {
+    get("Menu"):WaitForChild("TopBar", 10):WaitForChild("Holder", 10),
+    get("Menu"):WaitForChild("HolderScreen", 10):WaitForChild("Shift_Lock", 10)
+}
 
--- SIZE STATES
-local NORMAL_SIZE = UDim2.new(0, 34, 0.8, 0)
-local PRESS_SIZE  = UDim2.new(0, 44, 0.8, 10)
+local HIGHLIGHT_IN = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local HIGHLIGHT_OUT = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local BOUNCE = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
--- APPLY TO ALL IMAGEBUTTONS
-for _, btn in ipairs(Holder:GetChildren()) do
-	if not btn:IsA("ImageButton") then continue end
+local function apply(btn: ImageButton)
+    if btn.Name == "a3_Dragger" then return end
 
-	-- initial state
-	btn.BackgroundTransparency = 1
-	btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
-	btn.Size = NORMAL_SIZE
-	btn.AutoButtonColor = false
+    btn.BackgroundTransparency = 1
+    local defaultSize = btn.Size
+    local bounceSize = UDim2.new(
+        defaultSize.X.Scale,
+        defaultSize.X.Offset + 30,
+        defaultSize.Y.Scale,
+        defaultSize.Y.Offset + 30
+    )
 
-	-- PRESS
-	btn.MouseButton1Down:Connect(function()
-		TweenService:Create(
-			btn,
-			pressTweenInfo,
-			{
-				BackgroundTransparency = 0.2,
-				Size = PRESS_SIZE
-			}
-		):Play()
-	end)
+    local function reset()
+        TweenService:Create(btn, HIGHLIGHT_OUT, {
+            BackgroundTransparency = 1,
+            Size = defaultSize
+        }):Play()
+    end
 
-	-- RELEASE
-	btn.MouseButton1Up:Connect(function()
-		TweenService:Create(
-			btn,
-			releaseTweenInfo,
-			{
-				BackgroundTransparency = 1,
-				Size = NORMAL_SIZE
-			}
-		):Play()
-	end)
+    btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            TweenService:Create(btn, HIGHLIGHT_IN, {
+                BackgroundTransparency = 0.6
+            }):Play()
+
+            TweenService:Create(btn, BOUNCE, {
+                Size = bounceSize
+            }):Play()
+        end
+    end)
+
+    -- ปล่อยเมาส์ / นิ้ว
+    btn.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            reset()
+        end
+    end)
+
+    -- 🔥 แก้บัค “ลากออกแล้วค้าง”
+    btn.MouseLeave:Connect(reset)
+end
+
+for _, holder in ipairs(targets) do
+    for _, ui in ipairs(holder:GetDescendants()) do
+        if ui:IsA("ImageButton") then
+            apply(ui)
+        end
+    end
 end
