@@ -1,3 +1,5 @@
+-- gpt 1
+
 -- =====>> Saved Functions <<=====
 
 -- ====FUNCTION CORNER=====
@@ -348,6 +350,8 @@ end
  txt(user.Info, "Hello, World!", 0,170,255) -- Light blue
  txt(user.Nill, "Hello, World!", 180,180,180) -- Gray
 ]]
+
+txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
 
 -- ================= API CORE (TAIL ONLY) =================
 
