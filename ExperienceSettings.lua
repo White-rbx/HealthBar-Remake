@@ -1,4 +1,4 @@
--- Ok 2.35
+-- Ok 2.4
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -2229,8 +2229,8 @@ wl.TextColor3 = Color3.fromRGB(255,255,255)
 wl.Parent = bk
 
 -- 🔸 ตำแหน่ง
-local POS_OFF = UDim2.new(0.3, 0, 1, 0)    -- ปิด
-local POS_ON  = UDim2.new(0.3, 0, 0.3, 0)  -- เปิด
+local POS_OFF = UDim2.new(0.25, 0, 1, 0)    -- ปิด
+local POS_ON  = UDim2.new(0.25, 0, 0.18, 0)  -- เปิด
 
 -- 🔸 ตั้งค่า Tween
 local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
