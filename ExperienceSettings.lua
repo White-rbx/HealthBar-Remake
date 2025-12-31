@@ -1,4 +1,4 @@
--- Ok 2.4
+-- Ok 2.5
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -2198,7 +2198,7 @@ lg.Name = "Disconnected"
 lg.BackgroundTransparency = 1
 lg.Position = UDim2.new(0.02,0,0.02,0)
 lg.Size = UDim2.new(0.96,0,0.2,0)
-lg.Text = "Disconnected"
+lg.Text = "loadstring failed"
 lg.TextSize = 20
 lg.TextColor3 = Color3.fromRGB(255,255,255)
 lg.Parent = bk
@@ -2209,10 +2209,8 @@ wt.BackgroundTransparency = 1
 wt.Position = UDim2.new(0.02,0,0.25,0)
 wt.Size = UDim2.new(0.96,0,0.35,0)
 wt.Text = [[ 
-ChatGPT has been disconnected.
-Please wait for next update!
-I disconnected cuz remaking ChatGPT 
-to AI Open Source.
+Something was wrong with AI-OpenSource.
+please wait for next update!
 ]]
 wt.TextScaled = true
 wt.TextColor3 = Color3.fromRGB(255,255,255)
@@ -2223,7 +2221,7 @@ wl.Name = "error"
 wl.BackgroundTransparency = 1
 wl.Position = UDim2.new(0.02,0,0.65,0)
 wl.Size = UDim2.new(0.96,0,0.13,0)
-wl.Text = "Error Code: -2"
+wl.Text = "Error Code: -3"
 wl.TextScaled = true
 wl.TextColor3 = Color3.fromRGB(255,255,255)
 wl.Parent = bk
