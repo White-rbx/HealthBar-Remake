@@ -1,4 +1,4 @@
--- gpt 3.653
+-- gpt 3.654
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.653 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.654 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands (SOON)", 0,170,255)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
@@ -589,33 +589,36 @@ end
 -- ===== HELP TEXT =====
 local HELP_TEXT = [[
 /Help
-Show all commands
+"Show all commands"
 
 /Calculate or /Cal [MATH]
+"
 Example:
 /cal 29 / 2
 /cal 4^2
 /cal (18 + 2) * 3
-
+"
 /ClearText
-Delete all messages in ChatLogs
+"Delete all messages in ChatLogs"
 
 /AddAPI [AI_NAME] [API] [CONFIRM]
+"
 Example:
 /addapi gemini AIza**** yes
 /addapi chatgpt sk_proj**** no
+"
 
 /UnsaveAPI
-Disable API
+"Disable API"
 
 /OpenWebsiteInExperience [URL]
-Open website in Roblox
+"Open website in Roblox"
 
-/loadstring [URL] < SOON
-> Disabled for safety <
+/loadstring [URL]
+"execute loadstring"
 
-/Script [CODE] < SOON
-> Disabled for safety <
+/Script [CODE] -- please add "[]" more
+"write script"
 ]]
 
 -- ===== CLEAR CHAT =====
@@ -651,7 +654,7 @@ local function handleCommand(raw)
     if cmd == "/help" then
         txt(user.Sys, "Available Commands:", 255, 90, 0)
         for line in HELP_TEXT:gmatch("[^\n]+") do
-            txt(user.Info, line, 0, 170, 255)
+            txt(user.Nill, line, 180,180,180)
         end
         return true
     end
