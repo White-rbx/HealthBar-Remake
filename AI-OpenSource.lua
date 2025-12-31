@@ -1,4 +1,4 @@
--- gpt 3.5
+-- gpt 3.52
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.5 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.52 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
@@ -458,7 +458,7 @@ end
 
 -- exponential backoff HTTP helper (returns response table or nil+err)
 local function httpWithRetries(reqTable, maxRetries)
-    maxRetries = maxRetries or 5
+    maxRetries = maxRetries or 60
     local backoff = 1
     for attempt = 1, maxRetries do
         local ok, res = pcall(function() return httpRequest(reqTable) end)
@@ -498,7 +498,7 @@ local function validateKey(key)
         local body = HttpService:JSONEncode({
             model = model,
             messages = {{role = "user", content = "Hello"}},
-            max_tokens = 1,
+            max_tokens = 1200,
             temperature = 0
         })
         local headers = {
