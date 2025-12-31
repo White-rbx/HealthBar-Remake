@@ -1,4 +1,4 @@
--- gpt 3.59
+-- gpt 3.6
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.59 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.6 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
@@ -375,7 +375,7 @@ local skipValidation = false          -- set true to skip a preliminary key vali
 local ok, Menu = pcall(function()
     return CoreGui:WaitForChild("ExperienceSettings", 6).Menu
 end)
-if not ok or not Menu then
+if not local Menu then
     warn("[AI] ExperienceSettings.Menu not found")
     return
 end
@@ -643,45 +643,146 @@ local function sendOpenAI(apiKey, prompt, onSuccess, onError, model)
     })
 end
 
+-- ส่งคำขอไปยัง Gemini (Google Generative Language)
+local HttpService = game:GetService("HttpService")
+local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
+
+-- ใช้ enqueueRequest ถ้ามี (ผู้ใช้เก่าของคุณอาจมีคิว)
+local hasEnqueue = type(enqueueRequest) == "function"
+
 local function sendGemini(apiKey, prompt, onSuccess, onError)
+    if not apiKey or apiKey == "" then
+        if onError then onError("no_key") end
+        return
+    end
+
     local url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     local headers = {
         ["Content-Type"] = "application/json",
         ["x-goog-api-key"] = apiKey
     }
+
+    -- ปรับ body ให้เป็นตาราง Lua ถูกต้อง (รูปแบบตัวอย่าง — ปรับตาม API จริงได้)
     local bodyTable = {
         prompt = {
-            text = prompt
-        }
-    }
-    local body = jsonEncode({ "input" = { text = prompt } }) -- note: minimal; user may need to adapt
-    enqueueRequest({
-        url = url,
-        method = "POST",
-        headers = headers,
-        body = jsonEncode({
-            "prompt" = {
-                "parts" = {
-                    { "text" = prompt }
-                }
+            sections = {
+                { type = "text", text = tostring(prompt) }
             }
-        }),
-        onSuccess = function(bodyText, resp)
-            local decoded = jsonDecode(bodyText)
-            if not decoded then
-                if onError then onError("decode", bodyText) end
+        },
+        temperature = 0.2
+    }
+
+    local body = HttpService:JSONEncode(bodyTable)
+
+    local function handleResponse(res, attempt)
+        attempt = attempt or 1
+        if not res then
+            if onError then onError("no_response") end
+            return
+        end
+
+        -- 200 OK
+        if res.StatusCode == 200 or res.StatusCode == 201 then
+            local ok, decoded = pcall(function() return HttpService:JSONDecode(res.Body) end)
+            if not ok then
+                if onError then onError("decode_error", res.Body) end
                 return
             end
-            -- Google responses shape may vary
+
+            -- พยายามดึงข้อความจากรูปแบบที่ต่างกัน
             local out = nil
+            -- รูปแบบ: { candidates = { { content = { parts = { { text = "..." } } } } } }
             if decoded.candidates and decoded.candidates[1] and decoded.candidates[1].content and decoded.candidates[1].content.parts then
                 out = decoded.candidates[1].content.parts[1].text
             end
-            onSuccess(out or "(no text)", decoded)
-        end,
-        onError = onError
-    })
+            -- รูปแบบอื่น ๆ (บาง API ใช้ generations)
+            if (not out) and decoded.generations and decoded.generations[1] then
+                out = decoded.generations[1].text or decoded.generations[1].content
+            end
+
+            if onSuccess then onSuccess(out or "(no text)", decoded) end
+            return
+        end
+
+        -- Rate limit: retry แบบ exponential backoff (เบา ๆ)
+        if res.StatusCode == 429 then
+            if attempt < 4 then
+                local waitTime = 0.8 * attempt
+                task.wait(waitTime)
+                -- รีส่ง (โดยเรียก request ใหม่จากภายนอก)
+                return nil, "retry"  -- caller (doRequest) จะจัดการ retry
+            else
+                if onError then onError("rate_limited", res) end
+                return
+            end
+        end
+
+        -- ข้อผิดพลาด HTTP อื่น ๆ
+        if onError then onError("http_error", res) end
+    end
+
+    -- ส่งจริง (รองรับ enqueueRequest หรือ ส่งทันทีผ่าน executor)
+    local function doRequest(attempt)
+        attempt = attempt or 1
+
+        if hasEnqueue then
+            -- ถ้ามี enqueueRequest (user code) ให้ใช้มัน (สมมติ signature: table)
+            enqueueRequest({
+                url = url,
+                method = "POST",
+                headers = headers,
+                body = body,
+                onSuccess = function(bodyText, resp)
+                    -- สร้าง fake response object ให้เข้ารูป
+                    local fakeRes = { StatusCode = 200, Body = bodyText }
+                    handleResponse(fakeRes, attempt)
+                end,
+                onError = function(err)
+                    if attempt < 4 then
+                        task.wait(0.6 * attempt)
+                        doRequest(attempt + 1)
+                    else
+                        if onError then onError("enqueue_error", err) end
+                    end
+                end
+            })
+        else
+            -- ส่งด้วย executor httpRequest
+            local ok, res = pcall(function()
+                return httpRequest({
+                    Url = url,
+                    Method = "POST",
+                    Headers = headers,
+                    Body = body
+                })
+            end)
+
+            if not ok then
+                if attempt < 4 then
+                    task.wait(0.6 * attempt)
+                    return doRequest(attempt + 1)
+                else
+                    if onError then onError("request_failed", res) end
+                    return
+                end
+            end
+
+            -- handle 429 retry loop here
+            if res.StatusCode == 429 and attempt < 4 then
+                task.wait(0.8 * attempt)
+                return doRequest(attempt + 1)
+            end
+
+            handleResponse(res, attempt)
+        end
+    end
+
+    -- เริ่มส่ง (ไม่บล็อก)
+    task.spawn(function() doRequest(1) end)
 end
+
+-- ตัวอย่างการเรียกใช้:
+-- sendGemini(apiKey, "Hello world", function(text, raw) print("OK:", text) end, function(err, info) warn("ERR:", err, info) end)
 
 -- validate key (lightweight): send a tiny prompt and interpret response
 local function validateKey(apiKey, provider, onOk, onFail)
