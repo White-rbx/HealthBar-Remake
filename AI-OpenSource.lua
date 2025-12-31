@@ -1,4 +1,4 @@
--- gpt 2.1
+-- gpt 2.2
 
 -- =====>> Saved Functions <<=====
 
@@ -352,7 +352,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user,Nill, "Version: Test 2 | © Copyright LighterCyan
+txt(user,Nill, "Version: Test 2 | © Copyright LighterCyan", 180, 180, 180)
 
 -- =========================
 -- API CONNECT / CHAT HANDLER
