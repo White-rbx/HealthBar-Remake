@@ -1,4 +1,4 @@
--- gpt 3.6
+-- gpt 3.61
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.6 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.61 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
@@ -375,7 +375,8 @@ local skipValidation = false          -- set true to skip a preliminary key vali
 local ok, Menu = pcall(function()
     return CoreGui:WaitForChild("ExperienceSettings", 6).Menu
 end)
-if not local Menu then
+
+if not ok or not Menu then
     warn("[AI] ExperienceSettings.Menu not found")
     return
 end
