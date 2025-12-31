@@ -1,4 +1,4 @@
--- gpt 3.64
+-- gpt 3.65
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.64 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.65 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands (SOON)", 0,170,255)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
@@ -566,3 +566,167 @@ end)
 -- INIT
 ----------------------------------------------------------------
 setStatus("No key")
+
+
+
+
+-- ===============================
+-- COMMAND SYSTEM
+-- ===============================
+
+local function trim(s)
+    return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+local function split(str)
+    local t = {}
+    for w in str:gmatch("%S+") do
+        table.insert(t, w)
+    end
+    return t
+end
+
+-- ===== HELP TEXT =====
+local HELP_TEXT = [[
+/Help
+Show all commands
+
+/Calculate or /Cal [MATH]
+Example:
+/cal 29 / 2
+/cal 4^2
+/cal (18 + 2) * 3
+
+/ClearText
+Delete all messages in ChatLogs
+
+/AddAPI [AI_NAME] [API] [CONFIRM]
+Example:
+/addapi gemini AIza**** yes
+/addapi chatgpt sk_proj**** no
+
+/UnsaveAPI
+Disable API
+
+/OpenWebsiteInExperience [URL]
+Open website in Roblox
+
+/loadstring [URL] -- soon
+(Disabled for safety)
+
+/Script [[CODE]] -- soon
+(Disabled for safety)
+]]
+
+-- ===== CLEAR CHAT =====
+local function clearChat()
+    for _, v in ipairs(si:GetChildren()) do
+        if v:IsA("TextLabel") then
+            v:Destroy()
+        end
+    end
+end
+
+-- ===== CALCULATOR (SAFE) =====
+local function calculate(expr)
+    expr = expr:gsub("%^", "^")
+    local f = loadstring("return " .. expr)
+    if not f then
+        return nil, "invalid math expression"
+    end
+    local ok, res = pcall(f)
+    if not ok then
+        return nil, res
+    end
+    return res
+end
+
+-- ===== COMMAND HANDLER =====
+local function handleCommand(raw)
+    local text = trim(raw)
+    local args = split(text)
+    local cmd = args[1]:lower()
+
+    -- /help
+    if cmd == "/help" then
+        txt(user.Sys, "Available Commands:", 255, 90, 0)
+        for line in HELP_TEXT:gmatch("[^\n]+") do
+            txt(user.Info, line, 0, 170, 255)
+        end
+        return true
+    end
+
+    -- /cleartext
+    if cmd == "/cleartext" then
+        clearChat()
+        txt(user.Suc, "Chat cleared", 0,255,0)
+        return true
+    end
+
+    -- /cal
+    if cmd == "/cal" or cmd == "/calculate" then
+        local expr = text:sub(#args[1] + 2)
+        local res, err = calculate(expr)
+        if not res then
+            txt(user.Error, "Math error: ".. tostring(err), 255,0,0)
+        else
+            txt(user.Suc, "Result = ".. tostring(res), 0,255,0)
+        end
+        return true
+    end
+
+    -- /addapi
+    if cmd == "/addapi" then
+        txt(user.Sys, "API detected (stub mode)", 255, 90, 0)
+        txt(user.Warn, "Validation skipped (executor logic required)", 255,255,0)
+        return true
+    end
+
+    -- /unsaveapi
+    if cmd == "/unsaveapi" or cmd == "/unapi" then
+        txt(user.Sys, "API unsaved", 255, 90, 0)
+        return true
+    end
+
+    -- dangerous commands
+    if cmd == "/loadstring" or cmd == "/script" then
+        txt(user.Warn, "Command disabled for safety", 255,255,0)
+        return true
+    end
+
+    return false
+end
+
+-- ===============================
+-- SEND BUTTON + CHAT LINK
+-- ===============================
+
+local function onSend()
+    local message = trim(ch.Text)
+    if message == "" then return end
+
+    ch.Text = "" -- clear textbox
+
+    -- command?
+    if message:sub(1,1) == "/" then
+        local handled = handleCommand(message)
+        if not handled then
+            txt(user.Error, "Unknown command. Type /help", 255,0,0)
+        end
+        return
+    end
+
+    -- normal chat (AI stub)
+    txt(user.plr, message, 255,255,255)
+    txt(user.chat, "(AI not connected)", 85,255,255)
+end
+
+-- Button click
+se.MouseButton1Click:Connect(onSend)
+
+-- Enter key
+ch.FocusLost:Connect(function(enter)
+    if enter then
+        onSend()
+    end
+end)
