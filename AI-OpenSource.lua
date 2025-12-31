@@ -1,4 +1,4 @@
--- gpt 3.571
+-- gpt 3.58
 
 -- =====>> Saved Functions <<=====
 
@@ -355,350 +355,425 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.571 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.58 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
--- AI-OpenSource: Chat bridge (executor HTTP)
--- ต้องการ UI instances ที่มีอยู่:
--- Frame path: CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame
--- children: "api" (TextBox), "Confirm_api" (TextButton), "Unsaved_API" (TextButton), "Status" (TextLabel),
---           "chat" (TextBox), "Send" (TextButton), "ChatLogs" (ScrollingFrame)
--- ต้องมีฟังก์ชัน txt(userKey, text, R,G,B) อยู่แล้ว (ใช้เพื่อเขียน log ใน ChatLogs)
+-- === AI-OpenSource: Chat bridge (paste AFTER your UI + txt() + user table) ===
+-- Expects existing Instances in UI:
+--  - TextBox for API key: name "api" (or "APIKeyBox")
+--  - TextButton Confirm_api (or "Confirm_api" / "SaveBtn")
+--  - TextButton Unsaved_API (or "Unsaved_API")
+--  - TextBox chat input: name "chat" or "ch"
+--  - TextButton send: name "Send" or "se"
+--  - ScrollingFrame chat logs: name "ChatLogs" or "si"
+--  - Status TextLabel: name "Status" or "st"
+-- Also expects your txt(user, text, R,G,B) function and user table already present.
 
-local Http = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 
--- Safe find UI frame (tolerant)
-local function getFrame()
-    local ok, menu = pcall(function()
-        return CoreGui:WaitForChild("ExperienceSettings", 5).Menu
-    end)
-    if not ok or not menu then return nil end
-    local f = menu:FindFirstChild("AIOpenSource") or menu:FindFirstChild("ChatGPT") or menu:FindFirstChild("AIOpen") 
-    if f and f:FindFirstChild("Frame") then
-        return f.Frame
-    elseif f and f:IsA("Frame") then
-        return f
+local rootMenu = nil
+local ok
+ok, rootMenu = pcall(function() return CoreGui:WaitForChild("ExperienceSettings", 5).Menu end)
+if not ok or not rootMenu then
+    -- fallback: try common alternatives
+    rootMenu = CoreGui:FindFirstChild("ExperienceSettings") and CoreGui.ExperienceSettings:FindFirstChild("Menu")
+end
+
+-- try multiple frames/names (user said Frame path may vary)
+local function findChildByAny(parent, names)
+    for _, n in ipairs(names) do
+        local c = parent:FindFirstChild(n)
+        if c then return c end
     end
     return nil
 end
 
-local frame = getFrame()
-if not frame then
-    warn("[AI-OpenSource] UI frame not found at CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame")
+local container = rootMenu or CoreGui -- fallback to CoreGui to search globally
+local apiBox = findChildByAny(container, {"api", "APIKeyBox", "APIKey", "KeyBox"})
+local confirmBtn = findChildByAny(container, {"Confirm_api", "SaveBtn", "ConfirmAPI", "Confirm_api"})
+local unsavedBtn = findChildByAny(container, {"Unsaved_API", "UnsavedAPI", "Unsaved"})
+local statusLbl = findChildByAny(container, {"Status", "st", "StatusLabel"})
+local chatInput = findChildByAny(container, {"chat", "ch", "PromptBox", "UserBox"}) -- some UIs use PromptBox
+local sendBtn = findChildByAny(container, {"Send", "se", "SendBtn"})
+local chatLogs = findChildByAny(container, {"ChatLogs", "ChatFrame", "ChatFrame", "si", "ChatFrame"})
+
+-- If some direct children weren't found inside Menu, search whole experience
+if not apiBox then apiBox = CoreGui:FindFirstChild("api") or CoreGui:FindFirstChild("APIKeyBox") end
+if not confirmBtn then confirmBtn = CoreGui:FindFirstChild("Confirm_api") or CoreGui:FindFirstChild("SaveBtn") end
+if not unsavedBtn then unsavedBtn = CoreGui:FindFirstChild("Unsaved_API") end
+if not statusLbl then statusLbl = CoreGui:FindFirstChild("Status") end
+if not chatInput then chatInput = CoreGui:FindFirstChild("chat") or CoreGui:FindFirstChild("PromptBox") end
+if not sendBtn then sendBtn = CoreGui:FindFirstChild("Send") or CoreGui:FindFirstChild("SendBtn") end
+if not chatLogs then chatLogs = CoreGui:FindFirstChild("ChatLogs") end
+
+-- Verify required helpers exist
+if type(txt) ~= "function" then
+    warn("[AI-OpenSource] txt() function not found. Aborting chat bridge.")
+    return
+end
+if type(user) ~= "table" then
+    warn("[AI-OpenSource] user table not found. Aborting chat bridge.")
     return
 end
 
-local apiBox       = frame:FindFirstChild("api")
-local confirmBtn   = frame:FindFirstChild("Confirm_api")
-local unsaveBtn    = frame:FindFirstChild("Unsaved_API")
-local statusLabel  = frame:FindFirstChild("Status")
-local chatBox      = frame:FindFirstChild("chat")
-local sendBtn      = frame:FindFirstChild("Send")
-local chatLogs     = frame:FindFirstChild("ChatLogs")
+-- request function detection (executor)
+local requestFunc = nil
+requestFunc = (syn and syn.request) or (request or http and http.request) or (http_request) or (fluxus and fluxus.request)
 
-if not (apiBox and confirmBtn and unsaveBtn and statusLabel and chatBox and sendBtn and chatLogs) then
-    warn("[AI-OpenSource] Missing one or more UI elements (api, Confirm_api, Unsaved_API, Status, chat, Send, ChatLogs)")
-    -- still continue but many features will be no-op
+local function hasRequest()
+    return type(requestFunc) == "function"
 end
 
--- use existing txt() function for printing to ChatLogs
--- assume txt(userKey, text, R,G,B) exists globally
-if type(txt) ~= "function" then
-    error("txt(userKey, text, R,G,B) function not found — required for Chat logging")
-end
+-- file save/load (optional)
+local CAN_FILE = (type(writefile) == "function" and type(readfile) == "function" and type(isfile) == "function")
+local KEYFILE = "AI_OPEN_KEY.txt"
 
--- detect executor HTTP function
-local httpRequest =
-    (syn and syn.request) or
-    (http and http.request) or
-    (fluxus and fluxus.request) or
-    request or
-    http_request or
-    (function() return nil end)
-
-if not httpRequest then
-    txt("Error", "No executor HTTP function found (syn.request / http.request / request)", 255,0,0)
-    warn("[AI-OpenSource] No http request function found in environment")
-end
-
--- config
-local cfg = {
-    apiKey = nil,
-    provider = nil, -- "openai" or "gemini"
-    openai_url = "https://api.openai.com/v1/chat/completions",
-    openai_model = "gpt-4o-mini", -- change if you want
-    gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-    queue = {},
-    processing = false,
-    backoff = 1.5, -- exponential backoff base
-    maxBackoff = 60,
-    lastRequestTime = 0,
-    minInterval = 1.0, -- minimum seconds between requests to avoid 429
-}
-
--- helper: set status label safely
-local function setStatus(s)
-    if statusLabel and statusLabel:IsA("TextLabel") then
-        statusLabel.Text = "Status: " .. tostring(s)
+local function saveKeyToFile(key)
+    if CAN_FILE then
+        pcall(function()
+            writefile(KEYFILE, key)
+        end)
     end
 end
-
--- determine provider by key pattern
-local function detectProvider(key)
-    if not key or key == "" then return nil end
-    if tostring(key):match("^sk") or tostring(key):match("^sk%-proj") then
-        return "openai"
+local function loadKeyFromFile()
+    if CAN_FILE and isfile(KEYFILE) then
+        local ok, v = pcall(function() return readfile(KEYFILE) end)
+        if ok and v then return v end
     end
-    if tostring(key):match("^AIza") then
-        return "gemini"
-    end
-    -- fallback: if contains "sk-" treat as openai
-    if tostring(key):find("sk%-") then return "openai" end
-    -- unknown
     return nil
 end
 
--- enqueue prompt
-local function enqueuePrompt(prompt, meta)
-    table.insert(cfg.queue, {prompt = prompt, meta = meta})
-    -- attempt process
-    task.spawn(function()
-        if not cfg.processing then
-            cfg.processing = true
-            while #cfg.queue > 0 do
-                local item = table.remove(cfg.queue, 1)
-                -- respect min interval
-                local waitFor = cfg.minInterval - (tick() - cfg.lastRequestTime)
-                if waitFor > 0 then task.wait(waitFor) end
-                local ok = pcall(function() 
-                    -- send and handle backoff internally
-                    local success = false
-                    local backoff = cfg.backoff
-                    while not success do
-                        local status, err = pcall(function()
-                            -- choose provider
-                            if cfg.provider == "openai" then
-                                -- OpenAI Chat Completion
-                                local body = {
-                                    model = cfg.openai_model,
-                                    messages = {
-                                        {role="system", content = "You are a helpful assistant."},
-                                        {role="user", content = item.prompt}
-                                    },
-                                    max_tokens = 1024,
-                                    temperature = 0.7
-                                }
-                                local res = httpRequest({
-                                    Url = cfg.openai_url,
-                                    Method = "POST",
-                                    Headers = {
-                                        ["Content-Type"] = "application/json",
-                                        ["Authorization"] = "Bearer " .. tostring(cfg.apiKey)
-                                    },
-                                    Body = Http:JSONEncode(body),
-                                    Timeout = 20
-                                })
-                                cfg.lastRequestTime = tick()
-                                if not res then error("No response from HTTP request") end
-                                if res.StatusCode == 429 then
-                                    error("RATE_LIMIT_429")
-                                end
-                                if res.StatusCode < 200 or res.StatusCode >= 300 then
-                                    error("HTTP "..tostring(res.StatusCode).." "..tostring(res.Body))
-                                end
-                                local okdecode, decoded = pcall(function() return Http:JSONDecode(res.Body) end)
-                                if not okdecode then error("Invalid JSON from OpenAI: "..tostring(res.Body)) end
-                                -- try to extract text
-                                local text = nil
-                                if decoded.choices and decoded.choices[1] and decoded.choices[1].message and decoded.choices[1].message.content then
-                                    text = decoded.choices[1].message.content
-                                elseif decoded.choices and decoded.choices[1] and decoded.choices[1].text then
-                                    text = decoded.choices[1].text
-                                else
-                                    text = Http:JSONEncode(decoded)
-                                end
-                                -- display
-                                txt(user.chat, text, 85,255,255) -- cyan
-                                success = true
-                            elseif cfg.provider == "gemini" then
-                                local body = {
-                                    contents = {
-                                        { parts = { { text = item.prompt } } }
-                                    }
-                                }
-                                local res = httpRequest({
-                                    Url = cfg.gemini_url,
-                                    Method = "POST",
-                                    Headers = {
-                                        ["Content-Type"] = "application/json",
-                                        ["x-goog-api-key"] = tostring(cfg.apiKey)
-                                    },
-                                    Body = Http:JSONEncode(body),
-                                    Timeout = 20
-                                })
-                                cfg.lastRequestTime = tick()
-                                if not res then error("No response from HTTP request") end
-                                if res.StatusCode == 429 then
-                                    error("RATE_LIMIT_429")
-                                end
-                                if res.StatusCode < 200 or res.StatusCode >= 300 then
-                                    error("HTTP "..tostring(res.StatusCode).." "..tostring(res.Body))
-                                end
-                                local okdecode, decoded = pcall(function() return Http:JSONDecode(res.Body) end)
-                                if not okdecode then error("Invalid JSON from Gemini: "..tostring(res.Body)) end
-                                -- try read candidates
-                                local text = nil
-                                if decoded.candidates and decoded.candidates[1] and decoded.candidates[1].content and decoded.candidates[1].content.parts and decoded.candidates[1].content.parts[1] then
-                                    text = decoded.candidates[1].content.parts[1].text
-                                else
-                                    text = Http:JSONEncode(decoded)
-                                end
-                                txt(user.chat, text, 85,255,255)
-                                success = true
-                            else
-                                error("No provider selected")
-                            end
-                        end)
-                        if not status then
-                            local errMsg = tostring(err or "unknown")
-                            if errMsg:find("RATE_LIMIT_429") or errMsg:find("429") then
-                                -- backoff then retry
-                                txt(user.Warn, "Rate limited. backing off "..tostring(math.floor(backoff)).."s", 255,255,0)
-                                task.wait(backoff)
-                                backoff = math.min(backoff * 2, cfg.maxBackoff)
-                            else
-                                txt(user.Error, "Request failed: "..errMsg, 255,0,0)
-                                success = true -- stop retrying for other errors
-                            end
-                        end
-                    end
+-- config
+local RATE_LIMIT_SEC = 3          -- min seconds between requests
+local BACKOFF_BASE = 1.5         -- exponential backoff multiplier
+local OPENAI_MODEL = "gpt-4o-mini" -- default model for OpenAI
+local GEMINI_MODEL_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+
+-- runtime state
+local savedKey = nil
+local provider = nil -- "openai" | "gemini" | nil
+local lastRequestTime = 0
+local retryQueue = {}
+
+local function setStatus(s)
+    if statusLbl and statusLbl:IsA("TextLabel") then
+        statusLbl.Text = "Status: " .. tostring(s)
+    end
+end
+
+local function detectProviderFromKey(k)
+    if not k then return nil end
+    k = tostring(k)
+    if k:match("^%s*sk%-") then
+        return "openai"
+    elseif k:match("^%s*AIza") then
+        return "gemini"
+    else
+        -- fallback: if contains "sk_proj" treat openai; user said "sk_proj*** = ChatGPT"
+        if k:find("sk_proj") then return "openai" end
+        return nil
+    end
+end
+
+-- safe post helper using executor request
+local function httpPost(opts)
+    if not requestFunc then
+        return false, "http_request_not_available"
+    end
+    local ok, res = pcall(function() return requestFunc(opts) end)
+    return ok, res
+end
+
+-- build OpenAI request (chat completions)
+local function callOpenAI(key, prompt)
+    local url = "https://api.openai.com/v1/chat/completions"
+    local payload = {
+        model = OPENAI_MODEL,
+        messages = {
+            {role = "user", content = prompt}
+        },
+        max_tokens = 800,
+        temperature = 0.7
+    }
+    local body = HttpService:JSONEncode(payload)
+    local headers = {
+        ["Content-Type"] = "application/json",
+        ["Authorization"] = "Bearer " .. key
+    }
+    return httpPost({Url = url, Method = "POST", Headers = headers, Body = body})
+end
+
+-- build Gemini request (Google Generative Language) — use user-provided API key as x-goog-api-key
+local function callGemini(key, prompt)
+    local raw = {contents = {{parts = {{text = prompt}}}}}
+    local body = HttpService:JSONEncode(raw)
+    local headers = {
+        ["Content-Type"] = "application/json",
+        ["x-goog-api-key"] = key
+    }
+    return httpPost({Url = GEMINI_MODEL_ENDPOINT, Method = "POST", Headers = headers, Body = body})
+end
+
+-- minimal rate-limited caller (returns success, response or false+error)
+local function enqueueRequest(fn)
+    -- returns a promise-like table with waitForResult() to keep simple
+    local token = {done=false, ok=false, res=nil}
+    table.insert(retryQueue, {fn=fn, token=token, backoff=1})
+    return token
+end
+
+-- background processor for queue
+task.spawn(function()
+    while true do
+        local job = table.remove(retryQueue, 1)
+        if job then
+            local now = tick()
+            local waitFor = math.max(0, RATE_LIMIT_SEC - (now - lastRequestTime))
+            if waitFor > 0 then task.wait(waitFor) end
+
+            local ok, res = pcall(job.fn)
+            lastRequestTime = tick()
+
+            -- handle HTTP 429: if res and res.StatusCode==429 then retry with backoff
+            local statusCode = nil
+            if ok and type(res)=="table" then statusCode = res.StatusCode end
+
+            if statusCode == 429 then
+                -- exponential backoff, push back if attempts left
+                job.backoff = job.backoff * BACKOFF_BASE
+                task.delay(job.backoff, function()
+                    table.insert(retryQueue, job)
                 end)
-                if not ok then
-                    txt(user.Error, "Processing queue error: "..tostring(err), 255,0,0)
-                end
-            end
-            cfg.processing = false
-        end
-    end)
-end
-
--- send-button handler
-local function onSend()
-    if not cfg.apiKey then
-        txt(user.Warn, "No API key set. Use Confirm_api to set.", 255,255,0)
-        return
-    end
-    local prompt = tostring(chatBox and chatBox.Text or "")
-    if prompt == "" then
-        txt(user.Warn, "Empty message.", 255,255,0)
-        return
-    end
-    -- display user message
-    txt(user.plr, prompt, 255,255,255)
-    -- clear input
-    if chatBox then chatBox.Text = "" end
-    enqueuePrompt(prompt, {})
-end
-
--- Confirm/Unsave API handlers
-local function setApiKeyFromBox()
-    if not apiBox then return end
-    local key = tostring(apiBox.Text or "")
-    if key == "" then
-        txt(user.Warn, "Empty API key.", 255,255,0)
-        setStatus("No key")
-        return
-    end
-    -- detect
-    local prov = detectProvider(key)
-    if not prov then
-        -- if unknown but contains "AIza" -> gemini, else if contains "sk" -> openai
-        if key:find("AIza") then prov = "gemini" end
-    end
-    cfg.apiKey = key
-    cfg.provider = prov or "openai" -- default to openai if unknown
-    setStatus((cfg.provider == "openai") and "Select ChatGPT" or (cfg.provider == "gemini") and "Select Gemini" or "Select ChatGPT")
-    txt(user.Suc, "API key set for provider: "..tostring(cfg.provider), 0,255,0)
-
-    -- optional quick check: minimal request (skip heavy validation if you prefer). We'll attempt a tiny test but avoid heavy calls.
-    setStatus("Connecting")
-    -- do a light test depending on provider (non-blocking)
-    task.spawn(function()
-        local ok, resp = pcall(function()
-            if cfg.provider == "openai" then
-                local body = { model = cfg.openai_model, messages = {{role="user", content = "Hello"}} , max_tokens = 1 }
-                local r = httpRequest({
-                    Url = cfg.openai_url,
-                    Method = "POST",
-                    Headers = { ["Content-Type"] = "application/json", ["Authorization"] = "Bearer "..cfg.apiKey },
-                    Body = Http:JSONEncode(body),
-                    Timeout = 10
-                })
-                return r
             else
-                local body = { contents = {{ parts = {{ text = "Hello" }} }} }
-                local r = httpRequest({
-                    Url = cfg.gemini_url,
-                    Method = "POST",
-                    Headers = { ["Content-Type"] = "application/json", ["x-goog-api-key"] = cfg.apiKey },
-                    Body = Http:JSONEncode(body),
-                    Timeout = 10
-                })
-                return r
+                job.token.done = true
+                job.token.ok = ok
+                job.token.res = res
             end
-        end)
-        if not ok or not resp then
-            setStatus("Invalid key")
-            txt(user.Error, "Key test failed (no response).", 255,0,0)
+        else
+            task.wait(0.1)
+        end
+    end
+end)
+
+-- wrapper to call API depending on provider
+local function sendToProvider(prompt)
+    if not savedKey then
+        return false, "no_key"
+    end
+    if not provider then
+        return false, "no_provider"
+    end
+
+    local fn
+    if provider == "openai" then
+        fn = function() return callOpenAI(savedKey, prompt) end
+    elseif provider == "gemini" then
+        fn = function() return callGemini(savedKey, prompt) end
+    else
+        return false, "unknown_provider"
+    end
+
+    local token = enqueueRequest(fn)
+    -- wait for the token to resolve (simple busy wait, but small)
+    local start = tick()
+    while not token.done do
+        task.wait(0.05)
+        -- safety timeout
+        if tick() - start > 30 then break end
+    end
+
+    if token.ok and type(token.res) == "table" then
+        return true, token.res
+    else
+        return false, token.res or "request_failed"
+    end
+end
+
+-- parse responses and show to UI
+local function parseAndShowResponse(ok, res)
+    if not ok then
+        txt(user.Error, "HTTP request error or no executor available.", 255,0,0)
+        return
+    end
+    if type(res) ~= "table" then
+        txt(user.Error, "Invalid response object.", 255,0,0)
+        return
+    end
+
+    -- OpenAI typical response: res.Body JSON with choices[1].message.content
+    if res.Body then
+        local body = res.Body
+        local parsed, success = pcall(function() return HttpService:JSONDecode(body) end)
+        if success and parsed then
+            -- OpenAI style
+            if parsed.choices and parsed.choices[1] and parsed.choices[1].message and parsed.choices[1].message.content then
+                local aiText = parsed.choices[1].message.content
+                txt(user.chat, aiText, 85,255,255)
+                return
+            end
+            -- Gemini style: candidates -> content.parts[1].text
+            if parsed.candidates and parsed.candidates[1] and parsed.candidates[1].content and parsed.candidates[1].content.parts then
+                local p = parsed.candidates[1].content.parts[1].text
+                txt(user.chat, p or "[No answer]", 85,255,255)
+                return
+            end
+            -- fallback: show raw body
+            txt(user.chat, (type(parsed)=="table" and tostring(parsed) or body), 85,255,255)
+            return
+        else
+            -- non-json body
+            txt(user.chat, tostring(body), 85,255,255)
             return
         end
-        if type(resp.StatusCode) == "number" and (resp.StatusCode == 200 or resp.StatusCode == 201) then
+    end
+
+    txt(user.Error, "No Body in response.", 255,0,0)
+end
+
+-- validate key (light check) by sending tiny prompt (use minimal tokens)
+local function validateKey(key, prov)
+    if not key then return false, "no_key" end
+    local small = "Hello (validation). Reply 'ok'."
+    local ok, res = sendToProvider(small) -- note: this will use savedKey/provider; we'll temporarily assign
+    return ok, res
+end
+
+-- UI bindings
+local function setSavedKey(k)
+    savedKey = k
+    provider = detectProviderFromKey(k)
+    if provider == "openai" then
+        setStatus("Select ChatGPT")
+    elseif provider == "gemini" then
+        setStatus("Select Gemini")
+    else
+        setStatus("No key")
+    end
+end
+
+-- load saved key from file if available
+local fileKey = loadKeyFromFile()
+if fileKey then
+    setSavedKey(fileKey)
+    if apiBox and apiBox:IsA("TextBox") then apiBox.Text = fileKey end
+end
+
+-- Confirm button: save + try lightweight validation (but avoid spamming)
+if confirmBtn and confirmBtn:IsA("TextButton") then
+    confirmBtn.MouseButton1Click:Connect(function()
+        local key = (apiBox and apiBox.Text and tostring(apiBox.Text)) or savedKey
+        if not key or key == "" then
+            setStatus("No key")
+            txt(user.Warn, "No API key provided.", 255,255,0)
+            return
+        end
+
+        setStatus("Connecting")
+        -- set and save immediately
+        setSavedKey(key)
+        -- save to file if possible
+        saveKeyToFile(key)
+
+        -- quick validation attempt (but skip if no requestFunc)
+        if not hasRequest() then
+            setStatus("Connected (no HTTP available)")
+            txt(user.Info, "Executor HTTP not available; saved key locally.", 0,170,255)
+            return
+        end
+
+        -- perform one test request (rate-limited)
+        local ok2, res = sendToProvider("Hello. Test validation.")
+        if ok2 then
             setStatus("Connected")
-            txt(user.Suc, "API connected.", 0,255,0)
-        elseif type(resp.StatusCode) == "number" and resp.StatusCode == 401 then
-            setStatus("Invalid key")
-            txt(user.Error, "Invalid key (401).", 255,0,0)
-        elseif type(resp.StatusCode) == "number" and resp.StatusCode == 429 then
-            setStatus("Connected (Rate-limited)")
-            txt(user.Warn, "Connected but rate-limited (429).", 255,255,0)
+            txt(user.Suc, "API validated and connected.", 0,255,0)
         else
-            setStatus("Connected")
-            txt(user.Info, "Test response: "..tostring(resp.StatusCode).. " " ..tostring(resp.StatusMessage or ""), 0,170,255)
+            setStatus("Invalid key")
+            txt(user.Error, "Validation failed (server returned error). Saved key but invalid.", 255,0,0)
         end
     end)
 end
 
-local function clearApiKey()
-    cfg.apiKey = nil
-    cfg.provider = nil
-    setStatus("Unsave key")
-    txt(user.Sys, "API key cleared (unsaved).", 255,90,0)
-end
-
--- connect UI events
-if sendBtn and sendBtn.MouseButton1Click then
-    sendBtn.MouseButton1Click:Connect(onSend)
-end
-if chatBox then
-    -- allow Enter on TextBox to send (some executors allow detecting Enter; fallback to clicking)
-    chatBox.FocusLost:Connect(function(enter)
-        if enter then onSend() end
-    end)
-end
-if confirmBtn and confirmBtn.MouseButton1Click then
-    confirmBtn.MouseButton1Click:Connect(function()
-        setApiKeyFromBox()
-    end)
-end
-if unsaveBtn and unsaveBtn.MouseButton1Click then
-    unsaveBtn.MouseButton1Click:Connect(function()
-        clearApiKey()
+-- Unsaved API: clear saved key
+if unsavedBtn and unsavedBtn:IsA("TextButton") then
+    unsavedBtn.MouseButton1Click:Connect(function()
+        savedKey = nil
+        provider = nil
+        if CAN_FILE and isfile(KEYFILE) then pcall(function() delfile(KEYFILE) end) end
+        if apiBox and apiBox:IsA("TextBox") then apiBox.Text = "" end
+        setStatus("Unsave key")
+        txt(user.Sys, "API key cleared.", 255,90,0)
     end)
 end
 
-setStatus("No key")
-txt(user.Nill, "AI bridge loaded. Use Confirm_api to set a key, then type and Send.", 180,180,180)
+-- send message from UI input
+local function sendFromInput()
+    if not chatInput then return end
+    local text = tostring(chatInput.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if text == "" then return end
 
--- end of script
+    -- show user message
+    txt(user.plr, text, 255,255,255)
+
+    -- clear input
+    chatInput.Text = ""
+
+    -- basic local command: if message starts with "/skipvalidate" set special
+    -- otherwise send to provider
+    if not savedKey then
+        txt(user.Warn, "No API key configured. Use Confirm API to set one.", 255,255,0)
+        return
+    end
+
+    setStatus("Connecting")
+    -- call provider
+    local ok2, res = sendToProvider(text)
+    if not ok2 then
+        -- res might be error table or string
+        if type(res) == "table" and res.StatusCode == 401 then
+            setStatus("Invalid key")
+            txt(user.Error, "Invalid API key (401).", 255,0,0)
+        elseif type(res)=="table" and res.StatusCode == 429 then
+            setStatus("Connected")
+            txt(user.Warn, "Rate limited (429). Try again later.", 255,255,0)
+        else
+            txt(user.Error, "Request failed: "..tostring(res), 255,0,0)
+            setStatus("Connected")
+        end
+        return
+    end
+
+    -- parse and show
+    parseAndShowResponse(true, res)
+    setStatus("Connected")
+end
+
+-- wire Enter key / FocusLost on TextBox (works on mobile too)
+if chatInput and chatInput:IsA("TextBox") then
+    chatInput.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            sendFromInput()
+        end
+    end)
+end
+if sendBtn and sendBtn:IsA("TextButton") then
+    sendBtn.MouseButton1Click:Connect(sendFromInput)
+end
+
+-- convenience functions to show initial instructions
+txt(user.Info, "AI chat ready. Enter prompt and press Send (or Enter).", 0,170,255)
+if not hasRequest() then
+    txt(user.Warn, "Executor HTTP not available. Requests will fail unless you enable executor HTTP.", 255,255,0)
+    if statusLbl then setStatus("No key") end
+else
+    if savedKey then
+        setStatus(provider and (provider=="openai" and "Select ChatGPT" or "Select Gemini") or "No key")
+    else
+        setStatus("No key")
+    end
+end
+
+-- done
+txt(user.Nill, "Bridge loaded.", 180,180,180)
