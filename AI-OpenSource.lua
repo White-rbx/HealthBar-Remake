@@ -1,4 +1,4 @@
--- gpt 3.55
+-- gpt 3.56
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.55 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.56 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
@@ -613,19 +613,18 @@ local function onConfirmKey()
         setStatus("No key")
         return
     end
-    setStatus("Connecting")
-    local kind, ok, err = validateKey(key)
-    if ok then
+    
+    -- Skip validation - just check key format
+    local kind = detectKeyType(key)
+    if kind then
         API.key = key
         API.kind = kind
         saveKeyToDisk(key)
-        setStatus("Connected")
-        txt(user.Suc, "API connected ("..tostring(kind)..")", 0,255,0)
+        setStatus("Key accepted")
+        txt(user.Info, "API key set (" .. kind .. "). Wait 10 minutes before sending messages!", 0,170,255)
     else
-        API.key = nil
-        API.kind = nil
-        setStatus("Invalid key")
-        txt(user.Error, "Invalid key: " .. tostring(err), 255,0,0)
+        setStatus("Unknown key")
+        txt(user.Error, "Key format not recognized. Use Gemini (AIza...) or OpenAI (sk-...)", 255,0,0)
     end
 end
 
