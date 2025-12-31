@@ -1,4 +1,4 @@
--- gpt 3.652
+-- gpt 3.653
 
 -- =====>> Saved Functions <<=====
 
@@ -264,7 +264,7 @@ ch.BackgroundTransparency = 1
 ch.TextColor3 = Color3.fromRGB(255,255,255)
 ch.RichText = true
 ch.Text = ""
-ch.PlaceholderText = "Say something..."
+ch.PlaceholderText = "Type /Help or Say something..."
 ch.TextSize = 16
 ch.TextWrap = true
 ch.TextWrapped = true
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.652 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.653 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands (SOON)", 0,170,255)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
@@ -730,3 +730,132 @@ ch.FocusLost:Connect(function(enter)
         onSend()
     end
 end)
+
+
+-- ===============================
+-- COMMAND SYSTEM (TAIL SCRIPT)
+-- ===============================
+
+-- helper: trim
+local function trim(s)
+    return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+-- helper: clear chat TextBox
+local function clearInput()
+    ch.Text = ""
+end
+
+-- helper: clear TextLabels in ChatLogs
+local function clearChatLogs()
+    for _, v in ipairs(si:GetChildren()) do
+        if v:IsA("TextLabel") then
+            v:Destroy()
+        end
+    end
+end
+
+-- ===============================
+-- COMMAND HANDLERS
+-- ===============================
+
+local Commands = {}
+
+-- /loadstring [URL]
+Commands.loadstring = function(args)
+    local url = trim(args)
+
+    if url == "" then
+        txt(user.Error, "Usage: /loadstring [URL]", 255, 0, 0)
+        return
+    end
+
+    txt(user.Sys, "Loading script from URL...", 255, 90, 0)
+
+    local ok, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+
+    if ok then
+        txt(user.Suc, "loadstring executed successfully", 0, 255, 0)
+    else
+        txt(user.Error, "loadstring failed: " .. tostring(result), 255, 0, 0)
+    end
+end
+
+-- alias
+Commands.ls = Commands.loadstring
+
+-- /script [[CODE]]
+Commands.script = function(args)
+    local code = trim(args)
+
+    if code == "" then
+        txt(user.Error, "Usage: /script [[CODE]]", 255, 0, 0)
+        return
+    end
+
+    -- remove wrapping [[ ]]
+    code = code:gsub("^%[%[", ""):gsub("%]%]$", "")
+
+    txt(user.Sys, "Executing script...", 255, 90, 0)
+
+    local fn, err = loadstring(code)
+    if not fn then
+        txt(user.Error, "Compile error: " .. tostring(err), 255, 0, 0)
+        return
+    end
+
+    local ok, runtimeErr = pcall(fn)
+    if ok then
+        txt(user.Suc, "Script executed successfully", 0, 255, 0)
+    else
+        txt(user.Error, "Runtime error: " .. tostring(runtimeErr), 255, 0, 0)
+    end
+end
+
+-- alias
+Commands.run = Commands.script
+
+-- ===============================
+-- MESSAGE DISPATCH
+-- ===============================
+
+local function handleMessage(message)
+    message = trim(message)
+    if message == "" then return end
+
+    -- show user message
+    txt(user.plr, message, 255, 255, 255)
+
+    -- command?
+    if message:sub(1,1) == "/" then
+        local cmd, args = message:match("^/(%S+)%s*(.*)$")
+        cmd = cmd and cmd:lower()
+
+        if Commands[cmd] then
+            Commands[cmd](args or "")
+        else
+            txt(user.Warn, "Unknown command: /" .. tostring(cmd), 255, 255, 0)
+        end
+    end
+end
+
+-- ===============================
+-- CONNECT UI
+-- ===============================
+
+-- Send button
+se.MouseButton1Click:Connect(function()
+    handleMessage(ch.Text)
+    clearInput()
+end)
+
+-- Enter key
+ch.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        handleMessage(ch.Text)
+        clearInput()
+    end
+end)
+
