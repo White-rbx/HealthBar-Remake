@@ -1,4 +1,4 @@
--- gpt 3
+-- gpt 3.1
 
 -- =====>> Saved Functions <<=====
 
@@ -352,429 +352,250 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.1 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 
--- AI-OpenSource: client-side controller (no UI creation)
--- ต้องแน่ใจว่า gpt (root GUI) อยู่แล้วใน CoreGui ตามที่คุณเตรียมไว้
+--========================--
+--  API / HTTP SECTION   --
+--========================--
 
 local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
 
--- find gpt root (Menu.ChatGPT)
-local CoreGui = game:GetService("CoreGui")
-local function findChatGui()
-    for _, g in ipairs(CoreGui:GetDescendants()) do
-        if g.Name == "ChatGPT" and g:IsA("Frame") then
-            return g
-        end
-    end
-    -- fallback: wait for it
-    local ok, found = pcall(function() return CoreGui:WaitForChild("ExperienceSettings", 5) end)
-    if ok and found then
-        for _, d in ipairs(found:GetDescendants()) do
-            if d.Name == "ChatGPT" and d:IsA("Frame") then return d end
-        end
-    end
-end
-local gpt = findChatGui()
-if not gpt then
-    warn("AI-OpenSource: couldn't find ChatGPT GUI root in CoreGui")
-    return
+-- executor compatible request
+local http_request =
+    request or
+    http_request or
+    syn and syn.request or
+    fluxus and fluxus.request
+
+if not http_request then
+    warn("Executor HTTP not supported")
 end
 
--- helper to find descendant by name
-local function findDesc(name)
-    for _, v in ipairs(gpt:GetDescendants()) do
-        if v.Name == name then return v end
+--========================--
+--  STATE / VARS         --
+--========================--
+
+local API_KEY = nil
+local MODEL = nil -- "chatgpt" | "gemini"
+local CONNECTED = false
+local BUSY = false
+
+--========================--
+--  STATUS HELPER        --
+--========================--
+
+local function setStatus(text)
+    st.Text = "Status: " .. text
+end
+
+setStatus("No key")
+
+--========================--
+--  KEY DETECT           --
+--========================--
+
+local function detectModel(key)
+    if not key or key == "" then
+        return nil
     end
+
+    if key:sub(1,3) == "sk-" then
+        return "chatgpt"
+    elseif key:sub(1,6) == "AIzaSy" then
+        return "gemini"
+    end
+
     return nil
 end
 
--- UI elements you said exist:
-local apiBox       = findDesc("api")            -- TextBox for API key
-local confirmBtn   = findDesc("Confirm_api")   -- Confirm button
-local unsavedBtn   = findDesc("Unsaved_API")   -- Unsaved button (cancel)
-local statusLabel  = findDesc("Status")        -- TextLabel for status
-local chatInput    = findDesc("chat")          -- TextBox to type prompt
-local sendBtn      = findDesc("Send")          -- Send button
-local logsFrame    = findDesc("ChatLogs")      -- ScrollingFrame (Auto canvas size)
-local listLayout   -- determine listlayout inside logsFrame
-if logsFrame then
-    for _,c in ipairs(logsFrame:GetChildren()) do
-        if c:IsA("UIListLayout") then listLayout = c break end
+--========================--
+--  API TEST (PING)      --
+--========================--
+
+local function testAPI(key, model)
+    if not http_request then
+        return false, "No HTTP"
     end
-end
 
--- Safety checks
-if not apiBox or not confirmBtn or not unsavedBtn or not statusLabel or not chatInput or not sendBtn or not logsFrame then
-    warn("AI-OpenSource: missing one or more UI elements. Script requires: api, Confirm_api, Unsaved_API, Status, chat, Send, ChatLogs")
-    -- continue but some features may not work
-end
-
--- detect available request function (supports many executors)
-local requestFunc = nil
-if syn and syn.request then requestFunc = syn.request
-elseif http and http.request then requestFunc = http.request
-elseif http_request then requestFunc = http_request
-elseif request then requestFunc = request
-elseif fluxus and fluxus.request then requestFunc = fluxus.request end
-
-if not requestFunc then
-    warn("AI-OpenSource: No HTTP request function found in this environment (executor required).")
-end
-
--- config
-local cfg = {
-    openai_models_url = "https://api.openai.com/v1/models",
-    openai_chat_url   = "https://api.openai.com/v1/chat/completions",
-    openai_default_model = "gpt-4o-mini",  -- change as desired
-    google_gen_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-    maxRetries = 5,
-    baseRetryDelay = 0.6, -- seconds (exponential backoff)
-}
-
--- state
-local STATE = {
-    selectedService = nil, -- "ChatGPT" or "Gemini" or nil
-    apiKey = nil,
-    connected = false,
-    connectedTo = nil, -- service string
-}
-
--- small UI helper
-local function setStatus(s)
-    if not statusLabel then return end
-    statusLabel.Text = "Status: "..tostring(s or "No key")
-end
-
-local function postLog(text, color)
-    -- uses existing txt() pattern: but we create a TextLabel inside logsFrame
-    -- color: Color3
-    if not logsFrame then return end
-    local lbl = Instance.new("TextLabel")
-    lbl.Name = "Text"
-    lbl.BackgroundTransparency = 1
-    lbl.Size = UDim2.new(1,0,0,28)
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.TextYAlignment = Enum.TextYAlignment.Top
-    lbl.TextWrapped = true
-    lbl.RichText = true
-    lbl.Text = tostring(text)
-    lbl.TextColor3 = color or Color3.fromRGB(255,255,255)
-    lbl.Font = Enum.Font.SourceSans
-    lbl.TextSize = 16
-    lbl.AutomaticSize = Enum.AutomaticSize.Y
-    lbl.Parent = logsFrame
-    -- ensure scrolling to bottom after layout
-    task.defer(function()
-        if listLayout and logsFrame then
-            logsFrame.CanvasSize = UDim2.new(0,0,0,logsFrame.CanvasSize.Y.Offset) -- no-op to update in some exec
-        end
-        -- small wait to let layout adjust, then auto-scroll (if available)
-        task.wait(0.05)
-        if logsFrame and logsFrame:IsA("ScrollingFrame") then
-            logsFrame.CanvasPosition = Vector2.new(0, 999999)
-        end
-    end)
-    return lbl
-end
-
--- exponential backoff HTTP wrapper for 429
-local function httpRequestWithRetry(reqTable)
-    if not requestFunc then return false, "NoHTTP" end
-    local attempt = 0
-    while attempt < cfg.maxRetries do
-        attempt = attempt + 1
-        local ok, res = pcall(function() return requestFunc(reqTable) end)
-        if not ok then
-            -- network-level failure
-            return false, tostring(res)
-        end
-        -- some executors return status in different fields
-        local status = res.StatusCode or res.status or res.code
-        if status == 429 then
-            -- rate-limited -> wait and retry
-            local delay = cfg.baseRetryDelay * (2 ^ (attempt-1))
-            task.wait(delay)
-            continue
-        end
-        -- success or other error
-        return true, res
-    end
-    return false, "429_retries_exhausted"
-end
-
--- determine key type heuristics
-local function detectKeyType(key)
-    if not key or key == "" then return nil end
-    local k = tostring(key)
-    -- ChatGPT/OpenAI keys typically start with "sk-" or "sk-proj-"
-    if k:match("^sk") then
-        return "ChatGPT"
-    end
-    -- Google API keys often start with "AIza"
-    if k:match("^AIza") then
-        return "Gemini"
-    end
-    -- some project-level "sk-proj-" may be used; also allow explicit user selection later
-    return nil
-end
-
--- validate key for ChatGPT (simple GET models) and Gemini (small POST)
-local function validateKeyForService(key, service)
-    if not requestFunc then return false, "NoHTTP" end
-    if not key or key == "" then return false, "NoKey" end
-
-    if service == "ChatGPT" then
-        -- Test with listing models (lightweight). If 200 -> OK. If 401 -> invalid
-        local ok, res = httpRequestWithRetry{
-            Url = cfg.openai_models_url,
+    local req
+    if model == "chatgpt" then
+        req = {
+            Url = "https://api.openai.com/v1/models",
             Method = "GET",
             Headers = {
-                ["Authorization"] = "Bearer "..key,
-            },
+                ["Authorization"] = "Bearer " .. key
+            }
         }
-        if not ok then
-            return false, tostring(res)
-        end
-        local code = res.StatusCode or res.status or res.code
-        if code == 200 then return true, "Connected"
-        elseif code == 401 then return false, "Invalid"
-        else return false, "HTTP "..tostring(code) end
-    elseif service == "Gemini" then
-        -- POST a tiny payload to Gemini endpoint to validate API key (x-goog-api-key)
-        local body = HttpService:JSONEncode({contents = {{parts = {{text = "ping"}}}}})
-        local ok, res = httpRequestWithRetry{
-            Url = cfg.google_gen_url,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json",
-                ["x-goog-api-key"] = key,
-            },
-            Body = body,
+    elseif model == "gemini" then
+        req = {
+            Url = "https://generativelanguage.googleapis.com/v1/models?key=" .. key,
+            Method = "GET"
         }
-        if not ok then return false, tostring(res) end
-        local code = res.StatusCode or res.status or res.code
-        if code == 200 then return true, "Connected"
-        elseif code == 403 or code == 401 then return false, "Invalid"
-        else return false, "HTTP "..tostring(code) end
+    end
+
+    local res = http_request(req)
+    if not res then
+        return false, "No response"
+    end
+
+    if res.StatusCode == 200 then
+        return true
+    elseif res.StatusCode == 429 then
+        return false, "429"
     else
-        return false, "UnknownService"
+        return false, "Invalid"
     end
 end
 
--- perform actual AI request (Chat completions or Gemini generateContent)
-local function callAI(prompt)
-    if not STATE.connected then
-        return false, "Not connected"
+--========================--
+--  CONFIRM API BUTTON   --
+--========================--
+
+con.MouseButton1Click:Connect(function()
+    if BUSY then return end
+    BUSY = true
+
+    local key = tb.Text
+    if not key or key == "" then
+        setStatus("No key")
+        BUSY = false
+        return
     end
-    local service = STATE.selectedService
-    local key = STATE.apiKey
-    if service == "ChatGPT" then
-        local payload = {
-            model = cfg.openai_default_model,
-            messages = {
-                { role = "user", content = tostring(prompt) }
-            },
-            max_tokens = 1024
-        }
-        local body = HttpService:JSONEncode(payload)
-        local ok, res = httpRequestWithRetry{
-            Url = cfg.openai_chat_url,
+
+    local model = detectModel(key)
+    if not model then
+        setStatus("Invalid key")
+        BUSY = false
+        return
+    end
+
+    if model == "chatgpt" then
+        setStatus("Select ChatGPT")
+    else
+        setStatus("Select Gemini")
+    end
+
+    setStatus("Connecting")
+
+    -- simple retry (fix 429)
+    local success, reason
+    for i = 1,3 do
+        success, reason = testAPI(key, model)
+        if success then break end
+        if reason == "429" then
+            task.wait(1.5 * i)
+        else
+            break
+        end
+    end
+
+    if success then
+        API_KEY = key
+        MODEL = model
+        CONNECTED = true
+        setStatus("Connected")
+        txt(user.Suc, "API connected", 0,255,0)
+    else
+        CONNECTED = false
+        API_KEY = nil
+        MODEL = nil
+        setStatus("Invalid key")
+        txt(user.Error, "Invalid API key", 255,0,0)
+    end
+
+    BUSY = false
+end)
+
+--========================--
+--  UNSAVE API BUTTON    --
+--========================--
+
+con2.MouseButton1Click:Connect(function()
+    API_KEY = nil
+    MODEL = nil
+    CONNECTED = false
+    tb.Text = ""
+    setStatus("Unsave key")
+    txt(user.Warn, "API key removed", 255,255,0)
+end)
+
+--========================--
+--  SEND CHAT            --
+--========================--
+
+local function sendChat(message)
+    if not CONNECTED or not API_KEY then
+        txt(user.Error, "Not connected", 255,0,0)
+        return
+    end
+
+    if BUSY then return end
+    BUSY = true
+
+    txt(user.plr, message, 255,255,255)
+
+    local req
+    if MODEL == "chatgpt" then
+        req = {
+            Url = "https://api.openai.com/v1/chat/completions",
             Method = "POST",
             Headers = {
-                ["Authorization"] = "Bearer "..key,
+                ["Authorization"] = "Bearer " .. API_KEY,
                 ["Content-Type"] = "application/json"
             },
-            Body = body
+            Body = HttpService:JSONEncode({
+                model = "gpt-4o-mini",
+                messages = {
+                    {role="user", content=message}
+                }
+            })
         }
-        if not ok then return false, tostring(res) end
-        local code = res.StatusCode or res.status or res.code
-        if code == 200 or code == 201 then
-            local parsed
-            local decodeOk, dec = pcall(function() return HttpService:JSONDecode(res.Body) end)
-            if not decodeOk then return false, "Invalid JSON" end
-            parsed = dec
-            -- try to extract text safely
-            local text = nil
-            if parsed and parsed.choices and parsed.choices[1] and parsed.choices[1].message and parsed.choices[1].message.content then
-                text = parsed.choices[1].message.content
-            elseif parsed and parsed.choices and parsed.choices[1] and parsed.choices[1].text then
-                text = parsed.choices[1].text
-            end
-            return true, text or "<no text>"
-        else
-            return false, "HTTP "..tostring(code).." "..tostring(res.StatusMessage or "")
-        end
-    elseif service == "Gemini" then
-        local payload = { contents = {{ parts = {{ text = tostring(prompt) }} }} }
-        local body = HttpService:JSONEncode(payload)
-        local ok, res = httpRequestWithRetry{
-            Url = cfg.google_gen_url,
+    elseif MODEL == "gemini" then
+        req = {
+            Url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" .. API_KEY,
             Method = "POST",
             Headers = {
-                ["Content-Type"] = "application/json",
-                ["x-goog-api-key"] = key,
+                ["Content-Type"] = "application/json"
             },
-            Body = body
+            Body = HttpService:JSONEncode({
+                contents = {{
+                    parts = {{ text = message }}
+                }}
+            })
         }
-        if not ok then return false, tostring(res) end
-        local code = res.StatusCode or res.status or res.code
-        if code == 200 or code == 201 then
-            local decodeOk, dec = pcall(function() return HttpService:JSONDecode(res.Body) end)
-            if not decodeOk then return false, "Invalid JSON" end
-            local text = nil
-            -- response schema vary; attempt to find content
-            if dec and dec.candidates and dec.candidates[1] and dec.candidates[1].content and dec.candidates[1].content.parts then
-                text = dec.candidates[1].content.parts[1].text
-            elseif dec and dec.output and dec.output[1] then
-                text = dec.output[1].content or dec.output[1].text
-            end
-            return true, text or "<no text>"
-        else
-            return false, "HTTP "..tostring(code).." "..tostring(res.StatusMessage or "")
-        end
     end
-    return false, "Unsupported service"
-end
 
--- UI handlers
-local function onConfirmApiClicked()
-    if not apiBox then return end
-    local key = tostring(apiBox.Text or ""):gsub("^%s*(.-)%s*$","%1") -- trim
-    if key == "" then
-        setStatus("No key")
-        postLog("Warning: API key is empty", Color3.fromRGB(255,255,0))
-        STATE.apiKey = nil
-        STATE.connected = false
-        STATE.selectedService = nil
+    local res = http_request(req)
+    if not res then
+        txt(user.Error, "No response", 255,0,0)
+        BUSY = false
         return
     end
-    -- detect service by prefix heuristics
-    local guess = detectKeyType(key)
-    if not guess then
-        -- unknown prefix -> prompt user to select via UI? For now auto-try ChatGPT then Gemini
-        postLog("Information: key not auto-detected, trying ChatGPT then Gemini...", Color3.fromRGB(0,170,255))
-        -- try ChatGPT first
-        setStatus("Connecting")
-        postLog("Information: Checking ChatGPT key...", Color3.fromRGB(0,170,255))
-        local ok, msg = validateKeyForService(key, "ChatGPT")
-        if ok then
-            STATE.apiKey = key
-            STATE.selectedService = "ChatGPT"
-            STATE.connected = true
-            setStatus("Connected (ChatGPT)")
-            postLog("Connected to ChatGPT", Color3.fromRGB(0,255,0))
-            return
+
+    if res.StatusCode == 200 then
+        local data = HttpService:JSONDecode(res.Body)
+        local reply = "..."
+
+        if MODEL == "chatgpt" then
+            reply = data.choices[1].message.content
+        else
+            reply = data.candidates[1].content.parts[1].text
         end
-        postLog("ChatGPT check failed: "..tostring(msg), Color3.fromRGB(255,100,100))
-        -- try Gemini
-        postLog("Information: Checking Gemini key...", Color3.fromRGB(0,170,255))
-        local ok2, msg2 = validateKeyForService(key, "Gemini")
-        if ok2 then
-            STATE.apiKey = key
-            STATE.selectedService = "Gemini"
-            STATE.connected = true
-            setStatus("Connected (Gemini)")
-            postLog("Connected to Gemini", Color3.fromRGB(0,255,0))
-            return
-        end
-        postLog("Gemini check failed: "..tostring(msg2), Color3.fromRGB(255,100,100))
-        setStatus("Invalid key")
-        STATE.apiKey = nil
-        STATE.connected = false
-        STATE.selectedService = nil
-        return
+
+        txt(user.chat, reply, 85,255,255)
+    elseif res.StatusCode == 429 then
+        txt(user.Warn, "Rate limited (429)", 255,255,0)
     else
-        -- guessed service
-        setStatus("Connecting")
-        postLog("Information: auto-detected service: "..guess.." -- validating...", Color3.fromRGB(0,170,255))
-        local ok, msg = validateKeyForService(key, guess)
-        if ok then
-            STATE.apiKey = key
-            STATE.selectedService = guess
-            STATE.connected = true
-            setStatus("Connected ("..guess..")")
-            postLog("Connected to "..guess, Color3.fromRGB(0,255,0))
-            return
-        else
-            setStatus("Invalid key")
-            postLog("Validation failed: "..tostring(msg), Color3.fromRGB(255,100,100))
-            STATE.apiKey = nil
-            STATE.connected = false
-            STATE.selectedService = nil
-            return
-        end
+        txt(user.Error, "HTTP "..res.StatusCode, 255,0,0)
     end
+
+    BUSY = false
 end
 
-local function onUnsavedApiClicked()
-    STATE.apiKey = nil
-    STATE.selectedService = nil
-    STATE.connected = false
-    setStatus("Unsave key")
-    postLog("Warning: API key removed", Color3.fromRGB(255,255,0))
-end
-
-local function onSendClicked()
-    if not chatInput then return end
-    local prompt = tostring(chatInput.Text or ""):gsub("^%s*(.-)%s*$","%1")
-    if prompt == "" then
-        postLog("Warning: Please type a prompt first.", Color3.fromRGB(255,255,0))
-        return
+se.MouseButton1Click:Connect(function()
+    if ch.Text ~= "" then
+        sendChat(ch.Text)
+        ch.Text = ""
     end
-    -- display user message
-    postLog("You: "..prompt, Color3.fromRGB(255,255,255))
-    -- check connection state
-    if not STATE.connected or not STATE.selectedService then
-        postLog("Error: Not connected to any API. Please Confirm API key first.", Color3.fromRGB(255,0,0))
-        return
-    end
-    -- display AI placeholder
-    local aiPlaceholder = postLog("AI: ... thinking ...", Color3.fromRGB(170,170,170))
-    -- call AI (in background)
-    task.spawn(function()
-        local ok, res = callAI(prompt)
-        -- remove placeholder text and show actual (we'll append a new message for simplicity)
-        if not ok then
-            postLog("Error: "..tostring(res), Color3.fromRGB(255,0,0))
-        else
-            postLog("AI: "..tostring(res), Color3.fromRGB(85,255,255))
-        end
-    end)
-    -- optionally clear input
-    chatInput.Text = ""
-end
-
--- bind UI events (safely)
-if confirmBtn and confirmBtn:IsA("TextButton") then
-    confirmBtn.MouseButton1Click:Connect(onConfirmApiClicked)
-end
-if unsavedBtn and unsavedBtn:IsA("TextButton") then
-    unsavedBtn.MouseButton1Click:Connect(onUnsavedApiClicked)
-end
-if sendBtn and sendBtn:IsA("GuiButton") then
-    sendBtn.MouseButton1Click:Connect(onSendClicked)
-end
-
--- connect keyboard Enter on chatInput if available
-if chatInput and chatInput:IsA("TextBox") then
-    chatInput.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            onSendClicked()
-        end
-    end)
-end
-
--- initial
-setStatus("No key")
-postLog("Information: AI-OpenSource client ready.", Color3.fromRGB(0,170,255))
-postLog("Information: Press Confirm API after pasting a key (ChatGPT: sk-*, Gemini: AIza*).", Color3.fromRGB(180,180,180))
-
--- expose small API for other scripts if needed
-local PUBLIC = {}
-function PUBLIC.getState() return STATE end
-function PUBLIC.setApiKey(k) apiBox.Text = tostring(k) end
--- return PUBLIC if used as module (optional)
-return PUBLIC
+end)
