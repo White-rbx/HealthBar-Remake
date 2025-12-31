@@ -1,4 +1,4 @@
--- gpt 3.63
+-- gpt 3.64
 
 -- =====>> Saved Functions <<=====
 
@@ -355,71 +355,167 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.63 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.64 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
+txt(user.Info, "Use /help for more information or commands (SOON)", 0,170,255)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
--------------------------------------------------
+----------------------------------------------------------------
+-- EXECUTOR HTTP WRAPPER
+----------------------------------------------------------------
+local http = (syn and syn.request)
+          or (http_request)
+          or (request)
+
+if not http then
+    txt(user.Error, "Executor HTTP not found", 255,0,0)
+    return
+end
+
+local jsonEncode = function(t) return game:GetService("HttpService"):JSONEncode(t) end
+local jsonDecode = function(s) return game:GetService("HttpService"):JSONDecode(s) end
+
+----------------------------------------------------------------
 -- STATE
--------------------------------------------------
+----------------------------------------------------------------
 local API_KEY = nil
 local PROVIDER = nil -- "chatgpt" | "gemini"
 local BUSY = false
 local LAST_REQUEST = 0
-local RATE_LIMIT = 8 -- seconds (กัน 429)
+local RATE_LIMIT_UNTIL = 0
 
--------------------------------------------------
--- UTIL
--------------------------------------------------
+----------------------------------------------------------------
+-- STATUS HELPER
+----------------------------------------------------------------
 local function setStatus(text)
     st.Text = "Status: " .. text
 end
 
+----------------------------------------------------------------
+-- KEY DETECTION
+----------------------------------------------------------------
 local function detectProvider(key)
-    if not key or key == "" then
+    if type(key) ~= "string" or key == "" then
         return nil
     end
-    if key:sub(1,3) == "sk-" then
+    if key:sub(1,7) == "sk-proj" or key:sub(1,3) == "sk-" then
         return "chatgpt"
-    elseif key:sub(1,6) == "AIzaSy" then
+    end
+    if key:sub(1,6) == "AIzaSy" then
         return "gemini"
     end
     return nil
 end
 
-local function httpRequest(opts)
-    -- executor compatible
-    local req = (syn and syn.request)
-        or (http and http.request)
-        or http_request
-        or request
-
-    if not req then
-        return false, "Executor HTTP not supported"
+----------------------------------------------------------------
+-- SEND REQUEST (SINGLE STEP, NO PRE-VALIDATION)
+----------------------------------------------------------------
+local function sendRequest(prompt)
+    if BUSY then return end
+    if not API_KEY or not PROVIDER then
+        txt(user.Warn, "No API connected", 255,255,0)
+        return
     end
 
-    local res = req(opts)
-    return true, res
+    local now = os.time()
+    if now < RATE_LIMIT_UNTIL then
+        setStatus("Rate-limited. Retry in "..(RATE_LIMIT_UNTIL-now).."s")
+        return
+    end
+
+    BUSY = true
+    setStatus("Connecting API "..string.upper(PROVIDER))
+
+    local req
+    if PROVIDER == "chatgpt" then
+        req = {
+            Url = "https://api.openai.com/v1/responses",
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json",
+                ["Authorization"] = "Bearer "..API_KEY
+            },
+            Body = jsonEncode({
+                model = "gpt-4o-mini",
+                input = prompt
+            })
+        }
+    else -- gemini
+        req = {
+            Url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json",
+                ["x-goog-api-key"] = API_KEY
+            },
+            Body = jsonEncode({
+                contents = {
+                    {
+                        parts = {
+                            { text = prompt }
+                        }
+                    }
+                }
+            })
+        }
+    end
+
+    local res = http(req)
+    BUSY = false
+
+    if not res then
+        setStatus("Invalid response")
+        return
+    end
+
+    if res.StatusCode == 429 then
+        RATE_LIMIT_UNTIL = os.time() + 20
+        setStatus("Rate-limited. Retry in 20s")
+        return
+    end
+
+    if res.StatusCode >= 400 then
+        txt(user.Error, "HTTP "..res.StatusCode, 255,0,0)
+        setStatus("Invalid key")
+        return
+    end
+
+    local ok, data = pcall(jsonDecode, res.Body)
+    if not ok then
+        txt(user.Error, "Decode failed", 255,0,0)
+        return
+    end
+
+    local reply = "(no text)"
+    if PROVIDER == "chatgpt" then
+        if data.output and data.output[1] and data.output[1].content then
+            reply = data.output[1].content[1].text or reply
+        end
+    else
+        if data.candidates and data.candidates[1]
+        and data.candidates[1].content
+        and data.candidates[1].content.parts then
+            reply = data.candidates[1].content.parts[1].text or reply
+        end
+    end
+
+    txt(user.chat, reply, 85,255,255)
+    setStatus("Connected (Successful connected)")
 end
 
--------------------------------------------------
--- API CONFIRM / UNSAVE
--------------------------------------------------
+----------------------------------------------------------------
+-- CONFIRM API
+----------------------------------------------------------------
 con.MouseButton1Click:Connect(function()
     local key = tb.Text
     if key == "" then
-        API_KEY = nil
-        PROVIDER = nil
         setStatus("No key")
         return
     end
 
     local provider = detectProvider(key)
     if not provider then
-        API_KEY = nil
-        PROVIDER = nil
         setStatus("Invalid key")
-        txt(user.Error, "Unknown API key format", 255,0,0)
         return
     end
 
@@ -428,130 +524,45 @@ con.MouseButton1Click:Connect(function()
 
     if provider == "chatgpt" then
         setStatus("ChatGPT Key detected")
-        txt(user.Sys, "ChatGPT key selected", 255,90,0)
     else
         setStatus("Gemini Key detected")
-        txt(user.Sys, "Gemini key selected", 255,90,0)
     end
+
+    task.delay(0.2, function()
+        setStatus("Connecting API "..string.upper(provider))
+    end)
 end)
 
+----------------------------------------------------------------
+-- UNSAVE API
+----------------------------------------------------------------
 con2.MouseButton1Click:Connect(function()
     API_KEY = nil
     PROVIDER = nil
-    tb.Text = ""
     setStatus("Unsave key")
-    txt(user.Warn, "API key unsaved", 255,255,0)
 end)
 
--------------------------------------------------
--- SEND MESSAGE
--------------------------------------------------
-local function sendChatGPT(prompt)
-    return httpRequest({
-        Url = "https://api.openai.com/v1/responses",
-        Method = "POST",
-        Headers = {
-            ["Content-Type"] = "application/json",
-            ["Authorization"] = "Bearer " .. API_KEY
-        },
-        Body = game:GetService("HttpService"):JSONEncode({
-            model = "gpt-4o-mini",
-            input = prompt
-        })
-    })
+----------------------------------------------------------------
+-- SEND BUTTON / CHAT LINK
+----------------------------------------------------------------
+local function sendChat()
+    local text = ch.Text
+    if text == "" then return end
+
+    txt(user.plr, text, 255,255,255)
+    ch.Text = "" -- ✅ FIX: clear textbox
+    sendRequest(text)
 end
 
-local function sendGemini(prompt)
-    return httpRequest({
-        Url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
-        Method = "POST",
-        Headers = {
-            ["Content-Type"] = "application/json",
-            ["x-goog-api-key"] = API_KEY
-        },
-        Body = game:GetService("HttpService"):JSONEncode({
-            contents = {
-                {
-                    parts = {
-                        { text = prompt }
-                    }
-                }
-            }
-        })
-    })
-end
+se.MouseButton1Click:Connect(sendChat)
 
--------------------------------------------------
--- BUTTON SEND
--------------------------------------------------
-se.MouseButton1Click:Connect(function()
-    local now = os.clock()
-    if BUSY then return end
-
-    if not API_KEY or not PROVIDER then
-        txt(user.Error, "No API key connected", 255,0,0)
-        setStatus("No key")
-        return
+ch.FocusLost:Connect(function(enter)
+    if enter then
+        sendChat()
     end
-
-    if now - LAST_REQUEST < RATE_LIMIT then
-        local waitSec = math.ceil(RATE_LIMIT - (now - LAST_REQUEST))
-        setStatus("Rate-limited. Retry in " .. waitSec .. "s")
-        return
-    end
-
-    local prompt = ch.Text
-    if prompt == "" then return end
-
-    ch.Text = ""
-    txt(user.plr, prompt, 255,255,255)
-
-    BUSY = true
-    LAST_REQUEST = now
-    setStatus("Connecting API [" .. PROVIDER .. "]")
-
-    local ok, res
-    if PROVIDER == "chatgpt" then
-        ok, res = sendChatGPT(prompt)
-    else
-        ok, res = sendGemini(prompt)
-    end
-
-    BUSY = false
-
-    if not ok or not res then
-        txt(user.Error, "HTTP request failed", 255,0,0)
-        setStatus("Invalid key")
-        return
-    end
-
-    if res.StatusCode == 429 then
-        setStatus("Rate-limited. Retry later")
-        txt(user.Warn, "HTTP 429 Too Many Requests", 255,255,0)
-        return
-    end
-
-    if res.StatusCode ~= 200 then
-        setStatus("Invalid key")
-        txt(user.Error, "HTTP " .. tostring(res.StatusCode), 255,0,0)
-        return
-    end
-
-    local body = game:GetService("HttpService"):JSONDecode(res.Body)
-    local reply = "(no response)"
-
-    if PROVIDER == "chatgpt" then
-        reply = body.output_text or reply
-    else
-        if body.candidates
-        and body.candidates[1]
-        and body.candidates[1].content
-        and body.candidates[1].content.parts
-        then
-            reply = body.candidates[1].content.parts[1].text or reply
-        end
-    end
-
-    setStatus("Connected (Successful connected)")
-    txt(user.chat, reply, 85,255,255)
 end)
+
+----------------------------------------------------------------
+-- INIT
+----------------------------------------------------------------
+setStatus("No key")
