@@ -1,4 +1,4 @@
--- gpt 3.52
+-- gpt 3.54
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.52 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.53 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
@@ -458,8 +458,8 @@ end
 
 -- exponential backoff HTTP helper (returns response table or nil+err)
 local function httpWithRetries(reqTable, maxRetries)
-    maxRetries = maxRetries or 60
-    local backoff = 1
+    maxRetries = maxRetries or 3
+    local backoff = 3
     for attempt = 1, maxRetries do
         local ok, res = pcall(function() return httpRequest(reqTable) end)
         if not ok then
@@ -498,7 +498,7 @@ local function validateKey(key)
         local body = HttpService:JSONEncode({
             model = model,
             messages = {{role = "user", content = "Hello"}},
-            max_tokens = 1200,
+            max_tokens = 500,
             temperature = 0
         })
         local headers = {
@@ -549,7 +549,7 @@ local function requestOpenAI(key, prompt)
         model = "gpt-4o-mini",
         messages = {{role = "user", content = prompt}},
         temperature = 0.2,
-        max_tokens = 1200
+        max_tokens = 500
     })
     local headers = {
         ["Content-Type"] = "application/json",
@@ -682,6 +682,7 @@ local function sendMessage(prompt)
         -- show AI reply
         aiPlaceholder.Text = tostring(user.chat) .. tostring(res)
         setStatus("Connected")
+        tasl.wakt(5)
     else
         aiPlaceholder.Text = tostring(user.chat) .. "Error: " .. tostring(err)
         setStatus("Invalid key")
