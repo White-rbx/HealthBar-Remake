@@ -1,4 +1,4 @@
--- gpt 3.585
+-- gpt 3.59
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.585 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.59 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
@@ -482,9 +482,9 @@ end
 -- choose endpoints per provider
 local function endpointsFor(provider)
     if provider == "google" then
-        -- Gemini endpoint (example). You may need to change model name or path.
+        -- Gemini (v1beta generateContent)
         return {
-            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
             headers = function(key)
                 return {
                     ["Content-Type"] = "application/json",
@@ -493,12 +493,19 @@ local function endpointsFor(provider)
             end,
             makeBody = function(prompt)
                 return jsonEncode({
-                    "prompt" = nil -- (we won't use this pattern)
+                    contents = {
+                        {
+                            role = "user",
+                            parts = {
+                                { text = tostring(prompt) }
+                            }
+                        }
+                    }
                 })
             end
         }
     else
-        -- OpenAI Responses endpoint (Responses API). Model can be changed.
+        -- OpenAI (Responses API)
         return {
             url = "https://api.openai.com/v1/responses",
             headers = function(key)
@@ -508,13 +515,10 @@ local function endpointsFor(provider)
                 }
             end,
             makeBody = function(prompt, model)
-                model = model or "gpt-4o-mini"  -- default, user can change
-                -- basic request: Responses API simple input
-                local body = {
-                    model = model,
-                    input = prompt,
-                }
-                return jsonEncode(body)
+                return jsonEncode({
+                    model = model or "gpt-4o-mini",
+                    input = tostring(prompt)
+                })
             end
         }
     end
