@@ -1,4 +1,4 @@
--- gpt 3.57
+-- gpt 3.571
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.57 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.571 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
@@ -555,7 +555,7 @@ local function enqueuePrompt(prompt, meta)
                                 else
                                     text = Http:JSONEncode(decoded)
                                 end
-                                txt(user.chat", text, 85,255,255)
+                                txt(user.chat, text, 85,255,255)
                                 success = true
                             else
                                 error("No provider selected")
