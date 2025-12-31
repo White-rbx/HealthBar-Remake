@@ -1,4 +1,4 @@
--- gpt 3.4
+-- gpt 3.45
 
 -- =====>> Saved Functions <<=====
 
@@ -207,7 +207,7 @@ tb.Position = UDim2.new(0.23,0,0,0)
 tb.Size = UDim2.new(0.3,0,0.1,0)
 tb.BackgroundTransparency = 1
 tb.TextColor3 = Color3.fromRGB(255,255,255)
-tb.PlaceholderText = "[ Your API_gpt here (ChatGPT or Gemini) ]"
+tb.PlaceholderText = "[ Your API here (ChatGPT or Gemini) ]"
 tb.Text = ""
 tb.RichText = true
 tb.TextScaled = true
@@ -326,7 +326,7 @@ local user = {
 local function txt(user, text, R, G, B)
     local cha = Instance.new("TextLabel")
     cha.Name = "Text"
-    cha.Size = UDim2.new(1, 0, 0, 30) -- default height (ปรับภายหลังได้)
+    cha.Size = UDim2.new(0.97, 0, 0, 30) -- default height (ปรับภายหลังได้)
     cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     cha.BackgroundTransparency = 1
     cha.Text = tostring(user) .. tostring(text)
@@ -352,8 +352,9 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.4 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.45 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
+txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
 -- AI-OpenSource connector (Client) -------------------------------------------------
 -- วางเป็น LocalScript; ต้องมี UI อยู่แล้วที่
