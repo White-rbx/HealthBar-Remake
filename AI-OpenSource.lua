@@ -1,4 +1,4 @@
--- gpt 3.655
+-- gpt 3.656
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.655 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.656 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands (SOON)", 0,170,255)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
