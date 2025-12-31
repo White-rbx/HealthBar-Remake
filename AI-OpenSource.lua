@@ -1,4 +1,4 @@
--- gpt 3.658
+-- gpt 3.659
 
 -- =====>> Saved Functions <<=====
 
@@ -355,28 +355,28 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.658 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.659 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [[
   /Help (BROKEN)
   /Addapi [ChatGPT/Gemini] [ApiKey] [yes/no]
-    Add API key
+       Add API key
   /Unsaveapi OR /UnApi
-    Unsave API key
+       Unsave API key
   /Calculate OR /Cal [MATH]
-    Use + - * / ^ x
-    Example: 50 * 100
+       Use + - * / ^ x
+       Example: 50 * 100
   /ClearText
-    Clear all texts
+       Clear all texts
   /OpenWebsiteInExperience OR /OWINE [URL]
-    Open website in experience
+       Open website in experience
   /Script [CODE] -- add [] more please.
-    write script
-    Example: /script [print("Hello, World!")]
+       write script
+       Example: /script [print("Hello, World!")]
   /Loadstring [URL]
-    loadstring any url of scripts
-    Example: /loadstring https://raw.githubusercontent.com/RyXeleron/infiniteyield-reborn/refs/heads/scriptblox/source
+       loadstring any url of scripts
+       Example: /loadstring https://raw.githubusercontent.com/RyXeleron/infiniteyield-reborn/refs/heads/scriptblox/source
 ]], 180, 180, 180)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
@@ -542,79 +542,89 @@ local function enqueueRequest(reqObj)
 end
 
 -- =====================================
--- Endpoints builders
+-- Endpoints builders (FIXED)
 -- =====================================
 local function endpointsFor(provider)
+
+    -- ================= GEMINI =================
     if provider == "gemini" then
         return {
             url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+
             makeHeaders = function(key)
                 return {
                     ["Content-Type"] = "application/json",
                     ["x-goog-api-key"] = key
                 }
             end,
+
             makeBody = function(prompt)
-                -- Minimal request body for Gemini-like endpoint
                 return jsonEncode({
-                    prompt = {
-                        text = prompt
+                    contents = {
+                        {
+                            parts = {
+                                { text = prompt }
+                            }
+                        }
                     }
                 })
             end,
+
             parseResult = function(bodyText)
                 local d = jsonDecode(bodyText)
                 if not d then return nil end
-                -- try to find text in common shapes
-                if d.candidates and d.candidates[1] and d.candidates[1].content and d.candidates[1].content.parts and d.candidates[1].content.parts[1] then
+
+                if d.candidates
+                and d.candidates[1]
+                and d.candidates[1].content
+                and d.candidates[1].content.parts
+                and d.candidates[1].content.parts[1]
+                and d.candidates[1].content.parts[1].text then
                     return d.candidates[1].content.parts[1].text
-                elseif d.outputText then
-                    return d.outputText
                 end
+
                 return nil
             end
         }
+
+    -- ================= CHATGPT =================
     else
-        -- default OpenAI Responses API (Responses)
         return {
             url = "https://api.openai.com/v1/responses",
+
             makeHeaders = function(key)
                 return {
                     ["Content-Type"] = "application/json",
                     ["Authorization"] = "Bearer " .. key
                 }
             end,
+
             makeBody = function(prompt, model)
-                local m = model or currentModel
                 return jsonEncode({
-                    model = m,
+                    model = model or "gpt-4o-mini",
                     input = prompt
                 })
             end,
+
             parseResult = function(bodyText)
                 local d = jsonDecode(bodyText)
                 if not d then return nil end
-                -- try to extract 'output' / 'content' shapes
-                if d.output and type(d.output) == "table" and d.output[1] and d.output[1].content then
+
+                if d.output and d.output[1] and d.output[1].content then
                     for _, item in ipairs(d.output[1].content) do
                         if item.type == "output_text" and item.text then
                             return item.text
                         end
                     end
                 end
-                if d.results and d.results[1] and d.results[1].output and d.results[1].output[1] and d.results[1].output[1].content then
-                    -- older shape
-                    local parts = d.results[1].output[1].content
-                    for _,p in ipairs(parts) do
-                        if p.type == "output_text" and p.text then
-                            return p.text
-                        end
-                    end
-                end
-                -- fallback: try common candidate
-                if d.choices and d.choices[1] and d.choices[1].message and d.choices[1].message.content then
+
+                -- fallback (compat)
+                if d.choices and d.choices[1]
+                and d.choices[1].message
+                and d.choices[1].message.content then
                     return d.choices[1].message.content
                 end
+
                 return nil
             end
         }
