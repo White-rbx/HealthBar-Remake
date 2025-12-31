@@ -1,4 +1,4 @@
--- gpt 3.657
+-- gpt 3.658
 
 -- =====>> Saved Functions <<=====
 
@@ -355,9 +355,29 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.657 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.658 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
+txt(user.Nill, [[
+  /Help (BROKEN)
+  /Addapi [ChatGPT/Gemini] [ApiKey] [yes/no]
+    Add API key
+  /Unsaveapi OR /UnApi
+    Unsave API key
+  /Calculate OR /Cal [MATH]
+    Use + - * / ^ x
+    Example: 50 * 100
+  /ClearText
+    Clear all texts
+  /OpenWebsiteInExperience OR /OWINE [URL]
+    Open website in experience
+  /Script [CODE] -- add [] more please.
+    write script
+    Example: /script [print("Hello, World!")]
+  /Loadstring [URL]
+    loadstring any url of scripts
+    Example: /loadstring https://raw.githubusercontent.com/RyXeleron/infiniteyield-reborn/refs/heads/scriptblox/source
+]], 180, 180, 180)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
 -- AI Chat tail script (attach to existing UI variables)
