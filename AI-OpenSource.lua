@@ -1,4 +1,4 @@
--- gpt 3.54
+-- gpt 3.55
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.53 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.55 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
@@ -458,8 +458,8 @@ end
 
 -- exponential backoff HTTP helper (returns response table or nil+err)
 local function httpWithRetries(reqTable, maxRetries)
-    maxRetries = maxRetries or 3
-    local backoff = 3
+    maxRetries = maxRetries or 2
+    local backoff = 5
     for attempt = 1, maxRetries do
         local ok, res = pcall(function() return httpRequest(reqTable) end)
         if not ok then
@@ -649,8 +649,20 @@ local unsavedBtn =
 if confirmBtn then confirmBtn.MouseButton1Click:Connect(onConfirmKey) end
 if unsavedBtn then unsavedBtn.MouseButton1Click:Connect(onUnsavedKey) end
 
+local lastRequestTime = 0  -- Add this line BEFORE the function
+
 -- sending logic (single in-flight at a time)
 local function sendMessage(prompt)
+    -- Check time since last request
+    local now = os.clock()
+    local timeSinceLastRequest = now - lastRequestTime
+    
+    if timeSinceLastRequest < 20 then  -- Force 20 second minimum
+        local waitTime = 20 - timeSinceLastRequest
+        txt(user.Warn, "Please wait " .. math.ceil(waitTime) .. " more seconds (rate limit protection)", 255,255,0)
+        return
+    end
+    
     if not API.key or not API.kind then
         txt(user.Error, "No API key selected/valid. Click Confirm API.", 255,0,0)
         setStatus("No key")
@@ -662,11 +674,11 @@ local function sendMessage(prompt)
     end
 
     API.busy = true
+    lastRequestTime = os.clock()
     setStatus("Sending...")
     local displayUser = tostring(Players.LocalPlayer.DisplayName or Players.LocalPlayer.Name)
-    txt(user.plr, prompt, 255,255,255) -- your UI function usage
+    txt(user.plr, prompt, 255,255,255)
 
-    -- create placeholder AI message
     local aiPlaceholder = txt(user.chat, "🤖 Thinking...", 85,255,255)
 
     local res, err
@@ -679,10 +691,8 @@ local function sendMessage(prompt)
     end
 
     if res then
-        -- show AI reply
         aiPlaceholder.Text = tostring(user.chat) .. tostring(res)
         setStatus("Connected")
-        tasl.wakt(5)
     else
         aiPlaceholder.Text = tostring(user.chat) .. "Error: " .. tostring(err)
         setStatus("Invalid key")
