@@ -1,4 +1,4 @@
--- Well 1.7998
+-- Well 1.7999
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -259,3 +259,7 @@ if IsBanned(plr) then
         Icon = "rbxassetid://117179620345399",
     })
 end
+
+
+local sata = expsting:WaitForChild:("Menu")
+sata:Destroy()
