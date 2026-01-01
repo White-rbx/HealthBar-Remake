@@ -1,4 +1,4 @@
--- Well 1.81
+-- Well 1.82
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -261,5 +261,10 @@ if IsBanned(plr) then
 end
 
 
-local sata = expsting:WaitForChild("Menu")
+local sata = CoreGui:WaitForChild("TopBarApp", 10)
+    :WaitForChild("TopBarApp", 10)
+    :WaitForChild("UnibarLeftFrame", 10)
+    :WaitForChild("HealthBar", 10)
+    :WaitForChild("ExperienceSettings", 10)
+    :WaitForChild("Menu", 10)
 sata:Destroy()
