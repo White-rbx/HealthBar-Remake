@@ -1,4 +1,4 @@
--- gpt 3.67
+-- gpt 3.675
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.67 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.675 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [[
@@ -731,28 +731,41 @@ local function handleMessageRaw(msg)
             return
         end
 
+        -- OpenWebsiteInExperience handler (REPLACE the marked block with this)
         if lower:match("^/openwebsiteinexperience") or lower:match("^/owine") then
             local url = msg:match("^/%S+%s+(.+)$") or ""
             url = url:gsub("^%s+",""):gsub("%s+$","")
             if url == "" then
-                txt(user.Error, "Usage: /OpenWebsiteInExperience [URL]", 255,0,0)
+                pcall(txt, user.Error, "Usage: /OpenWebsiteInExperience [URL]", 255,0,0)
                 return
             end
-            local ok, e = pcall(function()
-                if GuiService and GuiService.OpenBrowserWindow then
+
+            local ok, err = pcall(function()
+                -- prefer GuiService:OpenBrowserWindow if present
+                if GuiService and type(GuiService.OpenBrowserWindow) == "function" then
                     GuiService:OpenBrowserWindow(url)
-                else
-                    if StarterGui and StarterGui:SetCore then
-                        StarterGui:SetCore("OpenBrowserWindow", url)
-                    else
-                        error("No supported API to open website in-game")
-                    end
+                    return
                 end
+
+                -- fallback to StarterGui:SetCore if available
+                local StarterGui = game:GetService("StarterGui")
+                if StarterGui and type(StarterGui.SetCore) == "function" then
+                    StarterGui:SetCore("OpenBrowserWindow", url)
+                    return
+                end
+
+                -- no supported API available
+                error("No supported API to open website in-game")
             end)
-            if ok then txt(user.Suc, "Opened website: "..url, 0,255,0) else txt(user.Error, "OpenWebsite failed: "..tostring(e), 255,0,0) end
+        
+            if ok then
+                pcall(txt, user.Suc, "Opened website: " .. url, 0,255,0)
+            else
+                pcall(txt, user.Error, "OpenWebsite failed: " .. tostring(err), 255,0,0)
+            end
+
             return
         end
-
         if lower:match("^/loadstring%s+") then
             local url = msg:match("^/%S+%s+(.+)$") or ""
             if url == "" then txt(user.Error, "Usage: /loadstring [URL]",255,0,0); return end
