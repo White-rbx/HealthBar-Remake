@@ -1,4 +1,4 @@
--- Ok 2.5
+-- Ok 2.6
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -644,6 +644,18 @@ gpt.Visible = false
 gpt.Parent = hr
 createUICorner(gpt, 1, 0) --
 
+-- Seacrh
+local scrh = Instance.new("ImageButton")
+scrh.Name = "a4_Seacrh"
+scrh.Size = UDim2.new(0, 34, 0.8, 0)
+scrh.Image = "rbxassetid://115316941207686"
+scrh.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+scrh.BackgroundTransparency = 1
+scrh.Active = true
+scrh.Visible = false
+scrh.Parent = hr
+createUICorner(scrh, 1, 0)
+
 -- Wait1
 local wa1 = Instance.new("Frame")
 wa1.Name = "LoadFrame"
@@ -675,7 +687,7 @@ local MTB_X_CLOSED = 0.46
 local MTB_X_OPEN   = 0 -- open => X = 0
 
 -- hr sizes in px for open/close
-local HR_WIDTH_OPEN  = 265
+local HR_WIDTH_OPEN  = 311
 local HR_WIDTH_CLOSE = 90
 
 -- safe setter for mtb position (uses tweenObject if available)
@@ -2065,6 +2077,38 @@ end
 hbm.MouseButton1Click:Connect(toggleTB)
 
 print("[ Functions ] Successful loaded.")
+
+-- IMAGE IDS
+local IMAGE_CLOSED = "rbxassetid://115316941207686"
+local IMAGE_OPEN   = "rbxassetid://108649442107108"
+
+-- STATE
+local isOpen = false
+
+-- FUNCTION: CHECK HR SIZE
+local function updateVisibility()
+	if hr.Size.X.Offset < 300 then
+		scrh.Visible = false
+	else
+		scrh.Visible = true
+	end
+end
+
+-- FUNCTION: TOGGLE IMAGE
+local function toggleImage()
+	isOpen = not isOpen
+	scrh.Image = isOpen and IMAGE_OPEN or IMAGE_CLOSED
+end
+
+-- INITIAL
+scrh.Image = IMAGE_CLOSED
+updateVisibility()
+
+-- LISTEN SIZE CHANGE
+hr:GetPropertyChangedSignal("Size"):Connect(updateVisibility)
+
+-- BUTTON CLICK
+scrh.MouseButton1Click:Connect(toggleImage)
 
 -- ====FUNCTION CORNER=====
 local function Corner(Scale, Offset, Parent)
