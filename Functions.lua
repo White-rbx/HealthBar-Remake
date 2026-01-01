@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.464
+-- So uhm just a script lol. 4.465
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
