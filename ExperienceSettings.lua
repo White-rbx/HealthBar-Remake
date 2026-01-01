@@ -1,4 +1,4 @@
--- Ok 2.6
+-- Ok 2.62
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -660,7 +660,7 @@ createUICorner(scrh, 1, 0)
 local wa1 = Instance.new("Frame")
 wa1.Name = "LoadFrame"
 wa1.BackgroundTransparency = 1
-wa1.Size = UDim2.new(0.82, 0, 1, 0)
+wa1.Size = UDim2.new(0.5, 0, 1, 0)
 wa1.Active = false
 wa1.Visible = true
 wa1.Parent = hr
