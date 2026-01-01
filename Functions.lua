@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.452
+-- So uhm just a script lol. 4.462
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -866,7 +866,7 @@ task.spawn(function()
 
 	local function checkHolderSize()
 		local x = holder.Size.X.Offset
-		if x > 160 then
+		if x > 300 then
 			sta.Visible = true
 		else
 			sta.Visible = false
