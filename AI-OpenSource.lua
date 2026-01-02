@@ -1,4 +1,4 @@
--- gpt 3.688 (modified to support HttpService fallback & custom (self-hosted) endpoints)
+-- gpt 3.689 (modified to support HttpService fallback & custom (self-hosted) endpoints)
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.688 (modified) | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.689 (modified) | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [=[
@@ -905,13 +905,14 @@ if con2 and con2:IsA("GuiObject") then
     con2.MouseButton1Click:Connect(onUnsavedApiClicked)
 end
 
--- open website helper (robust)
+-- open website helper (robust) — fixed
 local function openWebsiteInExperience(url)
     local ok, err = pcall(function()
         if GuiService and GuiService.OpenBrowserWindow then
             GuiService:OpenBrowserWindow(url)
         else
-            if StarterGui and StarterGui:SetCore then
+            -- use dot to check existence, colon when calling
+            if StarterGui and StarterGui.SetCore then
                 StarterGui:SetCore("OpenBrowserWindow", url)
             else
                 error("Service blocked")
