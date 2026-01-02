@@ -1,4 +1,4 @@
--- gpt 3.71 (modified to support HttpService fallback & custom (self-hosted) endpoints)
+-- gpt 3.72 (modified to support HttpService fallback & custom (self-hosted) endpoints)
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.71 (modified) | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.72 (modified) | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [=[
@@ -612,12 +612,12 @@ local function enqueueRequest(opts)
 end
 
 -- endpoints.lua
--- ปรับปรุง endpointsFor จากของคุณ (แก้ pcall/HttpService init เพื่อหลีกเลี่ยง syntax error)
+-- รวม endpointsFor, helpers และ validateKey (validateKey อยู่ก่อน return เพื่อหลีกเลี่ยง syntax error)
 
 local HttpService
 local hasHttpService = false
 
--- ถ้าเป็นสภาพแวดล้อม Roblox ให้พยายามดึง HttpService อย่างปลอดภัย
+-- ตรวจหา HttpService (Roblox) แบบปลอดภัย
 local ok, svc = pcall(function()
     if game and game.GetService then
         return game:GetService("HttpService")
@@ -830,14 +830,10 @@ local function endpointsFor(provider)
     end
 end
 
-return {
-    endpointsFor = endpointsFor,
-    safeDecode = safeDecode,
-    tryConcatParts = tryConcatParts
-}
-
--- validator: try a single quick request to check key (use minimal body and don't spam)
-local function validateKey(provider, key, timeoutSec)
+-- validateKey: ทดลองส่ง request เดียว (bodies ลิสต์) เพื่อตรวจ key
+-- doRequestFunc: optional function(req) -> response (same shape as Roblox RequestAsync or your wrapper)
+-- หากไม่ส่ง doRequestFunc จะลองใช้ global doRequest หากมี
+local function validateKey(provider, key, timeoutSec, doRequestFunc)
     timeoutSec = timeoutSec or 12
     local eps = endpointsFor(provider)
     if not eps then return false, "no_endpoint" end
@@ -854,21 +850,43 @@ local function validateKey(provider, key, timeoutSec)
             Body = body,
             Timeout = timeoutSec
         }
-        local ok, res = pcall(doRequest, req)
+        local runner = doRequestFunc or doRequest
+        if not runner then
+            return false, "no_doRequest"
+        end
+        local ok, res = pcall(runner, req)
         if not ok then
             return false, tostring(res)
         else
-            local code = res.StatusCode or res.status or (res.Success and (res.StatusCode or res.Status)) or 0
-            local bodyText = res.Body or res.body or (res.success ~= nil and tostring(res)) or ""
-            if code and (code >= 200 and code < 300) then
+            local code = 0
+            -- try common status fields
+            if type(res) == "table" then
+                code = res.StatusCode or res.status or res.statusCode or 0
+            elseif type(res) == "number" then
+                code = res
+            end
+            local bodyText = ""
+            if type(res) == "table" then
+                bodyText = res.Body or res.body or ""
+            elseif type(res) == "string" then
+                bodyText = res
+            end
+            if code >= 200 and code < 300 then
                 return true, "ok"
             else
-                return false, {code=code, body=bodyText}
+                return false, { code = code, body = bodyText }
             end
         end
     end
     return false, "no_bodies"
 end
+
+return {
+    endpointsFor = endpointsFor,
+    safeDecode = safeDecode,
+    tryConcatParts = tryConcatParts,
+    validateKey = validateKey
+}
 
 -- ask AI (public)
 local function askAI(prompt, onSuccess, onError)
