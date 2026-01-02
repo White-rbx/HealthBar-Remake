@@ -1,4 +1,4 @@
--- gpt 3.683
+-- gpt 3.684
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.683 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.684 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [=[
@@ -1027,3 +1027,5 @@ end)
 setStatusSelect()
 safeTxt(user.Info, "AI-OpenSource frontend initialized", 0,170,255)
 safeTxt(user.Nill, "I'm not sure it work or not, but I trust it 100% not working lol...", 0, 255, 152)
+safeTxt(user.Nill, [=[ DO NOT PUT API KEY TO /ADDAPI RIGHT NOW BECAUSE IT BROKEN! I BEG YOU.
+ PLEASE USE ONLY ANOTHER COMMANDS. THANKS YOU.]=], 255, 0, 0)
