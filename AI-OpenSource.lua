@@ -1,4 +1,4 @@
--- gpt 3.687
+-- gpt 3.687 (modified to support HttpService fallback & custom (self-hosted) endpoints)
 
 -- =====>> Saved Functions <<=====
 
@@ -343,20 +343,9 @@ local function txt(user, text, R, G, B)
     return cha
 end
 
---[[
- txt(user.plr, "Hello, World!", 255,255,255) -- White
- txt(user.chat, "Hello, World!", 85,255,255) -- Cyan
- txt(user.Error, "Hello, World!", 255,0,0) -- Red
- txt(user.Suc, "Hello, World!", 0,255,0) -- Lime
- txt(user.Warn, "Hello, World!", 255,255,0) -- Yellow
- txt(user.Info, "Hello, World!", 0,170,255) -- Light blue
- txt(user.Nill, "Hello, World!", 180,180,180) -- Gray
- txt(user.Sys, "Hello, World!*, 255, 90, 0) -- Orange 
-]]
-
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.687 | © Copyright LighterCyan", 180, 180, 180)
-txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
+txt(user.Nill, "Version: Test 3.687 (modified) | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to contin[...]
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [=[
 What is AI-OpenSource?
@@ -370,21 +359,21 @@ This is safe to put api key?
   
 Available commands
   /Help
-  /Addapi [ChatGPT/Gemini] [ApiKey] [yes/no]  
-       Add API key  
+  /Addapi [ChatGPT/Gemini/custom] [ApiKey or URL] [ApiKey(if custom)] [yes/no]  
+       Add API key or custom endpoint (custom example: /addapi custom https://host:8080 mykey yes)
   
   /Unsaveapi OR /UnApi  
-       Unsave API key  
+       Unsave API key or remove saved config
   
   /Calculate OR /Cal [MATH]  
        Use + - * / ^ x  
-       Example: 50 * 100  
+       Example: 50 * 100
   
   /ClearText  
-       Clear all texts  
+       Clear all texts
   
   /OpenWebsiteInExperience OR /OWINE [URL]  
-       Open website in experience  
+       Open website in experience
   
   /Script [[CODE]]
        write script  
@@ -392,7 +381,7 @@ Available commands
   
   /Loadstring [URL]  
        loadstring any url of scripts  
-       Example: /loadstring https://raw.githubusercontent.com/RyXeleron/infiniteyield-reborn/refs/heads/scriptblox/source  
+       Example: /loadstring https://raw.githubusercontent.com/RyXeleron/infiniteyield-reborn/refs/heads/scriptblox/source
   
   /Debug [on/off]  
        show debug  
@@ -401,7 +390,7 @@ txt(user.Nill, "Welcome back Tester", 0, 255, 0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
 -- ===============================
--- AI-OpenSource — Full LocalScript
+-- AI-OpenSource — Full LocalScript (modified)
 -- Assumes helper functions + user table + txt() exist in environment (per your setup)
 -- Place in: CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame (or adjust `rootPath`)
 
@@ -471,15 +460,35 @@ if not tb or not con or not con2 or not st then safeTxt(user.Warn, "API UI (tb/c
 
 -- detect executor request function
 local httpRequestFunc = (syn and syn.request) or (http and http.request) or http_request or request or (fluxus and fluxus.request) or nil
+-- doRequest: try executor function first, fallback to HttpService:RequestAsync if available
 local function doRequest(req)
-    if not httpRequestFunc then
-        return nil, "no_request_function"
+    if httpRequestFunc then
+        local ok, res = pcall(httpRequestFunc, req)
+        if not ok then
+            return nil, res
+        end
+        return res
     end
-    local ok, res = pcall(httpRequestFunc, req)
-    if not ok then
-        return nil, res
+
+    -- Fallback: HttpService:RequestAsync (Roblox built-in). Map fields.
+    if HttpService and HttpService.RequestAsync then
+        local ok, res = pcall(function()
+            local r = {
+                Url = req.Url,
+                Method = req.Method or "GET",
+                Headers = req.Headers or {},
+                Body = req.Body,
+                -- Timeout is not supported in RequestAsync; ignore
+            }
+            return HttpService:RequestAsync(r)
+        end)
+        if not ok then
+            return nil, res
+        end
+        return res
     end
-    return res
+
+    return nil, "no_request_function"
 end
 
 -- status update UI
@@ -492,12 +501,19 @@ local function updateStatus(s)
     if DEBUG_MODE and si then safeTxt(user.Info, "[STATUS] "..tostring(s), 0,170,255) end
 end
 
--- persistence (optional: writefile/readfile)
+-- persistence (optional: writefile/readfile) -- now supports old simple key and new JSON format
 local keyFile = "AI_OPEN_API.key"
-local function saveApiKeyToFile(k)
+local function saveApiKeyToFile(data)
     if writefile then
         pcall(function()
-            writefile(keyFile, HttpService:UrlEncode(k))
+            local raw
+            if type(data) == "table" then
+                raw = HttpService:JSONEncode(data)
+            else
+                -- legacy: store URL-encoded string
+                raw = HttpService:UrlEncode(tostring(data))
+            end
+            writefile(keyFile, raw)
         end)
     end
 end
@@ -505,6 +521,12 @@ local function loadApiKeyFromFile()
     if readfile and isfile and isfile(keyFile) then
         local ok, raw = pcall(readfile, keyFile)
         if ok and raw then
+            -- try JSON decode first
+            local ok2, dec = pcall(HttpService.JSONDecode, HttpService, raw)
+            if ok2 and type(dec) == "table" and dec.provider then
+                return dec
+            end
+            -- try URL decode (legacy)
             return HttpService:UrlDecode(raw)
         end
     end
@@ -512,12 +534,27 @@ local function loadApiKeyFromFile()
 end
 
 -- State
-local currentApiKey = loadApiKeyFromFile() or nil
-local currentProvider = nil -- "openai" or "gemini"
+local currentApiKey = nil
+local currentProvider = nil -- "openai" or "gemini" or "custom"
 local currentModel = "gpt-4o-mini" -- default for openai
+local currentCustomUrl = nil
+local currentCustomAuth = nil
 local requestQueue = {}
 local workerRunning = false
 local rateLimitedUntil = 0
+
+-- load saved config if present
+local loaded = loadApiKeyFromFile()
+if type(loaded) == "table" then
+    currentProvider = loaded.provider
+    currentApiKey = loaded.key
+    if loaded.url then currentCustomUrl = loaded.url end
+    if loaded.auth then currentCustomAuth = loaded.auth end
+elseif type(loaded) == "string" then
+    -- legacy: plain key, default to openai
+    currentApiKey = loaded
+    currentProvider = "openai"
+end
 
 -- small queue worker (single request at a time)
 local function enqueueRequest(opts)
@@ -548,7 +585,7 @@ local function enqueueRequest(opts)
                 else
                     local resp = res
                     -- handle HTTP 429
-                    local code = resp and (resp.StatusCode or resp.status) or 0
+                    local code = resp and (resp.StatusCode or resp.status or resp.Status) or 0
                     if code == 429 then
                         local retry = 5
                         local headers = resp.Headers or resp.headers or {}
@@ -580,17 +617,11 @@ local function endpointsFor(provider)
         return {
             url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
             makeHeaders = function(key) return { ["Content-Type"]="application/json", ["x-goog-api-key"]=key } end,
-            -- returns list of candidate body strings to try (we'll try one-by-one)
             makeBodies = function(prompt)
                 local list = {}
-                -- Various forms (some may be accepted depending on API version)
-                -- 1) newer: instances
                 pcall(function() table.insert(list, HttpService:JSONEncode({instances = {{content = prompt}}})) end)
-                -- 2) candidate: prompt with text
                 pcall(function() table.insert(list, HttpService:JSONEncode({prompt = {text = prompt}})) end)
-                -- 3) simple input
                 pcall(function() table.insert(list, HttpService:JSONEncode({input = prompt})) end)
-                -- 4) fallback
                 pcall(function() table.insert(list, HttpService:JSONEncode({instances = {prompt}})) end)
                 return list
             end,
@@ -604,8 +635,67 @@ local function endpointsFor(provider)
                 if d.candidates and d.candidates[1] and d.candidates[1].content and d.candidates[1].content[1] and d.candidates[1].content[1].text then
                     return d.candidates[1].content[1].text
                 end
-                -- try string fallback
                 return tostring(body)
+            end
+        }
+    elseif provider == "custom" then
+        -- custom self-hosted endpoint; uses currentCustomUrl + currentCustomAuth (if set)
+        return {
+            url = currentCustomUrl,
+            makeHeaders = function(key)
+                local headers = { ["Content-Type"] = "application/json" }
+                local authKey = key or currentCustomAuth
+                if authKey and authKey ~= "" then
+                    -- Prefer Authorization header; some servers expect "Bearer <key>" or plain token.
+                    -- If user provided "Bearer ..." already, pass through.
+                    if authKey:match("^Bearer%s+") then
+                        headers["Authorization"] = authKey
+                    else
+                        -- Put into Authorization as-is; some self-hosted servers accept this.
+                        headers["Authorization"] = "Bearer " .. authKey
+                        -- also set x-api-key for servers that expect that (won't overwrite if already set)
+                        headers["x-api-key"] = authKey
+                    end
+                end
+                return headers
+            end,
+            makeBodies = function(prompt)
+                local list = {}
+                -- try multiple shapes common to HF / TGI / custom server
+                pcall(function() table.insert(list, HttpService:JSONEncode({input = prompt})) end)
+                pcall(function() table.insert(list, HttpService:JSONEncode({prompt = prompt})) end)
+                pcall(function() table.insert(list, HttpService:JSONEncode({instances = {{content = prompt}}})) end)
+                pcall(function() table.insert(list, HttpService:JSONEncode({text = prompt})) end)
+                pcall(function() table.insert(list, HttpService:JSONEncode({messages = {{role="user", content=prompt}}})) end)
+                return list
+            end,
+            parseResult = function(body)
+                local ok, d = pcall(HttpService.JSONDecode, HttpService, body)
+                if not ok then
+                    -- not JSON, return raw
+                    return tostring(body)
+                end
+                -- common shapes
+                if type(d) == "string" then return d end
+                if d.output and type(d.output) == "string" then return d.output end
+                if d.text then return d.text end
+                if d.generated_text then return d.generated_text end
+                if d.data and type(d.data) == "table" and d.data[1] and d.data[1].generated_text then
+                    return d.data[1].generated_text
+                end
+                if d.choices and d.choices[1] and (d.choices[1].text or (d.choices[1].message and d.choices[1].message.content)) then
+                    return d.choices[1].text or d.choices[1].message.content
+                end
+                if d.output and type(d.output)=="table" and d.output[1] and d.output[1].content then
+                    for _, item in ipairs(d.output[1].content) do
+                        if item.type == "output_text" and item.text then return item.text end
+                    end
+                end
+                -- try nested keys common to TGI/HF responses
+                for k,v in pairs(d) do
+                    if type(v) == "string" then return v end
+                end
+                return HttpService:JSONEncode(d)
             end
         }
     else
@@ -615,18 +705,14 @@ local function endpointsFor(provider)
             makeHeaders = function(key) return { ["Content-Type"]="application/json", ["Authorization"]="Bearer "..key } end,
             makeBodies = function(prompt)
                 local list = {}
-                -- 1) Responses API style (input)
                 pcall(function() table.insert(list, HttpService:JSONEncode({model = currentModel, input = prompt})) end)
-                -- 2) ChatCompletion style messages
                 pcall(function() table.insert(list, HttpService:JSONEncode({model = currentModel, messages = {{role="user", content=prompt}}})) end)
-                -- 3) legacy choices
                 pcall(function() table.insert(list, HttpService:JSONEncode({prompt = prompt, model = currentModel})) end)
                 return list
             end,
             parseResult = function(body)
                 local ok, d = pcall(HttpService.JSONDecode, HttpService, body)
                 if not ok or not d then return nil, d end
-                -- check several shapes
                 if d.output and type(d.output)=="table" and d.output[1] and d.output[1].content then
                     for _, item in ipairs(d.output[1].content) do
                         if item.type == "output_text" and item.text then return item.text end
@@ -653,6 +739,9 @@ local function validateKey(provider, key, timeoutSec)
     timeoutSec = timeoutSec or 12
     local eps = endpointsFor(provider)
     if not eps then return false, "no_endpoint" end
+    if provider == "custom" and (not currentCustomUrl or currentCustomUrl == "") then
+        return false, "no_custom_url"
+    end
     local headers = eps.makeHeaders(key)
     local bodies = eps.makeBodies("Hello")
     for _, body in ipairs(bodies) do
@@ -665,15 +754,13 @@ local function validateKey(provider, key, timeoutSec)
         }
         local ok, res = pcall(doRequest, req)
         if not ok then
-            -- request function error
             return false, tostring(res)
         else
-            local code = res.StatusCode or res.status
-            local bodyText = res.Body or res.body or ""
+            local code = res.StatusCode or res.status or (res.Success and (res.StatusCode or res.Status)) or 0
+            local bodyText = res.Body or res.body or (res.success ~= nil and tostring(res)) or ""
             if code and (code >= 200 and code < 300) then
                 return true, "ok"
             else
-                -- return details so caller can decide
                 return false, {code=code, body=bodyText}
             end
         end
@@ -683,14 +770,20 @@ end
 
 -- ask AI (public)
 local function askAI(prompt, onSuccess, onError)
-    if not currentApiKey or not currentProvider then
+    if not currentApiKey and currentProvider ~= "custom" then
         if onError then onError("no_api") end
         safeTxt(user.Error, "No API key configured. Use /addapi or input and Confirm API", 255,0,0)
         updateStatus("No key")
         return
     end
+    if currentProvider == "custom" and (not currentCustomUrl or currentCustomUrl == "") then
+        if onError then onError("no_custom_url") end
+        safeTxt(user.Error, "Custom endpoint not configured. Use /addapi custom [URL] [APIKEY] yes", 255,0,0)
+        updateStatus("No custom url")
+        return
+    end
     -- select endpoints
-    local eps = endpointsFor(currentProvider)
+    local eps = endpointsFor(currentProvider or "openai")
     local headers = eps.makeHeaders(currentApiKey)
     local bodies = eps.makeBodies(prompt)
     -- try bodies sequentially via enqueueRequest
@@ -711,7 +804,7 @@ local function askAI(prompt, onSuccess, onError)
         enqueueRequest({
             request = req,
             onSuccess = function(resp)
-                local text = resp.Body or resp.body or ""
+                local text = resp.Body or resp.body or (resp.Success and resp.Body) or ""
                 local parsed = nil
                 local ok, out = pcall(eps.parseResult, text)
                 if ok then parsed = out else parsed = text end
@@ -745,14 +838,23 @@ local function onConfirmApiClicked()
         return
     end
 
-    -- guess provider from key prefix
+    -- guess provider from key prefix or url form
     local providerGuess = nil
-    if value:match("^sk%-") or value:match("^sk_proj") or value:match("^eyJ") then -- heuristics
+    if value:match("^https?://") then
+        -- user pasted a URL: treat as custom endpoint (no API key here)
+        providerGuess = "custom"
+        currentCustomUrl = value
+        currentCustomAuth = nil
+        -- we prompt user via status to /addapi custom <url> <apikey> yes if they want to save with key
+        updateStatus("Custom URL set (unconfirmed)")
+        safeTxt(user.Info, "Custom URL set. To add API key and save: /addapi custom "..value.." <APIKEY> yes", 0,170,255)
+        return
+    elseif value:match("^sk%-") or value:match("^sk_proj") or value:match("^eyJ") then -- heuristics
         providerGuess = "openai"
     elseif value:match("^AIza") or value:match("^AI") or value:match("^AIza") or value:match("^AIsa") then
         providerGuess = "gemini"
     else
-        -- fallback: ask user (we'll default to openai)
+        -- fallback: default openai
         providerGuess = "openai"
     end
 
@@ -764,11 +866,12 @@ local function onConfirmApiClicked()
     if ok == true then
         currentApiKey = value
         currentProvider = providerGuess
-        saveApiKeyToFile(value)
+        -- save structured config
+        local conf = { provider = currentProvider, key = currentApiKey, url = currentCustomUrl, auth = currentCustomAuth }
+        saveApiKeyToFile(conf)
         updateStatus("Connected ("..providerGuess..")")
         safeTxt(user.Suc, "API validated and saved (local)", 0,255,0)
     else
-        -- detail possibly table with error
         local code = (type(detail)=="table" and detail.code) or nil
         local body = (type(detail)=="table" and detail.body) or tostring(detail)
         updateStatus("Invalid key")
@@ -780,6 +883,8 @@ end
 local function onUnsavedApiClicked()
     currentApiKey = nil
     currentProvider = nil
+    currentCustomUrl = nil
+    currentCustomAuth = nil
     -- remove file if possible
     if isfile and isfile(keyFile) then
         pcall(function() delfile(keyFile) end)
@@ -821,7 +926,11 @@ local HELP_TEXT = [=[
 /Help - show commands
 /Cal or /Calculate [expr] - safe math
 /ClearText - clear chat logs
-/AddAPI [ChatGPT/Gemini] [API] [yes/no] - add API quickly
+/AddAPI [ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no] - add API quickly
+    Examples:
+      /addapi chatgpt sk-... yes
+      /addapi gemini AI... yes
+      /addapi custom https://host:8080 myapikey yes
 /UnsaveAPI or /UnApi - remove key
 /OpenWebsiteInExperience or /OWINE [URL] - open site
 /Loadstring [URL] - loadstring(url)()
@@ -854,6 +963,13 @@ local function setDebugMode(flag)
     safeTxt(user.Suc, "Debug mode: "..tostring(DEBUG_MODE), 0,255,0)
 end
 
+-- split helper
+local function splitWords(s)
+    local t = {}
+    for w in s:gmatch("%S+") do table.insert(t, w) end
+    return t
+end
+
 -- command handler
 local function handleCommand(msg)
     local lower = tostring(msg):lower()
@@ -880,22 +996,47 @@ local function handleCommand(msg)
     end
 
     if lower:match("^/addapi") then
-        local name, key, confirm = msg:match("^/addapi%s+(%S+)%s+(%S+)%s*(%S*)")
-        if not name or not key then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini] [API] [yes/no]",255,0,0) return true end
-        name = name:lower()
-        local provider = (name:match("chat") and "openai") or (name:match("gemini") and "gemini") or nil
-        if not provider then safeTxt(user.Warn, "Unknown provider. Use ChatGPT or Gemini",255,255,0) return true end
-        currentApiKey = key
-        currentProvider = provider
-        if confirm and confirm:lower()=="yes" then
-            saveApiKeyToFile(key)
-            updateStatus("Key set (saved)")
-            safeTxt(user.Suc, "API set and saved (local)",0,255,0)
-        else
-            updateStatus("Key set (unconfirmed)")
-            safeTxt(user.Info, "Key set. Click Confirm API or /addapi ... yes to validate",0,170,255)
+        local args = splitWords(msg)
+        if #args < 3 then
+            safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no]",255,0,0)
+            return true
         end
-        return true
+        local name = args[2]:lower()
+        if name == "custom" then
+            local url = args[3]
+            local apikey = args[4]
+            local confirm = args[5]
+            if not url then safeTxt(user.Error, "Usage: /addapi custom <URL> [APIKEY] [yes/no]",255,0,0) return true end
+            currentProvider = "custom"
+            currentCustomUrl = url
+            currentCustomAuth = apikey and apikey ~= "" and apikey or nil
+            currentApiKey = currentCustomAuth
+            if confirm and confirm:lower()=="yes" then
+                saveApiKeyToFile({ provider = "custom", key = currentCustomAuth, url = currentCustomUrl, auth = currentCustomAuth })
+                updateStatus("Custom set (saved)")
+                safeTxt(user.Suc, "Custom endpoint saved",0,255,0)
+            else
+                updateStatus("Custom set (unsaved)")
+                safeTxt(user.Info, "Custom endpoint set. Use 'yes' to save: /addapi custom <URL> <APIKEY> yes",0,170,255)
+            end
+            return true
+        else
+            local provider = (name:match("chat") and "openai") or (name:match("gemini") and "gemini") or nil
+            local key = args[3]
+            local confirm = args[4]
+            if not provider or not key then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini] [API] [yes/no]",255,0,0) return true end
+            currentApiKey = key
+            currentProvider = provider
+            if confirm and confirm:lower()=="yes" then
+                saveApiKeyToFile({ provider = currentProvider, key = key, url = currentCustomUrl, auth = currentCustomAuth })
+                updateStatus("Key set (saved)")
+                safeTxt(user.Suc, "API set and saved (local)",0,255,0)
+            else
+                updateStatus("Key set (unconfirmed)")
+                safeTxt(user.Info, "Key set. Click Confirm API or /addapi ... yes to validate",0,170,255)
+            end
+            return true
+        end
     end
 
     if lower:match("^/unsaveapi") or lower:match("^/unapi") then
@@ -1011,7 +1152,7 @@ if ch and ch:IsA("TextBox") then
 end
 
 -- initial status
-if currentApiKey then updateStatus("Key loaded (unconfirmed)") else updateStatus("No key") end
+if currentApiKey or currentCustomUrl then updateStatus("Key/URL loaded (unconfirmed)") else updateStatus("No key")
 
 -- debug heartbeat
 task.spawn(function()
@@ -1024,4 +1165,4 @@ task.spawn(function()
 end)
 
 -- done
-updateStatus(currentApiKey and "Key loaded" or "No key")
+updateStatus((currentApiKey or currentCustomUrl) and "Key/URL loaded" or "No key")
