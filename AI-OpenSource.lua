@@ -1,4 +1,4 @@
--- gpt 3.681
+-- gpt 3.682
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.681 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.682 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [=[
@@ -841,17 +841,36 @@ end
 
 -- helper: open website
 local function openWebsiteInExperience(url)
+    url = tostring(url or "")
+
+    if url == "" then
+        return false, "empty url"
+    end
+
     local ok, err = pcall(function()
-        if GuiService and GuiService.OpenBrowserWindow then
+        -- ถ้ามี GuiService.OpenBrowserWindow ให้เรียก
+        if GuiService and typeof(GuiService.OpenBrowserWindow) == "function" then
             GuiService:OpenBrowserWindow(url)
-        else
-            if StarterGui and StarterGui:SetCore then
-                StarterGui:SetCore("OpenBrowserWindow", url)
-            else
-                error("Service blocked")
-            end
+            return
         end
+
+        -- ถ้ามี StarterGui:SetCore ให้เรียก (บาง client มี)
+        if StarterGui and typeof(StarterGui.SetCore) == "function" then
+            StarterGui:SetCore("OpenBrowserWindow", url)
+            return
+        end
+
+        -- fallback: ถ้าไม่สามารถเปิดได้ ให้พยายามคัดลอก url ไปคลิปบอร์ด
+        local clipFn = setclipboard or toclipboard or (syn and syn.set_clipboard) or (typeof(Clipboard) == "table" and Clipboard.set) -- ถ้ามีรูปแบบอื่น ๆ
+        if clipFn then
+            clipFn(url)
+            error("Service blocked - URL copied to clipboard")
+        end
+
+        -- สุดท้าย ถ้าไม่มีทางทำอะไรได้ ก็ยกข้อผิดพลาด
+        error("Service blocked")
     end)
+
     return ok, err
 end
 
