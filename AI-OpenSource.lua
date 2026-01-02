@@ -1,4 +1,4 @@
--- gpt 3.678
+-- gpt 3.679
 
 -- =====>> Saved Functions <<=====
 
@@ -355,7 +355,7 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.678 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.679 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [[
@@ -804,12 +804,17 @@ local function handleCommand(msg)
             safeTxt(user.Error, "Usage: /cal [expression]", 255,0,0)
             return true
         end
+
         local res, err = calculate(expr)
-        if not res then safeTxt(user.Error, "Math error: "..tostring(err), 255,0,0)
-        else safeTxt(user.Suc, "Result = "..tostring(res), 0,255,0)
+        if not res then
+            safeTxt(user.Error, "Math error: "..tostring(err), 255,0,0)
+        else
+            safeTxt(user.Suc, "Result = "..tostring(res), 0,255,0)
+        end
+
         return true
     end
-
+  
     if lower:match("^/addapi") then
         local name, key, confirm = msg:match("^/addapi%s+(%S+)%s+(%S+)%s*(%S*)")
         if not name or not key then
