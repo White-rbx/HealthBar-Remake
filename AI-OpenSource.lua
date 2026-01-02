@@ -1,4 +1,4 @@
--- gpt 3.70 (modified to support HttpService fallback & custom (self-hosted) endpoints)
+-- gpt 3.71 (modified to support HttpService fallback & custom (self-hosted) endpoints)
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.70 (modified) | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.71 (modified) | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [=[
@@ -612,22 +612,30 @@ local function enqueueRequest(opts)
 end
 
 -- endpoints.lua
--- ปรับปรุง endpointsFor จากของคุณ:
--- - เพิ่มรูปแบบ `messages` สำหรับ Gemini (หลายเวอร์ชันต้องการ)
--- - รองรับการส่งคีย์เป็น ?key=... หรือ Authorization: Bearer ...
--- - ตรวจสอบการมี HttpService และ fallback ถ้าไม่มี
--- - ใช้ JSON decode แบบปลอดภัย (pcall wrapper)
--- - ปรับ parseResult ให้ครอบคลุมรูปแบบผลลัพธ์เพิ่มขึ้น
+-- ปรับปรุง endpointsFor จากของคุณ (แก้ pcall/HttpService init เพื่อหลีกเลี่ยง syntax error)
 
 local HttpService
-local hasHttpService = pcall(function() HttpService = game:GetService and game:GetService("HttpService") end)
+local hasHttpService = false
+
+-- ถ้าเป็นสภาพแวดล้อม Roblox ให้พยายามดึง HttpService อย่างปลอดภัย
+local ok, svc = pcall(function()
+    if game and game.GetService then
+        return game:GetService("HttpService")
+    end
+    return nil
+end)
+if ok and svc then
+    HttpService = svc
+    hasHttpService = true
+end
+
 local jsonEncode, jsonDecode
 if hasHttpService and HttpService then
     jsonEncode = function(t) return HttpService:JSONEncode(t) end
     jsonDecode = function(s) return HttpService:JSONDecode(s) end
 else
-    local ok, dkjson = pcall(require, "dkjson")
-    if not ok then error("No JSON library available (need HttpService or dkjson)") end
+    local ok2, dkjson = pcall(require, "dkjson")
+    if not ok2 then error("No JSON library available (need HttpService or dkjson)") end
     jsonEncode = function(t) return dkjson.encode(t) end
     jsonDecode = function(s) return dkjson.decode(s) end
 end
@@ -657,19 +665,15 @@ local function endpointsFor(provider)
     if provider == "gemini" then
         local baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
         return {
-            -- url is base; caller may append ?key=... if they prefer query param
             url = baseUrl,
             makeHeaders = function(key)
                 local headers = { ["Content-Type"] = "application/json" }
                 if key and key ~= "" then
-                    -- If key looks like an API key (no spaces) prefer ?key=... caller-side or x-goog-api-key.
-                    -- If it looks like a bearer token (starts with "ya29." or "Bearer ") use Authorization.
                     if key:match("^Bearer%s+") then
                         headers["Authorization"] = key
-                    elseif key:match("^ya29") or key:match("^ya29%.") then
+                    elseif key:match("^ya29") then
                         headers["Authorization"] = "Bearer " .. key
                     else
-                        -- include x-goog-api-key as fallback; some endpoints accept this header
                         headers["x-goog-api-key"] = key
                     end
                 end
@@ -677,59 +681,40 @@ local function endpointsFor(provider)
             end,
             makeBodies = function(prompt)
                 local list = {}
-                -- Try common generate shapes for Generative Language / Gemini variations
                 pcall(function()
-                    -- messages with content string
                     table.insert(list, jsonEncode({ messages = { { role = "user", content = prompt } } }))
                 end)
                 pcall(function()
-                    -- messages with content parts (some versions expect array of content objects)
                     table.insert(list, jsonEncode({
                         messages = {
-                            {
-                                role = "user",
-                                content = { { type = "text", text = prompt } }
-                            }
+                            { role = "user", content = { { type = "text", text = prompt } } }
                         }
                     }))
                 end)
                 pcall(function()
-                    -- older style: prompt/text/input
                     table.insert(list, jsonEncode({ prompt = { text = prompt } }))
                     table.insert(list, jsonEncode({ input = prompt }))
                     table.insert(list, jsonEncode({ text = prompt }))
                 end)
                 pcall(function()
-                    -- Vertex-like instance shape (some people mistakenly use this against GL API)
                     table.insert(list, jsonEncode({ instances = { { content = prompt } } }))
                 end)
                 return list
             end,
             parseResult = function(body)
                 local d, err = safeDecode(body)
-                if not d then
-                    -- not JSON or decode failed: return raw string
-                    return tostring(body)
-                end
-                -- common GL/Gemini shapes
+                if not d then return tostring(body) end
                 if d.candidates and d.candidates[1] then
                     local c = d.candidates[1].content
                     if type(c) == "table" then
-                        -- content.parts[].text
-                        if c.parts and c.parts[1] and c.parts[1].text then
-                            return c.parts[1].text
-                        end
-                        -- content[1].text
-                        if c[1] and c[1].text then
-                            return c[1].text
-                        end
+                        if c.parts and c.parts[1] and c.parts[1].text then return c.parts[1].text end
+                        if c[1] and c[1].text then return c[1].text end
                     elseif type(c) == "string" then
                         return c
                     end
                 end
                 if d.outputText and type(d.outputText) == "string" then return d.outputText end
                 if d.output and type(d.output) == "string" then return d.output end
-                -- new Responses-like shape
                 if d.results and d.results[1] and d.results[1].output then
                     local out = d.results[1].output[1]
                     if out and out.content then
@@ -739,17 +724,14 @@ local function endpointsFor(provider)
                         end
                     end
                 end
-                -- try choices (OpenAI-like)
                 if d.choices and d.choices[1] then
                     if d.choices[1].text then return d.choices[1].text end
                     if d.choices[1].message and d.choices[1].message.content then
                         return d.choices[1].message.content
                     end
                 end
-                -- try simple text fields
                 if d.text then return d.text end
                 if d.generated_text then return d.generated_text end
-                -- fallback: find first string value in table
                 for k,v in pairs(d) do
                     if type(v) == "string" then return v end
                 end
@@ -766,7 +748,6 @@ local function endpointsFor(provider)
                     if authKey:match("^Bearer%s+") then
                         headers["Authorization"] = authKey
                     else
-                        -- put into Authorization as Bearer and x-api-key as fallback
                         headers["Authorization"] = "Bearer " .. authKey
                         headers["x-api-key"] = authKey
                     end
@@ -805,7 +786,6 @@ local function endpointsFor(provider)
             end
         }
     else
-        -- openai / responses
         return {
             url = "https://api.openai.com/v1/responses",
             makeHeaders = function(key)
