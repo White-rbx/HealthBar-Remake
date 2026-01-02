@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.465
+-- So uhm just a script lol. 4.466
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -998,8 +998,8 @@ local BUTTON_NAMES = {
 -- ICONS (OPEN / CLOSE) — ใช้ id ที่ให้มา
 local ICONS = {
 	z8_ChatGPT = {
-		OPEN  = "rbxassetid://73936905825225",
-		CLOSE = "rbxassetid://100183093743893",
+		OPEN  = "rbxassetid://76283819769241",
+		CLOSE = "rbxassetid://123993608119136",
 	},
 	z7_About = {
 		OPEN  = "rbxassetid://132997296544985",
