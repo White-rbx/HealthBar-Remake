@@ -1,4 +1,4 @@
--- gpt 3.689 (modified to support HttpService fallback & custom (self-hosted) endpoints)
+-- gpt 3.69 (modified to support HttpService fallback & custom (self-hosted) endpoints)
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.689 (modified) | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.69 (modified) | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [=[
@@ -1153,7 +1153,7 @@ if ch and ch:IsA("TextBox") then
 end
 
 -- initial status
-if currentApiKey or currentCustomUrl then updateStatus("Key/URL loaded (unconfirmed)") else updateStatus("No key")
+if currentApiKey or currentCustomUrl then updateStatus("Key/URL loaded (unconfirmed)") else updateStatus("No key") end
 
 -- debug heartbeat
 task.spawn(function()
