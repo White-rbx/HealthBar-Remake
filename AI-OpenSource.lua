@@ -1,4 +1,4 @@
--- gpt 3.69 (modified to support HttpService fallback & custom (self-hosted) endpoints)
+-- gpt 3.70 (modified to support HttpService fallback & custom (self-hosted) endpoints)
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.69 (modified) | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.70 (modified) | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [=[
@@ -611,49 +611,163 @@ local function enqueueRequest(opts)
     end
 end
 
--- endpoint / body builders (tries flexible payloads)
+-- endpoints.lua
+-- ปรับปรุง endpointsFor จากของคุณ:
+-- - เพิ่มรูปแบบ `messages` สำหรับ Gemini (หลายเวอร์ชันต้องการ)
+-- - รองรับการส่งคีย์เป็น ?key=... หรือ Authorization: Bearer ...
+-- - ตรวจสอบการมี HttpService และ fallback ถ้าไม่มี
+-- - ใช้ JSON decode แบบปลอดภัย (pcall wrapper)
+-- - ปรับ parseResult ให้ครอบคลุมรูปแบบผลลัพธ์เพิ่มขึ้น
+
+local HttpService
+local hasHttpService = pcall(function() HttpService = game:GetService and game:GetService("HttpService") end)
+local jsonEncode, jsonDecode
+if hasHttpService and HttpService then
+    jsonEncode = function(t) return HttpService:JSONEncode(t) end
+    jsonDecode = function(s) return HttpService:JSONDecode(s) end
+else
+    local ok, dkjson = pcall(require, "dkjson")
+    if not ok then error("No JSON library available (need HttpService or dkjson)") end
+    jsonEncode = function(t) return dkjson.encode(t) end
+    jsonDecode = function(s) return dkjson.decode(s) end
+end
+
+local function safeDecode(body)
+    local ok, res = pcall(function() return jsonDecode(body) end)
+    if not ok then return nil, res end
+    return res
+end
+
+local function tryConcatParts(parts)
+    if type(parts) ~= "table" then
+        return tostring(parts)
+    end
+    local buf = {}
+    for _, p in ipairs(parts) do
+        if type(p) == "table" then
+            if p.text then table.insert(buf, tostring(p.text)) else table.insert(buf, tostring(p)) end
+        else
+            table.insert(buf, tostring(p))
+        end
+    end
+    return table.concat(buf, "")
+end
+
 local function endpointsFor(provider)
     if provider == "gemini" then
+        local baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
         return {
-            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-            makeHeaders = function(key) return { ["Content-Type"]="application/json", ["x-goog-api-key"]=key } end,
+            -- url is base; caller may append ?key=... if they prefer query param
+            url = baseUrl,
+            makeHeaders = function(key)
+                local headers = { ["Content-Type"] = "application/json" }
+                if key and key ~= "" then
+                    -- If key looks like an API key (no spaces) prefer ?key=... caller-side or x-goog-api-key.
+                    -- If it looks like a bearer token (starts with "ya29." or "Bearer ") use Authorization.
+                    if key:match("^Bearer%s+") then
+                        headers["Authorization"] = key
+                    elseif key:match("^ya29") or key:match("^ya29%.") then
+                        headers["Authorization"] = "Bearer " .. key
+                    else
+                        -- include x-goog-api-key as fallback; some endpoints accept this header
+                        headers["x-goog-api-key"] = key
+                    end
+                end
+                return headers
+            end,
             makeBodies = function(prompt)
                 local list = {}
-                pcall(function() table.insert(list, HttpService:JSONEncode({instances = {{content = prompt}}})) end)
-                pcall(function() table.insert(list, HttpService:JSONEncode({prompt = {text = prompt}})) end)
-                pcall(function() table.insert(list, HttpService:JSONEncode({input = prompt})) end)
-                pcall(function() table.insert(list, HttpService:JSONEncode({instances = {prompt}})) end)
+                -- Try common generate shapes for Generative Language / Gemini variations
+                pcall(function()
+                    -- messages with content string
+                    table.insert(list, jsonEncode({ messages = { { role = "user", content = prompt } } }))
+                end)
+                pcall(function()
+                    -- messages with content parts (some versions expect array of content objects)
+                    table.insert(list, jsonEncode({
+                        messages = {
+                            {
+                                role = "user",
+                                content = { { type = "text", text = prompt } }
+                            }
+                        }
+                    }))
+                end)
+                pcall(function()
+                    -- older style: prompt/text/input
+                    table.insert(list, jsonEncode({ prompt = { text = prompt } }))
+                    table.insert(list, jsonEncode({ input = prompt }))
+                    table.insert(list, jsonEncode({ text = prompt }))
+                end)
+                pcall(function()
+                    -- Vertex-like instance shape (some people mistakenly use this against GL API)
+                    table.insert(list, jsonEncode({ instances = { { content = prompt } } }))
+                end)
                 return list
             end,
             parseResult = function(body)
-                local ok, d = pcall(HttpService.JSONDecode, HttpService, body)
-                if not ok or not d then return nil, d end
-                if d.candidates and d.candidates[1] and d.candidates[1].content and d.candidates[1].content.parts then
-                    return d.candidates[1].content.parts[1].text
+                local d, err = safeDecode(body)
+                if not d then
+                    -- not JSON or decode failed: return raw string
+                    return tostring(body)
                 end
-                if d.outputText then return d.outputText end
-                if d.candidates and d.candidates[1] and d.candidates[1].content and d.candidates[1].content[1] and d.candidates[1].content[1].text then
-                    return d.candidates[1].content[1].text
+                -- common GL/Gemini shapes
+                if d.candidates and d.candidates[1] then
+                    local c = d.candidates[1].content
+                    if type(c) == "table" then
+                        -- content.parts[].text
+                        if c.parts and c.parts[1] and c.parts[1].text then
+                            return c.parts[1].text
+                        end
+                        -- content[1].text
+                        if c[1] and c[1].text then
+                            return c[1].text
+                        end
+                    elseif type(c) == "string" then
+                        return c
+                    end
                 end
-                return tostring(body)
+                if d.outputText and type(d.outputText) == "string" then return d.outputText end
+                if d.output and type(d.output) == "string" then return d.output end
+                -- new Responses-like shape
+                if d.results and d.results[1] and d.results[1].output then
+                    local out = d.results[1].output[1]
+                    if out and out.content then
+                        for _, item in ipairs(out.content) do
+                            if item.type == "output_text" and item.text then return item.text end
+                            if item.text then return item.text end
+                        end
+                    end
+                end
+                -- try choices (OpenAI-like)
+                if d.choices and d.choices[1] then
+                    if d.choices[1].text then return d.choices[1].text end
+                    if d.choices[1].message and d.choices[1].message.content then
+                        return d.choices[1].message.content
+                    end
+                end
+                -- try simple text fields
+                if d.text then return d.text end
+                if d.generated_text then return d.generated_text end
+                -- fallback: find first string value in table
+                for k,v in pairs(d) do
+                    if type(v) == "string" then return v end
+                end
+                return jsonEncode(d)
             end
         }
     elseif provider == "custom" then
-        -- custom self-hosted endpoint; uses currentCustomUrl + currentCustomAuth (if set)
         return {
             url = currentCustomUrl,
             makeHeaders = function(key)
                 local headers = { ["Content-Type"] = "application/json" }
                 local authKey = key or currentCustomAuth
                 if authKey and authKey ~= "" then
-                    -- Prefer Authorization header; some servers expect "Bearer <key>" or plain token.
-                    -- If user provided "Bearer ..." already, pass through.
                     if authKey:match("^Bearer%s+") then
                         headers["Authorization"] = authKey
                     else
-                        -- Put into Authorization as-is; some self-hosted servers accept this.
+                        -- put into Authorization as Bearer and x-api-key as fallback
                         headers["Authorization"] = "Bearer " .. authKey
-                        -- also set x-api-key for servers that expect that (won't overwrite if already set)
                         headers["x-api-key"] = authKey
                     end
                 end
@@ -661,21 +775,16 @@ local function endpointsFor(provider)
             end,
             makeBodies = function(prompt)
                 local list = {}
-                -- try multiple shapes common to HF / TGI / custom server
-                pcall(function() table.insert(list, HttpService:JSONEncode({input = prompt})) end)
-                pcall(function() table.insert(list, HttpService:JSONEncode({prompt = prompt})) end)
-                pcall(function() table.insert(list, HttpService:JSONEncode({instances = {{content = prompt}}})) end)
-                pcall(function() table.insert(list, HttpService:JSONEncode({text = prompt})) end)
-                pcall(function() table.insert(list, HttpService:JSONEncode({messages = {{role="user", content=prompt}}})) end)
+                pcall(function() table.insert(list, jsonEncode({ input = prompt })) end)
+                pcall(function() table.insert(list, jsonEncode({ prompt = prompt })) end)
+                pcall(function() table.insert(list, jsonEncode({ instances = { { content = prompt } } })) end)
+                pcall(function() table.insert(list, jsonEncode({ text = prompt })) end)
+                pcall(function() table.insert(list, jsonEncode({ messages = { { role = "user", content = prompt } } })) end)
                 return list
             end,
             parseResult = function(body)
-                local ok, d = pcall(HttpService.JSONDecode, HttpService, body)
-                if not ok then
-                    -- not JSON, return raw
-                    return tostring(body)
-                end
-                -- common shapes
+                local d = safeDecode(body)
+                if not d then return tostring(body) end
                 if type(d) == "string" then return d end
                 if d.output and type(d.output) == "string" then return d.output end
                 if d.text then return d.text end
@@ -683,37 +792,44 @@ local function endpointsFor(provider)
                 if d.data and type(d.data) == "table" and d.data[1] and d.data[1].generated_text then
                     return d.data[1].generated_text
                 end
-                if d.choices and d.choices[1] and (d.choices[1].text or (d.choices[1].message and d.choices[1].message.content)) then
-                    return d.choices[1].text or d.choices[1].message.content
-                end
-                if d.output and type(d.output)=="table" and d.output[1] and d.output[1].content then
-                    for _, item in ipairs(d.output[1].content) do
-                        if item.type == "output_text" and item.text then return item.text end
+                if d.choices and d.choices[1] then
+                    if d.choices[1].text then return d.choices[1].text end
+                    if d.choices[1].message and d.choices[1].message.content then
+                        return d.choices[1].message.content
                     end
                 end
-                -- try nested keys common to TGI/HF responses
                 for k,v in pairs(d) do
                     if type(v) == "string" then return v end
                 end
-                return HttpService:JSONEncode(d)
+                return jsonEncode(d)
             end
         }
     else
-        -- openai / chat responses
+        -- openai / responses
         return {
             url = "https://api.openai.com/v1/responses",
-            makeHeaders = function(key) return { ["Content-Type"]="application/json", ["Authorization"]="Bearer "..key } end,
+            makeHeaders = function(key)
+                local headers = { ["Content-Type"] = "application/json" }
+                if key and key ~= "" then
+                    if key:match("^Bearer%s+") then
+                        headers["Authorization"] = key
+                    else
+                        headers["Authorization"] = "Bearer " .. key
+                    end
+                end
+                return headers
+            end,
             makeBodies = function(prompt)
                 local list = {}
-                pcall(function() table.insert(list, HttpService:JSONEncode({model = currentModel, input = prompt})) end)
-                pcall(function() table.insert(list, HttpService:JSONEncode({model = currentModel, messages = {{role="user", content=prompt}}})) end)
-                pcall(function() table.insert(list, HttpService:JSONEncode({prompt = prompt, model = currentModel})) end)
+                pcall(function() table.insert(list, jsonEncode({ model = currentModel, input = prompt })) end)
+                pcall(function() table.insert(list, jsonEncode({ model = currentModel, messages = { { role = "user", content = prompt } } })) end)
+                pcall(function() table.insert(list, jsonEncode({ prompt = prompt, model = currentModel })) end)
                 return list
             end,
             parseResult = function(body)
-                local ok, d = pcall(HttpService.JSONDecode, HttpService, body)
-                if not ok or not d then return nil, d end
-                if d.output and type(d.output)=="table" and d.output[1] and d.output[1].content then
+                local d = safeDecode(body)
+                if not d then return tostring(body) end
+                if d.output and type(d.output) == "table" and d.output[1] and d.output[1].content then
                     for _, item in ipairs(d.output[1].content) do
                         if item.type == "output_text" and item.text then return item.text end
                     end
@@ -723,7 +839,7 @@ local function endpointsFor(provider)
                 end
                 if d.results and d.results[1] and d.results[1].output and d.results[1].output[1] and d.results[1].output[1].content then
                     local parts = d.results[1].output[1].content
-                    for _,p in ipairs(parts) do
+                    for _, p in ipairs(parts) do
                         if p.type == "output_text" and p.text then return p.text end
                     end
                 end
@@ -733,6 +849,12 @@ local function endpointsFor(provider)
         }
     end
 end
+
+return {
+    endpointsFor = endpointsFor,
+    safeDecode = safeDecode,
+    tryConcatParts = tryConcatParts
+}
 
 -- validator: try a single quick request to check key (use minimal body and don't spam)
 local function validateKey(provider, key, timeoutSec)
