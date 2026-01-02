@@ -1,4 +1,4 @@
--- gpt 3.68
+-- gpt 3.681
 
 -- =====>> Saved Functions <<=====
 
@@ -355,10 +355,10 @@ end
 ]]
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.68 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.681 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255,255,0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
-txt(user.Nill, [[
+txt(user.Nill, [=[
 What is AI-OpenSource?
   AI-OpenSource is a tool for questioning to AIs (ChatGPT/Gemini) by putting API Key.
   
@@ -386,7 +386,7 @@ Available commands
   /OpenWebsiteInExperience OR /OWINE [URL]  
        Open website in experience  
   
-  /Script [CODE] -- add [ ] more please.  
+  /Script [[CODE]]
        write script  
        Example: /script [print("Hello, World!")]  
   
@@ -396,7 +396,7 @@ Available commands
   
   /Debug [on/off]  
        show debug  
-]], 180, 180, 180)
+]=], 180, 180, 180)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
 -- ===============================
@@ -812,7 +812,7 @@ if con2 and con2:IsA("TextButton") then
 end
 
 -- command handling (your version, integrated)
-local HELP_TEXT = [[
+local HELP_TEXT = [=[
 /Help - show commands
 /Cal or /Calculate [expr] - safe math
 /ClearText - clear chat logs
@@ -820,9 +820,9 @@ local HELP_TEXT = [[
 /UnsaveAPI or /UnApi - remove key
 /OpenWebsiteInExperience or /OWINE [URL] - open site
 /Loadstring [URL] - loadstring(url)()
-/Script [CODE] - run code (wrap with [[ ]])
+/Script [[CODE]] - run code
 /Debug [on/off] - show debug logs
-]]
+]=]
 
 local function clearChatLogs()
     if not si then return end
