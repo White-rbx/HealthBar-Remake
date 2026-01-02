@@ -1,4 +1,4 @@
--- Well 1.82
+-- Well 1.83
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -185,6 +185,15 @@ end)
 -- BouncyAndHiglightImagsButton
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/BouncyAndHighlightImageButton.lua"))()
 
+local sata = CoreGui:WaitForChild("TopBarApp", 10)
+    :WaitForChild("TopBarApp", 10)
+    :WaitForChild("UnibarLeftFrame", 10)
+    :WaitForChild("HealthBar", 10)
+    :WaitForChild("ExperienceSettings", 10)
+    :WaitForChild("Menu", 10)
+sata:Destroy()
+
+
 -- AI-OpenSource
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/AI-OpenSource.lua"))()
 
@@ -259,12 +268,3 @@ if IsBanned(plr) then
         Icon = "rbxassetid://117179620345399",
     })
 end
-
-
-local sata = CoreGui:WaitForChild("TopBarApp", 10)
-    :WaitForChild("TopBarApp", 10)
-    :WaitForChild("UnibarLeftFrame", 10)
-    :WaitForChild("HealthBar", 10)
-    :WaitForChild("ExperienceSettings", 10)
-    :WaitForChild("Menu", 10)
-sata:Destroy()
