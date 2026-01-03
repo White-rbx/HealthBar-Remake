@@ -1,4 +1,4 @@
--- gpt 3.73 (modified to support HttpService fallback & custom (self-hosted) endpoints)
+-- gpt 3.74 (modified to support HttpService fallback & custom (self-hosted) endpoints)
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.73 (modified) | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.74 (modified) | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255)
 txt(user.Nill, [=[
@@ -800,14 +800,6 @@ local function askAI(prompt, onSuccess, onError)
     tryBody(1)
 end
 
--- Exported API (askAI included)
-return {
-    endpointsFor = endpointsFor,
-    safeDecode = safeDecode,
-    tryConcatParts = tryConcatParts,
-    validateKey = validateKey,
-    askAI = askAI
-}
 
 -- UI: Confirm API button click
 local function onConfirmApiClicked()
@@ -1150,3 +1142,12 @@ end)
 
 -- done
 updateStatus((currentApiKey or currentCustomUrl) and "Key/URL loaded" or "No key")
+
+-- Exported API (askAI included)
+return {
+    endpointsFor = endpointsFor,
+    safeDecode = safeDecode,
+    tryConcatParts = tryConcatParts,
+    validateKey = validateKey,
+    askAI = askAI
+}
