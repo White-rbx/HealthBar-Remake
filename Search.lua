@@ -1,4 +1,4 @@
--- searcher... yes. 0
+-- searcher... yes. 0.1
 
 -- =====>> Saved Functions <<=====
 
@@ -137,7 +137,10 @@ we must get api searcher first!
 
 -- ==== API ==== --
 WeAreDevs: https://wearedevs.net/api/scripts/search
+More Source: https://wearedevs.net/forum/t/37448
+
 ScriptBlox: https://scriptblox.com/api/script/fetch
+More Source: https://docs.scriptblox.com/scripts/fetch
 -- ============= --
 
 ]]
