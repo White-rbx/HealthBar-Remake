@@ -1,4 +1,4 @@
--- searcher... yes. 0.1
+-- searcher... yes. 0.15 (I forget something.)
 
 -- =====>> Saved Functions <<=====
 
@@ -133,7 +133,7 @@ local TouchInputService = game:GetService("TouchInputService")
 
 --[[
 Before we starting create guis or any script
-we must get api searcher first!
+we must get api searcher into our description first!
 
 -- ==== API ==== --
 WeAreDevs: https://wearedevs.net/api/scripts/search
