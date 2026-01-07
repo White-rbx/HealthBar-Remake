@@ -1,4 +1,4 @@
--- gpt 3.96
+-- gpt 3.97
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.96 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.97 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255) txt(user.Nill, [=[
 What is AI-OpenSource?
@@ -391,55 +391,96 @@ local USLD = false
 -- ===== FIND UI (connect to existing GUI) =====
 local function findChatUI(timeout)
     timeout = tonumber(timeout) or 6
-    local start = tick()
-    while tick() - start < timeout do
-        -- try ExperienceSettings.Menu first
-        local menu = CoreGui:FindFirstChild("ExperienceSettings") and CoreGui.ExperienceSettings:FindFirstChild("Menu")
+    local startTime = tick()
+
+    -- safe helper
+    local function safeFindFirstChildWhichIsA(inst, className)
+        if inst and inst.FindFirstChildWhichIsA then
+            return inst:FindFirstChildWhichIsA(className)
+        end
+        return nil
+    end
+
+    while tick() - startTime < timeout do
         local roots = {}
-        if menu then table.insert(roots, menu) end
-        -- also search for likely screen guis / frames
-        for _,c in ipairs(CoreGui:GetDescendants()) do
-            if c:IsA("Frame") or c:IsA("ScreenGui") then
-                local nm = tostring(c.Name):lower()
-                if nm:match("ai") or nm:match("chat") or nm:match("open") or nm:match("gpt") or nm:match("aio") then
-                    table.insert(roots, c)
+
+        -- 1) ExperienceSettings.Menu (priority)
+        local exp = CoreGui:FindFirstChild("ExperienceSettings")
+        if exp then
+            local menu = exp:FindFirstChild("Menu")
+            if menu then
+                table.insert(roots, menu)
+            end
+        end
+
+        -- 2) Scan CoreGui for likely containers
+        for _, obj in ipairs(CoreGui:GetDescendants()) do
+            if obj:IsA("Frame") or obj:IsA("ScreenGui") then
+                local n = obj.Name:lower()
+                if n:match("ai") or n:match("chat") or n:match("open") or n:match("gpt") or n:match("aio") then
+                    table.insert(roots, obj)
                 end
             end
         end
-        -- fallback any ScreenGui
-        for _,sg in ipairs(CoreGui:GetChildren()) do
-            if sg:IsA("ScreenGui") then table.insert(roots, sg) end
+
+        -- 3) Any ScreenGui fallback
+        for _, sg in ipairs(CoreGui:GetChildren()) do
+            if sg:IsA("ScreenGui") then
+                table.insert(roots, sg)
+            end
         end
 
-        for _,root in ipairs(roots) do
+        -- ===== SEARCH EACH ROOT =====
+        for _, root in ipairs(roots) do
             local textFrame = root:FindFirstChild("Text") or root:FindFirstChild("text")
+
             local ch, se, tb, si, st
+
+            -- TextBox & SendButton (อยู่ใน Text เท่านั้น)
             if textFrame then
-                ch = textFrame:FindFirstChild("chat") or textFrame:FindFirstChild("ch")
-                se = textFrame:FindFirstChild("Send") or textFrame:FindFirstChild("se")
-                tb = textFrame:FindFirstChild("api") or textFrame:FindFirstChild("API")
-            else
-                ch = root:FindFirstChild("chat") or root:FindFirstChild("ch")
-                se = root:FindFirstChild("Send") or root:FindFirstChild("se")
-                tb = root:FindFirstChild("api") or root:FindFirstChild("API")
+                ch = textFrame:FindFirstChild("ch")
+                  or textFrame:FindFirstChild("chat")
+                  or textFrame:FindFirstChild("Ch")
+
+                se = textFrame:FindFirstChild("se")
+                  or textFrame:FindFirstChild("Send")
+
+                tb = textFrame:FindFirstChild("api")
+                  or textFrame:FindFirstChild("API")
             end
-            si = root:FindFirstChild("ChatLogs") or root:FindFirstChild("ChatFrame") or root:FindFirstChildWhichIsA and root:FindFirstChildWhichIsA("ScrollingFrame")
-            st = root:FindFirstChild("Status") or root:FindFirstChild("status") or root:FindFirstChildWhichIsA and root:FindFirstChildWhichIsA("TextLabel")
-            -- require at least chat textbox, send button and chatlogs
+
+            -- ChatLogs (si) : อยู่นอก Text
+            si =
+                root:FindFirstChild("ChatLogs")
+                or root:FindFirstChild("ChatFrame")
+                or safeFindFirstChildWhichIsA(root, "ScrollingFrame")
+
+            -- Status label (st)
+            st =
+                root:FindFirstChild("Status")
+                or root:FindFirstChild("status")
+                or safeFindFirstChildWhichIsA(root, "TextLabel")
+
+            -- REQUIREMENTS:
+            -- ch = TextBox
+            -- se = Send Button
+            -- si = ChatLogs (ScrollingFrame)
             if ch and se and si then
                 return {
                     root = root,
                     textFrame = textFrame,
                     ch = ch,
                     se = se,
-                    tb = tb,
-                    si = si,
-                    st = st
+                    tb = tb, -- api textbox (optional)
+                    si = si, -- chat logs
+                    st = st  -- status label (optional)
                 }
             end
         end
+
         task.wait(0.12)
     end
+
     return nil
 end
 
