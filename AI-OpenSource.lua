@@ -1,4 +1,4 @@
--- gpt 3.95
+-- gpt 3.96
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.95 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.96 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255) txt(user.Nill, [=[
 What is AI-OpenSource?
@@ -363,223 +363,213 @@ txt(user.Nill, "Welcome back Tester", 0, 255, 0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
 -- ===========================
--- AI-OpenSource: Unified client-side script (full)
--- Assumptions:
---  - There's a function txt(userLabel, text, r,g,b) already defined.
---  - There's a table `user` already defined (user.plr, user.chat, user.Error, etc).
---  - Some UI was already created: we'll search for it (Frame, Text, ChatLogs, Send, api, Status)
---  - Executor http functions may exist (syn.request, http, request, http_request, fluxus.request, etc.)
+-- AI-OpenSource: Unified client script (finds existing UI, hooks commands, HTTP queue, OpenAI/Gemini)
+-- Assumes: txt(user, text, R,G,B) exists and local 'user' table exists (see your setup).
+-- Place as LocalScript. Uses executor HTTP (syn.request etc) if available.
 
--- ============================
--- SAFE HELPERS (do not override txt/user)
--- ============================
-local function fallbackPrint(...) print(...) end
+-- ===== SERVICES & UTIL =====
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
-local safeTxt = function(u, t, r, g, b)
+local LocalPlayer = Players.LocalPlayer
+
+-- safe printing to chat area
+local function safeTxt(u, t, r,g,b)
     if type(txt) == "function" then
         pcall(txt, u, t, r or 255, g or 255, b or 255)
-    else
-        -- fallback print if txt missing
-        pcall(fallbackPrint, tostring(u) .. tostring(t))
     end
 end
 
--- ensure user table exists
-user = user or {
-    plr  = "You: ",
-    chat = "AI: ",
-    Error = "Error: ",
-    Suc   = "Success: ",
-    Warn  = "Warning: ",
-    Info  = "Information: ",
-    Nill = "",
-    Sys = "System: "
-}
-
--- debug flag
+-- debug mode flag & USLD (unknown-language debug)
 local DEBUG_MODE = false
-local USLD_ENABLED = false -- unknown script language debug
+local USLD = false
 
-local function dbg(...)
-    if DEBUG_MODE then
-        local s = {}
-        for i=1,select('#', ...) do table.insert(s, tostring(select(i, ...))) end
-        safeTxt(user.Info, table.concat(s, " "), 0,170,255)
-    end
-end
-
--- ============================
--- FIND UI (robust)
--- ============================
-local CoreGui = game:GetService("CoreGui")
-local GuiService = game:GetService("GuiService")
-local StarterGui = game:GetService("StarterGui")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
-local function findUI()
-    -- try common paths
-    local rootCandidates = {}
-
-    -- ExperienceSettings menu if exists
-    pcall(function()
-        local ex = CoreGui:FindFirstChild("ExperienceSettings") or CoreGui:FindFirstChild("CoreGui")
-        if ex and ex:FindFirstChild("Menu") then
-            table.insert(rootCandidates, ex.Menu)
-        end
-    end)
-
-    -- find "AIOpenSource" or "ChatGPT" GUI inside CoreGui
-    for _, v in ipairs(CoreGui:GetDescendants()) do
-        if v:IsA("Frame") and (v.Name:lower():match("aio") or v.Name:lower():match("chatgpt") or v.Name:lower():match("ai%-opensource") or v.Name:lower():match("aio")) then
-            table.insert(rootCandidates, v)
-        end
-    end
-
-    -- fallback: any ScreenGui with ChatFrame-like child
-    for _, sg in ipairs(CoreGui:GetChildren()) do
-        if sg:IsA("ScreenGui") then
-            for _, c in ipairs(sg:GetDescendants()) do
-                if c.Name:lower():match("chatlogs") or c.Name:lower():match("chatframe") or c.Name:lower():match("chat") then
-                    table.insert(rootCandidates, sg)
-                    break
+-- ===== FIND UI (connect to existing GUI) =====
+local function findChatUI(timeout)
+    timeout = tonumber(timeout) or 6
+    local start = tick()
+    while tick() - start < timeout do
+        -- try ExperienceSettings.Menu first
+        local menu = CoreGui:FindFirstChild("ExperienceSettings") and CoreGui.ExperienceSettings:FindFirstChild("Menu")
+        local roots = {}
+        if menu then table.insert(roots, menu) end
+        -- also search for likely screen guis / frames
+        for _,c in ipairs(CoreGui:GetDescendants()) do
+            if c:IsA("Frame") or c:IsA("ScreenGui") then
+                local nm = tostring(c.Name):lower()
+                if nm:match("ai") or nm:match("chat") or nm:match("open") or nm:match("gpt") or nm:match("aio") then
+                    table.insert(roots, c)
                 end
             end
         end
-    end
-
-    -- choose first valid candidate and try to locate subelements
-    local chosen = nil
-    for _, root in ipairs(rootCandidates) do
-        -- try to find Text frame, ChatLogs, Send, api tb, status label
-        local frame = root
-        local textFrame = frame:FindFirstChild("Text") or frame:FindFirstChild("text") or nil
-        local chatTB = nil
-        if textFrame then
-            chatTB = textFrame:FindFirstChild("chat") or textFrame:FindFirstChild("Chat") or textFrame:FindFirstChildWhichIsA and textFrame:FindFirstChildWhichIsA("TextBox")
-        else
-            -- maybe in root directly
-            chatTB = frame:FindFirstChild("chat") or frame:FindFirstChildWhichIsA and frame:FindFirstChildWhichIsA("TextBox")
+        -- fallback any ScreenGui
+        for _,sg in ipairs(CoreGui:GetChildren()) do
+            if sg:IsA("ScreenGui") then table.insert(roots, sg) end
         end
-        local sendBtn = nil
-        if textFrame then
-            sendBtn = textFrame:FindFirstChild("Send") or textFrame:FindFirstChild("se") or textFrame:FindFirstChildWhichIsA and textFrame:FindFirstChildWhichIsA("TextButton")
-        else
-            sendBtn = frame:FindFirstChild("Send") or frame:FindFirstChild("se")
+
+        for _,root in ipairs(roots) do
+            local textFrame = root:FindFirstChild("Text") or root:FindFirstChild("text")
+            local ch, se, tb, si, st
+            if textFrame then
+                ch = textFrame:FindFirstChild("chat") or textFrame:FindFirstChild("ch")
+                se = textFrame:FindFirstChild("Send") or textFrame:FindFirstChild("se")
+                tb = textFrame:FindFirstChild("api") or textFrame:FindFirstChild("API")
+            else
+                ch = root:FindFirstChild("chat") or root:FindFirstChild("ch")
+                se = root:FindFirstChild("Send") or root:FindFirstChild("se")
+                tb = root:FindFirstChild("api") or root:FindFirstChild("API")
+            end
+            si = root:FindFirstChild("ChatLogs") or root:FindFirstChild("ChatFrame") or root:FindFirstChildWhichIsA and root:FindFirstChildWhichIsA("ScrollingFrame")
+            st = root:FindFirstChild("Status") or root:FindFirstChild("status") or root:FindFirstChildWhichIsA and root:FindFirstChildWhichIsA("TextLabel")
+            -- require at least chat textbox, send button and chatlogs
+            if ch and se and si then
+                return {
+                    root = root,
+                    textFrame = textFrame,
+                    ch = ch,
+                    se = se,
+                    tb = tb,
+                    si = si,
+                    st = st
+                }
+            end
         end
-        local chatLogs = frame:FindFirstChild("ChatLogs") or frame:FindFirstChild("ChatFrame") or frame:FindFirstChildWhichIsA and frame:FindFirstChildWhichIsA("ScrollingFrame")
-        local apiTB = frame:FindFirstChild("api") or frame:FindFirstChild("API") or (textFrame and (textFrame:FindFirstChild("api") or textFrame:FindFirstChild("API")))
-        local statusLabel = frame:FindFirstChild("Status") or frame:FindFirstChild("status") or frame:FindFirstChildWhichIsA and frame:FindFirstChildWhichIsA("TextLabel")
-        -- Accept candidate if we found at least chatTB and sendBtn and chatLogs (best)
-        if chatTB and sendBtn and chatLogs then
-            chosen = {
-                root = frame,
-                textFrame = textFrame,
-                ch = chatTB,
-                se = sendBtn,
-                si = chatLogs,
-                tb = apiTB,
-                st = statusLabel
-            }
-            break
-        end
+        task.wait(0.12)
     end
-
-    return chosen
+    return nil
 end
 
-local ui = findUI()
-local frame = ui and ui.root or nil
-local ch = ui and ui.ch or nil
-local se = ui and ui.se or nil
-local si = ui and ui.si or nil
-local tb = ui and ui.tb or nil
-local st = ui and ui.st or nil
-
-dbg("UI find:", frame, ch, se, si, tb, st)
-
--- ============================
--- HTTP wrapper (executor-friendly)
--- ============================
-local httpRequestFunc = nil
-local httpName = nil
-
--- detect available request function
-if syn and syn.request then
-    httpRequestFunc = function(req) return syn.request(req) end; httpName="syn.request"
-elseif request then
-    httpRequestFunc = request; httpName="request"
-elseif http and http.request then
-    httpRequestFunc = http.request; httpName="http.request"
-elseif http_request then
-    httpRequestFunc = http_request; httpName="http_request"
-elseif fluxus and fluxus.request then
-    httpRequestFunc = fluxus.request; httpName="fluxus.request"
+local ui = findChatUI(8)
+if not ui then
+    warn("[AI-OpenSource] Could not locate UI (ch/se/si). Script will still run but many features disabled.")
+    safeTxt(user.Warn, "UI not found. Check UI names: Text/chat/Send/ChatLogs", 255,200,0)
 end
 
-local HttpService = game:GetService("HttpService")
-local jsonEncode = function(t) return HttpService:JSONEncode(t) end
-local jsonDecode = function(s) 
-    local ok, v = pcall(function() return HttpService:JSONDecode(tostring(s)) end)
-    if ok then return v else return nil end
-end
+local ch = ui and ui.ch
+local se = ui and ui.se
+local tb = ui and ui.tb
+local si = ui and ui.si
+local st = ui and ui.st
 
-local function doRequest(req)
-    -- req: table {Url, Method, Headers, Body, Timeout}
-    if not httpRequestFunc then
-        error("No executor HTTP available")
-    end
-    local ok, res = pcall(function()
-        return httpRequestFunc(req)
-    end)
-    if not ok then return nil, res end
-    -- normalize response
-    -- syn.request returns {StatusCode, Body, Headers}
-    -- http.request may return different shape; we try common fields
-    local status = res.StatusCode or res.status or res.statusCode
-    local body = res.Body or res.body or res.response or res
-    return {StatusCode = status, Body = body, Raw = res}, nil
-end
-
--- ============================
--- Key storage (writefile/readfile if available)
--- ============================
-local keyFileName = "AI_OpenSource_Key.json"
-
-local function saveApiToFile(tbl)
-    if type(tbl) ~= "table" then return false, "bad args" end
-    if writefile then
-        local encoded = jsonEncode(tbl)
-        pcall(function() writefile(keyFileName, encoded) end)
-        return true
+-- helper updateStatus (shows in st if present, else si)
+local function updateStatus(text)
+    if st and st:IsA("TextLabel") then
+        pcall(function() st.Text = "Status: "..tostring(text) end)
     else
-        -- no writefile: store in memory (volatile)
-        _G.AIOPS_KEYCACHE = tbl
-        return true
+        safeTxt(user.Info, "Status: "..tostring(text), 0,170,255)
     end
 end
 
-local function loadApiFromFile()
-    if isfile and isfile(keyFileName) and readfile then
-        local content = readfile(keyFileName)
-        local ok, v = pcall(function() return jsonDecode(content) end)
-        if ok and type(v) == "table" then return v end
-    end
-    return _G.AIOPS_KEYCACHE
+-- ===== HTTP / EXECUTOR DETECTION & QUEUE =====
+local httpRequestFunc = nil
+
+local function detectHttp()
+    if syn and syn.request then return syn.request end
+    if request then return request end
+    if http and http.request then return http.request end
+    if http_request then return http_request end
+    if fluxus and fluxus.request then return fluxus.request end
+    return nil
 end
 
--- ============================
--- Endpoints builder
--- ============================
-local currentProvider = nil -- "openai" | "gemini" | "custom"
+httpRequestFunc = detectHttp()
+if httpRequestFunc then
+    safeTxt(user.Info, "Executor HTTP detected", 0,170,255)
+else
+    safeTxt(user.Warn, "Executor HTTP not available. API requests disabled.", 255,200,0)
+end
+
+-- wrapper doRequest that returns (ok, responseTable or errorString)
+local function doRequest(req)
+    -- req: table {Url, Method, Headers, Body}
+    if not httpRequestFunc then error("Executor HTTP not available") end
+    local ok, res = pcall(function()
+        -- syn.request returns table {Success, StatusCode, Body, Headers}
+        local r = httpRequestFunc(req)
+        -- normalize
+        if r then
+            -- some functions return .Status or .StatusCode; Body or body
+            local code = r.StatusCode or r.status or r.Status
+            local body = r.Body or r.body or r.BodyText
+            local headers = r.Headers or r.headers or r.headers or {}
+            return {
+                Success = (r.Success == nil and (code and code >= 200 and code < 400) or r.Success) or (code and code >= 200 and code < 400),
+                StatusCode = code or (r.statusCode),
+                Body = body,
+                Raw = r,
+                Headers = headers
+            }
+        else
+            return { Success = false, StatusCode = 0, Body = tostring(r), Raw = r, Headers = {}}
+        end
+    end)
+    if not ok then return false, tostring(res) end
+    return true, res
+end
+
+-- request queue to avoid bursts and handle rate-limit
+local rq = {}
+local processing = false
+local rateUntil = 0 -- epoch time until we can't send
+
+local function enqueueRequest(req, onComplete)
+    table.insert(rq, {req = req, cb = onComplete})
+    if not processing then
+        task.spawn(function()
+            processing = true
+            while #rq > 0 do
+                local item = table.remove(rq, 1)
+                local now = tick()
+                if now < rateUntil then
+                    task.wait(rateUntil - now)
+                end
+                -- send
+                local ok, res = pcall(doRequest, item.req)
+                if not ok then
+                    if item.cb then pcall(item.cb, false, res) end
+                else
+                    -- handle 429 or Retry-After
+                    if res.StatusCode == 429 or (res.StatusCode and res.StatusCode >= 500) then
+                        local retry = 5
+                        -- parse Retry-After / custom header
+                        local ra = nil
+                        if res.Headers then
+                            ra = res.Headers["Retry-After"] or res.Headers["retry-after"] or res.Headers["X-RateLimit-Reset"]
+                        end
+                        if ra then
+                            local num = tonumber(ra)
+                            if num then retry = num end
+                        end
+                        -- set rateUntil and re-enqueue with delay
+                        rateUntil = tick() + retry
+                        safeTxt(user.Warn, "Rate-limited. Retry in "..tostring(math.ceil(retry)).."s", 255,200,0)
+                        -- reinsert at front
+                        table.insert(rq, 1, item)
+                        task.wait(retry)
+                    else
+                        if item.cb then pcall(item.cb, true, res) end
+                    end
+                end
+                task.wait(0.05)
+            end
+            processing = false
+        end)
+    end
+end
+
+-- ===== API ENDPOINTS / BODY BUILDERS / PARSERS =====
+local currentProvider = nil -- "openai" or "gemini" or "custom"
 local currentApiKey = nil
+local currentModel = "gpt-4o-mini"
 local currentCustomUrl = nil
 local currentCustomAuth = nil
-local currentModel = "gpt-4o-mini" -- default for OpenAI (can be changed by user in code)
-local SKIP_VALIDATION = false -- if true skip key validation step
 
 local function endpointsFor(provider)
-    provider = provider or currentProvider
+    provider = provider or currentProvider or "openai"
     if provider == "gemini" then
         return {
             url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
@@ -589,26 +579,21 @@ local function endpointsFor(provider)
                     ["x-goog-api-key"] = key
                 }
             end,
-            -- try body shape A (prompt.text) and shape B (input)
-            makeBodies = function(prompt)
-                local bodies = {}
-                -- shape 1 (text prompt)
-                table.insert(bodies, jsonEncode({prompt = {text = prompt}}))
-                -- shape 2 (messages like assistant)
-                table.insert(bodies, jsonEncode({input = {text = prompt}}))
-                -- shape 3 (alternate): messages style
-                table.insert(bodies, jsonEncode({messages = {{author="user", content = {{type="text", text = prompt}}}}}))
-                return bodies
-            end,
+            -- try a few body shapes sequentially in send function
+            -- parser:
             parseResult = function(bodyText)
-                local d = jsonDecode(bodyText)
-                if not d then return nil end
+                local ok, d = pcall(function() return HttpService:JSONDecode(bodyText) end)
+                if not ok or not d then return nil, "decode_error" end
+                -- common shapes
                 if d.candidates and d.candidates[1] and d.candidates[1].content and d.candidates[1].content.parts then
-                    return d.candidates[1].content.parts[1].text
+                    return d.candidates[1].content.parts[1].text, d
                 end
-                if d.outputText then return d.outputText end
-                if d.choices and d.choices[1] and d.choices[1].text then return d.choices[1].text end
-                return nil
+                if d.outputText then return d.outputText, d end
+                -- try nested
+                if d.results and d.results[1] and d.results[1].candidates and d.results[1].candidates[1] then
+                    return d.results[1].candidates[1].content or d.results[1].candidates[1].message, d
+                end
+                return nil, d
             end
         }
     elseif provider == "openai" then
@@ -620,275 +605,194 @@ local function endpointsFor(provider)
                     ["Authorization"] = "Bearer " .. key
                 }
             end,
-            makeBodies = function(prompt)
-                local bodies = {}
-                -- send as Responses API minimal
-                table.insert(bodies, jsonEncode({model = currentModel, input = prompt}))
-                -- also try chat-like shape as fallback
-                table.insert(bodies, jsonEncode({model = currentModel, messages = {{role="user", content = prompt}}}))
-                return bodies
-            end,
             parseResult = function(bodyText)
-                local d = jsonDecode(bodyText)
-                if not d then return nil end
-                -- Responses API new shape: d.output[1].content...
-                if d.output and type(d.output)=="table" and d.output[1] and d.output[1].content then
+                local ok, d = pcall(function() return HttpService:JSONDecode(bodyText) end)
+                if not ok or not d then return nil, "decode_error" end
+                if d.output and d.output[1] and d.output[1].content then
                     for _, item in ipairs(d.output[1].content) do
-                        if item.type == "output_text" and item.text then return item.text end
-                        if item.type == "message" and item.text then return item.text end
+                        if item.type == "output_text" and item.text then return item.text, d end
                     end
                 end
                 if d.results and d.results[1] and d.results[1].output and d.results[1].output[1] and d.results[1].output[1].content then
                     local parts = d.results[1].output[1].content
                     for _,p in ipairs(parts) do
-                        if p.type == "output_text" and p.text then return p.text end
+                        if p.type == "output_text" and p.text then return p.text, d end
                     end
                 end
-                if d.choices and d.choices[1] and d.choices[1].message and d.choices[1].message.content then
-                    return d.choices[1].message.content
+                -- fallback to choices
+                if d.choices and d.choices[1] and d.choices[1].message then
+                    local m = d.choices[1].message
+                    if type(m) == "string" then return m, d end
+                    if m.content then return m.content, d end
                 end
-                if d.outputText then return d.outputText end
-                return nil
+                return nil, d
             end
         }
-    elseif provider == "custom" and currentCustomUrl then
+    else
+        -- custom endpoint (user-provided)
         return {
             url = currentCustomUrl,
-            makeHeaders = function(key) 
+            makeHeaders = function(key)
                 local h = { ["Content-Type"] = "application/json" }
-                if currentCustomAuth then h["Authorization"] = "Bearer "..tostring(currentCustomAuth) end
+                if currentCustomAuth then h["Authorization"] = "Bearer "..currentCustomAuth end
                 return h
             end,
-            makeBodies = function(prompt)
-                -- custom endpoint user must accept generic body
-                return { jsonEncode({ input = prompt }) }
-            end,
             parseResult = function(bodyText)
-                local d = jsonDecode(bodyText)
-                if type(d) == "string" then return d end
-                if type(d) == "table" then
-                    if d.text then return d.text end
-                    if d.output then return tostring(d.output) end
-                    if d.result then return tostring(d.result) end
-                end
-                return tostring(bodyText)
+                local ok, d = pcall(function() return HttpService:JSONDecode(bodyText) end)
+                if not ok then return bodyText, "raw" end
+                -- try common fields
+                if d.text then return d.text, d end
+                if d.output then return d.output, d end
+                return d, d
             end
         }
     end
-    return nil
 end
 
--- ============================
--- Request queue + backoff + single in-flight
--- ============================
-local REQUEST_QUEUE = {}
-local IN_FLIGHT = false
-local RATE_LIMIT_UNTIL = 0 -- epoch seconds until allowed
-local LAST_RATE_RETRY = 0
-local BACKOFF_BASE = 1.5
-
-local function enqueueRequest(reqTbl)
-    table.insert(REQUEST_QUEUE, reqTbl)
-    -- try process
-    coroutine.wrap(function()
-        while IN_FLIGHT do task.wait(0.05) end
-        if #REQUEST_QUEUE > 0 then
-            local r = table.remove(REQUEST_QUEUE, 1)
-            r()
-        end
-    end)()
-end
-
--- askAI(prompt, onSuccess, onError)
-local function askAI(prompt, onSuccess, onError)
-    if not prompt or tostring(prompt):gsub("%s+","") == "" then
-        if onError then onError("empty prompt") end
-        return
-    end
-    -- rate-limited?
-    local now = os.time()
-    if now < RATE_LIMIT_UNTIL then
-        local waitSec = math.max(1, RATE_LIMIT_UNTIL - now)
-        if onError then onError("rate_limited:"..tostring(waitSec)) end
-        safeTxt(user.Warn, "Rate-limited. Retry in "..tostring(waitSec).."s", 255,255,0)
-        return
-    end
-
-    if not currentProvider then
-        if onError then onError("no_provider") end
-        safeTxt(user.Error, "Not connected to any API. Please Confirm API key first.", 255,0,0)
-        return
-    end
-
-    local ep = endpointsFor(currentProvider)
-    if not ep then
-        if onError then onError("no_endpoint") end
-        safeTxt(user.Error, "Provider not supported", 255,0,0)
-        return
-    end
-
-    -- single-inflight protection + enqueue
-    local function doAsk()
-        IN_FLIGHT = true
-        local headers = ep.makeHeaders(currentApiKey)
-        local bodies = ep.makeBodies(prompt)
-        local successText = nil
-        local lastErr = nil
-
-        for bi, body in ipairs(bodies) do
-            if not currentApiKey and currentProvider ~= "custom" then
-                lastErr = "no_key"
-                break
-            end
-            local attempt = 0
-            local backoff = 1
-            while attempt < 4 do
-                attempt = attempt + 1
-                local ok, res = doRequest({Url = ep.url, Method = "POST", Headers = headers, Body = body})
-                if not ok then
-                    lastErr = tostring(res)
-                    -- if this is network-level error, break
-                    if tostring(res):lower():match("http") then
-                        -- try again after short wait
-                        task.wait(backoff)
-                        backoff = backoff * BACKOFF_BASE
-                        continue
-                    else
-                        break
-                    end
-                else
-                    local code = tonumber(res.StatusCode or 0)
-                    local bodyText = tostring(res.Body or "")
-                    dbg("askAI resp", code, bodyText:sub(1,200))
-                    if code == 200 or code == 201 then
-                        -- success decode
-                        local out = nil
-                        pcall(function() out = ep.parseResult(bodyText) end)
-                        if out then
-                            successText = out
-                            break
-                        else
-                            successText = tostring(bodyText)
-                            break
-                        end
-                    elseif code == 401 or code == 403 then
-                        lastErr = "invalid_key_or_forbidden: "..tostring(bodyText)
-                        -- do not retry many times; break outer loops
-                        attempt = 99
-                        break
-                    elseif code == 429 then
-                        -- rate limit: parse Retry-After if provided
-                        local waitS = 5
-                        local tryParse = nil
-                        pcall(function()
-                            local j = jsonDecode(bodyText)
-                            if j and j.retry_after then waitS = tonumber(j.retry_after) or waitS end
-                        end)
-                        RATE_LIMIT_UNTIL = os.time() + waitS
-                        lastErr = "rate_limited"
-                        safeTxt(user.Warn, "Rate-limited by API. Retry after "..tostring(waitS).."s", 255,255,0)
-                        task.wait(waitS)
-                        -- then retry
-                    else
-                        -- other error: return API message as err
-                        lastErr = "HTTP "..tostring(code).." "..tostring(bodyText)
-                        -- if 400 and message about payload, try next body shape
-                        break
-                    end
-                end
-            end
-            if successText then break end
-        end
-
-        if successText then
-            if type(onSuccess) == "function" then pcall(onSuccess, successText) end
-        else
-            if type(onError) == "function" then pcall(onError, lastErr) end
-        end
-
-        IN_FLIGHT = false
-    end
-
-    enqueueRequest(doAsk)
-end
-
--- ============================
--- Validate key (background)
--- ============================
-local function validateKeyAsync(provider, key, callback)
-    if SKIP_VALIDATION then
-        if callback then pcall(callback, true, "skipped") end
-        return
-    end
+-- helper to try multiple body shapes then parse
+local function sendAIRequest(prompt, provider, apiKey, model, callback)
+    provider = provider or currentProvider
+    model = model or currentModel
+    if not provider then return callback(false, "no_provider") end
+    if provider == "custom" and not currentCustomUrl then return callback(false, "no_custom_url") end
+    if provider ~= "custom" and (not apiKey or apiKey == "") then return callback(false, "no_key") end
     local ep = endpointsFor(provider)
-    if not ep then if callback then pcall(callback, false, "no_endpoint") end return end
-    local bodies = ep.makeBodies("hello")
-    local headers = ep.makeHeaders(key)
-    local ok, res = doRequest({Url = ep.url, Method = "POST", Headers = headers, Body = bodies[1]})
-    if not ok then
-        pcall(callback, false, res)
+    local headers = ep.makeHeaders(apiKey)
+    local url = ep.url
+    -- try multiple body shapes in order, stopping at first success
+    local bodies = {}
+    if provider == "gemini" then
+        bodies = {
+            HttpService:JSONEncode({input = { text = prompt }}),
+            HttpService:JSONEncode({prompt = { text = prompt }}),
+            HttpService:JSONEncode({instances = {{ content = prompt }}}),
+            HttpService:JSONEncode({input = prompt})
+        }
+    elseif provider == "openai" then
+        bodies = {
+            HttpService:JSONEncode({model = model, input = prompt}),
+            HttpService:JSONEncode({model = model, messages = {{role="user", content=prompt}}}),
+            HttpService:JSONEncode({model = model, prompt = prompt})
+        }
+    else
+        bodies = { HttpService:JSONEncode({input=prompt}) }
+    end
+
+    local tried = 0
+    local function tryNext()
+        tried = tried + 1
+        if tried > #bodies then
+            return callback(false, "no_valid_body")
+        end
+        local body = bodies[tried]
+        local req = {
+            Url = url,
+            Method = "POST",
+            Headers = headers,
+            Body = body
+        }
+        enqueueRequest(req, function(ok, res)
+            if not ok then
+                callback(false, res)
+                return
+            end
+            if not res.Success then
+                -- pass error body back for debugging (HTTP error)
+                -- If 429/500 handled in queue already, but still return
+                callback(false, res)
+                return
+            end
+            -- parse
+            local parsed, raw = ep.parseResult(res.Body or "")
+            if parsed then
+                callback(true, parsed, raw)
+            else
+                -- try next body shape
+                tryNext()
+            end
+        end)
+    end
+    tryNext()
+end
+
+-- ===== API KEY persistence (simple local file via writefile/readfile if available) =====
+local function saveApiKeyToFile(tbl)
+    if type(writefile) ~= "function" then
+        safeTxt(user.Warn, "writefile unavailable; not saved to disk", 255,180,0)
         return
     end
-    local status = tonumber(res.StatusCode or 0)
-    local bodyText = tostring(res.Body or "")
-    if status == 200 or status == 201 then
-        pcall(callback, true, "ok")
-    else
-        pcall(callback, false, tostring(status).. " "..bodyText)
-    end
+    local ok, e = pcall(function()
+        writefile("AI_OpenSource_api.json", HttpService:JSONEncode(tbl))
+    end)
+    if not ok then safeTxt(user.Error, "Save failed: "..tostring(e), 255,0,0) end
 end
 
--- ============================
--- Status UI update helper
--- ============================
-local function updateStatus(text)
-    if st and st:IsA("TextLabel") then
-        pcall(function() st.Text = "Status: "..tostring(text) end)
-    else
-        safeTxt(user.Info, "Status: "..tostring(text) , 180,180,180)
-    end
+local function loadApiKeyFromFile()
+    if type(readfile) ~= "function" then return nil end
+    local ok, content = pcall(function() return readfile("AI_OpenSource_api.json") end)
+    if not ok then return nil end
+    local ok2, tbl = pcall(function() return HttpService:JSONDecode(content) end)
+    if not ok2 then return nil end
+    return tbl
 end
 
--- ============================
--- Persistence helpers wrappers
--- ============================
-local function saveApiKeyLocal(provider, key, customUrl, customAuth)
-    local t = {provider = provider, key = key, url = customUrl, auth = customAuth, model = currentModel}
-    saveApiToFile(t)
-    return true
+-- try load saved
+local saved = loadApiKeyFromFile()
+if saved then
+    currentProvider = saved.provider or currentProvider
+    currentApiKey = saved.key or currentApiKey
+    currentCustomUrl = saved.url or currentCustomUrl
+    currentCustomAuth = saved.auth or currentCustomAuth
+    if currentProvider then updateStatus("Key loaded (from file)") end
 end
 
-local function loadApiKeyLocal()
-    local t = loadApiFromFile()
-    if t and type(t) == "table" then
-        currentProvider = t.provider
-        currentApiKey = t.key
-        currentCustomUrl = t.url
-        currentCustomAuth = t.auth
-        currentModel = t.model or currentModel
-        return true, t
-    end
-    return false
+-- ===== KEY VALIDATION (background slow check) =====
+local validating = false
+local function validateKeyInBackground()
+    if validating then return end
+    validating = true
+    task.spawn(function()
+        -- take a bit of time to avoid triggering rate limit
+        updateStatus("Connecting")
+        safeTxt(user.Info, "Key set, validating in background (takes ~10-20s)...", 0,170,255)
+        task.wait(2)
+        local p = currentProvider or "openai"
+        local k = currentApiKey
+        if p == "custom" and not currentCustomUrl then
+            updateStatus("No key")
+            validating = false
+            return
+        end
+        -- do a small test prompt
+        local testPrompt = "Hello"
+        local done = false
+        local resultOk, resultData = false, nil
+        sendAIRequest(testPrompt, p, k, nil, function(ok, data, raw)
+            resultOk, resultData = ok, data
+            done = true
+        end)
+        -- wait up to 20s
+        local t0 = tick()
+        while not done and (tick() - t0) < 20 do task.wait(0.25) end
+        if resultOk then
+            updateStatus("Connected ("..(p == "openai" and "ChatGPT" or p == "gemini" and "Gemini" or "custom")..")")
+            safeTxt(user.Suc, (p == "openai" and "ChatGPT" or p == "gemini" and "Gemini" or "Custom").." key valid", 0,255,0)
+        else
+            updateStatus("Invalid key")
+            safeTxt(user.Error, "Key validation failed: "..tostring(resultData), 255,0,0)
+        end
+        validating = false
+    end)
 end
 
--- try load on start
-local okfile = pcall(loadApiKeyLocal)
-if okfile then updateStatus("Loaded key (local)") end
-
--- ============================
--- Commands handling (full)
--- ============================
+-- ===== MESSAGE / COMMAND HANDLING =====
 local HELP_TEXT = [=[
 /Help - show commands
 /Cal or /Calculate [expr] - safe math
 /ClearText - clear chat logs
 /AddAPI [ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no] - add API quickly
-    Examples:
-      /addapi chatgpt sk-... yes
-      /addapi gemini AI... yes
-      /addapi custom https://host:8080 myapikey yes
 /UnsaveAPI or /UnApi - remove key
-/OpenWebsiteInExperience or /OWINE [URL] - open site in-game (if allowed)
+/OpenWebsiteInExperience or /OWINE [URL] - open site
 /Loadstring [URL] - loadstring(url)()
 /Script [[CODE]] - run code
 /Debug [on/off] - show debug logs
@@ -896,12 +800,7 @@ local HELP_TEXT = [=[
 /CheckURLStatus [URL] - check website status (HEAD)
 /CheckSYN - check syn.request availability
 /EnableUSLD - enable unknown-language debug printing to logs
-/CheckAPI - quick ping the selected API (light)
-/ResetRateLimit or /ReRateLimit - clear client-side rate hold
-/DumpStatus - print internal status to si
-/InstanceTool (...) or /InstanceTool [...] [ ... ] [[CODE]] - create tool locally
-/GlobalChat - (requires server) stub locally
-/SpyChat - (requires server) stub locally
+/InstanceTool ("NAME") ([PARTSIZE]) ([MESHID]) ([TEXTUREID]) ([MESHOFFSET]) ([COLOR3]) ([TOOLIMAGE]) [[CODE]]
 ]=]
 
 local function clearChatLogs()
@@ -912,14 +811,14 @@ local function clearChatLogs()
 end
 
 local function calculate(expr)
-    local ok, fn = pcall(function() return loadstring("return "..expr) end)
-    if not ok or not fn then return nil, "invalid expression" end
-    local suc, res = pcall(fn)
+    local ok, f = pcall(function() return loadstring("return "..expr) end)
+    if not ok or not f then return nil, "invalid expression" end
+    local suc, res = pcall(f)
     if not suc then return nil, res end
     return res
 end
 
--- open website helper (safe, handles Service blocked)
+-- helper open website
 local function openWebsiteInExperience(url)
     local ok, err = pcall(function()
         if GuiService and GuiService.OpenBrowserWindow then
@@ -935,208 +834,86 @@ local function openWebsiteInExperience(url)
     return ok, err
 end
 
--- InstanceTool handler uses functions from patch earlier
--- We'll embed the createInstanceTool and parser here (same as patch).
-local function tokenizeNumbersCSV(txt)
-    local t = {}
-    for n in tostring(txt or ""):gmatch("[-%d%.]+") do
-        local num = tonumber(n)
-        if num then table.insert(t, num) end
-    end
-    return t
-end
-
-local function splitWords(s)
-    local t = {}
-    for w in tostring(s or ""):gmatch("%S+") do table.insert(t, w) end
-    return t
-end
-
--- createInstanceTool (same as previous)
-local function createInstanceTool(params)
-    local plr = Players.LocalPlayer
-    if not plr then return false, "No LocalPlayer" end
-    local backpack = plr:FindFirstChild("Backpack") or plr:WaitForChild("Backpack",3)
-    if not backpack then return false, "Backpack not found" end
-    local tool = Instance.new("Tool")
-    tool.Name = tostring(params.name or "Tool")
-    tool.RequiresHandle = true
-    tool.CanBeDropped = true
-    if params.toolimage and tostring(params.toolimage)~="" then
-        pcall(function() tool.TextureId = "rbxassetid://" .. tostring(params.toolimage) end)
-    end
-    local handle = Instance.new("Part")
-    handle.Name = "Handle"
-    local sx,sy,sz = 1,1,1
-    if params.partsize and #params.partsize>=3 then sx,sy,sz = params.partsize[1], params.partsize[2], params.partsize[3] end
-    handle.Size = Vector3.new(sx,sy,sz)
-    handle.Color = Color3.fromRGB(255,255,255)
-    if params.color3 and #params.color3>=3 then
-        handle.Color = Color3.fromRGB(math.clamp(math.floor(params.color3[1]),0,255),
-                                      math.clamp(math.floor(params.color3[2]),0,255),
-                                      math.clamp(math.floor(params.color3[3]),0,255))
-    end
-    handle.Parent = tool
-    handle.CanCollide = false
-    handle.Massless = true
-    handle.Locked = true
-    if params.meshid and tostring(params.meshid) ~= "" then
-        local sm = Instance.new("SpecialMesh")
-        sm.MeshType = Enum.MeshType.FileMesh
-        pcall(function() sm.MeshId = "rbxassetid://"..tostring(params.meshid) end)
-        if params.textureid and tostring(params.textureid)~="" then
-            pcall(function() sm.TextureId = "rbxassetid://"..tostring(params.textureid) end)
-        end
-        if params.meshoffset and #params.meshoffset>=3 then
-            sm.Offset = Vector3.new(params.meshoffset[1], params.meshoffset[2], params.meshoffset[3])
-        end
-        sm.Parent = handle
-    end
-    if params.code and params.code ~= "" then
-        local okSet, err = pcall(function() 
-            local ls = Instance.new("LocalScript")
-            -- try set Source (may fail in some env)
-            ls.Source = tostring(params.code)
-            ls.Parent = tool
-        end)
-        if not okSet then
-            local mod = Instance.new("ModuleScript")
-            pcall(function() mod.Source = tostring(params.code) end)
-            mod.Parent = tool
-        end
-    end
-    tool.Parent = backpack
-    return true, "Tool created in Backpack: "..tool.Name
-end
-
-local function handleInstanceToolCommand(raw)
-    local s = tostring(raw or "")
-    s = s:gsub("^/instancetool%s*", "", 1)
-    -- extract code block
-    local code = s:match("%[%[(.-)%]%]")
-    if code then s = s:gsub("%[%[(.-)%]%]", "", 1) end
-    -- find (...) and [...] in order
-    local tokensOrder = {}
-    for block in s:gmatch("%b()") do table.insert(tokensOrder, {type="par", text = block:sub(2,-2)}) end
-    for block in s:gmatch("%b[]") do table.insert(tokensOrder, {type="br", text = block:sub(2,-2)}) end
-    if #tokensOrder == 0 then
-        -- fallback space-separated
-        local parts = splitWords(s)
-        tokensOrder = {}
-        for i,p in ipairs(parts) do tokensOrder[i] = {type="word", text=p} end
-    end
-    local getText = function(t) return t and tostring(t.text or "") or "" end
-    local p = {}
-    p.name = getText(tokensOrder[1]) or "Tool"
-    if tokensOrder[2] then
-        local nums = tokenizeNumbersCSV(tokensOrder[2].text)
-        if #nums>=3 then p.partsize = {nums[1],nums[2],nums[3]} end
-    end
-    if tokensOrder[3] then p.meshid = tostring(tokensOrder[3].text):gsub("[%[%]() ]","") end
-    if tokensOrder[4] then p.textureid = tostring(tokensOrder[4].text):gsub("[%[%]() ]","") end
-    if tokensOrder[5] then
-        local nums = tokenizeNumbersCSV(tokensOrder[5].text)
-        if #nums>=3 then p.meshoffset = {nums[1],nums[2],nums[3]} end
-    end
-    if tokensOrder[6] then
-        local nums = tokenizeNumbersCSV(tokensOrder[6].text)
-        if #nums>=3 then p.color3 = {nums[1],nums[2],nums[3]} end
-    end
-    if tokensOrder[7] then p.toolimage = tostring(tokensOrder[7].text):gsub("[%[%]() ]","") end
-    p.code = code
-    local ok,res = pcall(function() return createInstanceTool(p) end)
-    if ok then safeTxt(user.Suc, tostring(res or "Tool created"), 0,255,0) else safeTxt(user.Error, "InstanceTool error: "..tostring(res),255,0,0) end
-end
-
--- main command handler
+-- handleCommand returns true if handled
 local function handleCommand(msg)
-    local lower = tostring(msg or ""):lower()
+    if not msg then return false end
+    local lower = tostring(msg):lower()
     if lower:match("^/help") then
         safeTxt(user.Nill, "What is AI-OpenSource?", 180,180,180)
         for line in HELP_TEXT:gmatch("[^\n]+") do safeTxt(user.Nill, line, 180,180,180) end
         return true
     end
-    if lower:match("^/cleartext") then
-        clearChatLogs()
-        safeTxt(user.Suc, "Chat cleared", 0,255,0)
-        return true
-    end
+    if lower:match("^/cleartext") then clearChatLogs(); safeTxt(user.Suc, "Chat cleared",0,255,0); return true end
     if lower:match("^/cal") or lower:match("^/calculate") then
         local expr = msg:match("^/%S+%s+(.+)$") or ""
-        if expr == "" then safeTxt(user.Error, "Usage: /cal [expression]",255,0,0); return true end
+        if expr == "" then safeTxt(user.Error, "Usage: /cal [expression]",255,0,0) return true end
         local res, err = calculate(expr)
         if not res then safeTxt(user.Error, "Math error: "..tostring(err),255,0,0) else safeTxt(user.Suc, "Result = "..tostring(res),0,255,0) end
         return true
     end
     if lower:match("^/addapi") then
-        local parts = splitWords(msg)
-        if #parts < 3 then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no]",255,0,0) return true end
+        local parts = {}
+        for w in msg:gmatch("%S+") do table.insert(parts, w) end
+        if #parts < 3 then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no]",255,0,0); return true end
         local name = parts[2]:lower()
         if name == "custom" then
-            local url = parts[3]
-            local apikey = parts[4]
-            local confirm = parts[5]
             currentProvider = "custom"
-            currentCustomUrl = url
-            currentCustomAuth = apikey and apikey ~= "" and apikey or nil
+            currentCustomUrl = parts[3]
+            currentCustomAuth = parts[4] and parts[4] ~= "" and parts[4] or nil
             currentApiKey = currentCustomAuth
-            if confirm and confirm:lower()=="yes" then
-                saveApiKeyLocal("custom", currentApiKey, currentCustomUrl, currentCustomAuth)
+            if parts[5] and parts[5]:lower() == "yes" then
+                saveApiKeyToFile({provider="custom", url=currentCustomUrl, auth=currentCustomAuth, key=currentApiKey})
                 updateStatus("Custom set (saved)")
-                safeTxt(user.Suc, "Custom endpoint saved",0,255,0)
+                safeTxt(user.Suc, "Custom API saved",0,255,0)
             else
                 updateStatus("Custom set (unsaved)")
-                safeTxt(user.Info, "Custom endpoint set. Use 'yes' to save: /addapi custom <URL> <APIKEY> yes",0,170,255)
+                safeTxt(user.Info, "Custom endpoint set. Add 'yes' to save.",0,170,255)
             end
+            validateKeyInBackground()
             return true
         else
             local provider = (name:match("chat") and "openai") or (name:match("gemini") and "gemini") or nil
-            local key = parts[3]
-            local confirm = parts[4]
-            if not provider or not key then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini] [API] [yes/no]",255,0,0) return true end
-            currentApiKey = key
+            if not provider then safeTxt(user.Error, "Unknown provider",255,0,0); return true end
             currentProvider = provider
-            updateStatus("Key set (validating in background)")
-            safeTxt(user.Info, "Key set. validating...", 0,170,255)
-            validateKeyAsync(provider, key, function(ok, msg)
-                if ok then
-                    safeTxt(user.Suc, (provider == "openai" and "ChatGPT key valid" or "Gemini key valid"), 0,255,0)
-                    updateStatus("Connected ("..(provider == "openai" and "ChatGPT" or "Gemini")..")")
-                    if confirm and confirm:lower()=="yes" then saveApiKeyLocal(provider, key, currentCustomUrl, currentCustomAuth) end
-                else
-                    safeTxt(user.Error, "Key validation failed: "..tostring(msg), 255,0,0)
-                    updateStatus("Invalid key")
-                end
-            end)
+            currentApiKey = parts[3]
+            if parts[4] and parts[4]:lower() == "yes" then
+                saveApiKeyToFile({provider=currentProvider, key=currentApiKey})
+                updateStatus("Key set (saved)")
+                safeTxt(user.Suc, "API set and saved",0,255,0)
+            else
+                updateStatus("Key set (unconfirmed)")
+                safeTxt(user.Info, "Key set. Use confirm to validate or /addapi ... yes to save.",0,170,255)
+            end
+            validateKeyInBackground()
             return true
         end
     end
     if lower:match("^/unsaveapi") or lower:match("^/unapi") then
-        -- remove persisted
-        saveApiToFile({}) -- clear file
-        currentApiKey = nil; currentProvider = nil; currentCustomAuth = nil; currentCustomUrl = nil
-        updateStatus("No key")
-        safeTxt(user.Suc, "API key removed", 0,255,0)
+        currentProvider = nil; currentApiKey = nil; currentCustomUrl = nil; currentCustomAuth = nil
+        if type(writefile) == "function" then pcall(function() delfile("AI_OpenSource_api.json") end) end
+        updateStatus("Unsave key")
+        safeTxt(user.Warn, "API key removed",255,255,0)
         return true
     end
     if lower:match("^/openwebsiteinexperience") or lower:match("^/owine") then
-        local url = msg:match("^/%S+%s+(.+)$") or ""; url = url:gsub("^%s+",""):gsub("%s+$","")
-        if url == "" then safeTxt(user.Error, "Usage: /OpenWebsiteInExperience [URL]",255,0,0) return true end
-        local ok, e = openWebsiteInExperience(url)
+        local url = msg:match("^/%S+%s+(.+)$") or ""
+        url = url:gsub("^%s+",""):gsub("%s+$","")
+        if url == "" then safeTxt(user.Error, "Usage: /OpenWebsiteInExperience [URL]",255,0,0); return true end
+        local ok,e = openWebsiteInExperience(url)
         if ok then safeTxt(user.Suc, "Opened website: "..url,0,255,0) else safeTxt(user.Error, "OpenWebsite failed: "..tostring(e),255,0,0) end
         return true
     end
     if lower:match("^/loadstring") then
-        local url = msg:match("^/%S+%s+(.+)$") or ""; url = url:gsub("^%s+",""):gsub("%s+$","")
-        if url == "" then safeTxt(user.Error, "Usage: /loadstring [URL]",255,0,0) return true end
+        local url = msg:match("^/%S+%s+(.+)$") or ""
+        if url == "" then safeTxt(user.Error, "Usage: /loadstring [URL]",255,0,0); return true end
         safeTxt(user.Sys, "Fetching loadstring...",255,90,0)
         local ok, res = pcall(function() return loadstring(game:HttpGet(url))() end)
-        if ok then safeTxt(user.Suc,"loadstring executed",0,255,0) else safeTxt(user.Error,"loadstring error: "..tostring(res),255,0,0) end
+        if ok then safeTxt(user.Suc, "loadstring executed",0,255,0) else safeTxt(user.Error, "loadstring error: "..tostring(res),255,0,0) end
         return true
     end
     if lower:match("^/script") then
         local code = msg:match("^/%S+%s+(.+)$") or ""
-        if code == "" then safeTxt(user.Error, "Usage: /script [[CODE]]",255,0,0) return true end
+        if code == "" then safeTxt(user.Error, "Usage: /script [[CODE]]",255,0,0); return true end
         code = code:gsub("^%[%[",""):gsub("%]%]$","")
         safeTxt(user.Sys, "Executing script...",255,90,0)
         local fn, err = loadstring(code)
@@ -1147,205 +924,209 @@ local function handleCommand(msg)
         return true
     end
     if lower:match("^/debug%s+(on|off)") then
-        local flag = msg:match("^/debug%s+(on|off)") or "off"
+        local flag = msg:match("^/debug%s+(on|off)")
         DEBUG_MODE = (flag == "on")
-        safeTxt(user.Suc, "Debug mode: "..tostring(DEBUG_MODE), 0,255,0)
+        safeTxt(user.Suc, "Debug mode: "..tostring(DEBUG_MODE),0,255,0)
         return true
     end
-    if lower:match("^/instancetool") then
-        handleInstanceToolCommand(msg)
-        return true
-    end
-    if lower:match("^/checkhttp") then
-        safeTxt(user.Info, "Executor HTTP available: "..tostring(httpRequestFunc ~= nil), 0,170,255)
-        return true
-    end
+    if lower:match("^/checkhttp") then safeTxt(user.Info, "Executor HTTP available: "..tostring(httpRequestFunc ~= nil), 0,170,255); return true end
     if lower:match("^/checkurlstatus") then
-        local url = msg:match("^/%S+%s+(.+)$") or ""; url = url:gsub("^%s+",""):gsub("%s+$","")
-        if url == "" then safeTxt(user.Error, "Usage: /CheckURLStatus [URL]",255,0,0); return true end
-        local ok,res = doRequest({Url=url, Method="HEAD"})
-        if not ok then safeTxt(user.Error, "Request error: "..tostring(res),255,0,0) else safeTxt(user.Info, "URL status: "..tostring(res.StatusCode or "nil"), 0,170,255) end
+        local url = msg:match("^/%S+%s+(.+)$") or ""
+        url = url:gsub("^%s+",""):gsub("%s+$","")
+        if url == "" then safeTxt(user.Error, "Usage: /CheckURLStatus [URL]",255,0,0) return true end
+        local ok, res = pcall(doRequest, {Url=url, Method="HEAD"})
+        if not ok then safeTxt(user.Error, "Request error: "..tostring(res),255,0,0) else safeTxt(user.Info, "URL status: "..tostring(res.StatusCode or "nil"),0,170,255) end
         return true
     end
-    if lower:match("^/checksyn") then
-        safeTxt(user.Info, "syn.request available: "..tostring((syn and syn.request) and true or false), 0,170,255)
-        return true
-    end
-    if lower:match("^/enableusld") then
-        USLD_ENABLED = true
-        safeTxt(user.Info, "USLD enabled (unknown-language debug prints to logs)", 0,170,255)
-        return true
-    end
-    if lower:match("^/checkapi") then
-        if not currentProvider or not currentApiKey then safeTxt(user.Error, "No API set",255,0,0); return true end
-        safeTxt(user.Info, "Checking API (light)...", 0,170,255)
-        validateKeyAsync(currentProvider, currentApiKey, function(ok,msg)
-            if ok then safeTxt(user.Suc, "API OK: "..tostring(msg), 0,255,0) else safeTxt(user.Error, "API check failed: "..tostring(msg),255,0,0) end
+    if lower:match("^/checksyn") then safeTxt(user.Info, "syn.request available: "..tostring((syn and syn.request) and true or false),0,170,255); return true end
+    if lower:match("^/enableusld") then USLD = true; safeTxt(user.Info, "USLD enabled",0,170,255); return true end
+
+    -- InstanceTool :
+    if lower:match("^/instancetool") then
+        -- format: /InstanceTool ("Name") (x,y,z) mesh texture (ox,oy,oz) (r,g,b) image [[CODE]]
+        local argsStr = msg:match("^/%S+%s+(.+)$") or ""
+        -- simple parsing: find "..." for name, [[...]] for code, then numbers
+        local name = argsStr:match('%"([^%"]+)%"') or argsStr:match("%(([^%)]+)%)") or "Tool"
+        local code = argsStr:match("%[%[(.-)%]%]") -- optional
+        -- numbers sequence
+        local nums = {}
+        for n in argsStr:gmatch("([%-]?%d+%.?%d*)") do table.insert(nums, tonumber(n)) end
+        -- assign defaults
+        local partSize = Vector3.new(1,1,1)
+        local meshId, texId, offX,offY,offZ = nil,nil,0,0,0
+        local color3 = Color3.fromRGB(255,255,255)
+        local toolImageId = nil
+        if #nums >= 3 then partSize = Vector3.new(nums[1], nums[2], nums[3]) end
+        if #nums >= 4 then meshId = tostring(nums[4]) end
+        if #nums >= 5 then texId = tostring(nums[5]) end
+        if #nums >= 8 then offX,offY,offZ = nums[6],nums[7],nums[8] end
+        if #nums >= 11 then color3 = Color3.fromRGB(nums[9],nums[10],nums[11]) end
+        if #nums >= 12 then toolImageId = tostring(nums[12]) end
+
+        -- create tool in Backpack
+        local ok, err = pcall(function()
+            local tool = Instance.new("Tool")
+            tool.Name = name
+            local handle = Instance.new("Part")
+            handle.Name = "Handle"
+            handle.Size = partSize
+            handle.Color = color3
+            handle.Parent = tool
+            if meshId then
+                local mesh = Instance.new("SpecialMesh", handle)
+                mesh.MeshId = "rbxassetid://"..meshId
+                mesh.Offset = Vector3.new(offX or 0, offY or 0, offZ or 0)
+                if texId then mesh.TextureId = "rbxassetid://"..texId end
+            end
+            if toolImageId then
+                pcall(function() tool.TextureId = "rbxassetid://"..toolImageId end)
+            end
+            -- add local script if code present
+            if code and code ~= "" then
+                local ls = Instance.new("LocalScript")
+                ls.Name = "InstanceToolScript"
+                ls.Source = code
+                ls.Parent = tool
+            end
+            -- parent to Backpack (client-local)
+            local bp = LocalPlayer:WaitForChild("Backpack", 5)
+            if bp then tool.Parent = bp else tool.Parent = workspace end
         end)
+        if ok then safeTxt(user.Suc, "InstanceTool created: "..tostring(name),0,255,0) else safeTxt(user.Error, "InstanceTool error: "..tostring(err),255,0,0) end
         return true
     end
-    if lower:match("^/resetratelimit") or lower:match("^/reratelimit") then
-        RATE_LIMIT_UNTIL = 0
-        safeTxt(user.Suc, "Rate limit reset", 0,255,0)
-        return true
-    end
-    if lower:match("^/dumpstatus") then
-        local stbl = {
-            provider = currentProvider,
-            api = (currentApiKey and "set" or "nil"),
-            customUrl = currentCustomUrl,
-            http = (httpRequestFunc and httpName or "none"),
-            in_flight = IN_FLIGHT,
-            rate_until = RATE_LIMIT_UNTIL,
-            debug = DEBUG_MODE,
-            usld = USLD_ENABLED
-        }
-        safeTxt(user.Nill, "Dumping status:", 180,180,180)
-        for k,v in pairs(stbl) do safeTxt(user.Nill, tostring(k)..": "..tostring(v), 180,180,180) end
-        return true
-    end
-    -- GlobalChat & SpyChat stubs
+
     if lower:match("^/globalchat") then
-        safeTxt(user.Warn, "/GlobalChat requires server relay. Ask me to add ServerScript for this.",255,255,0)
+        safeTxt(user.Warn, "GlobalChat needs server access. This client stub cannot fetch server chat.", 255,200,0)
         return true
     end
     if lower:match("^/spychat") then
-        safeTxt(user.Warn, "/SpyChat requires server relay (private messages). Server component required.",255,255,0)
+        safeTxt(user.Warn, "SpyChat needs server access (private messages). Client stub only.",255,200,0)
         return true
     end
 
     return false
 end
 
--- ============================
--- Send hookup (ensure se,ch working)
--- ============================
-local function sendMessageFromUI()
-    local msg = (ch and tostring(ch.Text or "")) or ""
-    msg = msg:gsub("^%s+",""):gsub("%s+$","")
-    if msg == "" then return end
-    -- commands
-    if msg:sub(1,1) == "/" then
-        local handled = handleCommand(msg)
-        if not handled then safeTxt(user.Warn, "Unknown command. Type /Help", 255,255,0) end
-        if ch then ch.Text = "" end
+-- ===== send to AI / message dispatch =====
+local function askAI(prompt, onSuccess, onError)
+    if not currentProvider then
+        if onError then onError("Not connected to any API. Use Confirm API or /addapi") end
         return
     end
-    -- normal chat -> show player's line then ask AI
-    safeTxt(user.plr, msg, 255,255,255)
-    safeTxt(user.chat, "(AI: thinking...)", 85,255,255)
-    if ch then ch.Text = "" end
-
-    askAI(msg, function(answer)
-        safeTxt(user.chat, tostring(answer), 85,255,255)
-    end, function(err)
-        safeTxt(user.Error, "AI request failed: "..tostring(err), 255,0,0)
-    end)
-end
-
-local function attachSendHook(sendBtn, textBox)
-    if not sendBtn or not textBox then return false end
-    if sendBtn:GetAttribute and sendBtn:GetAttribute("AIOOpenBound") then return true end
-    local function fire()
-        pcall(sendMessageFromUI)
+    if not httpRequestFunc then
+        if onError then onError("HTTP unavailable (executor)") end
+        return
     end
-    pcall(function() sendBtn.MouseButton1Click:Connect(fire) end)
-    pcall(function() sendBtn.Activated:Connect(fire) end)
-    if sendBtn.TouchTap then pcall(function() sendBtn.TouchTap:Connect(fire) end) end
-    -- focus lost
-    pcall(function() textBox.FocusLost:Connect(function(enter) if enter then pcall(sendMessageFromUI) end end) end)
-    if sendBtn.SetAttribute then sendBtn:SetAttribute("AIOOpenBound", true) end
-    return true
-end
-
--- try attach now; if ui missing, poll for it
-if ch and se then attachSendHook(se, ch) end
-if not (ch and se) then
-    -- try periodic finder
-    coroutine.wrap(function()
-        for i=1,20 do
-            if not (ch and se) then
-                ui = findUI()
-                if ui then
-                    ch = ch or ui.ch
-                    se = se or ui.se
-                    si = si or ui.si
-                    tb = tb or ui.tb
-                    st = st or ui.st
-                end
-            end
-            if ch and se then
-                attachSendHook(se, ch); break
-            end
-            task.wait(0.25)
-        end
-    end)()
-end
-
--- ============================
--- Connect Confirm / Unsaved API buttons if exist (tb, con, con2)
--- ============================
--- try find confirm buttons inside frame (names: Confirm_api, Unsaved_API, ConfirmAPI, UnsavedAPI)
-local function findConfirmButtons()
-    local confirm = nil; local unsave = nil
-    if frame then
-        confirm = frame:FindFirstChild("Confirm_api") or frame:FindFirstChild("ConfirmAPI") or frame:FindFirstChildWhichIsA and frame:FindFirstChildWhichIsA("TextButton")
-        unsave = frame:FindFirstChild("Unsaved_API") or frame:FindFirstChild("UnsavedAPI")
-        -- maybe inside Text
-        if frame:FindFirstChild("Text") then
-            confirm = confirm or frame.Text:FindFirstChild("Confirm_api") or frame.Text:FindFirstChild("ConfirmAPI")
-            unsave = unsave or frame.Text:FindFirstChild("Unsaved_API") or frame.Text:FindFirstChild("UnsavedAPI")
-        end
-    end
-    return confirm, unsave
-end
-
-local function onConfirmClicked()
-    -- confirm current key: run validation and save
-    if not currentProvider or not currentApiKey then safeTxt(user.Error, "No API to confirm",255,0,0); return end
-    safeTxt(user.Sys, "Confirming API key...",255,90,0)
-    validateKeyAsync(currentProvider, currentApiKey, function(ok,msg)
+    sendAIRequest(prompt, currentProvider, currentApiKey, currentModel, function(ok, data, raw)
         if ok then
-            saveApiKeyLocal(currentProvider, currentApiKey, currentCustomUrl, currentCustomAuth)
-            updateStatus("Connected ("..(currentProvider == "openai" and "ChatGPT" or (currentProvider == "gemini" and "Gemini" or "Custom"))..")")
-            safeTxt(user.Suc, "API confirmed and saved", 0,255,0)
+            if onSuccess then pcall(onSuccess, tostring(data)) end
         else
-            safeTxt(user.Error, "Validation failed: "..tostring(msg),255,0,0)
-            updateStatus("Invalid key")
+            if onError then pcall(onError, tostring(data)) end
         end
     end)
 end
 
-local function onUnsavedClicked()
-    saveApiToFile({}) -- clear
-    currentProvider = nil; currentApiKey = nil; currentCustomUrl = nil; currentCustomAuth = nil
-    updateStatus("No key")
-    safeTxt(user.Suc, "Unsave key done", 0,255,0)
+-- ===== UI hooking: connect buttons, textbox events =====
+if se and se:IsA("GuiButton") then
+    se.MouseButton1Click:Connect(function()
+        local m = (ch and tostring(ch.Text or "")) or ""
+        m = m:gsub("^%s+",""):gsub("%s+$","")
+        if m == "" then return end
+        -- command?
+        if m:sub(1,1) == "/" then
+            local handled = handleCommand(m)
+            if not handled then safeTxt(user.Error, "Unknown command. Type /help",255,0,0) end
+            if ch then ch.Text = "" end
+            return
+        end
+        -- normal chat
+        safeTxt(user.plr, m, 255,255,255)
+        -- show pending AI
+        safeTxt(user.chat, "(AI thinking...)", 85,255,255)
+        -- send
+        askAI(m, function(ans)
+            safeTxt(user.chat, ans, 85,255,255)
+        end, function(err)
+            safeTxt(user.Error, "AI request failed: "..tostring(err), 255,0,0)
+        end)
+        if ch then ch.Text = "" end
+    end)
 end
 
--- attempt to hook buttons (poll)
-coroutine.wrap(function()
-    for i=1,30 do
-        local c,u = findConfirmButtons()
-        if c and not c:GetAttribute("AIOBound") then
-            pcall(function() c.MouseButton1Click:Connect(onConfirmClicked) end)
-            pcall(function() c.Activated:Connect(onConfirmClicked) end)
-            if c.SetAttribute then c:SetAttribute("AIOBound", true) end
+if ch and ch:IsA("TextBox") then
+    ch.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            local m = tostring(ch.Text or "")
+            m = m:gsub("^%s+",""):gsub("%s+$","")
+            if m == "" then return end
+            if m:sub(1,1) == "/" then
+                local handled = handleCommand(m)
+                if not handled then safeTxt(user.Error, "Unknown command. Type /help",255,0,0) end
+                ch.Text = ""
+                return
+            end
+            safeTxt(user.plr, m, 255,255,255)
+            safeTxt(user.chat, "(AI thinking...)", 85,255,255)
+            askAI(m, function(ans) safeTxt(user.chat, ans, 85,255,255) end, function(err) safeTxt(user.Error, "AI request failed: "..tostring(err),255,0,0) end)
+            ch.Text = ""
         end
-        if u and not u:GetAttribute("AIOBound") then
-            pcall(function() u.MouseButton1Click:Connect(onUnsavedClicked) end)
-            pcall(function() u.Activated:Connect(onUnsavedClicked) end)
-            if u.SetAttribute then u:SetAttribute("AIOBound", true) end
-        end
-        if (c and u) then break end
-        task.wait(0.25)
-    end
-end)()
+    end)
+end
 
--- ============================
--- Final notes
--- ============================
-safeTxt(user.Suc, "AI-OpenSource client patch loaded. Type /Help for commands.", 0,255,0)
-updateStatus("No key")
+-- Confirm API / Unsaved API bindings (if tb + buttons exist)
+-- We'll try to find Confirm_api and Unsaved_API under the same text frame or root
+local function bindConfirmButtons()
+    local root = ui and ui.root
+    if not root then return end
+    local confirmBtn = root:FindFirstChild("Confirm_api") or root:FindFirstChild("Confirm_API") or (ui.textFrame and ui.textFrame:FindFirstChild("Confirm_api"))
+    local unsaveBtn = root:FindFirstChild("Unsaved_API") or root:FindFirstChild("Unsaved_API") or (ui.textFrame and ui.textFrame:FindFirstChild("Unsaved_API"))
+    if confirmBtn and confirmBtn:IsA("GuiButton") then
+        confirmBtn.MouseButton1Click:Connect(function()
+            if tb and tb:IsA("TextBox") then
+                local key = tostring(tb.Text or "")
+                if key == "" then safeTxt(user.Warn, "API textbox empty",255,255,0); return end
+                currentApiKey = key
+                -- provider detection heuristics
+                if key:match("^sk%-") or key:match("^sk_") or key:match("^eyJ") then
+                    currentProvider = "openai"
+                elseif key:match("^AI") or key:match("^AIza") or key:match("^sk_proj") or #key > 40 then
+                    currentProvider = "gemini" -- heuristic
+                else
+                    currentProvider = currentProvider or "openai"
+                end
+                updateStatus("Connecting")
+                validateKeyInBackground()
+            else
+                safeTxt(user.Error, "API textbox not found",255,0,0)
+            end
+        end)
+    end
+    if unsaveBtn and unsaveBtn:IsA("GuiButton") then
+        unsaveBtn.MouseButton1Click:Connect(function()
+            currentProvider = nil; currentApiKey = nil; currentCustomUrl = nil; currentCustomAuth = nil
+            if type(writefile) == "function" then pcall(function() delfile("AI_OpenSource_api.json") end) end
+            updateStatus("Unsave key")
+            safeTxt(user.Warn, "API key removed",255,255,0)
+        end)
+    end
+end
+
+bindConfirmButtons()
+
+-- ===== initial info display =====
+if si then
+    safeTxt(user.Info, "Information: API: "..tostring(currentProvider or "<none>"), 0,170,255)
+    safeTxt(user.Info, "Information: HTTP func: "..tostring(httpRequestFunc ~= nil), 0,170,255)
+    if currentProvider and currentApiKey then validateKeyInBackground() end
+end
+
+-- ===== final notes / debug print =====
+if DEBUG_MODE then safeTxt(user.Info, "Debug mode ON", 0,170,255) end
+if USLD then safeTxt(user.Info, "USLD ON", 0,170,255) end
+
+-- script ready
+safeTxt(user.Suc, "AI-OpenSource script active", 0,255,0)
+updateStatus("Ready")
 
 -- End of script
