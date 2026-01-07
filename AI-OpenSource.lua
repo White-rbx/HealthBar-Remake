@@ -1,4 +1,4 @@
--- gpt 4
+-- gpt 4.05
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 4 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 4.05 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255) txt(user.Nill, [=[
 What is AI-OpenSource?
@@ -555,9 +555,15 @@ local function unsaveApiKey()
     currentApiKey = nil
     currentCustomUrl = nil
     currentCustomAuth = nil
+
     if isfile and isfile(saveFileName) and (writefile or delfile) then
-        pcall(function() delfile and delfile(saveFileName) end)
+        pcall(function()
+            if delfile then
+                delfile(saveFileName)
+            end
+        end)
     end
+
     updateStatusText("No key")
 end
 
