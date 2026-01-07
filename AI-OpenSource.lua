@@ -1,4 +1,4 @@
--- gpt 3.99 bro there so many bug
+-- gpt 4
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.99 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 4 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255) txt(user.Nill, [=[
 What is AI-OpenSource?
@@ -401,63 +401,79 @@ end
 
 -- ===== FIND UI (connect to existing GUI) =====
 local function findChatUI(timeout)
-    timeout = tonumber(timeout) or 6
-    local start = tick()
-    while tick() - start < timeout do
-        -- try ExperienceSettings.Menu.AIOpenSource exact path first
-        local foundRoot = nil
-        local ok, menu = pcall(function() return CoreGui:FindFirstChild("ExperienceSettings") and CoreGui.ExperienceSettings:FindFirstChild("Menu") end)
-        if ok and menu then
-            local guess = menu:FindFirstChild("AIOpenSource") or menu:FindFirstChild("AI-OpenSource") or menu:FindFirstChild("ChatGPT") or menu:FindFirstChild("ChatGui")
-            if guess then foundRoot = guess end
-        end
+    timeout = tonumber(timeout) or 5
+    local startTime = tick()
 
-        -- fallback search heuristics
-        if not foundRoot then
-            for _,c in ipairs(CoreGui:GetDescendants()) do
-                if c:IsA("Frame") or c:IsA("ScreenGui") then
-                    local nm = tostring(c.Name):lower()
-                    if nm:match("aio") or nm:match("open") or nm:match("chat") or nm:match("gpt") then
-                        foundRoot = c
-                        break
+    while tick() - startTime < timeout do
+        local CoreGui = game:GetService("CoreGui")
+
+        -- hard path (NO SCAN)
+        local exp = CoreGui:FindFirstChild("ExperienceSettings")
+        if exp then
+            local menu = exp:FindFirstChild("Menu")
+            if menu then
+                local root = menu:FindFirstChild("AIOpenSource")
+                if root then
+                    -- main frame
+                    local frame = root:FindFirstChild("Frame")
+
+                    if frame then
+                        -- Chat logs
+                        local si = frame:FindFirstChild("ChatLogs")
+
+                        -- Text container
+                        local textFrame = frame:FindFirstChild("Text")
+
+                        local ch, se, tb
+                        if textFrame then
+                            ch = textFrame:FindFirstChild("chat")
+                            se = textFrame:FindFirstChild("Send")
+                            tb = textFrame:FindFirstChild("api")
+                        end
+
+                        -- Status label (NOT si)
+                        local st =
+                            root:FindFirstChild("Status")
+                            or root:FindFirstChild("Status", true)
+
+                        -- API buttons
+                        local con =
+                            textFrame and textFrame:FindFirstChild("Confirm_api")
+                            or root:FindFirstChild("Confirm_api", true)
+
+                        local con2 =
+                            textFrame and textFrame:FindFirstChild("Unsaved_API")
+                            or root:FindFirstChild("Unsaved_API", true)
+
+                        -- HARD REQUIREMENTS
+                        if ch and se and si then
+                            return {
+                                root = root,
+                                frame = frame,
+                                textFrame = textFrame,
+
+                                -- main
+                                ch = ch,     -- TextBox (chat)
+                                se = se,     -- Send button
+                                tb = tb,     -- API TextBox
+
+                                -- logs / status
+                                si = si,     -- ChatLogs ONLY
+                                st = st,     -- Status label
+
+                                -- api buttons
+                                con = con,   -- Confirm_api
+                                con2 = con2  -- Unsaved_API
+                            }
+                        end
                     end
                 end
             end
         end
 
-        if foundRoot then
-            -- find Text frame or children
-            local textFrame = foundRoot:FindFirstChild("Text") or foundRoot:FindFirstChild("text") or foundRoot:FindFirstChildWhichIsA and foundRoot:FindFirstChildWhichIsA("Frame")
-            local ch, se, tb, si, st
-
-            if textFrame and textFrame:IsA("Frame") then
-                ch = textFrame:FindFirstChild("chat") or textFrame:FindFirstChild("ch") or textFrame:FindFirstChildWhichIsA and textFrame:FindFirstChildWhichIsA("TextBox")
-                se = textFrame:FindFirstChild("Send") or textFrame:FindFirstChild("se") or textFrame:FindFirstChildWhichIsA and textFrame:FindFirstChildWhichIsA("TextButton")
-                tb = textFrame:FindFirstChild("api") or textFrame:FindFirstChild("API")
-            end
-
-            -- also try direct children of root
-            ch = ch or foundRoot:FindFirstChild("chat") or foundRoot:FindFirstChild("ch")
-            se = se or foundRoot:FindFirstChild("Send") or foundRoot:FindFirstChild("se")
-            tb = tb or foundRoot:FindFirstChild("api") or foundRoot:FindFirstChild("API")
-            si = foundRoot:FindFirstChild("ChatLogs") or foundRoot:FindFirstChild("ChatFrame") or foundRoot:FindFirstChildWhichIsA("ScrollingFrame")
-            st = foundRoot:FindFirstChild("Status") or foundRoot:FindFirstChild("status") or foundRoot:FindFirstChildWhichIsA("TextLabel")
-
-            if ch and se and si then
-                return {
-                    root = foundRoot,
-                    textFrame = textFrame,
-                    ch = ch,
-                    se = se,
-                    tb = tb,
-                    si = si,
-                    st = st
-                }
-            end
-        end
-
-        task.wait(0.12)
+        task.wait(0.1)
     end
+
     return nil
 end
 
@@ -855,9 +871,12 @@ local HELP_TEXT = [=[
 /CheckHTTP - check executor http availability
 /CheckURLStatus [URL] - check website status (HEAD)
 /CheckSYN - check syn.request availability
+/CheckAPI
 /EnableUSLD - enable unknown-language debug printing to logs
 /GlobalChat [on/off] - show global chat in logs (client-side UI parsing)
 /SpyChat [on/off] - attempt to show whispers if client UI exposes them (not guaranteed)
+/ResetRateLimit or /ReRateLimit
+/Dumpstatus
 ]=]
 
 local DEBUG_MODE = false
