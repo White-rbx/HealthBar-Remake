@@ -1,4 +1,4 @@
--- gpt 3.97
+-- gpt 3.98
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 3.97 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 3.98 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255) txt(user.Nill, [=[
 What is AI-OpenSource?
@@ -390,111 +390,81 @@ local USLD = false
 
 -- ===== FIND UI (connect to existing GUI) =====
 local function findChatUI(timeout)
-    timeout = tonumber(timeout) or 6
+    timeout = tonumber(timeout) or 5
     local startTime = tick()
 
-    -- safe helper
-    local function safeFindFirstChildWhichIsA(inst, className)
-        if inst and inst.FindFirstChildWhichIsA then
-            return inst:FindFirstChildWhichIsA(className)
-        end
-        return nil
-    end
-
     while tick() - startTime < timeout do
-        local roots = {}
+        local CoreGui = game:GetService("CoreGui")
 
-        -- 1) ExperienceSettings.Menu (priority)
+        -- hard path (NO SCAN)
         local exp = CoreGui:FindFirstChild("ExperienceSettings")
         if exp then
             local menu = exp:FindFirstChild("Menu")
             if menu then
-                table.insert(roots, menu)
-            end
-        end
+                local root = menu:FindFirstChild("AIOpenSource")
+                if root then
+                    -- main frame
+                    local frame = root:FindFirstChild("Frame")
 
-        -- 2) Scan CoreGui for likely containers
-        for _, obj in ipairs(CoreGui:GetDescendants()) do
-            if obj:IsA("Frame") or obj:IsA("ScreenGui") then
-                local n = obj.Name:lower()
-                if n:match("ai") or n:match("chat") or n:match("open") or n:match("gpt") or n:match("aio") then
-                    table.insert(roots, obj)
+                    if frame then
+                        -- Chat logs
+                        local si = frame:FindFirstChild("ChatLogs")
+
+                        -- Text container
+                        local textFrame = frame:FindFirstChild("Text")
+
+                        local ch, se, tb
+                        if textFrame then
+                            ch = textFrame:FindFirstChild("chat")
+                            se = textFrame:FindFirstChild("Send")
+                            tb = textFrame:FindFirstChild("api")
+                        end
+
+                        -- Status label (NOT si)
+                        local st =
+                            root:FindFirstChild("Status")
+                            or root:FindFirstChild("Status", true)
+
+                        -- API buttons
+                        local con =
+                            textFrame and textFrame:FindFirstChild("Confirm_api")
+                            or root:FindFirstChild("Confirm_api", true)
+
+                        local con2 =
+                            textFrame and textFrame:FindFirstChild("Unsaved_API")
+                            or root:FindFirstChild("Unsaved_API", true)
+
+                        -- HARD REQUIREMENTS
+                        if ch and se and si then
+                            return {
+                                root = root,
+                                frame = frame,
+                                textFrame = textFrame,
+
+                                -- main
+                                ch = ch,     -- TextBox (chat)
+                                se = se,     -- Send button
+                                tb = tb,     -- API TextBox
+
+                                -- logs / status
+                                si = si,     -- ChatLogs ONLY
+                                st = st,     -- Status label
+
+                                -- api buttons
+                                con = con,   -- Confirm_api
+                                con2 = con2  -- Unsaved_API
+                            }
+                        end
+                    end
                 end
             end
         end
 
-        -- 3) Any ScreenGui fallback
-        for _, sg in ipairs(CoreGui:GetChildren()) do
-            if sg:IsA("ScreenGui") then
-                table.insert(roots, sg)
-            end
-        end
-
-        -- ===== SEARCH EACH ROOT =====
-        for _, root in ipairs(roots) do
-            local textFrame = root:FindFirstChild("Text") or root:FindFirstChild("text")
-
-            local ch, se, tb, si, st
-
-            -- TextBox & SendButton (อยู่ใน Text เท่านั้น)
-            if textFrame then
-                ch = textFrame:FindFirstChild("ch")
-                  or textFrame:FindFirstChild("chat")
-                  or textFrame:FindFirstChild("Ch")
-
-                se = textFrame:FindFirstChild("se")
-                  or textFrame:FindFirstChild("Send")
-
-                tb = textFrame:FindFirstChild("api")
-                  or textFrame:FindFirstChild("API")
-            end
-
-            -- ChatLogs (si) : อยู่นอก Text
-            si =
-                root:FindFirstChild("ChatLogs")
-                or root:FindFirstChild("ChatFrame")
-                or safeFindFirstChildWhichIsA(root, "ScrollingFrame")
-
-            -- Status label (st)
-            st =
-                root:FindFirstChild("Status")
-                or root:FindFirstChild("status")
-                or safeFindFirstChildWhichIsA(root, "TextLabel")
-
-            -- REQUIREMENTS:
-            -- ch = TextBox
-            -- se = Send Button
-            -- si = ChatLogs (ScrollingFrame)
-            if ch and se and si then
-                return {
-                    root = root,
-                    textFrame = textFrame,
-                    ch = ch,
-                    se = se,
-                    tb = tb, -- api textbox (optional)
-                    si = si, -- chat logs
-                    st = st  -- status label (optional)
-                }
-            end
-        end
-
-        task.wait(0.12)
+        task.wait(0.1)
     end
 
     return nil
 end
-
-local ui = findChatUI(8)
-if not ui then
-    warn("[AI-OpenSource] Could not locate UI (ch/se/si). Script will still run but many features disabled.")
-    safeTxt(user.Warn, "UI not found. Check UI names: Text/chat/Send/ChatLogs", 255,200,0)
-end
-
-local ch = ui and ui.ch
-local se = ui and ui.se
-local tb = ui and ui.tb
-local si = ui and ui.si
-local st = ui and ui.st
 
 -- helper updateStatus (shows in st if present, else si)
 local function updateStatus(text)
