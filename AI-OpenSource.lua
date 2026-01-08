@@ -1,4 +1,4 @@
--- gpt 4.1
+local ver = "gpt Test 4.15"
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 4.1 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version:" .. ver .. "| © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255) txt(user.Nill, [=[
 What is AI-OpenSource?
@@ -400,78 +400,131 @@ local function splitWords(s)
 end
 
 -- ===== FIND UI (connect to existing GUI) =====
-local function findChatUI(timeout)
-    timeout = tonumber(timeout) or 5
-    local startTime = tick()
+-- returns table or nil
+local function findChatUI(timeoutSeconds)
+    timeoutSeconds = tonumber(timeoutSeconds) or 6
+    local start = tick()
 
-    while tick() - startTime < timeout do
-        local CoreGui = game:GetService("CoreGui")
+    local function safeFindFirstChildWhichIsA(parent, className)
+        local ok, res = pcall(function()
+            return parent and parent:FindFirstChildWhichIsA(className)
+        end)
+        return ok and res or nil
+    end
 
-        -- hard path (NO SCAN)
+    local function collectCandidates()
+        local candidates = {}
+
+        -- 1) exact well-known path (fast)
         local exp = CoreGui:FindFirstChild("ExperienceSettings")
         if exp then
             local menu = exp:FindFirstChild("Menu")
             if menu then
-                local root = menu:FindFirstChild("AIOpenSource")
-                if root then
-                    -- main frame
-                    local frame = root:FindFirstChild("Frame")
+                local root = menu:FindFirstChild("AIOpenSource") or menu:FindFirstChild("AI-OpenSource") or menu:FindFirstChild("AIOpenSourceFrame")
+                if root then table.insert(candidates, root) end
+            end
+        end
 
-                    if frame then
-                        -- Chat logs
-                        local si = frame:FindFirstChild("ChatLogs")
-
-                        -- Text container
-                        local textFrame = frame:FindFirstChild("Text")
-
-                        local ch, se, tb
-                        if textFrame then
-                            ch = textFrame:FindFirstChild("chat")
-                            se = textFrame:FindFirstChild("Send")
-                            tb = textFrame:FindFirstChild("api")
-                        end
-
-                        -- Status label (NOT si)
-                        local st =
-                            root:FindFirstChild("Status")
-                            or root:FindFirstChild("Status", true)
-
-                        -- API buttons
-                        local con =
-                            textFrame and textFrame:FindFirstChild("Confirm_api")
-                            or root:FindFirstChild("Confirm_api", true)
-
-                        local con2 =
-                            textFrame and textFrame:FindFirstChild("Unsaved_API")
-                            or root:FindFirstChild("Unsaved_API", true)
-
-                        -- HARD REQUIREMENTS
-                        if ch and se and si then
-                            return {
-                                root = root,
-                                frame = frame,
-                                textFrame = textFrame,
-
-                                -- main
-                                ch = ch,     -- TextBox (chat)
-                                se = se,     -- Send button
-                                tb = tb,     -- API TextBox
-
-                                -- logs / status
-                                si = si,     -- ChatLogs ONLY
-                                st = st,     -- Status label
-
-                                -- api buttons
-                                con = con,   -- Confirm_api
-                                con2 = con2  -- Unsaved_API
-                            }
-                        end
-                    end
+        -- 2) scan direct children of CoreGui for obvious ScreenGuis / Frames
+        for _, child in ipairs(CoreGui:GetChildren()) do
+            if child:IsA("ScreenGui") or child:IsA("Frame") then
+                local n = tostring(child.Name):lower()
+                if n:match("ai") or n:match("open") or n:match("chat") or n:match("gpt") or n:match("aio") then
+                    table.insert(candidates, child)
                 end
             end
         end
 
-        task.wait(0.1)
+        -- 3) add any ScreenGui fallback (so we can still find the UI)
+        for _, sg in ipairs(CoreGui:GetChildren()) do
+            if sg:IsA("ScreenGui") then table.insert(candidates, sg) end
+        end
+
+        return candidates
+    end
+
+    while tick() - start < timeoutSeconds do
+        local candidates = collectCandidates()
+
+        for _, root in ipairs(candidates) do
+            -- Try to find the main frame container
+            local frame = root:FindFirstChild("Frame") or root:FindFirstChildWhichIsA and (pcall(function() return root:FindFirstChildWhichIsA("Frame") end) and root:FindFirstChildWhichIsA("Frame") or nil)
+
+            -- If the UI was created differently: treat root itself as frame candidate
+            local frameCandidate = frame or root
+
+            -- Try find ChatLogs (prefer named "ChatLogs" or a ScrollingFrame)
+            local si = frameCandidate:FindFirstChild("ChatLogs")
+            if not si then si = frameCandidate:FindFirstChild("ChatFrame") end
+            if not si then
+                -- safe use of FindFirstChildWhichIsA
+                si = safeFindFirstChildWhichIsA(frameCandidate, "ScrollingFrame")
+            end
+
+            -- Try find Text container (the small bottom frame containing chat TextBox & Send)
+            local textFrame = frameCandidate:FindFirstChild("Text") or frameCandidate:FindFirstChild("text")
+            if not textFrame then
+                -- sometimes it's nested under a child named "Text" deeper
+                for _, d in ipairs(frameCandidate:GetChildren()) do
+                    if d:IsA("Frame") and (tostring(d.Name):lower():match("text") or tostring(d.Name):lower():match("input")) then
+                        textFrame = d
+                        break
+                    end
+                end
+            end
+
+            -- find chat TextBox & Send button & API textbox
+            local ch, se, tb
+            if textFrame then
+                ch = textFrame:FindFirstChild("chat") or textFrame:FindFirstChild("ch") or safeFindFirstChildWhichIsA(textFrame, "TextBox")
+                se = textFrame:FindFirstChild("Send") or textFrame:FindFirstChild("se") or safeFindFirstChildWhichIsA(textFrame, "TextButton")
+                tb = textFrame:FindFirstChild("api") or textFrame:FindFirstChild("API") or textFrame:FindFirstChild("Api")
+            else
+                ch = frameCandidate:FindFirstChild("chat") or frameCandidate:FindFirstChild("ch")
+                se = frameCandidate:FindFirstChild("Send") or frameCandidate:FindFirstChild("se")
+                tb = frameCandidate:FindFirstChild("api") or frameCandidate:FindFirstChild("API")
+            end
+
+            -- status label search (explicit name "Status" preferred)
+            local st = root:FindFirstChild("Status") or root:FindFirstChild("status")
+            if not st then
+                -- try to find a TextLabel named 'Status' anywhere under root safely
+                local ok, res = pcall(function() return root:FindFirstChildWhichIsA("TextLabel", true) end)
+                if ok and res and tostring(res.Name):lower():match("status") then st = res end
+            end
+
+            -- confirm / unsaved api buttons
+            local con = nil
+            local con2 = nil
+            if textFrame then
+                con = textFrame:FindFirstChild("Confirm_api") or textFrame:FindFirstChild("Confirm_API") or textFrame:FindFirstChild("ConfirmApi")
+                con2 = textFrame:FindFirstChild("Unsaved_API") or textFrame:FindFirstChild("UnsavedApi") or textFrame:FindFirstChild("Unsaved_API")
+            end
+            if not con then
+                con = root:FindFirstChild("Confirm_api") or root:FindFirstChild("Confirm_API") or root:FindFirstChild("ConfirmApi")
+            end
+            if not con2 then
+                con2 = root:FindFirstChild("Unsaved_API") or root:FindFirstChild("UnsavedApi")
+            end
+
+            -- final validation: we require at least a chat TextBox and send button and chat logs (si)
+            if ch and se and si then
+                return {
+                    root = root,
+                    frame = frameCandidate,
+                    textFrame = textFrame,
+                    ch = ch,
+                    se = se,
+                    tb = tb,
+                    si = si,
+                    st = st,
+                    con = con,
+                    con2 = con2
+                }
+            end
+        end
+
+        task.wait(0.10)
     end
 
     return nil
