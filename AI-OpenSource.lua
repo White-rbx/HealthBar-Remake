@@ -1,4 +1,4 @@
-local ver = "gpt Test 4.2"
+local ver = "gpt Test 4.21 (GitHub bug sorry)"
 
 -- =====>> Saved Functions <<=====
 
