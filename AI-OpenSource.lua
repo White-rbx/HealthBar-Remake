@@ -1,14 +1,11 @@
-local ver = " gpt Test 4.236 "
+local ver = " gpt Test 4.237 ( Closed )"
 local update = [=[
-Add commands
-      /GPTSwitch [ FREE / PLUS ]
-      /GEMINISwitch [ FREE / PRO / PLUS ]
-
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
 (:8/1/2026 | 6:00 pm: R) Raw reset GitHub bug.
 (:8/1/2026 | 6:22 pm: !) Fixed bug again
 (:8/1/2026 | 5:55 pm: R) GitHub bug
+(:8/1/2026 | 6:49 pm: C) Closed
 ]=]
 
 -- =====>> Saved Functions <<=====
@@ -358,8 +355,9 @@ txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,1
 txt(user.Nill, "Version:" .. ver .. "| © Copyright LighterCyan", 180, 180, 180)
 txt(user.Info, update, 0, 170, 255)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
-txt(user.Info, "Use /help for more information or commands.", 0,170,255) txt(user.Nill, [=[
-What is AI-OpenSource?
+txt(user.Info, "Use /help for more information or commands.", 0,170,255) 
+txt(user.Nill, "
+--[[ What is AI-OpenSource?
   AI-OpenSource is a tool for questioning to AIs (ChatGPT/Gemini) by putting API Key.
   
 What AI model you using?
@@ -370,8 +368,14 @@ This is safe to put api key?
   
 Available commands
   use /Help
-]=], 180, 180, 180)
+", 180, 180, 180)
+
 txt(user.Nill, "Welcome back Tester", 0, 255, 0)
+]]
+txt(user.Nill, [=[
+[==> OFFICIAL ANNOUNCEMENT <==]
+AI-OpenSource close for now. We'll be right back soon!
+]=], 255,0,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
 -- ===========================
