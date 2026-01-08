@@ -1,4 +1,4 @@
-local ver = "gpt Test 4.235"
+local ver = " gpt Test 4.236 "
 local update = [=[
 Add commands
       /GPTSwitch [ FREE / PLUS ]
@@ -7,7 +7,8 @@ Add commands
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
 (:8/1/2026 | 6:00 pm: R) Raw reset GitHub bug.
-(:8/1/2026 | 6:22 pm: !) Fixed bug again 
+(:8/1/2026 | 6:22 pm: !) Fixed bug again
+(:8/1/2026 | 5:55 pm: R) GitHub bug
 ]=]
 
 -- =====>> Saved Functions <<=====
