@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.237 ( Closed )"
+local ver = " gpt Test 4.238 ( Closed )"
 local update = [=[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -356,7 +356,7 @@ txt(user.Nill, "Version:" .. ver .. "| © Copyright LighterCyan", 180, 180, 180)
 txt(user.Info, update, 0, 170, 255)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255) 
-txt(user.Nill, "
+-- txt(user.Nill, 
 --[[ What is AI-OpenSource?
   AI-OpenSource is a tool for questioning to AIs (ChatGPT/Gemini) by putting API Key.
   
