@@ -1,11 +1,13 @@
-local ver = "gpt Test 4.231"
+local ver = "gpt Test 4.235"
 local update = [=[
 Add commands
       /GPTSwitch [ FREE / PLUS ]
       /GEMINISwitch [ FREE / PRO / PLUS ]
 
-(:8/1/2026 | 5:55 pm: !) Fixed bug... maybe 
-(:8/1/2026 | 6:00 pm: !) Raw reset GitHub bug
+-- Update logs --
+(:8/1/2026 | 5:55 pm: !) Fixed bug
+(:8/1/2026 | 6:00 pm: R) Raw reset GitHub bug.
+(:8/1/2026 | 6:22 pm: !) Fixed bug again 
 ]=]
 
 -- =====>> Saved Functions <<=====
@@ -425,9 +427,11 @@ local function safeCall(fn, ...)
 end
 
 local function debugLog(...)
-    if DEBUG_MODE then
-        pcall(function() print("[AI-OpenSource][DEBUG]", ...) end)
-    end
+    if not DEBUG_MODE then return end
+    local args = { ... }
+    pcall(function()
+        print("[AI-OpenSource][DEBUG]", unpack(args))
+    end)
 end
 
 -- ========== UI ELEMENT REFERENCES (will be set by hook) ==========
