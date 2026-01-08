@@ -1,4 +1,4 @@
--- gpt 4.05
+-- gpt 4.1
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function txt(user, text, R, G, B)
 end
 
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
-txt(user.Nill, "Version: Test 4.05 | © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "Version: Test 4.1 | © Copyright LighterCyan", 180, 180, 180)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands.", 0,170,255) txt(user.Nill, [=[
 What is AI-OpenSource?
@@ -633,13 +633,33 @@ end
 -- wire confirm/unsaved UI buttons if exist
 if UI and UI.root then
     local root = UI.root
-    local confirmBtn = (root:FindFirstChild("Confirm_api") or root:FindFirstChild("Confirm_API") or root:FindFirstChildWhichIsA and root:FindFirstChildWhichIsA("TextButton"))
-    local unsavedBtn = (root:FindFirstChild("Unsaved_API") or root:FindFirstChild("UnsavedApi"))
-    -- If not found at root, check textFrame
+
+    -- try common explicit names first
+    local confirmBtn = root:FindFirstChild("Confirm_api") or root:FindFirstChild("Confirm_API")
+    local unsavedBtn = root:FindFirstChild("Unsaved_API") or root:FindFirstChild("UnsavedApi")
+
+    -- If not found at root, check textFrame (if present)
     if UI.textFrame then
-        confirmBtn = confirmBtn or UI.textFrame:FindFirstChild("Confirm_api")
-        unsavedBtn = unsavedBtn or UI.textFrame:FindFirstChild("Unsaved_API")
+        confirmBtn = confirmBtn or UI.textFrame:FindFirstChild("Confirm_api") or UI.textFrame:FindFirstChild("Confirm_API")
+        unsavedBtn = unsavedBtn or UI.textFrame:FindFirstChild("Unsaved_API") or UI.textFrame:FindFirstChild("UnsavedApi")
     end
+
+    -- fallback: try FindFirstChildWhichIsA safely (pcall in case API is blocked)
+    if not confirmBtn then
+        local ok, cb = pcall(function()
+            return root:FindFirstChildWhichIsA("TextButton")
+        end)
+        if ok and cb then confirmBtn = cb end
+    end
+
+    if not confirmBtn and UI.textFrame then
+        local ok, cb = pcall(function()
+            return UI.textFrame:FindFirstChildWhichIsA("TextButton")
+        end)
+        if ok and cb then confirmBtn = cb end
+    end
+
+    -- connect handlers if the found objects are actually TextButtons
     if confirmBtn and confirmBtn:IsA("TextButton") then
         confirmBtn.MouseButton1Click:Connect(onConfirmClicked)
     end
