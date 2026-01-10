@@ -1,4 +1,4 @@
--- Well 1.85
+-- Well 1.86
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -184,6 +184,7 @@ end)
 
 -- BouncyAndHiglightImagsButton
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/BouncyAndHighlightImageButton.lua"))()
+print("[ BouncyAndHiglightImagsButton ] Successful loaded.")
 
 local sata = CoreGui:WaitForChild("TopBarApp", 10)
     :WaitForChild("TopBarApp", 10)
@@ -196,9 +197,11 @@ sata:Destroy()
 
 -- AI-OpenSource
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/AI-OpenSource.lua"))()
+print("[ AI-OpenSource ] Successful loaded.")
 
 -- Seacrh
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search.lua"))()
+print("[ Seacrh ] Successful loaded.")
 
 task.spawn(function()
 	local StarterGui = game:GetService("StarterGui")
