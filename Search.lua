@@ -1,4 +1,4 @@
--- searcher... yes. 2.575
+-- searcher... yes. 2.58
 
 -- =====>> Saved Functions <<=====
 
@@ -321,14 +321,18 @@ local function playPopup(handle)
 end
 
 -- ========= --
-local function asset(title, visits, likes, callback)
-    local handle = Instance.new("Frame")
+local function asset(title, visits, likes, isUniversal, gameName, verified, callback)
+  local handle = Instance.new("Frame")
     handle.Name = "Handle"
     handle.Size = UDim2.new(0, 220, 0, 250)
     handle.BackgroundTransparency = 0.25
     handle.BackgroundColor3 = Color3.fromRGB(18,18,21)
     handle.Parent = sc
     Corner(0, 8, handle)
+    Gradient(handle, 90,0,0, Color3.fromRGB(18,18,21))
+    if verified == true then
+       handle.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+    end
   
     task.spawn(function()
         playPopup(handle)
@@ -385,6 +389,21 @@ local function asset(title, visits, likes, callback)
     lik.TextScaled = true
     lik.Text = "Likes: " .. tostring(likes or 0)
     lik.Parent = ins
+
+    local uni = Instance.new("TextLabel")
+    uni.Position = UDim2.new(0, 0, 0, 176)
+    uni.Name = "IsUniversal"
+    uni.Size = UDim2.new(1, 0, 0, 18)
+    uni.BackgroundTransparency = 1
+    uni.TextColor3 = Color3.fromRGB(200, 200, 200)
+    uni.TextXAlignment = Enum.TextXAlignment.Left
+    uni.TextScaled = true
+
+    uni.Text = isUniversal
+        and "Universal Script 📌"
+        or (gameName or "Unknown Game")
+
+    uni.Parent = ins
 
     -- Execute
     local exe = Instance.new("TextButton")
@@ -469,60 +488,57 @@ local TARGET_TOTAL = 120
 local ITEM_DELAY = 0.1
 local PAGE_DELAY = 0.1
 
-local function fetchAndRender(query)
-    clearResults()
+while loaded < TARGET_TOTAL do
+    local url
+    if query and query ~= "" then
+        url = string.format(
+            SCRIPTBLOX_SEARCH,
+            HttpService:UrlEncode(query),
+            page
+        )
+    else
+        url = SCRIPTBLOX_HOME .. "?page=" .. page
+    end
 
-    local page = 1
-    local loaded = 0
+    local data = httpGetJson(url)
+    if not data or not data.result then break end
 
-    while loaded < TARGET_TOTAL do
-        local url
-        if query and query ~= "" then
-            url = string.format(
-                SCRIPTBLOX_SEARCH,
-                HttpService:UrlEncode(query),
-                page
-            )
-        else
-            url = SCRIPTBLOX_HOME .. "?page=" .. page
-        end
-        local data = httpGetJson(url)
-        if not data or not data.result then break end
+    local scripts = data.result.scripts or {}
+    if #scripts == 0 then break end
 
-        local scripts = data.result.scripts or {}
-        if #scripts == 0 then break end
+    for _, script in ipairs(scripts) do
+        if loaded >= TARGET_TOTAL then break end
 
-        for _,script in ipairs(scripts) do
-            if loaded >= TARGET_TOTAL then break end
-
-            asset(
-                script.title or "Untitled",
-                script.views or 0,
-                script.likeCount or 0,
-                function(action)
-                    local source = script.script or ""
-                    if action == "execute" then
-                        if source ~= "" then
-                            local fn, err = loadstring(source)
-                            if fn then fn() else warn(err) end
-                        end
-                    elseif action == "copy" then
-                        local clip = setclipboard or toclipboard
-                        if clip and source ~= "" then
-                            clip(source)
-                        end
+        asset(
+            script.title or "Untitled",
+            script.views or 0,
+            script.likeCount or 0,
+            script.isUniversal,
+            script.game and script.game.name or nil,
+            script.verified,
+            function(action)
+                local source = script.script or ""
+                if action == "execute" then
+                    if source ~= "" then
+                        local fn, err = loadstring(source)
+                        if fn then fn() else warn(err) end
+                    end
+                elseif action == "copy" then
+                    local clip = setclipboard or toclipboard
+                    if clip and source ~= "" then
+                        clip(source)
                     end
                 end
-            )
+            end
+        )
 
-            loaded += 1
-            task.wait(ITEM_DELAY)
-        end
-
-        if not data.result.nextPage then break end
-        page += 1
-        task.wait(PAGE_DELAY)
+        loaded += 1
+        task.wait(ITEM_DELAY)
     end
+
+    if not data.result.nextPage then break end
+    page += 1
+    task.wait(PAGE_DELAY)
 end
 
 -- =========================
