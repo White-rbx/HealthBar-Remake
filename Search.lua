@@ -1,4 +1,4 @@
--- searcher... yes. 2.53
+-- searcher... yes. 2.54
 
 -- =====>> Saved Functions <<=====
 
@@ -249,6 +249,15 @@ grid.CellPadding = UDim2.new(0, 5, 0, 5)
 grid.FillDirection = Enum.FillDirection.Horizontal
 grid.SortOrder = Enum.SortOrder.Name
 grid.Parent = sc
+
+-- =========================
+-- CONFIG
+-- =========================
+local SCRIPTBLOX_HOME =
+    "https://scriptblox.com/api/script/fetch"
+
+local SCRIPTBLOX_SEARCH =
+    "https://scriptblox.com/api/script/search?q=%s&page=%d&max=20"
 -- ========= --
 
 local HttpService = game:GetService("HttpService")
@@ -470,14 +479,13 @@ local function fetchAndRender(query)
         local url
         if query and query ~= "" then
             url = string.format(
-                "https://scriptblox.com/api/script/search?q=%s&page=%d&max=20",
+                SCRIPTBLOX_SEARCH,
                 HttpService:UrlEncode(query),
                 page
             )
         else
             url = SCRIPTBLOX_HOME .. "?page=" .. page
         end
-
         local data = httpGetJson(url)
         if not data or not data.result then break end
 
