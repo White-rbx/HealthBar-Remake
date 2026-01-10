@@ -1,4 +1,4 @@
--- Well 1.84
+-- Well 1.85
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
@@ -196,6 +196,9 @@ sata:Destroy()
 
 -- AI-OpenSource
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/AI-OpenSource.lua"))()
+
+-- Seacrh
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search.lua"))()
 
 task.spawn(function()
 	local StarterGui = game:GetService("StarterGui")
