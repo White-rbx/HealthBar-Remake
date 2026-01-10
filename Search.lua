@@ -1,4 +1,4 @@
--- searcher... yes. 2.584
+-- searcher... yes. 2.585
 
 -- =====>> Saved Functions <<=====
 
@@ -331,7 +331,7 @@ local function playPopup(handle)
 end
 
 -- ========= --
-local function asset(title, visits, likes, isUniversal, gameName, verified, imageUrl, callback)
+local function asset(title, visits, likes, isUniversal, gameName, verified, isPatched, imageUrl, callback)
   local handle = Instance.new("Frame")
     handle.Name = "Handle"
     handle.Size = UDim2.new(0, 220, 0, 250)
@@ -343,6 +343,10 @@ local function asset(title, visits, likes, isUniversal, gameName, verified, imag
   
     if verified == true then
        handle.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+    end
+
+    if isPatched == true then
+       handle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
     end
   
     task.spawn(function()
@@ -529,6 +533,7 @@ local function fetchAndRender(query)
                 script.isUniversal,
                 script.game and script.game.name,
                 script.verified,
+                script.isPatched,
                 img,
                 function(action)
                     local source = script.script or ""
