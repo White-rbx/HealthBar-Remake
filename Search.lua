@@ -1,4 +1,4 @@
--- searcher... yes. 2.582
+-- searcher... yes. 2.584
 
 -- =====>> Saved Functions <<=====
 
@@ -339,7 +339,7 @@ local function asset(title, visits, likes, isUniversal, gameName, verified, imag
     handle.BackgroundColor3 = Color3.fromRGB(18,18,21)
     handle.Parent = sc
     Corner(0, 8, handle)
-    Gradient(handle, 90,0,0, Color3.fromRGB(18,18,21))
+    Gradient(handle, 90,0,0, Color3.fromRGB(255,255,255), Color3.fromRGB(18,18,21))
   
     if verified == true then
        handle.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
@@ -406,7 +406,7 @@ local function asset(title, visits, likes, isUniversal, gameName, verified, imag
     uni.Name = "IsUniversal"
     uni.Size = UDim2.new(1, 0, 0, 18)
     uni.BackgroundTransparency = 1
-    uni.TextColor3 = Color3.fromRGB(200, 200, 200)
+    uni.TextColor3 = Color3.fromRGB(255, 255, 255)
     uni.TextXAlignment = Enum.TextXAlignment.Left
     uni.TextScaled = true
     uni.Text = isUniversal and "Universal Script📌" or (gameName or "Unknown Game")
