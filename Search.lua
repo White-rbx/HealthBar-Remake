@@ -1,4 +1,4 @@
--- searcher... yes. 2.1
+-- searcher... yes. 2.15
 
 -- =====>> Saved Functions <<=====
 
@@ -443,4 +443,4 @@ end)
 -- =========================
 -- AUTO LOAD HOME
 -- =========================
-fetchHome()local
+fetchHome()
