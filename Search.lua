@@ -1,4 +1,4 @@
--- searcher... yes. 2.589
+-- searcher... yes. 2.59
 
 -- =====>> Saved Functions <<=====
 
@@ -594,19 +594,25 @@ fetchAndRender()
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 
-local handle = CoreGui.ExperienceSettings.Menu.Search.scroll.Handle
-local MAX_COUNT = 220 -- จำนวนสูงสุด
+local scroll = CoreGui.ExperienceSettings.Menu.Search.scroll -- ตัว ScrollFrame
+local MAX_COUNT = 220
 
 -- ฟังก์ชันอัปเดต ScriptCounter
 local function updateScriptCounter()
-    if handle and handle.Parent then
-        -- นับค่า Handle.Position.Y.Scale จาก 0 → 1
-        local counter = math.floor(handle.Position.Y.Scale * MAX_COUNT)
-        sct.Text = "Script: " .. counter .. "/" .. MAX_COUNT
+    if scroll and scroll.Parent then
+        -- นับจำนวน Frame ที่ชื่อ Handle
+        local handleCount = 0
+        for _, child in ipairs(scroll:GetChildren()) do
+            if child:IsA("Frame") and child.Name == "Handle" then
+                handleCount = handleCount + 1
+            end
+        end
+
+        sct.Text = "Script: " .. handleCount .. "/" .. MAX_COUNT
     else
         sct.Text = "Script: 0/" .. MAX_COUNT
     end
 end
 
--- ตรวจสอบ Handle ตลอดเวลา
+-- ตรวจสอบตลอดเวลา
 RunService.RenderStepped:Connect(updateScriptCounter)
