@@ -1,4 +1,4 @@
--- searcher... yes. 2.15
+-- searcher... yes. 2.2
 
 -- =====>> Saved Functions <<=====
 
@@ -318,7 +318,8 @@ local function asset(title, visits, likes, callback)
 
         cop.MouseButton1Click:Connect(function()
             callback("copy")
-    end)
+        end)
+    end
 end
 
 -- ======== --
