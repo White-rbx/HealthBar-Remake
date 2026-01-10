@@ -1,4 +1,4 @@
--- searcher... yes. 2.4
+-- searcher... yes. 2.5
 
 -- =====>> Saved Functions <<=====
 
@@ -249,7 +249,78 @@ grid.CellPadding = UDim2.new(0, 5, 0, 5)
 grid.FillDirection = Enum.FillDirection.Horizontal
 grid.SortOrder = Enum.SortOrder.Name
 grid.Parent = sc
+-- ========= --
 
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+
+-- =========================
+-- CONFIG
+-- =========================
+local SCRIPTBLOX_SEARCH =
+    "https://scriptblox.com/api/script/search?q=%s&page=1&max=20"
+
+local SCRIPTBLOX_HOME =
+    "https://scriptblox.com/api/script/fetch"
+
+-- =========================
+-- HELPERS
+-- =========================
+local function clearResults()
+    for _,v in ipairs(sc:GetChildren()) do
+        if v:IsA("Frame") then
+            v:Destroy()
+        end
+    end
+end
+
+local function httpGetJson(url)
+    local ok, res = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if not ok then
+        warn("[ScriptBlox] HTTP error:", res)
+        return nil
+    end
+
+    local success, data = pcall(function()
+        return HttpService:JSONDecode(res)
+    end)
+    if not success then
+        warn("[ScriptBlox] JSON decode failed")
+        return nil
+    end
+
+    return data
+end
+
+-- =========================
+-- POPUP ANIMATION
+-- =========================
+local function playPopup(handle)
+    local scale = Instance.new("UIScale")
+    scale.Scale = 0
+    scale.Parent = handle
+
+    local t1 = TweenService:Create(
+        scale,
+        TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+        { Scale = 1.2 }
+    )
+
+    local t2 = TweenService:Create(
+        scale,
+        TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Scale = 1 }
+    )
+
+    t1:Play()
+    t1.Completed:Wait()
+    t2:Play()
+    t2.Completed:Wait()
+end
+
+-- ========= --
 local function asset(title, visits, likes, callback)
     local handle = Instance.new("Frame")
     handle.Name = "Handle"
@@ -386,119 +457,69 @@ local function updateState()
 searchBtn:GetPropertyChangedSignal("Image"):Connect(updateState)
 updateState()
 
--- ======= --
-local HttpService = game:GetService("HttpService")
 
 -- =========================
--- CONFIG
--- =========================
-local SCRIPTBLOX_SEARCH =
-    "https://scriptblox.com/api/script/search?q=%s&page=1&max=120"
-
-local SCRIPTBLOX_HOME =
-    "https://scriptblox.com/api/script/fetch"
-
--- =========================
--- HELPERS
--- =========================
-local function clearResults()
-    for _,v in ipairs(sc:GetChildren()) do
-        if v:IsA("Frame") then
-            v:Destroy()
-        end
-    end
-end
-
-local function httpGetJson(url)
-    local ok, res = pcall(function()
-        return game:HttpGet(url)
-    end)
-    if not ok then
-        warn("[ScriptBlox] HTTP error:", res)
-        return nil
-    end
-
-    local success, data = pcall(function()
-        return HttpService:JSONDecode(res)
-    end)
-    if not success then
-        warn("[ScriptBlox] JSON decode failed")
-        return nil
-    end
-
-    return data
-end
-
--- =========================
--- MAIN RENDER
+-- RENDER
 -- =========================
 local function renderScripts(scripts)
     clearResults()
 
     for _,script in ipairs(scripts) do
-        local title  = script.title or "Untitled"
-        local views  = script.views or 0
-        local likes  = script.likeCount or 0
         local source = script.script or ""
 
-        asset(title, views, likes, function(action)
-            if action == "execute" then
-                if source ~= "" then
-                    local fn, err = loadstring(source)
-                    if fn then
-                        fn()
-                    else
-                        warn("[ScriptBlox] Compile error:", err)
+        asset(
+            script.title or "Untitled",
+            script.views or 0,
+            script.likeCount or 0,
+            function(action)
+                if action == "execute" then
+                    if source ~= "" then
+                        local fn, err = loadstring(source)
+                        if fn then fn() else warn(err) end
+                    end
+                elseif action == "copy" then
+                    local clip = setclipboard or toclipboard
+                    if clip and source ~= "" then
+                        clip(source)
                     end
                 end
-
-            elseif action == "copy" then
-                local clip = setclipboard or toclipboard
-                if clip and source ~= "" then
-                    clip(source)
-                end
             end
-        end)
+        )
+
+        task.wait(0.05) -- ✨ stagger animation
     end
 end
 
 -- =========================
--- FETCH HOME (no search)
+-- FETCH
 -- =========================
 local function fetchHome()
-    clearResults()
     local data = httpGetJson(SCRIPTBLOX_HOME)
-    if not data or not data.result then return end
-
-    renderScripts(data.result.scripts or {})
+    if data and data.result then
+        renderScripts(data.result.scripts or {})
+    end
 end
 
--- =========================
--- SEARCH
--- =========================
 local function searchScriptBlox(query)
     if not query or query == "" then
         fetchHome()
         return
     end
 
-    clearResults()
-
     local url = SCRIPTBLOX_SEARCH:format(HttpService:UrlEncode(query))
     local data = httpGetJson(url)
-    if not data or not data.result then return end
-
-    renderScripts(data.result.scripts or {})
+    if data and data.result then
+        renderScripts(data.result.scripts or {})
+    end
 end
 
 -- =========================
--- BUTTON WIRING
+-- WIRING
 -- =========================
 sb.MouseButton1Click:Connect(function()
     searchScriptBlox(tb.Text)
 end)
 
--- Optional: Enter key
 tb.FocusLost:Connect(function(enter)
     if enter then
         searchScriptBlox(tb.Text)
@@ -506,6 +527,6 @@ tb.FocusLost:Connect(function(enter)
 end)
 
 -- =========================
--- AUTO LOAD HOME
+-- AUTO LOAD
 -- =========================
 fetchHome()
