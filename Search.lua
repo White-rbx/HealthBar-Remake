@@ -1,4 +1,4 @@
--- searcher... yes. 2.35
+-- searcher... yes. 2.4
 
 -- =====>> Saved Functions <<=====
 
@@ -393,7 +393,7 @@ local HttpService = game:GetService("HttpService")
 -- CONFIG
 -- =========================
 local SCRIPTBLOX_SEARCH =
-    "https://scriptblox.com/api/script/search?q=%s&page=1&max=20"
+    "https://scriptblox.com/api/script/search?q=%s&page=1&max=120"
 
 local SCRIPTBLOX_HOME =
     "https://scriptblox.com/api/script/fetch"
