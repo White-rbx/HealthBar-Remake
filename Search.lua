@@ -1,4 +1,4 @@
--- searcher... yes. 2.587
+-- searcher... yes. 2.588
 
 -- =====>> Saved Functions <<=====
 
@@ -256,7 +256,7 @@ local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
 -- ========= CONFIG =========
-local TARGET_TOTAL = 120
+local TARGET_TOTAL = 220
 local ITEM_DELAY = 0.1
 local PAGE_DELAY = 0.2
 
