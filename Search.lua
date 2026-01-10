@@ -1,4 +1,4 @@
--- searcher... yes. 2.51
+-- searcher... yes. 2.52
 
 -- =====>> Saved Functions <<=====
 
@@ -258,7 +258,7 @@ local TweenService = game:GetService("TweenService")
 -- CONFIG
 -- =========================
 local SCRIPTBLOX_SEARCH =
-    "https://scriptblox.com/api/script/search?q=%s&page=1&max=20"
+    "https://scriptblox.com/api/script/search?q=%s&max=20"
 
 local SCRIPTBLOX_HOME =
     "https://scriptblox.com/api/script/fetch"
@@ -465,10 +465,6 @@ updateState()
 -- =========================
 -- FETCH + RENDER (max = 50)
 -- =========================
-local TARGET_TOTAL = 50
-local PAGE_DELAY = 0.2
-local ITEM_DELAY = 0.05
-
 local function fetchAndRender(query)
     clearResults()
 
@@ -478,9 +474,11 @@ local function fetchAndRender(query)
     while loaded < TARGET_TOTAL do
         local url
         if query and query ~= "" then
-            url = SCRIPTBLOX_SEARCH
-                :format(HttpService:UrlEncode(query))
-                .. "&page=" .. page
+            url = string.format(
+                "https://scriptblox.com/api/script/search?q=%s&page=%d&max=20",
+                HttpService:UrlEncode(query),
+                page
+            )
         else
             url = SCRIPTBLOX_HOME .. "?page=" .. page
         end
@@ -494,21 +492,16 @@ local function fetchAndRender(query)
         for _,script in ipairs(scripts) do
             if loaded >= TARGET_TOTAL then break end
 
-            local source = script.script or ""
-
             asset(
                 script.title or "Untitled",
                 script.views or 0,
                 script.likeCount or 0,
                 function(action)
+                    local source = script.script or ""
                     if action == "execute" then
                         if source ~= "" then
                             local fn, err = loadstring(source)
-                            if fn then
-                                fn()
-                            else
-                                warn("[ScriptBlox] Compile error:", err)
-                            end
+                            if fn then fn() else warn(err) end
                         end
                     elseif action == "copy" then
                         local clip = setclipboard or toclipboard
@@ -520,12 +513,12 @@ local function fetchAndRender(query)
             )
 
             loaded += 1
-            task.wait(ITEM_DELAY) -- ✨ popup stagger
+            task.wait(ITEM_DELAY)
         end
 
         if not data.result.nextPage then break end
         page += 1
-        task.wait(PAGE_DELAY) -- กัน rate limit
+        task.wait(PAGE_DELAY)
     end
 end
 
@@ -565,5 +558,4 @@ tb.FocusLost:Connect(function(enter)
     end
 end)
 
--- auto load (home)
-fetchAndRender()
+fetchAndRender() -- home
