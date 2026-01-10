@@ -1,4 +1,4 @@
--- searcher... yes. 2.55
+-- searcher... yes. 2.56
 
 -- =====>> Saved Functions <<=====
 
@@ -463,11 +463,11 @@ updateState()
 
 
 -- =========================
--- FETCH + RENDER (max = 50)
+-- FETCH + RENDER
 -- =========================
-local TARGET_TOTAL = 50
-local ITEM_DELAY = 0.05
-local PAGE_DELAY = 0.2
+local TARGET_TOTAL = 120
+local ITEM_DELAY = 0.35
+local PAGE_DELAY = 2
 
 local function fetchAndRender(query)
     clearResults()
