@@ -1,4 +1,4 @@
--- searcher... yes. 2.52
+-- searcher... yes. 2.53
 
 -- =====>> Saved Functions <<=====
 
@@ -255,15 +255,6 @@ local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 
 -- =========================
--- CONFIG
--- =========================
-local SCRIPTBLOX_SEARCH =
-    "https://scriptblox.com/api/script/search?q=%s&max=20"
-
-local SCRIPTBLOX_HOME =
-    "https://scriptblox.com/api/script/fetch"
-
--- =========================
 -- HELPERS
 -- =========================
 local function clearResults()
@@ -465,6 +456,10 @@ updateState()
 -- =========================
 -- FETCH + RENDER (max = 50)
 -- =========================
+local TARGET_TOTAL = 50
+local ITEM_DELAY = 0.05
+local PAGE_DELAY = 0.2
+
 local function fetchAndRender(query)
     clearResults()
 
@@ -558,4 +553,4 @@ tb.FocusLost:Connect(function(enter)
     end
 end)
 
-fetchAndRender() -- home
+fetchAndRender() -- homelocal
