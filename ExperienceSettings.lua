@@ -1,4 +1,4 @@
--- Ok 2.62
+-- Ok 2.63
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -646,7 +646,7 @@ createUICorner(gpt, 1, 0) --
 
 -- Seacrh
 local scrh = Instance.new("ImageButton")
-scrh.Name = "a4_Seacrh"
+scrh.Name = "a4_Search"
 scrh.Size = UDim2.new(0, 34, 0.8, 0)
 scrh.Image = "rbxassetid://115316941207686"
 scrh.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
