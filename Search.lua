@@ -1,4 +1,4 @@
--- searcher... yes. 2.33
+-- searcher... yes. 2.34
 
 -- =====>> Saved Functions <<=====
 
@@ -244,7 +244,7 @@ sc.ScrollingDirection = Enum.ScrollingDirection.Y
 sc.Parent = sea  
 
 local grid = Instance.new("UIGridLayout")
-grid.CellSize = UDim2.new(0, 220, 0, 250) 
+grid.CellSize = UDim2.new(0, 180, 0, 250) 
 grid.CellPadding = UDim2.new(0, 5, 0, 5) 
 grid.FillDirection = Enum.FillDirection.Horizontal
 grid.SortOrder = Enum.SortOrder.Name
@@ -382,6 +382,9 @@ local function updateState()
         tweenSea(UDim2.new(0,0,0.1,0)) -- OPEN
     end
   end
+
+searchBtn:GetPropertyChangedSignal("Image"):Connect(updateState)
+updateState()
 
 -- ======= --
 local HttpService = game:GetService("HttpService")
