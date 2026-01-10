@@ -1,4 +1,4 @@
--- searcher... yes. 2.31
+-- searcher... yes. 2.325
 
 -- =====>> Saved Functions <<=====
 
@@ -107,6 +107,8 @@ local function Padding(parent, bottom, left, right, top)
 end
 -- =====END FUNCTION UIPADDING======
 
+
+
 --====== CLIENT SERVICES ======--
 
 -- UI / Player Interface
@@ -155,7 +157,7 @@ if not menu then return end
 local sea = Instance.new("Frame")  
 sea.Name = "Search"  
 sea.Size = UDim2.new(1, 0, 0.9, 0)  
-sea.Position = UDim2.new(0, 0, 0.1, 0)  
+sea.Position = UDim2.new(0, 0, 1, 0)  
 sea.BackgroundColor3 = Color3.fromRGB(18, 18, 21)  
 sea.BackgroundTransparency = 0.3  
 sea.Active = false  
@@ -184,7 +186,7 @@ bar.Parent = tf
 Corner(10, 0, bar)  
 Stroke(bar, ASMBorder, 255, 255, 255, LineJoinMode, 1, 0)  
 ListLayout(bar, 0, 5, HCenter, VCenter, SLayout, FillV)  
-Gradient(bar,0, 0, 0,Color3.fromRGB(255,255,255),Color3.fromRGB(0,0,0))  
+Gradient(bar,0, 0, 0,Color3.fromRGB(255,255,25locallor3.fromRGB(0,0,0))  
   
 -- =========================  
 -- TextBox  
@@ -219,7 +221,8 @@ local wrd = Instance.new("TextButton")
 wrd.Name = "WeAreDev"  
 wrd.Size = UDim2.new(0.1,0,0.3,0)  
 wrd.TextColor3 = Color3.fromRGB(255,255,255)  
-wrd.Text = "WeAreDev"  
+wrd.Text = "WeAreDev (SOON)"  
+wrd.BackgroundTransparency = 0.5
 wrd.TextScaled = true  
 wrd.Parent = tf  
 Corner(10, 0, wrd)  
@@ -233,12 +236,19 @@ sc.Name = "scroll"
 sc.Position = UDim2.new(0.05,0,0.15,0)  
 sc.Size = UDim2.new(0.9,0,0.85,0)  
 sc.BackgroundTransparency = 1  
+sc.Active = true
 sc.CanvasSize = UDim2.new(0,0,0,0)  
 sc.AutomaticCanvasSize = Enum.AutomaticSize.Y  
 sc.ScrollBarThickness = 5  
 sc.ScrollingDirection = Enum.ScrollingDirection.Y  
 sc.Parent = sea  
-ListLayout(sc, 0, 15, HLeft, VTop, SLayout, FillH) 
+
+local grid = Instance.new("UIGridLayout")
+grid.CellSize = UDim2.new(0, 220, 0, 250) 
+grid.CellPadding = UDim2.new(0, 5, 0, 5) 
+grid.FillDirection = Enum.FillDirection.Horizontal
+grid.SortOrder = Enum.SortOrder.Name
+grid.Parent = sc
 
 local function asset(title, visits, likes, callback)
     local handle = Instance.new("Frame")
@@ -273,7 +283,7 @@ local function asset(title, visits, likes, callback)
     ima.Size = UDim2.new(1,0,0,100)
     ima.Position = UDim2.new(0,0,0,42)
     ima.BackgroundTransparency = 0.3      
-    ima.Image = "rbxassetid://99266606763970" 
+    ima.Image = "rbxassetid://140452968852400" 
     ima.Parent = ins      
     Corner(0,8,ima)      
 
@@ -292,7 +302,7 @@ local function asset(title, visits, likes, callback)
     -- Likes
     local lik = Instance.new("TextLabel")
     lik.Position = UDim2.new(0,0,0,158)
-    lik.Name = "Like
+    lik.Name = "Like"
     lik.Size = UDim2.new(1,0,0,18)
     lik.BackgroundTransparency = 1
     lik.TextColor3 = Color3.fromRGB(200,200,200)
@@ -335,6 +345,45 @@ local function asset(title, visits, likes, callback)
 end
 
 -- ======== --
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+local menu = CoreGui:WaitForChild("ExperienceSettings")
+    :WaitForChild("Menu")
+
+local searchBtn =
+    menu.TopBar.Holder:WaitForChild("a4_Search")
+
+-- your frame
+-- local sea = ...
+
+-- asset ids
+local IMG_CLOSE = "rbxassetid://115316941207686"
+local IMG_OPEN  = "rbxassetid://108649442107108"
+
+local tweenInfo = TweenInfo.new(
+    0.35, -- time
+    Enum.EasingStyle.Quad,
+    Enum.EasingDirection.Out
+)
+
+local function tweenSea(pos)
+    TweenService:Create(
+        sea,
+        tweenInfo,
+        { Position = pos }
+    ):Play()
+end
+
+local function updateState()
+    if searchBtn.Image == IMG_CLOSE then
+        tweenSea(UDim2.new(0,0,1,0)) -- CLOSE
+    elseif searchBtn.Image == IMG_OPEN then
+        tweenSea(UDim2.new(0,0,0.1,0)) -- OPEN
+    end
+  end
+
+-- ======= --
 local HttpService = game:GetService("HttpService")
 
 -- =========================
