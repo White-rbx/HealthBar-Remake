@@ -1,4 +1,4 @@
--- searcher... yes. 2.59
+-- searcher... yes. 2.6
 
 -- =====>> Saved Functions <<=====
 
@@ -512,13 +512,15 @@ updateState()
 -- ========= FETCH + RENDER =========
 local function fetchAndRender(query)
     clearResults()
+    loadedIds = {}
 
     local page = 1
     local loaded = 0
+    local isSearch = (query and query ~= "")
 
     while loaded < TARGET_TOTAL do
         local url
-        if query and query ~= "" then
+        if isSearch then
             url = string.format(
                 SCRIPTBLOX_SEARCH,
                 HttpService:UrlEncode(query),
@@ -531,8 +533,17 @@ local function fetchAndRender(query)
         local data = httpGetJson(url)
         if not data or not data.result then break end
 
-        for _, script in ipairs(data.result.scripts or {}) do
+        local scripts = data.result.scripts or {}
+        if #scripts == 0 then break end
+
+        for _, script in ipairs(scripts) do
             if loaded >= TARGET_TOTAL then break end
+
+            -- ✅ กันซ้ำด้วย _id
+            if script._id and loadedIds[script._id] then
+                continue
+            end
+            loadedIds[script._id] = true
 
             local img
             if script.image and script.image ~= "" then
@@ -570,7 +581,12 @@ local function fetchAndRender(query)
             task.wait(ITEM_DELAY)
         end
 
-        if not query or not data.result.nextPage then break end
+        -- 🔥 HOME ห้าม loop ต่อ
+        if not isSearch then
+            break
+        end
+
+        if not data.result.nextPage then break end
         page += 1
         task.wait(PAGE_DELAY)
     end
