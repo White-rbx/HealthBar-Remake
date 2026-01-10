@@ -1,4 +1,4 @@
--- searcher... yes. 2.5
+-- searcher... yes. 2.51
 
 -- =====>> Saved Functions <<=====
 
@@ -329,6 +329,10 @@ local function asset(title, visits, likes, callback)
     handle.BackgroundColor3 = Color3.fromRGB(18,18,21)
     handle.Parent = sc
     Corner(0, 8, handle)
+  
+    task.spawn(function()
+        playPopup(handle)
+    end)
 
     local ins = Instance.new("Frame")
     ins.Size = UDim2.new(1, -8, 1, -8)
@@ -459,34 +463,69 @@ updateState()
 
 
 -- =========================
--- RENDER
+-- FETCH + RENDER (max = 50)
 -- =========================
-local function renderScripts(scripts)
+local TARGET_TOTAL = 50
+local PAGE_DELAY = 0.2
+local ITEM_DELAY = 0.05
+
+local function fetchAndRender(query)
     clearResults()
 
-    for _,script in ipairs(scripts) do
-        local source = script.script or ""
+    local page = 1
+    local loaded = 0
 
-        asset(
-            script.title or "Untitled",
-            script.views or 0,
-            script.likeCount or 0,
-            function(action)
-                if action == "execute" then
-                    if source ~= "" then
-                        local fn, err = loadstring(source)
-                        if fn then fn() else warn(err) end
-                    end
-                elseif action == "copy" then
-                    local clip = setclipboard or toclipboard
-                    if clip and source ~= "" then
-                        clip(source)
+    while loaded < TARGET_TOTAL do
+        local url
+        if query and query ~= "" then
+            url = SCRIPTBLOX_SEARCH
+                :format(HttpService:UrlEncode(query))
+                .. "&page=" .. page
+        else
+            url = SCRIPTBLOX_HOME .. "?page=" .. page
+        end
+
+        local data = httpGetJson(url)
+        if not data or not data.result then break end
+
+        local scripts = data.result.scripts or {}
+        if #scripts == 0 then break end
+
+        for _,script in ipairs(scripts) do
+            if loaded >= TARGET_TOTAL then break end
+
+            local source = script.script or ""
+
+            asset(
+                script.title or "Untitled",
+                script.views or 0,
+                script.likeCount or 0,
+                function(action)
+                    if action == "execute" then
+                        if source ~= "" then
+                            local fn, err = loadstring(source)
+                            if fn then
+                                fn()
+                            else
+                                warn("[ScriptBlox] Compile error:", err)
+                            end
+                        end
+                    elseif action == "copy" then
+                        local clip = setclipboard or toclipboard
+                        if clip and source ~= "" then
+                            clip(source)
+                        end
                     end
                 end
-            end
-        )
+            )
 
-        task.wait(0.05) -- ✨ stagger animation
+            loaded += 1
+            task.wait(ITEM_DELAY) -- ✨ popup stagger
+        end
+
+        if not data.result.nextPage then break end
+        page += 1
+        task.wait(PAGE_DELAY) -- กัน rate limit
     end
 end
 
@@ -513,20 +552,18 @@ local function searchScriptBlox(query)
     end
 end
 
--- =========================
--- WIRING
--- =========================
+-- ========================
+-- WIRE
+-- ========================
 sb.MouseButton1Click:Connect(function()
-    searchScriptBlox(tb.Text)
+    fetchAndRender(tb.Text)
 end)
 
 tb.FocusLost:Connect(function(enter)
     if enter then
-        searchScriptBlox(tb.Text)
+        fetchAndRender(tb.Text)
     end
 end)
 
--- =========================
--- AUTO LOAD
--- =========================
-fetchHome()
+-- auto load (home)
+fetchAndRender()
