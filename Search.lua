@@ -1,4 +1,4 @@
--- searcher... yes. 2.586
+-- searcher... yes. 2.587
 
 -- =====>> Saved Functions <<=====
 
@@ -350,7 +350,7 @@ local function asset(title, visits, likes, isUniversal, gameName, verified, isPa
     end
 
     if key == true then
-       handle.BackgroundColor3 = Color3.fromRGB(155, 0, 0)
+       handle.BackgroundColor3 = Color3.fromRGB(255, 108, 0)
     end
   
     task.spawn(function()
