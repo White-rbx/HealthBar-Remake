@@ -1,4 +1,4 @@
--- searcher... yes. 2.58
+-- searcher... yes. 2.582
 
 -- =====>> Saved Functions <<=====
 
@@ -250,24 +250,34 @@ grid.FillDirection = Enum.FillDirection.Horizontal
 grid.SortOrder = Enum.SortOrder.Name
 grid.Parent = sc
 
--- =========================
--- CONFIG
--- =========================
-local SCRIPTBLOX_HOME =
-    "https://scriptblox.com/api/script/fetch"
+-- ========= SERVICES =========
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+-- ========= CONFIG =========
+local TARGET_TOTAL = 120
+local ITEM_DELAY = 0.1
+local PAGE_DELAY = 0.2
 
 local SCRIPTBLOX_SEARCH =
     "https://scriptblox.com/api/script/search?q=%s&page=%d&max=20"
--- ========= --
 
-local HttpService = game:GetService("HttpService")
-local TweenService = game:GetService("TweenService")
+local SCRIPTBLOX_HOME =
+    "https://scriptblox.com/api/script/fetch"
 
--- =========================
--- HELPERS
--- =========================
+local FALLBACK_IMAGE = "rbxassetid://140452968852400"
+
+-- ========= UI ROOT (ต้องมีอยู่แล้ว) =========
+-- sc = container (ScrollingFrame / Frame)
+-- sea = main frame
+-- sb = search button
+-- tb = TextBox search
+-- Corner(), Gradient() ต้องมี
+
+-- ========= HELPERS =========
 local function clearResults()
-    for _,v in ipairs(sc:GetChildren()) do
+    for _, v in ipairs(sc:GetChildren()) do
         if v:IsA("Frame") then
             v:Destroy()
         end
@@ -279,7 +289,7 @@ local function httpGetJson(url)
         return game:HttpGet(url)
     end)
     if not ok then
-        warn("[ScriptBlox] HTTP error:", res)
+        warn("[HTTP ERROR]", res)
         return nil
     end
 
@@ -287,7 +297,7 @@ local function httpGetJson(url)
         return HttpService:JSONDecode(res)
     end)
     if not success then
-        warn("[ScriptBlox] JSON decode failed")
+        warn("[JSON ERROR]")
         return nil
     end
 
@@ -321,7 +331,7 @@ local function playPopup(handle)
 end
 
 -- ========= --
-local function asset(title, visits, likes, isUniversal, gameName, verified, callback)
+local function asset(title, visits, likes, isUniversal, gameName, verified, imageUrl, callback)
   local handle = Instance.new("Frame")
     handle.Name = "Handle"
     handle.Size = UDim2.new(0, 220, 0, 250)
@@ -330,6 +340,7 @@ local function asset(title, visits, likes, isUniversal, gameName, verified, call
     handle.Parent = sc
     Corner(0, 8, handle)
     Gradient(handle, 90,0,0, Color3.fromRGB(18,18,21))
+  
     if verified == true then
        handle.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
     end
@@ -398,11 +409,7 @@ local function asset(title, visits, likes, isUniversal, gameName, verified, call
     uni.TextColor3 = Color3.fromRGB(200, 200, 200)
     uni.TextXAlignment = Enum.TextXAlignment.Left
     uni.TextScaled = true
-
-    uni.Text = isUniversal
-        and "Universal Script 📌"
-        or (gameName or "Unknown Game")
-
+    uni.Text = isUniversal and "Universal Script📌" or (gameName or "Unknown Game")
     uni.Parent = ins
 
     -- Execute
@@ -481,92 +488,72 @@ searchBtn:GetPropertyChangedSignal("Image"):Connect(updateState)
 updateState()
 
 
--- =========================
--- FETCH + RENDER
--- =========================
-local TARGET_TOTAL = 120
-local ITEM_DELAY = 0.1
-local PAGE_DELAY = 0.1
+-- ========= FETCH + RENDER =========
+local function fetchAndRender(query)
+    clearResults()
 
-while loaded < TARGET_TOTAL do
-    local url
-    if query and query ~= "" then
-        url = string.format(
-            SCRIPTBLOX_SEARCH,
-            HttpService:UrlEncode(query),
-            page
-        )
-    else
-        url = SCRIPTBLOX_HOME .. "?page=" .. page
-    end
+    local page = 1
+    local loaded = 0
 
-    local data = httpGetJson(url)
-    if not data or not data.result then break end
+    while loaded < TARGET_TOTAL do
+        local url
+        if query and query ~= "" then
+            url = string.format(
+                SCRIPTBLOX_SEARCH,
+                HttpService:UrlEncode(query),
+                page
+            )
+        else
+            url = SCRIPTBLOX_HOME
+        end
 
-    local scripts = data.result.scripts or {}
-    if #scripts == 0 then break end
+        local data = httpGetJson(url)
+        if not data or not data.result then break end
 
-    for _, script in ipairs(scripts) do
-        if loaded >= TARGET_TOTAL then break end
+        for _, script in ipairs(data.result.scripts or {}) do
+            if loaded >= TARGET_TOTAL then break end
 
-        asset(
-            script.title or "Untitled",
-            script.views or 0,
-            script.likeCount or 0,
-            script.isUniversal,
-            script.game and script.game.name or nil,
-            script.verified,
-            function(action)
-                local source = script.script or ""
-                if action == "execute" then
-                    if source ~= "" then
-                        local fn, err = loadstring(source)
-                        if fn then fn() else warn(err) end
-                    end
-                elseif action == "copy" then
-                    local clip = setclipboard or toclipboard
-                    if clip and source ~= "" then
-                        clip(source)
+            local img
+            if script.image and script.image ~= "" then
+                img = script.image
+            elseif script.game and script.game.imageUrl then
+                img = script.game.imageUrl
+            else
+                img = FALLBACK_IMAGE
+            end
+
+            asset(
+                script.title or "Untitled",
+                script.views or 0,
+                script.likeCount or 0,
+                script.isUniversal,
+                script.game and script.game.name,
+                script.verified,
+                img,
+                function(action)
+                    local source = script.script or ""
+                    if action == "execute" then
+                        local fn = loadstring(source)
+                        if fn then fn() end
+                    elseif action == "copy" then
+                        if setclipboard then
+                            setclipboard(source)
+                        end
                     end
                 end
-            end
-        )
+            )
 
-        loaded += 1
-        task.wait(ITEM_DELAY)
-    end
+            loaded += 1
+            task.wait(ITEM_DELAY)
+        end
 
-    if not data.result.nextPage then break end
-    page += 1
-    task.wait(PAGE_DELAY)
-end
-
--- =========================
--- FETCH
--- =========================
-local function fetchHome()
-    local data = httpGetJson(SCRIPTBLOX_HOME)
-    if data and data.result then
-        renderScripts(data.result.scripts or {})
+        if not query or not data.result.nextPage then break end
+        page += 1
+        task.wait(PAGE_DELAY)
     end
 end
 
-local function searchScriptBlox(query)
-    if not query or query == "" then
-        fetchHome()
-        return
-    end
-
-    local url = SCRIPTBLOX_SEARCH:format(HttpService:UrlEncode(query))
-    local data = httpGetJson(url)
-    if data and data.result then
-        renderScripts(data.result.scripts or {})
-    end
-end
-
--- ========================
--- WIRE
--- ========================
+-- ========= WIRING =========
 sb.MouseButton1Click:Connect(function()
     fetchAndRender(tb.Text)
 end)
@@ -577,4 +564,5 @@ tb.FocusLost:Connect(function(enter)
     end
 end)
 
-fetchAndRender() -- homelocal
+-- ========= AUTO LOAD =========
+fetchAndRender()
