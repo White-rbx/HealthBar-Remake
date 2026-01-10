@@ -1,4 +1,4 @@
--- searcher... yes. 2
+-- searcher... yes. 2.1
 
 -- =====>> Saved Functions <<=====
 
@@ -312,6 +312,135 @@ local function asset(title, visits, likes, callback)
     Corner(0,8,cop) 
 
     if callback then
-        exe.MouseButton1Click:Connect(callback)
+        exe.MouseButton1Click:Connect(function()
+            callback("execute")
+        end)
+
+        cop.MouseButton1Click:Connect(function()
+            callback("copy")
+    end)
+end
+
+-- ======== --
+local HttpService = game:GetService("HttpService")
+
+-- =========================
+-- CONFIG
+-- =========================
+local SCRIPTBLOX_SEARCH =
+    "https://scriptblox.com/api/script/search?q=%s&page=1&max=20"
+
+local SCRIPTBLOX_HOME =
+    "https://scriptblox.com/api/script/fetch"
+
+-- =========================
+-- HELPERS
+-- =========================
+local function clearResults()
+    for _,v in ipairs(sc:GetChildren()) do
+        if v:IsA("Frame") then
+            v:Destroy()
+        end
     end
 end
+
+local function httpGetJson(url)
+    local ok, res = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if not ok then
+        warn("[ScriptBlox] HTTP error:", res)
+        return nil
+    end
+
+    local success, data = pcall(function()
+        return HttpService:JSONDecode(res)
+    end)
+    if not success then
+        warn("[ScriptBlox] JSON decode failed")
+        return nil
+    end
+
+    return data
+end
+
+-- =========================
+-- MAIN RENDER
+-- =========================
+local function renderScripts(scripts)
+    clearResults()
+
+    for _,script in ipairs(scripts) do
+        local title  = script.title or "Untitled"
+        local views  = script.views or 0
+        local likes  = script.likeCount or 0
+        local source = script.script or ""
+
+        asset(title, views, likes, function(action)
+            if action == "execute" then
+                if source ~= "" then
+                    local fn, err = loadstring(source)
+                    if fn then
+                        fn()
+                    else
+                        warn("[ScriptBlox] Compile error:", err)
+                    end
+                end
+
+            elseif action == "copy" then
+                local clip = setclipboard or toclipboard
+                if clip and source ~= "" then
+                    clip(source)
+                end
+            end
+        end)
+    end
+end
+
+-- =========================
+-- FETCH HOME (no search)
+-- =========================
+local function fetchHome()
+    clearResults()
+    local data = httpGetJson(SCRIPTBLOX_HOME)
+    if not data or not data.result then return end
+
+    renderScripts(data.result.scripts or {})
+end
+
+-- =========================
+-- SEARCH
+-- =========================
+local function searchScriptBlox(query)
+    if not query or query == "" then
+        fetchHome()
+        return
+    end
+
+    clearResults()
+
+    local url = SCRIPTBLOX_SEARCH:format(HttpService:UrlEncode(query))
+    local data = httpGetJson(url)
+    if not data or not data.result then return end
+
+    renderScripts(data.result.scripts or {})
+end
+
+-- =========================
+-- BUTTON WIRING
+-- =========================
+sb.MouseButton1Click:Connect(function()
+    searchScriptBlox(tb.Text)
+end)
+
+-- Optional: Enter key
+tb.FocusLost:Connect(function(enter)
+    if enter then
+        searchScriptBlox(tb.Text)
+    end
+end)
+
+-- =========================
+-- AUTO LOAD HOME
+-- =========================
+fetchHome()local
