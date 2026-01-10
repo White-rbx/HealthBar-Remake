@@ -1,4 +1,4 @@
--- searcher... yes. 2.588
+-- searcher... yes. 2.589
 
 -- =====>> Saved Functions <<=====
 
@@ -173,6 +173,19 @@ tf.BackgroundTransparency = 1
 tf.Active = false  
 tf.Parent = sea  
 ListLayout(tf, 0, 5, HCenter, VCenter, SLayout, FillH)  
+
+-- =========================
+-- Script counter
+-- =========================
+local sct = Instance.new("TextLabel")
+sct.Name = "ScriptCounter"
+sct.Size = UDim2.new(0.1,0,0.3,0)
+sct.BackgroundTransparency = 1
+sct.Active = false
+sct.TextSize = 10
+sct.Text = "Script: 0/220"
+sct.TextColor3 = Color3.fromRGB(255,255,255)
+sct.Parent = tf
   
 -- =========================  
 -- Search Bar  
@@ -576,3 +589,24 @@ end)
 
 -- ========= AUTO LOAD =========
 fetchAndRender()
+
+
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+local handle = CoreGui.ExperienceSettings.Menu.Search.scroll.Handle
+local MAX_COUNT = 220 -- จำนวนสูงสุด
+
+-- ฟังก์ชันอัปเดต ScriptCounter
+local function updateScriptCounter()
+    if handle and handle.Parent then
+        -- นับค่า Handle.Position.Y.Scale จาก 0 → 1
+        local counter = math.floor(handle.Position.Y.Scale * MAX_COUNT)
+        sct.Text = "Script: " .. counter .. "/" .. MAX_COUNT
+    else
+        sct.Text = "Script: 0/" .. MAX_COUNT
+    end
+end
+
+-- ตรวจสอบ Handle ตลอดเวลา
+RunService.RenderStepped:Connect(updateScriptCounter)
