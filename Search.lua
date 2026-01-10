@@ -1,4 +1,4 @@
--- searcher... yes. 0.15 (I forget something.)
+-- searcher... yes. 2
 
 -- =====>> Saved Functions <<=====
 
@@ -144,3 +144,174 @@ More Source: https://docs.scriptblox.com/scripts/fetch
 -- ============= --
 
 ]]
+
+-- Locate  
+local menu = CoreGui:WaitForChild("ExperienceSettings", 10):FindFirstChild("Menu")  
+if not menu then return end  
+  
+-- =========================  
+-- Main Frame  
+-- =========================  
+local sea = Instance.new("Frame")  
+sea.Name = "Search"  
+sea.Size = UDim2.new(1, 0, 0.9, 0)  
+sea.Position = UDim2.new(0, 0, 0.1, 0)  
+sea.BackgroundColor3 = Color3.fromRGB(18, 18, 21)  
+sea.BackgroundTransparency = 0.3  
+sea.Active = false  
+sea.Parent = menu  
+  
+-- =========================  
+-- Top Frame  
+-- =========================  
+local tf = Instance.new("Frame")  
+tf.Name = "TopFrame"  
+tf.Size = UDim2.new(1, 0, 0.15, 0)  
+tf.BackgroundTransparency = 1  
+tf.Active = false  
+tf.Parent = sea  
+ListLayout(tf, 0, 5, HCenter, VCenter, SLayout, FillH)  
+  
+-- =========================  
+-- Search Bar  
+-- =========================  
+local bar = Instance.new("Frame")  
+bar.Name = "SearchBar"  
+bar.Size = UDim2.new(0.5, 0, 0.3, 0)  
+bar.BackgroundTransparency = 0.5  
+bar.Parent = tf  
+  
+Corner(10, 0, bar)  
+Stroke(bar, ASMBorder, 255, 255, 255, LineJoinMode, 1, 0)  
+ListLayout(bar, 0, 5, HCenter, VCenter, SLayout, FillV)  
+Gradient(bar,0, 0, 0,Color3.fromRGB(255,255,255),Color3.fromRGB(0,0,0))  
+  
+-- =========================  
+-- TextBox  
+-- =========================  
+local tb = Instance.new("TextBox")  
+tb.Name = "Searcher"  
+tb.Size = UDim2.new(0.95, 0, 0.5, 0)  
+tb.BackgroundTransparency = 1  
+tb.Text = ""  
+tb.PlaceholderText = "[ Select first ] Searcher"  
+tb.TextColor3 = Color3.fromRGB(255, 255, 255)  
+tb.TextScaled = true  
+tb.TextXAlignment = Enum.TextXAlignment.Left  
+tb.ClearTextOnFocus = false  
+tb.Parent = bar  
+  
+-- Button ScriptBlox  
+local sb = Instance.new("TextButton")  
+sb.Name = "ScriptBlox"  
+sb.Size = UDim2.new(0.1,0,0.3,0)  
+sb.TextColor3 = Color3.fromRGB(255,255,255)  
+sb.Text = "ScriptBlox"  
+sb.TextScaled = true  
+sb.Parent = tf  
+Corner(10, 0, sb)  
+Stroke(sb, ASMBorder, 255, 105, 180, LineJoinMode, 1, 0)  
+ListLayout(sb, 0, 5, HCenter, VCenter, SLayout, FillV)  
+Gradient(sb,90, 0, 0,Color3.fromRGB(255,105,180),Color3.fromRGB(255,182,193))  
+  
+-- Button WeAreDev  
+local wrd = Instance.new("TextButton")  
+wrd.Name = "WeAreDev"  
+wrd.Size = UDim2.new(0.1,0,0.3,0)  
+wrd.TextColor3 = Color3.fromRGB(255,255,255)  
+wrd.Text = "WeAreDev"  
+wrd.TextScaled = true  
+wrd.Parent = tf  
+Corner(10, 0, wrd)  
+Stroke(wrd, ASMBorder, 123, 165, 168, LineJoinMode, 1, 0)  
+ListLayout(wrd, 0, 5, HCenter, VCenter, SLayout, FillV)  
+Gradient(wrd,90, 0, 0,Color3.fromRGB(123,165,168),Color3.fromRGB(0,255,255))  
+  
+-- scroll  
+local sc = Instance.new("ScrollingFrame")  
+sc.Name = "scroll"  
+sc.Position = UDim2.new(0.05,0,0.15,0)  
+sc.Size = UDim2.new(0.9,0,0.85,0)  
+sc.BackgroundTransparency = 1  
+sc.CanvasSize = UDim2.new(0,0,0,0)  
+sc.AutomaticCanvasSize = Enum.AutomaticSize.Y  
+sc.ScrollBarThickness = 5  
+sc.ScrollingDirection = Enum.ScrollingDirection.Y  
+sc.Parent = sea  
+ListLayout(sc, 0, 15, HLeft, VTop, SLayout, FillH) 
+
+local function asset(title, visits, likes, callback)
+    local handle = Instance.new("Frame")
+    handle.Name = "Handle"
+    handle.Size = UDim2.new(0, 220, 0, 140)
+    handle.BackgroundTransparency = 0.25
+    handle.BackgroundColor3 = Color3.fromRGB(18,18,21)
+    handle.Parent = sc
+    Corner(0, 8, handle)
+
+    local ins = Instance.new("Frame")
+    ins.Size = UDim2.new(1, -8, 1, -8)
+    ins.Position = UDim2.new(0, 4, 0, 4)
+    ins.BackgroundTransparency = 1
+    ins.Parent = handle
+
+    -- Title
+    local titleLb = Instance.new("TextLabel")
+    titleLb.Size = UDim2.new(1, 0, 0, 40)
+    titleLb.TextWrapped = true
+    titleLb.BackgroundTransparency = 1
+    titleLb.TextColor3 = Color3.fromRGB(255,255,255)
+    titleLb.TextXAlignment = Enum.TextXAlignment.Left
+    titleLb.TextYAlignment = Enum.TextYAlignment.Top
+    titleLb.TextScaled = true
+    titleLb.Text = tostring(title)
+    titleLb.Parent = ins
+
+    -- Visits
+    local vis = Instance.new("TextLabel")
+    vis.Position = UDim2.new(0,0,0,45)
+    vis.Size = UDim2.new(1,0,0,18)
+    vis.BackgroundTransparency = 1
+    vis.TextColor3 = Color3.fromRGB(200,200,200)
+    vis.TextXAlignment = Enum.TextXAlignment.Left
+    vis.TextScaled = true
+    vis.Text = "Visits: " .. tostring(visits or 0)
+    vis.Parent = ins
+
+    -- Likes
+    local lik = Instance.new("TextLabel")
+    lik.Position = UDim2.new(0,0,0,63)
+    lik.Size = UDim2.new(1,0,0,18)
+    lik.BackgroundTransparency = 1
+    lik.TextColor3 = Color3.fromRGB(200,200,200)
+    lik.TextXAlignment = Enum.TextXAlignment.Left
+    lik.TextScaled = true
+    lik.Text = "Likes: " .. tostring(likes or 0)
+    lik.Parent = ins
+
+    -- Execute
+    local exe = Instance.new("TextButton")
+    exe.Size = UDim2.new(1, 0, 0, 24)
+    exe.Position = UDim2.new(0, 0, 1, -24)
+    exe.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    exe.TextColor3 = Color3.fromRGB(255,255,255)
+    exe.TextScaled = true
+    exe.Text = "EXECUTE"
+    exe.Parent = ins
+    Corner(0, 6, exe)
+
+    local cop = Instance.new("TextButton")  
+    cop.Name = "copy"  
+    cop.Size = UDim2.new(1,0,0,20)  
+    cop.Position = UDim2.new(0,0,1,-40)  
+    cop.TextColor3 = Color3.fromRGB(255,255,255)  
+    cop.TextScaled = true  
+    cop.BackgroundColor3 = Color3.fromRGB(50,50,50)  
+    cop.Text = "COPY TO CLIPBOARD"  
+    cop.Parent = ins  
+    Corner(0,8,cop) 
+
+    if callback then
+        exe.MouseButton1Click:Connect(callback)
+    end
+end
