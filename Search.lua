@@ -1,4 +1,4 @@
--- searcher... yes. 2.2
+-- searcher... yes. 2.3
 
 -- =====>> Saved Functions <<=====
 
@@ -243,7 +243,7 @@ ListLayout(sc, 0, 15, HLeft, VTop, SLayout, FillH)
 local function asset(title, visits, likes, callback)
     local handle = Instance.new("Frame")
     handle.Name = "Handle"
-    handle.Size = UDim2.new(0, 220, 0, 140)
+    handle.Size = UDim2.new(0, 220, 0, 250)
     handle.BackgroundTransparency = 0.25
     handle.BackgroundColor3 = Color3.fromRGB(18,18,21)
     handle.Parent = sc
@@ -258,18 +258,20 @@ local function asset(title, visits, likes, callback)
     -- Title
     local titleLb = Instance.new("TextLabel")
     titleLb.Size = UDim2.new(1, 0, 0, 40)
+    titleLb.Name = "Title"
     titleLb.TextWrapped = true
     titleLb.BackgroundTransparency = 1
     titleLb.TextColor3 = Color3.fromRGB(255,255,255)
     titleLb.TextXAlignment = Enum.TextXAlignment.Left
-    titleLb.TextYAlignment = Enum.TextYAlignment.Top
+    titleLb.TextYAlignment = Enum.TextYAlignment.Center
     titleLb.TextScaled = true
     titleLb.Text = tostring(title)
     titleLb.Parent = ins
 
     -- Visits
     local vis = Instance.new("TextLabel")
-    vis.Position = UDim2.new(0,0,0,45)
+    vis.Position = UDim2.new(0,0,0,142)
+    vis.Name = "Visit"
     vis.Size = UDim2.new(1,0,0,18)
     vis.BackgroundTransparency = 1
     vis.TextColor3 = Color3.fromRGB(200,200,200)
@@ -280,7 +282,8 @@ local function asset(title, visits, likes, callback)
 
     -- Likes
     local lik = Instance.new("TextLabel")
-    lik.Position = UDim2.new(0,0,0,63)
+    lik.Position = UDim2.new(0,0,0,158)
+    lik.Name = "Like
     lik.Size = UDim2.new(1,0,0,18)
     lik.BackgroundTransparency = 1
     lik.TextColor3 = Color3.fromRGB(200,200,200)
@@ -291,21 +294,21 @@ local function asset(title, visits, likes, callback)
 
     -- Execute
     local exe = Instance.new("TextButton")
-    exe.Size = UDim2.new(1, 0, 0, 24)
-    exe.Position = UDim2.new(0, 0, 1, -24)
+    exe.Size = UDim2.new(1, 0, 0, 20)
+    exe.Position = UDim2.new(0, 0, 1, -20)
     exe.BackgroundColor3 = Color3.fromRGB(30,30,30)
     exe.TextColor3 = Color3.fromRGB(255,255,255)
-    exe.TextScaled = true
+    exe.TextScaled = false
     exe.Text = "EXECUTE"
     exe.Parent = ins
-    Corner(0, 6, exe)
+    Corner(0, 8, exe)
 
     local cop = Instance.new("TextButton")  
     cop.Name = "copy"  
     cop.Size = UDim2.new(1,0,0,20)  
-    cop.Position = UDim2.new(0,0,1,-40)  
+    cop.Position = UDim2.new(0,0,1,-44)  
     cop.TextColor3 = Color3.fromRGB(255,255,255)  
-    cop.TextScaled = true  
+    cop.TextScaled = false 
     cop.BackgroundColor3 = Color3.fromRGB(50,50,50)  
     cop.Text = "COPY TO CLIPBOARD"  
     cop.Parent = ins  
