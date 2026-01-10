@@ -1,4 +1,4 @@
--- searcher... yes. 2.325
+-- searcher... yes. 2.33
 
 -- =====>> Saved Functions <<=====
 
@@ -186,7 +186,7 @@ bar.Parent = tf
 Corner(10, 0, bar)  
 Stroke(bar, ASMBorder, 255, 255, 255, LineJoinMode, 1, 0)  
 ListLayout(bar, 0, 5, HCenter, VCenter, SLayout, FillV)  
-Gradient(bar,0, 0, 0,Color3.fromRGB(255,255,25locallor3.fromRGB(0,0,0))  
+Gradient(bar,0, 0, 0,Color3.fromRGB(255,255,255), Color3.fromRGB(0,0,0))  
   
 -- =========================  
 -- TextBox  
