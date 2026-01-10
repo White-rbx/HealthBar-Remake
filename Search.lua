@@ -1,4 +1,4 @@
--- searcher... yes. 2.3
+-- searcher... yes. 2.31
 
 -- =====>> Saved Functions <<=====
 
@@ -267,6 +267,15 @@ local function asset(title, visits, likes, callback)
     titleLb.TextScaled = true
     titleLb.Text = tostring(title)
     titleLb.Parent = ins
+
+    local ima = Instance.new("ImageLabel")      
+    ima.Name = "ImageAsset"      
+    ima.Size = UDim2.new(1,0,0,100)
+    ima.Position = UDim2.new(0,0,0,42)
+    ima.BackgroundTransparency = 0.3      
+    ima.Image = "rbxassetid://99266606763970" 
+    ima.Parent = ins      
+    Corner(0,8,ima)      
 
     -- Visits
     local vis = Instance.new("TextLabel")
