@@ -1,4 +1,4 @@
--- searcher... yes. 2.67
+-- searcher... yes. 2.68
 
 -- =====>> Saved Functions <<=====
 
@@ -619,9 +619,9 @@ local function fetchAndRender(query)
                 script.likeCount or 0,
                 script.isUniversal,
                 script.game and script.game.name,
-                script.verified,
-                script.isPatched,
                 script.key,
+                script.isPatched,
+                script.verified,
                 img,
                 function(action)
                     local source = script.script or ""
