@@ -1,4 +1,4 @@
--- searcher... yes. 2.6
+-- searcher... yes. 2.65
 
 -- =====>> Saved Functions <<=====
 
@@ -396,7 +396,60 @@ local function asset(title, visits, likes, isUniversal, gameName, verified, isPa
     ima.BackgroundTransparency = 0.3      
     ima.Image = "rbxassetid://140452968852400" 
     ima.Parent = ins      
-    Corner(0,8,ima)      
+    Corner(0,8,ima)
+    ListLayout(ima, 0, 0, HLeft, VBottom, SLayout, FillV)
+
+    -- ISPATCH
+    local pat = Instance.new("TextLabel")
+    pat.Name = "Patched"
+    pat.Size = UDim2.new(0.5,0,0,18)
+    pat.BackgroundTransparency = 1
+    pat.TextScaled = true
+    pat.TextStrokeColor3 = Color3.fromRGB(255,255,255)
+    pat.TextStrokeTransparency = 0
+    pat.TextColor3 = Color3.fromRGB(255,0,0)
+    pat.Parent = ima
+
+    if isPatched == true then
+       pat.Visible = true
+    else
+       pat.Visible = false
+    end
+
+   -- Verified
+   local veri = Instance.new("TextLabel")
+    veri.Name = "Verified"
+    veri.Size = UDim2.new(0.5,0,0,18)
+    veri.BackgroundTransparency = 1
+    veri.TextScaled = true
+    veri.TextStrokeColor3 = Color3.fromRGB(255,255,255)
+    veri.TextStrokeTransparency = 0
+    veri.TextColor3 = Color3.fromRGB(0,85,255)
+    veri.Parent = ima
+
+    if verified == true then
+       veri.Visible = true
+    else
+       veri.Visible = false
+    end
+
+    -- KEY
+    local keys = Instance.new("TextLabel")
+    keys.Name = "KEY"
+    keys.Size = UDim2.new(0.5,0,0,18)
+    keys.BackgroundTransparency = 1
+    keys.TextScaled = true
+    keys.TextStrokeColor3 = Color3.fromRGB(255,255,255)
+    keys.TextStrokeTransparency = 0
+    keys.TextColor3 = Color3.fromRGB(255,85,0)
+    keys.Parent = ima
+
+    if key == true then
+       keys.Visible = true
+    else
+       keys.Visible = false
+    end
+       
 
     -- Visits
     local vis = Instance.new("TextLabel")
