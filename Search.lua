@@ -1,4 +1,4 @@
--- searcher... yes. 2.65
+-- searcher... yes. 2.67
 
 -- =====>> Saved Functions <<=====
 
@@ -408,6 +408,8 @@ local function asset(title, visits, likes, isUniversal, gameName, verified, isPa
     pat.TextStrokeColor3 = Color3.fromRGB(255,255,255)
     pat.TextStrokeTransparency = 0
     pat.TextColor3 = Color3.fromRGB(255,0,0)
+    pat.Text = "Patched"
+    pat.TextXAlignment = Enum.TextXAlignment.Left
     pat.Parent = ima
 
     if isPatched == true then
@@ -425,6 +427,8 @@ local function asset(title, visits, likes, isUniversal, gameName, verified, isPa
     veri.TextStrokeColor3 = Color3.fromRGB(255,255,255)
     veri.TextStrokeTransparency = 0
     veri.TextColor3 = Color3.fromRGB(0,85,255)
+    veri.Text = "Verified"
+    veri.TextXAlignment = Enum.TextXAlignment.Left
     veri.Parent = ima
 
     if verified == true then
@@ -442,6 +446,8 @@ local function asset(title, visits, likes, isUniversal, gameName, verified, isPa
     keys.TextStrokeColor3 = Color3.fromRGB(255,255,255)
     keys.TextStrokeTransparency = 0
     keys.TextColor3 = Color3.fromRGB(255,85,0)
+    keys.Text = "Key"
+    keys.TextXAlignment = Enum.TextXAlignment.Left
     keys.Parent = ima
 
     if key == true then
