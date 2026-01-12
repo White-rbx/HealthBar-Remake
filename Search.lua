@@ -1,4 +1,4 @@
--- searcher... yes. 2.69
+-- searcher... yes. 2.7
 
 -- =====>> Saved Functions <<=====
 
@@ -353,18 +353,19 @@ local function asset(title, visits, likes, isUniversal, gameName, key, isPatched
     handle.Parent = sc
     Corner(0, 8, handle)
     Gradient(handle, 90,0,0, Color3.fromRGB(255,255,255), Color3.fromRGB(18,18,21))
-  
-    if verified == true then
-       handle.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
-    end
+
+    if key == true then
+       handle.BackgroundColor3 = Color3.fromRGB(255, 108, 0)
+    end  
 
     if isPatched == true then
        handle.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
     end
 
-    if key == true then
-       handle.BackgroundColor3 = Color3.fromRGB(255, 108, 0)
+    if verified == true then
+       handle.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
     end
+  
   
     task.spawn(function()
         playPopup(handle)
@@ -398,6 +399,26 @@ local function asset(title, visits, likes, isUniversal, gameName, key, isPatched
     ima.Parent = ins      
     Corner(0,8,ima)
     ListLayout(ima, 0, 0, HLeft, VBottom, SLayout, FillV)
+
+    -- KEY
+    local keys = Instance.new("TextLabel")
+    keys.Name = "KEY"
+    keys.Size = UDim2.new(0.5,0,0,18)
+    keys.BackgroundTransparency = 1
+    keys.TextScaled = true
+    keys.TextStrokeColor3 = Color3.fromRGB(255,255,255)
+    keys.TextStrokeTransparency = 0
+    keys.TextColor3 = Color3.fromRGB(255,85,0)
+    keys.Text = "Key"
+    keys.TextXAlignment = Enum.TextXAlignment.Left
+    keys.Parent = ima
+
+    if key == true then
+       keys.Visible = true
+    else
+       keys.Visible = false
+    end
+  
 
     -- ISPATCH
     local pat = Instance.new("TextLabel")
@@ -435,27 +456,7 @@ local function asset(title, visits, likes, isUniversal, gameName, key, isPatched
        veri.Visible = true
     else
        veri.Visible = false
-    end
-
-    -- KEY
-    local keys = Instance.new("TextLabel")
-    keys.Name = "KEY"
-    keys.Size = UDim2.new(0.5,0,0,18)
-    keys.BackgroundTransparency = 1
-    keys.TextScaled = true
-    keys.TextStrokeColor3 = Color3.fromRGB(255,255,255)
-    keys.TextStrokeTransparency = 0
-    keys.TextColor3 = Color3.fromRGB(255,85,0)
-    keys.Text = "Key"
-    keys.TextXAlignment = Enum.TextXAlignment.Left
-    keys.Parent = ima
-
-    if key == true then
-       keys.Visible = true
-    else
-       keys.Visible = false
-    end
-       
+    end       
 
     -- Visits
     local vis = Instance.new("TextLabel")
