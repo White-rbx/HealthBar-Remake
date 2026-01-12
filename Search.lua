@@ -1,4 +1,4 @@
--- searcher... yes. 2.68
+-- searcher... yes. 2.69
 
 -- =====>> Saved Functions <<=====
 
@@ -344,7 +344,7 @@ local function playPopup(handle)
 end
 
 -- ========= --
-local function asset(title, visits, likes, isUniversal, gameName, verified, isPatched, key, imageUrl, callback)
+local function asset(title, visits, likes, isUniversal, gameName, key, isPatched, verified, imageUrl, callback)
   local handle = Instance.new("Frame")
     handle.Name = "Handle"
     handle.Size = UDim2.new(0, 220, 0, 250)
