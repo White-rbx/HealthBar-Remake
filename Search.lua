@@ -1,4 +1,4 @@
--- searcher... yes. 2.73
+-- searcher... yes. 2.74
 
 -- =====>> Saved Functions <<=====
 
@@ -280,6 +280,32 @@ local SCRIPTBLOX_HOME =
     "https://scriptblox.com/api/script/fetch"
 
 local FALLBACK_IMAGE = "rbxassetid://140452968852400"
+
+-- =======================
+
+local imageCache = {}
+
+local function getScriptImage(script)
+    if imageCache[script._id] then
+        return imageCache[script._id]
+    end
+
+    local img
+    if script.image and script.image ~= "" then
+        img = script.image
+    elseif script.game and script.game._id then
+        local placeId = tonumber(script.game._id)
+        if placeId then
+            img = string.format(
+                "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
+                placeId
+            )
+        end
+    end
+
+    imageCache[script._id] = img or FALLBACK_IMAGE
+    return imageCache[script._id]
+end
 
 -- ========= UI ROOT (ต้องมีอยู่แล้ว) =========
 -- sc = container (ScrollingFrame / Frame)
@@ -605,26 +631,8 @@ local function fetchAndRender(query)
             end
             loadedIds[script._id] = true
 
-            local function getScriptImage(script)
-               -- 1) รูปที่ user ใส่เอง
-              if script.image and script.image ~= "" then
-                   return script.image
-              end
-
-              -- 2) Roblox Game Thumbnail (ถ้า _id เป็นตัวเลข)
-             if script.game and script.game._id then
-                  local placeId = tonumber(script.game._id)
-                 if placeId then
-                      return string.format(
-                          "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
-                          placeId
-                      )
-                 end
-              end
-
-             -- 3) 🔥 FALLBACK (การันตีว่ามีค่าเสมอ)
-             return FALLBACK_IMAGE
-             end
+            local img = getScriptImage(script)
+      
             asset(
                 script.title or "Untitled",
                 script.views or 0,
