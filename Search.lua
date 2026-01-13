@@ -1,4 +1,4 @@
--- searcher... yes... 2.8741
+-- searcher... yes. 2.8742
 
 -- =====>> Saved Functions <<=====
 
@@ -304,7 +304,7 @@ local function getScriptImage(script)
     -- 2) fallback
     return FALLBACK_IMAGE
 end
-
+  
 -- ========= UI ROOT (ต้องมีอยู่แล้ว) =========
 -- sc = container (ScrollingFrame / Frame)
 -- sea = main frame
@@ -630,7 +630,7 @@ local function fetchAndRender(query)
             end
             loadedIds[script._id] = true
 
-            local img = getScriptImage()
+            local img = getScriptImage(script)
       
             asset(
                 script.title or "Untitled",
