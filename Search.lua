@@ -1,4 +1,4 @@
--- searcher... yes. 2.74
+-- searcher... yes. 2.75
 
 -- =====>> Saved Functions <<=====
 
@@ -421,7 +421,6 @@ local function asset(title, visits, likes, isUniversal, gameName, key, isPatched
     ima.Size = UDim2.new(1,0,0,100)
     ima.Position = UDim2.new(0,0,0,42)
     ima.BackgroundTransparency = 0.3      
-    ima.Image = "" 
     ima.Parent = ins      
     Corner(0,8,ima)
     ListLayout(ima, 0, 0, HLeft, VBottom, SLayout, FillV)
