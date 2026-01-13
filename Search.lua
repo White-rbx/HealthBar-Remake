@@ -1,4 +1,4 @@
--- searcher... yes. 2.8
+-- searcher... yes. 2.81
 
 -- =====>> Saved Functions <<=====
 
@@ -286,23 +286,15 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 local imageCache = {}
 
 local function getScriptImage(script)
-    -- 1) user image (ต้องเป็น URL เต็ม)
     if type(script.image) == "string" and script.image:match("^https?://") then
         return script.image
     end
 
-    -- 2) image จาก ScriptBlox game
-    if script.game and type(script.game.imageUrl) == "string" and script.game.imageUrl ~= "" then
-        return script.game.imageUrl
-    end
-
-    -- 3) rbxthumb (ถ้ามี universeId จริง)
     if script.game and tonumber(script.game.universeId) then
         return "rbxthumb://type=GameThumbnail&id="
             .. script.game.universeId .. "&w=420&h=420"
     end
 
-    -- 4) fallback
     return FALLBACK_IMAGE
 end
 
