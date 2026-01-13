@@ -1,4 +1,4 @@
--- searcher... yes. 2.85
+-- searcher... yes. 2.86
 
 -- =====>> Saved Functions <<=====
 
@@ -286,27 +286,25 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 local imageCache = {}
 
 local function getScriptImage(script)
-    if not script or not script.game then
-        return FALLBACK_IMAGE
+    -- 1) ดึง PlaceId จาก ScriptBlox
+    local placeId =
+        tonumber(script.game and (
+            script.game.placeId
+            or script.game.gameId
+            or script.game._id
+        ))
+
+    if placeId then
+        return string.format(
+            "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
+            placeId
+        )
     end
 
-    -- 1) ใช้ UniverseId (ดีที่สุด)
-    if tonumber(script.game.universeId) then
-        return "rbxthumb://type=GameIcon&id="
-            .. script.game.universeId
-            .. "&w=512&h=512"
-    end
-
-    -- 2) fallback ด้วย PlaceId
-    if tonumber(script.game.placeId) then
-        return "rbxthumb://type=GameIcon&id="
-            .. script.game.placeId
-            .. "&w=512&h=512"
-    end
-
-    -- 3) fallback สุดท้าย
+    -- 2) fallback
     return FALLBACK_IMAGE
 end
+  
 -- ========= UI ROOT (ต้องมีอยู่แล้ว) =========
 -- sc = container (ScrollingFrame / Frame)
 -- sea = main frame
