@@ -1,4 +1,4 @@
--- searcher... yes. 2.78
+-- searcher... yes. 2.79
 
 -- =====>> Saved Functions <<=====
 
@@ -286,31 +286,23 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 local imageCache = {}
 
 local function getScriptImage(script)
-    if script._id and imageCache[script._id] then
-        return imageCache[script._id]
-    end
-
-    local img
-
-    -- 1) รูปที่ user ใส่เอง
     if script.image and script.image ~= "" then
-        img = script.image
-
-    -- 2) Roblox Game Thumbnail (ใช้ rbxthumb)
-    elseif script.game and script.game._id then
-        local placeId = tonumber(script.game._id)
-        if placeId then
-            img = ("rbxthumb://type=GameThumbnail&id=%d&w=420&h=420"):format(placeId)
-        end
+        return script.image
     end
 
-    img = img or FALLBACK_IMAGE
-
-    if script._id then
-        imageCache[script._id] = img
+    if script.game and script.game.universeId then
+        return "rbxthumb://type=GameThumbnail&id="
+            .. script.game.universeId .. "&w=420&h=420"
     end
 
-    return img
+    if script.game and script.game.placeId then
+        return string.format(
+            "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
+            script.game.placeId
+        )
+    end
+
+    return FALLBACK_IMAGE
 end
 
 -- ========= UI ROOT (ต้องมีอยู่แล้ว) =========
@@ -431,8 +423,12 @@ local function asset(title, visits, likes, isUniversal, gameName, key, isPatched
     Corner(0,8,ima)
     ListLayout(ima, 0, 0, HLeft, VBottom, SLayout, FillV)
 
-    ima.Image = (imageUrl and imageUrl ~= "") and imageUrl or FALLBACK_IMAGE
-
+    if imageUrl and imageUrl ~= "" then
+        ima.Image = imageUrl
+    else
+        ima.Image = FALLBACK_IMAGE
+    end
+  
     -- KEY
     local keys = Instance.new("TextLabel")
     keys.Name = "KEY"
@@ -523,7 +519,7 @@ local function asset(title, visits, likes, isUniversal, gameName, key, isPatched
     uni.TextColor3 = Color3.fromRGB(255, 255, 255)
     uni.TextXAlignment = Enum.TextXAlignment.Left
     uni.TextScaled = true
-    uni.Text = isUniversal and "Universal Script📌" or (gameName or "Unknown Game")
+    uni.Text = isUniversal and "Universal Script 📌" or (gameName or "Unknown Game")
     uni.Parent = ins
 
     -- Execute
