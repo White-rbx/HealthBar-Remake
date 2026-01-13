@@ -1,4 +1,4 @@
--- searcher... yes... 2.873
+-- searcher... yes... 2.874
 
 -- =====>> Saved Functions <<=====
 
@@ -629,7 +629,7 @@ local function fetchAndRender(query)
             end
             loadedIds[script._id] = true
 
-            local img = getScriptImage(script)
+            local img = getScriptImage(script, not isSearch)
       
             asset(
                 script.title or "Untitled",
