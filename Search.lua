@@ -1,4 +1,4 @@
--- searcher... yes. 2.77
+-- searcher... yes. 2.78
 
 -- =====>> Saved Functions <<=====
 
@@ -291,16 +291,16 @@ local function getScriptImage(script)
     end
 
     local img
+
+    -- 1) รูปที่ user ใส่เอง
     if script.image and script.image ~= "" then
         img = script.image
 
+    -- 2) Roblox Game Thumbnail (ใช้ rbxthumb)
     elseif script.game and script.game._id then
         local placeId = tonumber(script.game._id)
         if placeId then
-            img = string.format(
-                "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
-                placeId
-            )
+            img = ("rbxthumb://type=GameThumbnail&id=%d&w=420&h=420"):format(placeId)
         end
     end
 
