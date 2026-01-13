@@ -1,4 +1,4 @@
--- searcher... yes. 2.7
+-- searcher... yes. 2.73
 
 -- =====>> Saved Functions <<=====
 
@@ -395,7 +395,7 @@ local function asset(title, visits, likes, isUniversal, gameName, key, isPatched
     ima.Size = UDim2.new(1,0,0,100)
     ima.Position = UDim2.new(0,0,0,42)
     ima.BackgroundTransparency = 0.3      
-    ima.Image = "rbxassetid://140452968852400" 
+    ima.Image = "" 
     ima.Parent = ins      
     Corner(0,8,ima)
     ListLayout(ima, 0, 0, HLeft, VBottom, SLayout, FillV)
@@ -605,15 +605,26 @@ local function fetchAndRender(query)
             end
             loadedIds[script._id] = true
 
-            local img
-            if script.image and script.image ~= "" then
-                img = script.image
-            elseif script.game and script.game.imageUrl then
-                img = script.game.imageUrl
-            else
-                img = FALLBACK_IMAGE
-            end
+            local function getScriptImage(script)
+               -- 1) รูปที่ user ใส่เอง
+              if script.image and script.image ~= "" then
+                   return script.image
+              end
 
+              -- 2) Roblox Game Thumbnail (ถ้า _id เป็นตัวเลข)
+             if script.game and script.game._id then
+                  local placeId = tonumber(script.game._id)
+                 if placeId then
+                      return string.format(
+                          "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
+                          placeId
+                      )
+                 end
+              end
+
+             -- 3) 🔥 FALLBACK (การันตีว่ามีค่าเสมอ)
+             return FALLBACK_IMAGE
+             end
             asset(
                 script.title or "Untitled",
                 script.views or 0,
