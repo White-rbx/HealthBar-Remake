@@ -1,4 +1,4 @@
--- searcher... yes. 2.75
+-- searcher... yes. 2.76
 
 -- =====>> Saved Functions <<=====
 
@@ -303,8 +303,8 @@ local function getScriptImage(script)
         end
     end
 
+    if script._id then
     imageCache[script._id] = img or FALLBACK_IMAGE
-    return imageCache[script._id]
 end
 
 -- ========= UI ROOT (ต้องมีอยู่แล้ว) =========
@@ -424,6 +424,8 @@ local function asset(title, visits, likes, isUniversal, gameName, key, isPatched
     ima.Parent = ins      
     Corner(0,8,ima)
     ListLayout(ima, 0, 0, HLeft, VBottom, SLayout, FillV)
+
+    ima.Image = (imageUrl and imageUrl ~= "") and imageUrl or FALLBACK_IMAGE
 
     -- KEY
     local keys = Instance.new("TextLabel")
