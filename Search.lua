@@ -1,4 +1,4 @@
--- searcher... yes. 2.76
+-- searcher... yes. 2.77
 
 -- =====>> Saved Functions <<=====
 
@@ -286,13 +286,14 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 local imageCache = {}
 
 local function getScriptImage(script)
-    if imageCache[script._id] then
+    if script._id and imageCache[script._id] then
         return imageCache[script._id]
     end
 
     local img
     if script.image and script.image ~= "" then
         img = script.image
+
     elseif script.game and script.game._id then
         local placeId = tonumber(script.game._id)
         if placeId then
@@ -303,8 +304,13 @@ local function getScriptImage(script)
         end
     end
 
+    img = img or FALLBACK_IMAGE
+
     if script._id then
-    imageCache[script._id] = img or FALLBACK_IMAGE
+        imageCache[script._id] = img
+    end
+
+    return img
 end
 
 -- ========= UI ROOT (ต้องมีอยู่แล้ว) =========
