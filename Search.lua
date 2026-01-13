@@ -1,4 +1,4 @@
--- searcher... yes. 2.81
+-- searcher... yes. 2.82
 
 -- =====>> Saved Functions <<=====
 
@@ -286,9 +286,6 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 local imageCache = {}
 
 local function getScriptImage(script)
-    if type(script.image) == "string" and script.image:match("^https?://") then
-        return script.image
-    end
 
     if script.game and tonumber(script.game.universeId) then
         return "rbxthumb://type=GameThumbnail&id="
