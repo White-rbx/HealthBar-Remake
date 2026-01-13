@@ -1,4 +1,4 @@
--- searcher... yes. 2.871
+-- searcher... yes... 2.873
 
 -- =====>> Saved Functions <<=====
 
@@ -285,26 +285,25 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 
 local imageCache = {}
 
-local function getScriptImage(script)
-    -- 1) ดึง PlaceId จาก ScriptBlox
-    local placeId =
-        tonumber(script.game and (
-            script.game.placeId
-            or script.game.gameId
-            or script.game._id
-        ))
-
-    if placeId then
-        return string.format(
-            "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
-            placeId
-        )
+local function getScriptImage(script, isHome)
+    -- HOME: อย่าพยายามฝืน
+    if isHome then
+        if script.game and script.game.placeId then
+            return "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid="
+                .. script.game.placeId .. "&fmt=png&wd=420&ht=420"
+        end
+        return FALLBACK_IMAGE
     end
 
-    -- 2) fallback
+    -- SEARCH: เต็มระบบ
+    if script.game and script.game.placeId then
+        return "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid="
+            .. script.game.placeId .. "&fmt=png&wd=420&ht=420"
+    end
+
     return FALLBACK_IMAGE
 end
-  
+
 -- ========= UI ROOT (ต้องมีอยู่แล้ว) =========
 -- sc = container (ScrollingFrame / Frame)
 -- sea = main frame
