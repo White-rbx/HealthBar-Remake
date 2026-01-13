@@ -1,4 +1,4 @@
--- searcher... yes. 2.82
+-- searcher... yes. 2.83
 
 -- =====>> Saved Functions <<=====
 
@@ -286,12 +286,13 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 local imageCache = {}
 
 local function getScriptImage(script)
-
+    -- 1) ใช้ GameIcon (สี่เหลี่ยม)
     if script.game and tonumber(script.game.universeId) then
-        return "rbxthumb://type=GameThumbnail&id="
+        return "rbxthumb://type=GameIcon&id="
             .. script.game.universeId .. "&w=420&h=420"
     end
 
+    -- 2) fallback
     return FALLBACK_IMAGE
 end
 
