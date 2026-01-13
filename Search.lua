@@ -1,4 +1,4 @@
--- searcher... yes. 2.84
+-- searcher... yes. 2.85
 
 -- =====>> Saved Functions <<=====
 
@@ -286,13 +286,27 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 local imageCache = {}
 
 local function getScriptImage(script)
-    if script.game and tonumber(script.game.iconAssetId) then
-        return "rbxassetid://" .. script.game.iconAssetId
+    if not script or not script.game then
+        return FALLBACK_IMAGE
     end
 
+    -- 1) ใช้ UniverseId (ดีที่สุด)
+    if tonumber(script.game.universeId) then
+        return "rbxthumb://type=GameIcon&id="
+            .. script.game.universeId
+            .. "&w=512&h=512"
+    end
+
+    -- 2) fallback ด้วย PlaceId
+    if tonumber(script.game.placeId) then
+        return "rbxthumb://type=GameIcon&id="
+            .. script.game.placeId
+            .. "&w=512&h=512"
+    end
+
+    -- 3) fallback สุดท้าย
     return FALLBACK_IMAGE
 end
-
 -- ========= UI ROOT (ต้องมีอยู่แล้ว) =========
 -- sc = container (ScrollingFrame / Frame)
 -- sea = main frame
@@ -411,11 +425,7 @@ local function asset(title, visits, likes, isUniversal, gameName, key, isPatched
     Corner(0,8,ima)
     ListLayout(ima, 0, 0, HLeft, VBottom, SLayout, FillV)
 
-    if imageUrl and imageUrl ~= "" then
-        ima.Image = imageUrl
-    else
-        ima.Image = FALLBACK_IMAGE
-    end
+    ima.Image = imageUrl or FALLBACK_IMAGE
   
     -- KEY
     local keys = Instance.new("TextLabel")
