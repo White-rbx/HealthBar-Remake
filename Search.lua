@@ -1,4 +1,4 @@
--- searcher... yes. 2.876
+-- searcher... yes. 2.877
 
 -- =====>> Saved Functions <<=====
 
@@ -591,6 +591,7 @@ searchBtn:GetPropertyChangedSignal("Image"):Connect(updateState)
 updateState()
 
 
+local currentFetchId = 0
 -- ========= FETCH + RENDER =========
 local function fetchAndRender(query)
     -- 🔥 สร้าง fetch session ใหม่
