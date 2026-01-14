@@ -1,4 +1,4 @@
--- searcher... yes. 2.875
+-- searcher... yes. 2.876
 
 -- =====>> Saved Functions <<=====
 
@@ -285,24 +285,18 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 
 local imageCache = {}
 
-local function getScriptImage(script)
-    local game = script.game
-    if not game then
-        return FALLBACK_IMAGE
-    end
-
-    -- ScriptBlox ใช้ id ไม่เหมือนกันในแต่ละ endpoint
-    local placeId = tonumber(
-        game.placeId
-        or game.gameId
-        or game._id
-    )
-
-    if placeId then
+local function getScriptImage(script, isSearch)
+    -- SEARCH: มี placeId → ใช้ Roblox
+    if isSearch and script.game and tonumber(script.game.placeId) then
         return string.format(
             "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
-            placeId
+            script.game.placeId
         )
+    end
+
+    -- HOME หรือ fallback: ใช้รูปจาก ScriptBlox
+    if script.image and script.image ~= "" then
+        return "https://scriptblox.com" .. script.image
     end
 
     return FALLBACK_IMAGE
@@ -599,6 +593,10 @@ updateState()
 
 -- ========= FETCH + RENDER =========
 local function fetchAndRender(query)
+    -- 🔥 สร้าง fetch session ใหม่
+    currentFetchId += 1
+    local fetchId = currentFetchId
+
     clearResults()
     loadedIds = {}
 
@@ -607,6 +605,11 @@ local function fetchAndRender(query)
     local isSearch = (query and query ~= "")
 
     while loaded < TARGET_TOTAL do
+        -- ⛔ ถ้ามี search ใหม่ → หยุดทันที
+        if fetchId ~= currentFetchId then
+            return
+        end
+
         local url
         if isSearch then
             url = string.format(
@@ -619,22 +622,27 @@ local function fetchAndRender(query)
         end
 
         local data = httpGetJson(url)
+        if fetchId ~= currentFetchId then return end
         if not data or not data.result then break end
 
         local scripts = data.result.scripts or {}
         if #scripts == 0 then break end
 
         for _, script in ipairs(scripts) do
+            -- ⛔ ตัดทันทีถ้ามี fetch ใหม่
+            if fetchId ~= currentFetchId then
+                return
+            end
+
             if loaded >= TARGET_TOTAL then break end
 
-            -- ✅ กันซ้ำด้วย _id
             if script._id and loadedIds[script._id] then
                 continue
             end
             loadedIds[script._id] = true
 
-            local img = getScriptImage(script)
-      
+            local img = getScriptImage(script, isSearch)
+
             asset(
                 script.title or "Untitled",
                 script.views or 0,
@@ -650,10 +658,8 @@ local function fetchAndRender(query)
                     if action == "execute" then
                         local fn = loadstring(source)
                         if fn then fn() end
-                    elseif action == "copy" then
-                        if setclipboard then
-                            setclipboard(source)
-                        end
+                    elseif action == "copy" and setclipboard then
+                        setclipboard(source)
                     end
                 end
             )
@@ -662,7 +668,6 @@ local function fetchAndRender(query)
             task.wait(ITEM_DELAY)
         end
 
-        -- 🔥 HOME ห้าม loop ต่อ
         if not isSearch then
             break
         end
