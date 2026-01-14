@@ -1,4 +1,4 @@
--- searcher... yes. 2.877
+-- searcher... yes. 2.8773
 
 -- =====>> Saved Functions <<=====
 
@@ -285,20 +285,28 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 
 local imageCache = {}
 
-local function getScriptImage(script, isSearch)
-    -- SEARCH: มี placeId → ใช้ Roblox
-    if isSearch and script.game and tonumber(script.game.placeId) then
+local function getScriptImage(script)
+    -- 1) Roblox place thumbnail (เสถียรสุด)
+    local placeId = tonumber(
+        script.game
+        and (script.game.placeId or script.game.gameId or script.game._id)
+    )
+
+    if placeId then
         return string.format(
             "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
-            script.game.placeId
+            placeId
         )
     end
 
-    -- HOME หรือ fallback: ใช้รูปจาก ScriptBlox
-    if script.image and script.image ~= "" then
+    -- 2) ScriptBlox image (เฉพาะกรณีไม่มี placeId)
+    if type(script.image) == "string"
+        and script.image ~= ""
+        and script.image:sub(1,1) == "/" then
         return "https://scriptblox.com" .. script.image
     end
 
+    -- 3) fallback
     return FALLBACK_IMAGE
 end
 
