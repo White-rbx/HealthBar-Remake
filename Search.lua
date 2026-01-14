@@ -1,4 +1,4 @@
--- searcher... yes. 2.8742
+-- searcher... yes. 2.875
 
 -- =====>> Saved Functions <<=====
 
@@ -286,13 +286,17 @@ local FALLBACK_IMAGE = "rbxassetid://140452968852400"
 local imageCache = {}
 
 local function getScriptImage(script)
-    -- 1) ดึง PlaceId จาก ScriptBlox
-    local placeId =
-        tonumber(script.game and (
-            script.game.placeId
-            or script.game.gameId
-            or script.game._id
-        ))
+    local game = script.game
+    if not game then
+        return FALLBACK_IMAGE
+    end
+
+    -- ScriptBlox ใช้ id ไม่เหมือนกันในแต่ละ endpoint
+    local placeId = tonumber(
+        game.placeId
+        or game.gameId
+        or game._id
+    )
 
     if placeId then
         return string.format(
@@ -301,10 +305,9 @@ local function getScriptImage(script)
         )
     end
 
-    -- 2) fallback
     return FALLBACK_IMAGE
 end
-  
+
 -- ========= UI ROOT (ต้องมีอยู่แล้ว) =========
 -- sc = container (ScrollingFrame / Frame)
 -- sea = main frame
