@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.467
+-- So uhm just a script lol. 4.47
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -387,11 +387,19 @@ txt3.TextColor3 = Color3.fromRGB(255,255,255)
 txt3.TextScaled =  true
 txt3.Parent = iN2
 
+local scrF = Instance.new("ScrollingFrame")
+scrF.Name = "Scroll"
+scrF.Position = UDim2.new(0,0,0.26,0)
+scrF.Size = UDim2.new(1,0,0.6,0)
+scrF.BackgroundTransparency = 1
+scrF.Parent = In
+Stroke(scrF, ASMBorder, 255,255,255, LSMRound, 1, 0.5)
+
+
 local bigt = Instance.new("TextLabel")
 bigt.Name = "About"
 bigt.Active = false
-bigt.Size = UDim2.new(1,0,0.6,0)
-bigt.Position = UDim2.new(0,0,0.26,0)
+bigt.Size = UDim2.new(1,0,1,0)
 bigt.BackgroundTransparency = 1
 bigt.Text = [[
 The ExperienceSettings is debug tools you can use on your own, there are a lot of tools!
@@ -420,8 +428,7 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ⚫ = Cannot fix
 ➖ = Disconnected or discontinued
 -------
-📌 Updated: Shift Lock
- ✅ Add BouncyAndHiglightImagsButton 
+📌 Updated: Re-gui textlabel description.
 -------
 🔁 In progress:
  🔨 Creating Status Profile (Debug)
@@ -431,13 +438,24 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ❌ Failed:
  ➖ Moveable HealthBar
 -------
+
+✨SCRIPT CREDITS✨
+[ Script Name ] by [ Creator ] [ If verified badge ]
+--------
+'Ketamine' by @Cherry (✓)
+'OG AFEM - Legacy' by @Imperial (✓)
+'Chat' by /Unknown user/
+'UNC' by /Unknown user/
+'REM' by @evildotcom
+'GameProber' by @Imperial (✓)
+'AudioPlayer' by /Unknown user/
+'EmoteSelect' by /Unknown user/
 ]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
-bigt.TextScaled = true
+bigt.TextScaled = false
 bigt.TextXAlignment = Enum.TextXAlignment.Left
 bigt.TextYAlignment = Enum.TextYAlignment.Top
-bigt.Parent = In
-Stroke(bigt, ASMBorder, 255,255,255, LSMRound, 1, 0.5)
+bigt.Parent = scrF
 
 local tip = Instance.new("TextLabel")
 tip.Name = "Help"
