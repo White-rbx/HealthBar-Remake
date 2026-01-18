@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.55
+-- So uhm just a script lol. 4.56
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2126,12 +2126,11 @@ task.spawn(function()
 end)
 --========================
 --// ================================
---// GLOBAL PHYSICS VISUALIZER
+--// GLOBAL PHYSICS VISUALIZER (FIXED)
 --// ================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 
@@ -2146,24 +2145,13 @@ local Physics = {
     Global = false,
 
     MaxDistance = 200,
-    SegmentLength = 1,
+    StepDistance = 1.2, -- ระยะจริงต่อ segment
     TimeStep = 0.045,
 
-    SegmentSize = Vector3.new(0.15, 0.15, 1),
-    LandingSize = Vector3.new(1, 0.2, 1)
+    SegmentThickness = 0.15
 }
 
-local MAX_SEGMENTS = math.floor(Physics.MaxDistance / Physics.SegmentLength)
-
---// ================================
---// GUI (parent = BFrame later)
---// ================================
-
-local gui = Instance.new("ScreenGui")
-gui.Name = "PhysicsVisualizer"
-gui.IgnoreGuiInset = true
-gui.ResetOnSpawn = false
-gui.Parent = CoreGui
+local MAX_STEPS = math.floor(Physics.MaxDistance / Physics.StepDistance)
 
 --// ================================
 --// PART POOL
@@ -2172,22 +2160,21 @@ gui.Parent = CoreGui
 local segmentPool = {}
 local activeSegments = {}
 
-local function getSegment()
-    local part = table.remove(segmentPool)
-    if part then
-        return part
-    end
-
-    part = Instance.new("Part")
-    part.Anchored = true
-    part.CanCollide = false
-    part.Material = Enum.Material.Neon
-    part.Size = Physics.SegmentSize
-    part.Parent = Workspace
-    return part
+local function newSegment()
+    local p = Instance.new("Part")
+    p.Anchored = true
+    p.CanCollide = false
+    p.Material = Enum.Material.Neon
+    p.Transparency = 1
+    p.Parent = Workspace
+    return p
 end
 
-local function recycleAll()
+local function getSegment()
+    return table.remove(segmentPool) or newSegment()
+end
+
+local function clearSegments()
     for _, p in ipairs(activeSegments) do
         p.Transparency = 1
         table.insert(segmentPool, p)
@@ -2196,83 +2183,109 @@ local function recycleAll()
 end
 
 --// ================================
---// LANDING MARKER
+--// LANDING MARKERS
 --// ================================
 
-local landingPart = Instance.new("Part")
-landingPart.Anchored = true
-landingPart.CanCollide = false
-landingPart.Material = Enum.Material.Neon
-landingPart.Color = Color3.fromRGB(0, 180, 255)
-landingPart.Size = Physics.LandingSize
-landingPart.Shape = Enum.PartType.Cylinder
-landingPart.Transparency = 1
-landingPart.Parent = Workspace
+local landingHit = Instance.new("Part")
+landingHit.Shape = Enum.PartType.Ball
+landingHit.Size = Vector3.new(1.2,1.2,1.2)
+landingHit.Material = Enum.Material.Neon
+landingHit.Color = Color3.fromRGB(255,0,0) -- จุดตก
+landingHit.Anchored = true
+landingHit.CanCollide = false
+landingHit.Transparency = 1
+landingHit.Parent = Workspace
+
+local landingGravity = landingHit:Clone()
+landingGravity.Size = Vector3.new(0.6,0.6,0.6)
+landingGravity.Color = Color3.fromRGB(0,170,255)
+landingGravity.Parent = Workspace
 
 --// ================================
---// CORE DRAW FUNCTION
+--// RAY PARAMS
 --// ================================
 
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 
-local function drawPhysics(hrp)
-    recycleAll()
-    landingPart.Transparency = 1
+--// ================================
+--// DRAW PHYSICS
+--// ================================
 
-    local startPos = hrp.Position
-    local velocity = hrp.AssemblyLinearVelocity
+local function drawPhysics(hrp)
+    local pos = hrp.Position
+    local vel = hrp.AssemblyLinearVelocity
     local gravity = Vector3.new(0, -Workspace.Gravity, 0)
 
-    local lastPos = startPos
+    rayParams.FilterDescendantsInstances = { hrp.Parent }
 
-    rayParams.FilterDescendantsInstances = {hrp.Parent}
+    local lastPos = pos
 
-    for i = 1, MAX_SEGMENTS do
-        local t = i * Physics.TimeStep
-        local pos = startPos + velocity * t + 0.5 * gravity * (t * t)
+    for i = 1, MAX_STEPS do
+        vel += gravity * Physics.TimeStep
+        local nextPos = lastPos + vel * Physics.TimeStep
 
-        if (pos - startPos).Magnitude > Physics.MaxDistance then
+        if (nextPos - hrp.Position).Magnitude > Physics.MaxDistance then
             break
         end
 
-        -- Raycast (Landing Point)
-        local hit = Workspace:Raycast(lastPos, pos - lastPos, rayParams)
+        -- Raycast hit
+        local hit = Workspace:Raycast(lastPos, nextPos - lastPos, rayParams)
         if hit then
-            landingPart.CFrame =
-                CFrame.new(hit.Position)
-                * CFrame.Angles(math.rad(90), 0, 0)
-            landingPart.Transparency = 0
+            landingHit.CFrame = CFrame.new(hit.Position)
+            landingHit.Transparency = 0
             break
         end
 
-        local part = getSegment()
-        part.Transparency = 0
+        local dir = nextPos - lastPos
+        local seg = getSegment()
 
-        local dir = (pos - lastPos)
-        local cf = CFrame.new(lastPos + dir / 2, pos)
-
-        part.CFrame = cf
-        part.Size = Vector3.new(
-            Physics.SegmentSize.X,
-            Physics.SegmentSize.Y,
+        seg.Size = Vector3.new(
+            Physics.SegmentThickness,
+            Physics.SegmentThickness,
             dir.Magnitude
         )
 
+        seg.CFrame = CFrame.new(lastPos + dir/2, nextPos)
+        seg.Transparency = 0
+
         -- COLOR BY DIRECTION
-        local y = math.abs(dir.Unit.Y)
-        if y < 0.25 then
-            part.Color = Color3.fromRGB(0, 255, 0) -- horizontal
+        if math.abs(dir.Unit.Y) < 0.2 then
+            seg.Color = Color3.fromRGB(0,255,0)
         elseif dir.Unit.Y > 0 then
-            part.Color = Color3.fromRGB(255, 255, 0) -- rising
+            seg.Color = Color3.fromRGB(255,255,0)
         else
-            part.Color = Color3.fromRGB(0, 180, 255) -- falling
+            seg.Color = Color3.fromRGB(0,180,255)
         end
 
-        table.insert(activeSegments, part)
-        lastPos = pos
+        table.insert(activeSegments, seg)
+        lastPos = nextPos
     end
+
+    -- gravity landing (ประมาณ)
+    landingGravity.Position = lastPos
+    landingGravity.Transparency = 0
 end
+
+--// ================================
+--// HUMANOID CACHE (GLOBAL MODE)
+--// ================================
+
+local humanoids = {}
+
+task.spawn(function()
+    while true do
+        humanoids = {}
+        for _, m in ipairs(Workspace:GetChildren()) do
+            local hum = m:FindFirstChildOfClass("Humanoid")
+            local hrp = m:FindFirstChild("HumanoidRootPart")
+            if hum and hrp then
+                table.insert(humanoids, hrp)
+            end
+        end
+        task.wait(0.4)
+    end
+end)
 
 --// ================================
 --// UPDATE LOOP
@@ -2280,23 +2293,25 @@ end
 
 RunService.RenderStepped:Connect(function()
     if not Physics.Enabled then
-        recycleAll()
-        landingPart.Transparency = 1
+        clearSegments()
+        landingHit.Transparency = 1
+        landingGravity.Transparency = 1
         return
     end
 
+    clearSegments()
+
     if Physics.Global then
-        for _, hum in ipairs(Workspace:GetDescendants()) do
-            if hum:IsA("Humanoid") and hum.RootPart then
-                if (hum.RootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= Physics.MaxDistance then
-                    drawPhysics(hum.RootPart)
-                end
+        local lp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not lp then return end
+
+        for _, hrp in ipairs(humanoids) do
+            if (hrp.Position - lp.Position).Magnitude <= Physics.MaxDistance then
+                drawPhysics(hrp)
             end
         end
     else
-        local char = LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hrp then
             drawPhysics(hrp)
         end
@@ -2304,7 +2319,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --// ================================
---// TOGGLES (ใช้ createToggle ของคุณ)
+--// TOGGLES (USE YOUR createToggle)
 --// ================================
 
 createToggle(BFrame, "Show Physics", function(on)
@@ -2314,7 +2329,3 @@ end, false)
 createToggle(BFrame, "Global Physics", function(on)
     Physics.Global = on
 end, false)
-
---// ================================
---// END
---// ================================
