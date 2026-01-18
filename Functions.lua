@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.62
+-- So uhm just a script lol. 4.63
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2079,18 +2079,34 @@ task.spawn(function()
     end
 end)
 
---========== HITBOX VIEWPORT SHOWER ==========
+--========================================
+-- HITBOX SHOWER (VIEWPORT FRAME)
+-- Debug / Visual Only
+--========================================
+
+-- SERVICES
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
 
---========== GUI ==========
+--========================================
+-- SETTINGS
+--========================================
+
+local HitboxView = {
+    Enabled = false,
+    Transparency = 0.5
+}
+
+--========================================
+-- GUI
+--========================================
+
 local gui = Instance.new("ScreenGui")
-gui.Name = "Hitbox Shower"
+gui.Name = "HitboxShower"
 gui.IgnoreGuiInset = true
 gui.ResetOnSpawn = false
 gui.Parent = CoreGui
@@ -2102,106 +2118,131 @@ viewport.CurrentCamera = Instance.new("Camera")
 viewport.CurrentCamera.Parent = viewport
 viewport.Parent = gui
 
---========== DATA ==========
-local HitboxViewport = {
-    Enabled = false,
-    Characters = {} -- [player] = {model, parts}
-}
+--========================================
+-- STORAGE
+--========================================
 
---========== UTILS ==========
-local function clearCharacter(player)
-    local data = HitboxViewport.Characters[player]
-    if data then
-        data.model:Destroy()
-        HitboxViewport.Characters[player] = nil
-    end
-end
+local characterClones = {} -- [player] = model
 
-local function clearAll()
-    for player in pairs(HitboxViewport.Characters) do
-        clearCharacter(player)
-    end
-end
+--========================================
+-- UTIL
+--========================================
 
 local function getTeamColor(player)
-    if player and player.TeamColor then
-        return player.TeamColor.Color
+    if player.Team and player.Team.TeamColor then
+        return player.Team.TeamColor.Color
     end
-    return Color3.fromRGB(255,255,255)
+    return Color3.fromRGB(255, 255, 255)
 end
 
---========== CLONE CHARACTER ==========
-local function cloneCharacter(player, character)
-    if HitboxViewport.Characters[player] then
-        clearCharacter(player)
+local function clearCharacter(player)
+    if characterClones[player] then
+        characterClones[player]:Destroy()
+        characterClones[player] = nil
     end
+end
+
+--========================================
+-- CLONE CHARACTER
+--========================================
+
+local function cloneCharacter(player)
+    if player == LocalPlayer then return end
+    if characterClones[player] then return end
+
+    local char = player.Character
+    if not char then return end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp or hum.Health <= 0 then return end
 
     local cloneModel = Instance.new("Model")
     cloneModel.Name = player.Name .. "_Hitbox"
-    cloneModel.Parent = viewport
 
-    local partsMap = {}
+    local color = getTeamColor(player)
 
-    for _, obj in ipairs(character:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            local p = Instance.new(obj.ClassName)
-            p.Size = obj.Size
-            p.CFrame = obj.CFrame
+    for _, inst in ipairs(char:GetDescendants()) do
+        if inst:IsA("BasePart") then
+            local p = Instance.new(inst.ClassName)
+            p.Size = inst.Size
+            p.CFrame = inst.CFrame
             p.Anchored = true
             p.CanCollide = false
-            p.Material = Enum.Material.ForceField
-            p.Transparency = 0.5
-            p.Color = getTeamColor(player)
+            p.Material = Enum.Material.Plastic
+            p.Transparency = HitboxView.Transparency
+            p.Color = color
             p.Parent = cloneModel
-
-            partsMap[obj] = p
         end
     end
 
-    HitboxViewport.Characters[player] = {
-        model = cloneModel,
-        parts = partsMap
-    }
+    cloneModel.Parent = viewport
+    characterClones[player] = cloneModel
 end
 
---========== UPDATE LOOP ==========
-RunService.RenderStepped:Connect(function()
-    if not HitboxViewport.Enabled then return end
+--========================================
+-- UPDATE LOOP
+--========================================
 
-    viewport.CurrentCamera.CFrame = Camera.CFrame
+RunService.RenderStepped:Connect(function()
+    if not HitboxView.Enabled then
+        for plr in pairs(characterClones) do
+            clearCharacter(plr)
+        end
+        return
+    end
+
+    -- Sync camera
+    viewport.CurrentCamera.CFrame = Workspace.CurrentCamera.CFrame
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            local char = player.Character
-            local data = HitboxViewport.Characters[player]
+        if player == LocalPlayer then continue end
 
-            if char and char.Parent then
-                if not data then
-                    cloneCharacter(player, char)
-                else
-                    -- sync parts
-                    for realPart, clonePart in pairs(data.parts) do
-                        if realPart and clonePart then
-                            clonePart.CFrame = realPart.CFrame
-                        end
-                    end
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+        -- ตาย / character หาย
+        if not char or not hum or hum.Health <= 0 or not hrp then
+            clearCharacter(player)
+            continue
+        end
+
+        -- สร้างถ้ายังไม่มี
+        if not characterClones[player] then
+            cloneCharacter(player)
+        end
+
+        -- Sync part positions
+        local clone = characterClones[player]
+        if clone then
+            for _, part in ipairs(clone:GetChildren()) do
+                local real = char:FindFirstChild(part.Name)
+                if real and real:IsA("BasePart") then
+                    part.CFrame = real.CFrame
                 end
-            else
-                clearCharacter(player)
             end
         end
     end
 end)
 
---========== TOGGLE ==========
-createToggle(BFrame, "Hitbox ESP", function(on)
-    HitboxViewport.Enabled = on
-    gui.Enabled = on
+--========================================
+-- TOGGLE
+--========================================
 
+createToggle(BFrame, "Hitbox Shower", function(on)
+    HitboxView.Enabled = on
     if not on then
-        clearAll()
+        for plr in pairs(characterClones) do
+            clearCharacter(plr)
+        end
     end
 end, false)
+
+--========================================
+-- END
+--========================================
+
 --========================
 --// =========================================
 --// PHYSICS VISUAL DEBUGGER (FULL)
