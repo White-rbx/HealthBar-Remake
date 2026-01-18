@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.63
+-- So uhm just a script lol. 4.64
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2080,8 +2080,8 @@ task.spawn(function()
 end)
 
 --========================================
--- HITBOX SHOWER (VIEWPORT FRAME)
--- Debug / Visual Only
+-- REAL-TIME HITBOX SHOWER (ViewportFrame)
+-- Debug Only
 --========================================
 
 -- SERVICES
@@ -2114,112 +2114,126 @@ gui.Parent = CoreGui
 local viewport = Instance.new("ViewportFrame")
 viewport.Size = UDim2.fromScale(1, 1)
 viewport.BackgroundTransparency = 1
-viewport.CurrentCamera = Instance.new("Camera")
-viewport.CurrentCamera.Parent = viewport
 viewport.Parent = gui
+
+local cam = Instance.new("Camera")
+cam.Parent = viewport
+viewport.CurrentCamera = cam
 
 --========================================
 -- STORAGE
 --========================================
 
-local characterClones = {} -- [player] = model
+-- [player] = {
+--    model = Model,
+--    parts = { [partName] = clonePart }
+-- }
+local clones = {}
 
 --========================================
--- UTIL
+-- UTILS
 --========================================
 
-local function getTeamColor(player)
-    if player.Team and player.Team.TeamColor then
-        return player.Team.TeamColor.Color
+local function getTeamColor(plr)
+    if plr.Team and plr.Team.TeamColor then
+        return plr.Team.TeamColor.Color
     end
-    return Color3.fromRGB(255, 255, 255)
+    return Color3.fromRGB(255,255,255)
 end
 
-local function clearCharacter(player)
-    if characterClones[player] then
-        characterClones[player]:Destroy()
-        characterClones[player] = nil
+local function destroyClone(plr)
+    local data = clones[plr]
+    if data then
+        data.model:Destroy()
+        clones[plr] = nil
     end
 end
 
 --========================================
--- CLONE CHARACTER
+-- CREATE CLONE
 --========================================
 
-local function cloneCharacter(player)
-    if player == LocalPlayer then return end
-    if characterClones[player] then return end
+local function createClone(plr)
+    if plr == LocalPlayer then return end
+    if clones[plr] then return end
 
-    local char = player.Character
+    local char = plr.Character
     if not char then return end
 
     local hum = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hum or not hrp or hum.Health <= 0 then return end
+    if not hum or hum.Health <= 0 then return end
 
-    local cloneModel = Instance.new("Model")
-    cloneModel.Name = player.Name .. "_Hitbox"
+    local model = Instance.new("Model")
+    model.Name = plr.Name .. "_Hitbox"
 
-    local color = getTeamColor(player)
+    local partMap = {}
+    local color = getTeamColor(plr)
 
     for _, inst in ipairs(char:GetDescendants()) do
         if inst:IsA("BasePart") then
             local p = Instance.new(inst.ClassName)
+            p.Name = inst.Name
             p.Size = inst.Size
             p.CFrame = inst.CFrame
             p.Anchored = true
             p.CanCollide = false
             p.Material = Enum.Material.Plastic
-            p.Transparency = HitboxView.Transparency
             p.Color = color
-            p.Parent = cloneModel
+            p.Transparency = HitboxView.Transparency
+            p.Parent = model
+
+            partMap[inst.Name] = p
         end
     end
 
-    cloneModel.Parent = viewport
-    characterClones[player] = cloneModel
+    model.Parent = viewport
+
+    clones[plr] = {
+        model = model,
+        parts = partMap
+    }
 end
 
 --========================================
--- UPDATE LOOP
+-- REAL-TIME UPDATE LOOP
 --========================================
 
 RunService.RenderStepped:Connect(function()
     if not HitboxView.Enabled then
-        for plr in pairs(characterClones) do
-            clearCharacter(plr)
+        for plr in pairs(clones) do
+            destroyClone(plr)
         end
         return
     end
 
-    -- Sync camera
-    viewport.CurrentCamera.CFrame = Workspace.CurrentCamera.CFrame
+    -- camera sync
+    cam.CFrame = Workspace.CurrentCamera.CFrame
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr == LocalPlayer then continue end
 
-        local char = player.Character
+        local char = plr.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-        -- ตาย / character หาย
-        if not char or not hum or hum.Health <= 0 or not hrp then
-            clearCharacter(player)
+        if not char or not hum or hum.Health <= 0 then
+            destroyClone(plr)
             continue
         end
 
-        -- สร้างถ้ายังไม่มี
-        if not characterClones[player] then
-            cloneCharacter(player)
+        if not clones[plr] then
+            createClone(plr)
         end
 
-        -- Sync part positions
-        local clone = characterClones[player]
-        if clone then
-            for _, part in ipairs(clone:GetChildren()) do
-                local real = char:FindFirstChild(part.Name)
-                if real and real:IsA("BasePart") then
-                    part.CFrame = real.CFrame
+        local data = clones[plr]
+        if not data then continue end
+
+        -- REAL-TIME PART SYNC
+        for _, inst in ipairs(char:GetDescendants()) do
+            if inst:IsA("BasePart") then
+                local clonePart = data.parts[inst.Name]
+                if clonePart then
+                    clonePart.CFrame = inst.CFrame
+                    clonePart.Size = inst.Size
                 end
             end
         end
@@ -2227,14 +2241,14 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --========================================
--- TOGGLE
+-- TOGGLE (ใช้ของเดิม)
 --========================================
 
 createToggle(BFrame, "Hitbox Shower", function(on)
     HitboxView.Enabled = on
     if not on then
-        for plr in pairs(characterClones) do
-            clearCharacter(plr)
+        for plr in pairs(clones) do
+            destroyClone(plr)
         end
     end
 end, false)
