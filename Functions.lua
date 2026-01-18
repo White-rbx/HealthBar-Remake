@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.61
+-- So uhm just a script lol. 4.62
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2079,97 +2079,127 @@ task.spawn(function()
     end
 end)
 
---========== HITBOX DRAW (SAFE MODE) ==========
+--========== HITBOX VIEWPORT SHOWER ==========
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
 
-local HitboxDraw = {
+--========== GUI ==========
+local gui = Instance.new("ScreenGui")
+gui.Name = "Hitbox Shower"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.Parent = CoreGui
+
+local viewport = Instance.new("ViewportFrame")
+viewport.Size = UDim2.fromScale(1, 1)
+viewport.BackgroundTransparency = 1
+viewport.CurrentCamera = Instance.new("Camera")
+viewport.CurrentCamera.Parent = viewport
+viewport.Parent = gui
+
+--========== DATA ==========
+local HitboxViewport = {
     Enabled = false,
-    Scale = 1.6,
-    Boxes = {}
+    Characters = {} -- [player] = {model, parts}
 }
 
--- ====== UTILS ======
+--========== UTILS ==========
+local function clearCharacter(player)
+    local data = HitboxViewport.Characters[player]
+    if data then
+        data.model:Destroy()
+        HitboxViewport.Characters[player] = nil
+    end
+end
+
+local function clearAll()
+    for player in pairs(HitboxViewport.Characters) do
+        clearCharacter(player)
+    end
+end
+
 local function getTeamColor(player)
     if player and player.TeamColor then
         return player.TeamColor.Color
     end
-    return Color3.fromRGB(255, 255, 255)
+    return Color3.fromRGB(255,255,255)
 end
 
-local function removeBox(model)
-    local box = HitboxDraw.Boxes[model]
-    if box then
-        box:Remove()
-        HitboxDraw.Boxes[model] = nil
+--========== CLONE CHARACTER ==========
+local function cloneCharacter(player, character)
+    if HitboxViewport.Characters[player] then
+        clearCharacter(player)
     end
-end
 
--- ====== MAIN LOOP ======
-RunService.RenderStepped:Connect(function()
-    if not HitboxDraw.Enabled then
-        for _, box in pairs(HitboxDraw.Boxes) do
-            box.Visible = false
+    local cloneModel = Instance.new("Model")
+    cloneModel.Name = player.Name .. "_Hitbox"
+    cloneModel.Parent = viewport
+
+    local partsMap = {}
+
+    for _, obj in ipairs(character:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local p = Instance.new(obj.ClassName)
+            p.Size = obj.Size
+            p.CFrame = obj.CFrame
+            p.Anchored = true
+            p.CanCollide = false
+            p.Material = Enum.Material.ForceField
+            p.Transparency = 0.5
+            p.Color = getTeamColor(player)
+            p.Parent = cloneModel
+
+            partsMap[obj] = p
         end
-        return
     end
 
-    for _, model in ipairs(workspace:GetChildren()) do
-        local hum = model:FindFirstChildOfClass("Humanoid")
-        local hrp = model:FindFirstChild("HumanoidRootPart")
+    HitboxViewport.Characters[player] = {
+        model = cloneModel,
+        parts = partsMap
+    }
+end
 
-        if hum and hrp and model ~= LocalPlayer.Character then
-            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-            if not onScreen then
-                removeBox(model)
-                continue
+--========== UPDATE LOOP ==========
+RunService.RenderStepped:Connect(function()
+    if not HitboxViewport.Enabled then return end
+
+    viewport.CurrentCamera.CFrame = Camera.CFrame
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local char = player.Character
+            local data = HitboxViewport.Characters[player]
+
+            if char and char.Parent then
+                if not data then
+                    cloneCharacter(player, char)
+                else
+                    -- sync parts
+                    for realPart, clonePart in pairs(data.parts) do
+                        if realPart and clonePart then
+                            clonePart.CFrame = realPart.CFrame
+                        end
+                    end
+                end
+            else
+                clearCharacter(player)
             end
-
-            -- สร้าง Box
-            if not HitboxDraw.Boxes[model] then
-                local box = Drawing.new("Square")
-                box.Filled = true
-                box.Transparency = 0.5
-                box.Thickness = 1
-                box.Visible = true
-                box.ZIndex = 2 -- AlwaysOnTop
-                HitboxDraw.Boxes[model] = box
-            end
-
-            local box = HitboxDraw.Boxes[model]
-
-            -- ขนาดตาม HRP
-            local size3D = hrp.Size * HitboxDraw.Scale
-            local top = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, size3D.Y / 2, 0))
-            local bottom = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, size3D.Y / 2, 0))
-
-            local height = math.abs(top.Y - bottom.Y)
-            local width = height * (size3D.X / size3D.Y)
-
-            box.Size = Vector2.new(width, height)
-            box.Position = Vector2.new(pos.X - width / 2, pos.Y - height / 2)
-
-            -- สีตามทีม
-            local player = Players:GetPlayerFromCharacter(model)
-            box.Color = getTeamColor(player)
-            box.Visible = true
-        else
-            removeBox(model)
         end
     end
 end)
 
--- ====== TOGGLE ======
+--========== TOGGLE ==========
 createToggle(BFrame, "Hitbox ESP", function(on)
-    HitboxDraw.Enabled = on
+    HitboxViewport.Enabled = on
+    gui.Enabled = on
 
     if not on then
-        for model in pairs(HitboxDraw.Boxes) do
-            removeBox(model)
-        end
+        clearAll()
     end
 end, false)
 --========================
