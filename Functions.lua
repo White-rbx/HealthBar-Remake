@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.47
+-- So uhm just a script lol. 4.5
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2074,3 +2074,203 @@ task.spawn(function()
         task.wait(0.05)
     end
 end)
+
+--========== HITBOX TOGGLE ===========
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local Hitbox = {
+    Enabled = false,
+    Scale = 1.6, -- คูณจากขนาดเดิม (แนะนำ 1.3 - 2.0)
+    Cache = {}   -- เก็บ Size เดิม
+}
+
+createToggle(BFrame, "Hitbox Expander", function(on)
+    Hitbox.Enabled = on
+
+    -- Restore เมื่อปิด
+    if not on then
+        for part, size in pairs(Hitbox.Cache) do
+            if part and part.Parent then
+                part.Size = size
+                part.Transparency = 1
+            end
+        end
+        table.clear(Hitbox.Cache)
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.35) do
+        if not Hitbox.Enabled then continue end
+
+        for _, model in ipairs(workspace:GetChildren()) do
+            local hum = model:FindFirstChildOfClass("Humanoid")
+            if hum and model ~= LocalPlayer.Character then
+
+                local hrp = model:FindFirstChild("HumanoidRootPart")
+                if hrp and (hrp:IsA("Part") or hrp:IsA("MeshPart")) then
+
+                    -- เก็บ Size เดิมครั้งแรก
+                    if not Hitbox.Cache[hrp] then
+                        Hitbox.Cache[hrp] = hrp.Size
+                    end
+
+                    hrp.Size = Hitbox.Cache[hrp] * Hitbox.Scale
+                    hrp.Transparency = 0.7
+                    hrp.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+--========================
+--==================== SHOW PHYSICS (ALL IN ONE) ====================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- ================= CONFIG =================
+local PhysicsVis = {
+    Enabled = false,      -- Velocity
+    ShowGravity = false,  -- Gravity
+    ShowRotation = false -- Angular
+}
+
+-- ================= CACHE =================
+local beamCache = {}
+
+local function createBeam(parent, name, w0, w1)
+    local a0 = Instance.new("Attachment")
+    a0.Name = name .. "_A0"
+    a0.Parent = parent
+
+    local a1 = Instance.new("Attachment")
+    a1.Name = name .. "_A1"
+    a1.Parent = parent
+
+    local beam = Instance.new("Beam")
+    beam.Name = name .. "_Beam"
+    beam.Attachment0 = a0
+    beam.Attachment1 = a1
+    beam.Width0 = w0
+    beam.Width1 = w1
+    beam.FaceCamera = true
+    beam.LightEmission = 1
+    beam.Enabled = false
+    beam.Parent = parent
+
+    return {
+        beam = beam,
+        a0 = a0,
+        a1 = a1
+    }
+end
+
+local function getBeams(hrp)
+    if beamCache[hrp] then
+        return beamCache[hrp]
+    end
+
+    beamCache[hrp] = {
+        velocity = createBeam(hrp, "Velocity", 0.15, 0.05),
+        gravity  = createBeam(hrp, "Gravity",  0.10, 0.02),
+        rotate   = createBeam(hrp, "Rotate",   0.12, 0.04)
+    }
+
+    return beamCache[hrp]
+end
+
+-- ================= CLEANUP =================
+local function cleanup()
+    for _, beams in pairs(beamCache) do
+        for _, data in pairs(beams) do
+            if data.beam then
+                data.beam:Destroy()
+            end
+        end
+    end
+    table.clear(beamCache)
+end
+
+LocalPlayer.CharacterRemoving:Connect(cleanup)
+
+-- ================= RENDER =================
+RunService.RenderStepped:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local beams = getBeams(hrp)
+
+    -- ===== VELOCITY =====
+    local vel = hrp.AssemblyLinearVelocity
+    local speed = vel.Magnitude
+
+    if PhysicsVis.Enabled and speed > 0.1 then
+        beams.velocity.beam.Enabled = true
+        beams.velocity.a0.Position = Vector3.zero
+        beams.velocity.a1.Position =
+            vel.Unit * math.clamp(speed * 0.15, 0.6, 7)
+
+        if speed < 6 then
+            beams.velocity.beam.Color =
+                ColorSequence.new(Color3.fromRGB(0,255,0))
+        elseif speed < 20 then
+            beams.velocity.beam.Color =
+                ColorSequence.new(Color3.fromRGB(255,255,0))
+        else
+            beams.velocity.beam.Color =
+                ColorSequence.new(Color3.fromRGB(255,0,0))
+        end
+    else
+        beams.velocity.beam.Enabled = false
+    end
+
+    -- ===== GRAVITY =====
+    if PhysicsVis.ShowGravity then
+        beams.gravity.beam.Enabled = true
+        beams.gravity.a0.Position = Vector3.zero
+        beams.gravity.a1.Position = Vector3.new(0, -6, 0)
+        beams.gravity.beam.Color =
+            ColorSequence.new(Color3.fromRGB(0,150,255))
+    else
+        beams.gravity.beam.Enabled = false
+    end
+
+    -- ===== ROTATION =====
+    local ang = hrp.AssemblyAngularVelocity
+    local angMag = ang.Magnitude
+
+    if PhysicsVis.ShowRotation and angMag > 0.1 then
+        beams.rotate.beam.Enabled = true
+        beams.rotate.a0.Position = Vector3.zero
+        beams.rotate.a1.Position =
+            ang.Unit * math.clamp(angMag * 0.4, 0.6, 5)
+        beams.rotate.beam.Color =
+            ColorSequence.new(Color3.fromRGB(180,0,255))
+    else
+        beams.rotate.beam.Enabled = false
+    end
+end)
+
+-- ================= TOGGLES =================
+createToggle(BFrame, "Show Physics (Velocity)", function(on)
+    PhysicsVis.Enabled = on
+end, false)
+
+createToggle(BFrame, "Show Physics (Gravity)", function(on)
+    PhysicsVis.ShowGravity = on
+end, false)
+
+createToggle(BFrame, "Show Physics (Rotation)", function(on)
+    PhysicsVis.ShowRotation = on
+end, false)
+
+--==================================================================
