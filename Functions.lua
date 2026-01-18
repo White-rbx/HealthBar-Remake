@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.58
+-- So uhm just a script lol. 4.59
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2129,245 +2129,209 @@ task.spawn(function()
     end
 end)
 --========================
---// ================================
---=====================================================
--- GLOBAL PHYSICS TRAJECTORY DEBUGGER (DEBUG TOOL)
---=====================================================
+--// =========================================
+--// PHYSICS VISUAL DEBUGGER (FULL)
+--// =========================================
 
---========= SHORTCUTS =========
-local v2 = Vector2.new
-local v3 = Vector3.new
-local floor = math.floor
-local clamp = math.clamp
-local sin = math.sin
-local abs = math.abs
-local min = math.min
-local rgb = Color3.fromRGB
-
---========= SERVICES =========
-local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
-local DrawingAPI = Drawing
 
---========= SETTINGS =========
+--// =========================================
+--// SETTINGS
+--// =========================================
+
 local Physics = {
     Enabled = false,
     Global = false,
 
-    GlobalRange = 200,      -- studs
-    MaxSimTime = 2.5,
-    TimeStep = 0.03,
-    ArcSegments = 29,
+    MaxDistance = 200,
+    TimeStep = 0.04,
+    MaxTime = 2.5,
+
+    SegmentThickness = 0.15,
 }
 
---========= STATE =========
-local isAirborne = false
-local lastLanding = nil
-local pulseTime = 0
+--// =========================================
+--// CACHE PER OBJECT
+--// =========================================
 
---========= DRAWING OBJECTS =========
-local arcLines = {}
-for i = 1, Physics.ArcSegments do
-    local l = DrawingAPI.new("Line")
-    l.Color = rgb(255, 240, 140)
-    l.Thickness = 2
-    l.Visible = false
-    arcLines[i] = l
+local PhysicsCache = {}
+
+--// =========================================
+--// UTILS
+--// =========================================
+
+local function newSegment()
+    local p = Instance.new("Part")
+    p.Anchored = true
+    p.CanCollide = false
+    p.Material = Enum.Material.Neon
+    p.Size = Vector3.new(Physics.SegmentThickness, Physics.SegmentThickness, 1)
+    p.Parent = Workspace
+    return p
 end
 
-local fallDot = DrawingAPI.new("Circle")
-fallDot.Radius = 6
-fallDot.Filled = true
-fallDot.Color = rgb(0, 180, 255) -- blue
-fallDot.Visible = false
-fallDot.NumSides = 24
-
-local landDot = DrawingAPI.new("Circle")
-landDot.Radius = 12
-landDot.Filled = true
-landDot.Color = rgb(255, 80, 80) -- red
-landDot.Visible = false
-landDot.NumSides = 32
-
-local landPulse = DrawingAPI.new("Circle")
-landPulse.Radius = 18
-landPulse.Filled = false
-landPulse.Color = rgb(255, 150, 150)
-landPulse.Thickness = 2
-landPulse.Visible = false
-landPulse.NumSides = 32
-
---========= HELPERS =========
-local function toScreen(pos)
-    local s, on = Camera:WorldToViewportPoint(pos)
-    return v2(s.X, s.Y), on
+local function newBall(color, size)
+    local p = Instance.new("Part")
+    p.Shape = Enum.PartType.Ball
+    p.Anchored = true
+    p.CanCollide = false
+    p.Material = Enum.Material.Neon
+    p.Color = color
+    p.Size = Vector3.new(size, size, size)
+    p.Transparency = 1
+    p.Parent = Workspace
+    return p
 end
 
-local function isVisible(pos)
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = { LocalPlayer.Character }
-    params.FilterType = Enum.RaycastFilterType.Exclude
-
-    local camPos = Camera.CFrame.Position
-    local dir = pos - camPos
-    local ray = Workspace:Raycast(camPos, dir, params)
-    return not ray
-end
-
-local function isGrounded(hrp)
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = { hrp.Parent }
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    return Workspace:Raycast(hrp.Position, v3(0,-3,0), params) ~= nil
-end
-
-local function predict(p0, v0, t)
-    return p0 + v0 * t + v3(0, -Workspace.Gravity, 0) * 0.5 * t * t
-end
-
-local function simulate(p0, v0)
-    local points = {}
-    local prev = p0
-    local landed = nil
-
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = { LocalPlayer.Character }
-    params.FilterType = Enum.RaycastFilterType.Exclude
-
-    for t = 0, Physics.MaxSimTime, Physics.TimeStep do
-        local pos = predict(p0, v0, t)
-        table.insert(points, pos)
-
-        local dir = pos - prev
-        if dir.Magnitude > 0.05 then
-            local ray = Workspace:Raycast(prev, dir, params)
-            if ray then
-                landed = ray.Position
-                break
-            end
-        end
-        prev = pos
+local function getState(obj)
+    if PhysicsCache[obj] then
+        return PhysicsCache[obj]
     end
 
-    return points, landed
+    local state = {
+        Segments = {},
+        BlueBall = newBall(Color3.fromRGB(0,180,255), 0.6),
+        RedBall  = newBall(Color3.fromRGB(255,60,60), 1),
+        Airborne = false,
+    }
+
+    PhysicsCache[obj] = state
+    return state
 end
 
---========= TARGETS (GLOBAL PHYSICS) =========
-local function getGlobalTargets()
-    local list = {}
-    local myChar = LocalPlayer.Character
-    if not myChar then return list end
-    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-    if not myHRP then return list end
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
-            local char = plr.Character
-            if char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                local hum = char:FindFirstChild("Humanoid")
-                if hrp and hum and hum.Health > 0 then
-                    if (hrp.Position - myHRP.Position).Magnitude <= Physics.GlobalRange then
-                        table.insert(list, hrp)
+--// =========================================
+--// CORE SIMULATION
+--// =========================================
+
+local function drawPhysics(root)
+    local state = getState(root)
+
+    -- reset visuals
+    for _, s in ipairs(state.Segments) do
+        s.Transparency = 1
+    end
+    table.clear(state.Segments)
+
+    state.BlueBall.Transparency = 1
+    state.RedBall.Transparency = 1
+
+    local startPos = root.Position
+    local velocity = root.AssemblyLinearVelocity
+    local gravity = Vector3.new(0, -Workspace.Gravity, 0)
+
+    rayParams.FilterDescendantsInstances = {root.Parent}
+
+    local lastPos = startPos
+    local landed = nil
+
+    for t = 0, Physics.MaxTime, Physics.TimeStep do
+        local pos = startPos + velocity * t + 0.5 * gravity * t * t
+
+        if (pos - startPos).Magnitude > Physics.MaxDistance then
+            break
+        end
+
+        local dir = pos - lastPos
+        if dir.Magnitude > 0.05 then
+            local hit = Workspace:Raycast(lastPos, dir, rayParams)
+            if hit then
+                landed = hit.Position
+                break
+            end
+
+            local seg = newSegment()
+            seg.Size = Vector3.new(
+                Physics.SegmentThickness,
+                Physics.SegmentThickness,
+                dir.Magnitude
+            )
+            seg.CFrame = CFrame.new(lastPos + dir / 2, pos)
+            seg.Color =
+                math.abs(dir.Unit.Y) < 0.2 and Color3.fromRGB(0,255,0)
+                or (dir.Unit.Y > 0 and Color3.fromRGB(255,255,0)
+                or Color3.fromRGB(0,180,255))
+
+            table.insert(state.Segments, seg)
+        end
+
+        lastPos = pos
+    end
+
+    -- STATE LOGIC
+    if velocity.Y < -1 and not landed then
+        state.Airborne = true
+        state.BlueBall.Transparency = 0
+        state.BlueBall.Position = lastPos
+    end
+
+    if landed then
+        state.Airborne = false
+        state.BlueBall.Transparency = 1
+        state.RedBall.Transparency = 0
+        state.RedBall.Position = landed
+    end
+end
+
+--// =========================================
+--// UPDATE LOOP
+--// =========================================
+
+RunService.RenderStepped:Connect(function()
+    if not Physics.Enabled then
+        for _, state in pairs(PhysicsCache) do
+            for _, s in ipairs(state.Segments) do
+                s.Transparency = 1
+            end
+            state.BlueBall.Transparency = 1
+            state.RedBall.Transparency = 1
+        end
+        return
+    end
+
+    local origin = LocalPlayer.Character
+        and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+    if not origin then return end
+
+    if Physics.Global then
+        for _, inst in ipairs(Workspace:GetDescendants()) do
+            local root =
+                inst:IsA("BasePart") and inst
+                or (inst:IsA("Model") and inst:FindFirstChild("HumanoidRootPart"))
+
+            if root and root:IsA("BasePart") then
+                if root.AssemblyLinearVelocity.Magnitude > 1 then
+                    if (root.Position - origin.Position).Magnitude <= Physics.MaxDistance then
+                        drawPhysics(root)
                     end
                 end
             end
         end
-    end
-    return list
-end
-
---========= DRAW CORE =========
-local function drawTrajectory(hrp)
-    local p0 = hrp.Position
-    local v0 = hrp.AssemblyLinearVelocity
-    local grounded = isGrounded(hrp)
-
-    isAirborne = not grounded and v0.Y < -5
-    if grounded then lastLanding = nil end
-
-    local points, landing = simulate(p0, v0)
-
-    for i = 1, Physics.ArcSegments do
-        local a = arcLines[i]
-        a.Visible = false
-        if points[i] and points[i+1] then
-            local s1, on1 = toScreen(points[i])
-            local s2, on2 = toScreen(points[i+1])
-            if on1 and on2 and isVisible((points[i]+points[i+1])*0.5) then
-                a.From = s1
-                a.To = s2
-                a.Visible = true
-            end
-        end
-    end
-
-    -- Falling indicator (blue)
-    if isAirborne then
-        local s, on = toScreen(p0)
-        fallDot.Position = s
-        fallDot.Visible = on
     else
-        fallDot.Visible = false
-    end
-
-    -- Landing
-    if isAirborne and landing then
-        lastLanding = landing
-    end
-
-    if lastLanding and isAirborne then
-        local s, on = toScreen(lastLanding)
-        landDot.Position = s
-        landDot.Visible = on
-        pulseTime += RunService.RenderStepped:Wait()
-        local pulse = abs(sin(pulseTime * 3))
-        landPulse.Position = s
-        landPulse.Radius = 18 + pulse * 8
-        landPulse.Transparency = 0.3 + pulse * 0.7
-        landPulse.Visible = on
-    else
-        landDot.Visible = false
-        landPulse.Visible = false
-    end
-end
-
---========= MAIN LOOP =========
-RunService.RenderStepped:Connect(function()
-    if not Physics.Enabled then
-        for _, l in ipairs(arcLines) do l.Visible = false end
-        fallDot.Visible = false
-        landDot.Visible = false
-        landPulse.Visible = false
-        return
-    end
-
-    if Physics.Global then
-        for _, hrp in ipairs(getGlobalTargets()) do
-            drawTrajectory(hrp)
-        end
-    else
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            drawTrajectory(hrp)
-        end
+        drawPhysics(origin)
     end
 end)
 
---========= TOGGLES (ใช้ createToggle ของคุณ) =========
-createToggle(BFrame, "Show Physics", function(v)
-    Physics.Enabled = v
+--// =========================================
+--// TOGGLES
+--// =========================================
+
+createToggle(BFrame, "Show Physics", function(on)
+    Physics.Enabled = on
 end, false)
 
-createToggle(BFrame, "Global Physics", function(v)
-    Physics.Global = v
+createToggle(BFrame, "Global Physics", function(on)
+    Physics.Global = on
 end, false)
 
---=====================================================
--- END (Debug Tool)
---=====================================================
+--// =========================================
+--// END
+--// =========================================
