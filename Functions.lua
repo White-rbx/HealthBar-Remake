@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.6
+-- So uhm just a script lol. 4.61
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1548,7 +1548,7 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 	local part
 	local holderGui
 	local speed = 16
-	local minSpeed, maxSpeed = 1, 5000
+	local minSpeed, maxSpeed = 1, 50000
 
 	-- helper: disconnect safely
 	local function addConn(c)
@@ -2079,55 +2079,99 @@ task.spawn(function()
     end
 end)
 
---========== HITBOX TOGGLE ===========
+--========== HITBOX DRAW (SAFE MODE) ==========
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
 local LocalPlayer = Players.LocalPlayer
 
-local Hitbox = {
+local HitboxDraw = {
     Enabled = false,
-    Scale = 1.6, -- คูณจากขนาดเดิม (แนะนำ 1.3 - 2.0)
-    Cache = {}   -- เก็บ Size เดิม
+    Scale = 1.6,
+    Boxes = {}
 }
 
-createToggle(BFrame, "Hitbox Expander", function(on)
-    Hitbox.Enabled = on
+-- ====== UTILS ======
+local function getTeamColor(player)
+    if player and player.TeamColor then
+        return player.TeamColor.Color
+    end
+    return Color3.fromRGB(255, 255, 255)
+end
 
-    -- Restore เมื่อปิด
+local function removeBox(model)
+    local box = HitboxDraw.Boxes[model]
+    if box then
+        box:Remove()
+        HitboxDraw.Boxes[model] = nil
+    end
+end
+
+-- ====== MAIN LOOP ======
+RunService.RenderStepped:Connect(function()
+    if not HitboxDraw.Enabled then
+        for _, box in pairs(HitboxDraw.Boxes) do
+            box.Visible = false
+        end
+        return
+    end
+
+    for _, model in ipairs(workspace:GetChildren()) do
+        local hum = model:FindFirstChildOfClass("Humanoid")
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+
+        if hum and hrp and model ~= LocalPlayer.Character then
+            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+            if not onScreen then
+                removeBox(model)
+                continue
+            end
+
+            -- สร้าง Box
+            if not HitboxDraw.Boxes[model] then
+                local box = Drawing.new("Square")
+                box.Filled = true
+                box.Transparency = 0.5
+                box.Thickness = 1
+                box.Visible = true
+                box.ZIndex = 2 -- AlwaysOnTop
+                HitboxDraw.Boxes[model] = box
+            end
+
+            local box = HitboxDraw.Boxes[model]
+
+            -- ขนาดตาม HRP
+            local size3D = hrp.Size * HitboxDraw.Scale
+            local top = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, size3D.Y / 2, 0))
+            local bottom = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, size3D.Y / 2, 0))
+
+            local height = math.abs(top.Y - bottom.Y)
+            local width = height * (size3D.X / size3D.Y)
+
+            box.Size = Vector2.new(width, height)
+            box.Position = Vector2.new(pos.X - width / 2, pos.Y - height / 2)
+
+            -- สีตามทีม
+            local player = Players:GetPlayerFromCharacter(model)
+            box.Color = getTeamColor(player)
+            box.Visible = true
+        else
+            removeBox(model)
+        end
+    end
+end)
+
+-- ====== TOGGLE ======
+createToggle(BFrame, "Hitbox ESP", function(on)
+    HitboxDraw.Enabled = on
+
     if not on then
-        for part, size in pairs(Hitbox.Cache) do
-            if part and part.Parent then
-                part.Size = size
-                part.Transparency = 1
-            end
-        end
-        table.clear(Hitbox.Cache)
-    end
-end)
-
-task.spawn(function()
-    while task.wait(0.35) do
-        if not Hitbox.Enabled then continue end
-
-        for _, model in ipairs(workspace:GetChildren()) do
-            local hum = model:FindFirstChildOfClass("Humanoid")
-            if hum and model ~= LocalPlayer.Character then
-
-                local hrp = model:FindFirstChild("HumanoidRootPart")
-                if hrp and (hrp:IsA("Part") or hrp:IsA("MeshPart")) then
-
-                    -- เก็บ Size เดิมครั้งแรก
-                    if not Hitbox.Cache[hrp] then
-                        Hitbox.Cache[hrp] = hrp.Size
-                    end
-
-                    hrp.Size = Hitbox.Cache[hrp] * Hitbox.Scale
-                    hrp.Transparency = 0.7
-                    hrp.CanCollide = false
-                end
-            end
+        for model in pairs(HitboxDraw.Boxes) do
+            removeBox(model)
         end
     end
-end)
+end, false)
 --========================
 --// =========================================
 --// PHYSICS VISUAL DEBUGGER (FULL)
