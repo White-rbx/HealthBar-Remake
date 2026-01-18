@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.59
+-- So uhm just a script lol. 4.6
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2335,3 +2335,113 @@ end, false)
 --// =========================================
 --// END
 --// =========================================
+
+
+--// ================================
+--// LAST DEATH VISUAL
+--// ================================
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+
+--// ================================
+--// STATE
+--// ================================
+
+local LastDeath = {
+    Enabled = false,
+    CurrentModel = nil
+}
+
+--// ================================
+--// FOLDER
+--// ================================
+
+local DeathFolder = Workspace:FindFirstChild("LastDeathsFolderExpSettings")
+if not DeathFolder then
+    DeathFolder = Instance.new("Folder")
+    DeathFolder.Name = "LastDeathsFolderExpSettings"
+    DeathFolder.Parent = Workspace
+end
+
+--// ================================
+--// CLEANUP
+--// ================================
+
+local function clearLastDeath()
+    if LastDeath.CurrentModel then
+        LastDeath.CurrentModel:Destroy()
+        LastDeath.CurrentModel = nil
+    end
+end
+
+--// ================================
+--// CREATE GHOST
+--// ================================
+
+local function createLastDeathModel(character)
+    clearLastDeath()
+
+    local ghost = Instance.new("Model")
+    ghost.Name = "LastDeath_" .. LocalPlayer.Name
+    ghost.Parent = DeathFolder
+
+    for _, inst in ipairs(character:GetDescendants()) do
+        if inst:IsA("BasePart") then
+            local p = inst:Clone()
+            p.Anchored = true
+            p.CanCollide = false
+            p.Transparency = 0.7
+            p.Material = Enum.Material.SmoothPlastic
+            p.Parent = ghost
+        end
+    end
+
+    LastDeath.CurrentModel = ghost
+end
+
+--// ================================
+--// HUMANOID HOOK
+--// ================================
+
+local function hookCharacter(char)
+    local hum = char:WaitForChild("Humanoid", 5)
+    if not hum then return end
+
+    hum.Died:Connect(function()
+        if LastDeath.Enabled then
+            task.wait(0.1) -- ensure final pose
+            createLastDeathModel(char)
+        end
+    end)
+end
+
+--// ================================
+--// CHARACTER ADDED
+--// ================================
+
+if LocalPlayer.Character then
+    hookCharacter(LocalPlayer.Character)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    hookCharacter(char)
+end)
+
+--// ================================
+--// TOGGLE
+--// ================================
+
+createToggle(BFrame, "Last Death", function(on)
+    LastDeath.Enabled = on
+
+    if not on then
+        clearLastDeath()
+    end
+end, false)
+
+--// ================================
+--// END
+--// ================================
