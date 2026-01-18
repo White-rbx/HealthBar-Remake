@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.5
+-- So uhm just a script lol. 4.52
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2125,152 +2125,159 @@ task.spawn(function()
     end
 end)
 --========================
---==================== SHOW PHYSICS (ALL IN ONE) ====================
+--==================== SHOW PHYSICS V2 ====================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local GRAVITY = Workspace.Gravity
 
 -- ================= CONFIG =================
-local PhysicsVis = {
-    Enabled = false,      -- Velocity
-    ShowGravity = false,  -- Gravity
-    ShowRotation = false -- Angular
+local Physics = {
+    Enabled = false,
+    Global = false,
+    Range = 200,
+    SegmentCount = 12,
+    SegmentLength = 1.2
 }
 
 -- ================= CACHE =================
-local beamCache = {}
+local activeSegments = {}
+local landingDots = {}
 
-local function createBeam(parent, name, w0, w1)
-    local a0 = Instance.new("Attachment")
-    a0.Name = name .. "_A0"
-    a0.Parent = parent
-
-    local a1 = Instance.new("Attachment")
-    a1.Name = name .. "_A1"
-    a1.Parent = parent
-
-    local beam = Instance.new("Beam")
-    beam.Name = name .. "_Beam"
-    beam.Attachment0 = a0
-    beam.Attachment1 = a1
-    beam.Width0 = w0
-    beam.Width1 = w1
-    beam.FaceCamera = true
-    beam.LightEmission = 1
-    beam.Enabled = false
-    beam.Parent = parent
-
-    return {
-        beam = beam,
-        a0 = a0,
-        a1 = a1
-    }
+-- ================= UTILS =================
+local function clear(tbl)
+    for _, v in pairs(tbl) do
+        if v and v.Destroy then
+            v:Destroy()
+        end
+    end
+    table.clear(tbl)
 end
 
-local function getBeams(hrp)
-    if beamCache[hrp] then
-        return beamCache[hrp]
+local function createSegment(parent)
+    local p = Instance.new("Part")
+    p.Anchored = true
+    p.CanCollide = false
+    p.Material = Enum.Material.Neon
+    p.Size = Vector3.new(0.15, 0.15, Physics.SegmentLength)
+    p.Transparency = 0.1
+    p.Parent = parent
+    return p
+end
+
+local function createDot(parent)
+    local p = Instance.new("Part")
+    p.Shape = Enum.PartType.Ball
+    p.Size = Vector3.new(0.6,0.6,0.6)
+    p.Anchored = true
+    p.CanCollide = false
+    p.Material = Enum.Material.Neon
+    p.Color = Color3.fromRGB(255,80,80)
+    p.Parent = parent
+    return p
+end
+
+-- ================= PHYSICS DRAW =================
+local function drawTrajectory(origin, velocity, container, color)
+    local segments = {}
+    local pos = origin
+    local vel = velocity
+    local dt = 0.12
+
+    for i = 1, Physics.SegmentCount do
+        local nextVel = vel + Vector3.new(0, -GRAVITY * dt, 0)
+        local nextPos = pos + vel * dt
+
+        local seg = createSegment(container)
+        seg.Color = color
+        seg.CFrame = CFrame.lookAt(
+            (pos + nextPos) / 2,
+            nextPos
+        )
+
+        TweenService:Create(seg, TweenInfo.new(0.25), {
+            Transparency = 0.3
+        }):Play()
+
+        table.insert(segments, seg)
+
+        pos = nextPos
+        vel = nextVel
     end
 
-    beamCache[hrp] = {
-        velocity = createBeam(hrp, "Velocity", 0.15, 0.05),
-        gravity  = createBeam(hrp, "Gravity",  0.10, 0.02),
-        rotate   = createBeam(hrp, "Rotate",   0.12, 0.04)
-    }
-
-    return beamCache[hrp]
+    return pos, segments
 end
 
--- ================= CLEANUP =================
-local function cleanup()
-    for _, beams in pairs(beamCache) do
-        for _, data in pairs(beams) do
-            if data.beam then
-                data.beam:Destroy()
+-- ================= MAIN LOOP =================
+RunService.RenderStepped:Connect(function()
+    if not Physics.Enabled then
+        clear(activeSegments)
+        clear(landingDots)
+        return
+    end
+
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    clear(activeSegments)
+    clear(landingDots)
+
+    local targets = {}
+
+    -- ===== LOCAL PLAYER =====
+    table.insert(targets, hrp)
+
+    -- ===== GLOBAL MODE =====
+    if Physics.Global then
+        for _, v in ipairs(Workspace:GetDescendants()) do
+            if v:IsA("BasePart")
+            and not v.Anchored
+            and v.AssemblyLinearVelocity.Magnitude > 1 then
+
+                if (v.Position - hrp.Position).Magnitude <= Physics.Range then
+                    table.insert(targets, v)
+                end
             end
         end
     end
-    table.clear(beamCache)
-end
 
-LocalPlayer.CharacterRemoving:Connect(cleanup)
+    -- ===== DRAW =====
+    for _, part in ipairs(targets) do
+        local vel = part.AssemblyLinearVelocity
+        if vel.Magnitude < 0.5 then continue end
 
--- ================= RENDER =================
-RunService.RenderStepped:Connect(function()
-    local char = LocalPlayer.Character
-    if not char then return end
+        local color =
+            vel.Magnitude < 10 and Color3.fromRGB(0,255,0)
+            or vel.Magnitude < 25 and Color3.fromRGB(255,255,0)
+            or Color3.fromRGB(255,0,0)
 
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+        local landingPos, segs =
+            drawTrajectory(part.Position, vel, Workspace, color)
 
-    local beams = getBeams(hrp)
-
-    -- ===== VELOCITY =====
-    local vel = hrp.AssemblyLinearVelocity
-    local speed = vel.Magnitude
-
-    if PhysicsVis.Enabled and speed > 0.1 then
-        beams.velocity.beam.Enabled = true
-        beams.velocity.a0.Position = Vector3.zero
-        beams.velocity.a1.Position =
-            vel.Unit * math.clamp(speed * 0.15, 0.6, 7)
-
-        if speed < 6 then
-            beams.velocity.beam.Color =
-                ColorSequence.new(Color3.fromRGB(0,255,0))
-        elseif speed < 20 then
-            beams.velocity.beam.Color =
-                ColorSequence.new(Color3.fromRGB(255,255,0))
-        else
-            beams.velocity.beam.Color =
-                ColorSequence.new(Color3.fromRGB(255,0,0))
+        for _, s in ipairs(segs) do
+            table.insert(activeSegments, s)
         end
-    else
-        beams.velocity.beam.Enabled = false
-    end
 
-    -- ===== GRAVITY =====
-    if PhysicsVis.ShowGravity then
-        beams.gravity.beam.Enabled = true
-        beams.gravity.a0.Position = Vector3.zero
-        beams.gravity.a1.Position = Vector3.new(0, -6, 0)
-        beams.gravity.beam.Color =
-            ColorSequence.new(Color3.fromRGB(0,150,255))
-    else
-        beams.gravity.beam.Enabled = false
-    end
-
-    -- ===== ROTATION =====
-    local ang = hrp.AssemblyAngularVelocity
-    local angMag = ang.Magnitude
-
-    if PhysicsVis.ShowRotation and angMag > 0.1 then
-        beams.rotate.beam.Enabled = true
-        beams.rotate.a0.Position = Vector3.zero
-        beams.rotate.a1.Position =
-            ang.Unit * math.clamp(angMag * 0.4, 0.6, 5)
-        beams.rotate.beam.Color =
-            ColorSequence.new(Color3.fromRGB(180,0,255))
-    else
-        beams.rotate.beam.Enabled = false
+        -- ===== LANDING DOT =====
+        local dot = createDot(Workspace)
+        dot.Position = landingPos
+        table.insert(landingDots, dot)
     end
 end)
 
 -- ================= TOGGLES =================
-createToggle(BFrame, "Show Physics (Velocity)", function(on)
-    PhysicsVis.Enabled = on
+createToggle(BFrame, "Show Physics (Advanced)", function(on)
+    Physics.Enabled = on
 end, false)
 
-createToggle(BFrame, "Show Physics (Gravity)", function(on)
-    PhysicsVis.ShowGravity = on
+createToggle(BFrame, "Global Physics", function(on)
+    Physics.Global = on
 end, false)
 
-createToggle(BFrame, "Show Physics (Rotation)", function(on)
-    PhysicsVis.ShowRotation = on
-end, false)
-
---==================================================================
+--========================================================
