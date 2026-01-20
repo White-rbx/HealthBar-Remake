@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.64
+-- So uhm just a script lol. 4.65
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -449,11 +449,14 @@ We want so say your script is awesome! and it will our script Thanks you!
 'OG AFEM - Legacy' by @Imperial (✓)
 'Chat' by /Unknown user/
 'UNC' by /Unknown user/
-'REM' by @evildotcom
+'REM' by @evildotcom {X}
 'GameProber' by @Imperial (✓)
 'AudioPlayer' by /Unknown user/
 'EmoteSelect' by /Unknown user/
 'universal movement predictor' by @zephyrr {X}
+'server position predictor' by @zephyrr {X}
+
+Dear script maker if you don't want to in my script, please send a forum in my discord! I'll removed from my script.
 ]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
 bigt.TextScaled = false
@@ -2574,3 +2577,226 @@ end, false)
 --// ================================
 --// END
 --// ================================
+
+--// =========================================
+--// Server Position Predictor (By @zephyrr)
+--// Toggle Version
+--// =========================================
+
+getgenv().ghost_rgb = true
+getgenv().ghost_strength = 1
+getgenv().ghost_max_limb = 6
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+
+local LocalPlayer = Players.LocalPlayer
+LocalPlayer.Archivable = true
+
+--// ========================
+--// INTERNAL STATE
+--// ========================
+
+local Predictor = {
+    Enabled = false,
+    Heartbeat = nil,
+    Ghosts = {},
+    Frames = {}
+}
+
+--// ========================
+--// CONSTANTS
+--// ========================
+
+local PART_NAMES = {
+    "HumanoidRootPart","Head",
+    "Left Arm","Right Arm","Left Leg","Right Leg",
+    "LeftUpperArm","RightUpperArm","LeftLowerArm","RightLowerArm",
+    "LeftHand","RightHand",
+    "LeftUpperLeg","RightUpperLeg","LeftLowerLeg","RightLowerLeg",
+    "LeftFoot","RightFoot"
+}
+
+--// ========================
+--// HELPERS
+--// ========================
+
+local function rgb(t)
+    return Color3.fromHSV((t % 5) / 5, 1, 1)
+end
+
+local function clearGhosts()
+    for _, g in pairs(Predictor.Ghosts) do
+        if g.ghost then g.ghost:Destroy() end
+    end
+    table.clear(Predictor.Ghosts)
+    table.clear(Predictor.Frames)
+end
+
+local function makeGhost(real)
+    local part = Instance.new("Part")
+    part.Name = real.Name .. "_ghost"
+    part.Size = real.Size
+    part.Anchored = true
+    part.CanCollide = false
+    part.Transparency = 1
+    part.CFrame = real.CFrame
+    part.Parent = workspace
+
+    local box = Instance.new("SelectionBox")
+    box.Adornee = part
+    box.LineThickness = 0.04
+    box.Parent = part
+
+    return {
+        real = real,
+        ghost = part,
+        box = box
+    }
+end
+
+local function isReplicating(p)
+    return p and not p.Anchored
+end
+
+local function isOwner(p)
+    return p and p.ReceiveAge == 0
+end
+
+--// ========================
+--// CORE SETUP
+--// ========================
+
+local function startPredictor()
+    if Predictor.Heartbeat then return end
+
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    clearGhosts()
+
+    for _, name in ipairs(PART_NAMES) do
+        local p = char:FindFirstChild(name)
+        if p and p:IsA("BasePart") then
+            Predictor.Ghosts[name] = makeGhost(p)
+        end
+    end
+
+    local serverCF = hrp.CFrame
+    local velocity = Vector3.zero
+    local lastTime = os.clock()
+    local accumulator = 0
+
+    Predictor.Heartbeat = RunService.Heartbeat:Connect(function()
+        if not Predictor.Enabled or not hrp.Parent then
+            clearGhosts()
+            Predictor.Heartbeat:Disconnect()
+            Predictor.Heartbeat = nil
+            return
+        end
+
+        local now = os.clock()
+        local delta = now - lastTime
+        lastTime = now
+
+        local ping = LocalPlayer.GetNetworkPing and LocalPlayer:GetNetworkPing() or 0.08
+
+        if isReplicating(hrp) then
+            velocity = isOwner(hrp) and hrp.AssemblyLinearVelocity or -hrp.AssemblyLinearVelocity
+            if accumulator >= ping then
+                serverCF = hrp.CFrame
+                accumulator = 0
+            else
+                accumulator += delta
+            end
+        end
+
+        local rel = {}
+        for n, g in pairs(Predictor.Ghosts) do
+            if g.real and g.real.Parent then
+                rel[n] = serverCF:ToObjectSpace(g.real.CFrame)
+            end
+        end
+
+        table.insert(Predictor.Frames, {
+            t = now,
+            cf = serverCF,
+            pos = serverCF.Position,
+            vel = velocity,
+            rel = rel
+        })
+
+        if #Predictor.Frames > 240 then
+            for _ = 1, 60 do table.remove(Predictor.Frames, 1) end
+        end
+
+        local targetT = now - ping
+        local frame
+        for i = #Predictor.Frames, 1, -1 do
+            if Predictor.Frames[i].t <= targetT then
+                frame = Predictor.Frames[i]
+                break
+            end
+        end
+        frame = frame or Predictor.Frames[1]
+        if not frame then return end
+
+        local td = math.min(targetT - frame.t, 0.06)
+        local predPos = frame.pos + frame.vel * td * getgenv().ghost_strength
+        local predCF = CFrame.new(predPos) * (frame.cf - frame.cf.Position)
+
+        for n, g in pairs(Predictor.Ghosts) do
+            local r = frame.rel[n]
+            local target = r and predCF * r or g.real.CFrame
+
+            local dist = (target.Position - predCF.Position).Magnitude
+            if dist > getgenv().ghost_max_limb then
+                local dir = (target.Position - predCF.Position).Unit
+                local pos = predCF.Position + dir * getgenv().ghost_max_limb
+                local rx, ry, rz = target:ToEulerAnglesXYZ()
+                target = CFrame.new(pos) * CFrame.Angles(rx, ry, rz)
+            end
+
+            g.ghost.CFrame = g.ghost.CFrame:Lerp(target, math.min(delta * 18, 1))
+            g.box.Color3 = getgenv().ghost_rgb and rgb(now) or Color3.new(1,1,1)
+        end
+    end)
+end
+
+--// ========================
+--// TOGGLE
+--// ========================
+
+createToggle(BFrame, "ServerPositionPredictor (By @zephyrr)", function(on)
+    Predictor.Enabled = on
+
+    if on then
+        startPredictor()
+    else
+        if Predictor.Heartbeat then
+            Predictor.Heartbeat:Disconnect()
+            Predictor.Heartbeat = nil
+        end
+        clearGhosts()
+    end
+end, false)
+
+--// ========================
+--// CHARACTER RESPAWN
+--// ========================
+
+LocalPlayer.CharacterAdded:Connect(function()
+    if not Predictor.Enabled then return end
+    LocalPlayer.Character:WaitForChild("HumanoidRootPart", 3)
+    task.wait(0.15)
+    startPredictor()
+end)
+
+--// =========================================
+--// END
+--// =========================================
