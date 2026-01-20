@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.65
+-- So uhm just a script lol. 4.66
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -439,24 +439,28 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
  ➖ Moveable HealthBar
 -------
 
-✨SCRIPT CREDITS✨
-[ Script Name ] by [ Creator ] [ If verified badge ]
+✨ SCRIPT CREDITS ✨
+[ Script Name ] by [ Creator ] [ Verification Status ]
 
-We want so say your script is awesome! and it will our script Thanks you!
+We want to say that your script is awesome, and it is used in our project for debugging and educational purposes.
+Thank you for your contribution :3 ❤️
 - Debugger
---------
-'Ketamine' by @Cherry (✓)
-'OG AFEM - Legacy' by @Imperial (✓)
-'Chat' by /Unknown user/
-'UNC' by /Unknown user/
-'REM' by @evildotcom {X}
-'GameProber' by @Imperial (✓)
-'AudioPlayer' by /Unknown user/
-'EmoteSelect' by /Unknown user/
-'universal movement predictor' by @zephyrr {X}
-'server position predictor' by @zephyrr {X}
 
-Dear script maker if you don't want to in my script, please send a forum in my discord! I'll removed from my script.
+-- Credits List --
+'Ketamine' by @Cherry (✓ Verified)
+'OG AFEM – Legacy' by @Imperial (✓ Verified)
+'Chat' by Unknown user
+'UNC' by Unknown user
+'REM' by @evildotcom (✗ Not verified)
+'GameProber' by @Imperial (✓ Verified)
+'AudioPlayer' by Unknown user
+'EmoteSelect' by Unknown user
+'Universal Movement Predictor' by @zephyrr (✗ Not verified)
+'Server Position Predictor' by @zephyrr (✗ Not verified)
+
+-- Notice to Script Creators --
+If you are a script creator listed above and do not want your script to be included,
+please contact us via our Discord forum, and we will remove it immediately.
 ]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
 bigt.TextScaled = false
