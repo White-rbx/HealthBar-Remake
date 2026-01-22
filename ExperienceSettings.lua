@@ -1,4 +1,4 @@
--- Ok 2.63
+-- Ok 2.64
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1925,6 +1925,16 @@ if ctl1 then
 	ctl1.MouseButton1Click:Connect(function()
 			pcall(function()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/Branch/GUIS/Emotes.lua"))()
+		end)
+	end)
+end
+
+-- CTL2
+local ctl2 = createTextButton("b4_UniversalChat", 50, 50, 50, 0.2, "Universal Chat", true, false)
+if ctl2 then
+	ctl2.MouseButton1Click:Connect(function()
+			pcall(function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/theneutral0ne/UniversalChat/main/installer.lua"))()
 		end)
 	end)
 end
