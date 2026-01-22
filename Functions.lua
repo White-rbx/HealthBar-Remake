@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.67l8
+-- So uhm just a script lol. 4.69
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2265,9 +2265,9 @@ end, false)
 -- END
 --========================================
 
---========================
 --// =========================================
---// PHYSICS VISUAL DEBUGGER (FULL)
+--// PHYSICS VISUAL DEBUGGER (FIXED)
+--// Center-based Assembly Only
 --// =========================================
 
 local Players = game:GetService("Players")
@@ -2293,7 +2293,7 @@ local Physics = {
 }
 
 --// =========================================
---// CACHE PER OBJECT
+--// CACHE PER ROOT
 --// =========================================
 
 local PhysicsCache = {}
@@ -2308,6 +2308,7 @@ local function newSegment()
     p.CanCollide = false
     p.Material = Enum.Material.Neon
     p.Size = Vector3.new(Physics.SegmentThickness, Physics.SegmentThickness, 1)
+    p.Transparency = 1
     p.Parent = Workspace
     return p
 end
@@ -2325,9 +2326,9 @@ local function newBall(color, size)
     return p
 end
 
-local function getState(obj)
-    if PhysicsCache[obj] then
-        return PhysicsCache[obj]
+local function getState(root)
+    if PhysicsCache[root] then
+        return PhysicsCache[root]
     end
 
     local state = {
@@ -2337,8 +2338,26 @@ local function getState(obj)
         Airborne = false,
     }
 
-    PhysicsCache[obj] = state
+    PhysicsCache[root] = state
     return state
+end
+
+--// =========================================
+--// ROOT RESOLVER (IMPORTANT FIX)
+--// =========================================
+
+local function getPhysicsRoot(inst)
+    if inst:IsA("Model") then
+        return inst.PrimaryPart
+            or inst:FindFirstChild("HumanoidRootPart")
+            or inst:FindFirstChildWhichIsA("BasePart")
+    elseif inst:IsA("BasePart") then
+        -- Ignore child parts inside models
+        if inst.Parent and inst.Parent:IsA("Model") then
+            return nil
+        end
+        return inst
+    end
 end
 
 local rayParams = RaycastParams.new()
@@ -2349,9 +2368,11 @@ rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 --// =========================================
 
 local function drawPhysics(root)
+    if root.Anchored then return end
+
     local state = getState(root)
 
-    -- reset visuals
+    -- Reset visuals
     for _, s in ipairs(state.Segments) do
         s.Transparency = 1
     end
@@ -2396,6 +2417,7 @@ local function drawPhysics(root)
                 or (dir.Unit.Y > 0 and Color3.fromRGB(255,255,0)
                 or Color3.fromRGB(0,180,255))
 
+            seg.Transparency = 0
             table.insert(state.Segments, seg)
         end
 
@@ -2439,17 +2461,15 @@ RunService.RenderStepped:Connect(function()
     if not origin then return end
 
     if Physics.Global then
-        for _, inst in ipairs(Workspace:GetDescendants()) do
-            local root =
-                inst:IsA("BasePart") and inst
-                or (inst:IsA("Model") and inst:FindFirstChild("HumanoidRootPart"))
+        for _, inst in ipairs(Workspace:GetChildren()) do
+            local root = getPhysicsRoot(inst)
 
-            if root and root:IsA("BasePart") then
-                if root.AssemblyLinearVelocity.Magnitude > 1 then
-                    if (root.Position - origin.Position).Magnitude <= Physics.MaxDistance then
-                        drawPhysics(root)
-                    end
-                end
+            if root
+                and root:IsA("BasePart")
+                and root.AssemblyLinearVelocity.Magnitude > 1
+                and (root.Position - origin.Position).Magnitude <= Physics.MaxDistance
+            then
+                drawPhysics(root)
             end
         end
     else
