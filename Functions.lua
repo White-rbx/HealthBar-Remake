@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.67
+-- So uhm just a script lol. 4.67l8
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -451,12 +451,13 @@ Thank you for your contribution :3 ❤️
 'OG AFEM – Legacy' by @Imperial (✓ Verified)
 'Chat' by Unknown user
 'UNC' by Unknown user
-'REM' by @evildotcom (✗ Not verified)
+'REM' by @evildotcom (X Not verified)
 'GameProber' by @Imperial (✓ Verified)
 'AudioPlayer' by Unknown user
 'EmoteSelect' by Unknown user
-'Universal Movement Predictor' by @zephyrr (✗ Not verified)
-'Server Position Predictor' by @zephyrr (✗ Not verified)
+'Universal Movement Predictor' by @zephyrr (X Not verified)
+'Server Position Predictor' by @zephyrr (X Not verified)
+'Open Source Universal Chat' by @neutral (X Not verified)
 
 -- Notice to Script Creators --
 If you are a script creator listed above and do not want your script to be included,
