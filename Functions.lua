@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.66
+-- So uhm just a script lol. 4.67
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -318,7 +318,7 @@ In.Parent = Ab
 local linkDc = Instance.new("TextBox")
 linkDc.Name = "Discord link"
 linkDc.TextScaled = true
-linkDc.Text = "https://discord.gg/p57SVADN"
+linkDc.Text = "https://discord.gg/nFz3ypxUMA"
 linkDc.TextColor3 = Color3.fromRGB(255,255,255)
 linkDc.BackgroundTransparency = 1
 linkDc.ClearTextOnFocus = false
@@ -1278,7 +1278,7 @@ task.spawn(function()
     end
 end)
 
-local defaultText = "https://discord.gg/p57SVADN"
+local defaultText = "https://discord.gg/nFz3ypxUMA"
 
 task.spawn(function()
     while task.wait(0.005) do
