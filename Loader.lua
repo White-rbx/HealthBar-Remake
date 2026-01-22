@@ -1,4 +1,9 @@
--- Well 1.86
+-- Well 1.87
+
+local StarterGui = game:GetService("StarterGui")
+-- Sorry I forget to add
+StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
+
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
 local CoreGui = game:GetService("CoreGui")
