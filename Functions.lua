@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.71
+-- So uhm just a script lol. 4.72
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2266,7 +2266,7 @@ end, false)
 --========================================
 
 --// =========================================
---// PHYSICS VISUAL DEBUGGER (FIXED)
+--// PHYSICS VISUAL DEBUGGER (GLOBAL FIXED)
 --// =========================================
 
 local Players = game:GetService("Players")
@@ -2281,8 +2281,8 @@ local Camera = Workspace.CurrentCamera
 --// =========================================
 
 local Physics = {
-    Enabled = true,
-    Global = true,
+    Enabled = false,
+    Global = false,
 
     MaxDistance = 200,
     TimeStep = 0.04,
@@ -2325,59 +2325,77 @@ local function newBall(color, size)
     return p
 end
 
-local function getState(obj)
-    if PhysicsCache[obj] then
-        return PhysicsCache[obj]
+local function getState(root)
+    if PhysicsCache[root] then
+        return PhysicsCache[root]
     end
 
     local state = {
         Segments = {},
         BlueBall = newBall(Color3.fromRGB(0,180,255), 0.6),
         RedBall  = newBall(Color3.fromRGB(255,60,60), 1),
+        Airborne = false,
     }
 
-    PhysicsCache[obj] = state
+    PhysicsCache[root] = state
     return state
 end
 
 --// =========================================
---// MODEL ROOT FIX (IMPORTANT)
+--// ROOT RESOLVER (GLOBAL FIX)
 --// =========================================
 
 local function getRootFromInstance(inst)
+    -- BasePart
     if inst:IsA("BasePart") then
         return inst
     end
 
+    -- Model
     if inst:IsA("Model") then
-        if inst.PrimaryPart then
-            return inst.PrimaryPart
-        end
-
         local hrp = inst:FindFirstChild("HumanoidRootPart")
         if hrp and hrp:IsA("BasePart") then
             return hrp
         end
 
-        local cf = inst:GetBoundingBox()
-        local fake = Instance.new("Part")
-        fake.Anchored = true
-        fake.CanCollide = false
-        fake.Transparency = 1
-        fake.CFrame = cf
-        fake.Parent = Workspace
-        return fake
+        if inst.PrimaryPart then
+            return inst.PrimaryPart
+        end
+
+        for _, d in ipairs(inst:GetDescendants()) do
+            if d:IsA("BasePart") then
+                return d
+            end
+        end
+    end
+
+    -- Folder
+    if inst:IsA("Folder") then
+        for _, c in ipairs(inst:GetChildren()) do
+            if c:IsA("BasePart") then
+                return c
+            end
+        end
+
+        for _, c in ipairs(inst:GetChildren()) do
+            if c:IsA("Model") then
+                local root = getRootFromInstance(c)
+                if root then
+                    return root
+                end
+            end
+        end
     end
 
     return nil
 end
 
+--// =========================================
+--// PHYSICS DRAW
+--// =========================================
+
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-
---// =========================================
---// CORE PHYSICS DRAW
---// =========================================
 
 local function drawPhysics(root)
     local state = getState(root)
@@ -2435,11 +2453,14 @@ local function drawPhysics(root)
     end
 
     if velocity.Y < -1 and not landed then
+        state.Airborne = true
         state.BlueBall.Transparency = 0
         state.BlueBall.Position = lastPos
     end
 
     if landed then
+        state.Airborne = false
+        state.BlueBall.Transparency = 1
         state.RedBall.Transparency = 0
         state.RedBall.Position = landed
     end
@@ -2461,7 +2482,8 @@ RunService.RenderStepped:Connect(function()
         return
     end
 
-    local origin = LocalPlayer.Character
+    local origin =
+        LocalPlayer.Character
         and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 
     if not origin then return end
@@ -2471,10 +2493,10 @@ RunService.RenderStepped:Connect(function()
             local root = getRootFromInstance(inst)
 
             if root
-                and root:IsA("BasePart")
-                and root.AssemblyLinearVelocity.Magnitude > 1
-                and (root.Position - origin.Position).Magnitude <= Physics.MaxDistance
-            then
+            and root:IsA("BasePart")
+            and not root.Anchored
+            and root.AssemblyLinearVelocity.Magnitude > 1
+            and (root.Position - origin.Position).Magnitude <= Physics.MaxDistance then
                 drawPhysics(root)
             end
         end
