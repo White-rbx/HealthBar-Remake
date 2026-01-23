@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.69
+-- So uhm just a script lol. 4.7
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2267,7 +2267,6 @@ end, false)
 
 --// =========================================
 --// PHYSICS VISUAL DEBUGGER (FIXED)
---// Center-based Assembly Only
 --// =========================================
 
 local Players = game:GetService("Players")
@@ -2282,8 +2281,8 @@ local Camera = Workspace.CurrentCamera
 --// =========================================
 
 local Physics = {
-    Enabled = false,
-    Global = false,
+    Enabled = true,
+    Global = true,
 
     MaxDistance = 200,
     TimeStep = 0.04,
@@ -2293,7 +2292,7 @@ local Physics = {
 }
 
 --// =========================================
---// CACHE PER ROOT
+--// CACHE
 --// =========================================
 
 local PhysicsCache = {}
@@ -2326,53 +2325,63 @@ local function newBall(color, size)
     return p
 end
 
-local function getState(root)
-    if PhysicsCache[root] then
-        return PhysicsCache[root]
+local function getState(obj)
+    if PhysicsCache[obj] then
+        return PhysicsCache[obj]
     end
 
     local state = {
         Segments = {},
         BlueBall = newBall(Color3.fromRGB(0,180,255), 0.6),
         RedBall  = newBall(Color3.fromRGB(255,60,60), 1),
-        Airborne = false,
     }
 
-    PhysicsCache[root] = state
+    PhysicsCache[obj] = state
     return state
 end
 
 --// =========================================
---// ROOT RESOLVER (IMPORTANT FIX)
+--// MODEL ROOT FIX (IMPORTANT)
 --// =========================================
 
-local function getPhysicsRoot(inst)
-    if inst:IsA("Model") then
-        return inst.PrimaryPart
-            or inst:FindFirstChild("HumanoidRootPart")
-            or inst:FindFirstChildWhichIsA("BasePart")
-    elseif inst:IsA("BasePart") then
-        -- Ignore child parts inside models
-        if inst.Parent and inst.Parent:IsA("Model") then
-            return nil
-        end
+local function getRootFromInstance(inst)
+    if inst:IsA("BasePart") then
         return inst
     end
+
+    if inst:IsA("Model") then
+        if inst.PrimaryPart then
+            return inst.PrimaryPart
+        end
+
+        local hrp = inst:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp:IsA("BasePart") then
+            return hrp
+        end
+
+        local cf = inst:GetBoundingBox()
+        local fake = Instance.new("Part")
+        fake.Anchored = true
+        fake.CanCollide = false
+        fake.Transparency = 1
+        fake.CFrame = cf
+        fake.Parent = Workspace
+        return fake
+    end
+
+    return nil
 end
 
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 
 --// =========================================
---// CORE SIMULATION
+--// CORE PHYSICS DRAW
 --// =========================================
 
 local function drawPhysics(root)
-    if root.Anchored then return end
-
     local state = getState(root)
 
-    -- Reset visuals
     for _, s in ipairs(state.Segments) do
         s.Transparency = 1
     end
@@ -2412,6 +2421,7 @@ local function drawPhysics(root)
                 dir.Magnitude
             )
             seg.CFrame = CFrame.new(lastPos + dir / 2, pos)
+
             seg.Color =
                 math.abs(dir.Unit.Y) < 0.2 and Color3.fromRGB(0,255,0)
                 or (dir.Unit.Y > 0 and Color3.fromRGB(255,255,0)
@@ -2424,16 +2434,12 @@ local function drawPhysics(root)
         lastPos = pos
     end
 
-    -- STATE LOGIC
     if velocity.Y < -1 and not landed then
-        state.Airborne = true
         state.BlueBall.Transparency = 0
         state.BlueBall.Position = lastPos
     end
 
     if landed then
-        state.Airborne = false
-        state.BlueBall.Transparency = 1
         state.RedBall.Transparency = 0
         state.RedBall.Position = landed
     end
@@ -2462,7 +2468,7 @@ RunService.RenderStepped:Connect(function()
 
     if Physics.Global then
         for _, inst in ipairs(Workspace:GetChildren()) do
-            local root = getPhysicsRoot(inst)
+            local root = getRootFromInstance(inst)
 
             if root
                 and root:IsA("BasePart")
@@ -2477,22 +2483,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---// =========================================
---// TOGGLES
---// =========================================
-
-createToggle(BFrame, "Show Physics", function(on)
-    Physics.Enabled = on
-end, false)
-
-createToggle(BFrame, "Global Physics", function(on)
-    Physics.Global = on
-end, false)
-
---// =========================================
---// END
---// =========================================
-
+--//============= END ===============
 
 --// ================================
 --// LAST DEATH VISUAL
