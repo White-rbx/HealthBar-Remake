@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.72
+-- So uhm just a script lol. 4.73
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2265,10 +2265,11 @@ end, false)
 -- END
 --========================================
 
---// =========================================
---// PHYSICS VISUAL DEBUGGER (GLOBAL FIXED)
---// =========================================
+--// ======================================================
+--// PHYSICS VISUAL DEBUGGER + BILLBOARD (SAFE VERSION)
+--// ======================================================
 
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -2276,30 +2277,45 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
---// =========================================
+--// ======================================================
 --// SETTINGS
---// =========================================
+--// ======================================================
 
 local Physics = {
     Enabled = false,
     Global = false,
 
+    Billboard = false,
+    GlobalBillboard = false,
+
     MaxDistance = 200,
     TimeStep = 0.04,
-    MaxTime = 2.5,
+    MaxTime = 2,
 
-    SegmentThickness = 0.15,
+    SegmentThickness = 0.12,
 }
 
---// =========================================
+--// ======================================================
+--// TOGGLE STATE (ANTI-BUG)
+--// ======================================================
+
+local Toggles = {
+    ShowPhysics = false,
+    GlobalPhysics = false,
+    PhysicsBillboard = false,
+    GlobalPhysicsBillboard = false,
+}
+
+--// ======================================================
 --// CACHE
---// =========================================
+--// ======================================================
 
-local PhysicsCache = {}
+local Cache = {}      -- physics draw
+local BillboardCache = {}
 
---// =========================================
+--// ======================================================
 --// UTILS
---// =========================================
+--// ======================================================
 
 local function newSegment()
     local p = Instance.new("Part")
@@ -2325,74 +2341,86 @@ local function newBall(color, size)
     return p
 end
 
-local function getState(root)
-    if PhysicsCache[root] then
-        return PhysicsCache[root]
-    end
+local function newBillboard()
+    local bb = Instance.new("BillboardGui")
+    bb.Size = UDim2.fromOffset(200, 80)
+    bb.StudsOffset = Vector3.new(0, 2.5, 0)
+    bb.AlwaysOnTop = true
 
-    local state = {
-        Segments = {},
-        BlueBall = newBall(Color3.fromRGB(0,180,255), 0.6),
-        RedBall  = newBall(Color3.fromRGB(255,60,60), 1),
-        Airborne = false,
-    }
+    local txt = Instance.new("TextLabel")
+    txt.Size = UDim2.fromScale(1,1)
+    txt.BackgroundTransparency = 1
+    txt.TextScaled = true
+    txt.TextColor3 = Color3.fromRGB(0,255,255)
+    txt.Font = Enum.Font.Code
+    txt.Parent = bb
 
-    PhysicsCache[root] = state
-    return state
+    bb.Text = txt
+    bb.Enabled = false
+
+    return bb
 end
 
---// =========================================
---// ROOT RESOLVER (GLOBAL FIX)
---// =========================================
+--// ======================================================
+--// ROOT RESOLVER (FIX GLOBAL BUG)
+--// ======================================================
 
-local function getRootFromInstance(inst)
-    -- BasePart
+local function resolveRoot(inst)
     if inst:IsA("BasePart") then
         return inst
     end
 
-    -- Model
     if inst:IsA("Model") then
-        local hrp = inst:FindFirstChild("HumanoidRootPart")
-        if hrp and hrp:IsA("BasePart") then
-            return hrp
-        end
-
-        if inst.PrimaryPart then
-            return inst.PrimaryPart
-        end
-
-        for _, d in ipairs(inst:GetDescendants()) do
-            if d:IsA("BasePart") then
-                return d
-            end
-        end
+        return inst:FindFirstChild("HumanoidRootPart")
+            or inst.PrimaryPart
+            or inst:FindFirstChildWhichIsA("BasePart")
     end
 
-    -- Folder
     if inst:IsA("Folder") then
-        for _, c in ipairs(inst:GetChildren()) do
-            if c:IsA("BasePart") then
-                return c
-            end
-        end
-
-        for _, c in ipairs(inst:GetChildren()) do
-            if c:IsA("Model") then
-                local root = getRootFromInstance(c)
-                if root then
-                    return root
-                end
-            end
+        for _, v in ipairs(inst:GetChildren()) do
+            local r = resolveRoot(v)
+            if r then return r end
         end
     end
 
     return nil
 end
 
---// =========================================
---// PHYSICS DRAW
---// =========================================
+--// ======================================================
+--// STATE
+--// ======================================================
+
+local function getState(root)
+    if Cache[root] then
+        return Cache[root]
+    end
+
+    local state = {
+        Segments = {},
+        Blue = newBall(Color3.fromRGB(0,180,255), 0.6),
+        Red  = newBall(Color3.fromRGB(255,80,80), 1),
+    }
+
+    Cache[root] = state
+    return state
+end
+
+local function getBillboard(root)
+    if BillboardCache[root] then
+        return BillboardCache[root]
+    end
+
+    local bb = newBillboard()
+    bb.Adornee = root
+    bb.Parent = root
+
+    BillboardCache[root] = bb
+    return bb
+end
+
+--// ======================================================
+--// CORE DRAW
+--// ======================================================
 
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Blacklist
@@ -2405,113 +2433,162 @@ local function drawPhysics(root)
     end
     table.clear(state.Segments)
 
-    state.BlueBall.Transparency = 1
-    state.RedBall.Transparency = 1
+    state.Blue.Transparency = 1
+    state.Red.Transparency = 1
 
-    local startPos = root.Position
-    local velocity = root.AssemblyLinearVelocity
+    local pos0 = root.Position
+    local vel = root.AssemblyLinearVelocity
     local gravity = Vector3.new(0, -Workspace.Gravity, 0)
 
     rayParams.FilterDescendantsInstances = {root.Parent}
 
-    local lastPos = startPos
-    local landed = nil
+    local last = pos0
+    local landed
 
     for t = 0, Physics.MaxTime, Physics.TimeStep do
-        local pos = startPos + velocity * t + 0.5 * gravity * t * t
+        local pos = pos0 + vel*t + 0.5*gravity*t*t
+        if (pos - pos0).Magnitude > Physics.MaxDistance then break end
 
-        if (pos - startPos).Magnitude > Physics.MaxDistance then
-            break
-        end
-
-        local dir = pos - lastPos
+        local dir = pos - last
         if dir.Magnitude > 0.05 then
-            local hit = Workspace:Raycast(lastPos, dir, rayParams)
+            local hit = Workspace:Raycast(last, dir, rayParams)
             if hit then
                 landed = hit.Position
                 break
             end
 
             local seg = newSegment()
+            seg.Transparency = 0
             seg.Size = Vector3.new(
                 Physics.SegmentThickness,
                 Physics.SegmentThickness,
                 dir.Magnitude
             )
-            seg.CFrame = CFrame.new(lastPos + dir / 2, pos)
+            seg.CFrame = CFrame.new(last + dir/2, pos)
+            seg.Color = Color3.fromRGB(0,255,255)
 
-            seg.Color =
-                math.abs(dir.Unit.Y) < 0.2 and Color3.fromRGB(0,255,0)
-                or (dir.Unit.Y > 0 and Color3.fromRGB(255,255,0)
-                or Color3.fromRGB(0,180,255))
-
-            seg.Transparency = 0
             table.insert(state.Segments, seg)
         end
 
-        lastPos = pos
-    end
-
-    if velocity.Y < -1 and not landed then
-        state.Airborne = true
-        state.BlueBall.Transparency = 0
-        state.BlueBall.Position = lastPos
+        last = pos
     end
 
     if landed then
-        state.Airborne = false
-        state.BlueBall.Transparency = 1
-        state.RedBall.Transparency = 0
-        state.RedBall.Position = landed
+        state.Red.Transparency = 0
+        state.Red.Position = landed
+    else
+        state.Blue.Transparency = 0
+        state.Blue.Position = last
     end
 end
 
---// =========================================
+--// ======================================================
+--// BILLBOARD UPDATE
+--// ======================================================
+
+local function updateBillboard(root)
+    local bb = getBillboard(root)
+    local vel = root.AssemblyLinearVelocity
+    local speed = math.floor(vel.Magnitude)
+
+    bb.Text.Text =
+        "Speed: "..speed.."\n"..
+        "Direction: "..(vel.Magnitude > 1 and "Moving" or "Idle")
+
+    bb.Enabled = true
+end
+
+--// ======================================================
+--// TOGGLE SAFETY
+--// ======================================================
+
+local function disablePhysics()
+    Physics.Enabled = false
+    Physics.Global = false
+end
+
+local function disableBillboard()
+    Physics.Billboard = false
+    Physics.GlobalBillboard = false
+end
+
+--// ======================================================
 --// UPDATE LOOP
---// =========================================
+--// ======================================================
 
 RunService.RenderStepped:Connect(function()
-    if not Physics.Enabled then
-        for _, state in pairs(PhysicsCache) do
-            for _, s in ipairs(state.Segments) do
-                s.Transparency = 1
-            end
-            state.BlueBall.Transparency = 1
-            state.RedBall.Transparency = 1
-        end
-        return
-    end
-
-    local origin =
-        LocalPlayer.Character
-        and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-
+    local char = LocalPlayer.Character
+    local origin = char and char:FindFirstChild("HumanoidRootPart")
     if not origin then return end
 
-    if Physics.Global then
-        for _, inst in ipairs(Workspace:GetChildren()) do
-            local root = getRootFromInstance(inst)
+    if Physics.Enabled or Physics.Billboard then
+        local targets = {}
 
-            if root
-            and root:IsA("BasePart")
-            and not root.Anchored
-            and root.AssemblyLinearVelocity.Magnitude > 1
-            and (root.Position - origin.Position).Magnitude <= Physics.MaxDistance then
+        if Physics.Global or Physics.GlobalBillboard then
+            for _, inst in ipairs(Workspace:GetDescendants()) do
+                local root = resolveRoot(inst)
+                if root and (root.Position - origin.Position).Magnitude <= Physics.MaxDistance then
+                    table.insert(targets, root)
+                end
+            end
+        else
+            table.insert(targets, origin)
+        end
+
+        for _, root in ipairs(targets) do
+            if Physics.Enabled then
                 drawPhysics(root)
             end
+
+            if Physics.Billboard then
+                updateBillboard(root)
+            end
         end
-    else
-        drawPhysics(origin)
     end
 end)
 
+--// ======================================================
+--// EXPOSE TOGGLE API (ใช้กับ UI)
+--// ======================================================
+
+_G.PhysicsToggle = {
+    ShowPhysics = function(on)
+        if on then disableBillboard() end
+        Physics.Enabled = on
+    end,
+
+    GlobalPhysics = function(on)
+        if on then disableBillboard() end
+        Physics.Global = on
+    end,
+
+    PhysicsBillboard = function(on)
+        if on then disablePhysics() end
+        Physics.Billboard = on
+    end,
+
+    GlobalPhysicsBillboard = function(on)
+        if on then disablePhysics() end
+        Physics.GlobalBillboard = on
+    end
+}
+
 createToggle(BFrame, "Show Physics", function(on)
-    Physics.Enabled = on
+    _G.PhysicsToggle.ShowPhysics(on)
 end, false)
 
 createToggle(BFrame, "Global Physics", function(on)
-    Physics.Global = on
+    _G.PhysicsToggle.GlobalPhysics(on)
 end, false)
+
+createToggle(BFrame, "Physics Billboard", function(on)
+    _G.PhysicsToggle.PhysicsBillboard(on)
+end, false)
+
+createToggle(BFrame, "Global Physics [ Billboard ]", function(on)
+    _G.PhysicsToggle.GlobalPhysicsBillboard(on)
+end, false)
+
 
 --//============= END ===============
 
