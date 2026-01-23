@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.7
+-- So uhm just a script lol. 4.71
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2482,6 +2482,14 @@ RunService.RenderStepped:Connect(function()
         drawPhysics(origin)
     end
 end)
+
+createToggle(BFrame, "Show Physics", function(on)
+    Physics.Enabled = on
+end, false)
+
+createToggle(BFrame, "Global Physics", function(on)
+    Physics.Global = on
+end, false)
 
 --//============= END ===============
 
