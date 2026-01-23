@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.74
+-- So uhm just a script lol. 4.75
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2284,7 +2284,7 @@ local Physics = {
     Enabled = false,
     Global = false,
 
-    MaxDistance = 220,
+    MaxDistance = 1024,
     TimeStep = 0.05,
     MaxTime = 3,
 
