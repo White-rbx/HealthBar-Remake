@@ -1,4 +1,4 @@
--- So this another script lol 0.6
+-- So this another script lol 0.7
 
 
 -- =====>> Saved Functions <<=====
@@ -213,7 +213,7 @@ end
 
 
 --// =====================================================
---// PHYSICS VISUAL DEBUGGER (FINAL + SAFE)
+--// PHYSICS VISUAL DEBUGGER (FINAL + MODEL REMOVE FIX)
 --// =====================================================
 
 local Players = game:GetService("Players")
@@ -230,12 +230,11 @@ local Physics = {
     Enabled = false,
     Global = false,
 
-    MaxDistance = 1024,
+    MaxDistance = 2048,
     TimeStep = 0.05,
     MaxTime = 3,
 
     SegmentThickness = 0.15,
-    MinMoveSpeed = 1, -- studs/s (นิ่ง = ไม่วาด)
 }
 
 --// =====================================================
@@ -248,33 +247,8 @@ local PhysicsCache = {}
 --// UTILS
 --// =====================================================
 
-local function getSpeedColor(speed)
-    if not speed or speed <= 0 then
-        return Color3.fromRGB(0,180,255)       -- Cyan
-    elseif speed < 17 then
-        return Color3.fromRGB(120,255,200)     -- Mint
-    elseif speed < 32 then
-        return Color3.fromRGB(0,255,0)         -- Lime
-    elseif speed < 64 then
-        return Color3.fromRGB(255,255,0)       -- Yellow
-    elseif speed < 128 then
-        return Color3.fromRGB(213,115,61)      -- Orange
-    elseif speed < 512 then
-        return Color3.fromRGB(255,0,0)         -- Red
-    else
-        return Color3.fromRGB(170,0,255)       -- 🔥 Purple (แทน Pink)
-    end
-end
-
-local function isRootAlive(root)
-    return root
-        and root.Parent
-        and root:IsDescendantOf(Workspace)
-end
-
-local function getRootFromInstance(inst)
-    if inst:IsA("BasePart") then
-        if inst.Anchored then return nil end
+local function getRoot(inst)
+    if inst:IsA("BasePart") and not inst.Anchored then
         return inst
     end
     if inst:IsA("Model") then
@@ -284,21 +258,77 @@ local function getRootFromInstance(inst)
     end
 end
 
-local function newSegment()
+local function newPart(size)
     local p = Instance.new("Part")
     p.Anchored = true
     p.CanCollide = false
     p.Material = Enum.Material.Neon
-    p.Size = Vector3.new(Physics.SegmentThickness, Physics.SegmentThickness, 1)
+    p.Size = size
+    p.Transparency = 0
     p.Parent = Workspace
     return p
 end
+
+local function newBall(color, size)
+    local p = newPart(Vector3.new(size,size,size))
+    p.Shape = Enum.PartType.Ball
+    p.Color = color
+    p.Transparency = 1
+    return p
+end
+
+--// =====================================================
+--// SPEED COLOR (STUDS / SEC)
+--// =====================================================
+
+local function getSpeedColor(speed)
+    if not speed or speed <= 0 then
+        return Color3.fromRGB(0,180,255)       -- Cyan (Nil)
+    elseif speed < 17 then
+        return Color3.fromRGB(120,255,200)     -- Mint
+    elseif speed < 32 then
+        return Color3.fromRGB(0,255,0)         -- Lime
+    elseif speed < 64 then
+        return Color3.fromRGB(255,255,0)       -- Yellow
+    elseif speed < 128 then
+        return Color3.fromRGB(213, 115, 61)    -- Orange
+    elseif speed < 512 then
+        return Color3.fromRGB(255,0,0)         -- Red
+    else
+        return Color3.fromRGB(170, 0, 255)     -- Purple
+    end
+end
+
+--// =====================================================
+--// STATE
+--// =====================================================
 
 local function clearState(state)
     for _, s in ipairs(state.Segments) do
         if s then s:Destroy() end
     end
-    if state.CFrameSeg then state.CFrameSeg:Destroy() end
+    table.clear(state.Segments)
+
+    if state.PosLine then
+        state.PosLine:Destroy()
+        state.PosLine = nil
+    end
+
+    if state.BlueBall then
+        state.BlueBall.Transparency = 1
+    end
+    if state.RedBall then
+        state.RedBall.Transparency = 1
+    end
+end
+
+local function destroyState(state)
+    -- [FIX] destroy everything fully
+    for _, s in ipairs(state.Segments) do
+        if s then s:Destroy() end
+    end
+
+    if state.PosLine then state.PosLine:Destroy() end
     if state.BlueBall then state.BlueBall:Destroy() end
     if state.RedBall then state.RedBall:Destroy() end
 end
@@ -310,14 +340,17 @@ local function getState(root)
 
     local state = {
         Segments = {},
-        LastPos = root.Position,
-        LastTime = os.clock(),
+        PosLine = nil,
+        BlueBall = newBall(Color3.fromRGB(0,180,255), 0.6),
+        RedBall  = newBall(Color3.fromRGB(255,70,70), 1),
     }
 
-    -- auto clean when destroyed
+    -- =================================================
+    -- [FIX] AUTO CLEAN WHEN MODEL / PART REMOVED
+    -- =================================================
     root.AncestryChanged:Connect(function(_, parent)
         if not parent then
-            clearState(state)
+            destroyState(state)
             PhysicsCache[root] = nil
         end
     end)
@@ -334,71 +367,77 @@ local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 
 local function drawPhysics(root)
-    local state = getState(root)
-    if not isRootAlive(root) then return end
-
-    local now = os.clock()
-    local dt = now - state.LastTime
-    if dt <= 0 then return end
-
-    local velocity = (root.Position - state.LastPos) / dt
-    local speed = velocity.Magnitude
-    state.LastPos = root.Position
-    state.LastTime = now
-
-    if speed < Physics.MinMoveSpeed then return end
-
-    -- clear old segments
-    for _, s in ipairs(state.Segments) do
-        s:Destroy()
+    -- [FIX] root vanished safety
+    if not root or not root.Parent then
+        return
     end
-    table.clear(state.Segments)
+
+    local state = getState(root)
+    clearState(state)
+
+    local startPos = root.Position
+    local velocity = root.AssemblyLinearVelocity
+    local gravity = Vector3.new(0, -Workspace.Gravity, 0)
 
     rayParams.FilterDescendantsInstances = {root.Parent}
 
-    local startPos = root.Position
-    local v0 = velocity
-    local gravity = Vector3.new(0, -Workspace.Gravity, 0)
-
     local lastPos = startPos
+    local landedPos
 
     for t = 0, Physics.MaxTime, Physics.TimeStep do
-        local pos = startPos + v0 * t + 0.5 * gravity * t * t
-        if (pos - startPos).Magnitude > Physics.MaxDistance then break end
+        local pos = startPos + velocity * t + 0.5 * gravity * t * t
+        if (pos - startPos).Magnitude > Physics.MaxDistance then
+            break
+        end
 
         local dir = pos - lastPos
         if dir.Magnitude > 0.05 then
             local hit = Workspace:Raycast(lastPos, dir, rayParams)
-            if hit then break end
+            if hit then
+                landedPos = hit.Position
+                break
+            end
 
-            local seg = newSegment()
-            seg.Size = Vector3.new(
+            local seg = newPart(Vector3.new(
                 Physics.SegmentThickness,
                 Physics.SegmentThickness,
                 dir.Magnitude
-            )
+            ))
+
             seg.CFrame = CFrame.new(lastPos + dir/2, pos)
-            seg.Color = getSpeedColor(speed * (1 - t / Physics.MaxTime))
+
+            local speed = dir.Magnitude / Physics.TimeStep
+            seg.Color = getSpeedColor(speed)
+
             table.insert(state.Segments, seg)
         end
 
         lastPos = pos
     end
 
-    --// Position of CFrame (ไม่โค้ง)
-    if state.CFrameSeg then state.CFrameSeg:Destroy() end
-    local cfSeg = newSegment()
-    cfSeg.Color = Color3.fromRGB(255,255,255)
-    cfSeg.Size = Vector3.new(
-        Physics.SegmentThickness,
-        Physics.SegmentThickness,
-        math.min(speed * 0.5, Physics.MaxDistance)
-    )
-    cfSeg.CFrame = CFrame.new(
-        startPos,
-        startPos + root.CFrame.LookVector
-    ) * CFrame.new(0,0,-cfSeg.Size.Z/2)
-    state.CFrameSeg = cfSeg
+    if landedPos then
+        state.RedBall.Transparency = 0
+        state.RedBall.Position = landedPos
+    elseif velocity.Magnitude > 1 then
+        state.BlueBall.Transparency = 0
+        state.BlueBall.Position = lastPos
+    end
+
+    -- POSITION OF CFRAME (LINEAR)
+    if velocity.Magnitude > 1 then
+        local dir = velocity.Unit
+        local len = math.clamp(velocity.Magnitude * 0.15, 2, 50)
+
+        local line = newPart(Vector3.new(0.12, 0.12, len))
+        line.Color = Color3.fromRGB(180,180,255)
+
+        line.CFrame = CFrame.new(
+            startPos + dir * (len / 2),
+            startPos + dir * len
+        )
+
+        state.PosLine = line
+    end
 end
 
 --// =====================================================
@@ -406,33 +445,35 @@ end
 --// =====================================================
 
 RunService.RenderStepped:Connect(function()
-    -- global clean
-    for root, state in pairs(PhysicsCache) do
-        if not isRootAlive(root) then
+    if not Physics.Enabled then
+        for root, state in pairs(PhysicsCache) do
             clearState(state)
-            PhysicsCache[root] = nil
         end
+        return
     end
 
-    if not Physics.Enabled then return end
-
-    local origin = LocalPlayer.Character
-        and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local char = LocalPlayer.Character
+    local origin = char and char:FindFirstChild("HumanoidRootPart")
+    if not origin then return end
 
     if Physics.Global then
-        for _, inst in ipairs(Workspace:GetDescendants()) do
-            local root = getRootFromInstance(inst)
-            if root and root ~= origin then
+        for _, inst in ipairs(Workspace:GetChildren()) do
+            local root = getRoot(inst)
+            if root
+                and root.Parent -- [FIX]
+                and root.AssemblyLinearVelocity.Magnitude > 1
+                and (root.Position - origin.Position).Magnitude <= Physics.MaxDistance
+            then
                 drawPhysics(root)
             end
         end
-    elseif origin then
+    else
         drawPhysics(origin)
     end
 end)
 
 --// =====================================================
---// TOGGLES (example)
+--// TOGGLES (EXAMPLE)
 --// =====================================================
 
 createToggle(BFrame, "Show Physics", function(on)
