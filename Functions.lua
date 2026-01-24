@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.75
+-- So uhm just a script lol. 4.76
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2289,13 +2289,14 @@ local Physics = {
     MaxTime = 3,
 
     SegmentThickness = 0.15,
+    MinMovement = 0.05, --// FIX: อยู่นิ่งไม่วาด
 }
 
 --// =====================================================
 --// CACHE
 --// =====================================================
 
-local PhysicsCache = {}
+local PhysicsCache = {} -- [BasePart] = state
 local Billboard
 
 --// =====================================================
@@ -2304,15 +2305,13 @@ local Billboard
 
 local function getRootFromInstance(inst)
     if inst:IsA("BasePart") then
-        if inst.Anchored then return nil end
+        if inst.Anchored then return nil end --// FIX
         return inst
     end
 
     if inst:IsA("Model") then
-        if inst.PrimaryPart then
-            return inst.PrimaryPart
-        end
         return inst:FindFirstChild("HumanoidRootPart")
+            or inst.PrimaryPart
             or inst:FindFirstChildWhichIsA("BasePart")
     end
 
@@ -2350,15 +2349,30 @@ local function newBall(color, size)
     return p
 end
 
+local function cleanup(root)
+    local state = PhysicsCache[root]
+    if not state then return end
+
+    for _, s in ipairs(state.Segments) do
+        s:Destroy()
+    end
+    state.BlueBall:Destroy()
+    state.RedBall:Destroy()
+
+    PhysicsCache[root] = nil
+end
+
 local function getState(root)
     if PhysicsCache[root] then
         return PhysicsCache[root]
     end
 
     local state = {
+        Root = root,
         Segments = {},
         BlueBall = newBall(Color3.fromRGB(0,180,255), 0.6),
         RedBall  = newBall(Color3.fromRGB(255,70,70), 1),
+        LastPos = root.Position
     }
 
     PhysicsCache[root] = state
@@ -2366,7 +2380,7 @@ local function getState(root)
 end
 
 --// =====================================================
---// BILLBOARD
+--// BILLBOARD (LOCAL PLAYER ONLY)
 --// =====================================================
 
 local function createBillboard(hrp)
@@ -2407,6 +2421,19 @@ rayParams.FilterType = Enum.RaycastFilterType.Blacklist
 local function drawPhysics(root)
     local state = getState(root)
 
+    --// FIX: destroy if root gone
+    if not root or not root.Parent then
+        cleanup(root)
+        return
+    end
+
+    local deltaMove = (root.Position - state.LastPos).Magnitude
+    state.LastPos = root.Position
+
+    if deltaMove < Physics.MinMovement then
+        return
+    end
+
     for _, s in ipairs(state.Segments) do
         s:Destroy()
     end
@@ -2426,13 +2453,9 @@ local function drawPhysics(root)
 
     for t = 0, Physics.MaxTime, Physics.TimeStep do
         local pos = startPos + v0 * t + 0.5 * gravity * t * t
-
-        if (pos - startPos).Magnitude > Physics.MaxDistance then
-            break
-        end
-
         local dir = pos - lastPos
-        if dir.Magnitude > 0.05 then
+
+        if dir.Magnitude > Physics.MinMovement then
             local hit = Workspace:Raycast(lastPos, dir, rayParams)
             if hit then
                 landedPos = hit.Position
@@ -2487,44 +2510,38 @@ LocalPlayer.CharacterAdded:Connect(onCharacter)
 --// =====================================================
 
 RunService.RenderStepped:Connect(function()
-    if not Physics.Enabled then
-        for _, state in pairs(PhysicsCache) do
-            for _, s in ipairs(state.Segments) do
-                s:Destroy()
-            end
-            state.BlueBall.Transparency = 1
-            state.RedBall.Transparency = 1
+    --// FIX: auto cleanup
+    for root in pairs(PhysicsCache) do
+        if not root or not root.Parent then
+            cleanup(root)
         end
-        return
     end
 
+    if not Physics.Enabled then return end
+
     local char = LocalPlayer.Character
-    local origin = char and char:FindFirstChild("HumanoidRootPart")
-    if not origin then return end
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    if Billboard then
+        Billboard.Enabled = Physics.Enabled
+    end
 
     if Physics.Global then
         for _, inst in ipairs(Workspace:GetChildren()) do
             local root = getRootFromInstance(inst)
             if root
                 and root.AssemblyLinearVelocity.Magnitude > 1
-                and (root.Position - origin.Position).Magnitude <= Physics.MaxDistance
+                and (root.Position - hrp.Position).Magnitude <= Physics.MaxDistance
             then
                 drawPhysics(root)
             end
         end
     else
-        local v0, landed = drawPhysics(origin)
-
+        local v0, landed = drawPhysics(hrp)
         if Billboard and Billboard.Enabled then
-            local label = Billboard.Info
-            local dir =
-                math.abs(v0.Y) < 1 and "Horizontal"
-                or v0.Y > 0 and "Rising"
-                or "Falling"
-
-            label.Text = string.format(
-                "Physics Predicting\nDirection: %s\nSpeed: %.1f\nLanding: %s",
-                dir,
+            Billboard.Info.Text = string.format(
+                "Physics Predicting\nSpeed: %.1f\nLanding: %s",
                 v0.Magnitude,
                 landed and "Yes" or "No"
             )
@@ -2533,29 +2550,20 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --// =====================================================
---// TOGGLES (EXAMPLE)
+--// TOGGLES (SAFE)
 --// =====================================================
 
--- Show Physics
 createToggle(BFrame, "Show Physics", function(on)
     Physics.Enabled = on
     Physics.Global = false
-    if Billboard then
-        Billboard.Enabled = on
-    end
 end, false)
 
--- Global Physics
 createToggle(BFrame, "Global Physics", function(on)
     Physics.Global = on
     Physics.Enabled = on
-    if Billboard then
-        Billboard.Enabled = false
-    end
 end, false)
 
-
---//============= END ===============
+--//================= END =================
 
 --// ================================
 --// LAST DEATH VISUAL
