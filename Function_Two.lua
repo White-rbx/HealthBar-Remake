@@ -1,4 +1,4 @@
--- So this another script lol 0.2
+-- So this another script lol 0.3
 
 
 -- =====>> Saved Functions <<=====
@@ -213,12 +213,12 @@ end
 
 
 --// =====================================================
---// PHYSICS VISUAL DEBUGGER (FULL + STABLE)
+--// PHYSICS VISUAL DEBUGGER (FINAL)
 --// =====================================================
 
-local Players     = game:GetService("Players")
-local RunService  = game:GetService("RunService")
-local Workspace   = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -228,11 +228,11 @@ local LocalPlayer = Players.LocalPlayer
 
 local Physics = {
     Enabled = false,
-    Global  = false,
+    Global = false,
 
-    MaxDistance = 1024,
-    TimeStep    = 0.05,
-    MaxTime     = 3,
+    MaxDistance = 2048,
+    TimeStep = 0.05,
+    MaxTime = 3,
 
     SegmentThickness = 0.15,
 }
@@ -242,27 +242,6 @@ local Physics = {
 --// =====================================================
 
 local PhysicsCache = {}
-local Billboard
-
---// =====================================================
---// SPEED COLOR (Studs / s)
---// =====================================================
-
-local function getSpeedColor(speed)
-    if speed <= 0.1 then
-        return Color3.fromRGB(0,255,255)        -- Cyan (Nil)
-    elseif speed < 16 then
-        return Color3.fromRGB(120,255,200)      -- Mint
-    elseif speed < 32 then
-        return Color3.fromRGB(0,255,0)          -- Lime
-    elseif speed < 128 then
-        return Color3.fromRGB(255,255,0)        -- Yellow
-    elseif speed < 512 then
-        return Color3.fromRGB(255,170,0)        -- Orange
-    else
-        return Color3.fromRGB(255,60,60)        -- Red
-    end
-end
 
 --// =====================================================
 --// UTILS
@@ -285,9 +264,42 @@ local function newPart(size)
     p.CanCollide = false
     p.Material = Enum.Material.Neon
     p.Size = size
+    p.Transparency = 0
     p.Parent = Workspace
     return p
 end
+
+local function newBall(color, size)
+    local p = newPart(Vector3.new(size,size,size))
+    p.Shape = Enum.PartType.Ball
+    p.Color = color
+    p.Transparency = 1
+    return p
+end
+
+--// =====================================================
+--// SPEED COLOR (STUDS / SEC)
+--// =====================================================
+
+local function getSpeedColor(speed)
+    if not speed or speed <= 0 then
+        return Color3.fromRGB(0,180,255)       -- Cyan (Nil)
+    elseif speed < 5 then
+        return Color3.fromRGB(120,255,200)     -- Mint
+    elseif speed < 15 then
+        return Color3.fromRGB(0,255,0)         -- Lime
+    elseif speed < 30 then
+        return Color3.fromRGB(255,255,0)       -- Yellow
+    elseif speed < 60 then
+        return Color3.fromRGB(255,150,0)       -- Orange
+    else
+        return Color3.fromRGB(255,60,60)        -- Red
+    end
+end
+
+--// =====================================================
+--// STATE
+--// =====================================================
 
 local function getState(root)
     if PhysicsCache[root] then
@@ -296,57 +308,32 @@ local function getState(root)
 
     local state = {
         Segments = {},
-        CFrameLine = {},
-        BlueBall = newPart(Vector3.new(0.6,0.6,0.6)),
-        RedBall  = newPart(Vector3.new(1,1,1)),
+        PosLine = nil,
+        BlueBall = newBall(Color3.fromRGB(0,180,255), 0.6),
+        RedBall  = newBall(Color3.fromRGB(255,70,70), 1),
     }
-
-    state.BlueBall.Shape = Enum.PartType.Ball
-    state.RedBall.Shape  = Enum.PartType.Ball
-    state.BlueBall.Transparency = 1
-    state.RedBall.Transparency  = 1
 
     PhysicsCache[root] = state
     return state
 end
 
 local function clearState(state)
-    for _,v in ipairs(state.Segments) do v:Destroy() end
-    for _,v in ipairs(state.CFrameLine) do v:Destroy() end
+    for _, s in ipairs(state.Segments) do
+        s:Destroy()
+    end
     table.clear(state.Segments)
-    table.clear(state.CFrameLine)
+
+    if state.PosLine then
+        state.PosLine:Destroy()
+        state.PosLine = nil
+    end
+
     state.BlueBall.Transparency = 1
-    state.RedBall.Transparency  = 1
+    state.RedBall.Transparency = 1
 end
 
 --// =====================================================
---// BILLBOARD
---// =====================================================
-
-local function createBillboard(hrp)
-    if Billboard then Billboard:Destroy() end
-
-    Billboard = Instance.new("BillboardGui")
-    Billboard.Adornee = hrp
-    Billboard.Size = UDim2.fromScale(4,2)
-    Billboard.StudsOffset = Vector3.new(0,3.5,0)
-    Billboard.AlwaysOnTop = true
-    Billboard.Enabled = false
-    Billboard.Parent = hrp
-
-    local t = Instance.new("TextLabel")
-    t.Name = "Info"
-    t.Size = UDim2.fromScale(1,1)
-    t.BackgroundTransparency = 1
-    t.TextScaled = true
-    t.Font = Enum.Font.GothamBold
-    t.TextColor3 = Color3.fromRGB(180,255,255)
-    t.TextStrokeTransparency = 0.25
-    t.Parent = Billboard
-end
-
---// =====================================================
---// DRAW PHYSICS
+--// PHYSICS DRAW
 --// =====================================================
 
 local rayParams = RaycastParams.new()
@@ -358,79 +345,72 @@ local function drawPhysics(root)
 
     local startPos = root.Position
     local velocity = root.AssemblyLinearVelocity
-    local baseSpeed = velocity.Magnitude
-    if baseSpeed < 0.1 then return end
+    local gravity = Vector3.new(0, -Workspace.Gravity, 0)
 
-    local gravity = Vector3.new(0,-Workspace.Gravity,0)
     rayParams.FilterDescendantsInstances = {root.Parent}
 
     local lastPos = startPos
-    local totalDist = 0
-    local landed
+    local landedPos
 
     for t = 0, Physics.MaxTime, Physics.TimeStep do
-        local pos = startPos + velocity*t + 0.5*gravity*t*t
-        local dir = pos - lastPos
-        if dir.Magnitude <= 0.05 then continue end
-
-        totalDist += dir.Magnitude
-        if totalDist > Physics.MaxDistance then break end
-
-        local hit = Workspace:Raycast(lastPos, dir, rayParams)
-        if hit then
-            landed = hit.Position
+        local pos = startPos + velocity * t + 0.5 * gravity * t * t
+        if (pos - startPos).Magnitude > Physics.MaxDistance then
             break
         end
 
-        local falloff = math.clamp(1 - (totalDist / Physics.MaxDistance), 0, 1)
-        local speedAt = baseSpeed * falloff
+        local dir = pos - lastPos
+        if dir.Magnitude > 0.05 then
+            local hit = Workspace:Raycast(lastPos, dir, rayParams)
+            if hit then
+                landedPos = hit.Position
+                break
+            end
 
-        local seg = newPart(Vector3.new(
-            Physics.SegmentThickness,
-            Physics.SegmentThickness,
-            dir.Magnitude
-        ))
-        seg.CFrame = CFrame.new(lastPos + dir/2, pos)
-        seg.Color = getSpeedColor(speedAt)
+            local seg = newPart(Vector3.new(
+                Physics.SegmentThickness,
+                Physics.SegmentThickness,
+                dir.Magnitude
+            ))
 
-        table.insert(state.Segments, seg)
+            seg.CFrame = CFrame.new(lastPos + dir/2, pos)
+
+            local speed = dir.Magnitude / Physics.TimeStep
+            seg.Color = getSpeedColor(speed)
+
+            table.insert(state.Segments, seg)
+        end
+
         lastPos = pos
     end
 
     -- Landing / End
-    if landed then
+    if landedPos then
         state.RedBall.Transparency = 0
-        state.RedBall.Position = landed
-    else
+        state.RedBall.Position = landedPos
+    elseif velocity.Magnitude > 1 then
         state.BlueBall.Transparency = 0
         state.BlueBall.Position = lastPos
     end
 
-    -- Position of CFrame (X-axis straight)
-    local cfDir = root.CFrame.RightVector
-    local cfLen = math.clamp(baseSpeed * 0.15, 2, 40)
+    --// =================================================
+    --// POSITION OF CFRAME (LINEAR PREDICT)
+    --// =================================================
 
-    local cfPart = newPart(Vector3.new(0.12,0.12,cfLen))
-    cfPart.CFrame = CFrame.new(
-        startPos + cfDir*(cfLen/2),
-        startPos + cfDir*cfLen
-    )
-    cfPart.Color = Color3.fromRGB(180,180,255)
+    if velocity.Magnitude > 1 then
+        local dir = velocity.Unit
+        local len = math.clamp(velocity.Magnitude * 0.15, 2, 50)
 
-    table.insert(state.CFrameLine, cfPart)
+        local line = newPart(Vector3.new(0.12, 0.12, len))
+        line.Color = Color3.fromRGB(180,180,255)
 
-    return baseSpeed, landed
+        line.CFrame = CFrame.new(
+            startPos + dir * (len / 2),
+            startPos + dir * len
+        )
+
+        state.PosLine = line
+    end
 end
-
---// =====================================================
---// CHARACTER
---// =====================================================
-
-local function onChar(char)
-    createBillboard(char:WaitForChild("HumanoidRootPart"))
-end
-if LocalPlayer.Character then onChar(LocalPlayer.Character) end
-LocalPlayer.CharacterAdded:Connect(onChar)
 
 --// =====================================================
 --// UPDATE LOOP
@@ -438,52 +418,45 @@ LocalPlayer.CharacterAdded:Connect(onChar)
 
 RunService.RenderStepped:Connect(function()
     if not Physics.Enabled then
-        for _,state in pairs(PhysicsCache) do
+        for _, state in pairs(PhysicsCache) do
             clearState(state)
         end
         return
     end
 
     local char = LocalPlayer.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    local origin = char and char:FindFirstChild("HumanoidRootPart")
+    if not origin then return end
 
     if Physics.Global then
-        for _,inst in ipairs(Workspace:GetChildren()) do
+        for _, inst in ipairs(Workspace:GetChildren()) do
             local root = getRoot(inst)
             if root
-            and root.AssemblyLinearVelocity.Magnitude > 1
-            and (root.Position - hrp.Position).Magnitude <= Physics.MaxDistance
+                and root.AssemblyLinearVelocity.Magnitude > 1
+                and (root.Position - origin.Position).Magnitude <= Physics.MaxDistance
             then
                 drawPhysics(root)
             end
         end
     else
-        local speed, landed = drawPhysics(hrp)
-        if Billboard and Billboard.Enabled then
-            Billboard.Info.Text = string.format(
-                "Speed: %.1f studs/s\nLanding: %s",
-                speed or 0,
-                landed and "Yes" or "No"
-            )
-        end
+        drawPhysics(origin)
     end
 end)
 
 --// =====================================================
---// TOGGLES
+--// TOGGLES (EXAMPLE)
 --// =====================================================
 
+-- Show Physics
 createToggle(BFrame, "Show Physics", function(on)
     Physics.Enabled = on
     Physics.Global = false
-    if Billboard then Billboard.Enabled = on end
 end, false)
 
+-- Global Physics
 createToggle(BFrame, "Global Physics", function(on)
     Physics.Enabled = on
     Physics.Global = on
-    if Billboard then Billboard.Enabled = false end
 end, false)
 
---// ================== END ==================
+--// ================= END =================
