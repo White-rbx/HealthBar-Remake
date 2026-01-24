@@ -1,7 +1,6 @@
--- Well 1.87
+-- Well 1.88
 
 local StarterGui = game:GetService("StarterGui")
--- Sorry I forget to add
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
 
 -- Monitor & auto-run (executor)
@@ -186,6 +185,9 @@ task.spawn(function()
         end
     end
 end)
+
+-- Function_Two.lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Function_Two.lua"))()
 
 -- BouncyAndHiglightImagsButton
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/BouncyAndHighlightImageButton.lua"))()
