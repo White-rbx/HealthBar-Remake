@@ -1,4 +1,4 @@
--- So this another script lol 0.5
+-- So this another script lol 0.51
 
 
 -- =====>> Saved Functions <<=====
@@ -292,7 +292,7 @@ local function getSpeedColor(speed)
         return Color3.fromRGB(255,255,0)       -- Yellow
     elseif speed < 128 then
         return Color3.fromRGB(213, 115, 61)    -- Orange
-    elseif sleed < 512 then
+    elseif speed < 512 then
         return Color3.fromRGB(255,0,0)       -- Red
     else
         return Color3.fromRGB(255, 192, 203)     -- Pink
