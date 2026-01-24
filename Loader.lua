@@ -1,4 +1,4 @@
--- Well 1.88
+-- Well 1.89
 
 local StarterGui = game:GetService("StarterGui")
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
@@ -281,3 +281,5 @@ if IsBanned(plr) then
         Icon = "rbxassetid://117179620345399",
     })
 end
+
+StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
