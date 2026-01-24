@@ -1,4 +1,4 @@
--- So this another script lol 0.3
+-- So this another script lol 0.4
 
 
 -- =====>> Saved Functions <<=====
@@ -284,13 +284,13 @@ end
 local function getSpeedColor(speed)
     if not speed or speed <= 0 then
         return Color3.fromRGB(0,180,255)       -- Cyan (Nil)
-    elseif speed < 5 then
+    elseif speed < 17 then
         return Color3.fromRGB(120,255,200)     -- Mint
-    elseif speed < 15 then
+    elseif speed < 32 then
         return Color3.fromRGB(0,255,0)         -- Lime
-    elseif speed < 30 then
+    elseif speed < 64 then
         return Color3.fromRGB(255,255,0)       -- Yellow
-    elseif speed < 60 then
+    elseif speed < 128 then
         return Color3.fromRGB(255,150,0)       -- Orange
     else
         return Color3.fromRGB(255,60,60)        -- Red
