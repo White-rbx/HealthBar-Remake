@@ -1,4 +1,4 @@
--- Loader script 0.1
+-- Loader script 0.15
 
 ------------------------------------------------------------------------------------------
 
@@ -142,7 +142,8 @@ gui.Parent = CoreGui
 -- Frame
 local hr = Instance.new("Frame")
 hr.Name = "Holder"
-hr.Size = UDim2.new(-0.3,0,1,0)
+hr.Size = UDim2.new(0.3,0,1,0)
+hr.Position = UDim2.new(-0.3,0,0,0)
 hr.BackgroundTransparency = 0.3
 hr.BackgroundColor3 = Color3.fromRGB(18,18,21)
 hr.Active = false
@@ -173,12 +174,13 @@ ListLayout(ins, 0, 5, HCenter, VTop, SLayout, FillV)
 -- Holder
 local top = Instance.new("TextLabel")
 top.Name = "Topic"
-top.Size = UDim2.new(1,0,0.1,0)
+top.Size = UDim2.new(1,0,0.05,0)
 top.BackgroundTransparency = 1
 top.TextScaled = true
 top.Text = "Settings - Loader"
 top.TextColor3 = Color3.fromRGB(255,255,255)
 top.Parent = ins
+Corner(0, 8, top)
 Stroke(top, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
 -- Toggle for holder
@@ -219,6 +221,3 @@ oc.MouseButton1Click:Connect(function()
         tweenHR(OFF_X)
     end
 end)
-
-
-
