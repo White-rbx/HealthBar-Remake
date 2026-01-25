@@ -1,7 +1,4 @@
--- Well 1.89
-
-local StarterGui = game:GetService("StarterGui")
-StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
+-- Well 1.9
 
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
@@ -281,5 +278,3 @@ if IsBanned(plr) then
         Icon = "rbxassetid://117179620345399",
     })
 end
-
-StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
