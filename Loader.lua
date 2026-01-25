@@ -1,0 +1,224 @@
+-- Loader script 0.1
+
+------------------------------------------------------------------------------------------
+
+-- =====>> Saved Functions <<=====
+-- ====FUNCTION CORNER=====
+local function Corner(Scale, Offset, Parent)
+  local Corner = Instance.new("UICorner")
+  Corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
+  Corner.Parent = Parent
+  return Corner
+end
+-- =====END FUNCTION CORNER====
+
+-- =====FUNCTION UILISTLAYOUT=====
+local HCenter = Enum.HorizontalAlignment.Center
+local VCenter = Enum.VerticalAlignment.Center
+local HLeft = Enum.HorizontalAlignment.Left
+local VTop = Enum.VerticalAlignment.Top
+local HRight = Enum.HorizontalAlignment.Right
+local VBottom = Enum.VerticalAlignment.Bottom
+local FillH = Enum.FillDirection.Horizontal
+local FillV = Enum.FillDirection.Vertical
+local SCustom = Enum.SortOrder.Custom
+local SLayout = Enum.SortOrder.LayoutOrder
+local SName = Enum.SortOrder.Name
+
+local function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(scale or 0, offset or 0)
+    list.FillDirection = FILL or FillH
+    list.HorizontalAlignment = HZ or HCenter
+    list.VerticalAlignment = VT or VCenter
+    list.SortOrder = SO or SName
+    list.Parent = parent
+    return list
+end
+-- =====END FUNCTION UILISTLAYOUT=====
+
+-- ====FUNCTION UISTROKE=====
+local ASMBorder = Enum.ApplyStrokeMode.Border
+local ASMContextual = Enum.ApplyStrokeMode.Contextual
+
+local LJMBevel = Enum.LineJoinMode.Bevel
+local LJMMiter = Enum.LineJoinMode.Miter
+local LJMRound = Enum.LineJoinMode.Round
+
+local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+    local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
+    stroke.ApplyStrokeMode = ASM or ASMBorder
+    stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
+    stroke.LineJoinMode = LJM or LJMRound
+    stroke.Thickness = Tn or 1
+    stroke.Transparency = Transy or 0
+    stroke.Parent = parent
+    return stroke
+end
+-- =====END FUNCTION UISTROKE=====
+
+-- ====FUNCTION UIGRADIENT=====
+local function Gradient(parent, rotation, offsetX, offsetY, ...)
+    local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+    grad.Rotation = rotation or 0
+    grad.Offset = Vector2.new(offsetX or 0, offsetY or 0)
+
+    local colors = {...}
+    local keypoints = {}
+
+    if #colors == 0 then
+        keypoints = { ColorSequenceKeypoint.new(0, Color3.new(1,1,1)), ColorSequenceKeypoint.new(1, Color3.new(1,1,1)) }
+    elseif #colors == 1 then
+        keypoints = { ColorSequenceKeypoint.new(0, colors[1]), ColorSequenceKeypoint.new(1, colors[1]) }
+    else
+        for i, c in ipairs(colors) do
+            local t = (i-1) / (#colors-1)
+            table.insert(keypoints, ColorSequenceKeypoint.new(t, c))
+        end
+    end
+
+    grad.Color = ColorSequence.new(keypoints)
+    grad.Parent = parent
+    return grad
+end
+-- =====END FUNCTION UIGRADIENT=====
+
+-- ====FUNCTION UIPADDING (ตามลำดับ Roblox)=====
+local function Padding(parent, bottom, left, right, top)
+    local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
+    local function toUDim(value)
+        if typeof(value) == "UDim" then
+            return value
+        elseif type(value) == "number" then
+            return UDim.new(0, value)
+        elseif type(value) == "table" and #value >= 2 then
+            return UDim.new(value[1] or 0, value[2] or 0)
+        else
+            return UDim.new(0, 0)
+        end
+    end
+
+    pad.PaddingBottom = toUDim(bottom)
+    pad.PaddingLeft   = toUDim(left)
+    pad.PaddingRight  = toUDim(right)
+    pad.PaddingTop    = toUDim(top)
+
+    pad.Parent = parent
+    return pad
+end
+-- =====END FUNCTION UIPADDING======
+
+--====== CLIENT SERVICES ======--
+
+-- UI / Player Interface
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
+
+-- Audio / Feedback
+local SoundService = game:GetService("SoundService")
+
+-- Commerce / Monetization
+local MarketplaceService = game:GetService("MarketplaceService")
+
+-- Runtime / Frame Updates
+local RunService = game:GetService("RunService")
+
+-- Animation / Transitions
+local TweenService = game:GetService("TweenService")
+
+-- Input (Desktop / Mobile)
+local UserInputService = game:GetService("UserInputService")
+local TouchInputService = game:GetService("TouchInputService")
+
+------------------------------------------------------------------------------------------
+
+-- ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "LoaderSettings"
+gui.Parent = CoreGui
+
+-- Frame
+local hr = Instance.new("Frame")
+hr.Name = "Holder"
+hr.Size = UDim2.new(-0.3,0,1,0)
+hr.BackgroundTransparency = 0.3
+hr.BackgroundColor3 = Color3.fromRGB(18,18,21)
+hr.Active = false
+hr.Parent = gui
+
+-- Button
+local oc = Instance.new("TextButton")
+oc.Name = "OPEN/CLOSE"
+oc.Size = UDim2.new(0.1,0,0.1,0)
+oc.Position = UDim2.new(1,0,0,0)
+oc.BackgroundTransparency = 0.3
+oc.BackgroundColor3 = Color3.fromRGB(18,18,21)
+oc.TextColor3 = Color3.fromRGB(255,255,255)
+oc.TextSize = 18
+oc.Text = "‹›"
+oc.Parent = hr
+
+-- Frame
+local ins = Instance.new("Frame")
+ins.Name = "Inside"
+ins.Size = UDim2.new(0.92,0,0.96,0)
+ins.Position = UDim2.new(0.04,0,0.02,0)
+ins.BackgroundTransparency = 1
+ins.Active = false
+ins.Parent = hr
+ListLayout(ins, 0, 5, HCenter, VTop, SLayout, FillV)
+
+-- Holder
+local top = Instance.new("TextLabel")
+top.Name = "Topic"
+top.Size = UDim2.new(1,0,0.1,0)
+top.BackgroundTransparency = 1
+top.TextScaled = true
+top.Text = "Settings - Loader"
+top.TextColor3 = Color3.fromRGB(255,255,255)
+top.Parent = ins
+Stroke(top, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+-- Toggle for holder
+-- ตัวแปรที่มีอยู่แล้ว
+-- hr : Frame
+-- oc : TextButton
+
+local OFF_X = -0.3
+local ON_X = 0
+
+local tweenInfo = TweenInfo.new(
+    0.25, -- เวลา
+    Enum.EasingStyle.Quad,
+    Enum.EasingDirection.Out
+)
+
+local function tweenHR(xScale)
+    local goal = {
+        Position = UDim2.new(
+            xScale,
+            0,
+            hr.Position.Y.Scale,
+            hr.Position.Y.Offset
+        )
+    }
+
+    TweenService:Create(hr, tweenInfo, goal):Play()
+end
+
+oc.MouseButton1Click:Connect(function()
+    local currentX = hr.Position.X.Scale
+
+    if currentX <= OFF_X then
+        -- OFF → ON
+        tweenHR(ON_X)
+    else
+        -- ON → OFF
+        tweenHR(OFF_X)
+    end
+end)
+
+
+
