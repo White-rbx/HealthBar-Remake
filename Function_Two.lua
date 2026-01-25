@@ -1,4 +1,4 @@
--- So this another script lol 0.8
+-- So this another script lol 0.9
 
 
 -- =====>> Saved Functions <<=====
@@ -131,8 +131,15 @@ local TweenService = game:GetService("TweenService")
 -- Input (Desktop / Mobile)
 local UserInputService = game:GetService("UserInputService")
 local TouchInputService = game:GetService("TouchInputService")
+------------------------------------------------------------
+local BFrame = CoreGui:WaitForChild("ExperienceSettings")
+    .Menu.Background
+    :WaitForChild("Inner_Background")
+    .Toggles:WaitForChild("B_Frame")
 
-local BFrame = CoreGui:WaitForChild("ExperienceSettings", 10).Menu.Background:WaitForChild("Inner_Background", 5).Toggles.B_Frame
+repeat
+    task.wait()
+until BFrame.Parent
 
 -- Toggle builder
 local toggleCount = 0
