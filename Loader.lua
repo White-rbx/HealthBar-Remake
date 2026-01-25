@@ -1,4 +1,4 @@
--- Loader script 0.15
+-- Loader script 0.2
 
 ------------------------------------------------------------------------------------------
 
@@ -145,6 +145,7 @@ hr.Name = "Holder"
 hr.Size = UDim2.new(0.3,0,1,0)
 hr.Position = UDim2.new(-0.3,0,0,0)
 hr.BackgroundTransparency = 0.3
+hr.BorderSizePixel = 0
 hr.BackgroundColor3 = Color3.fromRGB(18,18,21)
 hr.Active = false
 hr.Parent = gui
@@ -155,6 +156,7 @@ oc.Name = "OPEN/CLOSE"
 oc.Size = UDim2.new(0.1,0,0.1,0)
 oc.Position = UDim2.new(1,0,0,0)
 oc.BackgroundTransparency = 0.3
+oc.BorderSizePixel = 0
 oc.BackgroundColor3 = Color3.fromRGB(18,18,21)
 oc.TextColor3 = Color3.fromRGB(255,255,255)
 oc.TextSize = 18
