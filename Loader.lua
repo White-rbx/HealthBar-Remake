@@ -1,4 +1,14 @@
--- Well 1.9
+-- Well 2.0
+
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+local hrp = character:WaitForChild("HumanoidRootPart")
+StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, true)
+
 
 -- Monitor & auto-run (executor)
 local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/loadstring.lua"
