@@ -1,5 +1,8 @@
 -- Well 2.1
 
+-- Loader
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
+
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 
