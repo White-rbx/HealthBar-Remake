@@ -1,4 +1,4 @@
--- Well 2.0
+-- Well 2.1
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
@@ -199,6 +199,31 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-R
 -- BouncyAndHiglightImagsButton
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/BouncyAndHighlightImageButton.lua"))()
 print("[ BouncyAndHiglightImagsButton ] Successful loaded.")
+
+
+-- Set Y
+local CoreGui = game:GetService("CoreGui")
+
+local profileStatus =
+    CoreGui:WaitForChild("TopBarApp")
+        :WaitForChild("TopBarApp")
+        :WaitForChild("UnibarLeftFrame")
+        :WaitForChild("HealthBar")
+        :WaitForChild("ExperienceSettings")
+        :WaitForChild("Menu")
+        :WaitForChild("ProfileStatus")
+
+while not profileStatus.Parent do
+    profileStatus.AncestryChanged:Wait()
+end
+
+profileStatus.Position = UDim2.new(
+    profileStatus.Position.X.Scale,
+    profileStatus.Position.X.Offset,
+    1, -- Y Scale
+    0  -- Y Offset
+)
+
 
 local sata = CoreGui:WaitForChild("TopBarApp", 10)
     :WaitForChild("TopBarApp", 10)
