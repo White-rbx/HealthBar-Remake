@@ -1,4 +1,4 @@
--- Loader script 0.3
+-- Loader script 0.31
 
 ------------------------------------------------------------------------------------------
 
@@ -264,26 +264,6 @@ local function loadData()
     end
     return {}
 end
-
---// =====================================================
---// DATA (GLOBAL STATE)
---// =====================================================
-
-local Data = loadData()
-
-Data.ShowPhysics   = Data.ShowPhysics   or false
-Data.GlobalPhysics = Data.GlobalPhysics or false
-Data.MaxDistance  = Data.MaxDistance  or 2048
-
---// =====================================================
---// UI PARENT (EXAMPLE)
---// =====================================================
-
-local CoreGui = game:GetService("CoreGui")
-
-local ins = Instance.new("ScreenGui")
-ins.Name = "ExperienceSettingsUI"
-ins.Parent = CoreGui
 
 --// =====================================================
 --// TXT FUNCTION (YOUR SYSTEM)
