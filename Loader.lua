@@ -1,4 +1,4 @@
--- Well 2.1
+-- Well 2.2
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
@@ -203,31 +203,6 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-R
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/BouncyAndHighlightImageButton.lua"))()
 print("[ BouncyAndHiglightImagsButton ] Successful loaded.")
 
-
--- Set Y
-local CoreGui = game:GetService("CoreGui")
-
-local profileStatus =
-    CoreGui:WaitForChild("TopBarApp")
-        :WaitForChild("TopBarApp")
-        :WaitForChild("UnibarLeftFrame")
-        :WaitForChild("HealthBar")
-        :WaitForChild("ExperienceSettings")
-        :WaitForChild("Menu")
-        :WaitForChild("ProfileStatus")
-
-while not profileStatus.Parent do
-    profileStatus.AncestryChanged:Wait()
-end
-
-profileStatus.Position = UDim2.new(
-    profileStatus.Position.X.Scale,
-    profileStatus.Position.X.Offset,
-    1, -- Y Scale
-    0  -- Y Offset
-)
-
-
 local sata = CoreGui:WaitForChild("TopBarApp", 10)
     :WaitForChild("TopBarApp", 10)
     :WaitForChild("UnibarLeftFrame", 10)
@@ -316,3 +291,26 @@ if IsBanned(plr) then
         Icon = "rbxassetid://117179620345399",
     })
 end
+
+-- Set Y
+local CoreGui = game:GetService("CoreGui")
+
+local profileStatus =
+    CoreGui:WaitForChild("TopBarApp")
+        :WaitForChild("TopBarApp")
+        :WaitForChild("UnibarLeftFrame")
+        :WaitForChild("HealthBar")
+        :WaitForChild("ExperienceSettings")
+        :WaitForChild("Menu")
+        :WaitForChild("ProfileStatus")
+
+while not profileStatus.Parent do
+    profileStatus.AncestryChanged:Wait()
+end
+
+profileStatus.Position = UDim2.new(
+    profileStatus.Position.X.Scale,
+    profileStatus.Position.X.Offset,
+    1, -- Y Scale
+    0  -- Y Offset
+)
