@@ -1,4 +1,4 @@
--- Loader script 0.2
+-- Loader script 0.3
 
 ------------------------------------------------------------------------------------------
 
@@ -223,3 +223,207 @@ oc.MouseButton1Click:Connect(function()
         tweenHR(OFF_X)
     end
 end)
+
+--// =====================================================
+--// SERVICES
+--// =====================================================
+
+local HttpService = game:GetService("HttpService")
+
+--// =====================================================
+--// SAVE PATH
+--// =====================================================
+
+local ROOT_FOLDER = "ExperienceSettings"
+local SAVE_FILE   = ROOT_FOLDER .. "/config.json"
+
+--// =====================================================
+--// FILE UTILS (EXECUTOR)
+--// =====================================================
+
+local function ensureFolder()
+    if not isfolder(ROOT_FOLDER) then
+        makefolder(ROOT_FOLDER)
+    end
+end
+
+local function saveData(data)
+    ensureFolder()
+    writefile(SAVE_FILE, HttpService:JSONEncode(data))
+end
+
+local function loadData()
+    ensureFolder()
+    if isfile(SAVE_FILE) then
+        local ok, decoded = pcall(function()
+            return HttpService:JSONDecode(readfile(SAVE_FILE))
+        end)
+        if ok and type(decoded) == "table" then
+            return decoded
+        end
+    end
+    return {}
+end
+
+--// =====================================================
+--// DATA (GLOBAL STATE)
+--// =====================================================
+
+local Data = loadData()
+
+Data.ShowPhysics   = Data.ShowPhysics   or false
+Data.GlobalPhysics = Data.GlobalPhysics or false
+Data.MaxDistance  = Data.MaxDistance  or 2048
+
+--// =====================================================
+--// UI PARENT (EXAMPLE)
+--// =====================================================
+
+local CoreGui = game:GetService("CoreGui")
+
+local ins = Instance.new("ScreenGui")
+ins.Name = "ExperienceSettingsUI"
+ins.Parent = CoreGui
+
+--// =====================================================
+--// TXT FUNCTION (YOUR SYSTEM)
+--// =====================================================
+
+local function Txt(
+    txt, R, G, B,
+    hasBox, ptxt,
+    hasButton, btxt,
+    work, callback, status
+)
+    -- Frame
+    local b = Instance.new("Frame")
+    b.Name = "Handle"
+    b.Size = UDim2.new(1, 0, 0.05, 0)
+    b.BackgroundTransparency = 1
+    b.Parent = ins
+
+    -- TextLabel
+    local a = Instance.new("TextLabel")
+    a.BackgroundTransparency = 1
+    a.Text = tostring(txt)
+    a.TextScaled = true
+    a.TextColor3 = Color3.fromRGB(R, G, B)
+    a.TextXAlignment = Enum.TextXAlignment.Left
+    a.Size = UDim2.new(1,0,1,0)
+    a.Parent = b
+
+    if hasBox and hasButton then
+        a.Size = UDim2.new(0.25,0,1,0)
+    elseif hasBox then
+        a.Size = UDim2.new(0.4,0,1,0)
+    elseif hasButton then
+        a.Size = UDim2.new(0.65,0,1,0)
+    end
+
+    -- TextBox
+    local box
+    if hasBox then
+        box = Instance.new("TextBox")
+        box.BackgroundTransparency = 1
+        box.PlaceholderText = tostring(ptxt or "")
+        box.Text = ""
+        box.TextScaled = true
+        box.TextColor3 = Color3.fromRGB(0,255,0)
+        box.Size = UDim2.new(0.49,0,1,0)
+        box.Position = UDim2.new(0.41,0,0,0)
+        box.Parent = b
+
+        if hasButton then
+            box.Size = UDim2.new(0.25,0,1,0)
+            box.Position = UDim2.new(0.26,0,0,0)
+        end
+
+        if work then
+            box.FocusLost:Connect(function(enter)
+                if enter then
+                    work(box.Text)
+                    if callback then
+                        callback(box.Text)
+                    end
+                end
+            end)
+        end
+    end
+
+    -- TextButton / Toggle
+    local btn
+    if hasButton then
+        btn = Instance.new("TextButton")
+        btn.BackgroundTransparency = 0.15
+        btn.TextScaled = true
+        btn.TextColor3 = Color3.fromRGB(255,255,255)
+        btn.Size = UDim2.new(0.44,0,1,0)
+        btn.Position = UDim2.new(0.66,0,0,0)
+        btn.Parent = b
+
+        if hasBox then
+            btn.Size = UDim2.new(0.25,0,1,0)
+            btn.Position = UDim2.new(0.51,0,0,0)
+        end
+
+        if status ~= nil then
+            btn.Text = status and "ON" or "OFF"
+            btn.MouseButton1Click:Connect(function()
+                status = not status
+                btn.Text = status and "ON" or "OFF"
+                if work then work(status) end
+                if callback then callback(status) end
+            end)
+        else
+            btn.Text = tostring(btxt or "OK")
+            btn.MouseButton1Click:Connect(function()
+                if work then work() end
+                if callback then callback() end
+            end)
+        end
+    end
+
+    return {
+        Frame = b,
+        Label = a,
+        Box = box,
+        Button = btn
+    }
+end
+
+--// =====================================================
+--// USAGE EXAMPLES
+--// =====================================================
+
+-- Toggle: Show Physics
+local CONTINUE_LOCK = true
+
+Txt(
+    "Continue loadstring (ANTI-BROKE)",
+    255, 255, 255,
+    false, nil,
+    true, "Okay",
+    function()
+        CONTINUE_LOCK = false
+    end
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- WAIT FOR USER CONFIRM
+while CONTINUE_LOCK do
+    task.wait()
+end
