@@ -1,4 +1,4 @@
--- Loader script 0.33
+-- Loader script 0.34
 
 ------------------------------------------------------------------------------------------
 
@@ -382,6 +382,24 @@ local function Txt(
                 if callback then callback() end
             end)
         end
+        
+        if status == true then
+          btn.Text = "ON"
+          btn.TextColor3 = Color3.fromRGB(0,255,0)
+        else
+          btn.Text = "OFF"
+          btn.TextColor3 = Color3.fromRGB(255,0,0)
+        end
+    end
+
+    -- Button click
+    if btn and work then
+        btn.MouseButton1Click:Connect(function()
+            work(box, btn, status)
+            if callback then
+                callback(box, btn, status)
+            end
+        end)
     end
 
     return {
