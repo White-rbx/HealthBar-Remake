@@ -1,4 +1,4 @@
--- Loader script 0.46
+-- Loader script 0.47
 
 ------------------------------------------------------------------------------------------
 
@@ -238,7 +238,7 @@ local ROOT_FOLDER = "ExperienceSettings"
 local SAVE_FILE   = ROOT_FOLDER .. "/config.json"
 
 --// =====================================================
---// FILE UTILS (EXECUTOR)
+--// FILE UTILS (EXECUTOR ONLY)
 --// =====================================================
 
 local function ensureFolder()
@@ -248,28 +248,58 @@ local function ensureFolder()
 end
 
 --// =====================================================
---// SAVE DATA
+--// DEFAULT DATA
 --// =====================================================
+
 local DEFAULT_DATA = {
     Version = 1,
+
     Loader = {
         AlwaysLoad = false
     },
+
     UI = {
         BackgroundRGB = { 18, 18, 21 }
     }
 }
 
-local function deepMerge(defaults, data)
+--// =====================================================
+--// DEEP MERGE (เติมค่า default ที่หายไป)
+--// =====================================================
+
+local function deepMerge(data, defaults)
     for k, v in pairs(defaults) do
         if type(v) == "table" then
             data[k] = type(data[k]) == "table" and data[k] or {}
-            deepMerge(v, data[k])
+            deepMerge(data[k], v)
         elseif data[k] == nil then
             data[k] = v
         end
     end
 end
+
+--// =====================================================
+--// SAVE DATA  <<<<<< สำคัญ (ตัวนี้ที่เคย NIL)
+--// =====================================================
+
+local function saveData(data)
+    ensureFolder()
+
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode(data)
+    end)
+
+    if ok then
+        writefile(SAVE_FILE, encoded)
+        return true
+    end
+
+    return false
+end
+
+--// =====================================================
+--// LOAD DATA
+--// =====================================================
 
 local function loadData()
     ensureFolder()
@@ -280,15 +310,22 @@ local function loadData()
         local ok, decoded = pcall(function()
             return HttpService:JSONDecode(readfile(SAVE_FILE))
         end)
+
         if ok and type(decoded) == "table" then
             data = decoded
         end
     end
 
-    deepMerge(DEFAULT_DATA, data)
+    -- เติม default ที่ขาด
+    deepMerge(data, DEFAULT_DATA)
+
+    -- save กลับทันที (กัน key หาย)
     saveData(data)
+
     return data
 end
+
+--// =====================================================
 
 --// =====================================================
 --// UI HELPER
@@ -355,19 +392,15 @@ local function Txt(
             box.Position = UDim2.new(0.26,0,0,0)
         end
 
+        -- ✅ LIVE PREVIEW
         if work then
-            box.FocusLost:Connect(function(enter)
-                if enter then
-                    work(box.Text)
-                    if callback then
-                        callback(box.Text)
-                    end
-                end
+            box:GetPropertyChangedSignal("Text"):Connect(function()
+                work(box)
             end)
         end
     end
 
-    -- Button / Toggle
+    -- Button
     local btn
     if hasButton then
         btn = Instance.new("TextButton")
@@ -377,7 +410,7 @@ local function Txt(
         btn.Position = UDim2.new(0.59,0,0,0)
         btn.Parent = b
         Corner(0,8,btn)
-        Stroke(btn, ASMBorder, 255, 255, 255, JSMRound, 1, 0)
+        Stroke(btn, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
         if hasBox then
             btn.Size = UDim2.new(0.25,0,1,0)
@@ -392,31 +425,26 @@ local function Txt(
             btn.TextColor3 = Color3.fromRGB(255,255,255)
         end
 
-        -- SINGLE CONNECT (สำคัญ)
         btn.MouseButton1Click:Connect(function()
             if status ~= nil then
                 status = not status
                 updateToggle(btn, status)
-
                 if work then work(status) end
                 if callback then callback(status) end
             else
-                if work then work() end
-                if callback then callback() end
+                if callback then
+                    callback(box, btn)
+                end
             end
         end)
     end
 
-return {
-    Frame = b,
-    Label = a,
-    Box = box,
-    Button = btn,
-    GetStatus = function()
-        return status
-    end
-}
-
+    return {
+        Frame = b,
+        Label = a,
+        Box = box,
+        Button = btn
+    }
 end
 
 --// =====================================================
@@ -531,8 +559,6 @@ applyBackgroundColor(Color3.fromRGB(
 --// CUSTOM BACKGROUND UI
 --// =====================================================
 
-local Data = loadData()
-
 local function setBGFromData()
     local rgb = Data.UI.BackgroundRGB
     CURRENT_BG_COLOR = Color3.fromRGB(rgb[1], rgb[2], rgb[3])
@@ -546,23 +572,21 @@ Txt(
     true, "30,30,30",
     true, "Confirm",
 
-    -- work = live preview
-    function(text)
-        local color = select(1, parseRGB(text))
+    -- LIVE PREVIEW
+    function(box)
+        local color = select(1, parseRGB(box.Text))
         if color then
             CURRENT_BG_COLOR = color
         end
     end,
 
-    -- callback = CONFIRM ONLY
+    -- CONFIRM + SAVE
     function(box, btn)
         local color, raw = parseRGB(box.Text)
         if not color then return end
 
-        -- FORCE SAVE
         Data.UI.BackgroundRGB = raw
         saveData(Data)
-
         CURRENT_BG_COLOR = color
 
         -- visual confirm
