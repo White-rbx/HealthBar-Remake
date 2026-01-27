@@ -1,4 +1,4 @@
--- Loader script 0.32
+-- Loader script 0.33
 
 ------------------------------------------------------------------------------------------
 
@@ -388,7 +388,26 @@ Txt(
     end
 )
 
+Txt(
+    "Always Load",
+    255,255,255,
+    false, nil,
+    true, Data.AlwaysLoad and "ON" or "OFF",
+    function(_, btn)
+        Data.AlwaysLoad = not Data.AlwaysLoad
+        saveData(Data)
 
+        if Data.AlwaysLoad then
+            btn.Text = "ON"
+            btn.TextColor3 = Color3.fromRGB(0,255,0)   -- Green
+            CONTINUE_LOCK = false
+        else
+            btn.Text = "OFF"
+            btn.TextColor3 = Color3.fromRGB(255,0,0)   -- Red
+        end
+    end,
+    true
+)
 
 
 
