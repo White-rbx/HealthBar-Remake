@@ -1,4 +1,4 @@
--- Loader script 0.51
+-- Loader script 0.53
 
 ------------------------------------------------------------------------------------------
 
@@ -340,6 +340,43 @@ local function updateToggle(btn, status)
 end
 
 --// =====================================================
+--// HIDE MENU SYSTEM (WAIT + APPLY)
+--// =====================================================
+
+local CoreGui = game:GetService("CoreGui")
+
+local MENU_INSTANCE = nil
+local HIDE_MENU_STATUS = nil
+
+-- หา Menu
+local function tryFindMenu()
+    return CoreGui:FindFirstChild("ExperienceSettings", true)
+        and CoreGui.ExperienceSettings:FindFirstChild("Menu")
+end
+
+-- apply state
+local function applyHideMenu()
+    if MENU_INSTANCE and HIDE_MENU_STATUS ~= nil then
+        MENU_INSTANCE.Enabled = not HIDE_MENU_STATUS
+    end
+end
+
+-- background watcher (ไม่บล็อก)
+task.spawn(function()
+    while true do
+        if not MENU_INSTANCE then
+            local menu = tryFindMenu()
+            if menu then
+                MENU_INSTANCE = menu
+                applyHideMenu()
+            end
+        end
+        task.wait(0.25)
+    end
+end)
+
+
+--// =====================================================
 --// TXT FUNCTION (FIXED)
 --// =====================================================
 
@@ -668,42 +705,6 @@ Txt(
         end)
     end
 )
-
---// =====================================================
---// HIDE MENU SYSTEM (WAIT + APPLY)
---// =====================================================
-
-local CoreGui = game:GetService("CoreGui")
-
-local MENU_INSTANCE = nil
-local HIDE_MENU_STATUS = nil
-
--- หา Menu
-local function tryFindMenu()
-    return CoreGui:FindFirstChild("ExperienceSettings", true)
-        and CoreGui.ExperienceSettings:FindFirstChild("Menu")
-end
-
--- apply state
-local function applyHideMenu()
-    if MENU_INSTANCE and HIDE_MENU_STATUS ~= nil then
-        MENU_INSTANCE.Enabled = not HIDE_MENU_STATUS
-    end
-end
-
--- background watcher (ไม่บล็อก)
-task.spawn(function()
-    while true do
-        if not MENU_INSTANCE then
-            local menu = tryFindMenu()
-            if menu then
-                MENU_INSTANCE = menu
-                applyHideMenu()
-            end
-        end
-        task.wait(0.25)
-    end
-end)
 
 Txt(
     "Hide Menu",
