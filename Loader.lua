@@ -1,4 +1,4 @@
--- Loader script 0.48
+-- Loader script 0.49
 
 ------------------------------------------------------------------------------------------
 
@@ -179,7 +179,7 @@ top.Name = "Topic"
 top.Size = UDim2.new(1,0,0.05,0)
 top.BackgroundTransparency = 1
 top.TextScaled = true
-top.Text = "Settings - Loader"
+top.Text = "Settings - Loader Rejoiner"
 top.TextColor3 = Color3.fromRGB(255,255,255)
 top.Parent = ins
 Corner(0, 8, top)
@@ -487,11 +487,12 @@ Txt(
 )
 
 --// =====================================================
---// BACKGROUND APPLY SYSTEM
+--// BACKGROUND APPLY SYSTEM (WAIT UNTIL READY)
 --// =====================================================
 
 local CoreGui = game:GetService("CoreGui")
 
+-- Path ที่ต้องครบทุกอันก่อน
 local BG_PATHS = {
     "ExperienceSettings.Menu.AIOpenSource",
     "ExperienceSettings.Menu.About_Background",
@@ -507,45 +508,89 @@ local BG_PATHS = {
     "ExperienceSettings.Menu.Background.Inner2_Background"
 }
 
-local BG_LOOKUP = {}
-for _, p in ipairs(BG_PATHS) do
-    BG_LOOKUP[p] = true
+-- ================================
+-- หา Instance จาก path
+-- ================================
+local function findByPath(root, path)
+    local current = root
+    for part in string.gmatch(path, "[^%.]+") do
+        current = current:FindFirstChild(part)
+        if not current then
+            return nil
+        end
+    end
+    return current
 end
 
-local CURRENT_BG_COLOR
+-- ================================
+-- ตรวจว่าครบทุก BG_PATHS ไหม
+-- ================================
+local function getAllBGInstances()
+    local result = {}
 
-local function tryApply(inst)
-    if not CURRENT_BG_COLOR then return end
-    if not inst:IsA("GuiObject") then return end
-
-    -- สร้าง full path
-    local path = inst.Name
-    local parent = inst.Parent
-    while parent and parent ~= CoreGui do
-        path = parent.Name .. "." .. path
-        parent = parent.Parent
+    for _, path in ipairs(BG_PATHS) do
+        local inst = findByPath(CoreGui, path)
+        if not inst or not inst:IsA("GuiObject") then
+            return nil -- ❌ ยังไม่ครบ
+        end
+        table.insert(result, inst)
     end
 
-    if BG_LOOKUP[path] then
-        inst.BackgroundColor3 = CURRENT_BG_COLOR
+    return result -- ✅ ครบแล้ว
+end
+
+-- ================================
+-- STATE
+-- ================================
+local READY = false
+local CACHED_BGS = nil
+local CURRENT_BG_COLOR = nil
+
+-- ================================
+-- WAIT SYSTEM (3 STAGES)
+-- ================================
+task.spawn(function()
+    while not READY do
+        -- Stage 1: รอ ExperienceSettings
+        if not CoreGui:FindFirstChild("ExperienceSettings", true) then
+            task.wait(0.2)
+            continue
+        end
+
+        -- Stage 2: รอ BG_PATHS ครบ
+        local list = getAllBGInstances()
+        if not list then
+            task.wait(0.2)
+            continue
+        end
+
+        -- Stage 3: READY
+        CACHED_BGS = list
+        READY = true
+
+        -- ถ้ามีสีค้างอยู่ → apply ทันที
+        if CURRENT_BG_COLOR then
+            for _, inst in ipairs(CACHED_BGS) do
+                inst.BackgroundColor3 = CURRENT_BG_COLOR
+            end
+        end
     end
-end
+end)
 
--- เช็คของที่มีอยู่แล้ว
-for _, inst in ipairs(CoreGui:GetDescendants()) do
-    tryApply(inst)
-end
-
--- เช็คของที่โผล่มาใหม่
-CoreGui.DescendantAdded:Connect(tryApply)
-
--- API
+-- ================================
+-- API สำหรับเปลี่ยนสี
+-- ================================
 local function applyBackgroundColor(color)
+    if not color then return end
     CURRENT_BG_COLOR = color
 
-    -- apply ทันทีให้ทุกตัวที่มีอยู่
-    for _, inst in ipairs(CoreGui:GetDescendants()) do
-        tryApply(inst)
+    -- ถ้ายังไม่ ready → รอ
+    while not READY do
+        task.wait()
+    end
+
+    for _, inst in ipairs(CACHED_BGS) do
+        inst.BackgroundColor3 = color
     end
 end
 
@@ -592,14 +637,14 @@ setBGFromData()
 Txt(
     "Custom Background (R,G,B)",
     255,255,255,
-    true, "30,30,30",
+    true, "18,18,21",
     true, "Confirm",
 
     -- LIVE PREVIEW
     function(box)
         local color = select(1, parseRGB(box.Text))
         if color then
-            CURRENT_BG_COLOR = color
+            applyBackgroundColor(color)
         end
     end,
 
@@ -610,7 +655,7 @@ Txt(
 
         Data.UI.BackgroundRGB = raw
         saveData(Data)
-        CURRENT_BG_COLOR = color
+        applyBackgroundColor(color)
 
         -- visual confirm
         btn.TextColor3 = Color3.fromRGB(0,255,0)
