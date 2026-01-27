@@ -1,4 +1,4 @@
--- Loader script 0.31
+-- Loader script 0.32
 
 ------------------------------------------------------------------------------------------
 
@@ -297,7 +297,7 @@ local function Txt(
     elseif hasBox then
         a.Size = UDim2.new(0.4,0,1,0)
     elseif hasButton then
-        a.Size = UDim2.new(0.65,0,1,0)
+        a.Size = UDim2.new(0.58,0,1,0)
     end
 
     -- TextBox
@@ -338,7 +338,7 @@ local function Txt(
         btn.TextScaled = true
         btn.TextColor3 = Color3.fromRGB(255,255,255)
         btn.Size = UDim2.new(0.44,0,1,0)
-        btn.Position = UDim2.new(0.66,0,0,0)
+        btn.Position = UDim2.new(0.59,0,0,0)
         btn.Parent = b
 
         if hasBox then
