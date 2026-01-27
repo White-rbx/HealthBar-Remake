@@ -1,4 +1,4 @@
--- Loader script 0.47
+-- Loader script 0.48
 
 ------------------------------------------------------------------------------------------
 
@@ -466,6 +466,7 @@ Txt(
     255,255,255,
     false, nil,
     true, "Okay",
+    nil, -- work ❌ ไม่ใช้
     function()
         CONTINUE_LOCK = false
     end
@@ -506,24 +507,46 @@ local BG_PATHS = {
     "ExperienceSettings.Menu.Background.Inner2_Background"
 }
 
-local CURRENT_BG_COLOR = nil
+local BG_LOOKUP = {}
+for _, p in ipairs(BG_PATHS) do
+    BG_LOOKUP[p] = true
+end
 
-task.spawn(function()
-    while true do
-        if CURRENT_BG_COLOR then
-            for _, path in ipairs(BG_PATHS) do
-                local inst = CoreGui:FindFirstChild(path, true)
-                if inst and inst:IsA("GuiObject") then
-                    inst.BackgroundColor3 = CURRENT_BG_COLOR
-                end
-            end
-        end
-        task.wait(0.5)
+local CURRENT_BG_COLOR
+
+local function tryApply(inst)
+    if not CURRENT_BG_COLOR then return end
+    if not inst:IsA("GuiObject") then return end
+
+    -- สร้าง full path
+    local path = inst.Name
+    local parent = inst.Parent
+    while parent and parent ~= CoreGui do
+        path = parent.Name .. "." .. path
+        parent = parent.Parent
     end
-end)
 
+    if BG_LOOKUP[path] then
+        inst.BackgroundColor3 = CURRENT_BG_COLOR
+    end
+end
+
+-- เช็คของที่มีอยู่แล้ว
+for _, inst in ipairs(CoreGui:GetDescendants()) do
+    tryApply(inst)
+end
+
+-- เช็คของที่โผล่มาใหม่
+CoreGui.DescendantAdded:Connect(tryApply)
+
+-- API
 local function applyBackgroundColor(color)
     CURRENT_BG_COLOR = color
+
+    -- apply ทันทีให้ทุกตัวที่มีอยู่
+    for _, inst in ipairs(CoreGui:GetDescendants()) do
+        tryApply(inst)
+    end
 end
 
 --// =====================================================
