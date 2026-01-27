@@ -1,4 +1,4 @@
--- Loader script 0.53
+-- Loader script 0.54
 
 ------------------------------------------------------------------------------------------
 
@@ -340,41 +340,41 @@ local function updateToggle(btn, status)
 end
 
 --// =====================================================
---// HIDE MENU SYSTEM (WAIT + APPLY)
+--// HIDE MENU SYSTEM (STABLE VERSION)
 --// =====================================================
 
 local CoreGui = game:GetService("CoreGui")
 
 local MENU_INSTANCE = nil
-local HIDE_MENU_STATUS = nil
+local HIDE_MENU_STATUS = Data.UI.HideMenu -- โหลดจาก data ทันที
 
--- หา Menu
+-- หา Menu (ไม่บล็อก)
 local function tryFindMenu()
-    return CoreGui:FindFirstChild("ExperienceSettings", true)
-        and CoreGui.ExperienceSettings:FindFirstChild("Menu")
+    local root = CoreGui:FindFirstChild("ExperienceSettings", true)
+    if not root then return nil end
+    return root:FindFirstChild("Menu")
 end
 
--- apply state
+-- apply จริง (ซ่อน/โชว์)
 local function applyHideMenu()
-    if MENU_INSTANCE and HIDE_MENU_STATUS ~= nil then
-        MENU_INSTANCE.Enabled = not HIDE_MENU_STATUS
-    end
+    if not MENU_INSTANCE then return end
+
+    -- วิธีที่ทนกว่า Enabled
+    MENU_INSTANCE.Visible = not HIDE_MENU_STATUS
 end
 
--- background watcher (ไม่บล็อก)
+-- watcher (หา Menu แค่จนเจอ)
 task.spawn(function()
-    while true do
-        if not MENU_INSTANCE then
-            local menu = tryFindMenu()
-            if menu then
-                MENU_INSTANCE = menu
-                applyHideMenu()
-            end
+    while not MENU_INSTANCE do
+        local menu = tryFindMenu()
+        if menu then
+            MENU_INSTANCE = menu
+            applyHideMenu() -- apply ตามค่าที่ save ไว้
+            break
         end
         task.wait(0.25)
     end
 end)
-
 
 --// =====================================================
 --// TXT FUNCTION (FIXED)
@@ -404,7 +404,7 @@ local function Txt(
     a.Parent = b
 
     if hasBox and hasButton then
-        a.Size = UDim2.new(0.25,0,1,0)
+        a.Size = UDim2.new(1/3,0,1,0)
     elseif hasBox then
         a.Size = UDim2.new(0.4,0,1,0)
     elseif hasButton then
@@ -426,8 +426,8 @@ local function Txt(
         box.Position = UDim2.new(0.41,0,0,0)
 
         if hasButton then
-            box.Size = UDim2.new(0.25,0,1,0)
-            box.Position = UDim2.new(0.26,0,0,0)
+            box.Size = UDim2.new(1/3,0,1,0)
+            box.Position = UDim2.new(0.343,0,0,0)
         end
 
         -- ✅ LIVE PREVIEW
@@ -451,8 +451,8 @@ local function Txt(
         Stroke(btn, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
         if hasBox then
-            btn.Size = UDim2.new(0.25,0,1,0)
-            btn.Position = UDim2.new(0.51,0,0,0)
+            btn.Size = UDim2.new(1/3,0,1,0)
+            btn.Position = UDim2.new(0.696,0,0,0)
         end
 
         -- INIT
@@ -706,18 +706,31 @@ Txt(
     end
 )
 
+-- background watcher (ไม่บล็อก)
+task.spawn(function()
+    while true do
+        if not MENU_INSTANCE then
+            local menu = tryFindMenu()
+            if menu then
+                MENU_INSTANCE = menu
+                applyHideMenu()
+            end
+        end
+        task.wait(0.25)
+    end
+end)
+
 Txt(
     "Hide Menu",
     255,255,255,
     false, nil,
     true, nil,
 
-    -- toggle work
     function(newStatus)
         HIDE_MENU_STATUS = newStatus
         Data.UI.HideMenu = newStatus
         saveData(Data)
-        applyHideMenu()
+        applyHideMenu() -- ซ่อน/โชว์ทันที
     end,
 
     nil,
