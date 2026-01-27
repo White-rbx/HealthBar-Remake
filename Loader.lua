@@ -1,4 +1,4 @@
--- Loader script 0.34
+-- Loader script 0.35
 
 ------------------------------------------------------------------------------------------
 
@@ -270,24 +270,32 @@ local function loadData()
         end)
 
         if ok and type(decoded) == "table" then
-            -- migrate / เติมค่า default ที่ขาด
-            decoded.Version = decoded.Version or DEFAULT_DATA.Version
+            decoded.Version = decoded.Version or 1
             decoded.Loader = decoded.Loader or {}
             if decoded.Loader.AlwaysLoad == nil then
                 decoded.Loader.AlwaysLoad = false
             end
-
             return decoded
         end
     end
 
-    -- ถ้าไม่มีไฟล์ → ใช้ default
     saveData(DEFAULT_DATA)
     return table.clone(DEFAULT_DATA)
 end
 
 --// =====================================================
---// TXT FUNCTION (YOUR SYSTEM)
+--// UI HELPER
+--// =====================================================
+
+local function updateToggle(btn, status)
+    btn.Text = status and "ON" or "OFF"
+    btn.TextColor3 = status
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,0,0)
+end
+
+--// =====================================================
+--// TXT FUNCTION (FIXED)
 --// =====================================================
 
 local function Txt(
@@ -303,7 +311,7 @@ local function Txt(
     b.BackgroundTransparency = 1
     b.Parent = ins
 
-    -- TextLabel
+    -- Label
     local a = Instance.new("TextLabel")
     a.BackgroundTransparency = 1
     a.Text = tostring(txt)
@@ -330,9 +338,10 @@ local function Txt(
         box.Text = ""
         box.TextScaled = true
         box.TextColor3 = Color3.fromRGB(0,255,0)
+        box.Parent = b
+
         box.Size = UDim2.new(0.49,0,1,0)
         box.Position = UDim2.new(0.41,0,0,0)
-        box.Parent = b
 
         if hasButton then
             box.Size = UDim2.new(0.25,0,1,0)
@@ -351,13 +360,12 @@ local function Txt(
         end
     end
 
-    -- TextButton / Toggle
+    -- Button / Toggle
     local btn
     if hasButton then
         btn = Instance.new("TextButton")
         btn.BackgroundTransparency = 0.15
         btn.TextScaled = true
-        btn.TextColor3 = Color3.fromRGB(255,255,255)
         btn.Size = UDim2.new(0.44,0,1,0)
         btn.Position = UDim2.new(0.59,0,0,0)
         btn.Parent = b
@@ -367,37 +375,25 @@ local function Txt(
             btn.Position = UDim2.new(0.51,0,0,0)
         end
 
+        -- INIT
         if status ~= nil then
-            btn.Text = status and "ON" or "OFF"
-            btn.MouseButton1Click:Connect(function()
-                status = not status
-                btn.Text = status and "ON" or "OFF"
-                if work then work(status) end
-                if callback then callback(status) end
-            end)
+            updateToggle(btn, status)
         else
             btn.Text = tostring(btxt or "OK")
-            btn.MouseButton1Click:Connect(function()
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+        end
+
+        -- SINGLE CONNECT (สำคัญ)
+        btn.MouseButton1Click:Connect(function()
+            if status ~= nil then
+                status = not status
+                updateToggle(btn, status)
+
+                if work then work(status) end
+                if callback then callback(status) end
+            else
                 if work then work() end
                 if callback then callback() end
-            end)
-        end
-        
-        if status == true then
-          btn.Text = "ON"
-          btn.TextColor3 = Color3.fromRGB(0,255,0)
-        else
-          btn.Text = "OFF"
-          btn.TextColor3 = Color3.fromRGB(255,0,0)
-        end
-    end
-
-    -- Button click
-    if btn and work then
-        btn.MouseButton1Click:Connect(function()
-            work(box, btn, status)
-            if callback then
-                callback(box, btn, status)
             end
         end)
     end
@@ -411,22 +407,21 @@ local function Txt(
 end
 
 --// =====================================================
---// USAGE EXAMPLES
+--// USAGE
 --// =====================================================
 
--- Toggle: Show Physics
 local Data = loadData()
-
 local CONTINUE_LOCK = true
 
--- Always Load = true → ข้าม lock
+-- Always Load → skip lock
 if Data.Loader.AlwaysLoad == true then
     CONTINUE_LOCK = false
 end
 
+-- Continue (ONE TIME)
 Txt(
     "Continue loadstring (ANTI-BROKE)",
-    255, 255, 255,
+    255,255,255,
     false, nil,
     true, "Okay",
     function()
@@ -434,25 +429,18 @@ Txt(
     end
 )
 
+-- Always Load (SAVE)
 Txt(
     "Always Load",
     255,255,255,
     false, nil,
-    true, Data.AlwaysLoad and "ON" or "OFF",
-    function(_, btn)
-        Data.AlwaysLoad = not Data.AlwaysLoad
+    true, nil,
+    function(newStatus)
+        Data.Loader.AlwaysLoad = newStatus
         saveData(Data)
-
-        if Data.AlwaysLoad then
-            btn.Text = "ON"
-            btn.TextColor3 = Color3.fromRGB(0,255,0)   -- Green
-            CONTINUE_LOCK = false
-        else
-            btn.Text = "OFF"
-            btn.TextColor3 = Color3.fromRGB(255,0,0)   -- Red
-        end
     end,
-    true
+    nil,
+    Data.Loader.AlwaysLoad
 )
 
 
@@ -464,11 +452,7 @@ Txt(
 
 
 
-
-
-
-
--- WAIT FOR USER CONFIRM
+-- WAIT
 while CONTINUE_LOCK do
     task.wait()
 end
