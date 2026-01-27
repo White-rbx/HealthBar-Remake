@@ -247,22 +247,43 @@ local function ensureFolder()
     end
 end
 
+local DEFAULT_DATA = {
+    Version = 1,
+    Loader = {
+        AlwaysLoad = false
+    }
+}
+
 local function saveData(data)
     ensureFolder()
-    writefile(SAVE_FILE, HttpService:JSONEncode(data))
+    pcall(function()
+        writefile(SAVE_FILE, HttpService:JSONEncode(data))
+    end)
 end
 
 local function loadData()
     ensureFolder()
+
     if isfile(SAVE_FILE) then
         local ok, decoded = pcall(function()
             return HttpService:JSONDecode(readfile(SAVE_FILE))
         end)
+
         if ok and type(decoded) == "table" then
+            -- migrate / เติมค่า default ที่ขาด
+            decoded.Version = decoded.Version or DEFAULT_DATA.Version
+            decoded.Loader = decoded.Loader or {}
+            if decoded.Loader.AlwaysLoad == nil then
+                decoded.Loader.AlwaysLoad = false
+            end
+
             return decoded
         end
     end
-    return {}
+
+    -- ถ้าไม่มีไฟล์ → ใช้ default
+    saveData(DEFAULT_DATA)
+    return table.clone(DEFAULT_DATA)
 end
 
 --// =====================================================
@@ -376,7 +397,14 @@ end
 --// =====================================================
 
 -- Toggle: Show Physics
+local Data = loadData()
+
 local CONTINUE_LOCK = true
+
+-- Always Load = true → ข้าม lock
+if Data.Loader.AlwaysLoad == true then
+    CONTINUE_LOCK = false
+end
 
 Txt(
     "Continue loadstring (ANTI-BROKE)",
