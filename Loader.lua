@@ -1,4 +1,4 @@
--- Loader script 0.43
+-- Loader script 0.44
 
 ------------------------------------------------------------------------------------------
 
@@ -251,15 +251,14 @@ end
 --// SAVE DATA
 --// =====================================================
 
-local DEFAULT_DATA =
-{
-  "Version": 1,
-  "Loader": {
-    "AlwaysLoad": false
-  },
-  "UI": {
-    "BackgroundRGB": [18,18,21]
-  }
+local DEFAULT_DATA = {
+    Version = 1,
+    Loader = {
+        AlwaysLoad = false
+    },
+    UI = {
+        BackgroundRGB = { 18, 18, 21 }
+    }
 }
 
 local function deepMerge(defaults, data)
