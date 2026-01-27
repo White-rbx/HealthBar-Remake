@@ -1,4 +1,4 @@
--- Loader script 0.4
+-- Loader script 0.42
 
 ------------------------------------------------------------------------------------------
 
@@ -251,50 +251,44 @@ end
 --// SAVE DATA
 --// =====================================================
 
-local DEFAULT_DATA = {
-    Version = 1,
-    Loader = {
-        AlwaysLoad = false
-    },
-    UI = {
-        BackgroundRGB = { 30, 30, 30 }
-    }
+{
+  "Version": 1,
+  "Loader": {
+    "AlwaysLoad": false
+  },
+  "UI": {
+    "BackgroundRGB": [18,18,21]
+  }
 }
 
-local function saveData(data)
-    ensureFolder()
-    pcall(function()
-        writefile(SAVE_FILE, HttpService:JSONEncode(data))
-    end)
+local function deepMerge(defaults, data)
+    for k, v in pairs(defaults) do
+        if type(v) == "table" then
+            data[k] = type(data[k]) == "table" and data[k] or {}
+            deepMerge(v, data[k])
+        elseif data[k] == nil then
+            data[k] = v
+        end
+    end
 end
 
 local function loadData()
     ensureFolder()
 
+    local data = {}
+
     if isfile(SAVE_FILE) then
         local ok, decoded = pcall(function()
             return HttpService:JSONDecode(readfile(SAVE_FILE))
         end)
-
         if ok and type(decoded) == "table" then
-            decoded.Version = decoded.Version or 1
-            decoded.Loader = decoded.Loader or {}
-            decoded.UI = decoded.UI or {}
-
-            if decoded.Loader.AlwaysLoad == nil then
-                decoded.Loader.AlwaysLoad = false
-            end
-
-            if not decoded.UI.BackgroundRGB then
-                decoded.UI.BackgroundRGB = { 30, 30, 30 }
-            end
-
-            return decoded
+            data = decoded
         end
     end
 
-    saveData(DEFAULT_DATA)
-    return table.clone(DEFAULT_DATA)
+    deepMerge(DEFAULT_DATA, data)
+    saveData(data)
+    return data
 end
 
 --// =====================================================
@@ -384,8 +378,8 @@ local function Txt(
         btn.Position = UDim2.new(0.59,0,0,0)
         btn.Parent = b
         Corner(0,8,btn)
-        Stroke(btn, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
-    
+        Stroke(btn, ASMBorder, 255, 255, 255, JSMRound, 1, 0)
+
         if hasBox then
             btn.Size = UDim2.new(0.25,0,1,0)
             btn.Position = UDim2.new(0.51,0,0,0)
@@ -535,11 +529,12 @@ applyBackgroundColor(Color3.fromRGB(
 
 local Data = loadData()
 
--- Apply saved color at load
-do
+local function setBGFromData()
     local rgb = Data.UI.BackgroundRGB
-    applyBackgroundColor(Color3.fromRGB(rgb[1], rgb[2], rgb[3]))
+    CURRENT_BG_COLOR = Color3.fromRGB(rgb[1], rgb[2], rgb[3])
 end
+
+setBGFromData()
 
 Txt(
     "Custom Background (R,G,B)",
@@ -547,26 +542,26 @@ Txt(
     true, "30,30,30",
     true, "Confirm",
 
-    -- work (TextBox live preview)
+    -- work = live preview
     function(text)
         local color = select(1, parseRGB(text))
         if color then
-            applyBackgroundColor(color)
+            CURRENT_BG_COLOR = color
         end
     end,
 
-    -- callback (Confirm)
+    -- callback = CONFIRM ONLY
     function(box, btn)
-        if not box or not btn then return end
-
         local color, raw = parseRGB(box.Text)
         if not color then return end
 
+        -- FORCE SAVE
         Data.UI.BackgroundRGB = raw
         saveData(Data)
-        applyBackgroundColor(color)
 
-        -- confirm feedback
+        CURRENT_BG_COLOR = color
+
+        -- visual confirm
         btn.TextColor3 = Color3.fromRGB(0,255,0)
         task.delay(0.35, function()
             btn.TextColor3 = Color3.fromRGB(255,255,255)
