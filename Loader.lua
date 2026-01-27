@@ -1,4 +1,4 @@
--- Loader script 0.35
+-- Loader script 0.4
 
 ------------------------------------------------------------------------------------------
 
@@ -247,10 +247,17 @@ local function ensureFolder()
     end
 end
 
+--// =====================================================
+--// SAVE DATA
+--// =====================================================
+
 local DEFAULT_DATA = {
     Version = 1,
     Loader = {
         AlwaysLoad = false
+    },
+    UI = {
+        BackgroundRGB = { 30, 30, 30 }
     }
 }
 
@@ -272,9 +279,16 @@ local function loadData()
         if ok and type(decoded) == "table" then
             decoded.Version = decoded.Version or 1
             decoded.Loader = decoded.Loader or {}
+            decoded.UI = decoded.UI or {}
+
             if decoded.Loader.AlwaysLoad == nil then
                 decoded.Loader.AlwaysLoad = false
             end
+
+            if not decoded.UI.BackgroundRGB then
+                decoded.UI.BackgroundRGB = { 30, 30, 30 }
+            end
+
             return decoded
         end
     end
@@ -364,12 +378,14 @@ local function Txt(
     local btn
     if hasButton then
         btn = Instance.new("TextButton")
-        btn.BackgroundTransparency = 0.15
+        btn.BackgroundTransparency = 0.5
         btn.TextScaled = true
         btn.Size = UDim2.new(0.44,0,1,0)
         btn.Position = UDim2.new(0.59,0,0,0)
         btn.Parent = b
-
+        Corner(0,8,btn)
+        Stroke(btn, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+    
         if hasBox then
             btn.Size = UDim2.new(0.25,0,1,0)
             btn.Position = UDim2.new(0.51,0,0,0)
@@ -442,6 +458,125 @@ Txt(
     nil,
     Data.Loader.AlwaysLoad
 )
+
+--// =====================================================
+--// BACKGROUND APPLY SYSTEM
+--// =====================================================
+
+local CoreGui = game:GetService("CoreGui")
+
+local BG_PATHS = {
+    "ExperienceSettings.Menu.AIOpenSource",
+    "ExperienceSettings.Menu.About_Background",
+    "ExperienceSettings.Menu.Background",
+    "ExperienceSettings.Menu.HolderScreen",
+    "ExperienceSettings.Menu.Load_Background",
+    "ExperienceSettings.Menu.MiddleScreen",
+    "ExperienceSettings.Menu.ProfileStatus",
+    "ExperienceSettings.Menu.Search",
+    "ExperienceSettings.Menu.TopBar.Holder",
+    "ExperienceSettings.Menu.TopBar.TopButtons",
+    "ExperienceSettings.Menu.Background.Inner_Background",
+    "ExperienceSettings.Menu.Background.Inner2_Background"
+}
+
+local CURRENT_BG_COLOR = nil
+
+task.spawn(function()
+    while true do
+        if CURRENT_BG_COLOR then
+            for _, path in ipairs(BG_PATHS) do
+                local inst = CoreGui:FindFirstChild(path, true)
+                if inst and inst:IsA("GuiObject") then
+                    inst.BackgroundColor3 = CURRENT_BG_COLOR
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+local function applyBackgroundColor(color)
+    CURRENT_BG_COLOR = color
+end
+
+--// =====================================================
+--// RGB PARSER
+--// =====================================================
+
+local function parseRGB(text)
+    if not text then return nil end
+
+    local r, g, b = text:match("(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
+    r, g, b = tonumber(r), tonumber(g), tonumber(b)
+
+    if r and g and b then
+        r = math.clamp(r, 0, 255)
+        g = math.clamp(g, 0, 255)
+        b = math.clamp(b, 0, 255)
+
+        return Color3.fromRGB(r, g, b), { r, g, b }
+    end
+end
+
+--// =====================================================
+--// APPLY SAVED COLOR ON LOAD
+--// =====================================================
+
+applyBackgroundColor(Color3.fromRGB(
+    Data.UI.BackgroundRGB[1],
+    Data.UI.BackgroundRGB[2],
+    Data.UI.BackgroundRGB[3]
+))
+
+--// =====================================================
+--// CUSTOM BACKGROUND UI
+--// =====================================================
+
+local Data = loadData()
+
+-- Apply saved color at load
+do
+    local rgb = Data.UI.BackgroundRGB
+    applyBackgroundColor(Color3.fromRGB(rgb[1], rgb[2], rgb[3]))
+end
+
+Txt(
+    "Custom Background (R,G,B)",
+    255,255,255,
+    true, "30,30,30",
+    true, "Confirm",
+
+    -- work (TextBox live preview)
+    function(text)
+        local color = select(1, parseRGB(text))
+        if color then
+            applyBackgroundColor(color)
+        end
+    end,
+
+    -- callback (Confirm)
+    function(box, btn)
+        if not box or not btn then return end
+
+        local color, raw = parseRGB(box.Text)
+        if not color then return end
+
+        Data.UI.BackgroundRGB = raw
+        saveData(Data)
+        applyBackgroundColor(color)
+
+        -- confirm feedback
+        btn.TextColor3 = Color3.fromRGB(0,255,0)
+        task.delay(0.35, function()
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+        end)
+    end
+)
+
+
+
+
 
 
 
