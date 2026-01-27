@@ -1,4 +1,4 @@
--- Loader script 0.49
+-- Loader script 0.5
 
 ------------------------------------------------------------------------------------------
 
@@ -543,7 +543,7 @@ end
 -- STATE
 -- ================================
 local READY = false
-local CACHED_BGS = nil
+local CACHED_BGS = {}
 local CURRENT_BG_COLOR = nil
 
 -- ================================
@@ -551,24 +551,24 @@ local CURRENT_BG_COLOR = nil
 -- ================================
 task.spawn(function()
     while not READY do
-        -- Stage 1: รอ ExperienceSettings
+        -- Stage 1
         if not CoreGui:FindFirstChild("ExperienceSettings", true) then
             task.wait(0.2)
             continue
         end
 
-        -- Stage 2: รอ BG_PATHS ครบ
+        -- Stage 2
         local list = getAllBGInstances()
         if not list then
             task.wait(0.2)
             continue
         end
 
-        -- Stage 3: READY
+        -- Stage 3
         CACHED_BGS = list
         READY = true
 
-        -- ถ้ามีสีค้างอยู่ → apply ทันที
+        -- apply ถ้ามีสีรออยู่
         if CURRENT_BG_COLOR then
             for _, inst in ipairs(CACHED_BGS) do
                 inst.BackgroundColor3 = CURRENT_BG_COLOR
@@ -582,16 +582,16 @@ end)
 -- ================================
 local function applyBackgroundColor(color)
     if not color then return end
+
     CURRENT_BG_COLOR = color
 
-    -- ถ้ายังไม่ ready → รอ
-    while not READY do
-        task.wait()
+    -- ถ้า READY แล้ว → apply ทันที
+    if READY then
+        for _, inst in ipairs(CACHED_BGS) do
+            inst.BackgroundColor3 = color
+        end
     end
-
-    for _, inst in ipairs(CACHED_BGS) do
-        inst.BackgroundColor3 = color
-    end
+    -- ถ้ายังไม่ READY → เก็บค่าไว้เฉย ๆ
 end
 
 --// =====================================================
