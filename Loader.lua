@@ -1,4 +1,4 @@
--- Loader script 0.5
+-- Loader script 0.51
 
 ------------------------------------------------------------------------------------------
 
@@ -259,7 +259,8 @@ local DEFAULT_DATA = {
     },
 
     UI = {
-        BackgroundRGB = { 18, 18, 21 }
+        BackgroundRGB = { 18, 18, 21 },
+        HideMenu = false
     }
 }
 
@@ -453,6 +454,9 @@ end
 
 local Data = loadData()
 
+HIDE_MENU_STATUS = Data.UI.HideMenu
+applyHideMenu()
+
 local CONTINUE_LOCK = true
 
 -- Always Load → skip lock
@@ -638,7 +642,7 @@ Txt(
     "Custom Background (R,G,B)",
     255,255,255,
     true, "18,18,21",
-    true, "Confirm",
+    true, "Save",
 
     -- LIVE PREVIEW
     function(box)
@@ -663,6 +667,60 @@ Txt(
             btn.TextColor3 = Color3.fromRGB(255,255,255)
         end)
     end
+)
+
+--// =====================================================
+--// HIDE MENU SYSTEM (WAIT + APPLY)
+--// =====================================================
+
+local CoreGui = game:GetService("CoreGui")
+
+local MENU_INSTANCE = nil
+local HIDE_MENU_STATUS = nil
+
+-- หา Menu
+local function tryFindMenu()
+    return CoreGui:FindFirstChild("ExperienceSettings", true)
+        and CoreGui.ExperienceSettings:FindFirstChild("Menu")
+end
+
+-- apply state
+local function applyHideMenu()
+    if MENU_INSTANCE and HIDE_MENU_STATUS ~= nil then
+        MENU_INSTANCE.Enabled = not HIDE_MENU_STATUS
+    end
+end
+
+-- background watcher (ไม่บล็อก)
+task.spawn(function()
+    while true do
+        if not MENU_INSTANCE then
+            local menu = tryFindMenu()
+            if menu then
+                MENU_INSTANCE = menu
+                applyHideMenu()
+            end
+        end
+        task.wait(0.25)
+    end
+end)
+
+Txt(
+    "Hide Menu",
+    255,255,255,
+    false, nil,
+    true, nil,
+
+    -- toggle work
+    function(newStatus)
+        HIDE_MENU_STATUS = newStatus
+        Data.UI.HideMenu = newStatus
+        saveData(Data)
+        applyHideMenu()
+    end,
+
+    nil,
+    Data.UI.HideMenu
 )
 
 
