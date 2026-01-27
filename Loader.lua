@@ -1,4 +1,4 @@
--- Loader script 0.44
+-- Loader script 0.45
 
 ------------------------------------------------------------------------------------------
 
@@ -250,7 +250,6 @@ end
 --// =====================================================
 --// SAVE DATA
 --// =====================================================
-
 local DEFAULT_DATA = {
     Version = 1,
     Loader = {
@@ -368,6 +367,8 @@ local function Txt(
         end
     end
 
+end
+
     -- Button / Toggle
     local btn
     if hasButton then
@@ -408,19 +409,21 @@ local function Txt(
         end)
     end
 
-    return {
-        Frame = b,
-        Label = a,
-        Box = box,
-        Button = btn
-    }
-end
-
+return {
+    Frame = b,
+    Label = a,
+    Box = box,
+    Button = btn,
+    GetStatus = function()
+        return status
+    end
+}
 --// =====================================================
 --// USAGE
 --// =====================================================
 
 local Data = loadData()
+
 local CONTINUE_LOCK = true
 
 -- Always Load → skip lock
