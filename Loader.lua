@@ -1,4 +1,4 @@
--- Loader script 0.59
+-- Loader script 0.60
 
 ------------------------------------------------------------------------------------------
 
@@ -260,7 +260,7 @@ local DEFAULT_DATA = {
 
     UI = {
         BackgroundRGB = { 18, 18, 21 },
-        HideMenu = false
+        HideMenu = false,
         SettingsTransparency = 0.5
     }
 }
@@ -458,8 +458,6 @@ end
 -- =====================================================
 local Data = loadData()
 
-local CoreGui = game:GetService("CoreGui")
-
 local MENU_INSTANCE = nil
 local HIDE_MENU_STATUS = Data.UI.HideMenu -- อ่านจาก json ครั้งเดียว
 
@@ -532,8 +530,6 @@ Txt(
 --// =====================================================
 --// BACKGROUND APPLY SYSTEM (WAIT UNTIL READY)
 --// =====================================================
-
-local CoreGui = game:GetService("CoreGui")
 
 -- Path ที่ต้องครบทุกอันก่อน
 local BG_PATHS = {
