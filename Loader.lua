@@ -1,4 +1,4 @@
--- Loader script 0.54
+-- Loader script 0.55
 
 ------------------------------------------------------------------------------------------
 
@@ -340,43 +340,6 @@ local function updateToggle(btn, status)
 end
 
 --// =====================================================
---// HIDE MENU SYSTEM (STABLE VERSION)
---// =====================================================
-
-local CoreGui = game:GetService("CoreGui")
-
-local MENU_INSTANCE = nil
-local HIDE_MENU_STATUS = Data.UI.HideMenu -- โหลดจาก data ทันที
-
--- หา Menu (ไม่บล็อก)
-local function tryFindMenu()
-    local root = CoreGui:FindFirstChild("ExperienceSettings", true)
-    if not root then return nil end
-    return root:FindFirstChild("Menu")
-end
-
--- apply จริง (ซ่อน/โชว์)
-local function applyHideMenu()
-    if not MENU_INSTANCE then return end
-
-    -- วิธีที่ทนกว่า Enabled
-    MENU_INSTANCE.Visible = not HIDE_MENU_STATUS
-end
-
--- watcher (หา Menu แค่จนเจอ)
-task.spawn(function()
-    while not MENU_INSTANCE do
-        local menu = tryFindMenu()
-        if menu then
-            MENU_INSTANCE = menu
-            applyHideMenu() -- apply ตามค่าที่ save ไว้
-            break
-        end
-        task.wait(0.25)
-    end
-end)
-
---// =====================================================
 --// TXT FUNCTION (FIXED)
 --// =====================================================
 
@@ -489,10 +452,42 @@ end
 --// USAGE
 --// =====================================================
 
+-- =====================================================
+-- LOAD DATA
+-- =====================================================
 local Data = loadData()
 
-HIDE_MENU_STATUS = Data.UI.HideMenu
-applyHideMenu()
+-- =====================================================
+-- HIDE MENU SYSTEM
+-- =====================================================
+local CoreGui = game:GetService("CoreGui")
+
+local MENU_INSTANCE = nil
+local HIDE_MENU_STATUS = Data.UI.HideMenu -- ตอนนี้ปลอดภัยแล้ว
+
+local function tryFindMenu()
+    local root = CoreGui:FindFirstChild("ExperienceSettings", true)
+    if not root then return nil end
+    return root:FindFirstChild("Menu")
+end
+
+local function applyHideMenu()
+    if not MENU_INSTANCE then return end
+    MENU_INSTANCE.Visible = not HIDE_MENU_STATUS
+end
+
+-- watcher (ไม่บล็อก)
+task.spawn(function()
+    while not MENU_INSTANCE do
+        local menu = tryFindMenu()
+        if menu then
+            MENU_INSTANCE = menu
+            applyHideMenu() -- apply ตามค่าที่ save ไว้
+            break
+        end
+        task.wait(0.25)
+    end
+end)
 
 local CONTINUE_LOCK = true
 
