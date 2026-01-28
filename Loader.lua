@@ -1,4 +1,4 @@
--- Loader script 0.55
+-- Loader script 0.56
 
 ------------------------------------------------------------------------------------------
 
@@ -457,35 +457,41 @@ end
 -- =====================================================
 local Data = loadData()
 
--- =====================================================
--- HIDE MENU SYSTEM
--- =====================================================
 local CoreGui = game:GetService("CoreGui")
 
 local MENU_INSTANCE = nil
-local HIDE_MENU_STATUS = Data.UI.HideMenu -- ตอนนี้ปลอดภัยแล้ว
-
-local function tryFindMenu()
-    local root = CoreGui:FindFirstChild("ExperienceSettings", true)
-    if not root then return nil end
-    return root:FindFirstChild("Menu")
-end
+local HIDE_MENU_STATUS = Data.UI.HideMenu -- อ่านจาก json ครั้งเดียว
 
 local function applyHideMenu()
-    if not MENU_INSTANCE then return end
-    MENU_INSTANCE.Visible = not HIDE_MENU_STATUS
+    if MENU_INSTANCE then
+        MENU_INSTANCE.Enabled = not HIDE_MENU_STATUS
+    end
 end
 
--- watcher (ไม่บล็อก)
-task.spawn(function()
-    while not MENU_INSTANCE do
-        local menu = tryFindMenu()
-        if menu then
-            MENU_INSTANCE = menu
-            applyHideMenu() -- apply ตามค่าที่ save ไว้
-            break
-        end
-        task.wait(0.25)
+-- 🔎 หา Menu (ใช้ชื่อ + parent เท่านั้น)
+local function isTargetMenu(inst)
+    return inst:IsA("ScreenGui")
+        and inst.Name == "Menu"
+        and inst.Parent
+        and inst.Parent.Name == "ExperienceSettings"
+end
+
+-- 1️⃣ เช็คของที่มีอยู่แล้ว
+for _, inst in ipairs(CoreGui:GetDescendants()) do
+    if isTargetMenu(inst) then
+        MENU_INSTANCE = inst
+        applyHideMenu() -- ✅ apply ตาม json ทันที
+        break
+    end
+end
+
+-- 2️⃣ รอของที่โผล่มาทีหลัง
+CoreGui.DescendantAdded:Connect(function(inst)
+    if MENU_INSTANCE then return end
+
+    if isTargetMenu(inst) then
+        MENU_INSTANCE = inst
+        applyHideMenu() -- ✅ apply ตาม json ทันที
     end
 end)
 
@@ -716,7 +722,7 @@ task.spawn(function()
 end)
 
 Txt(
-    "Hide Menu",
+    "Hide ExperienceSettings",
     255,255,255,
     false, nil,
     true, nil,
@@ -725,7 +731,7 @@ Txt(
         HIDE_MENU_STATUS = newStatus
         Data.UI.HideMenu = newStatus
         saveData(Data)
-        applyHideMenu() -- ซ่อน/โชว์ทันที
+        applyHideMenu()
     end,
 
     nil,
