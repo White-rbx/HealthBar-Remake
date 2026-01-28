@@ -1,4 +1,4 @@
--- Loader script 0.56
+-- Loader script 0.57
 
 ------------------------------------------------------------------------------------------
 
@@ -737,6 +737,61 @@ Txt(
     nil,
     Data.UI.HideMenu
 )
+
+--// =====================================================
+--// FOUND HUMANOIDROOTPART STATUS
+--// =====================================================
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- สร้าง Text อย่างเดียว (ไม่มี box / ไม่มีปุ่ม)
+local ui = Txt(
+    "FoundHumanoidRootPart: NO",
+    255,255,255,
+    false, nil,
+    false, nil
+)
+
+local label = ui.Label
+
+-- ฟังก์ชันเช็ค HRP
+local function updateHRPStatus()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+    if hrp then
+        label.Text = "FoundHumanoidRootPart: YES"
+        label.TextColor3 = Color3.fromRGB(0,255,0)
+    else
+        label.Text = "FoundHumanoidRootPart: NO"
+        label.TextColor3 = Color3.fromRGB(255,0,0)
+    end
+end
+
+-- เช็คตอนแรก
+updateHRPStatus()
+
+-- เช็คเมื่อ character โหลดใหม่
+LocalPlayer.CharacterAdded:Connect(function(char)
+    updateHRPStatus()
+
+    -- เผื่อ HRP โผล่ช้า
+    char.ChildAdded:Connect(function(child)
+        if child.Name == "HumanoidRootPart" then
+            updateHRPStatus()
+        end
+    end)
+end)
+
+-- fallback: loop กันพลาด
+task.spawn(function()
+    while true do
+        updateHRPStatus()
+        task.wait(0.5)
+    end
+end)
+
 
 
 
