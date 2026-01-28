@@ -1,4 +1,4 @@
--- Loader script 0.57
+-- Loader script 0.58
 
 ------------------------------------------------------------------------------------------
 
@@ -539,7 +539,6 @@ local BG_PATHS = {
     "ExperienceSettings.Menu.AIOpenSource",
     "ExperienceSettings.Menu.About_Background",
     "ExperienceSettings.Menu.Background",
-    "ExperienceSettings.Menu.HolderScreen",
     "ExperienceSettings.Menu.Load_Background",
     "ExperienceSettings.Menu.MiddleScreen",
     "ExperienceSettings.Menu.ProfileStatus",
@@ -547,7 +546,8 @@ local BG_PATHS = {
     "ExperienceSettings.Menu.TopBar.Holder",
     "ExperienceSettings.Menu.TopBar.TopButtons",
     "ExperienceSettings.Menu.Background.Inner_Background",
-    "ExperienceSettings.Menu.Background.Inner2_Background"
+    "ExperienceSettings.Menu.Background.Inner2_Background",
+    "ExperienceSettings.Menu.HolderScreen.Shift_Lock"
 }
 
 -- ================================
