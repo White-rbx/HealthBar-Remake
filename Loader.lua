@@ -1,4 +1,4 @@
--- Loader script 0.58
+-- Loader script 0.59
 
 ------------------------------------------------------------------------------------------
 
@@ -261,6 +261,7 @@ local DEFAULT_DATA = {
     UI = {
         BackgroundRGB = { 18, 18, 21 },
         HideMenu = false
+        SettingsTransparency = 0.5
     }
 }
 
@@ -791,6 +792,94 @@ task.spawn(function()
         task.wait(0.5)
     end
 end)
+
+--// =====================================================
+--// SETTINGS TRANSPARENCY SYSTEM
+--// =====================================================
+
+local CoreGui = game:GetService("CoreGui")
+
+local SETTINGS_INSTANCES = {}
+local CURRENT_TRANSPARENCY = Data.UI.SettingsTransparency or 0.5
+
+-- path ที่ต้องใช้
+local SETTINGS_PATHS = {
+    "LoaderSettings.Holder",
+    "LoaderSettings.Holder.OPEN/CLOSE"
+}
+
+-- find by path
+local function findByPath(root, path)
+    local cur = root
+    for part in string.gmatch(path, "[^%.]+") do
+        cur = cur:FindFirstChild(part)
+        if not cur then return nil end
+    end
+    return cur
+end
+
+-- apply transparency
+local function applyTransparency(value)
+    CURRENT_TRANSPARENCY = math.clamp(value, 0, 1)
+
+    for _, inst in ipairs(SETTINGS_INSTANCES) do
+        if inst:IsA("GuiObject") then
+            inst.BackgroundTransparency = CURRENT_TRANSPARENCY
+        end
+    end
+end
+
+-- watcher (ไม่บล็อก)
+task.spawn(function()
+    while #SETTINGS_INSTANCES < #SETTINGS_PATHS do
+        SETTINGS_INSTANCES = {}
+
+        for _, path in ipairs(SETTINGS_PATHS) do
+            local inst = findByPath(CoreGui, path)
+            if inst and inst:IsA("GuiObject") then
+                table.insert(SETTINGS_INSTANCES, inst)
+            end
+        end
+
+        task.wait(0.25)
+    end
+
+    -- เจอครบ → apply ตาม data
+    applyTransparency(CURRENT_TRANSPARENCY)
+end)
+
+Txt(
+    "Settings Transparency",
+    255,255,255,
+    true, "0.5",
+    true, "Save",
+
+    -- LIVE PREVIEW
+    function(box)
+        local v = tonumber(box.Text)
+        if v then
+            applyTransparency(v)
+        end
+    end,
+
+    -- SAVE
+    function(box, btn)
+        local v = tonumber(box.Text)
+        if not v then return end
+
+        v = math.clamp(v, 0, 1)
+        Data.UI.SettingsTransparency = v
+        saveData(Data)
+        applyTransparency(v)
+
+        btn.TextColor3 = Color3.fromRGB(0,255,0)
+        task.delay(0.35, function()
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+        end)
+    end
+)
+
+
 
 
 
