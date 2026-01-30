@@ -1,11 +1,12 @@
-local ver = " gpt Test 4.238 ( Closed )"
+local ver = " gpt Test 4.239 ( Closed )"
 local update = [=[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
 (:8/1/2026 | 6:00 pm: R) Raw reset GitHub bug.
 (:8/1/2026 | 6:22 pm: !) Fixed bug again
-(:8/1/2026 | 5:55 pm: R) GitHub bug
+(:8/1/2026 | -:-- pm: R) GitHub bug
 (:8/1/2026 | 6:49 pm: C) Closed
+(:30/1/2026 | 8:12 pm: U) Update
 ]=]
 
 -- =====>> Saved Functions <<=====
@@ -336,7 +337,7 @@ local user = {
 local function txt(user, text, R, G, B)
     local cha = Instance.new("TextLabel")
     cha.Name = "Text"
-    cha.Size = UDim2.new(0.97, 0, 0, 30) -- default height (ปรับภายหลังได้)
+    cha.Size = UDim2.new(0.97, 0, 0, 0) -- default height (ปรับภายหลังได้)
     cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     cha.BackgroundTransparency = 1
     cha.Text = tostring(user) .. tostring(text)
