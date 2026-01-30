@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.243 ( Closed )"
+local ver = " gpt Test 4.244 ( Closed )"
 local update = [=[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -411,7 +411,7 @@ local GEMINI_PRESETS = {
     FREE  = {mt = 64,  t = 0.4},
     PRO   = {mt = 256, t = 0.7},
     PLUS  = {mt = 512, t = 0.75},
-    THINKING = {mt = 1024, t = 0.i},
+    THINKING = {mt = 1024, t = 0.8},
 }
 
 -- ========== SERVICES & UTIL ==========
