@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.24 ( Closed )"
+local ver = " gpt Test 4.241 ( Closed )"
 local update = [=[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -356,7 +356,7 @@ txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,1
 txt(user.Nill, "Version:" .. ver .. "| © Copyright LighterCyan", 180, 180, 180)
 txt(user.Info, update, 0, 170, 255)
 txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
-txt(user.Info, "Use /help for more information or commands.", 0,170,255) 
+txt(user.Info, "Use /help for more information or commands. Add api is /addapi", 0,170,255) 
 -- txt(user.Nill, 
 --[[ What is AI-OpenSource?
   AI-OpenSource is a tool for questioning to AIs (ChatGPT/Gemini) by putting API Key.
@@ -375,7 +375,9 @@ txt(user.Nill, "Welcome back Tester", 0, 255, 0)
 ]]
 txt(user.Nill, [=[
 [==> OFFICIAL ANNOUNCEMENT <==]
-AI-OpenSource close for now. We'll be right back soon!
+AI-OpenSource close for now. We'll be right back soon! maybe 
+
+AI MIGHT BE BUG BECAUSE OF TEXTLABEL
 ]=], 255,0,0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
@@ -567,7 +569,7 @@ local function endpointsFor(provider)
     provider = tostring(provider or "openai"):lower()
     if provider == "gemini" then
         return {
-            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
             makeHeaders = function(key)
                 return { ["Content-Type"] = "application/json", ["x-goog-api-key"] = key }
             end,
