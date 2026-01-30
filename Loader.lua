@@ -1,4 +1,4 @@
--- Loader script 0.60
+-- Loader script 0.61
 
 ------------------------------------------------------------------------------------------
 
@@ -260,8 +260,9 @@ local DEFAULT_DATA = {
 
     UI = {
         BackgroundRGB = { 18, 18, 21 },
-        HideMenu = false,
+        HideMenu = false
         SettingsTransparency = 0.5
+        UIScale = 1
     }
 }
 
@@ -458,6 +459,8 @@ end
 -- =====================================================
 local Data = loadData()
 
+local CoreGui = game:GetService("CoreGui")
+
 local MENU_INSTANCE = nil
 local HIDE_MENU_STATUS = Data.UI.HideMenu -- อ่านจาก json ครั้งเดียว
 
@@ -530,6 +533,8 @@ Txt(
 --// =====================================================
 --// BACKGROUND APPLY SYSTEM (WAIT UNTIL READY)
 --// =====================================================
+
+local CoreGui = game:GetService("CoreGui")
 
 -- Path ที่ต้องครบทุกอันก่อน
 local BG_PATHS = {
@@ -868,6 +873,110 @@ Txt(
         saveData(Data)
         applyTransparency(v)
 
+        btn.TextColor3 = Color3.fromRGB(0,255,0)
+        task.delay(0.35, function()
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+        end)
+    end
+)
+
+-- =====================================================
+-- LOAD DATA
+-- =====================================================
+local Data = loadData()
+Data.UI = Data.UI or {}
+Data.UI.UIScale = tonumber(Data.UI.UIScale) or 1
+
+-- =====================================================
+-- SERVICES
+-- =====================================================
+local CoreGui = game:GetService("CoreGui")
+
+-- =====================================================
+-- STATE
+-- =====================================================
+local MENU_INSTANCE = nil
+local UISCALE_INSTANCE = nil
+local CURRENT_SCALE = Data.UI.UIScale
+
+-- =====================================================
+-- FIND MENU (CoreGui.ExperienceSettings.Menu)
+-- =====================================================
+local function tryFindMenu()
+    local root = CoreGui:FindFirstChild("ExperienceSettings")
+    if not root then return nil end
+    return root:FindFirstChild("Menu")
+end
+
+-- =====================================================
+-- APPLY UI SCALE
+-- =====================================================
+local function applyUIScale(scale)
+    if not MENU_INSTANCE then return end
+
+    CURRENT_SCALE = math.clamp(scale or CURRENT_SCALE, 0.5, 2)
+
+    -- reset ถ้า UIScale ติด menu เก่า
+    if UISCALE_INSTANCE and UISCALE_INSTANCE.Parent ~= MENU_INSTANCE then
+        UISCALE_INSTANCE = nil
+    end
+
+    if not UISCALE_INSTANCE then
+        UISCALE_INSTANCE = MENU_INSTANCE:FindFirstChild("MenuUIScale")
+
+        if not UISCALE_INSTANCE then
+            UISCALE_INSTANCE = Instance.new("UIScale")
+            UISCALE_INSTANCE.Name = "MenuUIScale"
+            UISCALE_INSTANCE.Parent = MENU_INSTANCE
+        end
+    end
+
+    UISCALE_INSTANCE.Scale = CURRENT_SCALE
+end
+
+-- =====================================================
+-- WATCHER (รอ menu ได้ตลอด / ไม่บล็อก)
+-- =====================================================
+task.spawn(function()
+    while true do
+        local menu = tryFindMenu()
+        if menu and menu ~= MENU_INSTANCE then
+            MENU_INSTANCE = menu
+            UISCALE_INSTANCE = nil
+            applyUIScale(CURRENT_SCALE) -- apply จาก data ทันที
+        end
+        task.wait(0.25)
+    end
+end)
+
+-- =====================================================
+-- UI (Txt)
+-- =====================================================
+Txt(
+    "Set UIScaled",
+    255,255,255,
+    true, tostring(Data.UI.UIScale),
+    true, "Save",
+
+    -- LIVE PREVIEW
+    function(box)
+        local v = tonumber(box.Text)
+        if v then
+            applyUIScale(v)
+        end
+    end,
+
+    -- SAVE
+    function(box, btn)
+        local v = tonumber(box.Text)
+        if not v then return end
+
+        v = math.clamp(v, 0.5, 2)
+        Data.UI.UIScale = v
+        saveData(Data)
+        applyUIScale(v)
+
+        -- feedback
         btn.TextColor3 = Color3.fromRGB(0,255,0)
         task.delay(0.35, function()
             btn.TextColor3 = Color3.fromRGB(255,255,255)
