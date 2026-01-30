@@ -1,4 +1,4 @@
--- Loader script 0.61
+-- Loader script 0.62
 
 ------------------------------------------------------------------------------------------
 
@@ -260,8 +260,8 @@ local DEFAULT_DATA = {
 
     UI = {
         BackgroundRGB = { 18, 18, 21 },
-        HideMenu = false
-        SettingsTransparency = 0.5
+        HideMenu = false,
+        SettingsTransparency = 0.5,
         UIScale = 1
     }
 }
