@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.242 ( Closed )"
+local ver = " gpt Test 4.243 ( Closed )"
 local update = [=[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -405,11 +405,13 @@ local GPT_PRESETS = {
     FREE  = {mt = 64,  t = 0.5},
     PRO   = {mt = 256, t = 0.7},
     PLUS  = {mt = 512, t = 0.75},
+    THINKING = {mt = 1024, t = 0.8},
 }
 local GEMINI_PRESETS = {
     FREE  = {mt = 64,  t = 0.4},
     PRO   = {mt = 256, t = 0.7},
     PLUS  = {mt = 512, t = 0.75},
+    THINKING = {mt = 1024, t = 0.i},
 }
 
 -- ========== SERVICES & UTIL ==========
@@ -726,8 +728,8 @@ local HELP_TEXT = [=[
 /CheckURLStatus [URL] - HEAD request to URL
 /CheckSYN - check syn.request availability
 /EnableUSLD - enable unknown-language debug printing
-/GPTSwitch [FREE/PRO/PLUS]
-/GEMINISwitch [FREE/PRO/PLUS]
+/GPTSwitch [FREE/PRO/PLUS/THINKING]
+/GEMINISwitch [FREE/PRO/PLUS/THINKING]
 /ResetRateLimit or /ReRateLimit - resets local queue/backoff
 /DumpStatus - prints current state
 /InstanceTool ("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]
