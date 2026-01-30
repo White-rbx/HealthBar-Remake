@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.241 ( Closed )"
+local ver = " gpt Test 4.242 ( Closed )"
 local update = [=[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -7,6 +7,7 @@ local update = [=[
 (:8/1/2026 | -:-- pm: R) GitHub bug
 (:8/1/2026 | 6:49 pm: C) Closed
 (:30/1/2026 | 8:12 pm: U) Update
+(:30/1/2026 | 8:59 pm: D) Disabled top button for bug.
 ]=]
 
 -- =====>> Saved Functions <<=====
@@ -263,6 +264,11 @@ st.Active = false
 st.Parent = ins
 Corner(0, 8, st)
 Stroke(st, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+
+tb.Visible = false
+con.Visible = false
+con2.Visible = false
+st.Visible = false
 
 -- chat
 local ch = Instance.new("TextBox")
