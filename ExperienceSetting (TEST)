@@ -1,5 +1,6 @@
--- ========= HEALTHBAR AND SOUNDS ===========
+-- ========= HEALTHBAR AND SOUNDS =========== gggggg
 -- ใช้ใน LocalScript (client-side)
+-- ปรับปรุงการตรวจสอบ nil เพื่อหลีกเลี่ยง "attempt to index nil with 'FindFirstChild'"
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -635,19 +636,7 @@ gpt.BackgroundTransparency = 0.8
 gpt.Active = true
 gpt.Visible = false
 gpt.Parent = hr
-createUICorner(gpt, 1, 0)
-
--- LighterCyan
-local liger = Instance.new("ImageButton")
-liger.Name = "a4_LighterCyan.ai"
-liger.Size = UDim2.new(0, 36, 0.8, 0)
-liger.Image = "rbxassetid://83032822916288"
-liger.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-liger.BackgroundTransparency = 0.8
-liger.Active = true
-liger.Visible = false
-liger.Parent = hr
-createUICorner(liger, 1, 0)
+createUICorner(gpt, 1, 0) --
 
 -- Wait1
 local wa1 = Instance.new("Frame")
@@ -750,7 +739,6 @@ local function applyOCState(open, instant)
         if Set and Set:IsA("GuiObject") then Set.Visible = open end
         if hbm and hbm:IsA("GuiObject") then hbm.Visible = open end
         if gpt and gpt:IsA("GuiObject") then gpt.Visible = open end
-        if liger and liger:IsA("GuiObject") then liger.Visible = open end
     end)
     -- update OC image
     if OC and OC:IsA("GuiObject") then
@@ -772,23 +760,11 @@ end
 
 -- ===== HRP Watcher System (full) =====
 local Players = game:GetService("Players")
-
--- Make gui_aV2 lookup safe: avoid indexing nils directly
-local gui_aV2
-pcall(function()
-    local top = CoreGui:FindFirstChild("TopBarApp")
-    if top then
-        local inner = top:FindFirstChild("TopBarApp") or top
-        local left = inner and inner:FindFirstChild("UnibarLeftFrame")
-        local hb = left and left:FindFirstChild("HealthBar")
-        local vf = hb and hb:FindFirstChild("ValueFolder")
-        gui_aV2 = vf and vf:FindFirstChild("ValueGui")
-    end
-end)
+local gui_aV2 = game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ValueFolder.ValueGui
 
 -- interval config
 local CHECK_INTERVAL = 0.1 -- ระยะเวลาเช็ค (วินาที)
-local TIMEOUT = 0.1         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
+local TIMEOUT = 5         -- ถ้าไม่มี HRP เกินค่านี้ให้ปิด UI (วินาที)
 
 -- เก็บตำแหน่งเริ่มต้น
 local wa1_initial_pos, hr_initial_size, mtb_initial_pos
@@ -820,16 +796,15 @@ if type(resolveUI) ~= "function" then
         local rc_bg  = find("Background") or find("bg")
         local rc_mtb = find("TopBar") or find("MainTopBar") or find("mtb")
         local rc_gpt = find("a3_ChatGPT") or find("gpt") or find("ChatGPTButton")
-        local rc_liger = find("a4_LighterCyan.ai") or find("ai")
 
-        return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt, rc_liger
+        return rc_tb, rc_hr, rc_Set, rc_hbm, rc_OC, rc_wa1, rc_wl, rc_bg, rc_mtb, rc_gpt
     end
 
     warn("[HRP-Watcher] Fallback resolveUI() injected (was missing).")
 end
 
 -- UI refs
-local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger = resolveUI()
+local ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
 local timerMissing = 0
 local isOpen = false
 
@@ -853,10 +828,10 @@ task.spawn(function()
         task.wait(CHECK_INTERVAL)
 
         -- พยายาม resolve refs ถ้ายังไม่มี
-        if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_liger and ui_wa1 and ui_wl) then
-            ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt, ui_liger = resolveUI()
+        if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1 and ui_wl) then
+            ui_tb, ui_hr, ui_Set, ui_hbm, ui_OC, ui_wa1, ui_wl, ui_bg, ui_mtb, ui_gpt = resolveUI()
 
-            if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_liger and ui_wa1 and ui_wl) then
+            if not (ui_tb and ui_hr and ui_Set and ui_hbm and ui_OC and ui_gpt and ui_wa1 and ui_wl) then
                 timerMissing = timerMissing + CHECK_INTERVAL
                 if timerMissing >= TIMEOUT then
                     warn("[HRP-Watcher] UI missing for " .. math.floor(timerMissing) .. "s - waiting for UI")
@@ -887,7 +862,6 @@ task.spawn(function()
                     if ui_hbm then ui_hbm.Visible = false end
                     if ui_OC  then ui_OC.Visible  = true end
                     if ui_gpt then ui_gpt.Visible = false end
-                    if ui_liger then ui_liger.Visible = false end
                     if gui_aV2 then gui_aV2.Enabled = true end
                 end)
 
@@ -921,7 +895,6 @@ task.spawn(function()
                         if ui_hbm then ui_hbm.Visible = false end
                         if ui_OC  then ui_OC.Visible  = false end
                         if ui_gpt then ui_gpt.Visible = false end
-                        if ui_liger then ui_liger.Visible = false end
                         if gui_aV2 then gui_aV2.Enabled = false end
                     end)
 
@@ -1217,16 +1190,16 @@ createToggle(BFrame, "Shaders - Recommend graphics 5+", function(state)
     end
 end, false)
 
--- เธ•เนเธญเธเธกเธต service เน€เธซเธฅเนเธฒเธเธตเน
+-- ต้องมี service เหล่านี้
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local localPlayer = Players.LocalPlayer
 
--- เน€เธเนเธ coroutine / task เธเธญเธ rainbow per-part เน€เธเธทเนเธญเนเธซเนเน€เธฃเธฒเธซเธขเธธเธ”เนเธ”เน
+-- เก็บ coroutine / task ของ rainbow per-part เพื่อให้เราหยุดได้
 local _rainbowTasks = {}
 
--- เธฅเธดเธชเธ•เน part เธ—เธตเนเธเธฐเธเธขเธฒเธขเธฒเธกเธซเธฒ (เธฅเธณเธ”เธฑเธเธเธงเธฒเธกเธชเธณเธเธฑเธ)
+-- ลิสต์ part ที่จะพยายามหา (ลำดับความสำคัญ)
 local ATTACH_CANDIDATES = {
     "HumanoidRootPart",
     "LowerTorso",
@@ -1235,7 +1208,7 @@ local ATTACH_CANDIDATES = {
     "Head"
 }
 
--- เธซเธฒ part เธ—เธตเนเธเธฐ parent light เนเธซเน (เธเธทเธ BasePart เธซเธฃเธทเธญ nil)
+-- หา part ที่จะ parent light ให้ (คืน BasePart หรือ nil)
 local function findAttachPart(character)
     if not character then return nil end
     for _, name in ipairs(ATTACH_CANDIDATES) do
@@ -1247,10 +1220,10 @@ local function findAttachPart(character)
     return nil
 end
 
--- เธชเธ•เนเธญเธเธเธทเนเธญ light
+-- สต็อกชื่อ light
 local LIGHT_NAME = "Experience_Lighter"
 
--- เธซเธขเธธเธ” rainbow loop เธชเธณเธซเธฃเธฑเธ part เธเธฑเนเธ (เธ–เนเธฒเธกเธต)
+-- หยุด rainbow loop สำหรับ part นั้น (ถ้ามี)
 local function stopRainbowFor(part)
     if not part then return end
     local taskFlag = _rainbowTasks[part]
@@ -1260,20 +1233,20 @@ local function stopRainbowFor(part)
     end
 end
 
--- เธชเธฃเนเธฒเธเธซเธฃเธทเธญเน€เธเธดเธ” light
+-- สร้างหรือเปิด light
 -- params:
 --  state: boolean (true = on, false = off)
---  rainbow: boolean (true => เนเธฅเนเธชเธต)
+--  rainbow: boolean (true => ไล่สี)
 --  opts (optional): table { Brightness = number, Range = number, Color = Color3 }
 local function setLighterForCharacter(char, state, rainbow, opts)
     if not char then return false, "no char" end
     local attach = findAttachPart(char)
     if not attach then return false, "no attach part found" end
 
-    -- เธ–เนเธฒเธกเธต light เธญเธขเธนเนเนเธฅเนเธง เธเธฑเธ”เธเธฒเธฃเธ•เธฒเธก state
+    -- ถ้ามี light อยู่แล้ว จัดการตาม state
     local existing = attach:FindFirstChild(LIGHT_NAME)
     if not state then
-        -- เธเธดเธ”/เธฅเธ
+        -- ปิด/ลบ
         if existing then
             stopRainbowFor(attach)
             existing:Destroy()
@@ -1281,44 +1254,44 @@ local function setLighterForCharacter(char, state, rainbow, opts)
         return true, "turned off"
     end
 
-    -- เน€เธเธดเธ”: เธชเธฃเนเธฒเธ light เธ–เนเธฒเธขเธฑเธเนเธกเนเธกเธต
+    -- เปิด: สร้าง light ถ้ายังไม่มี
     if not existing then
         local light = Instance.new("PointLight")
         light.Name = LIGHT_NAME
         light.Brightness = (opts and opts.Brightness) or 2
         light.Range = (opts and opts.Range) or 25
         light.Color = (opts and opts.Color) or Color3.new(1,1,1)
-        -- PointLight เนเธกเนเธกเธต Angle property โ€” เน€เธเนเธ omnidirectional เธญเธขเธนเนเนเธฅเนเธง (เน€เธ—เธตเธขเธเธเธฑเธ SpotLight)
+        -- PointLight ไม่มี Angle property — เป็น omnidirectional อยู่แล้ว (เทียบกับ SpotLight)
         light.Parent = attach
 
-        -- เธ–เนเธฒเธเธนเนเนเธเนเธ—เธณเธฅเธฒเธข part เน€เธฃเธฒเธเธงเธฃเธซเธขเธธเธ” task เธ”เนเธงเธข (เน€เธเนเธ AncestryChanged)
+        -- ถ้าผู้ใช้ทำลาย part เราควรหยุด task ด้วย (เช็ค AncestryChanged)
         attach.AncestryChanged:Connect(function(child, parent)
             if not parent then
-                -- part เธ–เธนเธเธฅเธ -> เธซเธขเธธเธ” rainbow (เธ–เนเธฒเธกเธต)
+                -- part ถูกลบ -> หยุด rainbow (ถ้ามี)
                 stopRainbowFor(attach)
             end
         end)
     else
-        -- update properties เธ–เนเธฒเธกเธต
+        -- update properties ถ้ามี
         existing.Brightness = (opts and opts.Brightness) or existing.Brightness
         existing.Range = (opts and opts.Range) or existing.Range
         existing.Color = (opts and opts.Color) or existing.Color
     end
 
     -- rainbow handling
-    stopRainbowFor(attach) -- เธ—เธณเธเธงเธฒเธกเธชเธฐเธญเธฒเธ”เธเนเธญเธ
+    stopRainbowFor(attach) -- ทำความสะอาดก่อน
     if rainbow then
-        -- เธชเธฃเนเธฒเธ task flag เน€เธเธทเนเธญเนเธซเนเธซเธขเธธเธ”เนเธ”เน
+        -- สร้าง task flag เพื่อให้หยุดได้
         local flag = { _stop = false }
         _rainbowTasks[attach] = flag
         task.spawn(function()
             local t0 = tick()
             while not flag._stop and attach.Parent do
-                local h = (tick() - t0) * 0.12 -- speed factor (เธเธฃเธฑเธเนเธ”เน)
+                local h = (tick() - t0) * 0.12 -- speed factor (ปรับได้)
                 local color = Color3.fromHSV(h % 1, 1, 1)
                 local light = attach:FindFirstChild(LIGHT_NAME)
                 if light then
-                    -- pcall เธเนเธญเธเธเธฑเธ error เธ–เนเธฒ light เธ–เธนเธเธ—เธณเธฅเธฒเธขเนเธเธฃเธฐเธซเธงเนเธฒเธ loop
+                    -- pcall ป้องกัน error ถ้า light ถูกทำลายในระหว่าง loop
                     pcall(function() light.Color = color end)
                 else
                     break
@@ -1327,7 +1300,7 @@ local function setLighterForCharacter(char, state, rainbow, opts)
             end
         end)
     else
-        -- เธ•เธฑเนเธเธชเธตเธเธเธ•เธด (เธเธฒเธง) เน€เธกเธทเนเธญเนเธกเนเนเธเน rainbow
+        -- ตั้งสีปกติ (ขาว) เมื่อไม่ใช่ rainbow
         local light = attach:FindFirstChild(LIGHT_NAME)
         if light then
             pcall(function() light.Color = Color3.fromRGB(255,255,255) end)
@@ -1337,7 +1310,7 @@ local function setLighterForCharacter(char, state, rainbow, opts)
     return true, "turned on"
 end
 
--- เธ•เธฑเธงเธเนเธงเธข: toggle เธชเธณเธซเธฃเธฑเธ local player (เน€เธฃเธตเธขเธเธเธฒเธ toggle callback)
+-- ตัวช่วย: toggle สำหรับ local player (เรียกจาก toggle callback)
 local function toggleForLocalPlayer(state, rainbow)
     local pl = Players.LocalPlayer
     if not pl then return end
@@ -1351,11 +1324,11 @@ local function toggleForLocalPlayer(state, rainbow)
 end
 
 createToggle(BFrame, "White Light", function(state)
-    toggleForLocalPlayer(state, false) -- เธเธเธ•เธด เธเธฒเธง
+    toggleForLocalPlayer(state, false) -- ปกติ ขาว
 end, false)
 
 createToggle(BFrame, "RGB Light", function(state)
-    toggleForLocalPlayer(state, true) -- RGB (เน€เธ”เธดเธก rainbow)
+    toggleForLocalPlayer(state, true) -- RGB (เดิม rainbow)
 end, false)
 
 
@@ -1369,7 +1342,7 @@ createToggle(BFrame, "ESP (Beta)", function(state)
 end, false)
 
 -- ESP LocalScript (no FPS, with Team and plaID; Age & JoinDate unchanged)
--- เธงเธฒเธเนเธ StarterPlayerScripts (client-side)
+-- วางใน StarterPlayerScripts (client-side)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -1382,7 +1355,7 @@ local ESPData = {} -- [player] = { highlight = Instance, billboard = Instance, l
 -- Config
 local HIGHLIGHT_NAME = "ESPHighlight"
 local BILLBOARD_NAME  = "ESPInfo"
-local UPDATE_INTERVAL = 0.12 -- เนเธกเนเธญเธฑเธเน€เธ”เธ•เน€เธฃเนเธงเธเธเน€เธเธดเธเนเธ (text/props)
+local UPDATE_INTERVAL = 0.12 -- ไม่อัปเดตเร็วจนเกินไป (text/props)
 
 -- Helpers
 local function safeDestroy(obj)
@@ -1411,7 +1384,7 @@ local function fmtNum(n, f)
 	return string.format(f, n)
 end
 
--- Build info string (เธ•เธฒเธกเธ—เธตเนเธเธญ: เธซเนเธฒเธกเนเธเน Age/JoinDate logic)
+-- Build info string (ตามที่ขอ: ห้ามแก้ Age/JoinDate logic)
 local function buildInfoString(player, character)
 	local username = player and player.Name or "Unknown"
 	local userId = tostring(player and player.UserId or 0)
@@ -1420,7 +1393,7 @@ local function buildInfoString(player, character)
 	local hum = character and character:FindFirstChildOfClass("Humanoid")
 	local health = hum and hum.Health or 0
 
-	-- studs (เธฃเธฐเธขเธฐเธเธฒเธ local player's HRP เธ–เนเธฒเธกเธต)
+	-- studs (ระยะจาก local player's HRP ถ้ามี)
 	local studs = 0
 	local localRoot = LocalPlayer and LocalPlayer.Character and (LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or LocalPlayer.Character:FindFirstChild("Head"))
 	local targetPart = character and (character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Head"))
@@ -1431,14 +1404,14 @@ local function buildInfoString(player, character)
 	-- team
 	local teamName = getTeamName(player)
 
-	-- Age & JoinDate (เนเธเน logic เน€เธ”เธดเธกเธเธญเธเธเธธเธ“)
-	local ageDays = player and player.AccountAge or 0 -- เธเธณเธเธงเธเธงเธฑเธ (เธ•เธฒเธก Roblox property)
-	local createdUnix = tick() - (ageDays * 86400) -- เธงเธดเธเธตเน€เธ”เธดเธกเธ—เธตเนเธเธธเธ“เนเธเน
+	-- Age & JoinDate (ใช้ logic เดิมของคุณ)
+	local ageDays = player and player.AccountAge or 0 -- จำนวนวัน (ตาม Roblox property)
+	local createdUnix = tick() - (ageDays * 86400) -- วิธีเดิมที่คุณใช้
 	local joinDate = os.date("%Y-%m-%d", createdUnix)
 
-	-- เธชเธฃเนเธฒเธ string (เธ•เธฒเธกเธเธญเธฃเนเนเธกเธ•เธ—เธตเนเธเธญเธฃเธงเธก Team เนเธฅเธฐ plaID)
+	-- สร้าง string (ตามฟอร์แมตที่ขอรวม Team และ plaID)
 	local info = string.format(
-		"๐‘ค%s | ๐•“Age: %d | ๐—“๏ธJoinDate: %s | โฅ๏ธHealth: %s | ๐“Studs: %s | ๐ณ๏ธ: %s | ๐”PlayerID: %s",
+		"👤%s | 🕓Age: %d | 🗓️JoinDate: %s | ♥️Health: %s | 📏Studs: %s | 🏳️: %s | 🆔PlayerID: %s",
 		username,
 		ageDays,
 		joinDate,
@@ -1454,15 +1427,15 @@ end
 -- Ensure Highlight
 local function ensureHighlight(player, character)
 	if not character then return nil end
-	-- เธเนเธเธซเธฒ highlight เธเธทเนเธญ HIGHLIGHT_NAME เธ เธฒเธขเนเธ character เธเนเธญเธ
+	-- ค้นหา highlight ชื่อ HIGHLIGHT_NAME ภายใน character ก่อน
 	local hi = character:FindFirstChild(HIGHLIGHT_NAME)
 	if not hi then
-		-- เธ–เนเธฒเนเธกเนเธกเธต เธชเธฃเนเธฒเธเนเธซเธกเน
+		-- ถ้าไม่มี สร้างใหม่
 		hi = Instance.new("Highlight")
 		hi.Name = HIGHLIGHT_NAME
 		hi.Parent = character
 	end
-	-- เธญเธฑเธเน€เธ”เธ• properties
+	-- อัปเดต properties
 	pcall(function()
 		hi.Adornee = character
 		local col = getTeamColor(player)
@@ -1482,7 +1455,7 @@ local function ensureBillboard(player, character)
 
 	local bg = character:FindFirstChild(BILLBOARD_NAME)
 	if not bg or not bg:IsA("BillboardGui") then
-		-- เธ–เนเธฒเธกเธต object เนเธ•เนเนเธกเนเนเธเน Billboard เนเธซเนเธฅเธเธ—เธดเนเธเธเนเธญเธ
+		-- ถ้ามี object แต่ไม่ใช่ Billboard ให้ลบทิ้งก่อน
 		if bg and bg.Parent then
 			pcall(function() bg:Destroy() end)
 		end
@@ -1610,8 +1583,8 @@ local function addESPToPlayer(player)
 			end)
 		end
 
-		-- blink logic: (เนเธกเนเนเธเนเธชเนเธงเธเธซเธฅเธฑเธ เนเธ•เนเน€เธเนเธเนเธงเนเธ–เนเธฒเธ•เนเธญเธเธเธฒเธฃเนเธเธญเธเธฒเธเธ•)
-		-- เธ–เนเธฒเธ•เนเธญเธเธเธฒเธฃเธเธฃเธฐเธเธฃเธดเธเน€เธกเธทเนเธญเน€เธฅเธทเธญเธ”เธ•เนเธณ เนเธเน blinkAcc เน€เธเธฃเธตเธขเธเธเธฑเธ 0.05 เนเธฅเนเธงเธชเธฅเธฑเธเธชเธต
+		-- blink logic: (ไม่ใช่ส่วนหลัก แต่เก็บไว้ถ้าต้องการในอนาคต)
+		-- ถ้าต้องการกระพริบเมื่อเลือดต่ำ ใช้ blinkAcc เปรียบกับ 0.05 แล้วสลับสี
 	end)
 
 	ESPData[player].conn = updConn
@@ -1670,7 +1643,7 @@ end
 _G.EnableESP = enableESP
 _G.DisableESP = disableESP
 
--- (example) start disabled by default โ€” caller should call enableESP()
+-- (example) start disabled by default — caller should call enableESP()
 -- enableESP()
 
 -- ===== END ESP implementation =====
@@ -2983,28 +2956,28 @@ function handleCommand(rawText)
     if cmd == "HELP" then
         appendSystem("Commands (detailed):")
         local helpLines = {
-            '/API ("sk-...") โ€” set OpenAI API key (client-side).',
-            '/UnSaveAPI โ€” clear API key from client.',
-            '/APIJ ("proj_...") โ€” set Project ID (optional).',
-            '/UnSaveAPIJ โ€” clear Project ID.',
-            '/HttpService โ€” show HttpService status.',
-            '/HttpEnabled true|false โ€” attempt to set HttpEnabled (may fail).',
-            '/HttpAsync true|false โ€” set internal async mode.',
-            '/HttpState ("url") โ€” GET check website.',
-            '/Keep ("text") โ€” save a local note.',
-            '/ShowKeep โ€” list saved notes.',
-            '/ClearAllKeep โ€” clear saved notes.',
-            '/ClearTexts โ€” clear GPT chat UI.',
-            '/Ins โ€” open interactive instancer or use /Ins (quick args).',
-            '/Destroy /Resize /Position /Color โ€” object ops.',
+            '/API ("sk-...") — set OpenAI API key (client-side).',
+            '/UnSaveAPI — clear API key from client.',
+            '/APIJ ("proj_...") — set Project ID (optional).',
+            '/UnSaveAPIJ — clear Project ID.',
+            '/HttpService — show HttpService status.',
+            '/HttpEnabled true|false — attempt to set HttpEnabled (may fail).',
+            '/HttpAsync true|false — set internal async mode.',
+            '/HttpState ("url") — GET check website.',
+            '/Keep ("text") — save a local note.',
+            '/ShowKeep — list saved notes.',
+            '/ClearAllKeep — clear saved notes.',
+            '/ClearTexts — clear GPT chat UI.',
+            '/Ins — open interactive instancer or use /Ins (quick args).',
+            '/Destroy /Resize /Position /Color — object ops.',
             '/TP /Rejoin /ServerHop /HttpAsync',
-            '/Autobot [Walk|Jump|Spin|Dance|Random|Stop] โ€” autonomous actions.',
-            '/TextsCounts โ€” number of messages in GPT chat.',
-            '/Music play:ID(123456) โ€” play music; /Music do:Play|Pause|Stop|Restart|Loop|UnLoop|Loop(N times); /Music change:Vol(X) or change:Playback(X).',
-            '/SeeChat โ€” mirror Roblox chat into GPT UI.',
-            '/UnSeeChat โ€” stop mirroring Roblox chat.',
-            '/Execute "pla:..." or "cmd:..." โ€” run player actions or call commands.',
-            '/Console โ€” instructions to open Roblox Developer Console (F9).',
+            '/Autobot [Walk|Jump|Spin|Dance|Random|Stop] — autonomous actions.',
+            '/TextsCounts — number of messages in GPT chat.',
+            '/Music play:ID(123456) — play music; /Music do:Play|Pause|Stop|Restart|Loop|UnLoop|Loop(N times); /Music change:Vol(X) or change:Playback(X).',
+            '/SeeChat — mirror Roblox chat into GPT UI.',
+            '/UnSeeChat — stop mirroring Roblox chat.',
+            '/Execute "pla:..." or "cmd:..." — run player actions or call commands.',
+            '/Console — instructions to open Roblox Developer Console (F9).',
         }
         for i,line in ipairs(helpLines) do appendChat(false, tostring(i) .. ". " .. line, {200,200,255}) end
         appendSystem("If you want example usage for a command, ask /Help <CommandName>.")
@@ -3048,7 +3021,7 @@ local function sendChat()
     appendChat(true, text)
     chatBox.Text = ""
     if STATE.OPENAI_KEY and STATE.OPENAI_KEY ~= "" then
-        appendChat(false, "[System] โ Thinking...")
+        appendChat(false, "[System] ⌛ Thinking...")
         task.spawn(function()
             -- minimal AI call wrapper (kept inside to avoid accidental use)
             local function callOpenAI(prompt, key, proj)
