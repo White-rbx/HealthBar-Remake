@@ -1,4 +1,4 @@
--- Loader script 0.62
+-- Loader script 0.63
 
 ------------------------------------------------------------------------------------------
 
@@ -983,6 +983,63 @@ Txt(
         end)
     end
 )
+
+local StarterGui = game:GetService("StarterGui")
+
+local function isHealthEnabled()
+    local ok, res = pcall(function()
+        return StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+    end)
+    return ok and res or false
+end
+
+local function setHealth(state)
+    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, state)
+end
+
+-- TXT: Status
+local healthTxt = Txt(
+    "IsHealthOn: ...",
+    0,255,0,
+    false,nil,
+    false,nil
+)
+
+-- TXT: Toggle
+local HealthToggle = Txt(
+    "HealthBarToggle",
+    255,255,255,
+    false,nil,
+    true,"",
+    function(status)
+        setHealth(status)
+    end,
+    function(status)
+        setHealth(status)
+    end,
+    isHealthEnabled()
+)
+
+-- 🔁 Unified watcher
+task.spawn(function()
+    local last
+    while true do
+        local on = isHealthEnabled()
+        if on ~= last then
+            -- update text
+            healthTxt.Label.Text = "IsHealthOn: " .. (on and "YES" or "NO")
+            healthTxt.Label.TextColor3 = on
+                and Color3.fromRGB(0,255,0)
+                or Color3.fromRGB(255,0,0)
+
+            -- update button
+            updateToggle(HealthToggle.Button, on)
+
+            last = on
+        end
+        task.wait(0.5)
+    end
+end)
 
 
 
