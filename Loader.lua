@@ -1,4 +1,4 @@
--- Loader script 0.64
+-- Loader script 0.65
 
 ------------------------------------------------------------------------------------------
 
@@ -1070,8 +1070,22 @@ end)
 
 
 -- This only way the last toggle
-
+local StarterGui = game:GetService("StarterGui")
 local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
+
+local function openConsole()
+    -- Mobile = ไม่มี console
+    if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+        warn("[ Settings - Loader Rejoiner ]: DevConsole not supported on mobile.")
+        return
+    end
+
+    pcall(function()
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.DevConsole, true)
+        GuiService:OpenDeveloperConsole()
+    end)
+end
 
 Txt(
     "Console shortcut",
@@ -1080,12 +1094,9 @@ Txt(
     true,"Open",
     nil,
     function()
-        pcall(function()
-            GuiService:OpenDeveloperConsole()
-        end)
+        openConsole()
     end
 )
-
 -- WAIT
 while CONTINUE_LOCK do
     task.wait()
