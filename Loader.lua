@@ -1,4 +1,4 @@
--- Loader script 0.63
+-- Loader script 0.64
 
 ------------------------------------------------------------------------------------------
 
@@ -1056,6 +1056,35 @@ end)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- This only way the last toggle
+
+local GuiService = game:GetService("GuiService")
+
+Txt(
+    "Console shortcut",
+    255,255,255,
+    false,nil,
+    true,"Open",
+    nil,
+    function()
+        pcall(function()
+            GuiService:OpenDeveloperConsole()
+        end)
+    end
+)
 
 -- WAIT
 while CONTINUE_LOCK do
