@@ -1,4 +1,4 @@
--- Loader script 0.69
+-- Loader script 0.7
 
 ------------------------------------------------------------------------------------------
 
@@ -511,32 +511,27 @@ local continueUI = Txt(
     false, nil,
     true, "Okay",
     nil,
-    function(_, btn)
+    function(box, btn)
         CONTINUE_LOCK = false
-
-        -- เปลี่ยนข้อความ
         btn.Text = "Loaded"
-        btn.Active = false
 
-        -- tween สีขาว → เขียววนลูป
+        -- tween loop
         task.spawn(function()
             while btn and btn.Parent do
-                btn:TweenTextColor(
-                    Color3.fromRGB(0,255,0),
-                    Enum.EasingDirection.Out,
-                    Enum.EasingStyle.Quad,
-                    0.3,
-                    true
-                )
+                if CONTINUE_LOCK then break end
+
+                -- white → lime
+                safeTween(btn, {
+                    TextColor3 = Color3.fromRGB(0,255,0)
+                }, 0.3)
+
                 task.wait(0.3)
 
-                btn:TweenTextColor(
-                    Color3.fromRGB(255,255,255),
-                    Enum.EasingDirection.Out,
-                    Enum.EasingStyle.Quad,
-                    0.3,
-                    true
-                )
+                -- lime → white
+                safeTween(btn, {
+                    TextColor3 = Color3.fromRGB(255,255,255)
+                }, 0.3)
+
                 task.wait(0.3)
             end
         end)
@@ -1140,22 +1135,25 @@ end)
 
 task.spawn(function()
     while killBtn and killBtn.Parent do
-        local isOn = alwaysBtn.Text == "ON"
+        local isAlwaysOn = alwaysBtn.Text == "ON"
 
-        if isOn then
+        if not CONTINUE_LOCK then
+            -- Continue ถูกกดแล้ว
             killBtn.Active = false
             killBtn.Text = "Cannot destroy"
             killBtn.TextColor3 = Color3.fromRGB(255,0,0)
-        else
-            if CONTINUE_LOCK then
-                killBtn.Active = true
-                killBtn.Text = "Destroy"
-                killBtn.TextColor3 = Color3.fromRGB(255,255,255)
-            end
-        end
 
-        if not CONTINUE_LOCK then
+        elseif isAlwaysOn then
+            -- Always Load เปิด
             killBtn.Active = false
+            killBtn.Text = "Cannot destroy"
+            killBtn.TextColor3 = Color3.fromRGB(255,0,0)
+
+        else
+            -- ปกติ
+            killBtn.Active = true
+            killBtn.Text = "Destroy"
+            killBtn.TextColor3 = Color3.fromRGB(255,255,255)
         end
 
         task.wait(0.2)
