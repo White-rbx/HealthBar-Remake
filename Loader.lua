@@ -1,4 +1,4 @@
--- Loader script 0.66
+-- Loader script 0.67
 
 ------------------------------------------------------------------------------------------
 
@@ -506,30 +506,40 @@ end
 
 -- Continue (ONE TIME)
 Txt(
-    "Continue loadstring (ANTI-BROKE)",
+    "Continue loadstring main ExperienceSettings",
     255,255,255,
     false, nil,
     true, "Okay",
-    nil, -- work ❌ ไม่ใช้
+    nil,
     function()
         CONTINUE_LOCK = false
+        if killBtn then
+            killBtn.Active = false
+        end
     end
 )
 
 -- Always Load (SAVE)
 Txt(
-    "Always Load",
+    "Always Load main ExperienceSettings",
     255,255,255,
     false, nil,
     true, nil,
     function(newStatus)
         Data.Loader.AlwaysLoad = newStatus
         saveData(Data)
+
+        if killBtn then
+            if newStatus then
+                killBtn.Active = false
+            else
+                killBtn.Active = CONTINUE_LOCK
+            end
+        end
     end,
     nil,
     Data.Loader.AlwaysLoad
 )
-
 --// =====================================================
 --// BACKGROUND APPLY SYSTEM (WAIT UNTIL READY)
 --// =====================================================
@@ -1084,6 +1094,32 @@ Txt(
         end)
     end
 )
+
+-- Kill gui
+local killBtn
+
+local kill = Txt(
+    "Kill Gui - This Settings only",
+    255,80,80,
+    false, nil,
+    true, "Destroy",
+    nil,
+    function(_, btn)
+        if not btn.Active then return end
+
+        if gui and gui.Parent then
+            gui:Destroy()
+        end
+    end
+)
+
+killBtn = kill.Button
+
+-- sync สถานะเริ่มต้น
+if killBtn then
+    killBtn.Active = CONTINUE_LOCK
+end
+
 -- WAIT
 while CONTINUE_LOCK do
     task.wait()
