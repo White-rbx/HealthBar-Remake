@@ -1,4 +1,4 @@
--- Loader script 0.68
+-- Loader script 0.69
 
 ------------------------------------------------------------------------------------------
 
@@ -505,22 +505,46 @@ if Data.Loader.AlwaysLoad == true then
 end
 
 -- Continue (ONE TIME)
-Txt(
+local continueUI = Txt(
     "Continue loadstring main ExperienceSettings",
     255,255,255,
     false, nil,
     true, "Okay",
     nil,
-    function()
+    function(_, btn)
         CONTINUE_LOCK = false
-        if killBtn then
-            killBtn.Active = false
-        end
+
+        -- เปลี่ยนข้อความ
+        btn.Text = "Loaded"
+        btn.Active = false
+
+        -- tween สีขาว → เขียววนลูป
+        task.spawn(function()
+            while btn and btn.Parent do
+                btn:TweenTextColor(
+                    Color3.fromRGB(0,255,0),
+                    Enum.EasingDirection.Out,
+                    Enum.EasingStyle.Quad,
+                    0.3,
+                    true
+                )
+                task.wait(0.3)
+
+                btn:TweenTextColor(
+                    Color3.fromRGB(255,255,255),
+                    Enum.EasingDirection.Out,
+                    Enum.EasingStyle.Quad,
+                    0.3,
+                    true
+                )
+                task.wait(0.3)
+            end
+        end)
     end
 )
 
 -- Always Load (SAVE)
-Txt(
+local alwaysUI = Txt(
     "Always Load main ExperienceSettings",
     255,255,255,
     false, nil,
@@ -528,18 +552,12 @@ Txt(
     function(newStatus)
         Data.Loader.AlwaysLoad = newStatus
         saveData(Data)
-
-        if killBtn then
-            if newStatus then
-                killBtn.Active = false
-            else
-                killBtn.Active = CONTINUE_LOCK
-            end
-        end
     end,
     nil,
     Data.Loader.AlwaysLoad
 )
+
+local alwaysBtn = alwaysUI.Button
 --// =====================================================
 --// BACKGROUND APPLY SYSTEM (WAIT UNTIL READY)
 --// =====================================================
@@ -1095,8 +1113,6 @@ Txt(
     end
 )
 
-local killBtn
-
 local kill = Txt(
     "Kill Gui - This Settings only",
     255,80,80,
@@ -1111,27 +1127,35 @@ local kill = Txt(
     end
 )
 
-killBtn = kill.Button
+local killBtn = kill.Button
 
--- =====================================================
--- KILL BUTTON WATCHER (ตรวจตลอดเวลา)
--- =====================================================
 task.spawn(function()
     while killBtn and killBtn.Parent do
-        local allow = CONTINUE_LOCK
+        if not CONTINUE_LOCK then
+            killBtn.Active = false
+        end
+        task.wait(0.2)
+    end
+end)
 
-        if Data.Loader.AlwaysLoad == true then
-            allow = false
+task.spawn(function()
+    while killBtn and killBtn.Parent do
+        local isOn = alwaysBtn.Text == "ON"
+
+        if isOn then
+            killBtn.Active = false
+            killBtn.Text = "Cannot destroy"
+            killBtn.TextColor3 = Color3.fromRGB(255,0,0)
+        else
+            if CONTINUE_LOCK then
+                killBtn.Active = true
+                killBtn.Text = "Destroy"
+                killBtn.TextColor3 = Color3.fromRGB(255,255,255)
+            end
         end
 
-        killBtn.Active = allow
-        killBtn.AutoButtonColor = allow
-
-        -- ทำให้ดูเหมือน disabled จริง
-        if allow then
-            killBtn.TextColor3 = Color3.fromRGB(255,255,255)
-        else
-            killBtn.TextColor3 = Color3.fromRGB(120,120,120)
+        if not CONTINUE_LOCK then
+            killBtn.Active = false
         end
 
         task.wait(0.2)
