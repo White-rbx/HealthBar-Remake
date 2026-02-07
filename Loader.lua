@@ -1,4 +1,4 @@
--- Loader script 0.67
+-- Loader script 0.68
 
 ------------------------------------------------------------------------------------------
 
@@ -1095,7 +1095,6 @@ Txt(
     end
 )
 
--- Kill gui
 local killBtn
 
 local kill = Txt(
@@ -1106,7 +1105,6 @@ local kill = Txt(
     nil,
     function(_, btn)
         if not btn.Active then return end
-
         if gui and gui.Parent then
             gui:Destroy()
         end
@@ -1115,10 +1113,30 @@ local kill = Txt(
 
 killBtn = kill.Button
 
--- sync สถานะเริ่มต้น
-if killBtn then
-    killBtn.Active = CONTINUE_LOCK
-end
+-- =====================================================
+-- KILL BUTTON WATCHER (ตรวจตลอดเวลา)
+-- =====================================================
+task.spawn(function()
+    while killBtn and killBtn.Parent do
+        local allow = CONTINUE_LOCK
+
+        if Data.Loader.AlwaysLoad == true then
+            allow = false
+        end
+
+        killBtn.Active = allow
+        killBtn.AutoButtonColor = allow
+
+        -- ทำให้ดูเหมือน disabled จริง
+        if allow then
+            killBtn.TextColor3 = Color3.fromRGB(255,255,255)
+        else
+            killBtn.TextColor3 = Color3.fromRGB(120,120,120)
+        end
+
+        task.wait(0.2)
+    end
+end)
 
 -- WAIT
 while CONTINUE_LOCK do
