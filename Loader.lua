@@ -1,4 +1,4 @@
--- Loader script 0.72
+-- Loader script 0.73
 
 ------------------------------------------------------------------------------------------
 
@@ -1173,6 +1173,23 @@ task.spawn(function()
         task.wait(0.2)
     end
 end)
+
+print[["
+[ Settings - Loader Rejoiner ] Successful loaded.
+
+>> for Information
+  - Continue loadstring = Load ExperienceSettings
+  - Always Load = Auto load ExperienceSettings
+  - Custom Background (R,G,B) = Custom ExperienceSettings Background
+  - FoundHumanoidRootPart: State = If there HumanoidRootPart or not
+  - Hide ExperienceSettings = Hide TopBar and another frames
+  - Settings Transparency = Set Transparency this Settings - Loader Rejoiner 
+  - Set UIScale = Set UIScale of ExperienceSettings
+  - IsHealthOn: State = Always checking HealthBar is on or not
+  - HealthBarToggle = ON/OFF HealthBar
+  - Console shortcut = The short way to open developer console on mobile
+  - Kill Gui = Destroy this Settings - Loader Rejoiner
+]]
 
 -- WAIT
 while CONTINUE_LOCK do
