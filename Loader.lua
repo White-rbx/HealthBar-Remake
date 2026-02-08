@@ -1,4 +1,4 @@
--- Loader script 0.731
+-- Loader script 0.735
 
 ------------------------------------------------------------------------------------------
 
@@ -503,6 +503,7 @@ local CONTINUE_LOCK = true
 if Data.Loader.AlwaysLoad == true then
     CONTINUE_LOCK = false
 end
+------------------------------------------------------------
 
 -- Continue (ONE TIME)
 local continueUI = Txt(
@@ -517,9 +518,14 @@ local continueUI = Txt(
     end
 )
 
+-- sync text if already unlocked (Always Load case)
+local btn = continueUI.Button
+if not CONTINUE_LOCK then
+    btn.Text = "Loaded"
+end
+
 -- color loop watcher
 task.spawn(function()
-    local btn = continueUI.Button
     local toggle = false
 
     while btn and btn.Parent do
