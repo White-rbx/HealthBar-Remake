@@ -1,4 +1,4 @@
--- Loader script 0.7
+-- Loader script 0.71
 
 ------------------------------------------------------------------------------------------
 
@@ -514,27 +514,6 @@ local continueUI = Txt(
     function(box, btn)
         CONTINUE_LOCK = false
         btn.Text = "Loaded"
-
-        -- tween loop
-        task.spawn(function()
-            while btn and btn.Parent do
-                if CONTINUE_LOCK then break end
-
-                -- white → lime
-                safeTween(btn, {
-                    TextColor3 = Color3.fromRGB(0,255,0)
-                }, 0.3)
-
-                task.wait(0.3)
-
-                -- lime → white
-                safeTween(btn, {
-                    TextColor3 = Color3.fromRGB(255,255,255)
-                }, 0.3)
-
-                task.wait(0.3)
-            end
-        end)
     end
 )
 
@@ -1157,6 +1136,29 @@ task.spawn(function()
         end
 
         task.wait(0.2)
+    end
+end)
+
+task.spawn(function()
+    local btn = continueUI.Button
+    local toggle = false
+
+    while btn and btn.Parent do
+        if not CONTINUE_LOCK then
+            toggle = not toggle
+
+            local targetColor = toggle
+                and Color3.fromRGB(0,255,0)
+                or Color3.fromRGB(255,255,255)
+
+            safeTween(btn, {
+                TextColor3 = targetColor
+            }, 0.3)
+
+            task.wait(0.3)
+        else
+            task.wait(0.2)
+        end
     end
 end)
 
