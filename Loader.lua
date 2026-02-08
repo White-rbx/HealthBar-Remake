@@ -1,4 +1,4 @@
--- Loader script 0.73
+-- Loader script 0.731
 
 ------------------------------------------------------------------------------------------
 
@@ -1174,7 +1174,7 @@ task.spawn(function()
     end
 end)
 
-print[["
+print[[------------------------------------------------------------
 [ Settings - Loader Rejoiner ] Successful loaded.
 
 >> for Information
@@ -1189,6 +1189,7 @@ print[["
   - HealthBarToggle = ON/OFF HealthBar
   - Console shortcut = The short way to open developer console on mobile
   - Kill Gui = Destroy this Settings - Loader Rejoiner
+------------------------------------------------------------
 ]]
 
 -- WAIT
