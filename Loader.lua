@@ -1,4 +1,4 @@
--- Loader script 0.71
+-- Loader script 0.72
 
 ------------------------------------------------------------------------------------------
 
@@ -516,6 +516,33 @@ local continueUI = Txt(
         btn.Text = "Loaded"
     end
 )
+
+-- color loop watcher
+task.spawn(function()
+    local btn = continueUI.Button
+    local toggle = false
+
+    while btn and btn.Parent do
+        if not CONTINUE_LOCK then
+            toggle = not toggle
+
+            local color = toggle
+                and Color3.fromRGB(0,255,0)
+                or Color3.fromRGB(255,255,255)
+
+            local tween = TweenService:Create(
+                btn,
+                TweenInfo.new(0.3, Enum.EasingStyle.Linear),
+                { TextColor3 = color }
+            )
+            tween:Play()
+
+            task.wait(0.35)
+        else
+            task.wait(0.2)
+        end
+    end
+end)
 
 -- Always Load (SAVE)
 local alwaysUI = Txt(
@@ -1071,6 +1098,14 @@ end)
 
 
 
+
+
+
+
+
+
+
+
 -- This only way the last toggle
 local StarterGui = game:GetService("StarterGui")
 
@@ -1136,29 +1171,6 @@ task.spawn(function()
         end
 
         task.wait(0.2)
-    end
-end)
-
-task.spawn(function()
-    local btn = continueUI.Button
-    local toggle = false
-
-    while btn and btn.Parent do
-        if not CONTINUE_LOCK then
-            toggle = not toggle
-
-            local targetColor = toggle
-                and Color3.fromRGB(0,255,0)
-                or Color3.fromRGB(255,255,255)
-
-            safeTween(btn, {
-                TextColor3 = targetColor
-            }, 0.3)
-
-            task.wait(0.3)
-        else
-            task.wait(0.2)
-        end
     end
 end)
 
