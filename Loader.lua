@@ -1,4 +1,4 @@
--- Well 2.2
+-- Well 2.21
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
@@ -219,6 +219,7 @@ print("[ AI-OpenSource ] Successful loaded.")
 -- Seacrh
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search.lua"))()
 print("[ Seacrh ] Successful loaded.")
+print("------------------------------------------------------------")
 
 task.spawn(function()
 	local StarterGui = game:GetService("StarterGui")
