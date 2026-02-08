@@ -1,4 +1,4 @@
--- Loader script 0.735
+-- Loader script 0.74
 
 ------------------------------------------------------------------------------------------
 
@@ -510,16 +510,44 @@ local continueUI = Txt(
     "Continue loadstring main ExperienceSettings",
     255,255,255,
     false, nil,
-    true, "Okay",
+    true, "Get Load",
     nil,
     function(box, btn)
+
+        -- safety check
+        local player = game.Players.LocalPlayer
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+        local healthEnabled = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+
+        if not hrp or not healthEnabled then
+            -- temporary warning
+            local oldText = btn.Text
+            local oldColor = btn.TextColor3
+
+            btn.Text = "Cannot Load"
+            btn.TextColor3 = Color3.fromRGB(255,255,0)
+
+            task.delay(1, function()
+                if btn and btn.Parent and CONTINUE_LOCK then
+                    btn.Text = oldText
+                    btn.TextColor3 = oldColor
+                end
+            end)
+
+            return
+        end
+
+        -- passed check → load
         CONTINUE_LOCK = false
         btn.Text = "Loaded"
     end
 )
 
--- sync text if already unlocked (Always Load case)
 local btn = continueUI.Button
+
+-- sync text if already unlocked (Always Load case)
 if not CONTINUE_LOCK then
     btn.Text = "Loaded"
 end
