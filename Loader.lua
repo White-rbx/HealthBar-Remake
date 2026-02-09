@@ -1,4 +1,4 @@
--- Loader script 0.75
+-- Loader script 0.752
 
 ------------------------------------------------------------------------------------------
 
@@ -577,6 +577,20 @@ task.spawn(function()
         end
     end
 end)
+
+-- Always Load (SAVE) ------------------------------
+local alwaysUI = Txt(  
+    "Always Load main ExperienceSettings",  
+    255,255,255,  
+    false, nil,  
+    true, nil,  
+    function(newStatus)  
+        Data.Loader.AlwaysLoad = newStatus  
+        saveData(Data)  
+    end,  
+    nil,  
+    Data.Loader.AlwaysLoad  
+) 
 
 local continueBtn = continueUI.Button
 local alwaysBtn = alwaysUI.Button
