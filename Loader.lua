@@ -1,4 +1,4 @@
--- Loader script 0.752
+-- Loader script 0.753
 
 ------------------------------------------------------------------------------------------
 
@@ -601,9 +601,10 @@ local function canLoad()
     local char = player.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-    local healthBar = game:GetService("CoreGui"):FindFirstChild("Health")
+    local starterGui = game:GetService("StarterGui")
+    local healthOn = starterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
 
-    return hrp and healthBar
+    return hrp and healthOn
 end
 
 -- bypass warning watcher
