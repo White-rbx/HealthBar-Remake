@@ -1,4 +1,4 @@
--- Loader script 0.74
+-- Loader script 0.75
 
 ------------------------------------------------------------------------------------------
 
@@ -578,21 +578,43 @@ task.spawn(function()
     end
 end)
 
--- Always Load (SAVE)
-local alwaysUI = Txt(
-    "Always Load main ExperienceSettings",
-    255,255,255,
-    false, nil,
-    true, nil,
-    function(newStatus)
-        Data.Loader.AlwaysLoad = newStatus
-        saveData(Data)
-    end,
-    nil,
-    Data.Loader.AlwaysLoad
-)
-
+local continueBtn = continueUI.Button
 local alwaysBtn = alwaysUI.Button
+
+-- function ตรวจสถานะโหลดได้หรือไม่
+local function canLoad()
+    local player = game.Players.LocalPlayer
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+    local healthBar = game:GetService("CoreGui"):FindFirstChild("Health")
+
+    return hrp and healthBar
+end
+
+-- bypass warning watcher
+task.spawn(function()
+    while continueBtn and continueBtn.Parent do
+        local alwaysOn = alwaysBtn.Text == "ON"
+
+        if alwaysOn and not canLoad() then
+            -- show warning
+            continueBtn.Text = "Bypass detected: Toggle is ON"
+            continueBtn.TextColor3 = Color3.fromRGB(255,255,0)
+        else
+            -- revert to normal state
+            if not CONTINUE_LOCK then
+                continueBtn.Text = "Loaded"
+            else
+                continueBtn.Text = "Get Load"
+                continueBtn.TextColor3 = Color3.fromRGB(255,255,255)
+            end
+        end
+
+        task.wait(0.3)
+    end
+end)
+
 --// =====================================================
 --// BACKGROUND APPLY SYSTEM (WAIT UNTIL READY)
 --// =====================================================
