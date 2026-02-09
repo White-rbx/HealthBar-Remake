@@ -1,4 +1,4 @@
--- Loader script 0.754
+-- Loader script 0.764
 
 ------------------------------------------------------------------------------------------
 
@@ -1147,6 +1147,111 @@ task.spawn(function()
     end
 end)
 
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local placeId = game.PlaceId
+
+------------------------------------------------------------
+
+local rejoinUI = Txt(
+    "Rejoin",
+    255,255,255,
+    false, nil,
+    true, "Confirm",
+    nil,
+    function(box, btn)
+        btn.Text = "Rejoining..."
+        btn.TextColor3 = Color3.fromRGB(150,255,150)
+
+        task.wait(0.5)
+        TeleportService:Teleport(placeId, player)
+    end
+)
+
+------------------------------------------------------------
+
+local switchUI = Txt(
+    "Switch Server",
+    255,255,255,
+    false, nil,
+    true, "Confirm",
+    nil,
+    function(box, btn)
+        btn.Text = "Finding Server..."
+        btn.TextColor3 = Color3.fromRGB(255,255,0)
+
+        local start = tick()
+        local found = false
+
+        while tick() - start < 5 do
+            local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
+            local success, result = pcall(function()
+                return HttpService:JSONDecode(game:HttpGet(url))
+            end)
+
+            if success and result and result.data then
+                for _, server in ipairs(result.data) do
+                    if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                        found = true
+                        TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
+                        return
+                    end
+                end
+            end
+
+            task.wait(1)
+        end
+
+        if not found then
+            btn.Text = "Server not found or full"
+            btn.TextColor3 = Color3.fromRGB(255,150,0)
+        end
+    end
+)
+
+------------------------------------------------------------
+
+local lowSwitchUI = Txt(
+    "Switch to Low Players Server",
+    255,255,255,
+    false, nil,
+    true, "Confirm",
+    nil,
+    function(box, btn)
+        btn.Text = "Finding Low Players Server..."
+        btn.TextColor3 = Color3.fromRGB(255,170,0)
+
+        local start = tick()
+        local found = false
+
+        while tick() - start < 5 do
+            local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
+            local success, result = pcall(function()
+                return HttpService:JSONDecode(game:HttpGet(url))
+            end)
+
+            if success and result and result.data then
+                for _, server in ipairs(result.data) do
+                    if server.playing >= 3 and server.playing <= 5 and server.id ~= game.JobId then
+                        found = true
+                        TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
+                        return
+                    end
+                end
+            end
+
+            task.wait(1)
+        end
+
+        if not found then
+            btn.Text = "Server not found, please try again later."
+            btn.TextColor3 = Color3.fromRGB(255,170,0)
+        end
+    end
+)
 
 
 
