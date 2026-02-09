@@ -1,4 +1,4 @@
--- Loader script 0.753
+-- Loader script 0.754
 
 ------------------------------------------------------------------------------------------
 
@@ -601,8 +601,10 @@ local function canLoad()
     local char = player.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-    local starterGui = game:GetService("StarterGui")
-    local healthOn = starterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+    local healthOn = false
+    pcall(function()
+        healthOn = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+    end)
 
     return hrp and healthOn
 end
@@ -611,17 +613,21 @@ end
 task.spawn(function()
     while continueBtn and continueBtn.Parent do
         local alwaysOn = alwaysBtn.Text == "ON"
+        local ok = canLoad()
 
-        if alwaysOn and not canLoad() then
+        if alwaysOn and not ok then
             -- show warning
             continueBtn.Text = "Bypass detected: Toggle is ON"
             continueBtn.TextColor3 = Color3.fromRGB(255,255,0)
+
+            CONTINUE_LOCK = true
         else
             -- revert to normal state
             if not CONTINUE_LOCK then
                 continueBtn.Text = "Loaded"
+                continueBtn.TextColor3 = Color3.fromRGB(255,255,255)
             else
-                continueBtn.Text = "Get Load"
+                continueBtn.Text = "Okay"
                 continueBtn.TextColor3 = Color3.fromRGB(255,255,255)
             end
         end
