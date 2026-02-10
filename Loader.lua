@@ -1,4 +1,4 @@
--- Loader script 0.764
+-- Loader script 0.774
 
 ------------------------------------------------------------------------------------------
 
@@ -185,16 +185,42 @@ top.Parent = ins
 Corner(0, 8, top)
 Stroke(top, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
+-- Holder 2
+local hr2 = Instance.new("Frame")
+hr2.Name = "Holder"
+hr2.Size = UDim2.new(1,0,1,0)
+hr2.Position = UDim2.new(-1,0,0,0)
+hr2.BackgroundTransparency = 0.3
+hr2.BorderSizePixel = 0
+hr2.BackgroundColor3 = Color3.fromRGB(18,18,21)
+hr2.Active = false
+hr2.Parent = ins -- original frame 
+
+-- Inside 2
+local ins2 = Instance.new("Frame")
+ins2.Name = "Inside"
+ins2.Size = UDim2.new(0.92,0,0.96,0)
+ins2.Position = UDim2.new(0.04,0,0.02,0)
+ins2.BackgroundTransparency = 1
+ins2.Active = false
+ins2.Parent = hr2
+ListLayout(ins2, 0, 5, HCenter, VTop, SLayout, FillV)
+
 -- Toggle for holder
 -- ตัวแปรที่มีอยู่แล้ว
 -- hr : Frame
 -- oc : TextButton
 
-local OFF_X = -0.3
-local ON_X = 0
+local POSITIONS = {
+    -0.3, -- OFF
+    0,    -- OPEN 1
+    0.3   -- OPEN 2
+}
+
+local state = 1 -- เริ่มที่ OFF
 
 local tweenInfo = TweenInfo.new(
-    0.25, -- เวลา
+    0.25,
     Enum.EasingStyle.Quad,
     Enum.EasingDirection.Out
 )
@@ -213,15 +239,13 @@ local function tweenHR(xScale)
 end
 
 oc.MouseButton1Click:Connect(function()
-    local currentX = hr.Position.X.Scale
-
-    if currentX <= OFF_X then
-        -- OFF → ON
-        tweenHR(ON_X)
-    else
-        -- ON → OFF
-        tweenHR(OFF_X)
+    -- เปลี่ยนสถานะ
+    state += 1
+    if state > #POSITIONS then
+        state = 1
     end
+
+    tweenHR(POSITIONS[state])
 end)
 
 --// =====================================================
@@ -261,7 +285,7 @@ local DEFAULT_DATA = {
     UI = {
         BackgroundRGB = { 18, 18, 21 },
         HideMenu = false,
-        SettingsTransparency = 0.5,
+        SettingsTransparency = 0.3,
         UIScale = 1
     }
 }
@@ -349,14 +373,15 @@ local function Txt(
     txt, R, G, B,
     hasBox, ptxt,
     hasButton, btxt,
-    work, callback, status
+    work, callback, status,
+    parent
 )
     -- Frame
     local b = Instance.new("Frame")
     b.Name = "Handle"
     b.Size = UDim2.new(1, 0, 0.05, 0)
     b.BackgroundTransparency = 1
-    b.Parent = ins
+    b.Parent = parent or ins
 
     -- Label
     local a = Instance.new("TextLabel")
@@ -912,7 +937,8 @@ local CURRENT_TRANSPARENCY = Data.UI.SettingsTransparency or 0.5
 -- path ที่ต้องใช้
 local SETTINGS_PATHS = {
     "LoaderSettings.Holder",
-    "LoaderSettings.Holder.OPEN/CLOSE"
+    "LoaderSettings.Holder.OPEN/CLOSE",
+    "LoaderSettings.Holder.Holder"
 }
 
 -- find by path
@@ -958,7 +984,7 @@ end)
 Txt(
     "Settings Transparency",
     255,255,255,
-    true, "0.5",
+    true, "0.3",
     true, "Save",
 
     -- LIVE PREVIEW
