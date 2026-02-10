@@ -1,4 +1,4 @@
--- Loader script 0.775
+-- Loader script 0.776
 
 ------------------------------------------------------------------------------------------
 
@@ -205,6 +205,19 @@ ins2.BackgroundTransparency = 1
 ins2.Active = false
 ins2.Parent = hr2
 ListLayout(ins2, 0, 5, HCenter, VTop, SLayout, FillV)
+
+-- Holder
+local top2 = Instance.new("TextLabel")
+top2.Name = "Topic"
+top2.Size = UDim2.new(1,0,0.05,0)
+top2.BackgroundTransparency = 1
+top2.TextScaled = true
+top2.Text = "Settings - 2"
+top2.TextColor3 = Color3.fromRGB(255,255,255)
+top2.Parent = ins2
+Corner(0, 8, top2)
+Stroke(top2, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
 
 -- Toggle for holder
 -- ตัวแปรที่มีอยู่แล้ว
