@@ -1,4 +1,4 @@
--- Loader script 0.774
+-- Loader script 0.775
 
 ------------------------------------------------------------------------------------------
 
@@ -194,7 +194,7 @@ hr2.BackgroundTransparency = 0.3
 hr2.BorderSizePixel = 0
 hr2.BackgroundColor3 = Color3.fromRGB(18,18,21)
 hr2.Active = false
-hr2.Parent = ins -- original frame 
+hr2.Parent = hr -- original frame 
 
 -- Inside 2
 local ins2 = Instance.new("Frame")
