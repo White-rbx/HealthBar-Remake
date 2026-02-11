@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.78
+-- So uhm just a script lol. 4.79
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -428,15 +428,11 @@ Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
 ⚫ = Cannot fix
 ➖ = Disconnected or discontinued
 -------
-📌 Updated: Re-gui textlabel description.
+📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!
 -------
-🔁 In progress:
- 🔨 Creating Status Profile (Debug)
- 🔨 Updating AI Open Source (In develop)
- 🔷 Moveable ValueLabels
+🔁 In progress: No longer appear features
 -------
-❌ Failed:
- ➖ Moveable HealthBar
+❌ Failed: No longer appear unavailable features
 -------
 
 ✨ SCRIPT CREDITS ✨
