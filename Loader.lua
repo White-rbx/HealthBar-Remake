@@ -1,4 +1,4 @@
--- Well 2.247
+-- Well 2.248
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
@@ -249,7 +249,7 @@ task.spawn(function()
 
         if OC.Image == "rbxassetid://112166445155251" then
             OC.Image = "rbxassetid://133900380566355"
-        elseif OC.Image == "rbxassetid://126427519466832" then
+        elseif OC.Image == "rbxassetid://103716616779537" then
             OC.Image = "rbxassetid://101696026024830"
         end
     end
