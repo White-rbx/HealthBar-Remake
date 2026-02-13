@@ -1,4 +1,4 @@
--- Well 2.22
+-- Well 2.23
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
@@ -316,30 +316,33 @@ profileStatus.Position = UDim2.new(
     0  -- Y Offset
 )
 
+------------------------------------------------------------
 local CoreGui = game:GetService("CoreGui")
 
-local Menu1 = CoreGui:WaitForChild("ExperienceSettings", 5)
-if Menu1 then
-    Menu1 = Menu1:WaitForChild("Menu", 5)
+local menu = CoreGui:WaitForChild("ExperienceSettings", 5)
+if not menu then return end
+
+local Menu1 = menu:WaitForChild("Menu", 5)
+if not Menu1 then return end
+
+local topBar = Menu1:WaitForChild("TopBar", 5)
+if not topBar then return end
+
+local holder = topBar:WaitForChild("Holder", 5)
+if not holder then return end
+
+local OC = holder:WaitForChild("a1_Open/Close", 5)
+if not OC then return end
+
+OC.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
+
+local stroke = OC:FindFirstChildOfClass("UIStroke")
+if stroke then
+    stroke.Color = Color3.fromRGB(255, 85, 255)
 end
 
-local OC = nil
-if Menu1 then
-    OC = Menu1:WaitForChild("TopBar", 5)
-              :WaitForChild("Holder", 5)
-              :WaitForChild("a1_Open/Close", 5)
+if OC.Image == "rbxassetid://112166445155251" then
+    OC.Image = "rbxassetid://133900380566355"
+elseif OC.Image == "rbxassetid://126427519466832" then
+    OC.Image = "rbxassetid://101696026024830"
 end
-
-if OC then
-    OC.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
-    
-    local stroke = OC:FindFirstChildOfClass("UIStroke")
-    if stroke then
-        stroke.Color = Color3.fromRGB(255, 85, 255)
-    end
-
-    if OC.Image == "rbxassetid://112166445155251" then
-        OC.Image = "rbxassetid://133900380566355"
-    elseif OC.Image == "rbxassetid://126427519466832" then
-        OC.Image = "rbxassetid://101696026024830"
-    end
