@@ -1,4 +1,4 @@
--- Well 2.21
+-- Well 2.22
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
@@ -315,3 +315,31 @@ profileStatus.Position = UDim2.new(
     1, -- Y Scale
     0  -- Y Offset
 )
+
+local CoreGui = game:GetService("CoreGui")
+
+local Menu1 = CoreGui:WaitForChild("ExperienceSettings", 5)
+if Menu1 then
+    Menu1 = Menu1:WaitForChild("Menu", 5)
+end
+
+local OC = nil
+if Menu1 then
+    OC = Menu1:WaitForChild("TopBar", 5)
+              :WaitForChild("Holder", 5)
+              :WaitForChild("a1_Open/Close", 5)
+end
+
+if OC then
+    OC.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
+    
+    local stroke = OC:FindFirstChildOfClass("UIStroke")
+    if stroke then
+        stroke.Color = Color3.fromRGB(255, 85, 255)
+    end
+
+    if OC.Image == "rbxassetid://112166445155251" then
+        OC.Image = "rbxassetid://133900380566355"
+    elseif OC.Image == "rbxassetid://126427519466832" then
+        OC.Image = "rbxassetid://101696026024830"
+    end
