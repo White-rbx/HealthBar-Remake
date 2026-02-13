@@ -1,4 +1,4 @@
--- Well 2.24
+-- Well 2.245
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
@@ -317,6 +317,7 @@ profileStatus.Position = UDim2.new(
 )
 
 ------------------------------------------------------------
+task.wait(1)
 local CoreGui = game:GetService("CoreGui")
 
 task.spawn(function()
