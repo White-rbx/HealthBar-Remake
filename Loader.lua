@@ -1,4 +1,4 @@
--- Well 2.245
+-- Well 2.247
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
@@ -219,6 +219,43 @@ print("[ AI-OpenSource ] Successful loaded.")
 -- Seacrh
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search.lua"))()
 print("[ Seacrh ] Successful loaded.")
+
+------------------------------------------------------------
+local CoreGui = game:GetService("CoreGui")
+
+task.spawn(function()
+    while task.wait(0.2) do
+        local menu = CoreGui:FindFirstChild("ExperienceSettings")
+        if not menu then continue end
+        
+        local Menu1 = menu:FindFirstChild("Menu")
+        if not Menu1 then continue end
+        
+        local topBar = Menu1:FindFirstChild("TopBar")
+        if not topBar then continue end
+        
+        local holder = topBar:FindFirstChild("Holder")
+        if not holder then continue end
+        
+        local OC = holder:FindFirstChild("a1_Open/Close")
+        if not OC then continue end
+
+        OC.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
+
+        local stroke = OC:FindFirstChildOfClass("UIStroke")
+        if stroke then
+            stroke.Color = Color3.fromRGB(255, 85, 255)
+        end
+
+        if OC.Image == "rbxassetid://112166445155251" then
+            OC.Image = "rbxassetid://133900380566355"
+        elseif OC.Image == "rbxassetid://126427519466832" then
+            OC.Image = "rbxassetid://101696026024830"
+        end
+    end
+end)
+------------------------------------------------------------
+print("[ TopBar ] Logo change successful")
 print("------------------------------------------------------------")
 
 task.spawn(function()
@@ -315,40 +352,3 @@ profileStatus.Position = UDim2.new(
     1, -- Y Scale
     0  -- Y Offset
 )
-
-------------------------------------------------------------
-task.wait(1)
-local CoreGui = game:GetService("CoreGui")
-
-task.spawn(function()
-    while true do
-        local menu = CoreGui:FindFirstChild("ExperienceSettings")
-        if menu then
-            local Menu1 = menu:FindFirstChild("Menu")
-            if Menu1 then
-                local topBar = Menu1:FindFirstChild("TopBar")
-                if topBar then
-                    local holder = topBar:FindFirstChild("Holder")
-                    if holder then
-                        local OC = holder:FindFirstChild("a1_Open/Close")
-                        if OC then
-                            OC.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
-
-                            local stroke = OC:FindFirstChildOfClass("UIStroke")
-                            if stroke then
-                                stroke.Color = Color3.fromRGB(255, 85, 255)
-                            end
-
-                            if OC.Image == "rbxassetid://112166445155251" then
-                                OC.Image = "rbxassetid://133900380566355"
-                            elseif OC.Image == "rbxassetid://126427519466832" then
-                                OC.Image = "rbxassetid://101696026024830"
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(0.001)
-    end
-end)
