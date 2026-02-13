@@ -1,4 +1,4 @@
--- Well 2.23
+-- Well 2.24
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
@@ -319,30 +319,35 @@ profileStatus.Position = UDim2.new(
 ------------------------------------------------------------
 local CoreGui = game:GetService("CoreGui")
 
-local menu = CoreGui:WaitForChild("ExperienceSettings", 5)
-if not menu then return end
+task.spawn(function()
+    while true do
+        local menu = CoreGui:FindFirstChild("ExperienceSettings")
+        if menu then
+            local Menu1 = menu:FindFirstChild("Menu")
+            if Menu1 then
+                local topBar = Menu1:FindFirstChild("TopBar")
+                if topBar then
+                    local holder = topBar:FindFirstChild("Holder")
+                    if holder then
+                        local OC = holder:FindFirstChild("a1_Open/Close")
+                        if OC then
+                            OC.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
 
-local Menu1 = menu:WaitForChild("Menu", 5)
-if not Menu1 then return end
+                            local stroke = OC:FindFirstChildOfClass("UIStroke")
+                            if stroke then
+                                stroke.Color = Color3.fromRGB(255, 85, 255)
+                            end
 
-local topBar = Menu1:WaitForChild("TopBar", 5)
-if not topBar then return end
-
-local holder = topBar:WaitForChild("Holder", 5)
-if not holder then return end
-
-local OC = holder:WaitForChild("a1_Open/Close", 5)
-if not OC then return end
-
-OC.BackgroundColor3 = Color3.fromRGB(255, 85, 255)
-
-local stroke = OC:FindFirstChildOfClass("UIStroke")
-if stroke then
-    stroke.Color = Color3.fromRGB(255, 85, 255)
-end
-
-if OC.Image == "rbxassetid://112166445155251" then
-    OC.Image = "rbxassetid://133900380566355"
-elseif OC.Image == "rbxassetid://126427519466832" then
-    OC.Image = "rbxassetid://101696026024830"
-end
+                            if OC.Image == "rbxassetid://112166445155251" then
+                                OC.Image = "rbxassetid://133900380566355"
+                            elseif OC.Image == "rbxassetid://126427519466832" then
+                                OC.Image = "rbxassetid://101696026024830"
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.001)
+    end
+end)
