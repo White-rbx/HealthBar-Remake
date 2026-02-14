@@ -467,17 +467,19 @@ local function Txt(
         end
 
         btn.MouseButton1Click:Connect(function()
-            if status ~= nil then
-                status = not status
-                updateToggle(btn, status)
-                if work then work(status) end
-                if callback then callback(status) end
-            else
-                if callback then
-                    callback(box, btn)
-                end
+    task.spawn(function()
+        if status ~= nil then
+            status = not status
+            updateToggle(btn, status)
+            if work then work(status) end
+            if callback then callback(status) end
+        else
+            if callback then
+                callback(box, btn)
             end
-        end)
+        end
+    end)
+end)
     end
 
     return {
