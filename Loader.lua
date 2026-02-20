@@ -1,4 +1,4 @@
--- Well 2.25
+-- Well 2.251
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
@@ -240,11 +240,11 @@ task.spawn(function()
         local OC = holder:FindFirstChild("a1_Open/Close")
         if not OC then continue end
 
-        OC.BackgroundColor3 = Color3.fromRGB(255,0,0)
+        OC.BackgroundColor3 = Color3.fromRGB(0,255,42)
 
         local stroke = OC:FindFirstChildOfClass("UIStroke")
         if stroke then
-            stroke.Color = Color3.fromRGB(255, 255, 0)
+            stroke.Color = Color3.fromRGB(63,255,95)
         end
 
         if OC.Image == "rbxassetid://112166445155251" then
