@@ -1,5 +1,4 @@
-local Version = [[0.0.31 Alpha
-GitHub didn't load for me sorry.]]
+local Version = [[0.0.32 Alpha]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -706,9 +705,10 @@ lineNumbers.Parent = scroll
 
 --// COLORS
 local COLORS = {
-	Keyword = "#c586c0",
-	Comment = "#6a9955",
-	String  = "#ce9178",
+	Keyword  = "#c586c0",
+	Comment  = "#6a9955",
+	String   = "#ce9178",
+	Datatype = "#ff0000",
 }
 
 local keywords = {  
