@@ -1,4 +1,4 @@
-local Version = "0.0.35 Alpha"
+local Version = "0.0.36 Alpha"
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -709,7 +709,7 @@ local COLORS = {
 	Comment   = "#6a9955",
 	String    = "#ce9178",
 	Datatype  = "#ff0000",
-	Global    = "#dcdcaa",
+	Global    = "#4ec9b0",
 }
 
 
