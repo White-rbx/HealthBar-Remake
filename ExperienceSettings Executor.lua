@@ -1,4 +1,5 @@
--- This executor 😯 0.0.1 Alpha
+local Version = "0.0.2 Alpha"
+-- This executor
 
 ------------------------------------------------------------------------------------------
 
@@ -561,8 +562,8 @@ ExperienceSettings Executor is for debugging script and it use only for executor
 @5teve3019D (ScriptBlox)
 
 <b><font size="15">Executor Verison</font></b>
-0.0.1 Alpha
-]]
+
+]] .. Version
 
 ttxt.TextColor3 = Color3.fromRGB(255,255,255)
 ttxt.TextSize = 10
@@ -1298,7 +1299,7 @@ if not f then
 	
 	-- Compile error
 	local line = compileErr:match(":(%d+):") or "?"
-	noti(4, "Script Error [ At Line: "..line.." ]: "..compileErr, color.red)
+	noti(10, "Script Error [ At Line: "..line.." ]: "..compileErr, color.red)
 	
 else
 	
@@ -1309,40 +1310,56 @@ else
 	else
 		-- Runtime error
 		local line = runtimeErr:match(":(%d+):") or "?"
-		noti(4, "Script Error [ At Line: "..line.." ]: "..runtimeErr, color.red)
+		noti(10, "Script Error [ At Line: "..line.." ]: "..runtimeErr, color.red)
 	end
 	
 end
 			end
 
 
-		-- ==============================
-		-- 2️⃣ PasteAndExecute
-		-- ==============================
-		elseif workin == "PasteAndExecute" then
+-- ==============================
+-- 2️⃣ PasteAndExecute
+-- ==============================
+elseif workin == "PasteAndExecute" then
+	
+	if getclipboard then
+		
+		local clip = getclipboard()
+		
+		if clip and clip ~= "" then
 			
-			if getclipboard then
+			Editb.Text = clip
+			
+			local f, compileErr = loadstring(clip)
+			
+			-- 🔴 Compile Error
+			if not f then
 				
-				local clip = getclipboard()
-				
-				if clip and clip ~= "" then
-					
-					Editb.Text = clip
-					
-					local f = loadstring(clip)
-					
-					if f then
-						pcall(f)
-						noti(2, "Paste script and Execute!", color.green)
-					else
-						noti(2, "Script error!", color.red)
-					end
-				end
+				local line = tostring(compileErr):match(":(%d+):") or "?"
+				noti(10, "Script Error [ At Line: "..line.." ]: "..compileErr, color.red)
 				
 			else
-				noti(2, "Clipboard not supported in this executor!", color.red)
+				
+				local success, runtimeErr = pcall(f)
+				
+				-- 🟢 Success
+				if success then
+					noti(2, "Paste script and Execute!", color.green)
+					
+				-- 🔴 Runtime Error
+				else
+					local line = tostring(runtimeErr):match(":(%d+):") or "?"
+					noti(10, "Script Error [ At Line: "..line.." ]: "..runtimeErr, color.red)
+				end
+				
 			end
-
+			
+		end
+		
+	else
+		noti(2, "Clipboard not supported in this executor", color.red)
+	end
+				
 
 		-- ==============================
 		-- 3️⃣ Paste
