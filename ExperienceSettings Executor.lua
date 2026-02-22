@@ -1,4 +1,4 @@
--- This executor 0.0.1 Alpha
+-- This executor 😯 0.0.1 Alpha
 
 ------------------------------------------------------------------------------------------
 
@@ -1292,12 +1292,27 @@ local function exe(name, imageID, workin)
 				
 				local f = loadstring(src)
 				
-				if f then
-					pcall(f)
-					noti(2, "Execute script!", color.green)
-				else
-					noti(2, "Script error!", color.red)
-				end
+				local f, compileErr = loadstring(src)
+
+if not f then
+	
+	-- Compile error
+	local line = compileErr:match(":(%d+):") or "?"
+	noti(4, "Script Error [ At Line: "..line.." ]: "..compileErr, color.red)
+	
+else
+	
+	local success, runtimeErr = pcall(f)
+	
+	if success then
+		noti(2, "Execute script!", color.green)
+	else
+		-- Runtime error
+		local line = runtimeErr:match(":(%d+):") or "?"
+		noti(4, "Script Error [ At Line: "..line.." ]: "..runtimeErr, color.red)
+	end
+	
+end
 			end
 
 
