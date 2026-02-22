@@ -1,4 +1,4 @@
-local Version = [[0.0.32 Alpha]]
+local Version = "0.0.35 Alpha"
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -703,13 +703,15 @@ lineNumbers.TextYAlignment = Enum.TextYAlignment.Top
 lineNumbers.ZIndex = 1
 lineNumbers.Parent = scroll
 
---// COLORS
+--//COLORS
 local COLORS = {
-	Keyword  = "#c586c0",
-	Comment  = "#6a9955",
-	String   = "#ce9178",
-	Datatype = "#ff0000",
+	Keyword   = "#c586c0",
+	Comment   = "#6a9955",
+	String    = "#ce9178",
+	Datatype  = "#ff0000",
+	Global    = "#dcdcaa",
 }
+
 
 local keywords = {  
 	["local"]=true, ["function"]=true, ["return"]=true,  
@@ -768,6 +770,60 @@ local datatype = {
 	["Vector3int16"] = true,
 }
 
+local globals = {
+
+	["assert"]=true,
+	["collectgarbage"]=true,
+	["DebuggerManager"]=true,
+	["delay"]=true,
+	["elapsedTime"]=true,
+	["Enum"]=true,
+	["error"]=true,
+	["game"]=true,
+	["gcinfo"]=true,
+	["getfenv"]=true,
+	["getmetatable"]=true,
+	["ipairs"]=true,
+	["loadstring"]=true,
+	["newproxy"]=true,
+	["next"]=true,
+	["pairs"]=true,
+	["pcall"]=true,
+	["plugin"]=true,
+	["PluginManager"]=true,
+	["print"]=true,
+	["printidentity"]=true,
+	["rawequal"]=true,
+	["rawget"]=true,
+	["rawlen"]=true,
+	["rawset"]=true,
+	["require"]=true,
+	["script"]=true,
+	["select"]=true,
+	["setfenv"]=true,
+	["setmetatable"]=true,
+	["settings"]=true,
+	["shared"]=true,
+	["spawn"]=true,
+	["stats"]=true,
+	["tick"]=true,
+	["time"]=true,
+	["tonumber"]=true,
+	["tostring"]=true,
+	["type"]=true,
+	["typeof"]=true,
+	["unpack"]=true,
+	["UserSettings"]=true,
+	["version"]=true,
+	["wait"]=true,
+	["warn"]=true,
+	["workspace"]=true,
+	["xpcall"]=true,
+	["ypcall"]=true,
+	["_G"]=true,
+	["_VERSION"]=true,
+}
+
 -- Escape FIRST
 local function escape(text)
 	return text
@@ -802,13 +858,16 @@ local function highlightLine(raw)
 	end)
 
 	-- highlight keywords + datatype
-safe = safe:gsub("(%f[%a_][%w_]+%f[%A])", function(word)
+safe = safe:gsub("(%f[%w_](%a[%w_]*)%f[^%w_])", function(full, word)
 
 	if keywords[word] then
 		return '<font color="'..COLORS.Keyword..'">'..word..'</font>'
-	
+
 	elseif datatype[word] then
 		return '<font color="'..COLORS.Datatype..'">'..word..'</font>'
+
+	elseif globals[word] then
+		return '<font color="'..COLORS.Global..'">'..word..'</font>'
 	end
 
 	return word
