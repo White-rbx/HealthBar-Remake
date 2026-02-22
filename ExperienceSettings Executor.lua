@@ -1,4 +1,4 @@
-local Version = "0.0.2 Alpha"
+local Version = "0.0.3 Alpha"
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -562,7 +562,6 @@ ExperienceSettings Executor is for debugging script and it use only for executor
 @5teve3019D (ScriptBlox)
 
 <b><font size="15">Executor Verison</font></b>
-
 ]] .. Version
 
 ttxt.TextColor3 = Color3.fromRGB(255,255,255)
@@ -720,6 +719,54 @@ local keywords = {
 	["not"]=true, ["and"]=true, ["or"]=true  
 }
 
+local datatype = {
+
+	["Axes"] = true,
+	["BrickColor"] = true,
+	["CatalogSearchParams"] = true,
+	["CFrame"] = true,
+	["Color3"] = true,
+	["ColorSequence"] = true,
+	["ColorSequenceKeypoint"] = true,
+	["Content"] = true,
+	["DateTime"] = true,
+	["DockWidgetPluginGuiInfo"] = true,
+	["Enum"] = true,
+	["EnumItem"] = true,
+	["Enums"] = true,
+	["Faces"] = true,
+	["FloatCurveKey"] = true,
+	["Font"] = true,
+	["Instance"] = true,
+	["NumberRange"] = true,
+	["NumberSequence"] = true,
+	["NumberSequenceKeypoint"] = true,
+	["OverlapParams"] = true,
+	["Path2DControlPoint"] = true,
+	["PathWaypoint"] = true,
+	["PhysicalProperties"] = true,
+	["Random"] = true,
+	["Ray"] = true,
+	["RaycastParams"] = true,
+	["RaycastResult"] = true,
+	["RBXScriptConnection"] = true,
+	["RBXScriptSignal"] = true,
+	["Rect"] = true,
+	["Region3"] = true,
+	["Region3int16"] = true,
+	["RotationCurveKey"] = true,
+	["Secret"] = true,
+	["SharedTable"] = true,
+	["TweenInfo"] = true,
+	["UDim"] = true,
+	["UDim2"] = true,
+	["ValueCurveKey"] = true,
+	["Vector2"] = true,
+	["Vector2int16"] = true,
+	["Vector3"] = true,
+	["Vector3int16"] = true,
+}
+
 -- Escape FIRST
 local function escape(text)
 	return text
@@ -753,13 +800,18 @@ local function highlightLine(raw)
 		return '<font color="'..COLORS.String..'">\''..str..'\'</font>'
 	end)
 
-	-- highlight keywords
-	safe = safe:gsub("(%f[%a_][%w_]+%f[%A])", function(word)
-		if keywords[word] then
-			return '<font color="'..COLORS.Keyword..'">'..word..'</font>'
-		end
-		return word
-	end)
+	-- highlight keywords + datatype
+safe = safe:gsub("(%f[%a_][%w_]+%f[%A])", function(word)
+
+	if keywords[word] then
+		return '<font color="'..COLORS.Keyword..'">'..word..'</font>'
+	
+	elseif datatype[word] then
+		return '<font color="'..COLORS.Datatype..'">'..word..'</font>'
+	end
+
+	return word
+end)
 
 	-- restore entities
 	safe = safe:gsub("\0(%d+)\0", function(i)
@@ -1695,4 +1747,4 @@ settings = Btn("Settings", 139502039855639)
 
 noti(3, "<b>Welcome!</b> Successful loaded!", color.green)
 
-noti(10, "<b>Verison:</b> 0.0.1 Alpha.", color.nor)
+noti(10, "<b>Verison:</b>" .. Version, color.nor)
