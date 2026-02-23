@@ -1,5 +1,6 @@
-local Version = [[0.0.43 Alpha
-GitHub failed to load raw ahh]]
+local Version = [[0.0.44 Alpha
+GitHub failed to load raw ahh
+Bruh]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
