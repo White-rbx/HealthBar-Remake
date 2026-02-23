@@ -1,4 +1,5 @@
-local Version = [[0.0.46 Alpha]]
+local Version = [[0.0.5 Alpha
+Class UPDATE!!!!!! (with 638 words😭)]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -710,6 +711,7 @@ local COLORS = {
 	String    = "#ce9178",
 	Datatype  = "#ff0000",
 	Global    = "#4ec9b0",
+	Class   = "#00FFFF"
 }
 
 
@@ -824,6 +826,654 @@ local globals = {
 	["_VERSION"]=true,
 }
 
+local classList = {
+"Accessory",
+"AccessoryDescription",
+"Accoutrement",
+"Actor",
+"AdGui",
+"AdPortal",
+"AdService",
+"AdvancedDragger",
+"AirController",
+"AlignOrientation",
+"AlignPosition",
+"AnalyticsService",
+"AngularVelocity",
+"Animation",
+"AnimationClip",
+"AnimationClipProvider",
+"AnimationConstraint",
+"AnimationController",
+"AnimationFromVideoCreatorService",
+"AnimationRigData",
+"AnimationTrack",
+"Animator",
+"Annotation",
+"ArcHandles",
+"AssetDeliveryProxy",
+"AssetPatchSettings",
+"AssetService",
+"Atmosphere",
+"AtmosphereSensor",
+"Attachment",
+"AudioAnalyzer",
+"AudioChannelMixer",
+"AudioChannelSplitter",
+"AudioChorus",
+"AudioCompressor",
+"AudioDeviceInput",
+"AudioDeviceOutput",
+"AudioDistortion",
+"AudioEcho",
+"AudioEmitter",
+"AudioEqualizer",
+"AudioFader",
+"AudioFilter",
+"AudioFlanger",
+"AudioGate",
+"AudioLimiter",
+"AudioListener",
+"AudioPages",
+"AudioPitchShifter",
+"AudioPlayer",
+"AudioRecorder",
+"AudioReverb",
+"AudioSearchParams",
+"AudioSpeechToText",
+"AudioTextToSpeech",
+"AudioTremolo",
+"AvatarCreationService",
+"AvatarEditorService",
+"Backpack",
+"BackpackItem",
+"BadgeService",
+"BallSocketConstraint",
+"BanHistoryPages",
+"BasePart",
+"BasePlayerGui",
+"BaseRemoteEvent",
+"BaseScript",
+"BaseWrap",
+"Beam",
+"BevelMesh",
+"BillboardGui",
+"BinaryStringValue",
+"BindableEvent",
+"BindableFunction",
+"BlockMesh",
+"BloomEffect",
+"BlurEffect",
+"BodyAngularVelocity",
+"BodyColors",
+"BodyForce",
+"BodyGyro",
+"BodyMover",
+"BodyPartDescription",
+"BodyPosition",
+"BodyThrust",
+"BodyVelocity",
+"Bone",
+"BoolValue",
+"BoxHandleAdornment",
+"BrickColorValue",
+"BrowserService",
+"BubbleChatConfiguration",
+"BubbleChatMessageProperties",
+"BuoyancySensor",
+"CFrameValue",
+"CacheableContentProvider",
+"Camera",
+"CanvasGroup",
+"Capture",
+"CaptureService",
+"CapturesPages",
+"CatalogPages",
+"ChangeHistoryService",
+"ChannelTabsConfiguration",
+"CharacterAppearance",
+"CharacterMesh",
+"Chat",
+"ChatInputBarConfiguration",
+"ChatWindowConfiguration",
+"ChatWindowMessageProperties",
+"ChorusSoundEffect",
+"ClickDetector",
+"ClientReplicator",
+"ClimbController",
+"Clothing",
+"Clouds",
+"ClusterPacketCache",
+"CollectionService",
+"Color3Value",
+"ColorCorrectionEffect",
+"ColorGradingEffect",
+"CommerceService",
+"CompositeValueCurve",
+"CompressorSoundEffect",
+"ConeHandleAdornment",
+"ConfigService",
+"ConfigSnapshot",
+"Configuration",
+"ConfigureServerService",
+"Constraint",
+"ContentProvider",
+"ContextActionService",
+"Controller",
+"ControllerBase",
+"ControllerManager",
+"ControllerPartSensor",
+"ControllerSensor",
+"ControllerService",
+"CookiesService",
+"CoreGui",
+"CoreScriptDebuggingManagerHelper",
+"CornerWedgePart",
+"CreatorStoreService",
+"CurveAnimation",
+"CustomEvent",
+"CustomEventReceiver",
+"CustomLog",
+"CylinderHandleAdornment",
+"CylinderMesh",
+"CylindricalConstraint",
+"DataModel",
+"DataModelMesh",
+"DataModelSession",
+"DataStore",
+"DataStoreGetOptions",
+"DataStoreIncrementOptions",
+"DataStoreInfo",
+"DataStoreKey",
+"DataStoreKeyInfo",
+"DataStoreKeyPages",
+"DataStoreListingPages",
+"DataStoreObjectVersionInfo",
+"DataStoreOptions",
+"DataStorePages",
+"DataStoreService",
+"DataStoreSetOptions",
+"DataStoreVersionPages",
+"Debris",
+"DebugSettings",
+"Decal",
+"DepthOfFieldEffect",
+"Dialog",
+"DialogChoice",
+"DistortionSoundEffect",
+"DockWidgetPluginGui",
+"DoubleConstrainedValue",
+"DraftsService",
+"DragDetector",
+"Dragger",
+"DraggerService",
+"DynamicRotate",
+"EchoSoundEffect",
+"EditableImage",
+"EditableMesh",
+"EmotesPages",
+"EncodingService",
+"EqualizerSoundEffect",
+"EulerRotationCurve",
+"ExperienceInviteOptions",
+"ExperienceNotificationService",
+"Explosion",
+"FaceControls",
+"FaceInstance",
+"Feature",
+"FeatureRestrictionManager",
+"File",
+"FileMesh",
+"Fire",
+"Flag",
+"FlagStand",
+"FlagStandService",
+"FlangeSoundEffect",
+"FloatCurve",
+"FloorWire",
+"FluidForceSensor",
+"Folder",
+"ForceField",
+"FormFactorPart",
+"Frame",
+"FriendPages",
+"FriendService",
+"FunctionalTest",
+"GamePassService",
+"GameSettings",
+"GamepadService",
+"GenerationService",
+"GenericChallengeService",
+"GenericSettings",
+"Geometry",
+"GeometryService",
+"GetTextBoundsParams",
+"GlobalDataStore",
+"GlobalSettings",
+"Glue",
+"GroundController",
+"GroupService",
+"GuiBase",
+"GuiBase2d",
+"GuiBase3d",
+"GuiButton",
+"GuiLabel",
+"GuiMain",
+"GuiObject",
+"GuiService",
+"GuidRegistryService",
+"HSRDataContentProvider",
+"HandRigDescription",
+"HandleAdornment",
+"Handles",
+"HandlesBase",
+"HapticEffect",
+"HapticService",
+"Hat",
+"HeapProfilerService",
+"HeightmapImporterService",
+"HiddenSurfaceRemovalAsset",
+"Highlight",
+"HingeConstraint",
+"Hint",
+"Hole",
+"Hopper",
+"HopperBin",
+"HttpRbxApiService",
+"HttpService",
+"Humanoid",
+"HumanoidController",
+"HumanoidDescription",
+"HumanoidRigDescription",
+"IKControl",
+"ILegacyStudioBridge",
+"ImageButton",
+"ImageHandleAdornment",
+"ImageLabel",
+"IncrementalPatchBuilder",
+"InputAction",
+"InputBinding",
+"InputContext",
+"InputObject",
+"InsertService",
+"Instance",
+"InstanceAdornment",
+"InstanceFileSyncService",
+"IntConstrainedValue",
+"IntValue",
+"IntersectOperation",
+"InventoryPages",
+"JointInstance",
+"JointsService",
+"KeyboardService",
+"Keyframe",
+"KeyframeMarker",
+"KeyframeSequence",
+"KeyframeSequenceProvider",
+"LayerCollector",
+"Light",
+"Lighting",
+"LineForce",
+"LineHandleAdornment",
+"LinearVelocity",
+"LocalScript",
+"LocalizationService",
+"LocalizationTable",
+"LogService",
+"LoginService",
+"LuaSettings",
+"LuaSourceContainer",
+"LuaWebService",
+"MLService",
+"MLSession",
+"ManualGlue",
+"ManualSurfaceJointInstance",
+"ManualWeld",
+"MarkerCurve",
+"MarketplaceService",
+"MatchmakingService",
+"MaterialService",
+"MaterialVariant",
+"MemStorageConnection",
+"MemStorageService",
+"MemoryStoreHashMap",
+"MemoryStoreHashMapPages",
+"MemoryStoreQueue",
+"MemoryStoreService",
+"MemoryStoreSortedMap",
+"MeshContentProvider",
+"MeshPart",
+"Message",
+"MessagingService",
+"MicroProfilerService",
+"Model",
+"ModerationService",
+"ModuleScript",
+"Motor",
+"Motor6D",
+"MotorFeature",
+"Mouse",
+"MouseService",
+"MultipleDocumentInterfaceInstance",
+"NegateOperation",
+"NetworkClient",
+"NetworkMarker",
+"NetworkPeer",
+"NetworkReplicator",
+"NetworkServer",
+"NetworkSettings",
+"NoCollisionConstraint",
+"NotificationService",
+"NumberPose",
+"NumberValue",
+"Object",
+"ObjectValue",
+"OpenCloudApiV1",
+"OpenCloudService",
+"OrderedDataStore",
+"OutfitPages",
+"PVAdornment",
+"PVInstance",
+"PackageLink",
+"PackageService",
+"Pages",
+"Pants",
+"Part",
+"PartAdornment",
+"PartOperation",
+"PartOperationAsset",
+"ParticleEmitter",
+"PatchBundlerFileWatch",
+"PatchMapping",
+"Path",
+"Path2D",
+"PathfindingLink",
+"PathfindingModifier",
+"PathfindingService",
+"PermissionsService",
+"PhysicsService",
+"PhysicsSettings",
+"PitchShiftSoundEffect",
+"PlacesService",
+"Plane",
+"PlaneConstraint",
+"Platform",
+"Player",
+"PlayerGui",
+"PlayerMouse",
+"PlayerScripts",
+"PlayerViewService",
+"Players",
+"Plugin",
+"PluginAction",
+"PluginCapabilities",
+"PluginDebugService",
+"PluginDragEvent",
+"PluginGui",
+"PluginGuiService",
+"PluginManagementService",
+"PluginManager",
+"PluginManagerInterface",
+"PluginMenu",
+"PluginMouse",
+"PluginToolbar",
+"PluginToolbarButton",
+"PointLight",
+"PointsService",
+"PolicyService",
+"Pose",
+"PoseBase",
+"PostEffect",
+"PrismaticConstraint",
+"ProcessInstancePhysicsService",
+"ProximityPrompt",
+"ProximityPromptService",
+"PublishService",
+"PyramidHandleAdornment",
+"QWidgetPluginGui",
+"RayValue",
+"RecommendationPages",
+"RecommendationService",
+"ReflectionMetadata",
+"ReflectionMetadataCallbacks",
+"ReflectionMetadataClass",
+"ReflectionMetadataClasses",
+"ReflectionMetadataEnum",
+"ReflectionMetadataEnumItem",
+"ReflectionMetadataEnums",
+"ReflectionMetadataEvents",
+"ReflectionMetadataFunctions",
+"ReflectionMetadataItem",
+"ReflectionMetadataMember",
+"ReflectionMetadataProperties",
+"ReflectionMetadataYieldFunctions",
+"ReflectionService",
+"RemoteDebuggerServer",
+"RemoteEvent",
+"RemoteFunction",
+"RenderSettings",
+"RenderingTest",
+"ReplicatedFirst",
+"ReplicatedStorage",
+"ReverbSoundEffect",
+"RigidConstraint",
+"RocketPropulsion",
+"RodConstraint",
+"RopeConstraint",
+"Rotate",
+"RotateP",
+"RotateV",
+"RotationCurve",
+"RunService",
+"RunningAverageItemDouble",
+"RunningAverageItemInt",
+"RunningAverageTimeIntervalItem",
+"ScreenGui",
+"ScreenshotCapture",
+"ScreenshotHud",
+"Script",
+"ScriptBuilder",
+"ScriptContext",
+"ScriptDocument",
+"ScriptEditorService",
+"ScriptProfilerService",
+"ScriptService",
+"ScrollingFrame",
+"Seat",
+"Selection",
+"SelectionBox",
+"SelectionHighlightManager",
+"SelectionLasso",
+"SelectionPartLasso",
+"SelectionPointLasso",
+"SelectionSphere",
+"SensorBase",
+"SerializationService",
+"ServerReplicator",
+"ServerScriptService",
+"ServerStorage",
+"ServiceProvider",
+"ServiceVisibilityService",
+"SessionCheckService",
+"SharedTableRegistry",
+"Shirt",
+"ShirtGraphic",
+"SkateboardController",
+"SkateboardPlatform",
+"Skin",
+"Sky",
+"SlidingBallConstraint",
+"SlimContentProvider",
+"Smoke",
+"SmoothVoxelsUpgraderService",
+"Snap",
+"SocialService",
+"SolidModelContentProvider",
+"Sound",
+"SoundEffect",
+"SoundGroup",
+"SoundService",
+"Sparkles",
+"SpawnLocation",
+"SpawnerService",
+"SpecialMesh",
+"SphereHandleAdornment",
+"SpotLight",
+"SpringConstraint",
+"StandalonePluginScripts",
+"StandardPages",
+"StarterCharacterScripts",
+"StarterGear",
+"StarterGui",
+"StarterPack",
+"StarterPlayer",
+"StarterPlayerScripts",
+"StartupMessageService",
+"Stats",
+"StatsItem",
+"Status",
+"StopWatchReporter",
+"StringValue",
+"Studio",
+"StudioService",
+"StudioTestService",
+"StudioTheme",
+"StyleBase",
+"StyleDerive",
+"StyleLink",
+"StyleRule",
+"StyleSheet",
+"SunRaysEffect",
+"SurfaceAppearance",
+"SurfaceGui",
+"SurfaceGuiBase",
+"SurfaceLight",
+"SurfaceSelection",
+"SwimController",
+"SyncScriptBuilder",
+"TaskScheduler",
+"Team",
+"TeamCreateData",
+"TeamCreateService",
+"Teams",
+"TeleportAsyncResult",
+"TeleportOptions",
+"TeleportService",
+"Terrain",
+"TerrainDetail",
+"TerrainIterateOperation",
+"TerrainModifyOperation",
+"TerrainReadOperation",
+"TerrainRegion",
+"TerrainWriteOperation",
+"TestService",
+"TextBox",
+"TextBoxService",
+"TextButton",
+"TextChannel",
+"TextChatCommand",
+"TextChatConfigurations",
+"TextChatMessage",
+"TextChatMessageProperties",
+"TextChatService",
+"TextFilterResult",
+"TextFilterTranslatedResult",
+"TextGenerator",
+"TextLabel",
+"TextService",
+"TextSource",
+"Texture",
+"TimerService",
+"Tool",
+"Torque",
+"TorsionSpringConstraint",
+"TotalCountTimeIntervalItem",
+"TouchInputService",
+"TouchTransmitter",
+"Trail",
+"Translator",
+"TremoloSoundEffect",
+"TriangleMeshPart",
+"TrussPart",
+"Tween",
+"TweenBase",
+"TweenService",
+"UGCValidationService",
+"UIAspectRatioConstraint",
+"UIBase",
+"UIComponent",
+"UIConstraint",
+"UICorner",
+"UIDragDetector",
+"UIFlexItem",
+"UIGradient",
+"UIGridLayout",
+"UIGridStyleLayout",
+"UILayout",
+"UIListLayout",
+"UIPadding",
+"UIPageLayout",
+"UIScale",
+"UISizeConstraint",
+"UIStroke",
+"UITableLayout",
+"UITextSizeConstraint",
+"UnionOperation",
+"UniversalConstraint",
+"UnreliableRemoteEvent",
+"UserGameSettings",
+"UserInputService",
+"UserService",
+"UserSettings",
+"VRService",
+"VRStatusService",
+"ValueBase",
+"ValueCurve",
+"Vector3Curve",
+"Vector3Value",
+"VectorForce",
+"VehicleController",
+"VehicleSeat",
+"VelocityMotor",
+"VideoCapture",
+"VideoCaptureService",
+"VideoDisplay",
+"VideoFrame",
+"VideoPlayer",
+"VideoSampler",
+"VideoService",
+"ViewportFrame",
+"VirtualInputManager",
+"VirtualUser",
+"VisibilityCheckDispatcher",
+"Visit",
+"VisualizationMode",
+"VisualizationModeCategory",
+"VisualizationModeService",
+"VoiceChatService",
+"WebStreamClient",
+"WedgePart",
+"Weld",
+"WeldConstraint",
+"Wire",
+"WireframeHandleAdornment",
+"Workspace",
+"WorkspaceAnnotation",
+"WorldModel",
+"WorldRoot",
+"WrapDeformer",
+"WrapLayer",
+"WrapTarget",
+"WrapTextureTransfer",
+}
+
+local classes = {}
+
+for _, name in ipairs(classList) do
+    classes[name] = true
+end
+
+
 -- Escape FIRST
 local function escape(text)
 	return text
@@ -857,20 +1507,23 @@ local function highlightLine(raw)
 		return '<font color="'..COLORS.String..'">\''..str..'\'</font>'
 	end)
 
-	-- highlight keywords + datatype
+-- highlight identifiers
 safe = safe:gsub("(%f[%w_](%a[%w_]*)%f[^%w_])", function(full, word)
 
-	if keywords[word] then
-		return '<font color="'..COLORS.Keyword..'">'..word..'</font>'
+    if keywords[word] then
+        return '<font color="'..COLORS.Keyword..'">'..word..'</font>'
 
-	elseif datatype[word] then
-		return '<font color="'..COLORS.Datatype..'">'..word..'</font>'
+    elseif datatype[word] then
+        return '<font color="'..COLORS.Datatype..'">'..word..'</font>'
 
-	elseif globals[word] then
-		return '<font color="'..COLORS.Global..'">'..word..'</font>'
-	end
+    elseif globals[word] then
+        return '<font color="'..COLORS.Global..'">'..word..'</font>'
 
-	return word
+    elseif classes[word] then
+        return '<font color="'..COLORS.Class..'">'..word..'</font>'
+    end
+
+    return word
 end)
 
 	-- restore entities
@@ -1538,7 +2191,7 @@ kword.Position = UDim2.new(0.71,0,0.126,0)
 kword.Size = UDim2.new(0.29,0,0.7,0)
 kword.BackgroundTransparency = 0.5
 kword.BackgroundColor3 = Color3.new(0,0,0)
-kword.ScrollBarThickness = 2
+kword.ScrollBarThickness = 0
 kword.CanvasSize = UDim2.new(0,0,0,0)
 kword.ScrollingDirection = Enum.ScrollingDirection.Y
 kword.Parent = Frame.Edit.Inside
@@ -1546,46 +2199,133 @@ kword.Parent = Frame.Edit.Inside
 Corner(0,0,kword)
 ListLayout(kword, 0,2, HLeft, VTop, SLayout, FillV)
 
-local function createSuggestion(word, colorHex, T)
+--====================================================
+-- REQUIREMENTS:
+-- Editb      = TextBox ที่พิมพ์
+-- kword      = Frame / ScrollingFrame แสดงคำ
+-- keywords   = table
+-- datatype   = table
+-- globals    = table
+-- COLORS     = table { Keyword=..., Datatype=..., Global=... }
+--====================================================
 
-	local keyword = Instance.new("TextLabel")
-	keyword.Size = UDim2.new(1,0,0,22)
-	keyword.BackgroundColor3 = Color3.fromRGB(40,40,40)
-	keyword.BackgroundTransparency = T
-	keyword.TextXAlignment = Enum.TextXAlignment.Left
-	keyword.TextScaled = true
-	keyword.RichText = true
-	keyword.Text = '<font color="'..colorHex..'">'..word..'</font>'
-	keyword.Parent = kword
 
+--// CLEAR
+local function clearSuggestions()
+	for _, child in pairs(kword:GetChildren()) do
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
 end
 
+
+--// BUILD WORD LIST
 local function buildWordList()
 
 	local words = {}
 
-	for k in pairs(keywords) do
-		words[k] = "Keyword"
+	if keywords then
+		for k in pairs(keywords) do
+			words[k] = "Keyword"
+		end
 	end
 
-	for k in pairs(datatype) do
-		words[k] = "Datatype"
+	if datatype then
+		for k in pairs(datatype) do
+			words[k] = "Datatype"
+		end
 	end
 
-	for k in pairs(globals) do
-		words[k] = "Global"
+	if globals then
+		for k in pairs(globals) do
+			words[k] = "Global"
+		end
+	end
+
+	if classes then
+		for k in pairs(classes) do
+			words[k] = "Class"
+		end
 	end
 
 	return words
 end
 
+
+--// GET CURRENT WORD BASED ON CURSOR
+local function getCurrentWord(text, cursorPos)
+
+	if not cursorPos or cursorPos < 1 then
+		cursorPos = #text + 1
+	end
+
+	local beforeCursor = text:sub(1, cursorPos - 1)
+	local current = beforeCursor:match("([%a_][%w_]*)$")
+
+	return current or ""
+end
+
+
+--// REPLACE WORD AT CURSOR
+local function replaceCurrentWord(newWord)
+
+	local text = Editb.Text
+	local cursorPos = Editb.CursorPosition
+
+	if not cursorPos or cursorPos < 1 then
+		return
+	end
+
+	local beforeCursor = text:sub(1, cursorPos - 1)
+	local afterCursor = text:sub(cursorPos)
+
+	local wordStart = beforeCursor:find("([%a_][%w_]*)$")
+
+	if wordStart then
+		local prefix = beforeCursor:sub(1, wordStart - 1)
+		local newText = prefix .. newWord .. afterCursor
+
+		Editb.Text = newText
+		Editb.CursorPosition = #prefix + #newWord + 1
+	end
+end
+
+
+--// CREATE SUGGESTION
+local function createSuggestion(keywordName, colorHex, transparency)
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1,0,0,22)
+	label.BackgroundColor3 = Color3.fromRGB(40,40,40)
+	label.BackgroundTransparency = transparency
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextScaled = true
+	label.RichText = true
+	label.Text = '<font color="'..colorHex..'">'..keywordName..'</font>'
+	label.Parent = kword
+
+	-- Click to replace
+	label.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			replaceCurrentWord(keywordName)
+		end
+	end)
+end
+
+
+--// UPDATE
 local function updateSuggestions()
+
+	if not Editb or not kword then
+		return
+	end
 
 	clearSuggestions()
 
-	local ALL_WORDS = buildWordList() -- 🔥 สร้างใหม่ทุกครั้ง
+	local ALL_WORDS = buildWordList()
 
-	local current = getCurrentWord(Editb.Text)
+	local current = getCurrentWord(Editb.Text or "", Editb.CursorPosition)
 	if current == "" then
 		kword.CanvasSize = UDim2.new(0,0,0,0)
 		return
@@ -1594,17 +2334,17 @@ local function updateSuggestions()
 	local lowerCurrent = current:lower()
 	local matchCount = 0
 
-	for keyword, category in pairs(ALL_WORDS) do
+	for keywordName, category in pairs(ALL_WORDS) do
 
-		local lowerKeyword = keyword:lower()
+		local lowerKeyword = keywordName:lower()
 
 		if lowerKeyword:sub(1, #lowerCurrent) == lowerCurrent then
-			
+
 			local color = COLORS[category] or "#ffffff"
 
-			local T = (lowerKeyword == lowerCurrent) and 0 or 0.5
+			local transparency = (lowerKeyword == lowerCurrent) and 0 or 0.5
 
-			createSuggestion(keyword, color, T)
+			createSuggestion(keywordName, color, transparency)
 			matchCount += 1
 		end
 	end
@@ -1617,6 +2357,16 @@ local function updateSuggestions()
 	kword.CanvasSize = UDim2.new(0,0,0, matchCount * 24)
 
 end
+
+
+--// CONNECT EVENTS
+if Editb and Editb:IsA("TextBox") then
+
+	Editb:GetPropertyChangedSignal("Text"):Connect(updateSuggestions)
+	Editb:GetPropertyChangedSignal("CursorPosition"):Connect(updateSuggestions)
+
+end
+
 
 ------------------------------------------------------------
 local Inside = Instance.new("CanvasGroup")
@@ -1896,4 +2646,4 @@ settings = Btn("Settings", 139502039855639)
 
 noti(3, "<b>Welcome!</b> Successful loaded!", color.green)
 
-noti(10, "<b>Verison: </b>" .. Version, color.nor)
+noti(5, "<b>Verison: </b>" .. Version, color.nor)
