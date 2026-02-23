@@ -1,4 +1,4 @@
-local Version = [[0.0.42 Alpha
+local Version = [[0.0.43 Alpha
 GitHub failed to load raw ahh]]
 -- This executor
 
@@ -1531,7 +1531,7 @@ exe("Clear", 105129411837741, "Clear")
 
 --[[ Keywords seeker ]]
 --// UI REFERENCES (ใช้ของนายแทนได้)
-local Editb = Frame.Edit.Inside.Edit
+local Editb = Frame.Edit.Inside.EditScroll.Edit
 
 local kword = Instance.new("ScrollingFrame")
 kword.Name = "KeywordsSeeker"
