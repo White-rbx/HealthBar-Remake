@@ -1,5 +1,4 @@
-local Version = [[0.0.45 Alpha
-GitHub failed to load raw ahh]]
+local Version = [[0.0.46 Alpha]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -1554,16 +1553,37 @@ local function createSuggestion(word, colorHex, T)
 	keyword.BackgroundColor3 = Color3.fromRGB(40,40,40)
 	keyword.BackgroundTransparency = T
 	keyword.TextXAlignment = Enum.TextXAlignment.Left
-	keyword.TextSize = 13
+	keyword.TextScaled = true
 	keyword.RichText = true
 	keyword.Text = '<font color="'..colorHex..'">'..word..'</font>'
 	keyword.Parent = kword
 
 end
 
+local function buildWordList()
+
+	local words = {}
+
+	for k in pairs(keywords) do
+		words[k] = "Keyword"
+	end
+
+	for k in pairs(datatype) do
+		words[k] = "Datatype"
+	end
+
+	for k in pairs(globals) do
+		words[k] = "Global"
+	end
+
+	return words
+end
+
 local function updateSuggestions()
 
 	clearSuggestions()
+
+	local ALL_WORDS = buildWordList() -- 🔥 สร้างใหม่ทุกครั้ง
 
 	local current = getCurrentWord(Editb.Text)
 	if current == "" then
@@ -1572,35 +1592,29 @@ local function updateSuggestions()
 	end
 
 	local lowerCurrent = current:lower()
-	local keywordCount = 0
+	local matchCount = 0
 
-	for keywordName, keywordType in pairs(ALL_WORDS) do
+	for keyword, category in pairs(ALL_WORDS) do
 
-		local lowerKeyword = keywordName:lower()
+		local lowerKeyword = keyword:lower()
 
-		if lowerKeyword:sub(1,#lowerCurrent) == lowerCurrent then
+		if lowerKeyword:sub(1, #lowerCurrent) == lowerCurrent then
 			
-			local keywordColor = COLORS[keywordType] or "#ffffff"
+			local color = COLORS[category] or "#ffffff"
 
-			local keywordTransparency
-			if lowerKeyword == lowerCurrent then
-				keywordTransparency = 0 -- ตรงเป๊ะ
-			else
-				keywordTransparency = 0.5 -- เกือบตรง
-			end
+			local T = (lowerKeyword == lowerCurrent) and 0 or 0.5
 
-			createSuggestion(keywordName, keywordColor, keywordTransparency)
-			keywordCount += 1
+			createSuggestion(keyword, color, T)
+			matchCount += 1
 		end
 	end
 
-	-- ถ้าไม่เจออะไรเลย → แสดงคำที่พิมพ์ (ขาว + จางสุด)
-	if keywordCount == 0 then
+	if matchCount == 0 then
 		createSuggestion(current, "#ffffff", 1)
-		keywordCount = 1
+		matchCount = 1
 	end
 
-	kword.CanvasSize = UDim2.new(0,0,0, keywordCount * 24)
+	kword.CanvasSize = UDim2.new(0,0,0, matchCount * 24)
 
 end
 
@@ -1882,4 +1896,4 @@ settings = Btn("Settings", 139502039855639)
 
 noti(3, "<b>Welcome!</b> Successful loaded!", color.green)
 
-noti(5, "<b>Verison: </b>" .. Version, color.nor)
+noti(10, "<b>Verison: </b>" .. Version, color.nor)
