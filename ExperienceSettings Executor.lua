@@ -1,6 +1,5 @@
-local Version = [[0.0.44 Alpha
-GitHub failed to load raw ahh
-Bruh]]
+local Version = [[0.0.45 Alpha
+GitHub failed to load raw ahh]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -1542,7 +1541,7 @@ kword.BackgroundTransparency = 0.5
 kword.BackgroundColor3 = Color3.new(0,0,0)
 kword.ScrollBarThickness = 2
 kword.CanvasSize = UDim2.new(0,0,0,0)
-kword.ScrollDirection = Enum.ScrollDirection.Y
+kword.ScrollingDirection = Enum.ScrollingDirection.Y
 kword.Parent = Frame.Edit.Inside
 
 Corner(0,0,kword)
