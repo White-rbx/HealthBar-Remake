@@ -1,4 +1,4 @@
-local Version = "0.0.36 Alpha"
+local Version = [[0.0.4 Alpha]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -1528,6 +1528,81 @@ exe("Paste", 81493320721369, "Paste")
 exe("Copy", 70463360371392, "Copy")
 exe("Clear", 105129411837741, "Clear")
 
+--[[ Keywords seeker ]]
+--// UI REFERENCES (ใช้ของนายแทนได้)
+local Editb = Frame.Edit.Inside.EditBox -- แก้ตามของจริง
+
+local kword = Instance.new("ScrollingFrame")
+kword.Name = "KeywordsSeeker"
+kword.Position = UDim2.new(0.71,0,0.126,0)
+kword.Size = UDim2.new(0.29,0,0.7,0)
+kword.BackgroundTransparency = 0.5
+kword.BackgroundColor3 = Color3.new(0,0,0)
+kword.ScrollBarThickness = 2
+kword.CanvasSize = UDim2.new(0,0,0,0)
+kword.ScrollDirection = Enum.ScrollDirection.Y
+kword.Parent = Frame.Edit.Inside
+
+Corner(0,0,kword)
+ListLayout(kword, 0,2, HLeft, VTop, SLayout, FillV)
+
+local function createSuggestion(word, colorHex, T)
+
+	local keyword = Instance.new("TextLabel")
+	keyword.Size = UDim2.new(1,0,0,22)
+	keyword.BackgroundColor3 = Color3.fromRGB(40,40,40)
+	keyword.BackgroundTransparency = T
+	keyword.TextXAlignment = Enum.TextXAlignment.Left
+	keyword.TextSize = 13
+	keyword.RichText = true
+	keyword.Text = '<font color="'..colorHex..'">'..word..'</font>'
+	keyword.Parent = kword
+
+end
+
+local function updateSuggestions()
+
+	clearSuggestions()
+
+	local current = getCurrentWord(Editb.Text)
+	if current == "" then
+		kword.CanvasSize = UDim2.new(0,0,0,0)
+		return
+	end
+
+	local lowerCurrent = current:lower()
+	local keywordCount = 0
+
+	for keywordName, keywordType in pairs(ALL_WORDS) do
+
+		local lowerKeyword = keywordName:lower()
+
+		if lowerKeyword:sub(1,#lowerCurrent) == lowerCurrent then
+			
+			local keywordColor = COLORS[keywordType] or "#ffffff"
+
+			local keywordTransparency
+			if lowerKeyword == lowerCurrent then
+				keywordTransparency = 0 -- ตรงเป๊ะ
+			else
+				keywordTransparency = 0.5 -- เกือบตรง
+			end
+
+			createSuggestion(keywordName, keywordColor, keywordTransparency)
+			keywordCount += 1
+		end
+	end
+
+	-- ถ้าไม่เจออะไรเลย → แสดงคำที่พิมพ์ (ขาว + จางสุด)
+	if keywordCount == 0 then
+		createSuggestion(current, "#ffffff", 1)
+		keywordCount = 1
+	end
+
+	kword.CanvasSize = UDim2.new(0,0,0, keywordCount * 24)
+
+end
+
 ------------------------------------------------------------
 local Inside = Instance.new("CanvasGroup")
 Inside.Name = "Inside"
@@ -1546,8 +1621,7 @@ local gra1 = Gradient(str1, 45, 0, 0,
 )
 
 task.spawn(function()
-    while true do
-        task.wait(0.001)
+    while true do        task.wait(0.001)
         gra1.Rotation += 3
         if gra1.Rotation == 360 then
            gra1.Rotation = 0
@@ -1807,4 +1881,4 @@ settings = Btn("Settings", 139502039855639)
 
 noti(3, "<b>Welcome!</b> Successful loaded!", color.green)
 
-noti(10, "<b>Verison:</b>" .. Version, color.nor)
+noti(5, "<b>Verison: </b>" .. Version, color.nor)
