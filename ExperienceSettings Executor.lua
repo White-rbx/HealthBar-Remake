@@ -1,5 +1,5 @@
-local Version = [[0.0.6 Alpha
-Enums syntax update, We're still going!]]
+local Version = [[0.0.61 Alpha
+Add "SecurityCapabilities" datatype by Roblox]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -559,6 +559,9 @@ ttxt.Text = [[
 <b><font size="15">Note</font></b> 
 ExperienceSettings Executor is for debugging script and it use only for executor app, so thank you for using our executor!
 
+<b><font size="15">What is executor for?</font></b>
+For Integrated Development Environment (IDE) programing.
+
 <b><font size="15">Credit</font></b>
 @5teve3019D (ScriptBlox)
 
@@ -762,6 +765,7 @@ local datatype = {
 	["Region3int16"] = true,
 	["RotationCurveKey"] = true,
 	["Secret"] = true,
+	["SecurityCapabilities"] = true,
 	["SharedTable"] = true,
 	["TweenInfo"] = true,
 	["UDim"] = true,
