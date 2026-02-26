@@ -1,5 +1,5 @@
-local Version = [[0.0.61 Alpha
-Add "SecurityCapabilities" datatype by Roblox]]
+local Version = [[0.0.62 Alpha
+Add Test Debugger button!]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -2600,7 +2600,58 @@ else
 end
 			end
 
-
+-- ==============================
+-- 6️⃣ Debugger
+-- ==============================
+elseif workin == "Debugger" then
+	
+	local src = Editb.Text
+	
+	if not src or src == "" then
+		noti(3, "No script to debug.", color.red)
+		return
+	end
+	
+	-- Count lines
+	local lines = 0
+	for _ in src:gmatch("\n") do
+		lines += 1
+	end
+	lines += 1
+	
+	-- Count functions
+	local funcCount = 0
+	for _ in src:gmatch("function") do
+		funcCount += 1
+	end
+	
+	-- Count locals
+	local localCount = 0
+	for _ in src:gmatch("local ") do
+		localCount += 1
+	end
+	
+	-- Compile test only
+	local f, compileErr = loadstring(src)
+	
+	if not f then
+		local line = tostring(compileErr):match(":(%d+):") or "?"
+		noti(10,
+			"[DEBUG FAILED]\nLine: "..line..
+			"\nError: "..compileErr,
+			color.red
+		)
+	else
+		noti(8,
+			"[DEBUG SUCCESS]\nLines: "..lines..
+			"\nFunctions: "..funcCount..
+			"\nLocals: "..localCount,
+			color.green
+		)
+	end
+	
+end
+			
 -- ==============================
 -- 2️⃣ PasteAndExecute
 -- ==============================
@@ -2695,6 +2746,7 @@ elseif workin == "PasteAndExecute" then
 end
 
 exe("Execute", 104470314612186, "Execute")
+exe("Debugger", 95102226021004, "Debugger")
 exe("PasteAndExecute", 124911554606290, "PasteAndExecute")
 exe("Paste", 81493320721369, "Paste")
 exe("Copy", 70463360371392, "Copy")
