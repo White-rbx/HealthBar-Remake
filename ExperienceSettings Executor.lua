@@ -2564,185 +2564,192 @@ local function exe(name, imageID, workin)
 	Stroke(eb, ASMBorder, 255,255,255, LJMRound, 1, 0)
 	uia(eb, 1)
 
-	eb.MouseButton1Click:Connect(function()
+eb.MouseButton1Click:Connect(function()
 
-		-- ==============================
-		-- 1️⃣ Execute
-		-- ==============================
-		if workin == "Execute" then
-			
-			local src = Editb.Text
-			
-			if src and src ~= "" then
-				
-				local f = loadstring(src)
-				
-				local f, compileErr = loadstring(src)
-
-if not f then
-	
-	-- Compile error
-	local line = compileErr:match(":(%d+):") or "?"
-	noti(10, "Script Error [ At Line: "..line.." ]: "..compileErr, color.red)
-	
-else
-	
-	local success, runtimeErr = pcall(f)
-	
-	if success then
-		noti(2, "Execute script!", color.green)
-	else
-		-- Runtime error
-		local line = runtimeErr:match(":(%d+):") or "?"
-		noti(10, "Script Error [ At Line: "..line.." ]: "..runtimeErr, color.red)
-	end
-	
-end
-			end
+	-- ==============================  
+	-- 1️⃣ Execute  
+	-- ==============================  
+	if workin == "Execute" then  
+		  
+		local src = Editb.Text  
+		if not src or src == "" then return end  
+		
+	  noti(3, "Executing... please wait.", color.yellow)
+		  
+		local f, compileErr = loadstring(src)  
+  
+		if not f then  
+			local line = tostring(compileErr):match(":(%d+):") or "?"  
+			noti(10, "Script Error [Line: "..line.."]:\n"..compileErr, color.red)  
+		else  
+			local success, runtimeErr = pcall(f)  
+			if success then  
+				noti(2, "Execute script!", color.green)  
+			else  
+				local line = tostring(runtimeErr):match(":(%d+):") or "?"  
+				noti(10, "Runtime Error [Line: "..line.."]:\n"..runtimeErr, color.red)  
+			end  
+		end
 
 -- ==============================
--- 6️⃣ Debugger
+-- 2️⃣ Debugger
 -- ==============================
 elseif workin == "Debugger" then
 	
 	local src = Editb.Text
-	
 	if not src or src == "" then
 		noti(3, "No script to debug.", color.red)
 		return
 	end
-	
-	-- Count lines
-	local lines = 0
+
+	-- ========= 1. Compile Check =========
+	local f, compileErr = loadstring(src)
+	if not f then
+		local line = tostring(compileErr):match(":(%d+):") or "?"
+		noti(10, "Compile Error [Line: "..line.."]:\n"..compileErr, color.red)
+		return
+	end
+
+
+	-- ========= 2. Structure Check =========
+	local function count(word)
+		local c = 0
+		for _ in src:gmatch("%f[%w]"..word.."%f[%W]") do
+			c += 1
+		end
+		return c
+	end
+
+	local problems = {}
+
+	local ifCount = count("if")
+	local endCount = count("end")
+	local functionCount = count("function")
+	local repeatCount = count("repeat")
+	local untilCount = count("until")
+
+	if endCount < (ifCount + functionCount + repeatCount) then
+		table.insert(problems, "Possible missing 'end'")
+	end
+
+	if repeatCount ~= untilCount then
+		table.insert(problems, "repeat/until mismatch")
+	end
+
+
+	-- ========= 3. Scan E/W/P =========
+	local hasError = src:match("%f[%w]error%f[%W]")
+	local hasWarn  = src:match("%f[%w]warn%f[%W]")
+	local hasPrint = src:match("%f[%w]print%f[%W]")
+
+
+	-- ========= 4. Line Count =========
+	local lines = 1
 	for _ in src:gmatch("\n") do
 		lines += 1
 	end
-	lines += 1
-	
-	-- Count functions
-	local funcCount = 0
-	for _ in src:gmatch("function") do
-		funcCount += 1
-	end
-	
-	-- Count locals
-	local localCount = 0
-	for _ in src:gmatch("local ") do
-		localCount += 1
-	end
-	
-	-- Compile test only
-	local f, compileErr = loadstring(src)
-	
-	if not f then
-		local line = tostring(compileErr):match(":(%d+):") or "?"
-		noti(10,
-			"[DEBUG FAILED]\nLine: "..line..
-			"\nError: "..compileErr,
-			color.red
-		)
+
+
+	-- ========= 5. Result =========
+	if #problems > 0 then
+		
+		local msg = "[DEBUG FOUND ISSUE]\n"
+		msg ..= "Lines: "..lines.."\n\n"
+		
+		for _,p in ipairs(problems) do
+			msg ..= "- "..p.."\n"
+		end
+		
+		-- Show E/W/P only when script has issue
+		if hasError then msg ..= "\nContains: error()" end
+		if hasWarn then  msg ..= "\nContains: warn()" end
+		if hasPrint then msg ..= "\nContains: print()" end
+		
+		noti(10, msg, color.red)
+		
 	else
-		noti(8,
+		
+		noti(5,
 			"[DEBUG SUCCESS]\nLines: "..lines..
-			"\nFunctions: "..funcCount..
-			"\nLocals: "..localCount,
+			"\nNo structure problems found.",
 			color.green
 		)
+		noti(8, "Its better to execute script because it yields better results.", color.yellow
+		)
 	end
 	
-end
-			
--- ==============================
--- 2️⃣ PasteAndExecute
--- ==============================
-elseif workin == "PasteAndExecute" then
-	
-	if getclipboard then
+	-- ==============================
+	-- 2️⃣ PasteAndExecute
+	-- ==============================
+	elseif workin == "PasteAndExecute" then
+		
+		if not getclipboard then
+			noti(2, "Clipboard not supported", color.red)
+			return
+		end
 		
 		local clip = getclipboard()
+		if not clip or clip == "" then return end
 		
-		if clip and clip ~= "" then
-			
-			Editb.Text = clip
-			
-			local f, compileErr = loadstring(clip)
-			
-			-- 🔴 Compile Error
-			if not f then
-				
-				local line = tostring(compileErr):match(":(%d+):") or "?"
-				noti(10, "Script Error [ At Line: "..line.." ]: "..compileErr, color.red)
-				
+		Editb.Text = clip
+		
+		local f, compileErr = loadstring(clip)
+		
+		if not f then
+			local line = tostring(compileErr):match(":(%d+):") or "?"
+			noti(10, "Script Error [Line: "..line.."]:\n"..compileErr, color.red)
+		else
+			local success, runtimeErr = pcall(f)
+			if success then
+				noti(2, "Paste script and Execute!", color.green)
 			else
-				
-				local success, runtimeErr = pcall(f)
-				
-				-- 🟢 Success
-				if success then
-					noti(2, "Paste script and Execute!", color.green)
-					
-				-- 🔴 Runtime Error
-				else
-					local line = tostring(runtimeErr):match(":(%d+):") or "?"
-					noti(10, "Script Error [ At Line: "..line.." ]: "..runtimeErr, color.red)
-				end
-				
+				local line = tostring(runtimeErr):match(":(%d+):") or "?"
+				noti(10, "Runtime Error [Line: "..line.."]:\n"..runtimeErr, color.red)
 			end
-			
 		end
+
+
+	-- ==============================
+	-- 3️⃣ Paste
+	-- ==============================
+	elseif workin == "Paste" then
 		
-	else
-		noti(2, "Clipboard not supported in this executor", color.red)
+		if getclipboard then
+			local clip = getclipboard()
+			if clip and clip ~= "" then
+				Editb.Text = clip
+				noti(2, "Paste script!", color.yellow)
+			end
+		else
+			noti(2, "Clipboard not supported", color.red)
+		end
+
+
+	-- ==============================
+	-- 4️⃣ Copy
+	-- ==============================
+	elseif workin == "Copy" then
+		
+		if setclipboard then
+			if Editb.Text ~= "" then
+				setclipboard(Editb.Text)
+				noti(2, "Copy script!", color.yellow)
+			end
+		else
+			noti(2, "Clipboard not supported", color.red)
+		end
+
+
+	-- ==============================
+	-- 5️⃣ Clear
+	-- ==============================
+	elseif workin == "Clear" then
+		
+		Editb.Text = ""
+		noti(2, "Clear script! Make sure you save it.", color.red)
 	end
-				
 
-		-- ==============================
-		-- 3️⃣ Paste
-		-- ==============================
-		elseif workin == "Paste" then
-			
-			if getclipboard then
-				
-				local clip = getclipboard()
-				
-				if clip and clip ~= "" then
-					Editb.Text = clip
-					noti(2, "Paste script!", color.yellow)
-				end
-				
-			else
-				noti(2, "Clipboard not supported in this executor", color.red)
-			end
-
-
-		-- ==============================
-		-- 4️⃣ Copy
-		-- ==============================
-		elseif workin == "Copy" then
-			
-			if setclipboard then
-				
-				if Editb.Text ~= "" then
-					setclipboard(Editb.Text)
-					noti(2, "Copy script!", color.yellow)
-				end
-				
-			else
-				noti(2, "Clipboard not supported in this executor!", color.red)
-			end
-
-
-		-- ==============================
-		-- 5️⃣ Clear
-		-- ==============================
-		elseif workin == "Clear" then
-			
-			Editb.Text = ""
-			noti(2, "Clear script! Make sure you save it.", color.red)
-		end
-
-	end)
-
+end)
 end
 
 exe("Execute", 104470314612186, "Execute")
