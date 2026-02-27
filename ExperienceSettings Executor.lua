@@ -1,5 +1,5 @@
-local Version = [[0.0.62 Alpha
-Add Test Debugger button!]]
+local Version = [[0.0.7 Alpha
+Added Script List!]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -578,14 +578,14 @@ ttxt.Parent = frtxt
 
 --[[ soon ]]
 local son = Instance.new("TextLabel")
-son.Name = "Soon"
+son.Name = "ScriptList"
 son.Position = UDim2.new(0.52,0,0.25,0)
 son.Size = UDim2.new(0.48,0,0.75,0)
 son.BackgroundTransparency = 1
 son.Active = false
 son.Text = [[
-<b><font size="15">Soon</font></b> 
-Coming soon...
+<b><font size="15">Script List</font></b> 
+Also try...
 ]]
 
 son.TextColor3 = Color3.fromRGB(255,255,255)
@@ -593,10 +593,198 @@ son.TextSize = 10
 son.RichText = true
 son.TextWrap = true
 son.TextXAlignment = Enum.TextXAlignment.Center
-son.TextYAlignment = Enum.TextYAlignment.Center
+son.TextYAlignment = Enum.TextYAlignment.Top
 son.Parent = Frame.Home.Inside
 Corner(0.05,0, son)
 Stroke(son, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+local sons = Instance.new("ScrollingFrame")
+sons.Name = "List"
+sons.Position = UDim2.new(0,0,0.2,0)
+sons.Size = UDim2.new(1,0,0.8,0)
+sons.BackgroundTransparency = 1
+sons.ScrollBarThickness = 0
+sons.CanvasSize = UDim2.new(0,0,0,0)
+sons.Parent = son
+
+local sonf = Instance.new("Frame")
+sonf.Name = "Holder"
+sonf.Position = UDim2.new(0.05,0,0.03,0)
+sonf.Size = UDim2.new(0.9,0,0.95,0)
+sonf.BackgroundTransparency = 1
+sonf.Active = false
+sonf.Parent = sons
+
+local uigr = Instance.new("UIGridLayout")
+uigr.CellSize = UDim2.new(1,0,0,50)
+uigr.CellPadding = UDim2.new(1,0,0,5)
+uigr.Parent = sonf
+
+local function scr(Pname, Sname, scriptSource, callback)
+
+	-- =========================
+	-- 📦 Card Container
+	-- =========================
+	local add = Instance.new("Frame")
+	add.Name = tostring(Pname)
+	add.Size = UDim2.new(1,0,0,50)
+	add.BackgroundColor3 = Color3.new(1,1,1)
+	add.BackgroundTransparency = 0.3
+	add.Parent = sonf
+	Stroke(add, ASMBorder, 255,255,255, LJMRound, 1, 0)
+	
+	Corner(0.1, 0, add)
+	Gradient(add, 90,0,0, Color3.new(0,1,1), Color3.new(1,1,1))
+
+	local ins = Instance.new("Frame")
+	ins.Name = "Inside"
+	ins.Position = UDim2.new(0.05,0,0.1,0)
+	ins.Size = UDim2.new(0.9,0,0.8,0)
+	ins.BackgroundTransparency = 1
+	ins.Parent = add
+
+	-- =========================
+	-- 📝 Script Name
+	-- =========================
+	local txt = Instance.new("TextLabel")
+	txt.Size = UDim2.new(0.5,0,1,0)
+	txt.BackgroundTransparency = 1
+	txt.TextScaled = true
+	txt.RichText = true
+	txt.Text = tostring(Sname)
+	txt.TextXAlignment = Enum.TextXAlignment.Left
+	txt.TextYAlignment = Enum.TextYAlignment.Center
+	txt.TextStrokeTransparency = 0
+	txt.TextColor3 = Color3.new(1,1,1)
+	txt.TextStrokeColor3 = Color3.new(0,0,0)
+	txt.Parent = ins
+
+	-- =========================
+	-- 📋 Copy Button
+	-- =========================
+	local copy = Instance.new("ImageButton")
+	copy.Position = UDim2.new(0.72,0,0,5)
+	copy.Size = UDim2.new(0,30,0,30)
+	copy.BackgroundColor3 = Color3.new(0,0,0)
+	copy.Image = "rbxassetid://70463360371392"
+	copy.Parent = ins
+	
+	Corner(0.2,0,copy)
+	Stroke(copy, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+	copy.MouseButton1Click:Connect(function()
+		if setclipboard then
+			setclipboard(scriptSource)
+			noti(2, "Copied: "..Sname, color.yellow)
+		else
+			noti(3, "Clipboard not supported.", color.red)
+		end
+	end)
+
+	-- =========================
+	-- ▶ Execute Button
+	-- =========================
+	local exe = Instance.new("ImageButton")
+	exe.Position = UDim2.new(0.85,0,0,5)
+	exe.Size = UDim2.new(0,30,0,30)
+	exe.BackgroundColor3 = Color3.new(0,0,0)
+	exe.Image = "rbxassetid://104470314612186"
+	exe.Parent = ins
+	
+	Corner(0.2,0,exe)
+	Stroke(exe, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+	exe.MouseButton1Click:Connect(function()
+
+		if not scriptSource or scriptSource == "" then
+			noti(3, "No script source.", color.red)
+			return
+		end
+
+		noti(2, "Executing: "..Sname, color.yellow)
+
+		-- Compile
+		local f, compileErr = loadstring(scriptSource)
+
+		if not f then
+			local line = tostring(compileErr):match(":(%d+):") or "?"
+			noti(10,
+				"[COMPILE ERROR]\nLine: "..line..
+				"\n"..compileErr,
+				color.red
+			)
+			return
+		end
+
+		-- Runtime
+		local success, runtimeErr = pcall(f)
+
+		if success then
+			noti(2, "Executed: "..Sname, color.green)
+
+			if callback then
+				pcall(callback)
+			end
+		else
+			local line = tostring(runtimeErr):match(":(%d+):") or "?"
+			noti(10,
+				"[RUNTIME ERROR]\nLine: "..line..
+				"\n"..runtimeErr,
+				color.red
+			)
+		end
+
+	end)
+
+end
+
+scr("InfiniteYield", "Infinite Yield",
+  [[
+  loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+  ]]
+)
+
+scr("DexExplorerPlusPlus", "DEX Explorer Plus+",
+  [[
+  loadstring(game:HttpGet("https://github.com/AZYsGithub/DexPlusPlus/releases/latest/download/out.lua"))()
+  ]]
+)
+
+scr("ExperienceSettings", "ExperienceSettings",
+  [[
+  loadstring(game:HttpGet("https://bit.ly/49157tB", true))()
+  ]]
+)
+
+scr("YARHM", "YARHM",
+  [[local src = ""
+local CoreGui = game:GetService("StarterGui")
+
+pcall(function() 
+    src = game:HttpGet("https://yarhm.mhi.im/scr", false)
+end)
+if src == "" then
+  CoreGui:SetCore("SendNotification", {
+  	Title = "YARHM Outage";
+  	Text = "YARHM Online is currently unavailable! Sorry for the inconvenience. Using YARHM Offline.";
+	  Duration = 5;
+  })
+  src = game:HttpGet("https://raw.githubusercontent.com/Joystickplays/psychic-octo-invention/main/source/yarhm/1.20/yarhm.lua", false)
+end
+
+
+loadstring(src)()
+
+]])
+
+-- Update scroll automatically
+local function updateCanvas()
+	sons.CanvasSize = UDim2.new(0,0,0,uigr.AbsoluteContentSize.Y)
+end
+
+uigr:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
+
+updateCanvas()
 
 --[[ Soucre ]]
 local dis = Instance.new("TextButton")
