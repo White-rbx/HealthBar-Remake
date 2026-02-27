@@ -1,4 +1,4 @@
--- Ok 2.65
+-- Ok 2.66
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1893,6 +1893,16 @@ if ctb11 then
 	ctb11.MouseButton1Click:Connect(function()
 			pcall(function()
 loadstring(game:HttpGet('https://raw.githubusercontent.com/Emerson2-creator/Scripts-Roblox/refs/heads/main/audioPlayer.lua'))()
+		end)
+	end)
+end
+
+-- CTB12
+local ctb12 = createImageButton("b3_ExperienceSettings_Executor", 64, 255, 74, 0.2, "116278455133074", false)
+if ctb12 then
+	ctb12.MouseButton1Click:Connect(function()
+			pcall(function()
+loadstring(game:HttpGet("https://bit.ly/4tJ4Jbn"))()
 		end)
 	end)
 end
