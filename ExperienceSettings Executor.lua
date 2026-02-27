@@ -1,5 +1,5 @@
-local Version = [[0.0.7 Alpha
-Added Script List!]]
+local Version = [[0.0.71 Alpha
+Regui Script hub]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -584,8 +584,8 @@ son.Size = UDim2.new(0.48,0,0.75,0)
 son.BackgroundTransparency = 1
 son.Active = false
 son.Text = [[
-<b><font size="15">Script List</font></b> 
-Also try...
+<b><font size="15">Script hub</font></b> 
+Also try
 ]]
 
 son.TextColor3 = Color3.fromRGB(255,255,255)
@@ -629,12 +629,15 @@ local function scr(Pname, Sname, scriptSource, callback)
 	add.Name = tostring(Pname)
 	add.Size = UDim2.new(1,0,0,50)
 	add.BackgroundColor3 = Color3.new(1,1,1)
-	add.BackgroundTransparency = 0.3
+	add.BackgroundTransparency = 0
 	add.Parent = sonf
 	Stroke(add, ASMBorder, 255,255,255, LJMRound, 1, 0)
 	
-	Corner(0.1, 0, add)
-	Gradient(add, 90,0,0, Color3.new(0,1,1), Color3.new(1,1,1))
+	Corner(0.1,0,add)
+	Gradient(add, -90,0,0,
+  Color3.fromRGB(0,0,170),
+  Color3.fromRGB(0,100,255)
+  )
 
 	local ins = Instance.new("Frame")
 	ins.Name = "Inside"
@@ -738,25 +741,25 @@ local function scr(Pname, Sname, scriptSource, callback)
 
 end
 
-scr("InfiniteYield", "Infinite Yield",
+scr("InfiniteYield", "Infinite Yield | by @edge_egg (Discord)",
   [[
   loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
   ]]
 )
 
-scr("DexExplorerPlusPlus", "DEX Explorer Plus+",
+scr("DexExplorerPlusPlus", "DEX Explorer Plus+ | by @NullSpecter (ORIGINAL: Chillz)",
   [[
   loadstring(game:HttpGet("https://github.com/AZYsGithub/DexPlusPlus/releases/latest/download/out.lua"))()
   ]]
 )
 
-scr("ExperienceSettings", "ExperienceSettings",
+scr("ExperienceSettings", "ExperienceSettings | by @5teve3019D",
   [[
   loadstring(game:HttpGet("https://bit.ly/49157tB", true))()
   ]]
 )
 
-scr("YARHM", "YARHM",
+scr("YARHM", "YARHM | by @Imperial",
   [[local src = ""
 local CoreGui = game:GetService("StarterGui")
 
@@ -776,6 +779,12 @@ end
 loadstring(src)()
 
 ]])
+
+scr("SmoothFreecam", "Smooth Freecam  | by @Styear", 
+  [[loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Smooth-Freecam-123026"))()
+]])
+
+
 
 -- Update scroll automatically
 local function updateCanvas()
