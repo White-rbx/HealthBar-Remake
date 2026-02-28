@@ -1,7 +1,8 @@
-local Version = [[0.0.75 Alpha
+local Version = [[0.0.76 Alpha
 - Support AutoExe now, go check on ExperienceSettings-Executor folder in your device!
 - Regui Note added ScrollingFrame
-- Fixed Execute delay]]
+- Fixed Execute delay
+- Fixed Script hub Padding and CanvasSize]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -328,6 +329,9 @@ Frame.Bookmark.Inside.soon.Visible = true
 Frame.Search.Inside.soon.Visible = true
 Frame.Music.Inside.soon.Visible = true
 Frame.Settings.Inside.soon.Visible = true
+
+Frame.Folder.Inside.soon.Text = [[<b><font size="15">Coming soon...</font></b>
+But "AutoExe" is exist, so try to check on ExperienceSettings-Executor Folder on your device!]]
 ------------------------------------------------------------
 local topn = Instance.new("Frame")
 topn.Name = "TopNoity"
@@ -557,7 +561,7 @@ sctxt.Position = UDim2.new(0.05,0,0,0)
 sctxt.Size = UDim2.new(0.9,0,1,0)
 sctxt.BackgroundTransparency = 1
 sctxt.ScrollBarThickness = 0
-sctxt.CanvasSize = UDim2.new(0,0,1.5,0)
+sctxt.CanvasSize = UDim2.new(0,0,5,0)
 sctxt.Parent = frtxt
 
 
@@ -628,7 +632,7 @@ sonf.Parent = sons
 
 local uigr = Instance.new("UIGridLayout")
 uigr.CellSize = UDim2.new(1,0,0,50)
-uigr.CellPadding = UDim2.new(1,0,0,5)
+uigr.CellPadding = UDim2.new(0,0,0,5)
 uigr.Parent = sonf
 
 local function scr(Pname, Sname, scriptSource, callback)
@@ -803,13 +807,12 @@ scr("VSCode", "VSCode Open Source | by @Cherry | [PC ONLY]",
 [[loadstring(game:HttpGet("https://raw.githubusercontent.com/InfernusScripts/VSCode/refs/heads/main/VSCode.lua"))()
 ]])
 
-
 -- Update scroll automatically
 local function updateCanvas()
-	sons.CanvasSize = UDim2.new(0,0,0,uigr.AbsoluteContentSize.Y)
+	local contentY = uigr.AbsoluteContentSize.Y
+	local extraPadding = 20 -- กัน stroke / rounding
+	sons.CanvasSize = UDim2.new(0,0,0, contentY + extraPadding)
 end
-
-uigr:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
 
 updateCanvas()
 
