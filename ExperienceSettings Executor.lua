@@ -1,5 +1,7 @@
-local Version = [[0.0.71 Alpha
-Regui Script hub]]
+local Version = [[0.0.75 Alpha
+- Support AutoExe now, go check on ExperienceSettings-Executor folder in your device!
+- Regui Note added ScrollingFrame
+- Fixed Execute delay]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -549,10 +551,19 @@ Gradient(frtxt, 45,0,0,
   Color3.fromRGB(0,100,255)
 )
 
+local sctxt = Instance.new("ScrollingFrame")
+sctxt.Name = "Scroll"
+sctxt.Position = UDim2.new(0.05,0,0,0)
+sctxt.Size = UDim2.new(0.9,0,1,0)
+sctxt.BackgroundTransparency = 1
+sctxt.ScrollBarThickness = 0
+sctxt.CanvasSize = UDim2.new(0,0,1.5,0)
+sctxt.Parent = frtxt
+
+
 local ttxt = Instance.new("TextLabel")
 ttxt.Name = "Text"
-ttxt.Position = UDim2.new(0.05,0,0,0)
-ttxt.Size = UDim2.new(0.9,0,1,0)
+ttxt.Size = UDim2.new(1,0,1,0)
 ttxt.BackgroundTransparency = 1
 ttxt.Active = false
 ttxt.Text = [[
@@ -574,7 +585,7 @@ ttxt.RichText = true
 ttxt.TextWrap = true
 ttxt.TextXAlignment = Enum.TextXAlignment.Left
 ttxt.TextYAlignment = Enum.TextYAlignment.Top
-ttxt.Parent = frtxt
+ttxt.Parent = sctxt
 
 --[[ soon ]]
 local son = Instance.new("TextLabel")
@@ -585,7 +596,7 @@ son.BackgroundTransparency = 1
 son.Active = false
 son.Text = [[
 <b><font size="15">Script hub</font></b> 
-Also try
+⟩⟩ Also try universal script ⟨⟨
 ]]
 
 son.TextColor3 = Color3.fromRGB(255,255,255)
@@ -784,6 +795,13 @@ scr("SmoothFreecam", "Smooth Freecam  | by @Styear",
   [[loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Smooth-Freecam-123026"))()
 ]])
 
+scr("ScriptBloxBrowser", "ScriptBlox Browser | by @Jay2442",
+  [[loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Universal-TAS-Recorder-Redux-113811"))()
+  ]])
+
+scr("VSCode", "VSCode Open Source | by @Cherry | [PC ONLY]",
+[[loadstring(game:HttpGet("https://raw.githubusercontent.com/InfernusScripts/VSCode/refs/heads/main/VSCode.lua"))()
+]])
 
 
 -- Update scroll automatically
@@ -2781,7 +2799,7 @@ eb.MouseButton1Click:Connect(function()
 		else  
 			local success, runtimeErr = pcall(f)  
 			if success then  
-				noti(2, "Execute script!", color.green)  
+				noti(5, "Execute script!", color.green)  
 			else  
 				local line = tostring(runtimeErr):match(":(%d+):") or "?"  
 				noti(10, "Runtime Error [Line: "..line.."]:\n"..runtimeErr, color.red)  
@@ -3148,6 +3166,93 @@ if Editb and Editb:IsA("TextBox") then
 
 end
 
+------------------------------------------------------------
+	local PATH = "ExperienceSettings-Executor/AutoExe"
+
+local ALLOWED = {
+	txt = true,
+	lua = true,
+	luau = true,
+	es = true,
+	text = true,
+	set = true,
+	ver = true,
+}
+
+local BLOCKED = {
+	json = true,
+	html = true,
+	py = true,
+	js = true,
+	sql = true,
+	cpp = true,
+	cs = true,
+	ts = true,
+	go = true,
+	rs = true,
+	php = true,
+	swift = true,
+	kt = true,
+	rb = true,
+	r = true,
+}
+
+local function getExtension(name)
+	local ext = name:match("%.([^%.]+)$")
+	return ext and string.lower(ext)
+end
+
+if not (isfolder and isfolder(PATH)) then
+	return
+end
+
+local files = listfiles and listfiles(PATH)
+if not files then
+	return
+end
+
+for _, filePath in ipairs(files) do
+	
+	if isfile and isfile(filePath) then
+		
+		task.spawn(function() -- 🔥 isolate thread
+			
+			local fileName = filePath:match("[^/]+$")
+			local ext = getExtension(fileName)
+			
+			if not ext then return end
+			if BLOCKED[ext] then return end
+			if not ALLOWED[ext] then return end
+			
+			local source = readfile(filePath)
+			if not source or #source <= 3 then return end
+			
+			local f, compileErr = loadstring(source)
+			
+			if not f then
+				noti(8,
+					"[Compile ERROR]\n"..fileName..
+					"\n"..tostring(compileErr),
+					color.red
+				)
+				return
+			end
+			
+			local success, runtimeErr = pcall(f)
+			
+			if not success then
+				noti(8,
+					"[AutoExe ERROR]\n"..fileName..
+					"\n"..tostring(runtimeErr),
+					color.red
+				)
+			end
+			
+		end)
+		
+	end
+	
+end
 
 ------------------------------------------------------------
 local Inside = Instance.new("CanvasGroup")
