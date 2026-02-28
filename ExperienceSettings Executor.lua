@@ -1,8 +1,5 @@
-local Version = [[0.0.76 Alpha
-- Support AutoExe now, go check on ExperienceSettings-Executor folder in your device!
-- Regui Note added ScrollingFrame
-- Fixed Execute delay
-- Fixed Script hub Padding and CanvasSize]]
+local Version = [[0.0.765 Alpha
+☀️Summer!!!]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -195,6 +192,9 @@ oc.Image = "rbxassetid://116278455133074" -- Open
 oc.Parent = Bg2
 Corner(1,0, oc)
 Stroke(oc, ASMBorder, 255,255,255, LJMRound, 3, 0)
+
+-- Season
+oc.Image = "rbxassetid://137214925934157"
 
 local aspectConstraint = Instance.new("UIAspectRatioConstraint")
   aspectConstraint.AspectRatio = 1 -- 1:1 Square ratio
