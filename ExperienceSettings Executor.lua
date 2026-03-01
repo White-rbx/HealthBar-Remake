@@ -1,4 +1,4 @@
-local Version = [[0.0.765 Alpha
+local Version = [[0.0.766 Alpha
 ☀️Summer!!!]]
 -- This executor
 
@@ -799,8 +799,8 @@ scr("SmoothFreecam", "Smooth Freecam  | by @Styear",
   [[loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Smooth-Freecam-123026"))()
 ]])
 
-scr("ScriptBloxBrowser", "ScriptBlox Browser | by @Jay2442",
-  [[loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Universal-TAS-Recorder-Redux-113811"))()
+scr("seacrhscript", "Seacrh script | by @Pancho",
+  [[loadstring(game:HttpGet("https://raw.githubusercontent.com/panchooo677/K66j/refs/heads/main/README.md"))()
   ]])
 
 scr("VSCode", "VSCode Open Source | by @Cherry | [PC ONLY]",
