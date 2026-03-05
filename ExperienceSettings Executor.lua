@@ -1,5 +1,5 @@
-local Version = [[0.0.766 Alpha
-☀️Summer!!!]]
+local Version = [[0.0.8 Alpha
+Executor syntax is here!!!!!]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -330,7 +330,7 @@ Frame.Search.Inside.soon.Visible = true
 Frame.Music.Inside.soon.Visible = true
 Frame.Settings.Inside.soon.Visible = true
 
-Frame.Folder.Inside.soon.Text = [[<b><font size="15">Coming soon...</font></b>
+Frame.Folder.Inside.soon.Text = [[<b><font size="15">In developing</font></b>
 But "AutoExe" is exist, so try to check on ExperienceSettings-Executor Folder on your device!]]
 ------------------------------------------------------------
 local topn = Instance.new("Frame")
@@ -445,6 +445,52 @@ local function noti(times, text, colorValue)
         end)
     end)
 end
+
+--// ===============================
+--// PATH + FOLDER SETUP
+--// ===============================
+
+local HttpService = game:GetService("HttpService")
+
+local base = "ExperienceSettings-Executor"
+local tabsPath = base .. "/Tabs"
+local jsonPath = base .. "/workin.json"
+
+-- สร้าง base folder
+if not isfolder(base) then
+	makefolder(base)
+end
+
+-- สร้าง sub folders
+local folders = { "Workspace", "AutoExe", "Tabs", "Aseets", "Logs" }
+
+for _, folder in ipairs(folders) do
+	local path = base .. "/" .. folder
+	if not isfolder(path) then
+		makefolder(path)
+	end
+end
+
+
+-- Execute button
+local executeBtn = eftabs and eftabs:FindFirstChild("Execute")
+
+if executeBtn then
+	
+	executeBtn.MouseButton1Click:Connect(function()
+
+		if Editb and Editb.Text then
+			
+			if string.find(Editb.Text,"getLoad%(Asset%)") then
+				getLoad("Asset")
+			end
+			
+		end
+
+	end)
+	
+end
+
 
 ------------------------------------------------------------
 -- home
@@ -933,7 +979,8 @@ local COLORS = {
 	Datatype  = "#ff0000",
 	Global    = "#4ec9b0",
 	Class     = "#00FFFF",
-	Enum      = "#ff8c00"
+	Enum      = "#ff8c00",
+	Exe       = "#FFFF00",
 }
 
 
@@ -943,7 +990,7 @@ local keywords = {
 	["for"]=true, ["while"]=true, ["do"]=true, ["end"]=true,  
 	["break"]=true, ["continue"]=true, ["in"]=true,  
 	["repeat"]=true, ["until"]=true,  
-	["not"]=true, ["and"]=true, ["or"]=true  
+	["not"]=true, ["and"]=true, ["or"]=true, ["true"]=true, ["false"]=true
 }
 
 local datatype = {
@@ -2209,6 +2256,121 @@ for _, name in ipairs(enumList) do
 	enums[name] = true
 end
 
+local exeList = {
+["cache.invalidate"]=true,
+["cache.iscached"]=true,
+["cache.replace"]=true,
+["cloneref"]=true,
+["compareinstances"]=true,
+["base64_encode"]=true,
+["base64_decode"]=true,
+["debug.getconstant"]=true,
+["debug.getconstants"]=true,
+["debug.getinfo"]=true,
+["debug.getproto"]=true,
+["debug.getprotos"]=true,
+["debug.getupvalue"]=true,
+["debug.getupvalues"]=true,
+["debug.setconstant"]=true,
+["getgc"]=true,
+["getloadedmodules"]=true,
+["getrunningscripts"]=true,
+["getscripts"]=true,
+["getsenv"]=true,
+["hookmetamethod"]=true,
+["iscclosure"]=true,
+["isexecutorclosure"]=true,
+["islclosure"]=true,
+["newcclosure"]=true,
+["setreadonly"]=true,
+["lz4compress"]=true,
+["lz4decompress"]=true,
+["getscriptclosure"]=true,
+["request"]=true,
+["getcallbackvalue"]=true,
+["listfiles"]=true,
+["writefile"]=true,
+["isfolder"]=true,
+["makefolder"]=true,
+["appendfile"]=true,
+["isfile"]=true,
+["delfolder"]=true,
+["delfile"]=true,
+["loadfile"]=true,
+["gethui"]=true,
+["getrawmetatable"]=true,
+["isreadonly"]=true,
+["getnamecallmethod"]=true,
+["setscriptable"]=true,
+["isscriptable"]=true,
+["getinstances"]=true,
+["getnilinstances"]=true,
+["fireproximityprompt"]=true,
+["setrawmetatable"]=true,
+["getthreadidentity"]=true,
+["setthreadidentity"]=true,
+["getrenderproperty"]=true,
+["setrenderproperty"]=true,
+["Drawing.new"]=true,
+["Drawing.Fonts"]=true,
+["cleardrawcache"]=true,
+["loadstring"]=true,
+["debug.setupvalue"]=true,
+["readfile"]=true,
+["getscriptbytecode"]=true,
+["getcallingscript"]=true,
+["isrenderobj"]=true,
+["firesignal"]=true,
+["getscripthash"]=true,
+["identifyexecutor"]=true,
+["getfunctionhash"]=true,
+["gethiddenproperty"]=true,
+["debug.getstack"]=true,
+["firetouchinterest"]=true,
+["filtergc"]=true,
+["getrenv"]=true,
+["crypt.decrypt"]=true,
+["crypt.generatebytes"]=true,
+["crypt.generatekey"]=true,
+["getconnections"]=true,
+["checkcaller"]=true,
+["crypt.encrypt"]=true,
+["fireclickdetector"]=true,
+["debug.setstack"]=true,
+["decompile"]=true,
+["hookfunction"]=true,
+["restorefunction"]=true,
+["clonefunction"]=true,
+["getgenv"]=true,
+["getcustomasset"]=true,
+["sethiddenproperty"]=true,
+["WebSocket.connect"]=true,
+["replicatesignal"]=true,
+["crypt.hash"]=true,
+["getLoad"]=true,
+}
+------------------------------------------------------------
+local cooldown = false
+local detected = false
+
+editb:GetPropertyChangedSignal("Text"):Connect(function()
+	local found = editb.Text:match("%f[%w]getLoad%f[%W]")
+
+	if found and not detected and not cooldown then
+		detected = true
+		cooldown = true
+		
+		noti(10, "[ getLoad ] is not made by Executor sUNC, so it only can use for ExperienceSettings.", color.yellow)
+
+		task.delay(20,function()
+			cooldown = false
+		end)
+
+	elseif not found then
+		detected = false
+	end
+end)
+------------------------------------------------------------
 -- Escape FIRST
 local function escape(text)
 	return text
@@ -2258,6 +2420,8 @@ safe = safe:gsub("(%f[%w_](%a[%w_]*)%f[^%w_])", function(full, word)
         return '<font color="'..COLORS.Class..'">'..word..'</font>'
     elseif enums[word] then
       	return '<font color="'..COLORS.Enum..'">'..word..'</font>'
+    elseif exeList[word] then
+        return '<font color="'..COLORS.Exe..'">'..word..'</font>'
     end
 
     return word
@@ -2398,35 +2562,221 @@ local Edits = game:GetService("CoreGui")["ExperienceSettings-Executor"]
 	
 local Editb = Edits.Edit
 
---// ===============================
---// FOLDER SETUP
---// ===============================
+------------------------------------------------------------
+local ASSET_PATH = "ExperienceSettings-Executor/Assets"
 
---// ===============================
---// PATH + FOLDER SETUP
---// ===============================
+local loadingAssets = false
+local assetsLoaded = false
+local failedAssets = {}
 
-local HttpService = game:GetService("HttpService")
+local assets = {
+	["7z"] = "https://i.postimg.cc/7LWyhTXQ/7z.png",
+	["apk"] = "https://i.postimg.cc/1tV1q5Yj/apk.png",
+	["auto-execute"] = "https://i.postimg.cc/wvRYmTbb/auto-execute.png",
+	["black-shade"] = "https://i.postimg.cc/wvRYmTbP/black-shade.png",
+	["blue-shade"] = "https://i.postimg.cc/QtKZTxnz/blue-shade.png",
+	["bookmark"] = "https://i.postimg.cc/yd3CZYbq/bookmark.png",
+	["cam"] = "https://i.postimg.cc/qR6H3M5V/cam.png",
+	["check-in"] = "https://i.postimg.cc/gJLbZkTW/check-in.png",
+	["check-out"] = "https://i.postimg.cc/k4RPbXpJ/check-out.png",
+	["console"] = "https://i.postimg.cc/C5yTHT3w/console.png",
+	["copy"] = "https://i.postimg.cc/HnGD4Dqp/copy.png",
+	["cross"] = "https://i.postimg.cc/ZnktFtGb/cross.png",
+	["cross-white"] = "https://i.postimg.cc/rs6XCXBF/cross-white.png",
+	["cyan-shade"] = "https://i.postimg.cc/fy4njnGk/cyan-shade.png",
+	["debug"] = "https://i.postimg.cc/x8rDyDwc/debug.png",
+	["down"] = "https://i.postimg.cc/4yCkbkDY/down.png",
+	["editor"] = "https://i.postimg.cc/rs6XCXBd/editor.png",
+	["erase"] = "https://i.postimg.cc/PJGszsgD/erase.png",
+	["error"] = "https://i.postimg.cc/x8rDyDwv/erorr.png",
+	["exe"] = "https://i.postimg.cc/9035t56t/exe.png",
+	["execute"] = "https://i.postimg.cc/rs6XCXBN/execute.png",
+	["file"] = "https://i.postimg.cc/Znrkwsmy/file.png",
+	["folder"] = "https://i.postimg.cc/cCQqFkWt/folder.png",
+	["gray-shade"] = "https://i.postimg.cc/90G3Lg2Z/gray-shade.png",
+	["home"] = "https://i.postimg.cc/HnQG6vm4/home.png",
+	["info"] = "https://i.postimg.cc/C5jycr0G/info.png",
+	["ipa"] = "https://i.postimg.cc/VvjyKZwW/ipa.png",
+	["left"] = "https://i.postimg.cc/QCpLfYD0/left.png",
+	["left-arrow"] = "https://i.postimg.cc/j2zVM3Th/left-arrow.png",
+	["lua-file"] = "https://i.postimg.cc/Znrkwsmf/lua-file.png",
+	["orange-shade"] = "https://i.postimg.cc/BbxWm737/orange-shade.png",
+	["paste"] = "https://i.postimg.cc/ZnrkwsZk/paste.png",
+	["paste-and-execute"] = "https://i.postimg.cc/7hgvKt4c/paste-and-execute.png",
+	["pink-shade"] = "https://i.postimg.cc/FzjtTCm5/pink-shade.png",
+	["plus"] = "https://i.postimg.cc/mZMGZk9r/plus.png",
+	["plus-cyan"] = "https://i.postimg.cc/c1YN1C3x/plus-cyan.png",
+	["png"] = "https://i.postimg.cc/fWXhWydm/png.png",
+	["print"] = "https://i.postimg.cc/FFcQFzSS/print.png",
+	["red-shade"] = "https://i.postimg.cc/T2mX21bm/red-shade.png",
+	["right"] = "https://i.postimg.cc/pV8tVrjf/right.png",
+	["right-arrow"] = "https://i.postimg.cc/VsMcsvtC/right-arrow.png",
+	["scriptblox"] = "https://i.postimg.cc/dQdKQ3Cm/scriptblox-com.png",
+	["search"] = "https://i.postimg.cc/c1YN1C3m/seacrh.png",
+	["select"] = "https://i.postimg.cc/BZDGZbFC/select.png",
+	["settings"] = "https://i.postimg.cc/dtYchFRm/settings.png",
+	["unknown-file"] = "https://i.postimg.cc/VsMcsvt7/unknown-file.png",
+	["unknown-icon"] = "https://i.postimg.cc/65Xx8KV0/unknown-icon.png",
+	["up"] = "https://i.postimg.cc/X7b6rWKg/up.png",
+	["warn"] = "https://i.postimg.cc/m2sWP43d/warn.png",
+	["wearedevs"] = "https://i.postimg.cc/NfcvKt8P/wearedevs-net.png",
+	["white-ball"] = "https://i.postimg.cc/yYHCDKhG/white-ball.png",
+	["white-ball-fill"] = "https://i.postimg.cc/BQ0fj35V/white-ball-fill.png",
+	["white-shade"] = "https://i.postimg.cc/SNhbn4LB/white-shade.png",
+	["white-square"] = "https://i.postimg.cc/J4LCs8cM/white-square.png",
+	["yellow-shade"] = "https://i.postimg.cc/zXFZWQp9/yellow-shade.png",
+	["zip"] = "https://i.postimg.cc/ncGb7WTN/zip.png",
+	["folder-"] = "https://i.postimg.cc/D0qVxphs/folder.png"
+}
 
-local base = "ExperienceSettings-Executor"
-local tabsPath = base .. "/Tabs"
-local jsonPath = base .. "/workin.json"
+local function downloadAsset(name,url)
 
--- สร้าง base folder
-if not isfolder(base) then
-	makefolder(base)
-end
+	local path = ASSET_PATH.."/"..name..".png"
 
--- สร้าง sub folders
-local folders = { "Workspace", "AutoExe", "Tabs" }
-
-for _, folder in ipairs(folders) do
-	local path = base .. "/" .. folder
-	if not isfolder(path) then
-		makefolder(path)
+	if isfile and isfile(path) then
+		return true
 	end
+
+	local ok,data = pcall(function()
+		return game:HttpGet(url)
+	end)
+
+	if ok and data then
+
+		writefile(path,data)
+
+		noti(
+			2,
+			"[ "..name.." ] has been loaded.",
+			color.green
+		)
+
+		return true
+
+	else
+
+		noti(
+			2,
+			"[ "..name.." ] failed to load.",
+			color.red
+		)
+
+		table.insert(failedAssets,name)
+
+		return false
+	end
+
 end
 
+
+function getLoad(typeName)
+
+	if loadingAssets then
+		return
+	end
+
+	if not isfolder(ASSET_PATH) then
+		makefolder(ASSET_PATH)
+	end
+
+	-- already loaded
+	if assetsLoaded and typeName == "Asset" then
+		
+		noti(
+			5,
+			"Assets have already loaded.",
+			color.cyan
+		)
+		
+		return
+	end
+
+	loadingAssets = true
+	failedAssets = {}
+
+	noti(
+		5,
+		"Downloading Assets... Please wait.",
+		color.yellow
+	)
+
+	local total = 0
+	local success = 0
+
+	for name,url in pairs(assets) do
+
+		total += 1
+
+		if typeName == "FailedAsset" then
+
+			local path = ASSET_PATH.."/"..name..".png"
+
+			if not (isfile and isfile(path)) then
+				if downloadAsset(name,url) then
+					success += 1
+				end
+			end
+
+		else
+
+			if downloadAsset(name,url) then
+				success += 1
+			end
+
+		end
+
+	end
+
+
+	if success == total then
+
+		assetsLoaded = true
+
+		noti(
+			5,
+			"Assets has been loaded!",
+			color.green
+		)
+
+	else
+
+		noti(
+			5,
+			"Some assets haven't been loaded. Please type 'getLoad(FailedAsset)' to load again.",
+			color.orange
+		)
+
+	end
+
+	loadingAssets = false
+
+end
+
+
+-- reminder system
+task.spawn(function()
+
+	task.wait(2)
+
+	if not isfolder or not isfolder(ASSET_PATH) then
+
+		if Editb and Editb.Text then
+
+			if not string.find(Editb.Text,"getLoad%(Asset%)") then
+
+				noti(
+					5,
+					"Asset not load please type 'getLoad(Asset)' in Editor",
+					color.orange
+				)
+
+			end
+
+		end
+
+	end
+
+end)
 
 --// ===============================
 --// WORKIN DATA
@@ -3050,6 +3400,12 @@ local function buildWordList()
 			words[k] = "Enum"
 		end
 	end
+	
+	if exeList then
+	  for k in pairs(exeList) do
+	    words[k] = "Exe"
+	  end
+  end
 
 	return words
 end
@@ -3256,6 +3612,70 @@ for _, filePath in ipairs(files) do
 	end
 	
 end
+
+------------------------------------------------------------
+local fbar = Instance.new("Frame")
+fbar.Name = "FolderBar"
+fbar.Size = UDim2.new(1,0,0.15,0)
+fbar.BackgroundColor3 = Color3.fromRGB(70,70,70)
+fbar.BackgroundTransparency = 0.3
+fbar.Active = false
+fbar.Parent = Frame.Folder.Inside
+Corner(0.2,0, fbar)
+Stroke(fbar, ASMBorder, 165,165,165, LJMRound, 2, 0)
+
+local isbar = Instance.new("Frame")
+isbar.Name = "InsideBar"
+isbar.Size = UDim2.new(0.95,0,0.75,0)
+isbar.Position = UDim2.new(0.015,0,0.15,0)
+isbar.BackgroundTransparency = 1
+isbar.Parent = fbar
+ListLayout(isbar, 0,20, HLeft, VCenter, SLayout, FillH)
+
+local sebar = Instance.new("TextBox")
+sebar.Name = "SeacrhFileInput"
+sebar.Size = UDim2.new(0.5,0,1,0)
+sebar.BackgroundTransparency = 1
+sebar.TextSize = 16
+sebar.PlaceholderText = "Search any file..."
+sebar.TextXAlignment = Enum.TextXAlignment.Left
+sebar.Text = ""
+sebar.TextColor3 = Color3.new(1,1,1)
+sebar.ClearTextOnFocus = false
+sebar.Parent = isbar
+
+local function btnbar(name, imageID, ifLine, workin, callback)
+ local ifLine = ifLine or false
+
+ local bbar = Instance.new("ImageButton")
+ bbar.Name = tostring(name)
+ bbar.Size = UDim2.new(1,0,1,0)
+ bbar.BackgroundTransparency = 1
+ bbar.Image = "rbxassetid://"..tostring(imageID)
+ bbar.Parent = isbar
+ Corner(0.1,0,bbar)
+ uia(bbar, 1)
+
+ if ifLine==true then
+  local line = Instance.new("Frame")
+  line.Name = "Line"
+  line.Size = UDim2.new(0,3,1,0)
+  line.BackgroundColor3 = Color3.fromRGB(170,170,170)
+  line.Parent = isbar
+  Corner(1,0, line)
+ end
+
+ -- workin
+
+ -- callback
+
+end
+
+
+
+btnbar("Seacrh", 133955276215666, false, nil, nil)
+btnbar("Select", 109024678226249, true, nil, nil)
+
 
 ------------------------------------------------------------
 local Inside = Instance.new("CanvasGroup")
@@ -3515,7 +3935,7 @@ edit = Btn("Edit", 89040201197978)
 console = Btn("Console", 76584386272665)
 folder = Btn("Folder", 86157935898545)
 bookmark = Btn("Bookmark", 71272710123832)
-search = Btn("Search", 126157187256564)
+search = Btn("Search", 133955276215666)
 music = Btn("Music", 120343700432506)
 settings = Btn("Settings", 139502039855639)
 
