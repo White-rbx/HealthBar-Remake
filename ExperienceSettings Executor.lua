@@ -1,4 +1,4 @@
-local Version = [[0.0.86 Alpha
+local Version = [[0.0.87 Alpha
 Add getLoad() syntax by @5teve3019D!]]
 -- This executor
 
@@ -629,15 +629,15 @@ For Integrated Development Environment (IDE) programing.
 <b><font size="15">Custom syntax by @5teve3019D</font></b>
 --[ getLoad ]--
  1. getLoad(VARIABLE)
- 2. getLoad(function())
- 3. getLoad.fromURL("")
+ 2. getLoad(function()end)
+ 3. getLoad.fromURL("") -- loadstring()
  4. getLoad.fromPath("Name/")
  5. getLoad:Settings(Enums.Settings.DelExe)
  6. getLoad:Settings(Enums.Settings.ReloadExe)
- 7. getLoad:Data(Download.Asset(png))
- 8. getLoad:Data(Download.FailedAsset(png))
- 9. getLoad:Data(Check.Asset(png))
- 10. getLoad:Data(Del.Asset(png))
+ 7. getLoad:Data(Download.Asset("png"))
+ 8. getLoad:Data(Download.FailedAsset("png"))
+ 9. getLoad:Data(Check.Asset("png"))
+10. getLoad:Data(Del.Asset("png"))
 
 <b><font size="15">Executor Verison</font></b>
 ]] .. Version
