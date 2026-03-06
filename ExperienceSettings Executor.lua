@@ -1,5 +1,5 @@
-local Version = [[0.0.8 Alpha
-Executor syntax is here!!!!!]]
+local Version = [[0.0.85 Alpha
+Add getLoad() syntax by @5teve3019D! ]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -2563,11 +2563,11 @@ local Edits = game:GetService("CoreGui")["ExperienceSettings-Executor"]
 local Editb = Edits.Edit
 
 ------------------------------------------------------------
-local ASSET_PATH = "ExperienceSettings-Executor/Assets"
+--------------------------------------------------
+-- CONFIG
+--------------------------------------------------
 
-local loadingAssets = false
-local assetsLoaded = false
-local failedAssets = {}
+local ASSET_PATH = "ExperienceSettings-Executor/Assets"
 
 local assets = {
 	["7z"] = "https://i.postimg.cc/7LWyhTXQ/7z.png",
@@ -2629,6 +2629,61 @@ local assets = {
 	["folder-"] = "https://i.postimg.cc/D0qVxphs/folder.png"
 }
 
+--------------------------------------------------
+-- VARIABLES
+--------------------------------------------------
+
+local loadingAssets = false
+local assetsLoaded = false
+local failedAssets = {}
+
+--------------------------------------------------
+-- CUSTOM ENUM (ไม่ชน Roblox Enum)
+--------------------------------------------------
+
+local Enums = {}
+
+Enums.getLoad = {
+	DelExe = "DelExe",
+	Reload = "Reload"
+}
+
+--------------------------------------------------
+-- TYPES
+--------------------------------------------------
+
+local Asset = "Asset"
+local FailedAsset = "FailedAsset"
+
+--------------------------------------------------
+-- COUNT FILES
+--------------------------------------------------
+
+local function countAssets()
+
+	if not isfolder or not isfolder(ASSET_PATH) then
+		return 0
+	end
+
+	local files = listfiles(ASSET_PATH)
+	local count = 0
+
+	for _,file in pairs(files) do
+
+		if string.find(file,"%.png") then
+			count += 1
+		end
+
+	end
+
+	return count
+
+end
+
+--------------------------------------------------
+-- DOWNLOAD
+--------------------------------------------------
+
 local function downloadAsset(name,url)
 
 	local path = ASSET_PATH.."/"..name..".png"
@@ -2668,8 +2723,11 @@ local function downloadAsset(name,url)
 
 end
 
+--------------------------------------------------
+-- LOAD SYSTEM
+--------------------------------------------------
 
-function getLoad(typeName)
+local function loadAssets(mode)
 
 	if loadingAssets then
 		return
@@ -2679,15 +2737,23 @@ function getLoad(typeName)
 		makefolder(ASSET_PATH)
 	end
 
-	-- already loaded
-	if assetsLoaded and typeName == "Asset" then
-		
+	local existing = countAssets()
+
+	local totalAssets = 0
+	for _ in pairs(assets) do
+		totalAssets += 1
+	end
+
+	if existing >= totalAssets and mode ~= FailedAsset then
+
+		assetsLoaded = true
+
 		noti(
 			5,
 			"Assets have already loaded.",
 			color.cyan
 		)
-		
+
 		return
 	end
 
@@ -2700,21 +2766,23 @@ function getLoad(typeName)
 		color.yellow
 	)
 
-	local total = 0
 	local success = 0
+	local total = 0
 
 	for name,url in pairs(assets) do
 
 		total += 1
 
-		if typeName == "FailedAsset" then
+		local path = ASSET_PATH.."/"..name..".png"
 
-			local path = ASSET_PATH.."/"..name..".png"
+		if mode == FailedAsset then
 
 			if not (isfile and isfile(path)) then
+
 				if downloadAsset(name,url) then
 					success += 1
 				end
+
 			end
 
 		else
@@ -2727,8 +2795,9 @@ function getLoad(typeName)
 
 	end
 
+	local current = countAssets()
 
-	if success == total then
+	if current >= totalAssets then
 
 		assetsLoaded = true
 
@@ -2752,8 +2821,130 @@ function getLoad(typeName)
 
 end
 
+--------------------------------------------------
+-- EXECUTOR CONTROL
+--------------------------------------------------
 
--- reminder system
+local function deleteExecutor()
+
+	local cg = game:GetService("CoreGui")
+
+	local gui = cg:FindFirstChild("ExperienceSettings-Executor")
+
+	if gui then
+		gui:Destroy()
+	end
+
+end
+
+local function reloadExecutor()
+
+	deleteExecutor()
+
+	loadstring(
+		game:HttpGet(
+			"https://bit.ly/4tJ4Jbn"
+		)
+	)()
+
+end
+
+--------------------------------------------------
+-- MAIN API
+--------------------------------------------------
+
+function getLoad(arg)
+
+	if arg == nil then
+		error("getLoad(): argument expected",2)
+	end
+
+	if type(arg) == "string" then
+
+		if arg == Asset then
+			return loadAssets(Asset)
+
+		elseif arg == FailedAsset then
+			return loadAssets(FailedAsset)
+
+		else
+			error("getLoad(): unknown type '"..arg.."'",2)
+		end
+
+	end
+
+	if type(arg) == "function" then
+		return arg()
+	end
+
+	if arg == Enums.getLoad.DelExe then
+		deleteExecutor()
+		return
+	end
+
+	if arg == Enums.getLoad.Reload then
+		reloadExecutor()
+		return
+	end
+
+	error("getLoad(): invalid argument",2)
+
+end
+
+--------------------------------------------------
+-- EXTRA API
+--------------------------------------------------
+
+
+getLoad = {}
+
+function getLoad.fromURL(url)
+
+	if not url or url == "" then
+		error("getLoad.fromURL(): URL required",2)
+	end
+
+	local ok,data = pcall(function()
+		return game:HttpGet(url)
+	end)
+
+	if ok then
+		return loadstring(data)()
+	else
+		error("Failed to download script",2)
+	end
+
+end
+
+
+function getLoad.fromPath(path)
+
+	if not path then
+		error("getLoad.fromPath(): path required",2)
+	end
+
+	if not isfolder(path) then
+		error("Folder does not exist",2)
+	end
+
+	for _,file in pairs(listfiles(path)) do
+
+		if string.find(file,"%.lua") then
+
+			local code = readfile(file)
+
+			loadstring(code)()
+
+		end
+
+	end
+
+end
+
+--------------------------------------------------
+-- REMINDER
+--------------------------------------------------
+
 task.spawn(function()
 
 	task.wait(2)
@@ -2777,6 +2968,7 @@ task.spawn(function()
 	end
 
 end)
+------------------------------------------------------------
 
 --// ===============================
 --// WORKIN DATA
