@@ -1,5 +1,5 @@
-local Version = [[0.0.85 Alpha
-Add getLoad() syntax by @5teve3019D! ]]
+local Version = [[0.0.86 Alpha
+Add getLoad() syntax by @5teve3019D!]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -625,6 +625,19 @@ For Integrated Development Environment (IDE) programing.
 
 <b><font size="15">Credit</font></b>
 @5teve3019D (ScriptBlox)
+
+<b><font size="15">Custom syntax by @5teve3019D</font></b>
+--[ getLoad ]--
+ 1. getLoad(VARIABLE)
+ 2. getLoad(function())
+ 3. getLoad.fromURL("")
+ 4. getLoad.fromPath("Name/")
+ 5. getLoad:Settings(Enums.Settings.DelExe)
+ 6. getLoad:Settings(Enums.Settings.ReloadExe)
+ 7. getLoad:Data(Download.Asset(png))
+ 8. getLoad:Data(Download.FailedAsset(png))
+ 9. getLoad:Data(Check.Asset(png))
+ 10. getLoad:Data(Del.Asset(png))
 
 <b><font size="15">Executor Verison</font></b>
 ]] .. Version
@@ -2567,7 +2580,7 @@ local Editb = Edits.Edit
 -- CONFIG
 --------------------------------------------------
 
-local ASSET_PATH = "ExperienceSettings-Executor/Assets"
+ASSET_PATH = "ExperienceSettings-Executor/Assets"
 
 local assets = {
 	["7z"] = "https://i.postimg.cc/7LWyhTXQ/7z.png",
@@ -2629,6 +2642,8 @@ local assets = {
 	["folder-"] = "https://i.postimg.cc/D0qVxphs/folder.png"
 }
 
+-------------------------------------------------
+
 --------------------------------------------------
 -- VARIABLES
 --------------------------------------------------
@@ -2638,25 +2653,58 @@ local assetsLoaded = false
 local failedAssets = {}
 
 --------------------------------------------------
--- CUSTOM ENUM (ไม่ชน Roblox Enum)
+-- ENUMS
 --------------------------------------------------
 
-local Enums = {}
+Enums = {}
 
-Enums.getLoad = {
+Enums.Settings = {
 	DelExe = "DelExe",
-	Reload = "Reload"
+	ReloadExe = "ReloadExe"
 }
 
 --------------------------------------------------
--- TYPES
+-- DOWNLOAD TYPES
 --------------------------------------------------
 
-local Asset = "Asset"
-local FailedAsset = "FailedAsset"
+Download = {}
+
+function Download.Asset(type)
+	return {mode="DownloadAsset",type=type}
+end
+
+function Download.FailedAsset(type)
+	return {mode="DownloadFailed",type=type}
+end
 
 --------------------------------------------------
--- COUNT FILES
+-- CHECK TYPES
+--------------------------------------------------
+
+Check = {}
+
+function Check.Asset(type)
+	return {mode="CheckAsset",type=type}
+end
+
+--------------------------------------------------
+-- DELETE TYPES
+--------------------------------------------------
+
+Del = {}
+
+function Del.Asset(type)
+	return {mode="DeleteAsset",type=type}
+end
+
+--------------------------------------------------
+-- MAIN TABLE
+--------------------------------------------------
+
+getLoad = {}
+
+--------------------------------------------------
+-- COUNT ASSETS
 --------------------------------------------------
 
 local function countAssets()
@@ -2669,11 +2717,9 @@ local function countAssets()
 	local count = 0
 
 	for _,file in pairs(files) do
-
 		if string.find(file,"%.png") then
 			count += 1
 		end
-
 	end
 
 	return count
@@ -2681,7 +2727,7 @@ local function countAssets()
 end
 
 --------------------------------------------------
--- DOWNLOAD
+-- DOWNLOAD FILE
 --------------------------------------------------
 
 local function downloadAsset(name,url)
@@ -2700,23 +2746,15 @@ local function downloadAsset(name,url)
 
 		writefile(path,data)
 
-		noti(
-			2,
-			"[ "..name.." ] has been loaded.",
-			color.green
-		)
+		noti(2,"[ "..name.." ] loaded",color.green)
 
 		return true
 
 	else
 
-		noti(
-			2,
-			"[ "..name.." ] failed to load.",
-			color.red
-		)
-
 		table.insert(failedAssets,name)
+
+		noti(2,"[ "..name.." ] failed",color.red)
 
 		return false
 	end
@@ -2724,7 +2762,7 @@ local function downloadAsset(name,url)
 end
 
 --------------------------------------------------
--- LOAD SYSTEM
+-- LOAD ASSETS
 --------------------------------------------------
 
 local function loadAssets(mode)
@@ -2737,52 +2775,20 @@ local function loadAssets(mode)
 		makefolder(ASSET_PATH)
 	end
 
-	local existing = countAssets()
-
-	local totalAssets = 0
-	for _ in pairs(assets) do
-		totalAssets += 1
-	end
-
-	if existing >= totalAssets and mode ~= FailedAsset then
-
-		assetsLoaded = true
-
-		noti(
-			5,
-			"Assets have already loaded.",
-			color.cyan
-		)
-
-		return
-	end
-
 	loadingAssets = true
-	failedAssets = {}
-
-	noti(
-		5,
-		"Downloading Assets... Please wait.",
-		color.yellow
-	)
 
 	local success = 0
-	local total = 0
 
 	for name,url in pairs(assets) do
 
-		total += 1
-
 		local path = ASSET_PATH.."/"..name..".png"
 
-		if mode == FailedAsset then
+		if mode == "failed" then
 
 			if not (isfile and isfile(path)) then
-
 				if downloadAsset(name,url) then
 					success += 1
 				end
-
 			end
 
 		else
@@ -2795,29 +2801,43 @@ local function loadAssets(mode)
 
 	end
 
+	loadingAssets = false
+
+end
+
+--------------------------------------------------
+-- CHECK ASSET COUNT
+--------------------------------------------------
+
+local function checkAssets()
+
 	local current = countAssets()
 
-	if current >= totalAssets then
-
-		assetsLoaded = true
-
-		noti(
-			5,
-			"Assets has been loaded!",
-			color.green
-		)
-
+	if current == 57 then
+		noti(4,"All assets loaded (57/57)",color.green)
 	else
-
-		noti(
-			5,
-			"Some assets haven't been loaded. Please type 'getLoad(FailedAsset)' to load again.",
-			color.orange
-		)
-
+		noti(4,"Assets missing "..current.."/57",color.orange)
 	end
 
-	loadingAssets = false
+end
+
+--------------------------------------------------
+-- DELETE ASSETS
+--------------------------------------------------
+
+local function deleteAssets()
+
+	if not isfolder(ASSET_PATH) then
+		return
+	end
+
+	for _,file in pairs(listfiles(ASSET_PATH)) do
+		if string.find(file,"%.png") then
+			delfile(file)
+		end
+	end
+
+	noti(4,"All PNG assets deleted",color.red)
 
 end
 
@@ -2842,66 +2862,97 @@ local function reloadExecutor()
 	deleteExecutor()
 
 	loadstring(
-		game:HttpGet(
-			"https://bit.ly/4tJ4Jbn"
-		)
+		game:HttpGet("https://bit.ly/4tJ4Jbn")
 	)()
 
 end
 
 --------------------------------------------------
--- MAIN API
+-- SETTINGS API
 --------------------------------------------------
 
-function getLoad(arg)
+function getLoad:Settings(setting)
 
-	if arg == nil then
-		error("getLoad(): argument expected",2)
+	if setting == Enums.Settings.DelExe then
+		deleteExecutor()
+		return
 	end
 
-	if type(arg) == "string" then
-
-		if arg == Asset then
-			return loadAssets(Asset)
-
-		elseif arg == FailedAsset then
-			return loadAssets(FailedAsset)
-
-		else
-			error("getLoad(): unknown type '"..arg.."'",2)
-		end
-
+	if setting == Enums.Settings.ReloadExe then
+		reloadExecutor()
+		return
 	end
+
+end
+
+--------------------------------------------------
+-- DATA API
+--------------------------------------------------
+
+function getLoad:Data(data)
+
+	if type(data) ~= "table" then
+		return
+	end
+
+	if data.mode == "DownloadAsset" then
+		loadAssets("all")
+	end
+
+	if data.mode == "DownloadFailed" then
+		loadAssets("failed")
+	end
+
+	if data.mode == "CheckAsset" then
+		checkAssets()
+	end
+
+	if data.mode == "DeleteAsset" then
+		deleteAssets()
+	end
+
+end
+
+--------------------------------------------------
+-- MAIN CALL
+--------------------------------------------------
+
+local function mainCall(arg)
 
 	if type(arg) == "function" then
 		return arg()
 	end
 
-	if arg == Enums.getLoad.DelExe then
-		deleteExecutor()
-		return
-	end
+	if type(arg) == "string" then
 
-	if arg == Enums.getLoad.Reload then
-		reloadExecutor()
-		return
-	end
+		local f,err = loadstring(arg)
 
-	error("getLoad(): invalid argument",2)
+		if f then
+			return f()
+		end
+
+	end
 
 end
 
 --------------------------------------------------
--- EXTRA API
+-- METATABLE
 --------------------------------------------------
 
+setmetatable(getLoad,{
+	__call = function(_,arg)
+		return mainCall(arg)
+	end
+})
 
-getLoad = {}
+--------------------------------------------------
+-- LOAD FROM URL
+--------------------------------------------------
 
 function getLoad.fromURL(url)
 
-	if not url or url == "" then
-		error("getLoad.fromURL(): URL required",2)
+	if not url then
+		return
 	end
 
 	local ok,data = pcall(function()
@@ -2909,22 +2960,23 @@ function getLoad.fromURL(url)
 	end)
 
 	if ok then
-		return loadstring(data)()
-	else
-		error("Failed to download script",2)
+		loadstring(data)()
 	end
 
 end
 
+--------------------------------------------------
+-- LOAD FROM PATH
+--------------------------------------------------
 
 function getLoad.fromPath(path)
 
 	if not path then
-		error("getLoad.fromPath(): path required",2)
+		return
 	end
 
 	if not isfolder(path) then
-		error("Folder does not exist",2)
+		return
 	end
 
 	for _,file in pairs(listfiles(path)) do
@@ -2941,33 +2993,6 @@ function getLoad.fromPath(path)
 
 end
 
---------------------------------------------------
--- REMINDER
---------------------------------------------------
-
-task.spawn(function()
-
-	task.wait(2)
-
-	if not isfolder or not isfolder(ASSET_PATH) then
-
-		if Editb and Editb.Text then
-
-			if not string.find(Editb.Text,"getLoad%(Asset%)") then
-
-				noti(
-					5,
-					"Asset not load please type 'getLoad(Asset)' in Editor",
-					color.orange
-				)
-
-			end
-
-		end
-
-	end
-
-end)
 ------------------------------------------------------------
 
 --// ===============================
