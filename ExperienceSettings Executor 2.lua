@@ -1,4 +1,4 @@
--- Name 0.12
+-- Name 0.13
 
 ------------------------------------------------------------------------------------------
 
@@ -135,6 +135,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Runtime / Frame Updates
 local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
 
 -- Animation / Transitions
 local TweenService = game:GetService("TweenService")
@@ -173,7 +174,7 @@ local function noti(times, text, colorValue)
     txt.Text = tostring(text)
     txt.TextColor3 = finalColor
     txt.ClipsDescendants = true
-    txt.Parent = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.Background.TopNoity
+    txt.Parent = CoreGui["ExperienceSettings-Executor"].Main.Background.TopNoity
 
     Corner(0.15,0,txt)
 
@@ -295,7 +296,7 @@ local icons = {
 ["settings"] = getcustomasset("ExperienceSettings-Executor/Assets/settings.png"),
 ["cross-white"] = getcustomasset("ExperienceSettings-Executor/Assets/cross-white.png"),
 ["console"] = getcustomasset("ExperienceSettings-Executor/Assets/console.png"),
-["bookmark"] = getcustomasset("ExperienceSettings-Executor/Assets/boolmark.png"),
+["bookmark"] = getcustomasset("ExperienceSettings-Executor/Assets/bookmark.png"),
 ["folder"] = getcustomasset("ExperienceSettings-Executor/Assets/folder.png"),
 ["editor"] = getcustomasset("ExperienceSettings-Executor/Assets/editor.png"),
 ["home"] = getcustomasset("ExperienceSettings-Executor/Assets/home.png"),
@@ -389,11 +390,11 @@ local windows = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.B
 inside.Home.Image = icons.home
 inside.Edit.Image = icons.editor
 inside.Console.Image = icons.console
-inside.Folder.Image = icons.folder
+inside.Folder.Image = icons["folder-"]
 inside.Bookmark.Image = icons.bookmark
 inside.Search.Image = icons.search
 -- inside.Music = Image = icons.music
-inside.Settings.Image = icons.settngs
+inside.Settings.Image = icons.settings
 
 --[[ Windows ]]--
 local vHome = windows.Home.Inside
@@ -410,7 +411,7 @@ local vSettings = windows.Settings.Inside
 
 --[ Editor ]--
 local vEditTabs = vEditor.ScriptTabs.Inside
-vEditTabs.Z99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_AddScript.Image = icons.plus-cyan
+vEditTabs:FindFirstChild("Z99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_AddScript").Image = icons["plus-cyan"]
 
 local vEditExe = vEditor:FindFirstChild("Execute tabs").Inside
 vEditExe.Execute.Image = icons.execute
@@ -426,7 +427,7 @@ vEditExe.Clear.Image = icons.erase
 --[ Folder ]--
 local vFolderBar = vFolder.FolderBar
 local vFBInsideBar = vFolderBar.InsideBar
-vFBInsideBar.Search.Image = icons.search
+vFBInsideBar.Seacrh.Image = icons.search
 vFBInsideBar.Select.Image = icons.select
 
 --[ Bookmark ]--
