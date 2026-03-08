@@ -1,4 +1,4 @@
--- Name 0.13
+-- Name 0.135
 
 ------------------------------------------------------------------------------------------
 
@@ -382,19 +382,33 @@ end
 
 loadIcons()
 
+local function setIcon(object, iconName)
+
+	if not object then
+		return
+	end
+
+	local path = ASSET_PATH.."/"..iconName..".png"
+
+	if icons[iconName] and isfile and isfile(path) then
+		object.Image = icons[iconName]
+	end
+
+end
+
 
 local inside = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.Background.Inside.Holder
 local windows = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.Background.Windows
 
 --[[ Inside ]]--
-inside.Home.Image = icons.home
-inside.Edit.Image = icons.editor
-inside.Console.Image = icons.console
-inside.Folder.Image = icons["folder-"]
-inside.Bookmark.Image = icons.bookmark
-inside.Search.Image = icons.search
--- inside.Music = Image = icons.music
-inside.Settings.Image = icons.settings
+setIcon(inside.Home,"home")
+setIcon(inside.Edit,"editor")
+setIcon(inside.Console,"console")
+setIcon(inside.Folder,"folder-")
+setIcon(inside.Bookmark,"bookmark")
+setIcon(inside.Search,"search")
+-- setIcon(inside.Music, "music")
+setIcon(inside.Settings,"settings")
 
 --[[ Windows ]]--
 local vHome = windows.Home.Inside
@@ -410,25 +424,31 @@ local vSettings = windows.Settings.Inside
 
 
 --[ Editor ]--
+
 local vEditTabs = vEditor.ScriptTabs.Inside
-vEditTabs:FindFirstChild("Z99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_AddScript").Image = icons["plus-cyan"]
+setIcon(
+	vEditTabs:FindFirstChild("Z99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_AddScript"),
+	"plus-cyan"
+)
 
 local vEditExe = vEditor:FindFirstChild("Execute tabs").Inside
-vEditExe.Execute.Image = icons.execute
-vEditExe.Debugger.Image = icons.debug
-vEditExe.PasteAndExecute.Image = icons["paste-and-execute"]
-vEditExe.Paste.Image = icons.paste
-vEditExe.Copy.Image = icons.copy
-vEditExe.Clear.Image = icons.erase
+setIcon(vEditExe.Execute,"execute")
+setIcon(vEditExe.Debugger,"debug")
+setIcon(vEditExe.PasteAndExecute,"paste-and-execute")
+setIcon(vEditExe.Paste,"paste")
+setIcon(vEditExe.Copy,"copy")
+setIcon(vEditExe.Clear,"erase")
+
+--[ Folder ]--
+
+local vFolderBar = vFolder.FolderBar
+local vFBInsideBar = vFolderBar.InsideBar
+
+setIcon(vFBInsideBar.Search,"search")
+setIcon(vFBInsideBar.Select,"select")
 
 --[ Console ]--
 
-
---[ Folder ]--
-local vFolderBar = vFolder.FolderBar
-local vFBInsideBar = vFolderBar.InsideBar
-vFBInsideBar.Seacrh.Image = icons.search
-vFBInsideBar.Select.Image = icons.select
 
 --[ Bookmark ]--
 
