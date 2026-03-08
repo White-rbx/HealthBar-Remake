@@ -1,4 +1,4 @@
--- Name 0.1
+-- Name 0.12
 
 ------------------------------------------------------------------------------------------
 
@@ -387,7 +387,7 @@ local windows = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.B
 
 --[[ Inside ]]--
 inside.Home.Image = icons.home
-inside.Editor.Image = icons.editor
+inside.Edit.Image = icons.editor
 inside.Console.Image = icons.console
 inside.Folder.Image = icons.folder
 inside.Bookmark.Image = icons.bookmark
@@ -397,7 +397,7 @@ inside.Settings.Image = icons.settngs
 
 --[[ Windows ]]--
 local vHome = windows.Home.Inside
-local vEditor = windows.Editor.Inside
+local vEditor = windows.Edit.Inside
 local vConsole = windows.Console.Inside
 local vFolder = windows.Folder.Inside
 local vBookmark = windows.Bookmark.Inside
