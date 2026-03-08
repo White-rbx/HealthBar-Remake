@@ -1,4 +1,4 @@
--- Name 0.0
+-- Name 0.1
 
 ------------------------------------------------------------------------------------------
 
@@ -144,6 +144,103 @@ local UserInputService = game:GetService("UserInputService")
 local TouchInputService = game:GetService("TouchInputService")
 
 ---------------------------------------------------------------------------------------
+local color = {
+    red = Color3.fromRGB(255,0,0), -- suitable for error
+    orange = Color3.fromRGB(255,85,0), -- suitable for somthing
+    yellow = Color3.fromRGB(255,255,0), -- sutiable for warning
+    green = Color3.fromRGB(0,255,0), -- suitable for working
+    cyan = Color3.fromRGB(0,255,255), --suitablr for something
+    blue = Color3.fromRGB(0,0,255), -- sutiable for information
+    pink = Color3.fromRGB(255,0,255), -- suitable for something
+    purple = Color3.fromRGB(170,0,255), -- suitable for something
+    nor = Color3.fromRGB(255,255,255) -- sutiable for custom
+}
+
+-- ฟังก์ชันแจ้งเตือน
+local function noti(times, text, colorValue)
+    local finalColor = colorValue or color.nor
+
+    -- กล่องแจ้งเตือน
+    local txt = Instance.new("TextLabel")
+    txt.Name = "Notify"
+    txt.BackgroundColor3 = Color3.fromRGB(18,18,21)
+    txt.BackgroundTransparency = 0.5
+    txt.TextWrap = true
+    txt.RichText = true
+    txt.TextScaled = false
+    txt.TextSize = 18
+    txt.Font = Enum.Font.GothamBold
+    txt.Text = tostring(text)
+    txt.TextColor3 = finalColor
+    txt.ClipsDescendants = true
+    txt.Parent = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.Background.TopNoity
+
+    Corner(0.15,0,txt)
+
+    -- แปลง Color3 → RGB
+    local r = finalColor.R * 255
+    local g = finalColor.G * 255
+    local b = finalColor.B * 255
+
+    Stroke(txt, ASMBorder, r, g, b, LJMRound, 1, 0)
+
+    -- คำนวณขนาดข้อความ
+    local textSize = TextService:GetTextSize(
+        txt.Text,
+        txt.TextSize,
+        txt.Font,
+        Vector2.new(1000, 100)
+    )
+
+    local padding = 30
+    local finalSize = UDim2.new(0, textSize.X + padding, 0, textSize.Y + 20)
+
+    -- เริ่มต้นเป็นศูนย์ก่อน
+    txt.Size = UDim2.new(0,0,0,0)
+
+    -- Tween ขยายเข้า
+    TweenService:Create(
+        txt,
+        TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {Size = finalSize}
+    ):Play()
+
+    -- time bar
+    local bar = Instance.new("Frame")
+    bar.Name = "time"
+    bar.Position = UDim2.new(0,0,0.9,0)
+    bar.Size = UDim2.new(1,0,0.05,0)
+    bar.BackgroundColor3 = finalColor
+    bar.BorderSizePixel = 0
+    bar.Parent = txt
+
+    -- Tween time bar
+    local barTween = TweenService:Create(
+        bar,
+        TweenInfo.new(times, Enum.EasingStyle.Linear),
+        {Size = UDim2.new(0,0,0.05,0)}
+    )
+    barTween:Play()
+
+    -- เมื่อ time หมด
+    barTween.Completed:Connect(function()
+
+        local hideTween = TweenService:Create(
+            txt,
+            TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+            {
+                Size = UDim2.new(0,0,0,0),
+                BackgroundTransparency = 1,
+                TextTransparency = 1
+            }
+        )
+        hideTween:Play()
+
+        hideTween.Completed:Connect(function()
+            txt:Destroy()
+        end)
+    end)
+end
 
 --------------------------------------------------
 -- PATH
