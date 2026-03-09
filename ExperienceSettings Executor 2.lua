@@ -1,4 +1,4 @@
--- Name 0.137
+-- Name 0.138
 
 ------------------------------------------------------------------------------------------
 
@@ -250,12 +250,44 @@ end
 local ASSET_PATH = "ExperienceSettings-Executor/Assets"
 local TOTAL_ASSETS = 57
 
+local function asset(path)
+	local ok, result = pcall(function()
+		return getcustomasset(path)
+	end)
+	return ok and result or nil
+end
+
+--------------------------------------------------
+-- COUNT PNG
+--------------------------------------------------
+
+local function countAssets()
+
+	if not isfolder or not isfolder(ASSET_PATH) then
+		return 0
+	end
+
+	local count = 0
+
+	for _,file in pairs(listfiles(ASSET_PATH)) do
+		if file:match("%.png$") then
+			count += 1
+		end
+	end
+
+	return count
+
+end
 
 --------------------------------------------------
 -- ICON TABLE (ใส่ icon เองตรงนี้)
 --------------------------------------------------
 
-local icons = {
+local icons = {}
+
+if getcustomasset then
+	pcall(function()
+		icons = {
 ["info"] = getcustomasset("ExperienceSettings-Executor/Assets/info.png"),
 ["print"] = getcustomasset("ExperienceSettings-Executor/Assets/print.png"),
 ["error"] = getcustomasset("ExperienceSettings-Executor/Assets/error.png"),
@@ -313,30 +345,10 @@ local icons = {
 ["file"] = getcustomasset("ExperienceSettings-Executor/Assets/file.png"),
 ["folder-"] = getcustomasset("ExperienceSettings-Executor/Assets/folder-.png"),
 ["search"] = getcustomasset("ExperienceSettings-Executor/Assets/search.png"),
-}
 
---------------------------------------------------
--- COUNT PNG
---------------------------------------------------
-
-local function countAssets()
-
-	if not isfolder or not isfolder(ASSET_PATH) then
-		return 0
-	end
-
-	local count = 0
-
-	for _,file in pairs(listfiles(ASSET_PATH)) do
-		if file:match("%.png$") then
-			count += 1
-		end
-	end
-
-	return count
-
+		  }
+	end)
 end
-
 --------------------------------------------------
 -- LOAD ICONS
 --------------------------------------------------
