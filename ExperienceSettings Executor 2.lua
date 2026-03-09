@@ -1,4 +1,4 @@
--- Name 0.1385
+-- Name 0.139
 
 ------------------------------------------------------------------------------------------
 
@@ -405,21 +405,21 @@ local function setIcon(object, iconName)
 		return
 	end
 
-	local path = ASSET_PATH.."/"..iconName
-
-	if isfile and not isfile(path) then
-		noti(5,"[ "..iconName.." ] not found",color.orange)
-		return
+	if not iconName:match("%.png$") then
+		iconName = iconName..".png"
 	end
 
-	local ok,asset = pcall(getcustomasset,path)
+	local path = ASSET_PATH.."/"..iconName
+
+	local asset
+	local ok = pcall(function()
+		asset = getcustomasset(path)
+	end)
 
 	if ok and asset then
 		if object:IsA("ImageLabel") or object:IsA("ImageButton") then
 			object.Image = asset
 		end
-	else
-		noti(5,"[ "..iconName.." ] load failed",color.orange)
 	end
 
 end
