@@ -390,25 +390,38 @@ local function setIcon(object, iconName)
 
 	local path = ASSET_PATH.."/"..iconName..".png"
 
-	if icons[iconName] and isfile and isfile(path) then
-		object.Image = icons[iconName]
+	if isfile and isfile(path) then
+		local ok, asset = pcall(getcustomasset, path)
+
+		if ok then
+			object.Image = asset
+		else
+			noti(5, "[ "..iconName.." ] getcustomasset failed", color.orange)
+		end
+
+	else
+		noti(5, "[ "..iconName.." ] not found", color.orange)
 	end
 
 end
 
+------------------------------------------------------------
 
-local inside = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.Background.Inside.Holder
-local windows = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.Background.Windows
-
---[[ Inside ]]--
+local inside = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.Background.Inside.Holder  
+local windows = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.Background.Windows  
+  
+--[ Music ]--  
+--[ Settings ]----[[ Inside ]]--
+setIcon(inside.Close,"cross-white")
 setIcon(inside.Home,"home")
 setIcon(inside.Edit,"editor")
 setIcon(inside.Console,"console")
 setIcon(inside.Folder,"folder-")
 setIcon(inside.Bookmark,"bookmark")
 setIcon(inside.Search,"search")
--- setIcon(inside.Music, "music")
+-- setIcon(inside.Music,"music")
 setIcon(inside.Settings,"settings")
+
 
 --[[ Windows ]]--
 local vHome = windows.Home.Inside
@@ -420,16 +433,15 @@ local vSearch = windows.Search.Inside
 local vMusic = windows.Music.Inside
 local vSettings = windows.Settings.Inside
 
+
 --[ Home ]--
 
 
 --[ Editor ]--
-
 local vEditTabs = vEditor.ScriptTabs.Inside
-setIcon(
-	vEditTabs:FindFirstChild("Z99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_AddScript"),
-	"plus-cyan"
-)
+
+local addScript = vEditTabs:FindFirstChild("Z99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_AddScript")
+setIcon(addScript,"plus-cyan")
 
 local vEditExe = vEditor:FindFirstChild("Execute tabs").Inside
 setIcon(vEditExe.Execute,"execute")
@@ -439,26 +451,19 @@ setIcon(vEditExe.Paste,"paste")
 setIcon(vEditExe.Copy,"copy")
 setIcon(vEditExe.Clear,"erase")
 
---[ Folder ]--
 
+--[ Console ]--
+
+
+--[ Folder ]--
 local vFolderBar = vFolder.FolderBar
 local vFBInsideBar = vFolderBar.InsideBar
 
 setIcon(vFBInsideBar.Search,"search")
 setIcon(vFBInsideBar.Select,"select")
 
---[ Console ]--
-
 
 --[ Bookmark ]--
-
-
 --[ Search ]--
-
-
 --[ Music ]--
-
-
 --[ Settings ]--
-
-
