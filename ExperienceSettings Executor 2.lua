@@ -1,4 +1,4 @@
--- Name 0.136
+-- Name 0.137
 
 ------------------------------------------------------------------------------------------
 
@@ -250,6 +250,7 @@ end
 local ASSET_PATH = "ExperienceSettings-Executor/Assets"
 local TOTAL_ASSETS = 57
 
+
 --------------------------------------------------
 -- ICON TABLE (ใส่ icon เองตรงนี้)
 --------------------------------------------------
@@ -392,7 +393,7 @@ local function setIcon(object, iconName)
 		return
 	end
 
-	local path = ASSET_PATH.."/"..iconName..".png"
+	local path = ASSET_PATH.."/"..iconName
 
 	if isfile and not isfile(path) then
 		noti(5,"[ "..iconName.." ] not found",color.orange)
