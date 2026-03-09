@@ -1,5 +1,5 @@
-local Version = [[0.0.87 Alpha
-Add getLoad() syntax by @5teve3019D!]]
+local Version = [[0.0.89 Alpha
+Add custom assets]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -607,7 +607,7 @@ sctxt.Position = UDim2.new(0.05,0,0,0)
 sctxt.Size = UDim2.new(0.9,0,1,0)
 sctxt.BackgroundTransparency = 1
 sctxt.ScrollBarThickness = 0
-sctxt.CanvasSize = UDim2.new(0,0,5,0)
+sctxt.CanvasSize = UDim2.new(0,0,10,0)
 sctxt.Parent = frtxt
 
 
@@ -638,6 +638,31 @@ For Integrated Development Environment (IDE) programing.
  8. getLoad:Data(Download.FailedAsset("png"))
  9. getLoad:Data(Check.Asset("png"))
 10. getLoad:Data(Del.Asset("png"))
+
+<b><font size="15">Support and Not Support getcustomasset()</font></b>
+
+--[ Mobile Executor ]--
+1. Krnl (freakin dead | Confirmed by internet)
+2. Codex
+3. Cryptic
+4. VegaX
+
+--[ Pc Executor ]--
+?: Not yet :(
+
+--====[NOT SUPPORT ]====--
+
+--[ Mobile Executor ]--
+?: Not testing yet
+
+--[ Pc Executor ]--
+?: Not yet :(
+
+<b><font size="15">Contact us</font></b>
+Join our Discord server for more information!
+Feel free to suggest any ideas you'd like to share!
+
+
 
 <b><font size="15">Executor Verison</font></b>
 ]] .. Version
@@ -2557,7 +2582,7 @@ local function uia(parent, num)
 end
   
 local addbtn = Instance.new("ImageButton")
-addbtn.Name = "Z999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_Add"
+addbtn.Name = "Z99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_AddScript"
 addbtn.Size = UDim2.new(1,0,1,0)
 addbtn.BackgroundColor3 = Color3.new(0,0,0)
 addbtn.Image = "rbxassetid://115181877700997"
@@ -3850,7 +3875,7 @@ isbar.Parent = fbar
 ListLayout(isbar, 0,20, HLeft, VCenter, SLayout, FillH)
 
 local sebar = Instance.new("TextBox")
-sebar.Name = "SeacrhFileInput"
+sebar.Name = "SearchFileInput"
 sebar.Size = UDim2.new(0.5,0,1,0)
 sebar.BackgroundTransparency = 1
 sebar.TextSize = 16
@@ -3890,7 +3915,7 @@ end
 
 
 
-btnbar("Seacrh", 133955276215666, false, nil, nil)
+btnbar("Search", 133955276215666, false, nil, nil)
 btnbar("Select", 109024678226249, true, nil, nil)
 
 
@@ -4156,20 +4181,17 @@ search = Btn("Search", 133955276215666)
 music = Btn("Music", 120343700432506)
 settings = Btn("Settings", 139502039855639)
 
+-- loadstring
+local ok,err = pcall(function()
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/Executor/ExperienceSettings%20Executor%202.lua"))()
+end)
+
+if ok then
+	noti(3,"<b>Welcome!</b> Successful loaded!",color.green)
+else
+	noti(5,"Script error: "..tostring(err),color.red)
+end
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-noti(3, "<b>Welcome!</b> Successful loaded!", color.green)
 
 noti(5, "<b>Verison: </b>" .. Version, color.nor)
