@@ -1,4 +1,4 @@
--- Name 0.1393
+-- Name 0.14
 
 ------------------------------------------------------------------------------------------
 
@@ -478,7 +478,7 @@ setIcon(vEditExe.Clear,"erase")
 local vFolderBar = vFolder.FolderBar
 local vFBInsideBar = vFolderBar.InsideBar
 
-setIcon(vFBInsideBar.SearchFileInput,"search")
+setIcon(vFBInsideBar.Search,"search")
 setIcon(vFBInsideBar.Select,"select")
 
 
