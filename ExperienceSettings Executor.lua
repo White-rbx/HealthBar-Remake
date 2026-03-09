@@ -1,5 +1,5 @@
-local Version = [[0.0.89 Alpha
-Add custom assets]]
+local Version = [[0.0.9 Alpha
+Add custom assets and fix little bug.]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -662,8 +662,6 @@ For Integrated Development Environment (IDE) programing.
 Join our Discord server for more information!
 Feel free to suggest any ideas you'd like to share!
 
-
-
 <b><font size="15">Executor Verison</font></b>
 ]] .. Version
 
@@ -889,6 +887,10 @@ scr("seacrhscript", "Seacrh script | by @Pancho",
 
 scr("VSCode", "VSCode Open Source | by @Cherry | [PC ONLY]",
 [[loadstring(game:HttpGet("https://raw.githubusercontent.com/InfernusScripts/VSCode/refs/heads/main/VSCode.lua"))()
+]])
+
+scr("sUNC", "Unc Test | by @Alexchad", 
+  [[loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Unc-Test-67860"))()
 ]])
 
 -- Update scroll automatically
