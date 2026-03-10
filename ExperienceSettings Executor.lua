@@ -1,5 +1,5 @@
-local Version = [[0.0.9 Alpha
-Add custom assets and fix little bug.]]
+local Version = [[0.0.91 Alpha
+Update description]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -629,34 +629,65 @@ For Integrated Development Environment (IDE) programing.
 <b><font size="15">Custom syntax by @5teve3019D</font></b>
 --[ getLoad ]--
  1. getLoad(VARIABLE)
+     • Get VARIABLE from local
+     
  2. getLoad(function()end)
+     • Get function
+     • getLoad(function()
+        print("hi")
+       end)
  3. getLoad.fromURL("") -- loadstring()
+     • Working like loadstring but take long
+     
  4. getLoad.fromPath("Name/")
+     • Get path in your device ( Executor )
+     
  5. getLoad:Settings(Enums.Settings.DelExe)
+     • Delete ES Executor
+     
  6. getLoad:Settings(Enums.Settings.ReloadExe)
+     • Reload ES Executor
+     
  7. getLoad:Data(Download.Asset("png"))
+     • Download all pngs ( Important for getcustomasset )
+     
  8. getLoad:Data(Download.FailedAsset("png"))
+     • Same as Download
+     
  9. getLoad:Data(Check.Asset("png"))
+     • Check all assets png
+     
 10. getLoad:Data(Del.Asset("png"))
+     • Delete all assets png
 
 <b><font size="15">Support and Not Support getcustomasset()</font></b>
 
 --[ Mobile Executor ]--
-1. Krnl (freakin dead | Confirmed by internet)
-2. Codex
-3. Cryptic
-4. VegaX
+ 1. Krnl (freakin dead | Confirmed by internet)
+ 2. Codex
+ 3. Cryptic
+ 4. VegaX
+ 5. Delta
+ 6. Ronix
 
---[ Pc Executor ]--
-?: Not yet :(
+--[ Pc Executor ( Confirmed by website ) ]--
+ 1. Volt
+ 2. Wave
+ 3. Volcano
+ 4. Bunni
+ 5. FluxesZ
 
 --====[NOT SUPPORT ]====--
 
 --[ Mobile Executor ]--
-?: Not testing yet
-
---[ Pc Executor ]--
-?: Not yet :(
+ 1. JJsploit ( Currently checking )
+ 
+--[ Pc Executor ( Confirmed by website ) ]--
+ 1. Xeno
+ 2. JJsploit ( Currently checking )
+ 
+--====[ IN COMING ]====--
+ 1. Cubix ( Let see when this executor available )
 
 <b><font size="15">Contact us</font></b>
 Join our Discord server for more information!
