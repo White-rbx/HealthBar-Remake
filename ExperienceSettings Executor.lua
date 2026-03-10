@@ -1,4 +1,4 @@
-local Version = [[0.0.91 Alpha
+local Version = [[0.0.911 Alpha
 Update description]]
 -- This executor
 
@@ -159,6 +159,7 @@ Folder.Parent = CoreGui
 
 local Windows = Instance.new("ScreenGui")
 Windows.Name = "Main"
+Windows.DisplayOrder = inf
 Windows.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 Windows.Parent = Folder
 
