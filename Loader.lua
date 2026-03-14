@@ -1,4 +1,4 @@
--- Loader script 0.815
+-- Loader script 0.817
 
 ------------------------------------------------------------------------------------------
 
@@ -1301,11 +1301,12 @@ local lowSwitchUI = Txt(
 
 ------------------------------------------------------------
 
-local vHB = CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar
-local vVL = vHB.ValueFolder.ValueGui
-local vES = CoreGui["ExperienceSettings"]
-local vMenu = vES.Menu
-local vLCAI = vES["LighterCyan.ai"]
+local vHB = CoreGui:FindFirstChild("HealthBar", true)
+local vVL = CoreGui:FindFirstChild("ValueGui", true)
+
+local vES = CoreGui:FindFirstChild("ExperienceSettings")
+local vMenu = vES and vES:FindFirstChild("Menu")
+local vLCAI = vES and vES:FindFirstChild("LighterCyan.ai")
 
 -- Frames ที่ต้องการ draggable
 local DraggableUI = {
