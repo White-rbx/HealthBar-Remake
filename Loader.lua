@@ -1,4 +1,4 @@
--- Loader script 0.81
+-- Loader script 0.815
 
 ------------------------------------------------------------------------------------------
 
@@ -1309,31 +1309,32 @@ local vLCAI = vES["LighterCyan.ai"]
 
 -- Frames ที่ต้องการ draggable
 local DraggableUI = {
-    vMenu.About_Background,
-    vMenu.Background,
-    vMenu.AIOpenSource,
-    vMenu.Load_Background,
-    vMenu.ProfileStatus,
-    vVL.point,
-    vLCAI.Holder
+    {vMenu,"About_Background"},
+    {vMenu,"Background"},
+    {vMenu,"AIOpenSource"},
+    {vMenu,"Load_Background"},
+    {vMenu,"ProfileStatus"},
+    {vVL,"point"},
+    {vLCAI,"Holder"}
 }
 
 -- apply draggable
 local function applyDraggable(state)
 
-    for _,ui in ipairs(DraggableUI) do
+    for _,info in ipairs(DraggableUI) do
         task.spawn(function()
 
-            -- ถ้า UI มีอยู่แล้ว
-            if ui and ui.Parent then
-                ui.Active = state
-                ui.Draggable = state
-                return
-            end
+            local parent = info[1]
+            local name = info[2]
 
-            -- ถ้ายังไม่ spawn → รอเฉพาะตัวนั้น
-            while not ui or not ui.Parent do
+            if not parent then return end
+
+            local ui = parent:FindFirstChild(name)
+
+            while not ui do
                 task.wait(0.5)
+                if not parent.Parent then return end
+                ui = parent:FindFirstChild(name)
             end
 
             ui.Active = state
@@ -1344,9 +1345,8 @@ local function applyDraggable(state)
 
 end
 
-
 -- toggle UI
-Txt(
+local DraUI = Txt(
     "Draggable UI",
     255,255,255,
     false,nil,
@@ -1366,6 +1366,16 @@ Txt(
     Data.UI.DraggableUI
 )
 
+-- apply color when UI created
+if DraUI.Button then
+    if Data.UI.DraggableUI then
+        DraUI.Button.Text = "ON"
+        tweenColor(DraUI.Button, Color3.fromRGB(0,255,0))
+    else
+        DraUI.Button.Text = "OFF"
+        tweenColor(DraUI.Button, Color3.fromRGB(255,0,0))
+    end
+end
 
 -- apply ตอนโหลด
 task.spawn(function()
