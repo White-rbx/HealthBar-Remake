@@ -1,4 +1,4 @@
--- Loader script 0.818
+-- Loader script 0.819
 
 ------------------------------------------------------------------------------------------
 
@@ -1352,6 +1352,14 @@ local function applyDraggable(state)
 
 end
 
+local function DragUItweenColor(obj,color)
+    TweenService:Create(
+        obj,
+        TweenInfo.new(0.25),
+        {TextColor3 = color}
+    ):Play()
+end
+
 -- toggle UI
 local DraUI = Txt(
     "Draggable UI",
@@ -1377,10 +1385,10 @@ local DraUI = Txt(
 if DraUI.Button then
     if Data.UI.DraggableUI then
         DraUI.Button.Text = "ON"
-        tweenColor(DraUI.Button, Color3.fromRGB(0,255,0))
+        DragUItweenColor(DraUI.Button, Color3.fromRGB(0,255,0))
     else
         DraUI.Button.Text = "OFF"
-        tweenColor(DraUI.Button, Color3.fromRGB(255,0,0))
+        DragUItweenColor(DraUI.Button, Color3.fromRGB(255,0,0))
     end
 end
 
