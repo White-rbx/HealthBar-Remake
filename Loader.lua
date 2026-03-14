@@ -1,4 +1,4 @@
--- Loader script 0.8195
+-- Loader script 0.82
 
 ------------------------------------------------------------------------------------------
 
@@ -1332,20 +1332,25 @@ local function applyDraggable(state)
                 return
             end
 
-            local ui = parent:FindFirstChild(name)
+            local ui
 
-            while not ui do
-                task.wait(0.5)
+            while true do
 
                 if not parent.Parent then
-                    return
+                    task.wait(0.5)
+                    continue
                 end
 
                 ui = parent:FindFirstChild(name)
-            end
 
-            ui.Active = state
-            ui.Draggable = state
+                if ui then
+                    ui.Active = state
+                    ui.Draggable = state
+                end
+
+                task.wait(0.5)
+
+            end
 
         end)
     end
