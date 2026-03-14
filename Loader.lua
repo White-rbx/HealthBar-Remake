@@ -1,4 +1,4 @@
--- Loader script 0.825
+-- Loader script 0.826
 
 ------------------------------------------------------------------------------------------
 
@@ -1301,39 +1301,61 @@ local lowSwitchUI = Txt(
 
 ------------------------------------------------------------
 
-local DraggableUI = {
+-- ExperienceSettings Frames
+local ESFrames = {
     "About_Background",
     "Background",
     "AIOpenSource",
     "Load_Background",
     "ProfileStatus",
-    "point",
     "Holder"
 }
 
-local DragState = Data.UI.DraggableUI
+-- TopBarApp Frames
+local TBFrames = {
+    "point"
+}
+
+-- State
+local DragState = false
 local DragLoopStarted = false
 
-local function applyDraggable(state)
+local function applyDraggableUI(state)
 
     DragState = state
 
-    if DragLoopStarted then return end
+    if DragLoopStarted then
+        return
+    end
+
     DragLoopStarted = true
 
     task.spawn(function()
 
         while true do
 
-            for _,name in ipairs(DraggableUI) do
-
-                local ui = CoreGui:FindFirstChild(name, true)
-
-                if ui and ui:IsA("Frame") then
-                    ui.Active = DragState
-                    ui.Draggable = DragState
+            -- ExperienceSettings
+            local vES = CoreGui:FindFirstChild("ExperienceSettings")
+            if vES then
+                for _,name in ipairs(ESFrames) do
+                    local ui = vES:FindFirstChild(name, true)
+                    if ui and ui:IsA("Frame") then
+                        ui.Active = DragState
+                        ui.Draggable = DragState
+                    end
                 end
+            end
 
+            -- TopBarApp
+            local vTopBar = CoreGui:FindFirstChild("TopBarApp")
+            if vTopBar then
+                for _,name in ipairs(TBFrames) do
+                    local ui = vTopBar:FindFirstChild(name, true)
+                    if ui and ui:IsA("Frame") then
+                        ui.Active = DragState
+                        ui.Draggable = DragState
+                    end
+                end
             end
 
             task.wait(0.5)
@@ -1343,6 +1365,8 @@ local function applyDraggable(state)
     end)
 
 end
+
+
 
 local function DragUItweenColor(obj,color)
     TweenService:Create(
@@ -1364,7 +1388,7 @@ local DraUI = Txt(
         Data.UI.DraggableUI = state
         saveData(Data)
 
-        applyDraggable(state)
+        applyDraggableUI(state)
 
     end,
 
