@@ -1,4 +1,4 @@
--- Loader script 0.823
+-- Loader script 0.824
 
 ------------------------------------------------------------------------------------------
 
@@ -1307,45 +1307,40 @@ local DraggableUI = {
     {"ExperienceSettings","Menu","AIOpenSource"},
     {"ExperienceSettings","Menu","Load_Background"},
     {"ExperienceSettings","Menu","ProfileStatus"},
-    {"ValueGui","point"},
-    {"LighterCyan.ai","Holder"}
+    {"HealthBar","ValueFolder","ValueGui","point"},
+    {"ExperienceSettings","LighterCyan.ai","Holder"}
 }
+
+local DragState = Data.UI.DraggableUI
+local DragLoopStarted = false
 
 local function applyDraggable(state)
 
     DragState = state
 
-    if DragLoopStarted then
-        return
-    end
-
+    if DragLoopStarted then return end
     DragLoopStarted = true
 
-    for _,info in ipairs(DraggableUI) do
-        task.spawn(function()
+    task.spawn(function()
 
-            local parentName = info[1]
-            local childName = info[2]
+        while true do
 
-            while true do
+            for _,path in ipairs(DraggableUI) do
 
-                local parent = CoreGui:FindFirstChild(parentName, true)
+                local ui = findPath(path)
 
-                if parent then
-                    local ui = parent:FindFirstChild(childName)
-
-                    if ui then
-                        ui.Active = DragState
-                        ui.Draggable = DragState
-                    end
+                if ui and ui:IsA("Frame") then
+                    ui.Active = DragState
+                    ui.Draggable = DragState
                 end
-
-                task.wait(0.5)
 
             end
 
-        end)
-    end
+            task.wait(0.5)
+
+        end
+
+    end)
 
 end
 
