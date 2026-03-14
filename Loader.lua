@@ -1,4 +1,4 @@
--- Loader script 0.82
+-- Loader script 0.822
 
 ------------------------------------------------------------------------------------------
 
@@ -1301,47 +1301,37 @@ local lowSwitchUI = Txt(
 
 ------------------------------------------------------------
 
-local vHB = CoreGui:FindFirstChild("HealthBar", true)
-local vVL = CoreGui:FindFirstChild("ValueGui", true)
-
-local vES = CoreGui:FindFirstChild("ExperienceSettings")
-local vMenu = vES and vES:FindFirstChild("Menu")
-local vLCAI = vES and vES:FindFirstChild("LighterCyan.ai")
-
--- Frames ที่ต้องการ draggable
 local DraggableUI = {
-    {vMenu,"About_Background"},
-    {vMenu,"Background"},
-    {vMenu,"AIOpenSource"},
-    {vMenu,"Load_Background"},
-    {vMenu,"ProfileStatus"},
-    {vVL,"point"},
-    {vLCAI,"Holder"}
+    {"ExperienceSettings","Menu","About_Background"},
+    {"ExperienceSettings","Menu","Background"},
+    {"ExperienceSettings","Menu","AIOpenSource"},
+    {"ExperienceSettings","Menu","Load_Background"},
+    {"ExperienceSettings","Menu","ProfileStatus"},
+    {"ValueGui","point"},
+    {"LighterCyan.ai","Holder"}
 }
 
--- apply draggable
 local function applyDraggable(state)
 
-    for _,info in ipairs(DraggableUI) do
+    for _,path in ipairs(DraggableUI) do
         task.spawn(function()
-
-            local parent = info[1]
-            local name = info[2]
-
-            if typeof(parent) ~= "Instance" then
-                return
-            end
-
-            local ui
 
             while true do
 
-                if not parent.Parent then
-                    task.wait(0.5)
-                    continue
-                end
+                local parent
+                local ui
 
-                ui = parent:FindFirstChild(name)
+                if #path == 3 then
+                    local a = CoreGui:FindFirstChild(path[1], true)
+                    local b = a and a:FindFirstChild(path[2])
+                    parent = b
+                    ui = parent and parent:FindFirstChild(path[3])
+
+                elseif #path == 2 then
+                    local a = CoreGui:FindFirstChild(path[1], true)
+                    parent = a
+                    ui = parent and parent:FindFirstChild(path[2])
+                end
 
                 if ui then
                     ui.Active = state
