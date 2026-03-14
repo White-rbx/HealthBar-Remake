@@ -1,4 +1,4 @@
--- Loader script 0.822
+-- Loader script 0.823
 
 ------------------------------------------------------------------------------------------
 
@@ -1313,29 +1313,31 @@ local DraggableUI = {
 
 local function applyDraggable(state)
 
-    for _,path in ipairs(DraggableUI) do
+    DragState = state
+
+    if DragLoopStarted then
+        return
+    end
+
+    DragLoopStarted = true
+
+    for _,info in ipairs(DraggableUI) do
         task.spawn(function()
+
+            local parentName = info[1]
+            local childName = info[2]
 
             while true do
 
-                local parent
-                local ui
+                local parent = CoreGui:FindFirstChild(parentName, true)
 
-                if #path == 3 then
-                    local a = CoreGui:FindFirstChild(path[1], true)
-                    local b = a and a:FindFirstChild(path[2])
-                    parent = b
-                    ui = parent and parent:FindFirstChild(path[3])
+                if parent then
+                    local ui = parent:FindFirstChild(childName)
 
-                elseif #path == 2 then
-                    local a = CoreGui:FindFirstChild(path[1], true)
-                    parent = a
-                    ui = parent and parent:FindFirstChild(path[2])
-                end
-
-                if ui then
-                    ui.Active = state
-                    ui.Draggable = state
+                    if ui then
+                        ui.Active = DragState
+                        ui.Draggable = DragState
+                    end
                 end
 
                 task.wait(0.5)
