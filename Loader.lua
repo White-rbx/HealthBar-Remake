@@ -1,4 +1,4 @@
--- Loader script 0.817
+-- Loader script 0.818
 
 ------------------------------------------------------------------------------------------
 
@@ -1328,13 +1328,19 @@ local function applyDraggable(state)
             local parent = info[1]
             local name = info[2]
 
-            if not parent then return end
+            if typeof(parent) ~= "Instance" then
+                return
+            end
 
             local ui = parent:FindFirstChild(name)
 
             while not ui do
                 task.wait(0.5)
-                if not parent.Parent then return end
+
+                if not parent.Parent then
+                    return
+                end
+
                 ui = parent:FindFirstChild(name)
             end
 
