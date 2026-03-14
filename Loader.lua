@@ -1,4 +1,4 @@
--- Loader script 0.8
+-- Loader script 0.81
 
 ------------------------------------------------------------------------------------------
 
@@ -299,7 +299,7 @@ local DEFAULT_DATA = {
         BackgroundRGB = { 18, 18, 21 },
         HideMenu = false,
         SettingsTransparency = 0.3,
-        UIScale = 1
+        UIScale = 1,
         DraggableUI = false
     }
 }
@@ -1307,6 +1307,7 @@ local vES = CoreGui["ExperienceSettings"]
 local vMenu = vES.Menu
 local vLCAI = vES["LighterCyan.ai"]
 
+-- Frames ที่ต้องการ draggable
 local DraggableUI = {
     vMenu.About_Background,
     vMenu.Background,
@@ -1317,38 +1318,34 @@ local DraggableUI = {
     vLCAI.Holder
 }
 
--- wait until UI exists
-local function waitForUI(obj)
-    while not obj or not obj.Parent do
-        task.wait(0.25)
-    end
-    return obj
-end
-
 -- apply draggable
 local function applyDraggable(state)
+
     for _,ui in ipairs(DraggableUI) do
         task.spawn(function()
 
-            local frame = waitForUI(ui)
+            -- ถ้า UI มีอยู่แล้ว
+            if ui and ui.Parent then
+                ui.Active = state
+                ui.Draggable = state
+                return
+            end
 
-            frame.Active = state
-            frame.Draggable = state
+            -- ถ้ายังไม่ spawn → รอเฉพาะตัวนั้น
+            while not ui or not ui.Parent do
+                task.wait(0.5)
+            end
+
+            ui.Active = state
+            ui.Draggable = state
 
         end)
     end
+
 end
 
-local TweenService = game:GetService("TweenService")
 
-local function tweenColor(obj,color)
-    TweenService:Create(
-        obj,
-        TweenInfo.new(0.25),
-        {TextColor3 = color}
-    ):Play()
-end
-
+-- toggle UI
 Txt(
     "Draggable UI",
     255,255,255,
@@ -1368,6 +1365,14 @@ Txt(
 
     Data.UI.DraggableUI
 )
+
+
+-- apply ตอนโหลด
+task.spawn(function()
+    applyDraggable(Data.UI.DraggableUI)
+end)
+
+
 
 
 
