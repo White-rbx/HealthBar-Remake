@@ -1,4 +1,4 @@
--- Loader script 0.826
+-- Loader script 0.827
 
 ------------------------------------------------------------------------------------------
 
@@ -1308,7 +1308,8 @@ local ESFrames = {
     "AIOpenSource",
     "Load_Background",
     "ProfileStatus",
-    "Holder"
+    "Holder",
+    "Search"
 }
 
 -- TopBarApp Frames
