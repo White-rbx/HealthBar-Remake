@@ -1,4 +1,4 @@
--- Loader script 0.824
+-- Loader script 0.825
 
 ------------------------------------------------------------------------------------------
 
@@ -1302,13 +1302,13 @@ local lowSwitchUI = Txt(
 ------------------------------------------------------------
 
 local DraggableUI = {
-    {"ExperienceSettings","Menu","About_Background"},
-    {"ExperienceSettings","Menu","Background"},
-    {"ExperienceSettings","Menu","AIOpenSource"},
-    {"ExperienceSettings","Menu","Load_Background"},
-    {"ExperienceSettings","Menu","ProfileStatus"},
-    {"HealthBar","ValueFolder","ValueGui","point"},
-    {"ExperienceSettings","LighterCyan.ai","Holder"}
+    "About_Background",
+    "Background",
+    "AIOpenSource",
+    "Load_Background",
+    "ProfileStatus",
+    "point",
+    "Holder"
 }
 
 local DragState = Data.UI.DraggableUI
@@ -1325,9 +1325,9 @@ local function applyDraggable(state)
 
         while true do
 
-            for _,path in ipairs(DraggableUI) do
+            for _,name in ipairs(DraggableUI) do
 
-                local ui = findPath(path)
+                local ui = CoreGui:FindFirstChild(name, true)
 
                 if ui and ui:IsA("Frame") then
                     ui.Active = DragState
