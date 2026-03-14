@@ -1,4 +1,4 @@
--- Loader script 0.786
+-- Loader script 0.8
 
 ------------------------------------------------------------------------------------------
 
@@ -300,6 +300,7 @@ local DEFAULT_DATA = {
         HideMenu = false,
         SettingsTransparency = 0.3,
         UIScale = 1
+        DraggableUI = false
     }
 }
 
@@ -1298,9 +1299,75 @@ local lowSwitchUI = Txt(
     end
 )
 
+------------------------------------------------------------
 
+local vHB = CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar
+local vVL = vHB.ValueFolder.ValueGui
+local vES = CoreGui["ExperienceSettings"]
+local vMenu = vES.Menu
+local vLCAI = vES["LighterCyan.ai"]
 
+local DraggableUI = {
+    vMenu.About_Background,
+    vMenu.Background,
+    vMenu.AIOpenSource,
+    vMenu.Load_Background,
+    vMenu.ProfileStatus,
+    vVL.point,
+    vLCAI.Holder
+}
 
+-- wait until UI exists
+local function waitForUI(obj)
+    while not obj or not obj.Parent do
+        task.wait(0.25)
+    end
+    return obj
+end
+
+-- apply draggable
+local function applyDraggable(state)
+    for _,ui in ipairs(DraggableUI) do
+        task.spawn(function()
+
+            local frame = waitForUI(ui)
+
+            frame.Active = state
+            frame.Draggable = state
+
+        end)
+    end
+end
+
+local TweenService = game:GetService("TweenService")
+
+local function tweenColor(obj,color)
+    TweenService:Create(
+        obj,
+        TweenInfo.new(0.25),
+        {TextColor3 = color}
+    ):Play()
+end
+
+Txt(
+    "Draggable UI",
+    255,255,255,
+    false,nil,
+    true,"OFF",
+
+    function(state)
+
+        Data.UI.DraggableUI = state
+        saveData(Data)
+
+        applyDraggable(state)
+
+    end,
+
+    nil,
+
+    Data.UI.DraggableUI
+)
 
 
 
