@@ -1,5 +1,5 @@
-local Version = [[0.0.912 Alpha
-Update description]]
+local Version = [[0.0.913 Alpha
+Fixed image bug]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -2664,7 +2664,7 @@ local assets = {
 	["exe"] = "https://i.postimg.cc/9035t56t/exe.png",
 	["execute"] = "https://i.postimg.cc/rs6XCXBN/execute.png",
 	["file"] = "https://i.postimg.cc/Znrkwsmy/file.png",
-	["folder"] = "https://i.postimg.cc/cCQqFkWt/folder.png",
+	["folder-"] = "https://i.postimg.cc/cCQqFkWt/folder.png",
 	["gray-shade"] = "https://i.postimg.cc/90G3Lg2Z/gray-shade.png",
 	["home"] = "https://i.postimg.cc/HnQG6vm4/home.png",
 	["info"] = "https://i.postimg.cc/C5jycr0G/info.png",
@@ -2698,7 +2698,7 @@ local assets = {
 	["white-square"] = "https://i.postimg.cc/J4LCs8cM/white-square.png",
 	["yellow-shade"] = "https://i.postimg.cc/zXFZWQp9/yellow-shade.png",
 	["zip"] = "https://i.postimg.cc/ncGb7WTN/zip.png",
-	["folder-"] = "https://i.postimg.cc/D0qVxphs/folder.png"
+	["folder"] = "https://i.postimg.cc/D0qVxphs/folder.png"
 }
 
 -------------------------------------------------
