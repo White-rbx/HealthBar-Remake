@@ -1,4 +1,4 @@
-local Version = [[0.0.917 Alpha
+local Version = [[0.0.918 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -2949,15 +2949,16 @@ end
 ------------------------------------------------------------
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Remote = ReplicatedStorage:WaitForChild("RotucexeEnabled")
+local Remote = ReplicatedStorage:FindFirstChild("RotucexeEnabled")
 
 games = games or {}
-games.FireEvent = {} -- custom token
+games.FireEvent = {}
 
 getLoad = getLoad or {}
 
 -- state
 getLoad.ServerSideEnabled = false
+getLoad.ServerSideChecked = false
 
 ------------------------------------------------------------
 -- REQUEST SERVER ACCESS
@@ -2966,6 +2967,11 @@ getLoad.ServerSideEnabled = false
 function getLoad.ServerSide(mode)
 
 	if mode ~= games.FireEvent then
+		return
+	end
+
+	if not Remote then
+		noti(3,"Server remote missing. Using client side.",color.red)
 		return
 	end
 
@@ -2979,32 +2985,31 @@ end
 -- RECEIVE VERIFY RESULT
 ------------------------------------------------------------
 
-Remote.OnClientEvent:Connect(function(msg)
+if Remote then
+	Remote.OnClientEvent:Connect(function(msg)
 
-	if msg == "Enabled" then
+		getLoad.ServerSideChecked = true
 
-		getLoad.ServerSideEnabled = true
-		noti(3,"Server side enabled!",color.green)
+		if msg == "Enabled" then
 
-	elseif msg == "Disabled" then
+			getLoad.ServerSideEnabled = true
+			noti(3,"Server side enabled!",color.green)
 
-		getLoad.ServerSideEnabled = false
-		noti(3,"Unenabled Server side!",color.red)
+		elseif msg == "Denied" then
 
-	end
+			getLoad.ServerSideEnabled = false
+			noti(3,"Developer permission denied. Using client side.",color.yellow)
 
-end)
+		end
+
+	end)
+end
 
 ------------------------------------------------------------
 -- EXECUTE SCRIPT FROM EDITOR
 ------------------------------------------------------------
 
 function getLoad.ServerExecute()
-
-	if not getLoad.ServerSideEnabled then
-		noti(3,"Server side disabled!",color.red)
-		return
-	end
 
 	if not editb or not editb.Text then
 		noti(3,"Editor not ready!",color.red)
@@ -3018,7 +3023,23 @@ function getLoad.ServerExecute()
 		return
 	end
 
-	Remote:FireServer("RunScript",code)
+	-- SERVER EXECUTE
+	if getLoad.ServerSideEnabled and Remote then
+
+		Remote:FireServer("RunScript",code)
+
+	-- CLIENT EXECUTE (fallback)
+	else
+
+		local ok,err = pcall(function()
+			loadstring(code)()
+		end)
+
+		if not ok then
+			warn(err)
+		end
+
+	end
 
 end
 
