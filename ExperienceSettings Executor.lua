@@ -1,4 +1,4 @@
-local Version = [[0.0.92 Alpha
+local Version = [[0.0.922 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -2944,73 +2944,69 @@ function getLoad:Settings(setting)
 
 end
 
-------------------------------------------------------------
--- SERVER SIDE ENABLED
-------------------------------------------------------------
+------------------------------------------------
+-- ES Executor Client
+------------------------------------------------
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Remote = ReplicatedStorage:FindFirstChild("RotucexeEnabled")
+local Remote = ReplicatedStorage:WaitForChild("RotucexeEnabled")
 
 games = games or {}
 games.FireEvent = {}
 
 getLoad = getLoad or {}
 
--- states
+------------------------------------------------
+-- STATES
+------------------------------------------------
+
 getLoad.ServerSideEnabled = false
 getLoad.ServerSideRequested = false
 getLoad.ServerSideVerified = false
 
-------------------------------------------------------------
--- REQUEST SERVER ACCESS
-------------------------------------------------------------
+------------------------------------------------
+-- CONNECT SERVER
+------------------------------------------------
 
-function getLoad.ServerSide(mode)
+function getLoad:ServerSide(mode)
 
 	if mode ~= games.FireEvent then
 		return
 	end
 
-	if not Remote then
-		noti(3,"Server remote missing. Cannot connect.",color.red)
-		return
-	end
-
 	getLoad.ServerSideRequested = true
 
-	noti(3,"Connecting server side...",color.yellow)
+	noti(3,"ยิง! โปรดรอ.",color.yellow)
 
 	Remote:FireServer("Verify")
 
 end
 
-------------------------------------------------------------
--- RECEIVE VERIFY RESULT
-------------------------------------------------------------
+------------------------------------------------
+-- RECEIVE RESPONSE
+------------------------------------------------
 
-if Remote then
-	Remote.OnClientEvent:Connect(function(msg)
+Remote.OnClientEvent:Connect(function(msg)
 
-		getLoad.ServerSideVerified = true
+	getLoad.ServerSideVerified = true
 
-		if msg == "Enabled" then
+	if msg == "Enabled" then
 
-			getLoad.ServerSideEnabled = true
-			noti(3,"Server side enabled!",color.green)
+		getLoad.ServerSideEnabled = true
+		noti(3,"Server side enabled!",color.green)
 
-		elseif msg == "Denied" then
+	elseif msg == "Denied" then
 
-			getLoad.ServerSideEnabled = false
-			noti(3,"Developer permission denied.",color.red)
+		getLoad.ServerSideEnabled = false
+		noti(3,"Developer permission denied.",color.red)
 
-		end
+	end
 
-	end)
-end
+end)
 
-------------------------------------------------------------
--- EXECUTE SCRIPT FROM EDITOR
-------------------------------------------------------------
+------------------------------------------------
+-- EXECUTE SCRIPT
+------------------------------------------------
 
 function getLoad.ServerExecute()
 
@@ -3022,7 +3018,7 @@ function getLoad.ServerExecute()
 
 	task.spawn(function()
 
-		if not editb or not editb.Text then
+		if not editb then
 			noti(3,"Editor not ready!",color.red)
 			getLoad._executing = false
 			return
@@ -3036,16 +3032,22 @@ function getLoad.ServerExecute()
 			return
 		end
 
+		----------------------------------------
 		-- SERVER EXECUTE
-		if getLoad.ServerSideEnabled and Remote then
+		----------------------------------------
+
+		if getLoad.ServerSideEnabled then
 
 			Remote:FireServer("RunScript",code)
 
 		else
 
-			-- CLIENT EXECUTE
+			noti(3,"Server disabled. Running client.",color.yellow)
+
 			local ok,err = pcall(function()
+
 				loadstring(code)()
+
 			end)
 
 			if not ok then
