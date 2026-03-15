@@ -1,4 +1,4 @@
-local Version = [[0.0.924 Alpha
+local Version = [[0.0.925 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -2949,7 +2949,8 @@ end
 ------------------------------------------------
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Remote = ReplicatedStorage:WaitForChild("RotucexeEnabled")
+
+local Remote = ReplicatedStorage:FindFirstChild("RotucexeEnabled")
 
 games = games or {}
 games.FireEvent = {}
@@ -2978,6 +2979,11 @@ function getLoad:ServerSide(mode)
 
 	noti(3,"Fired! Please wait server response.",color.yellow)
 
+	if not Remote then
+		noti(3,"Server remote not found.",color.red)
+		return
+	end
+
 	Remote:FireServer("Verify")
 
 end
@@ -2986,23 +2992,27 @@ end
 -- RECEIVE RESPONSE
 ------------------------------------------------
 
-Remote.OnClientEvent:Connect(function(msg)
+if Remote then
 
-	getLoad.ServerSideVerified = true
+	Remote.OnClientEvent:Connect(function(msg)
 
-	if msg == "Enabled" then
+		getLoad.ServerSideVerified = true
 
-		getLoad.ServerSideEnabled = true
-		noti(3,"Server side enabled!",color.green)
+		if msg == "Enabled" then
 
-	elseif msg == "Denied" then
+			getLoad.ServerSideEnabled = true
+			noti(3,"Server side enabled!",color.green)
 
-		getLoad.ServerSideEnabled = false
-		noti(3,"Developer permission denied.",color.red)
+		elseif msg == "Denied" then
 
-	end
+			getLoad.ServerSideEnabled = false
+			noti(3,"Developer permission denied.",color.red)
 
-end)
+		end
+
+	end)
+
+end
 
 ------------------------------------------------
 -- EXECUTE SCRIPT
@@ -3036,7 +3046,7 @@ function getLoad.ServerExecute()
 		-- SERVER EXECUTE
 		----------------------------------------
 
-		if getLoad.ServerSideEnabled then
+		if getLoad.ServerSideEnabled and Remote then
 
 			Remote:FireServer("RunScript",code)
 
@@ -3045,9 +3055,7 @@ function getLoad.ServerExecute()
 			noti(3,"Server disabled. Running client.",color.yellow)
 
 			local ok,err = pcall(function()
-
 				loadstring(code)()
-
 			end)
 
 			if not ok then
@@ -3070,6 +3078,20 @@ function getLoad:ServerRun(code)
 
 	if typeof(code) ~= "string" then
 		noti(3,"ServerRun requires string!",color.red)
+		return
+	end
+
+	if not Remote then
+		noti(3,"Server remote not found. Running client.",color.yellow)
+
+		local ok,err = pcall(function()
+			loadstring(code)()
+		end)
+
+		if not ok then
+			warn(err)
+		end
+
 		return
 	end
 
