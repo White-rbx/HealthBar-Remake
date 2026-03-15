@@ -1,4 +1,4 @@
-local Version = [[0.0.914 Alpha
+local Version = [[0.0.915 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -2949,6 +2949,8 @@ end
 ------------------------------------------------------------
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- wait remote safely
 local Remote = ReplicatedStorage:WaitForChild("RotucexeEnabled")
 
 getLoad = getLoad or {}
@@ -2956,33 +2958,46 @@ getLoad = getLoad or {}
 -- state
 getLoad.ServerSideEnabled = false
 
--- request enable
+------------------------------------------------------------
+-- REQUEST SERVER ACCESS
+------------------------------------------------------------
+
 function getLoad:EnableServerSide(mode)
 
-    if mode == game.Fire then
-
-        noti(3,"Fire script. Please wait.",color.yellow)
-
-        Remote:FireServer("Verify")
-
+    if mode ~= game.Fire then
+        return
     end
+
+    noti(3,"Fire script. Please wait.",color.yellow)
+
+    Remote:FireServer("Verify")
 
 end
 
--- receive verify result
+------------------------------------------------------------
+-- RECEIVE VERIFY RESULT
+------------------------------------------------------------
+
 Remote.OnClientEvent:Connect(function(msg)
 
     if msg == "Enabled" then
 
         getLoad.ServerSideEnabled = true
-
         noti(3,"Server side enabled!",color.green)
+
+    elseif msg == "Disabled" then
+
+        getLoad.ServerSideEnabled = false
+        noti(3,"Server side disabled!",color.red)
 
     end
 
 end)
 
--- execute script from editb
+------------------------------------------------------------
+-- EXECUTE SCRIPT FROM EDITOR
+------------------------------------------------------------
+
 local function executeEditor()
 
     if not getLoad.ServerSideEnabled then
@@ -2990,7 +3005,17 @@ local function executeEditor()
         return
     end
 
+    if not editb or not editb.Text then
+        noti(3,"Editor not ready!",color.red)
+        return
+    end
+
     local code = editb.Text
+
+    if code == "" then
+        noti(3,"Empty script!",color.red)
+        return
+    end
 
     Remote:FireServer("RunScript",code)
 
