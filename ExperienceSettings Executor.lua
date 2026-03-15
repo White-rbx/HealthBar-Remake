@@ -1,4 +1,4 @@
-local Version = [[0.0.913 Alpha
+local Version = [[0.0.914 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -2941,6 +2941,58 @@ function getLoad:Settings(setting)
 		reloadExecutor()
 		return
 	end
+
+end
+
+------------------------------------------------------------
+-- SERVER SIDE ENABLED
+------------------------------------------------------------
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Remote = ReplicatedStorage:WaitForChild("RotucexeEnabled")
+
+getLoad = getLoad or {}
+
+-- state
+getLoad.ServerSideEnabled = false
+
+-- request enable
+function getLoad:EnableServerSide(mode)
+
+    if mode == game.Fire then
+
+        noti(3,"Fire script. Please wait.",color.yellow)
+
+        Remote:FireServer("Verify")
+
+    end
+
+end
+
+-- receive verify result
+Remote.OnClientEvent:Connect(function(msg)
+
+    if msg == "Enabled" then
+
+        getLoad.ServerSideEnabled = true
+
+        noti(3,"Server side enabled!",color.green)
+
+    end
+
+end)
+
+-- execute script from editb
+local function executeEditor()
+
+    if not getLoad.ServerSideEnabled then
+        noti(3,"Server side disabled!",color.red)
+        return
+    end
+
+    local code = editb.Text
+
+    Remote:FireServer("RunScript",code)
 
 end
 
