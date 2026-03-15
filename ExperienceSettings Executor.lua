@@ -1,4 +1,4 @@
-local Version = [[0.0.915 Alpha
+local Version = [[0.0.916 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -2955,6 +2955,10 @@ local Remote = ReplicatedStorage:WaitForChild("RotucexeEnabled")
 
 getLoad = getLoad or {}
 
+games = games or {}
+
+games.FireEvent = "ES_FIRE"
+
 -- state
 getLoad.ServerSideEnabled = false
 
@@ -2964,7 +2968,7 @@ getLoad.ServerSideEnabled = false
 
 function getLoad:EnableServerSide(mode)
 
-    if mode ~= game.Fire then
+    if mode ~= games.FireEvent then
         return
     end
 
