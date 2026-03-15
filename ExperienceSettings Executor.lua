@@ -1,4 +1,4 @@
-local Version = [[0.0.919 Alpha
+local Version = [[0.0.92 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -3014,44 +3014,49 @@ end
 
 function getLoad.ServerExecute()
 
-	if not editb or not editb.Text then
-		noti(3,"Editor not ready!",color.red)
+	if getLoad._executing then
 		return
 	end
 
-	local code = editb.Text
+	getLoad._executing = true
 
-	if code == "" then
-		noti(3,"Empty script!",color.red)
-		return
-	end
+	task.spawn(function()
 
-	-- ยังไม่ได้กดเชื่อม
-	if not getLoad.ServerSideRequested then
-		noti(3,"Server side not requested. Use getLoad.ServerSide().",color.yellow)
-	end
+		if not editb or not editb.Text then
+			noti(3,"Editor not ready!",color.red)
+			getLoad._executing = false
+			return
+		end
 
-	-- กำลัง verify
-	if getLoad.ServerSideRequested and not getLoad.ServerSideVerified then
-		noti(3,"Waiting for server verification...",color.yellow)
-	end
+		local code = editb.Text
 
-	-- RUN SERVER
-	if getLoad.ServerSideEnabled and Remote then
+		if code == "" then
+			noti(3,"Empty script!",color.red)
+			getLoad._executing = false
+			return
+		end
 
-		Remote:FireServer("RunScript",code)
-		return
+		-- SERVER EXECUTE
+		if getLoad.ServerSideEnabled and Remote then
 
-	end
+			Remote:FireServer("RunScript",code)
 
-	-- RUN CLIENT (fallback)
-	local ok,err = pcall(function()
-		loadstring(code)()
+		else
+
+			-- CLIENT EXECUTE
+			local ok,err = pcall(function()
+				loadstring(code)()
+			end)
+
+			if not ok then
+				warn(err)
+			end
+
+		end
+
+		getLoad._executing = false
+
 	end)
-
-	if not ok then
-		warn(err)
-	end
 
 end
 
