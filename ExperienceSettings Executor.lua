@@ -1,4 +1,4 @@
-local Version = [[0.0.923 Alpha
+local Version = [[0.0.924 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -3066,14 +3066,12 @@ end
 -- ServerRun
 ------------------------------------------------
 
-function getLoad:ServerRun(func)
+function getLoad:ServerRun(code)
 
-	if typeof(func) ~= "function" then
-		noti(3,"ServerRun requires function!",color.red)
+	if typeof(code) ~= "string" then
+		noti(3,"ServerRun requires string!",color.red)
 		return
 	end
-
-	local code = string.dump(func)
 
 	noti(3,"Sending server script...",color.yellow)
 
