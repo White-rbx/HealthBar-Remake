@@ -1,4 +1,4 @@
--- Name 0.14
+-- Name 0.15
 
 ------------------------------------------------------------------------------------------
 
@@ -435,7 +435,7 @@ setIcon(inside.Close,"cross-white")
 setIcon(inside.Home,"home")
 setIcon(inside.Edit,"editor")
 setIcon(inside.Console,"console")
-setIcon(inside.Folder,"folder-")
+setIcon(inside.Folder,"folder")
 setIcon(inside.Bookmark,"bookmark")
 setIcon(inside.Search,"search")
 -- setIcon(inside.Music,"music")
