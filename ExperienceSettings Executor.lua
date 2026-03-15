@@ -1,4 +1,4 @@
-local Version = [[0.0.916 Alpha
+local Version = [[0.0.917 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -2949,15 +2949,12 @@ end
 ------------------------------------------------------------
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
--- wait remote safely
 local Remote = ReplicatedStorage:WaitForChild("RotucexeEnabled")
 
-getLoad = getLoad or {}
-
 games = games or {}
+games.FireEvent = {} -- custom token
 
-games.FireEvent = "ES_FIRE"
+getLoad = getLoad or {}
 
 -- state
 getLoad.ServerSideEnabled = false
@@ -2966,15 +2963,15 @@ getLoad.ServerSideEnabled = false
 -- REQUEST SERVER ACCESS
 ------------------------------------------------------------
 
-function getLoad:EnableServerSide(mode)
+function getLoad.ServerSide(mode)
 
-    if mode ~= games.FireEvent then
-        return
-    end
+	if mode ~= games.FireEvent then
+		return
+	end
 
-    noti(3,"Fire script. Please wait.",color.yellow)
+	noti(3,"Fire script. Please wait.",color.yellow)
 
-    Remote:FireServer("Verify")
+	Remote:FireServer("Verify")
 
 end
 
@@ -2984,17 +2981,17 @@ end
 
 Remote.OnClientEvent:Connect(function(msg)
 
-    if msg == "Enabled" then
+	if msg == "Enabled" then
 
-        getLoad.ServerSideEnabled = true
-        noti(3,"Server side enabled!",color.green)
+		getLoad.ServerSideEnabled = true
+		noti(3,"Server side enabled!",color.green)
 
-    elseif msg == "Disabled" then
+	elseif msg == "Disabled" then
 
-        getLoad.ServerSideEnabled = false
-        noti(3,"Server side disabled!",color.red)
+		getLoad.ServerSideEnabled = false
+		noti(3,"Unenabled Server side!",color.red)
 
-    end
+	end
 
 end)
 
@@ -3002,26 +2999,26 @@ end)
 -- EXECUTE SCRIPT FROM EDITOR
 ------------------------------------------------------------
 
-local function executeEditor()
+function getLoad.ServerExecute()
 
-    if not getLoad.ServerSideEnabled then
-        noti(3,"Server side disabled!",color.red)
-        return
-    end
+	if not getLoad.ServerSideEnabled then
+		noti(3,"Server side disabled!",color.red)
+		return
+	end
 
-    if not editb or not editb.Text then
-        noti(3,"Editor not ready!",color.red)
-        return
-    end
+	if not editb or not editb.Text then
+		noti(3,"Editor not ready!",color.red)
+		return
+	end
 
-    local code = editb.Text
+	local code = editb.Text
 
-    if code == "" then
-        noti(3,"Empty script!",color.red)
-        return
-    end
+	if code == "" then
+		noti(3,"Empty script!",color.red)
+		return
+	end
 
-    Remote:FireServer("RunScript",code)
+	Remote:FireServer("RunScript",code)
 
 end
 
