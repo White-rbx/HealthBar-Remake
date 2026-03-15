@@ -1,4 +1,4 @@
-local Version = [[0.0.918 Alpha
+local Version = [[0.0.919 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -2956,9 +2956,10 @@ games.FireEvent = {}
 
 getLoad = getLoad or {}
 
--- state
+-- states
 getLoad.ServerSideEnabled = false
-getLoad.ServerSideChecked = false
+getLoad.ServerSideRequested = false
+getLoad.ServerSideVerified = false
 
 ------------------------------------------------------------
 -- REQUEST SERVER ACCESS
@@ -2971,11 +2972,13 @@ function getLoad.ServerSide(mode)
 	end
 
 	if not Remote then
-		noti(3,"Server remote missing. Using client side.",color.red)
+		noti(3,"Server remote missing. Cannot connect.",color.red)
 		return
 	end
 
-	noti(3,"Fire script. Please wait.",color.yellow)
+	getLoad.ServerSideRequested = true
+
+	noti(3,"Connecting server side...",color.yellow)
 
 	Remote:FireServer("Verify")
 
@@ -2988,7 +2991,7 @@ end
 if Remote then
 	Remote.OnClientEvent:Connect(function(msg)
 
-		getLoad.ServerSideChecked = true
+		getLoad.ServerSideVerified = true
 
 		if msg == "Enabled" then
 
@@ -2998,7 +3001,7 @@ if Remote then
 		elseif msg == "Denied" then
 
 			getLoad.ServerSideEnabled = false
-			noti(3,"Developer permission denied. Using client side.",color.yellow)
+			noti(3,"Developer permission denied.",color.red)
 
 		end
 
@@ -3023,22 +3026,31 @@ function getLoad.ServerExecute()
 		return
 	end
 
-	-- SERVER EXECUTE
+	-- ยังไม่ได้กดเชื่อม
+	if not getLoad.ServerSideRequested then
+		noti(3,"Server side not requested. Use getLoad.ServerSide().",color.yellow)
+	end
+
+	-- กำลัง verify
+	if getLoad.ServerSideRequested and not getLoad.ServerSideVerified then
+		noti(3,"Waiting for server verification...",color.yellow)
+	end
+
+	-- RUN SERVER
 	if getLoad.ServerSideEnabled and Remote then
 
 		Remote:FireServer("RunScript",code)
+		return
 
-	-- CLIENT EXECUTE (fallback)
-	else
+	end
 
-		local ok,err = pcall(function()
-			loadstring(code)()
-		end)
+	-- RUN CLIENT (fallback)
+	local ok,err = pcall(function()
+		loadstring(code)()
+	end)
 
-		if not ok then
-			warn(err)
-		end
-
+	if not ok then
+		warn(err)
 	end
 
 end
