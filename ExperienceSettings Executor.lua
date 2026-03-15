@@ -1,4 +1,4 @@
-local Version = [[0.0.922 Alpha
+local Version = [[0.0.923 Alpha
 Fixed image bug]]
 -- This executor
 
@@ -2976,7 +2976,7 @@ function getLoad:ServerSide(mode)
 
 	getLoad.ServerSideRequested = true
 
-	noti(3,"ยิง! โปรดรอ.",color.yellow)
+	noti(3,"Fired! Please wait server response.",color.yellow)
 
 	Remote:FireServer("Verify")
 
@@ -3059,6 +3059,25 @@ function getLoad.ServerExecute()
 		getLoad._executing = false
 
 	end)
+
+end
+
+------------------------------------------------
+-- ServerRun
+------------------------------------------------
+
+function getLoad:ServerRun(func)
+
+	if typeof(func) ~= "function" then
+		noti(3,"ServerRun requires function!",color.red)
+		return
+	end
+
+	local code = string.dump(func)
+
+	noti(3,"Sending server script...",color.yellow)
+
+	Remote:FireServer("ServerRun",code)
 
 end
 
