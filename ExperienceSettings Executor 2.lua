@@ -1,4 +1,4 @@
--- Name 0.15
+-- ES Executor 2 | 0.16
 
 ------------------------------------------------------------------------------------------
 
@@ -345,6 +345,7 @@ if getcustomasset then
 ["file"] = getcustomasset("ExperienceSettings-Executor/Assets/file.png"),
 ["folder-"] = getcustomasset("ExperienceSettings-Executor/Assets/folder-.png"),
 ["search"] = getcustomasset("ExperienceSettings-Executor/Assets/search.png"),
+["music-note"] = getcustomasset("ExperienceSettings-Executor/Assets/music-note.png"),
 
 		  }
 	end)
@@ -438,7 +439,7 @@ setIcon(inside.Console,"console")
 setIcon(inside.Folder,"folder")
 setIcon(inside.Bookmark,"bookmark")
 setIcon(inside.Search,"search")
--- setIcon(inside.Music,"music")
+setIcon(inside.Music,"music-note")
 setIcon(inside.Settings,"settings")
 
 
