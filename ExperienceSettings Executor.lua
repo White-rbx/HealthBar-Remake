@@ -1,5 +1,5 @@
-local Version = [[0.0.925 Alpha
-Fixed image bug]]
+local Version = [[0.1.0 Alpha
+UI Folder had been release! but not working]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -2698,7 +2698,8 @@ local assets = {
 	["white-square"] = "https://i.postimg.cc/J4LCs8cM/white-square.png",
 	["yellow-shade"] = "https://i.postimg.cc/zXFZWQp9/yellow-shade.png",
 	["zip"] = "https://i.postimg.cc/ncGb7WTN/zip.png",
-	["folder"] = "https://i.postimg.cc/D0qVxphs/folder.png"
+	["folder"] = "https://i.postimg.cc/D0qVxphs/folder.png",
+	["music-note"] = "https://i.postimg.cc/rFLBM6hF/music-note.png"
 }
 
 -------------------------------------------------
@@ -2872,10 +2873,10 @@ local function checkAssets()
 
 	local current = countAssets()
 
-	if current == 57 then
-		noti(4,"All assets loaded (57/57)",color.green)
+	if current == 58 then
+		noti(4,"All assets loaded (58/58)",color.green)
 	else
-		noti(4,"Assets missing "..current.."/57",color.orange)
+		noti(4,"Assets missing "..current.."/58",color.orange)
 	end
 
 end
@@ -4109,7 +4110,105 @@ end
 btnbar("Search", 133955276215666, false, nil, nil)
 btnbar("Select", 109024678226249, true, nil, nil)
 
+local folderIn = Instance.new("Frame")
+folderIn.Name = "InsideFolder"
+folderIn.Active = false
+folderIn.Position = UDim2.new(0,0,0.17,0)
+folderIn.Size = UDim2.new(1,0,0.83,0)
+folderIn.BackgroundTransparency = 1
+folderIn.Parent = Frame.Folder.Inside
 
+local filelist = Instance.new("ScrollingFrame")
+filelist.Name = "ScrollFileList"
+filelist.Size = UDim2.new(0.35,0,1,0)
+filelist.BackgroundTransparency = 1
+filelist.CanvasSize = UDim2.new(100,0,0,0)
+filelist.ScrollBarThickness = 5
+filelist.Parent = folderIn
+Stroke(filelist, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+ListLayout(filelist, 0,0, HRight, VTop, SLayout, FillV)
+
+local function FDObject()
+
+local FDScroll = Instance.new("ScrollingFrame")
+FDScroll.Name = "TextViewerScroll"
+FDScroll.Size = UDim2.new(0.64,0,0.8,0)
+FDScroll.Position = UDim2.new(0.36,0,0,0)
+FDScroll.BackgroundTransparency = 0
+FDScroll.BackgroundColor3 = Color3.new(0,0,0)
+FDScroll.CanvasSize = UDim2.new(0,0,0,0)
+FDScroll.ScrollBarThickness = 1
+FDScroll.Active = true
+FDScroll.Parent = folderIn
+
+local LineNumViwer = Instance.new("TextLabel")
+LineNumViwer.Name = "LineNumberViwer"
+LineNumViwer.Size = UDim2.new(0,30,1,0)
+LineNumViwer.BackgroundColor3 = Color3.fromRGB(48,48,48)
+LineNumViwer.Active = false
+LineNumViwer.TextColor3 = Color3.fromRGB(129,129,129)
+LineNumViwer.BorderSizePixel = 0
+LineNumViwer.TextSize = 15
+LineNumViwer.Font = Enum.Font.Code
+LineNumViwer.TextWrap = true
+LineNumViwer.TextXAlignment = Enum.TextXAlignment.Right
+LineNumViwer.TextYAlignment = Enum.TextYAlignment.Top
+LineNumViwer.Text = ""
+LineNumViwer.Parent = FDScroll
+
+local FDtxtview = Instance.new("TextLabel")
+FDtxtview.Name = "TextViewer"
+FDtxtview.BackgroundTransparency = 1
+FDtxtview.Size = UDim2.new(1,0,1,0)
+FDtxtview.Position = UDim2.new(0,30,0,0)
+FDtxtview.BackgroundColor3 = Color3.new(0,0,0)
+FDtxtview.TextColor3 = Color3.new(1,1,1)
+FDtxtview.TextXAlignment = Enum.TextXAlignment.Left
+FDtxtview.TextYAlignment = Enum.TextYAlignment.Top
+FDtxtview.BorderSizePixel = 0
+FDtxtview.TextSize = 15
+FDtxtview.TextWrap = true
+FDtxtview.RichText = true
+FDtxtview.Font = Enum.Font.Code
+FDtxtview.Text = "-- Cilck any file to view!"
+FDtxtview.Parent = FDScroll
+
+local FDTabs = Instance.new("Frame")
+FDTabs.Name = "FolderTabs"
+FDTabs.Position = UDim2.new(0.36,0,0.82,0)
+FDTabs.Size = UDim2.new(0.64,0,0.18,0)
+FDTabs.Active = false
+FDTabs.BackgroundTransparency = 1
+FDTabs.Parent = folderIn
+ListLayout(FDTabs, 0, 5, HLeft, VTop, SLayout, FillH)
+Padding(FDTabs, nil, nil, {0.029, 0}, nil)
+
+local function FDbtn(name, text, workin, callback)
+  local btn = Instance.new("TextButton")
+  btn.Name = tostring(name)
+  btn.Size = UDim2.new(1/3, 0, 1, 0)
+  btn.BackgroundTransparency = 0.3
+  btn.Text = tostring(text)
+  btn.TextColor3 = Color3.new(1,1,1)
+  btn.TextSize = 10
+  btn.Parent = FDTabs
+  Stroke(btn, ASMBorder, 255,255,255, LJMRound, 1, 0)
+  Corner(0.1,0,btn)
+  
+  -- workin
+  
+  -- callback
+  
+  -- return
+  
+end
+
+FDbtn("PTE", "Paste to Editor")
+FDbtn("Copy", "Copy")
+FDbtn("Exe", "Execute")
+
+Frame.Folder.Inside.soon.Visible = true
+Frame.Folder.Inside.soon.ZIndex = 2
 ------------------------------------------------------------
 local Inside = Instance.new("CanvasGroup")
 Inside.Name = "Inside"
@@ -4145,7 +4244,6 @@ Bar.BackgroundTransparency = 1
 Bar.Parent = Inside
 ListLayout(Bar, 0, 10, HLeft, VCenter, SLayout, FillH)
 
-local TweenService = game:GetService("TweenService")
 local TweenService = game:GetService("TweenService")
 
 local oc = oc
