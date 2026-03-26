@@ -1,5 +1,11 @@
-local Version = [[0.1.01 Alpha
-UI Folder had been release! but not working]]
+local Version = [[0.1.3 Alpha
+Say hello to device explorer!
+- Working Explorer 
+- Working Searcher
+
+- But 3 Buttons still not working!
+- Still have bugs
+]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -136,10 +142,12 @@ end
 local HttpService = game:GetService("HttpService")
 
 -- Audio / Feedback
-local SoundService = game:GetService("SoundService")
+
 
 -- Commerce / Monetization
 local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 
 -- Runtime / Frame Updates
 local RunService = game:GetService("RunService")
@@ -346,7 +354,6 @@ ListLayout(topn, 0,5, HCenter, VTop, SLayout, FillV)
 ------------------------------------------------------------
 -- local function
 ------------------------------------------------------------
-local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
 
 local color = {
@@ -450,8 +457,6 @@ end
 --// ===============================
 --// PATH + FOLDER SETUP
 --// ===============================
-
-local HttpService = game:GetService("HttpService")
 
 local base = "ExperienceSettings-Executor"
 local tabsPath = base .. "/Tabs"
@@ -987,9 +992,6 @@ editb.TextYAlignment = Enum.TextYAlignment.Top
 editb.Parent = edits
 
 --[ Script (Syntax) ]
---// SERVICES
-local CoreGui = game:GetService("CoreGui")
-local HttpService = game:GetService("HttpService")
 
 --// PATH
 local executor = CoreGui:WaitForChild("ExperienceSettings-Executor")
@@ -2949,7 +2951,6 @@ end
 -- ES Executor Client
 ------------------------------------------------
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remote = ReplicatedStorage:FindFirstChild("RotucexeEnabled")
 
@@ -3477,8 +3478,6 @@ local syngr = Gradient(syntg, 90,0,0, Color3.fromRGB(255,85,0), Color3.fromRGB(2
 --// SYNTAX TOGGLE (SYNTG)
 --// ===============================
 
-local TweenService = game:GetService("TweenService")
-
 -- อัปเดต UI ตามสถานะ
 local function applySyntaxState()
 
@@ -3960,7 +3959,7 @@ if Editb and Editb:IsA("TextBox") then
 end
 
 ------------------------------------------------------------
-	local PATH = "ExperienceSettings-Executor/AutoExe"
+local PATH = "ExperienceSettings-Executor/AutoExe"
 
 local ALLOWED = {
 	txt = true,
@@ -4078,37 +4077,6 @@ sebar.TextColor3 = Color3.new(1,1,1)
 sebar.ClearTextOnFocus = false
 sebar.Parent = isbar
 
-local function btnbar(name, imageID, ifLine, workin, callback)
- local ifLine = ifLine or false
-
- local bbar = Instance.new("ImageButton")
- bbar.Name = tostring(name)
- bbar.Size = UDim2.new(1,0,1,0)
- bbar.BackgroundTransparency = 1
- bbar.Image = "rbxassetid://"..tostring(imageID)
- bbar.Parent = isbar
- Corner(0.1,0,bbar)
- uia(bbar, 1)
-
- if ifLine==true then
-  local line = Instance.new("Frame")
-  line.Name = "Line"
-  line.Size = UDim2.new(0,3,1,0)
-  line.BackgroundColor3 = Color3.fromRGB(170,170,170)
-  line.Parent = isbar
-  Corner(1,0, line)
- end
-
- -- workin
-
- -- callback
-
-end
-
-
-
-btnbar("Search", 133955276215666, false, nil, nil)
-btnbar("Select", 109024678226249, true, nil, nil)
 
 local folderIn = Instance.new("Frame")
 folderIn.Name = "InsideFolder"
@@ -4126,10 +4094,18 @@ filelist.CanvasSize = UDim2.new(100,0,0,0)
 filelist.ScrollBarThickness = 5
 filelist.Parent = folderIn
 Stroke(filelist, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
-ListLayout(filelist, 0,0, HRight, VTop, SLayout, FillV)
+ListLayout(filelist, 0,1, HRight, VTop, SLayout, FillV)
 
-local function FDObject()
+local layout = filelist:FindFirstChildOfClass("UIListLayout")
+
+if not layout then
+	layout = Instance.new("UIListLayout")
+	layout.Parent = filelist
 end
+
+layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	filelist.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y + 10)
+end)
 
 local FDScroll = Instance.new("ScrollingFrame")
 FDScroll.Name = "TextViewerScroll"
@@ -4208,7 +4184,422 @@ FDbtn("PTE", "Paste to Editor")
 FDbtn("Copy", "Copy")
 FDbtn("Exe", "Execute")
 
-Frame.Folder.Inside.soon.Visible = true
+------------------------------------------------
+-- STATE
+------------------------------------------------
+
+local currentSelected = nil
+local openedFolders = {}
+
+-- 🔍 search
+local currentSearch = ""
+
+local PATH = ""
+local ESPATH = "ExperienceSettings-Executor/Assets/"
+
+------------------------------------------------
+-- SAFE ASSET
+------------------------------------------------
+
+local function safeAsset(path)
+	local ok, result = pcall(function()
+		return getcustomasset(path)
+	end)
+	return (ok and result) or ""
+end
+
+------------------------------------------------
+-- ICONS
+------------------------------------------------
+
+local iconPH = {
+	["apk"] = safeAsset(ESPATH.."apk.png"),
+	["ipa"] = safeAsset(ESPATH.."ipa.png"),
+	["exe"] = safeAsset(ESPATH.."exe.png"),
+	["file"] = safeAsset(ESPATH.."file.png"),
+	["png"] = safeAsset(ESPATH.."png.png"),
+	["lua-file"] = safeAsset(ESPATH.."lua-file.png"),
+	["zip"] = safeAsset(ESPATH.."zip.png"),
+	["unknown-file"] = safeAsset(ESPATH.."unknown-file.png"),
+	["unknown-icon"] = safeAsset(ESPATH.."unknown-icon.png"),
+	["7z"] = safeAsset(ESPATH.."7z.png"),
+	["folder-"] = safeAsset(ESPATH.."folder-.png"),
+}
+
+------------------------------------------------
+-- MATCH SEARCH
+------------------------------------------------
+
+local function matchSearch(name)
+	if currentSearch == "" then return true end
+	return string.find(string.lower(name), currentSearch, 1, true)
+end
+
+------------------------------------------------
+-- CHECK CHILD MATCH (recursive)
+------------------------------------------------
+
+local function hasMatch(path)
+
+	local ok, items = pcall(function()
+		return listfiles(path)
+	end)
+
+	if not ok or not items then return false end
+
+	for _, p in ipairs(items) do
+		local name = p:match("[^/]+$")
+
+		if matchSearch(name) then
+			return true
+		end
+
+		if isfolder and isfolder(p) then
+			if hasMatch(p) then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+------------------------------------------------
+-- RESET FOLDER STATE
+------------------------------------------------
+
+local function resetFolders()
+	for k in pairs(openedFolders) do
+		openedFolders[k] = nil
+	end
+end
+
+------------------------------------------------
+-- EXTENSION
+------------------------------------------------
+
+local function getExtension(name)
+	local ext = name:match("%.([^%.]+)$")
+	return ext and string.lower(ext)
+end
+
+------------------------------------------------
+-- RESOLVE UI
+------------------------------------------------
+
+local function resolveUI(fileName, isFolder)
+	local ext = getExtension(fileName)
+
+	-- 📁 folder (priority สูงสุด)
+	if isFolder then
+		return iconPH["folder-"] or iconPH["unknown-file"], true
+	end
+
+	-- ❓ ไม่มีนามสกุล
+	if not ext then
+		return iconPH["unknown-file"], false
+	end
+
+	ext = string.lower(ext)
+
+	------------------------------------------------
+	-- 🚫 BLOCKED (มาก่อนเลย)
+	------------------------------------------------
+	if BLOCKED[ext] then
+		return iconPH[ext] or iconPH["unknown-icon"], false
+	end
+
+	------------------------------------------------
+	-- ✅ ALLOWED (เปิดได้)
+	------------------------------------------------
+	if ALLOWED[ext] then
+		if ext == "lua" or ext == "luau" or ext == "es" then
+			return iconPH["lua-file"] or iconPH["file"], true
+		else
+			return iconPH["file"], true
+		end
+	end
+
+	------------------------------------------------
+	-- 📦 SPECIAL TYPES (เปิดไม่ได้ แต่มี icon)
+	------------------------------------------------
+	if ext == "apk" or ext == "exe" or ext == "ipa" then
+		return iconPH[ext] or iconPH["unknown-icon"], false
+	end
+
+	if ext == "png" then
+		return iconPH["png"] or iconPH["file"], false
+	end
+
+	if ext == "zip" or ext == "7z" then
+		-- 🔥 สำคัญ: ให้เปิดได้ (pseudo folder)
+		return iconPH[ext] or iconPH["file"], true
+	end
+
+	------------------------------------------------
+	-- ❓ unknown แต่มี icon
+	------------------------------------------------
+	if iconPH[ext] then
+		return iconPH[ext], false
+	end
+
+	------------------------------------------------
+	-- ❓ unknown จริง
+	------------------------------------------------
+	return iconPH["unknown-icon"], false
+end
+
+------------------------------------------------
+-- UI OBJECT
+------------------------------------------------
+
+local function fdlists(T, active, icon, ObjectName, offset, filePath)
+
+	local isFolderItem = isfolder and isfolder(filePath)
+	local ext = getExtension(ObjectName)
+	local isPseudoFolder = (ext == "zip" or ext == "7z")
+
+	local btn = Instance.new("TextButton")
+	btn.Name = "Object"
+	btn.Size = UDim2.new(1, 0, 0, 30)
+	btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+	btn.BackgroundTransparency = T or 1
+	btn.Active = true
+	btn.TextSize = 0
+	btn.Parent = filelist
+
+	-- indent
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, offset)
+	pad.Parent = btn
+
+	-- Stroke(btn, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+	-- icon
+	local ima = Instance.new("ImageLabel")
+	ima.BackgroundTransparency = 1
+	ima.Size = UDim2.new(0,30,1,0)
+	ima.Image = icon or ""
+	ima.Parent = btn
+
+	-- name
+	local na = Instance.new("TextLabel")
+	na.BackgroundTransparency = 1
+	na.Size = UDim2.new(1,-35,1,0)
+	na.Position = UDim2.new(0,35,0,0)
+	na.TextSize = 10
+	na.TextXAlignment = Enum.TextXAlignment.Left
+	na.TextYAlignment = Enum.TextYAlignment.Center
+	na.TextColor3 = Color3.new(1,1,1)
+	na.Parent = btn
+
+	------------------------------------------------
+	-- [+] [-]
+	------------------------------------------------
+
+	if isFolderItem or isPseudoFolder then
+		if openedFolders[filePath] then
+			na.Text = "[ - ] "..ObjectName
+		else
+			na.Text = "[ + ] "..ObjectName
+		end
+	else
+		na.Text = ObjectName
+	end
+
+	------------------------------------------------
+	-- CLICK
+	------------------------------------------------
+
+	btn.MouseButton1Click:Connect(function()
+
+		-- select
+		if currentSelected and currentSelected ~= btn then
+			currentSelected.BackgroundTransparency = 1
+			currentSelected.BackgroundColor3 = Color3.fromRGB(255,255,255)
+		end
+
+		currentSelected = btn
+		btn.BackgroundTransparency = 0.5
+		btn.BackgroundColor3 = Color3.fromRGB(0,95,255)
+
+		------------------------------------------------
+		-- folder / zip / 7z
+		------------------------------------------------
+
+		if isFolderItem or isPseudoFolder then
+			openedFolders[filePath] = not openedFolders[filePath]
+			refreshFileList()
+			return
+		end
+
+		------------------------------------------------
+		-- preview text
+		------------------------------------------------
+
+		if filePath and isfile and isfile(filePath) then
+
+			local ext = getExtension(ObjectName)
+			if ext and ALLOWED[ext] then
+
+				local content = readfile(filePath)
+				if not content then return end
+
+				FDtxtview.Text = content
+
+				-- line number
+				local count = 1
+				for _ in content:gmatch("\n") do
+					count += 1
+				end
+
+				local lines = ""
+				for i = 1, count do
+					lines ..= i.."\n"
+				end
+
+				LineNumViwer.Text = lines
+
+				task.defer(function()
+					local y = FDtxtview.TextBounds.Y
+					FDScroll.CanvasSize = UDim2.new(0,0,0, y + 20)
+				end)
+
+			end
+		end
+
+	end)
+
+	return btn
+end
+
+------------------------------------------------
+-- REFRESH
+------------------------------------------------
+
+function refreshFileList()
+
+	-- clear
+	for _, v in ipairs(filelist:GetChildren()) do
+		if v.Name == "Object" then
+			v:Destroy()
+		end
+	end
+
+	local function scan(path, depth)
+
+		local ok, items = pcall(function()
+			return listfiles(path)
+		end)
+
+		if not ok or not items then return end
+
+		for _, p in ipairs(items) do
+
+			local name = p:match("[^/]+$")
+			local isFolder = isfolder and isfolder(p)
+
+			local match = matchSearch(name)
+			local childMatch = isFolder and hasMatch(p)
+
+			------------------------------------------------
+			-- SEARCH MODE
+			------------------------------------------------
+			if currentSearch ~= "" then
+
+				if not match and not childMatch then
+					continue
+				end
+
+				if isFolder and childMatch then
+					openedFolders[p] = true
+				end
+
+			end
+
+			local icon, canOpen = resolveUI(name, isFolder)
+			fdlists(1, canOpen, icon, name, depth * 30, p)
+
+			if isFolder and openedFolders[p] then
+				scan(p, depth + 1)
+			end
+
+		end
+	end
+
+	scan(PATH, 0)
+
+	-- canvas fix
+	task.defer(function()
+		local layout = filelist:FindFirstChildOfClass("UIListLayout")
+		if layout then
+			filelist.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y + 10)
+		end
+	end)
+
+end
+
+------------------------------------------------
+-- BTN BAR (รองรับ callback)
+------------------------------------------------
+
+local function btnbar(name, imageID, ifLine, workin, callback)
+
+	local bbar = Instance.new("ImageButton")
+	bbar.Name = tostring(name)
+	bbar.Size = UDim2.new(1,0,1,0)
+	bbar.BackgroundTransparency = 1
+	bbar.Image = "rbxassetid://"..tostring(imageID)
+	bbar.Parent = isbar
+
+	Corner(0.1,0,bbar)
+	uia(bbar, 1)
+
+	if ifLine then
+		local line = Instance.new("Frame")
+		line.Size = UDim2.new(0,3,1,0)
+		line.BackgroundColor3 = Color3.fromRGB(170,170,170)
+		line.Parent = isbar
+	end
+
+	if callback then
+		bbar.MouseButton1Click:Connect(callback)
+	end
+
+	return bbar
+end
+
+------------------------------------------------
+-- TEXTBOX SEARCH
+------------------------------------------------
+
+sebar:GetPropertyChangedSignal("Text"):Connect(function()
+
+	currentSearch = string.lower(sebar.Text or "")
+
+	if currentSearch == "" then
+		resetFolders()
+	end
+
+	refreshFileList()
+
+end)
+
+------------------------------------------------
+-- BUTTON SEARCH (fix error)
+------------------------------------------------
+
+local searchBtn = btnbar("Search", 133955276215666, true, nil, function()
+	currentSearch = string.lower(sebar.Text or "")
+	refreshFileList()
+end)
+
+------------------------------------------------------------
+
+if not (isfolder and isfolder(PATH)) then return end
+refreshFileList()
+
+Frame.Folder.Inside.soon.Visible = false
 Frame.Folder.Inside.soon.ZIndex = 2
 ------------------------------------------------------------
 local Inside = Instance.new("CanvasGroup")
@@ -4228,7 +4619,8 @@ local gra1 = Gradient(str1, 45, 0, 0,
 )
 
 task.spawn(function()
-    while true do        task.wait(0.001)
+    while true do        
+      task.wait(0.001)
         gra1.Rotation += 3
         if gra1.Rotation == 360 then
            gra1.Rotation = 0
@@ -4244,8 +4636,6 @@ Bar.Size = UDim2.new(0.96,0,0.5,0)
 Bar.BackgroundTransparency = 1
 Bar.Parent = Inside
 ListLayout(Bar, 0, 10, HLeft, VCenter, SLayout, FillH)
-
-local TweenService = game:GetService("TweenService")
 
 local oc = oc
 local inside = Inside
@@ -4301,9 +4691,6 @@ oc.MouseButton1Click:Connect(function()
 end)
 
 ------------------------------------------------------------
-
-local TweenService = game:GetService("TweenService")
-
 local ActiveColor = Color3.fromRGB(140, 0, 255)
 local InactiveColor = Color3.fromRGB(0, 0, 0)
 
