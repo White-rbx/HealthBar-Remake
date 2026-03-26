@@ -1,4 +1,4 @@
-local Version = [[0.1.3 Alpha
+local Version = [[0.1.31 Alpha
 Say hello to device explorer!
 - Working Explorer 
 - Working Searcher
@@ -4104,7 +4104,7 @@ if not layout then
 end
 
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	filelist.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y + 10)
+	filelist.CanvasSize = UDim2.new(1000,0,0, layout.AbsoluteContentSize.Y + 10)
 end)
 
 local FDScroll = Instance.new("ScrollingFrame")
