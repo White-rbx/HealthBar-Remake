@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.20
+-- ES Executor 2 | 0.21
 
 ------------------------------------------------------------------------------------------
 
@@ -459,7 +459,7 @@ local vSettings = windows.Settings.Inside
 
 --[ Editor ]--
 local vEditTabs = vEditor.ScriptTabs.Inside
-local vEREdit = vEditor.Inside.EditScroll.Edit
+local vEREdit = vEditor.EditScroll.Edit
 
 local addScript = vEditTabs:FindFirstChild("Z99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_AddScript")
 setIcon(addScript,"plus-cyan")
