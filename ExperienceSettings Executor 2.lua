@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.16
+-- ES Executor 2 | 0.20
 
 ------------------------------------------------------------------------------------------
 
@@ -459,6 +459,7 @@ local vSettings = windows.Settings.Inside
 
 --[ Editor ]--
 local vEditTabs = vEditor.ScriptTabs.Inside
+local vEREdit = vEditor.Inside.EditScroll.Edit
 
 local addScript = vEditTabs:FindFirstChild("Z99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_AddScript")
 setIcon(addScript,"plus-cyan")
@@ -480,10 +481,108 @@ local vFolderBar = vFolder.FolderBar
 local vFBInsideBar = vFolderBar.InsideBar
 
 setIcon(vFBInsideBar.Search,"search")
-setIcon(vFBInsideBar.Select,"select")
 
+local vFDTextViewer = vFolder.InsideFolder.TextViewerScroll.TextViewer
+local vFolderTabs = vFolder.InsideFolder.FolderTabs
+
+local vFT = {
+	Exe = vFolderTabs:FindFirstChild("Exe"),
+	Copy = vFolderTabs:FindFirstChild("Copy"),
+	PTE = vFolderTabs:FindFirstChild("PTE"),
+}
+
+local function getText()
+	return (vFDTextViewer and vFDTextViewer.Text) or ""
+end
+
+local function getLine(err)
+	local line = tostring(err):match(":(%d+):")
+	return line or "?"
+end
+
+if vFT.Exe then
+	vFT.Exe.MouseButton1Click:Connect(function()
+
+		local source = getText()
+		if source == "" then return end
+
+		-- compile check
+		local f, compileErr = loadstring(source)
+
+		if not f then
+			local line = getLine(compileErr)
+			noti(5,
+				"Script error at line ["..line.."]: "..tostring(compileErr),
+				color.red
+			)
+			return
+		end
+
+		noti(3, "Executing...", color.yellow)
+
+		-- runtime check
+		local success, runtimeErr = pcall(f)
+
+		if not success then
+			local line = getLine(runtimeErr)
+			noti(5,
+				"Runtime error at line ["..line.."]: "..tostring(runtimeErr),
+				color.red
+			)
+			return
+		end
+
+		noti(5, "Execute!", color.green)
+
+	end)
+end
+
+if vFT.Copy then
+	vFT.Copy.MouseButton1Click:Connect(function()
+
+		local text = getText()
+		if text == "" then return end
+
+		local ok = false
+
+		-- รองรับหลาย executor
+		if setclipboard then
+			ok = pcall(setclipboard, text)
+		elseif toclipboard then
+			ok = pcall(toclipboard, text)
+		end
+
+		if ok then
+			noti(5, "Copied!", color.yellow)
+		else
+			noti(5, "Clipboard is not support.", color.red)
+		end
+
+	end)
+end
+
+if vFT.PTE then
+	vFT.PTE.MouseButton1Click:Connect(function()
+
+		local text = getText()
+		if text == "" then return end
+
+		if vEDEdit then
+			vEDEdit.Text = text
+			noti(5, "Paste to editor!", color.green)
+		end
+
+	end)
+end
 
 --[ Bookmark ]--
 --[ Search ]--
 --[ Music ]--
 --[ Settings ]--
+
+
+
+
+
+
+--[ SCRIPT ]
