@@ -1,11 +1,5 @@
-local Version = [[0.1.31 Alpha
-Say hello to device explorer!
-- Working Explorer 
-- Working Searcher
-
-- But 3 Buttons still not working!
-- Still have bugs
-]]
+local Version = [[0.1.33 Alpha
+UI Folder had been almost full release!]]
 -- This executor
 
 ------------------------------------------------------------------------------------------
@@ -3969,9 +3963,6 @@ local ALLOWED = {
 	text = true,
 	set = true,
 	ver = true,
-}
-
-local BLOCKED = {
 	json = true,
 	html = true,
 	py = true,
@@ -3987,6 +3978,10 @@ local BLOCKED = {
 	kt = true,
 	rb = true,
 	r = true,
+}
+
+local BLOCKED = {
+ -- wut
 }
 
 local function getExtension(name)
@@ -4361,19 +4356,20 @@ local function fdlists(T, active, icon, ObjectName, offset, filePath)
 
 	local btn = Instance.new("TextButton")
 	btn.Name = "Object"
-	btn.Size = UDim2.new(1, 0, 0, 30)
+	btn.Size = UDim2.new(1, offset, 0, 30)
 	btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
 	btn.BackgroundTransparency = T or 1
 	btn.Active = true
 	btn.TextSize = 0
 	btn.Parent = filelist
 
-	-- indent
+	--[[ indent
 	local pad = Instance.new("UIPadding")
 	pad.PaddingLeft = UDim.new(0, offset)
 	pad.Parent = btn
+	]]
 
-	-- Stroke(btn, ASMBorder, 255,255,255, LJMRound, 1, 0)
+	Stroke(btn, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
 	-- icon
 	local ima = Instance.new("ImageLabel")
@@ -4399,9 +4395,9 @@ local function fdlists(T, active, icon, ObjectName, offset, filePath)
 
 	if isFolderItem or isPseudoFolder then
 		if openedFolders[filePath] then
-			na.Text = "[ - ] "..ObjectName
+			na.Text = "▼ "..ObjectName
 		else
-			na.Text = "[ + ] "..ObjectName
+			na.Text = "▶ "..ObjectName
 		end
 	else
 		na.Text = ObjectName
@@ -4518,10 +4514,10 @@ function refreshFileList()
 			end
 
 			local icon, canOpen = resolveUI(name, isFolder)
-			fdlists(1, canOpen, icon, name, depth * 30, p)
+			fdlists(1, canOpen, icon, name, depth - 0, p)
 
 			if isFolder and openedFolders[p] then
-				scan(p, depth + 1)
+				scan(p, depth - 30)
 			end
 
 		end
