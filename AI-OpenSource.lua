@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.258 ( Closed )"
+local ver = " gpt Test 4.260 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -338,6 +338,7 @@ local user = {
     Info  = "Information: ",
     Nill = "",
     Sys = "System: "
+	Nil = "",
 }
 
 -- ChatLogs Line
@@ -475,7 +476,8 @@ local user = {
     Warn  = "Warning: ",
     Info  = "Information: ",
     Nill = "",
-    Sys = "System: "
+    Sys = "System: ",
+	Nil = "",
 }
 
 -- assume txt(user, text, r,g,b) already exists in global; if not provide fallback
@@ -870,7 +872,7 @@ local text = msg.Text
 local r,g,b = getChatColor(name)
 
 safeTxt(
-	user.chat,
+	user.Nil,
 	"[GLOBAL] "..name..": "..text,
 	r,g,b
 )
@@ -901,7 +903,7 @@ safeTxt(
 			local r,g,b = getChatColor(msgData.FromSpeaker)
 
 safeTxt(
-	user.chat,
+	user.Nil,
 	"[GLOBAL] "..msgData.FromSpeaker..": "..msgData.Message,
 	r,g,b
 )
