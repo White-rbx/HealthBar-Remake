@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.254 ( Closed )"
+local ver = " gpt Test 4.255 ( Closed )"
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -796,7 +796,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GLOBAL_CONN = nil
 
 local function hookGlobalChat()
-	if GLOBAL_CONN then return end
+	unhookGlobalChat()
 
 	local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
 	if not chatEvents then return end
@@ -958,6 +958,8 @@ local function handleCommand(msg)
 
         if GLOBAL_CHAT_ON then
             hookGlobalChat()
+		else
+			unhookGlobalChat()
         end
 
         safeTxt(user.Suc, "GlobalChat: "..tostring(GLOBAL_CHAT_ON), 0,255,0)
