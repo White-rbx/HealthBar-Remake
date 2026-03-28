@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.255 ( Closed )"
+local ver = " gpt Test 4.258 ( Closed )"
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -788,38 +788,128 @@ local function createInstanceTool(argsStr)
 end
 
 -- global chat spying placeholders (client-side only)
+local TextChatService = game:GetService("TextChatService")
+
 local GLOBAL_CHAT_ON = false
+
+local GLOBAL_CONN_OLD = nil
+local GLOBAL_CONN_NEW = nil
+local CHAT_COLOR_MODE = "RANDOM" 
+-- "CUSTOM" / "TEAM"
+local Players = game:GetService("Players")
+
+local function getRandomColor(name)
+	local seed = 0
+	for i = 1, #name do
+		seed += string.byte(name, i)
+	end
+
+	local r = (seed * 123) % 255
+	local g = (seed * 321) % 255
+	local b = (seed * 213) % 255
+
+	return math.max(r,50), math.max(g,50), math.max(b,50)
+end
+
+local function getChatColor(name)
+
+	if CHAT_COLOR_MODE == "CUSTOM" then
+		return 0,255,255
+	end
+
+	if CHAT_COLOR_MODE == "RANDOM" then
+		return getRandomColor(name)
+	end
+
+	if CHAT_COLOR_MODE == "TEAM" then
+		local plr = Players:FindFirstChild(name)
+		if plr and plr.Team and plr.Team.TeamColor then
+			local c = plr.Team.TeamColor.Color
+			return
+				math.floor(c.R * 255),
+				math.floor(c.G * 255),
+				math.floor(c.B * 255)
+		end
+	end
+
+	return 200,200,200
+end
+
 local SPY_CHAT_ON = false
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local GLOBAL_CONN = nil
+local function unhookGlobalChat()
+	if GLOBAL_CONN_OLD then
+		GLOBAL_CONN_OLD:Disconnect()
+		GLOBAL_CONN_OLD = nil
+	end
+
+	if GLOBAL_CONN_NEW then
+		GLOBAL_CONN_NEW:Disconnect()
+		GLOBAL_CONN_NEW = nil
+	end
+end
 
 local function hookGlobalChat()
+
 	unhookGlobalChat()
 
-	local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-	if not chatEvents then return end
+	------------------------------------------------
+	-- 🔵 NEW CHAT (TextChatService)
+	------------------------------------------------
+	pcall(function()
+		GLOBAL_CONN_NEW = TextChatService.MessageReceived:Connect(function(msg)
 
-	local event = chatEvents:FindFirstChild("OnMessageDoneFiltering")
-	if not event then return end
+			if not GLOBAL_CHAT_ON then return end
+			if not msg.TextSource then return end
 
-	GLOBAL_CONN = event.OnClientEvent:Connect(function(msgData)
+			local name = msg.TextSource.Name
+local text = msg.Text
 
-		if not GLOBAL_CHAT_ON then return end
-    if msgData.FromSpeaker == game.Players.LocalPlayer.Name then return end
+local r,g,b = getChatColor(name)
 
-		if type(msgData) == "table" and msgData.FromSpeaker and msgData.Message then
-			
-			safeTxt(
-				user.chat,
-				"[GLOBAL] "..msgData.FromSpeaker..": "..msgData.Message,
-				0,255,255
-			)
+safeTxt(
+	user.chat,
+	"[GLOBAL] "..name..": "..text,
+	r,g,b
+)
 
-		end
+		end)
+	end)
+
+	------------------------------------------------
+	-- 🟢 OLD CHAT (Legacy)
+	------------------------------------------------
+	pcall(function()
+
+		local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+		if not chatEvents then return end
+
+		local event = chatEvents:FindFirstChild("OnMessageDoneFiltering")
+		if not event then return end
+
+		GLOBAL_CONN_OLD = event.OnClientEvent:Connect(function(msgData)
+
+			if not GLOBAL_CHAT_ON then return end
+
+			if type(msgData) ~= "table" then return end
+			if not msgData.FromSpeaker or not msgData.Message then return end
+
+			if msgData.FromSpeaker == Players.LocalPlayer.Name then return end
+
+			local r,g,b = getChatColor(msgData.FromSpeaker)
+
+safeTxt(
+	user.chat,
+	"[GLOBAL] "..msgData.FromSpeaker..": "..msgData.Message,
+	r,g,b
+)
+
+		end)
 
 	end)
+
 end
 
 local function handleCommand(msg)
@@ -953,17 +1043,25 @@ local function handleCommand(msg)
         return true
     end
     if lower:match("^/globalchat") then
-        local t = msg:match("^/globalchat%s*(%S*)") or ""
-        GLOBAL_CHAT_ON = (t:upper() == "ON")
+    	local t = msg:match("^/globalchat%s*(%S*)") or ""
+	    local newState = (t:upper() == "ON")
 
-        if GLOBAL_CHAT_ON then
-            hookGlobalChat()
-		else
-			unhookGlobalChat()
-        end
+    	-- 🔥 กัน spam toggle
+    	if GLOBAL_CHAT_ON == newState then
+    		safeTxt(user.Info, "Already "..tostring(newState),255,255,0)
+    		return true
+    	end
 
-        safeTxt(user.Suc, "GlobalChat: "..tostring(GLOBAL_CHAT_ON), 0,255,0)
-        return true
+    	GLOBAL_CHAT_ON = newState
+
+    	if GLOBAL_CHAT_ON then
+    		hookGlobalChat()
+    	else
+    		unhookGlobalChat()
+    	end
+
+    	safeTxt(user.Suc, "GlobalChat: "..tostring(GLOBAL_CHAT_ON), 0,255,0)
+    	return true
     end
     if lower:match("^/spychat") then
         local t = msg:match("^/spychat%s*(%S*)") or ""
