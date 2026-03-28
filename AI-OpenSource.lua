@@ -1,5 +1,5 @@
-local ver = " gpt Test 4.244 ( Closed )"
-local update = [=[
+local ver = " gpt Test 4.254 ( Closed )"
+local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
 (:8/1/2026 | 6:00 pm: R) Raw reset GitHub bug.
@@ -8,7 +8,8 @@ local update = [=[
 (:8/1/2026 | 6:49 pm: C) Closed
 (:30/1/2026 | 8:12 pm: U) Update
 (:30/1/2026 | 8:59 pm: D) Disabled top button for bug.
-]=]
+(:28/3/2026 | 8:32 pm: F&R) Fixed /Globalchat not working and rename from AI-OpenSource to AI-Thinking.
+]]
 
 -- =====>> Saved Functions <<=====
 
@@ -181,7 +182,7 @@ tl.Name = "Topic"
 tl.Size = UDim2.new(0.2,0,0.1,0)
 tl.BackgroundTransparency = 1
 tl.Active = false
-tl.Text = "AI-OpenSource"
+tl.Text = "AI-Thinking"
 tl.TextColor3 = Color3.fromRGB(255,255,255)
 tl.TextScaled = true
 tl.Parent = ins
@@ -361,7 +362,7 @@ end
 txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
 txt(user.Nill, "Version:" .. ver .. "| © Copyright LighterCyan", 180, 180, 180)
 txt(user.Info, update, 0, 170, 255)
-txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-OpenSource or not? With respect.", 255, 255, 0)
+txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-Thinking or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands. Add api is /addapi", 0,170,255) 
 -- txt(user.Nill, 
 --[[ What is AI-OpenSource?
@@ -381,7 +382,7 @@ txt(user.Nill, "Welcome back Tester", 0, 255, 0)
 ]]
 txt(user.Nill, [=[
 [==> OFFICIAL ANNOUNCEMENT <==]
-AI-OpenSource close for now. We'll be right back soon! maybe 
+AI-Thinking close for now. We'll be right back soon! maybe 
 
 AI MIGHT BE BUG BECAUSE OF TEXTLABEL
 ]=], 255,0,0)
@@ -446,7 +447,7 @@ local function debugLog(...)
     if not DEBUG_MODE then return end
     local args = { ... }
     pcall(function()
-        print("[AI-OpenSource][DEBUG]", unpack(args))
+        print("[AI-Thinking][DEBUG]", unpack(args))
     end)
 end
 
@@ -483,7 +484,7 @@ if type(txt) ~= "function" then
         local color = {r or 255, g or 255, b or 255}
         local prefix = (type(u) == "string") and u or (u and tostring(u) or "")
         local line = tostring(prefix) .. tostring(text)
-        print("[AI-OpenSource][FALLBACK-TXT]", line)
+        print("[AI-Thinking][FALLBACK-TXT]", line)
     end
 end
 
@@ -790,10 +791,41 @@ end
 local GLOBAL_CHAT_ON = false
 local SPY_CHAT_ON = false
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local GLOBAL_CONN = nil
+
+local function hookGlobalChat()
+	if GLOBAL_CONN then return end
+
+	local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+	if not chatEvents then return end
+
+	local event = chatEvents:FindFirstChild("OnMessageDoneFiltering")
+	if not event then return end
+
+	GLOBAL_CONN = event.OnClientEvent:Connect(function(msgData)
+
+		if not GLOBAL_CHAT_ON then return end
+    if msgData.FromSpeaker == game.Players.LocalPlayer.Name then return end
+
+		if type(msgData) == "table" and msgData.FromSpeaker and msgData.Message then
+			
+			safeTxt(
+				user.chat,
+				"[GLOBAL] "..msgData.FromSpeaker..": "..msgData.Message,
+				0,255,255
+			)
+
+		end
+
+	end)
+end
+
 local function handleCommand(msg)
     local lower = tostring(msg):lower()
     if lower:match("^/help") then
-        safeTxt(user.Nill, "What is AI-OpenSource?", 180,180,180)
+        safeTxt(user.Nill, "These commands", 180,180,180)
         for line in HELP_TEXT:gmatch("[^\n]+") do safeTxt(user.Nill, line, 180,180,180) end
         return true
     end
@@ -923,7 +955,12 @@ local function handleCommand(msg)
     if lower:match("^/globalchat") then
         local t = msg:match("^/globalchat%s*(%S*)") or ""
         GLOBAL_CHAT_ON = (t:upper() == "ON")
-        safeTxt(user.Suc, "GlobalChat: "..tostring(GLOBAL_CHAT_ON),0,255,0)
+
+        if GLOBAL_CHAT_ON then
+            hookGlobalChat()
+        end
+
+        safeTxt(user.Suc, "GlobalChat: "..tostring(GLOBAL_CHAT_ON), 0,255,0)
         return true
     end
     if lower:match("^/spychat") then
