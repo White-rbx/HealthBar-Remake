@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.260 "
+local ver = " gpt Test 4.261 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -337,7 +337,7 @@ local user = {
     Warn  = "Warning: ",
     Info  = "Information: ",
     Nill = "",
-    Sys = "System: "
+    Sys = "System: ",
 	Nil = "",
 }
 
