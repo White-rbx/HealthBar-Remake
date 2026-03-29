@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.265 "
+local ver = " gpt Test 4.266 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -312,13 +312,6 @@ si.CanvasSize = UDim2.new(0,0,0,0)
 si.Parent = ins
 ListLayout(si, 0, 3, HLeft, VTop, SLayout, FillV)
 
-task.defer(function()
-	local layout = si:FindFirstChildOfClass("UIListLayout")
-	if layout then
-		si.CanvasPosition = Vector2.new(0, layout.AbsoluteContentSize.Y)
-	end
-end)
-
 --[[
 Note
  Player color is White
@@ -363,6 +356,13 @@ local function txt(user, text, R, G, B)
     cha.TextYAlignment = Enum.TextYAlignment.Top
     cha.AutomaticSize = Enum.AutomaticSize.Y
     cha.Parent = si
+
+	task.defer(function()
+	local layout = si:FindFirstChildOfClass("UIListLayout")
+	if layout then
+		si.CanvasPosition = Vector2.new(0, layout.AbsoluteContentSize.Y)
+	end
+end)
 
     return cha
 end
