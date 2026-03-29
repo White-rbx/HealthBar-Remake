@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.261 "
+local ver = " gpt Test 4.265 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -312,10 +312,17 @@ si.CanvasSize = UDim2.new(0,0,0,0)
 si.Parent = ins
 ListLayout(si, 0, 3, HLeft, VTop, SLayout, FillV)
 
+task.defer(function()
+	local layout = si:FindFirstChildOfClass("UIListLayout")
+	if layout then
+		si.CanvasPosition = Vector2.new(0, layout.AbsoluteContentSize.Y)
+	end
+end)
+
 --[[
 Note
  Player color is White
- ChatGPT color is lime
+ ChatGPT color is Light Blue
 
 Example
  txt(user.plr, "", 255,255,255) -- White
@@ -789,16 +796,32 @@ local function createInstanceTool(argsStr)
     if not ok then safeTxt(user.Error, "InstanceTool error: "..tostring(err), 255,0,0) end
 end
 
--- global chat spying placeholders (client-side only)
 local TextChatService = game:GetService("TextChatService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GLOBAL_CHAT_ON = false
-
+local SPY_CHAT_ON = false
 local GLOBAL_CONN_OLD = nil
 local GLOBAL_CONN_NEW = nil
-local CHAT_COLOR_MODE = "RANDOM" 
--- "CUSTOM" / "TEAM"
-local Players = game:GetService("Players")
+local CHAT_COLOR_MODE = "RANDOM"
+
+local lastMsg = ""
+
+local function isDuplicate(name, text)
+	local key = name..":"..text
+	if key == lastMsg then return true end
+	lastMsg = key
+	return false
+end
+
+local function getPlayerByName(name)
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr.Name == name or plr.DisplayName == name then
+			return plr
+		end
+	end
+end
 
 local function getRandomColor(name)
 	local seed = 0
@@ -806,11 +829,24 @@ local function getRandomColor(name)
 		seed += string.byte(name, i)
 	end
 
-	local r = (seed * 123) % 255
-	local g = (seed * 321) % 255
-	local b = (seed * 213) % 255
+	local r = (seed * 123) % 200 + 55
+	local g = (seed * 321) % 200 + 55
+	local b = (seed * 213) % 200 + 55
 
-	return math.max(r,50), math.max(g,50), math.max(b,50)
+	return r, g, b
+end
+
+local function boostColor(r,g,b)
+	local maxVal = math.max(r,g,b)
+
+	if maxVal < 120 and maxVal > 0 then
+		local scale = 120 / maxVal
+		r = math.clamp(r * scale, 0, 255)
+		g = math.clamp(g * scale, 0, 255)
+		b = math.clamp(b * scale, 0, 255)
+	end
+
+	return r,g,b
 end
 
 local function getChatColor(name)
@@ -820,26 +856,28 @@ local function getChatColor(name)
 	end
 
 	if CHAT_COLOR_MODE == "RANDOM" then
-		return getRandomColor(name)
+		local r,g,b = getRandomColor(name)
+		return boostColor(r,g,b)
 	end
 
 	if CHAT_COLOR_MODE == "TEAM" then
-		local plr = Players:FindFirstChild(name)
+		local plr = getPlayerByName(name)
+
 		if plr and plr.Team and plr.Team.TeamColor then
 			local c = plr.Team.TeamColor.Color
-			return
+			local r,g,b =
 				math.floor(c.R * 255),
 				math.floor(c.G * 255),
 				math.floor(c.B * 255)
+			return boostColor(r,g,b)
 		end
+
+		local r,g,b = getRandomColor(name)
+		return boostColor(r,g,b)
 	end
 
 	return 200,200,200
 end
-
-local SPY_CHAT_ON = false
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local function unhookGlobalChat()
 	if GLOBAL_CONN_OLD then
@@ -857,9 +895,6 @@ local function hookGlobalChat()
 
 	unhookGlobalChat()
 
-	------------------------------------------------
-	-- 🔵 NEW CHAT (TextChatService)
-	------------------------------------------------
 	pcall(function()
 		GLOBAL_CONN_NEW = TextChatService.MessageReceived:Connect(function(msg)
 
@@ -867,22 +902,29 @@ local function hookGlobalChat()
 			if not msg.TextSource then return end
 
 			local name = msg.TextSource.Name
-local text = msg.Text
+			local text = msg.Text or ""
 
-local r,g,b = getChatColor(name)
+			if name == Players.LocalPlayer.Name then return end
+			if isDuplicate(name, text) then return end
 
-safeTxt(
-	user.Nil,
-	"[GLOBAL] "..name..": "..text,
-	r,g,b
-)
+			local player = Players:GetPlayerByUserId(msg.TextSource.UserId)
+
+			local r,g,b
+			if player then
+				r,g,b = getChatColor(player.Name)
+			else
+				r,g,b = getChatColor(name)
+			end
+
+			safeTxt(
+				user.Nill,
+				"[GLOBAL] "..name..": "..text,
+				r,g,b
+			)
 
 		end)
 	end)
 
-	------------------------------------------------
-	-- 🟢 OLD CHAT (Legacy)
-	------------------------------------------------
 	pcall(function()
 
 		local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
@@ -894,19 +936,19 @@ safeTxt(
 		GLOBAL_CONN_OLD = event.OnClientEvent:Connect(function(msgData)
 
 			if not GLOBAL_CHAT_ON then return end
-
 			if type(msgData) ~= "table" then return end
 			if not msgData.FromSpeaker or not msgData.Message then return end
 
 			if msgData.FromSpeaker == Players.LocalPlayer.Name then return end
+			if isDuplicate(msgData.FromSpeaker, msgData.Message) then return end
 
 			local r,g,b = getChatColor(msgData.FromSpeaker)
 
-safeTxt(
-	user.Nil,
-	"[GLOBAL] "..msgData.FromSpeaker..": "..msgData.Message,
-	r,g,b
-)
+			safeTxt(
+				user.Nill,
+				"[GLOBAL] "..msgData.FromSpeaker..": "..msgData.Message,
+				r,g,b
+			)
 
 		end)
 
