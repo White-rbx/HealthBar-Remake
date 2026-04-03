@@ -3,15 +3,7 @@ UI Folder had been almost full release!]]
 -- This executor
 
 -- Intro 
-local finished = false
-
-local func = loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
-
-func(function()
-    finished = true
-end)
-
-repeat task.wait() until finished
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
 
 ------------------------------------------------------------------------------------------
 
