@@ -1,4 +1,4 @@
-local Version = [[0.1.371 Alpha
+local Version = [[0.1.372 Alpha
 Less annoying floating toggle button]]
 -- This executor
 
@@ -190,7 +190,7 @@ Bg2.Parent = Windows
 local oc = Instance.new("ImageButton")
 oc.Name = "connect"
 oc.Size = UDim2.new(0.04,0,0.08,0)
-oc.Position = UDim2.new(0.03,0,0.12,0)
+oc.Position = UDim2.new(0,220,0.02,0)
 oc.BackgroundColor3 = Color3.fromRGB(18,18,21)
 oc.Transparency = 0.08
 oc.Draggable = true
@@ -465,7 +465,7 @@ if not isfolder(base) then
 end
 
 -- สร้าง sub folders
-local folders = { "Workspace", "AutoExe", "Tabs", "Aseets", "Logs" }
+local folders = { "Workspace", "AutoExe", "Tabs", "Assets", "Logs" }
 
 for _, folder in ipairs(folders) do
 	local path = base .. "/" .. folder
@@ -4614,7 +4614,7 @@ Stroke(Inside, ASMBorder, 255,255,255, LJMRound, 2, 0)
 local str1 = Inside.UIStroke
 local gra1 = Gradient(str1, 45, 0, 0,
     Color3.fromRGB(255,255,255),
-    Color3.fromRGB(0,0,0)
+    Color3.fromRGB(0,255,255)
 )
 
 task.spawn(function()
