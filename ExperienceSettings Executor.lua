@@ -1,4 +1,4 @@
-local Version = [[0.1.35 Alpha
+local Version = [[0.1.36 Alpha
 UI Folder had been almost full release!]]
 -- This executor
 
@@ -134,7 +134,7 @@ local Players = game:GetService("Players")
 
 -- 3D Wprkspace
 local Workspace = game:GetService("Workspace")
-local TeleportService = game:GetService("TeleportService")
+-- local TeleportService = game:GetService("TeleportService")
 local Camera = Workspace.CurrentCamera
 --[[ if Camera == Workspace.CurrentCamera then
   -- Do nothing
