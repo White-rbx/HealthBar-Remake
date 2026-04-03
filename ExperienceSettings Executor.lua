@@ -1,5 +1,5 @@
-local Version = [[0.1.36 Alpha
-UI Folder had been almost full release!]]
+local Version = [[0.1.37 Alpha
+Less annoying floating toggle button]]
 -- This executor
 
 -- Intro 
@@ -189,7 +189,7 @@ Bg2.Parent = Windows
 
 local oc = Instance.new("ImageButton")
 oc.Name = "connect"
-oc.Size = UDim2.new(0.04,0,0.08,0)
+oc.Size = UDim2.new(0.03,0,0.12,0)
 oc.Position = UDim2.new(0.482, 0, 0.19, 0)
 oc.BackgroundColor3 = Color3.fromRGB(18,18,21)
 oc.Transparency = 0.08
