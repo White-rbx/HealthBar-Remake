@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.4 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.41 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -249,53 +249,42 @@ ContentProvider:PreloadAsync(preload)
 -- 🔹 START ANIMATION
 ------------------------------------------------
 
-task.spawn(function()
+-- run directly (SYNC)
+-- 🎬 Tween เข้า
+local t1 = TweenService:Create(Frame, TweenInfo.new(0.5), {
+	BackgroundTransparency = 0.6
+})
 
-	-- 🎬 Tween เข้า (ตามที่นายขอ)
-	local t1 = TweenService:Create(Frame, TweenInfo.new(0.5), {
-		BackgroundTransparency = 0.6
-	})
+local t2 = TweenService:Create(Image, TweenInfo.new(0.5), {
+	ImageTransparency = 0
+})
 
-	local t2 = TweenService:Create(Image, TweenInfo.new(0.5), {
-		ImageTransparency = 0
-	})
+t1:Play()
+t2:Play()
 
-	t1:Play()
-	t2:Play()
+Image.Image = "rbxassetid://"..anim[1]
+task.wait(0.5)
 
-	-- ▶ Intro (เฟรมแรกค้าง 0.5 วิ)
-	Image.Image = "rbxassetid://"..anim[1]
-	task.wait(0.5)
+for i = 2, #anim do
+	Image.Image = "rbxassetid://"..anim[i]
+	task.wait(FRAME_TIME)
+end
 
-	-- ▶ Animation (15 FPS)
-	for i = 2, #anim do
-		Image.Image = "rbxassetid://"..anim[i]
-		task.wait(FRAME_TIME)
-	end
+task.wait(0.5)
 
-	-- ▶ Outro (ค้าง 0.5 วิ)
-	task.wait(0.5)
+local t3 = TweenService:Create(Frame, TweenInfo.new(0.6), {
+	BackgroundTransparency = 1
+})
 
-	------------------------------------------------
-	-- 🔹 Fade out
-	------------------------------------------------
+local t4 = TweenService:Create(Image, TweenInfo.new(0.6), {
+	ImageTransparency = 1
+})
 
-	local t3 = TweenService:Create(Frame, TweenInfo.new(0.6), {
-		BackgroundTransparency = 1
-	})
+t3:Play()
+t4:Play()
 
-	local t4 = TweenService:Create(Image, TweenInfo.new(0.6), {
-		ImageTransparency = 1
-	})
+t3.Completed:Wait()
 
-	t3:Play()
-	t4:Play()
-
-	t3.Completed:Wait()
-
-	-- 💀 Destroy
-	if Folder then
-		Folder:Destroy()
-	end
-
-end)
+if Folder then
+	Folder:Destroy()
+end
