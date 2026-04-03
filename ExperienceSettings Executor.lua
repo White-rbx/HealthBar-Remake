@@ -1,7 +1,9 @@
-local Version = [[0.1.33 Alpha
+local Version = [[0.1.34 Alpha
 UI Folder had been almost full release!]]
 -- This executor
 
+-- Intro 
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
 ------------------------------------------------------------------------------------------
 
 -- =====>> Saved Functions <<=====
