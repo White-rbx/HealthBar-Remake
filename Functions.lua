@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.794
+-- So uhm just a script lol. 4.795
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -269,7 +269,7 @@ wl.Name = "Credit"
 wl.BackgroundTransparency = 1
 wl.Position = UDim2.new(0.02,0,0.65,0)
 wl.Size = UDim2.new(0.96,0,0.13,0)
-wl.Text = "Creator by @5teve3019D on ScriptBlox"
+wl.Text = "Creator by @5teve3019D on ScriptBlox/HaxHell"
 wl.TextScaled = true
 wl.TextColor3 = Color3.fromRGB(255,255,255)
 wl.Parent = bk
@@ -280,7 +280,7 @@ skp.BackgroundTransparency = 0.8
 skp.BackgroundColor3 = Color3.fromRGB(255,255,255)
 skp.Position = UDim2.new(0.02,0,0.85,0)
 skp.Size = UDim2.new(0.96,0,0.1,0)
-skp.Text = "Skip"
+skp.Text = "Close fuc#king annoying load bar"
 skp.TextScaled = true
 skp.TextColor3 = Color3.fromRGB(255,255,255)
 skp.Parent = bk
@@ -382,7 +382,7 @@ txt3.TextXAlignment = Enum.TextXAlignment.Left
 txt3.Size = UDim2.new(1,0,0,15)
 txt3.Position = UDim2.new(0,0,0,70)
 txt3.BackgroundTransparency = 1
-txt3.Text = "[ User on ScriptBlox ]"
+txt3.Text = "[ User on ScriptBlox/HaxHell ]"
 txt3.TextColor3 = Color3.fromRGB(255,255,255)
 txt3.TextScaled =  true
 txt3.Parent = iN2
