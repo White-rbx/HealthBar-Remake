@@ -3,7 +3,12 @@ UI Folder had been almost full release!]]
 -- This executor
 
 -- Intro 
+_G.ExperienceSettingsLoaded = false
+
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
+
+-- WAIT until fully done
+repeat task.wait() until _G.ExperienceSettingsLoaded
 ------------------------------------------------------------------------------------------
 
 -- =====>> Saved Functions <<=====
