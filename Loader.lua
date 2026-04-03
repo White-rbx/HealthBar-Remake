@@ -1,7 +1,12 @@
 -- Well 2.26
 
 -- Intro
+_G.ExperienceSettingsLoaded = false
+
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
+
+-- WAIT until fully done
+repeat task.wait() until _G.ExperienceSettingsLoaded
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
 
