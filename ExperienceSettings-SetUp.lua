@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.47 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.48 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -186,13 +186,17 @@ local TouchInputService = game:GetService("TouchInputService")
 
 ---------------------------------------------------------------------------------------
 
-if getgenv().ES and getgenv().ES.initialized then return end
-
-local ES = getgenv().ES
-if not ES then
-	warn("[ ExperienceSettings SetUp ] not found!")
-	return
+local old = CoreGui:FindFirstChild("ExperienceSettings-SetUp")
+if old then
+	old:Destroy()
 end
+
+getgenv().ES = getgenv().ES or {
+	progress = 0,
+	max = 100,
+	error = false,
+	done = false
+}
 
 local ES = getgenv().ES
 
