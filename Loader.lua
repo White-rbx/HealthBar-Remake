@@ -2,6 +2,30 @@
 
 -- Intro
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
+local ES = getgenv().ES or {}
+
+getgenv().ES = ES
+
+local function run()
+	local function safe(f)
+		local ok, err = pcall(f)
+		if not ok then
+			ES.error = true
+		end
+	end
+
+	safe(function()
+		task.wait(0.3)
+		ES.progress += 10
+	end)
+
+	safe(function()
+		task.wait(0.3)
+		ES.progress += 10
+	end)
+end
+
+return run
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
