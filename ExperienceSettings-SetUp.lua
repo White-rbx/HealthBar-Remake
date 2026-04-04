@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.45 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.46 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -260,6 +260,7 @@ local Load = Instance.new("Frame")
 Load.Size = UDim2.new(0,0,1,0)
 Load.BackgroundColor3 = Color3.new(1,1,1)
 Load.Parent = insideBar
+Corner(1,0, Load)
 
 local btnBar = Instance.new("TextButton")
 btnBar.Visible = false
@@ -267,7 +268,7 @@ btnBar.Position = UDim2.new(0.4,0,0.4,0)
 btnBar.Size = UDim2.new(0.2,0,0.2,0)
 btnBar.Text = "Close"
 btnBar.Parent = Canvas
-Corner(1,0,btnBar)
+Corner(0.15,0,btnBar)
 
 btnBar.MouseButton1Click:Connect(function()
 	if Folder then Folder:Destroy() end
@@ -328,11 +329,11 @@ TweenService:Create(warn, TweenInfo.new(0.5), {
 }):Play()
 
 TweenService:Create(CanBar, TweenInfo.new(0.5), {
-	BackgroundTransparency = 0
+	BackgroundTransparency = 1
 }):Play()
 
 TweenService:Create(insideBar, TweenInfo.new(0.5), {
-	BackgroundTransparency = 0
+	BackgroundTransparency = 1
 }):Play()
 
 TweenService:Create(Load, TweenInfo.new(0.5), {
