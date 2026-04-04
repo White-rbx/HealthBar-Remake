@@ -2,59 +2,37 @@ local Version = [[0.1.375 Alpha
 Less annoying floating toggle button]]
 -- This executor
 
+getgenv().ES = nil
+
 -- Intro 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
 
-getgenv().ES = getgenv().ES or {
-	progress = 0,
-	max = 100,
-	error = false,
-	done = false
-}
-
 local ES = getgenv().ES
 
--- RESET ตรงนี้ที่เดียว
+-- RESET ค่า
 ES.progress = 0
 ES.max = 100
 ES.error = false
 ES.done = false
 
 local function step(x)
-	ES.progress = ES.progress + x
+	ES.progress += x
 end
 
 local function safe(f)
 	local ok, err = pcall(f)
 	if not ok then
 		ES.error = true
+		warn(err)
 	end
 end
 
-safe(function()
-	task.wait(0.5)
-	step(20)
-end)
-
-safe(function()
-	task.wait(0.5)
-	step(20)
-end)
-
-safe(function()
-	task.wait(0.5)
-	step(20)
-end)
-
-safe(function()
-	task.wait(0.5)
-	step(20)
-end)
-
-safe(function()
-	task.wait(0.5)
-	step(20)
-end)
+for i = 1,5 do
+	safe(function()
+		task.wait(0.5)
+		step(20)
+	end)
+end
 
 if not ES.error then
 	ES.done = true
