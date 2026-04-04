@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.41 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.43 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -186,37 +186,89 @@ local TouchInputService = game:GetService("TouchInputService")
 
 ---------------------------------------------------------------------------------------
 
+if getgenv().ES and getgenv().ES.initialized then return end
+
+getgenv().ES = getgenv().ES or {
+	progress = 0,
+	max = 100,
+	error = false,
+	done = false,
+	initialized = true
+}
+
+local ES = getgenv().ES
+
+-- (ทุก function + services ของนาย 그대로)
+
 -- Folder
 local Folder = Instance.new("Folder")
 Folder.Name = "ExperienceSettings-SetUp"
-Folder.Parent = CoreGui
--- fucking screen
+Folder.Parent = game:GetService("CoreGui")
+
 local Screen = Instance.new("ScreenGui")
 Screen.Name = "Display"
 Screen.DisplayOrder = 2147483647
 Screen.ScreenInsets = Enum.ScreenInsets.None
 Screen.Parent = Folder
 
--- frame
 local Frame = Instance.new("Frame")
 Frame.Name = "SetUp"
-Frame.Active = false
 Frame.Size = UDim2.new(1,0,1,0)
 Frame.BackgroundColor3 = Color3.new(0,0,0)
 Frame.BackgroundTransparency = 1
 Frame.Parent = Screen
--- ListLayout(Frame, 0,0, HCenter, VCenter, nil, nil)
 
 local Image = Instance.new("ImageLabel")
-Image.Name = "SetUpLogo"
-Image.AnchorPoint = Vector2.new(0.5, 0.5)
-Image.Position = UDim2.new(0.5, 0, 0.5, 0)
-Image.BackgroundTransparency = 1
-Image.ImageTransparency = 0
+Image.AnchorPoint = Vector2.new(0.5,0.5)
+Image.Position = UDim2.new(0.5,0,0.5,0)
 Image.Size = UDim2.new(0,640,0,640)
-Image.Image = ""
+Image.BackgroundTransparency = 1
+Image.ImageTransparency = 1
 Image.Parent = Frame
--- Aspect(Image, 1, Fit, Width)
+
+local Canvas = Instance.new("CanvasGroup")
+Canvas.Visible = false
+Canvas.GroupTransparency = 1
+Canvas.Position = UDim2.new(0.1,0,0.5,0)
+Canvas.Size = UDim2.new(0.8,0,0.5,0)
+Canvas.Parent = Frame
+
+local warn = Instance.new("TextLabel")
+warn.BackgroundTransparency = 1
+warn.TextTransparency = 1
+warn.Size = UDim2.new(1,0,0,30)
+warn.TextSize = 18
+warn.TextColor3 = Color3.new(1,1,1)
+warn.Text = "We're setting up for you!"
+warn.Parent = Canvas
+
+local CanBar = Instance.new("CanvasGroup")
+CanBar.Size = UDim2.new(0.7,0,0,20)
+CanBar.Position = UDim2.new(0.15,0,0,35)
+CanBar.BackgroundTransparency = 1
+CanBar.Parent = Canvas
+
+local insideBar = Instance.new("Frame")
+insideBar.BackgroundTransparency = 1
+insideBar.Position = UDim2.new(0.01,0,0.16,0)
+insideBar.Size = UDim2.new(0.98,0,0.68,0)
+insideBar.Parent = CanBar
+
+local Load = Instance.new("Frame")
+Load.Size = UDim2.new(0,0,1,0)
+Load.BackgroundColor3 = Color3.new(1,1,1)
+Load.Parent = insideBar
+
+local btnBar = Instance.new("TextButton")
+btnBar.Visible = false
+btnBar.Position = UDim2.new(0.4,0,0.4,0)
+btnBar.Size = UDim2.new(0.2,0,0.2,0)
+btnBar.Text = "Close"
+btnBar.Parent = Canvas
+
+btnBar.MouseButton1Click:Connect(function()
+	if Folder then Folder:Destroy() end
+end)
 
 local anim = {
 	0,85215834651365,113081160999318,110302272078310,74005522254669,74901110508812,
@@ -231,36 +283,20 @@ local anim = {
 local FPS = 15
 local FRAME_TIME = 1 / FPS
 
-------------------------------------------------
--- 🔹 PRELOAD (กันกระพริบ)
-------------------------------------------------
+local ContentProvider = game:GetService("ContentProvider")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local preload = {}
 for _, id in ipairs(anim) do
 	table.insert(preload, "rbxassetid://"..id)
 end
 
-Image.ImageTransparency = 1
-Frame.BackgroundTransparency = 1
-
 ContentProvider:PreloadAsync(preload)
 
-------------------------------------------------
--- 🔹 START ANIMATION
-------------------------------------------------
-
--- run directly (SYNC)
--- 🎬 Tween เข้า
-local t1 = TweenService:Create(Frame, TweenInfo.new(0.5), {
-	BackgroundTransparency = 0.6
-})
-
-local t2 = TweenService:Create(Image, TweenInfo.new(0.5), {
-	ImageTransparency = 0
-})
-
-t1:Play()
-t2:Play()
+-- 🎬 INTRO
+TweenService:Create(Frame, TweenInfo.new(0.5), {BackgroundTransparency = 0.6}):Play()
+TweenService:Create(Image, TweenInfo.new(0.5), {ImageTransparency = 0}):Play()
 
 Image.Image = "rbxassetid://"..anim[1]
 task.wait(0.5)
@@ -270,21 +306,60 @@ for i = 2, #anim do
 	task.wait(FRAME_TIME)
 end
 
-task.wait(0.5)
+-- 🎬 Freeze + Slide
+task.wait(0.3)
 
-local t3 = TweenService:Create(Frame, TweenInfo.new(0.6), {
-	BackgroundTransparency = 1
-})
+TweenService:Create(Image, TweenInfo.new(0.5), {
+	Position = UDim2.new(0.5,0,0.3,-100)
+}):Play()
 
-local t4 = TweenService:Create(Image, TweenInfo.new(0.6), {
-	ImageTransparency = 1
-})
+-- 🎬 Show UI
+Canvas.Visible = true
 
-t3:Play()
-t4:Play()
+TweenService:Create(Canvas, TweenInfo.new(0.5), {
+	GroupTransparency = 0
+}):Play()
 
-t3.Completed:Wait()
+TweenService:Create(warn, TweenInfo.new(0.5), {
+	TextTransparency = 0
+}):Play()
 
-if Folder then
-	Folder:Destroy()
-end
+TweenService:Create(CanBar, TweenInfo.new(0.5), {
+	BackgroundTransparency = 0
+}):Play()
+
+TweenService:Create(insideBar, TweenInfo.new(0.5), {
+	BackgroundTransparency = 0
+}):Play()
+
+TweenService:Create(Load, TweenInfo.new(0.5), {
+	BackgroundTransparency = 0
+}):Play()
+
+-- 🔥 PROGRESS LOOP
+local current = 0
+
+RunService.RenderStepped:Connect(function()
+	local target = math.clamp((ES.progress or 0)/(ES.max or 100),0,1)
+	current = current + (target - current) * 0.15
+	Load.Size = UDim2.new(current,0,1,0)
+
+	if ES.error then
+		warn.Text = "Whoops! Looks like we got an errors.\nPlease wait for the next update!"
+		btnBar.Visible = true
+	end
+
+	if ES.done and not ES.error then
+		TweenService:Create(Canvas, TweenInfo.new(0.5), {
+			GroupTransparency = 1
+		}):Play()
+
+		TweenService:Create(Image, TweenInfo.new(0.5), {
+			ImageTransparency = 1
+		}):Play()
+
+		task.delay(0.6,function()
+			if Folder then Folder:Destroy() end
+		end)
+	end
+end)
