@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.49 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.5 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -252,6 +252,8 @@ CanBar.Parent = Canvas
 Corner(1,0,CanBar)
 Stroke(CanBar, ASMBorder, 255,255,255, LJMRound, 2, 0)
 
+local CanBarStroke = CanBar.UIStroke
+
 local insideBar = Instance.new("Frame")
 insideBar.BackgroundTransparency = 1
 insideBar.Position = UDim2.new(0.01,0,0.16,0)
@@ -316,7 +318,7 @@ end
 task.wait(0.3)
 
 TweenService:Create(Image, TweenInfo.new(0.5), {
-	Position = UDim2.new(0.5,0,0.3,0)
+	Position = UDim2.new(0.5,0,0.35,0)
 }):Play()
 
 -- 🎬 Show UI
@@ -378,6 +380,14 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 
 TweenService:Create(Frame, TweenInfo.new(0.5), {
 	BackgroundTransparency = 1
+}):Play()
+
+TweenService:Create(Image, TweenInfo.new(0.5), {
+	ImageTransparency = 1
+}):Play()
+
+TweenService:Create(CanBarStroke, TweenInfo.new(0.5), {
+	Transparency = 1
 }):Play()
 
 		task.delay(0.6,function()
