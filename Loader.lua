@@ -1,27 +1,45 @@
--- Well 2.26
+-- Well 2.27
+
+getgenv().ES = nil
 
 -- Intro
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
 
+-- ใช้ ES
 local ES = getgenv().ES
 
-local function run()
-	local function safe(f)
-		local ok, err = pcall(f)
-		if not ok then
-			ES.error = true
-		end
+local function safe(f)
+	local ok, err = pcall(f)
+	if not ok then
+		ES.error = true
+		warn(err)
 	end
+end
 
+local function run()
 	safe(function()
 		task.wait(0.3)
-		ES.progress += 10
+		ES.progress += 25
 	end)
 
 	safe(function()
 		task.wait(0.3)
-		ES.progress += 10
+		ES.progress += 25
 	end)
+
+	safe(function()
+		task.wait(0.3)
+		ES.progress += 25
+	end)
+
+	safe(function()
+		task.wait(0.3)
+		ES.progress += 25
+	end)
+
+	if not ES.error then
+		ES.done = true
+	end
 end
 
 return run
