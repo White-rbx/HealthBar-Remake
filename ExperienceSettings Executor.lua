@@ -1,9 +1,58 @@
-local Version = [[0.1.372 Alpha
+local Version = [[0.1.375 Alpha
 Less annoying floating toggle button]]
 -- This executor
 
 -- Intro 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
+
+local ES = getgenv().ES or {}
+
+getgenv().ES = ES
+
+ES.progress = 0
+ES.max = 100
+ES.error = false
+ES.done = false
+
+local function step(x)
+	ES.progress = ES.progress + x
+end
+
+local function safe(f)
+	local ok, err = pcall(f)
+	if not ok then
+		ES.error = true
+	end
+end
+
+safe(function()
+	task.wait(0.5)
+	step(20)
+end)
+
+safe(function()
+	task.wait(0.5)
+	step(20)
+end)
+
+safe(function()
+	task.wait(0.5)
+	step(20)
+end)
+
+safe(function()
+	task.wait(0.5)
+	step(20)
+end)
+
+safe(function()
+	task.wait(0.5)
+	step(20)
+end)
+
+if not ES.error then
+	ES.done = true
+end
 
 ------------------------------------------------------------------------------------------
 
@@ -26,7 +75,7 @@ local HRight = Enum.HorizontalAlignment.Right
 local VBottom = Enum.VerticalAlignment.Bottom
 local FillH = Enum.FillDirection.Horizontal
 local FillV = Enum.FillDirection.Vertical
-local SCustom = Enum.SortOrder.Custom
+-- local SCustom = Enum.SortOrder.Custom
 local SLayout = Enum.SortOrder.LayoutOrder
 local SName = Enum.SortOrder.Name
 
@@ -44,10 +93,10 @@ end
 
 -- ====FUNCTION UISTROKE=====
 local ASMBorder = Enum.ApplyStrokeMode.Border
-local ASMContextual = Enum.ApplyStrokeMode.Contextual
+-- local ASMContextual = Enum.ApplyStrokeMode.Contextual
 
 local LJMBevel = Enum.LineJoinMode.Bevel
-local LJMMiter = Enum.LineJoinMode.Miter
+-- local LJMMiter = Enum.LineJoinMode.Miter
 local LJMRound = Enum.LineJoinMode.Round
 
 local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
