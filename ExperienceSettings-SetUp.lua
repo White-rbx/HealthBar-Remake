@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.48 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.49 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -316,7 +316,7 @@ end
 task.wait(0.3)
 
 TweenService:Create(Image, TweenInfo.new(0.5), {
-	Position = UDim2.new(0.5,0,0.3,-50)
+	Position = UDim2.new(0.5,0,0.3,0)
 }):Play()
 
 -- 🎬 Show UI
@@ -357,12 +357,28 @@ RunService.RenderStepped:Connect(function()
 
 	if ES.done and not ES.error then
 		TweenService:Create(Canvas, TweenInfo.new(0.5), {
-			GroupTransparency = 1
-		}):Play()
+	GroupTransparency = 1
+}):Play()
 
-		TweenService:Create(Image, TweenInfo.new(0.5), {
-			ImageTransparency = 1
-		}):Play()
+TweenService:Create(warn, TweenInfo.new(0.5), {
+	TextTransparency = 1
+}):Play()
+
+TweenService:Create(CanBar, TweenInfo.new(0.5), {
+	BackgroundTransparency = 1
+}):Play()
+
+TweenService:Create(insideBar, TweenInfo.new(0.5), {
+	BackgroundTransparency = 1
+}):Play()
+
+TweenService:Create(Load, TweenInfo.new(0.5), {
+	BackgroundTransparency = 1
+}):Play()
+
+TweenService:Create(Frame, TweenInfo.new(0.5), {
+	BackgroundTransparency = 1
+}):Play()
 
 		task.delay(0.6,function()
 			if Folder then Folder:Destroy() end
