@@ -1,4 +1,4 @@
--- Well 2.27
+-- Well 2.28
 
 getgenv().ES = nil
 
@@ -42,7 +42,7 @@ local function run()
 	end
 end
 
-return run
+run()
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
