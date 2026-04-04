@@ -2,9 +2,8 @@
 
 -- Intro
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
-local ES = getgenv().ES or {}
 
-getgenv().ES = ES
+local ES = getgenv().ES
 
 local function run()
 	local function safe(f)
