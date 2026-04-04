@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.43 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.45 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -247,6 +247,8 @@ CanBar.Size = UDim2.new(0.7,0,0,20)
 CanBar.Position = UDim2.new(0.15,0,0,35)
 CanBar.BackgroundTransparency = 1
 CanBar.Parent = Canvas
+Corner(1,0,CanBar)
+Stroke(CanBar, ASMBorder, 255,255,255, LJMRound, 2, 0)
 
 local insideBar = Instance.new("Frame")
 insideBar.BackgroundTransparency = 1
@@ -265,6 +267,7 @@ btnBar.Position = UDim2.new(0.4,0,0.4,0)
 btnBar.Size = UDim2.new(0.2,0,0.2,0)
 btnBar.Text = "Close"
 btnBar.Parent = Canvas
+Corner(1,0,btnBar)
 
 btnBar.MouseButton1Click:Connect(function()
 	if Folder then Folder:Destroy() end
@@ -310,14 +313,14 @@ end
 task.wait(0.3)
 
 TweenService:Create(Image, TweenInfo.new(0.5), {
-	Position = UDim2.new(0.5,0,0.3,-100)
+	Position = UDim2.new(0.5,0,0.3,-50)
 }):Play()
 
 -- 🎬 Show UI
 Canvas.Visible = true
 
 TweenService:Create(Canvas, TweenInfo.new(0.5), {
-	GroupTransparency = 0
+	GroupTransparency = 1
 }):Play()
 
 TweenService:Create(warn, TweenInfo.new(0.5), {
