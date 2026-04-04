@@ -5,10 +5,16 @@ Less annoying floating toggle button]]
 -- Intro 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
 
-local ES = getgenv().ES or {}
+getgenv().ES = getgenv().ES or {
+	progress = 0,
+	max = 100,
+	error = false,
+	done = false
+}
 
-getgenv().ES = ES
+local ES = getgenv().ES
 
+-- RESET ตรงนี้ที่เดียว
 ES.progress = 0
 ES.max = 100
 ES.error = false
