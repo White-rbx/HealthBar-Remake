@@ -1,4 +1,4 @@
--- Well 2.3
+-- Well 2.32
 
 -- Reset ES ทุกครั้ง
 getgenv().ES = nil
@@ -54,11 +54,47 @@ local function main()
 		ES.progress += 25
 	end)
 
-	-- โหลดสคริปอื่น (สำคัญ)
-	safeThread(function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
+safe(function()
+	local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"
+
+	-- ===== FETCH =====
+	local ok, src = pcall(function()
+		return game:HttpGet(url)
 	end)
 
+	if not ok then
+		ES.error = true
+		ES.lastError = "HttpGet failed: " .. tostring(src)
+		warn("[ ES ERROR ]:", ES.lastError)
+		return
+	end
+
+	-- ===== VALIDATE CONTENT =====
+	if not src or src == "" then
+		ES.error = true
+		ES.lastError = "Loader.lua is empty"
+		warn("[ ES ERROR ]:", ES.lastError)
+		return
+	end
+
+	if #src < 20 then
+		ES.error = true
+		ES.lastError = "Loader.lua suspicious (too short)"
+		warn("[ ES ERROR ]:", ES.lastError)
+		return
+	end
+
+	-- ===== COMPILE CHECK (NO EXECUTE) =====
+	local f, err = loadstring(src)
+
+	if not f then
+		ES.error = true
+		ES.lastError = "Compile error: " .. tostring(err)
+		warn("[ ES ERROR ]:", ES.lastError)
+		return
+	end
+
+	end)
 end
 
 -- RUN
@@ -70,6 +106,9 @@ task.delay(1.5,function()
 		ES.done = true
 	end
 end)
+
+-- Loader
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
