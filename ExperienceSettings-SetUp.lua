@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.5 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.51 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -242,11 +242,12 @@ warn.Size = UDim2.new(1,0,0,30)
 warn.TextSize = 18
 warn.TextColor3 = Color3.new(1,1,1)
 warn.Text = "We're setting up for you!"
+warn.Wrap = true
 warn.Parent = Canvas
 
 local CanBar = Instance.new("CanvasGroup")
 CanBar.Size = UDim2.new(0.7,0,0,20)
-CanBar.Position = UDim2.new(0.15,0,0,35)
+CanBar.Position = UDim2.new(0.2,0,0,35)
 CanBar.BackgroundTransparency = 1
 CanBar.Parent = Canvas
 Corner(1,0,CanBar)
@@ -344,7 +345,6 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 	BackgroundTransparency = 0
 }):Play()
 
--- 🔥 PROGRESS LOOP
 local current = 0
 
 RunService.RenderStepped:Connect(function()
@@ -352,10 +352,16 @@ RunService.RenderStepped:Connect(function()
 	current = current + (target - current) * 0.15
 	Load.Size = UDim2.new(current,0,1,0)
 
-	if ES.error then
-		warn.Text = "Whoops! Looks like we got an errors.\nPlease wait for the next update!"
-		btnBar.Visible = true
-	end
+if ES.error then
+	local msg = ES.lastError or "Unknown error"
+
+	warn.Text = [[Whoops! Looks like we got an errors.\nPlease wait for the next update!
+			Error:\n]]..msg
+	btnBar.Visible = true
+
+	-- 💥 ส่ง console จากฝั่ง UI ด้วย
+	warn("[ExperienceSettings Set | Error found ]:", msg)
+end
 
 	if ES.done and not ES.error then
 		TweenService:Create(Canvas, TweenInfo.new(0.5), {
