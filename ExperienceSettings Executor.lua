@@ -1,4 +1,4 @@
-local Version = [[0.1.375 Alpha
+local Version = [[0.1.376 Alpha
 Less annoying floating toggle button]]
 -- This executor
 
@@ -23,7 +23,8 @@ local function safe(f)
 	local ok, err = pcall(f)
 	if not ok then
 		ES.error = true
-		warn(err)
+		ES.lastError = tostring(err)
+		warn("[ ExperienceSettings SetUp | Error ]:", err)
 	end
 end
 
