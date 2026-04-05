@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.51 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.52 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -242,7 +242,7 @@ warn.Size = UDim2.new(1,0,0,30)
 warn.TextSize = 18
 warn.TextColor3 = Color3.new(1,1,1)
 warn.Text = "We're setting up for you!"
-warn.Wrap = true
+warn.TextWrap = true
 warn.Parent = Canvas
 
 local CanBar = Instance.new("CanvasGroup")
