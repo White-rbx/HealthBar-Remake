@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.535 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.55 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -191,16 +191,20 @@ if old then
 	old:Destroy()
 end
 
+-- ES GLOBAL
 getgenv().ES = getgenv().ES or {
 	progress = 0,
 	max = 100,
 	error = false,
-	done = false
+	done = false,
+	lastError = nil
 }
 
 local ES = getgenv().ES
 
--- (ทุก function + services ของนาย 그대로)
+-- Mark initialized
+if ES.initialized then return end
+ES.initialized = true
 
 -- Folder
 local Folder = Instance.new("Folder")
