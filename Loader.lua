@@ -1,27 +1,38 @@
--- Well 2.29
+-- Well 2.3
 
+-- Reset ES ทุกครั้ง
 getgenv().ES = nil
 
--- Intro
+-- Load SetUp
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
 
--- ใช้ ES
 local ES = getgenv().ES
+
+-- ===== ERROR SYSTEM =====
+local function catch(err)
+	ES.error = true
+	ES.lastError = tostring(err)
+	warn("[ ExperienceSettings | Error ]:", err)
+end
 
 local function safe(f)
 	local ok, err = pcall(f)
 	if not ok then
-		ES.error = true
-		ES.lastError = tostring(err)
-		warn("[ ExperienceSettings SetUp | Error ]:", err)
+		catch(err)
 	end
 end
 
-local function run()
-	safe(function()
-		task.wait(0.3)
-		ES.progress += 25
+local function safeThread(f)
+	task.spawn(function()
+		local ok, err = pcall(f)
+		if not ok then
+			catch(err)
+		end
 	end)
+end
+
+-- ===== MAIN LOGIC =====
+local function main()
 
 	safe(function()
 		task.wait(0.3)
@@ -38,15 +49,27 @@ local function run()
 		ES.progress += 25
 	end)
 
+	safe(function()
+		task.wait(0.3)
+		ES.progress += 25
+	end)
+
+	-- โหลดสคริปอื่น (สำคัญ)
+	safeThread(function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
+	end)
+
+end
+
+-- RUN
+safe(main)
+
+-- DONE CHECK
+task.delay(1.5,function()
 	if not ES.error then
 		ES.done = true
 	end
-end
-
-run()
-
--- Loader
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
+end)
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
