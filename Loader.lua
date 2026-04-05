@@ -1,4 +1,4 @@
--- Well 2.28
+-- Well 2.29
 
 getgenv().ES = nil
 
@@ -12,7 +12,8 @@ local function safe(f)
 	local ok, err = pcall(f)
 	if not ok then
 		ES.error = true
-		warn(err)
+		ES.lastError = tostring(err)
+		warn("[ ExperienceSettings SetUp | Error ]:", err)
 	end
 end
 
