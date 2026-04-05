@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.52 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.53 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -247,7 +247,7 @@ warn.Parent = Canvas
 
 local CanBar = Instance.new("CanvasGroup")
 CanBar.Size = UDim2.new(0.7,0,0,20)
-CanBar.Position = UDim2.new(0.2,0,0,35)
+CanBar.Position = UDim2.new(0.15,0,0,4)
 CanBar.BackgroundTransparency = 1
 CanBar.Parent = Canvas
 Corner(1,0,CanBar)
