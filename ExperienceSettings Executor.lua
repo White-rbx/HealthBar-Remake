@@ -1,4 +1,4 @@
-local Version = [[0.1.3767 Alpha
+local Version = [[0.1.3768 Alpha
 Less annoying floating toggle button]]
 -- This executor
 
@@ -14,30 +14,56 @@ ES.progress = 0
 ES.max = 100
 ES.error = false
 ES.done = false
+ES.lastError = nil
 
-local function step(x)
-	ES.progress += x
+-- ===== ERROR SYSTEM =====
+local function catch(err)
+	ES.error = true
+	ES.lastError = tostring(err)
+	warn("[ ExperienceSettings SetUp | Error ]:", err)
 end
 
 local function safe(f)
 	local ok, err = pcall(f)
 	if not ok then
-		ES.error = true
-		ES.lastError = tostring(err)
-		warn("[ ExperienceSettings SetUp | Error ]:", err)
+		catch(err)
 	end
 end
 
-for i = 1,5 do
-	safe(function()
-		task.wait(0.5)
-		step(20)
+local function safeThread(f)
+	task.spawn(function()
+		local ok, err = pcall(f)
+		if not ok then
+			catch(err)
+		end
 	end)
 end
 
-if not ES.error then
-	ES.done = true
+-- ===== MAIN =====
+local function main()
+
+	local function step(x)
+		ES.progress += x
+	end
+
+	for i = 1,5 do
+		safe(function()
+			task.wait(0.5)
+			step(20)
+		end)
+	end
+
 end
+
+-- RUN ทั้งก้อน
+safe(main)
+
+-- DONE CHECK
+task.delay(0.1,function()
+	if not ES.error then
+		ES.done = true
+	end
+end)
 
 ------------------------------------------------------------------------------------------
 
