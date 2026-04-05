@@ -1,4 +1,4 @@
-local Version = [[0.1.376 Alpha
+local Version = [[0.1.3765 Alpha
 Less annoying floating toggle button]]
 -- This executor
 
@@ -38,6 +38,9 @@ end
 if not ES.error then
 	ES.done = true
 end
+
+
+LOL -- test error
 
 ------------------------------------------------------------------------------------------
 
