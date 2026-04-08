@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.6 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.61 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -245,7 +245,7 @@ twarn.TextTransparency = 1
 twarn.Size = UDim2.new(1,0,0,30)
 twarn.TextSize = 18
 twarn.TextColor3 = Color3.new(1,1,1)
-twarn.Text = "We're setting up for you!"
+twarn.Text = "We're setting up for you. Its may take a few seconds!"
 twarn.TextWrap = true
 twarn.Parent = Canvas
 
