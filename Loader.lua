@@ -1,5 +1,7 @@
 -- Well 2.34
 
+error2()
+
 -- Reset
 getgenv().ES = nil
 
