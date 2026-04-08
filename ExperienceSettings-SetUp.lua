@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.61 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.62 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -246,7 +246,7 @@ twarn.Size = UDim2.new(1,0,0,30)
 twarn.TextSize = 18
 twarn.TextColor3 = Color3.new(1,1,1)
 twarn.Text = "We're setting up for you. Its may take a few seconds!"
-twarn.TextWrap = true
+twarn.TextWrapped = true
 twarn.Parent = Canvas
 
 local CanBar = Instance.new("CanvasGroup")
@@ -374,13 +374,12 @@ connection = RunService.RenderStepped:Connect(function()
 
 		twarn.Text = [[Whoops! Looks like we got an error.
 Please wait for the next update!
-
 Error:
 ]] .. msg
 
 		btnBar.Visible = true
 
-		warn("[ES GOD MODE ERROR]:", msg)
+		"[ ExperienceSettings SetUp | Error found ]:", msg)
 
 		connection:Disconnect()
 		return
@@ -436,82 +435,3 @@ Error:
 		end)
 	end
 end)
-
-TweenService:Create(Load, TweenInfo.new(0.5), {
-	BackgroundTransparency = 0
-}):Play()
-
-local current = 0
-
-local connection
-
-connection = RunService.RenderStepped:Connect(function()
-	local target = math.clamp((ES.progress or 0)/(ES.max or 100),0,1)
-	current = current + (target - current) * 0.15
-	Load.Size = UDim2.new(current,0,1,0)
-
-	if ES.error then
-		local msg = ES.lastError or "Unknown error"
-
-		twarn.Text = [[Whoops! Looks like we got an errors.\nPlease wait for the next update!
-Error:\n]]..msg
-
-		btnBar.Visible = true
-		warn("[ExperienceSettings Set | Error found ]:", msg)
-
-		-- 💥 หยุดทุกอย่าง
-		connection:Disconnect()
-		return
-	end
-
-	if ES.done then
-		connection:Disconnect()
-
-		-- fade out
-		TweenService:Create(Canvas, TweenInfo.new(0.5), {
-			GroupTransparency = 1
-		}):Play()
-
-		task.delay(0.6,function()
-			if Folder then Folder:Destroy() end
-		end)
-	end
-end)
-
-	if ES.done and not ES.error then
-		TweenService:Create(Canvas, TweenInfo.new(0.5), {
-	GroupTransparency = 1
-}):Play()
-
-TweenService:Create(twarn, TweenInfo.new(0.5), {
-	TextTransparency = 1
-}):Play()
-
-TweenService:Create(CanBar, TweenInfo.new(0.5), {
-	BackgroundTransparency = 1
-}):Play()
-
-TweenService:Create(insideBar, TweenInfo.new(0.5), {
-	BackgroundTransparency = 1
-}):Play()
-
-TweenService:Create(Load, TweenInfo.new(0.5), {
-	BackgroundTransparency = 1
-}):Play()
-
-TweenService:Create(Frame, TweenInfo.new(0.5), {
-	BackgroundTransparency = 1
-}):Play()
-
-TweenService:Create(Image, TweenInfo.new(0.5), {
-	ImageTransparency = 1
-}):Play()
-
-TweenService:Create(CanBarStroke, TweenInfo.new(0.5), {
-	Transparency = 1
-}):Play()
-
-		task.delay(0.6,function()
-			if Folder then Folder:Destroy() end
-		end)
-	end
