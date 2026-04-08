@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.59 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.6 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -330,7 +330,7 @@ TweenService:Create(Image, TweenInfo.new(0.5), {
 Canvas.Visible = true
 
 TweenService:Create(Canvas, TweenInfo.new(0.5), {
-	GroupTransparency = 0
+	GroupTransparency = 1
 }):Play()
 
 TweenService:Create(twarn, TweenInfo.new(0.5), {
@@ -338,11 +338,11 @@ TweenService:Create(twarn, TweenInfo.new(0.5), {
 }):Play()
 
 TweenService:Create(CanBar, TweenInfo.new(0.5), {
-	BackgroundTransparency = 0
+	BackgroundTransparency = 1
 }):Play()
 
 TweenService:Create(insideBar, TweenInfo.new(0.5), {
-	BackgroundTransparency = 0
+	BackgroundTransparency = 1
 }):Play()
 
 TweenService:Create(Load, TweenInfo.new(0.5), {
