@@ -1,26 +1,25 @@
-local Version = [[0.1.3768 Alpha
+local Version = [[0.1.377 Alpha
 Less annoying floating toggle button]]
 -- This executor
 
 getgenv().ES = nil
 
--- Intro 
+-- Load SetUp
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
 
 local ES = getgenv().ES
 
--- RESET ค่า
+-- RESET
 ES.progress = 0
 ES.max = 100
 ES.error = false
 ES.done = false
 ES.lastError = nil
 
--- ===== ERROR SYSTEM =====
 local function catch(err)
 	ES.error = true
 	ES.lastError = tostring(err)
-	warn("[ ExperienceSettings SetUp | Error ]:", err)
+	warn("[ ES ERROR ]:", err)
 end
 
 local function safe(f)
@@ -30,40 +29,28 @@ local function safe(f)
 	end
 end
 
-local function safeThread(f)
-	task.spawn(function()
-		local ok, err = pcall(f)
-		if not ok then
-			catch(err)
-		end
+safe(function()
+	local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/Executor/ExperienceSettings%20Executor.lua"
+
+	local ok, src = pcall(function()
+		return game:HttpGet(url)
 	end)
-end
 
--- ===== MAIN =====
-local function main()
-
-	local function step(x)
-		ES.progress += x
+	if not ok then
+		return catch("HttpGet failed: "..tostring(src))
 	end
 
-	for i = 1,5 do
-		safe(function()
-			task.wait(0.5)
-			step(20)
-		end)
+	local f, err = loadstring(src)
+	if not f then
+		return catch("Compile error: "..err)
 	end
 
-end
-
--- RUN ทั้งก้อน
-safe(main)
-
--- DONE CHECK
-task.delay(0.1,function()
-	if not ES.error then
-		ES.done = true
-	end
+	ES.progress = 100
 end)
+
+if not ES.error then
+	ES.done = true
+end
 
 ------------------------------------------------------------------------------------------
 
