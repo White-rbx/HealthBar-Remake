@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.57 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.58 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -300,11 +300,11 @@ local ContentProvider = game:GetService("ContentProvider")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
+-- preload
 local preload = {}
 for _, id in ipairs(anim) do
 	table.insert(preload, "rbxassetid://"..id)
 end
-
 ContentProvider:PreloadAsync(preload)
 
 -- 🎬 INTRO
@@ -326,11 +326,11 @@ TweenService:Create(Image, TweenInfo.new(0.5), {
 	Position = UDim2.new(0.5,0,0.35,0)
 }):Play()
 
--- 🎬 Show UI
+-- 🎬 SHOW UI
 Canvas.Visible = true
 
 TweenService:Create(Canvas, TweenInfo.new(0.5), {
-	GroupTransparency = 1
+	GroupTransparency = 0
 }):Play()
 
 TweenService:Create(twarn, TweenInfo.new(0.5), {
@@ -338,12 +338,104 @@ TweenService:Create(twarn, TweenInfo.new(0.5), {
 }):Play()
 
 TweenService:Create(CanBar, TweenInfo.new(0.5), {
-	BackgroundTransparency = 1
+	BackgroundTransparency = 0
 }):Play()
 
 TweenService:Create(insideBar, TweenInfo.new(0.5), {
-	BackgroundTransparency = 1
+	BackgroundTransparency = 0
 }):Play()
+
+TweenService:Create(Load, TweenInfo.new(0.5), {
+	BackgroundTransparency = 0
+}):Play()
+
+-- =========================
+-- 💀 CORE LOOP (FIX ALL BUG)
+-- =========================
+local current = 0
+local connection
+local finished = false -- กันรันซ้ำ
+
+connection = RunService.RenderStepped:Connect(function()
+	if finished then return end
+
+	-- ===== PROGRESS =====
+	local target = math.clamp((ES.progress or 0)/(ES.max or 100),0,1)
+	current = current + (target - current) * 0.15
+	Load.Size = UDim2.new(current,0,1,0)
+
+	-- =========================
+	-- 💥 ERROR DETECT (PRIORITY 1)
+	-- =========================
+	if ES.error then
+		finished = true
+
+		local msg = ES.lastError or "Unknown error"
+
+		twarn.Text = [[Whoops! Looks like we got an error.
+Please wait for the next update!
+
+Error:
+]] .. msg
+
+		btnBar.Visible = true
+
+		warn("[ES GOD MODE ERROR]:", msg)
+
+		connection:Disconnect()
+		return
+	end
+
+	-- =========================
+	-- ✅ DONE (ONLY IF NO ERROR)
+	-- =========================
+	if ES.done and not ES.error then
+		finished = true
+
+		connection:Disconnect()
+
+		-- 🎬 Fade everything
+		TweenService:Create(Canvas, TweenInfo.new(0.5), {
+			GroupTransparency = 1
+		}):Play()
+
+		TweenService:Create(twarn, TweenInfo.new(0.5), {
+			TextTransparency = 1
+		}):Play()
+
+		TweenService:Create(CanBar, TweenInfo.new(0.5), {
+			BackgroundTransparency = 1
+		}):Play()
+
+		TweenService:Create(insideBar, TweenInfo.new(0.5), {
+			BackgroundTransparency = 1
+		}):Play()
+
+		TweenService:Create(Load, TweenInfo.new(0.5), {
+			BackgroundTransparency = 1
+		}):Play()
+
+		TweenService:Create(Frame, TweenInfo.new(0.5), {
+			BackgroundTransparency = 1
+		}):Play()
+
+		TweenService:Create(Image, TweenInfo.new(0.5), {
+			ImageTransparency = 1
+		}):Play()
+
+		if CanBarStroke then
+			TweenService:Create(CanBarStroke, TweenInfo.new(0.5), {
+				Transparency = 1
+			}):Play()
+		end
+
+		task.delay(0.6,function()
+			if Folder then
+				Folder:Destroy()
+			end
+		end)
+	end
+end)}):Play()
 
 TweenService:Create(Load, TweenInfo.new(0.5), {
 	BackgroundTransparency = 0
