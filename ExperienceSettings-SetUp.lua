@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.56 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.57 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -423,4 +423,3 @@ TweenService:Create(CanBarStroke, TweenInfo.new(0.5), {
 			if Folder then Folder:Destroy() end
 		end)
 	end
-end)
