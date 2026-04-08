@@ -1,6 +1,6 @@
--- Well 2.32
+-- Well 2.34
 
--- Reset ES ทุกครั้ง
+-- Reset
 getgenv().ES = nil
 
 -- Load SetUp
@@ -12,7 +12,7 @@ local ES = getgenv().ES
 local function catch(err)
 	ES.error = true
 	ES.lastError = tostring(err)
-	warn("[ ExperienceSettings | Error ]:", err)
+	warn("[ ES ERROR ]:", err)
 end
 
 local function safe(f)
@@ -22,87 +22,78 @@ local function safe(f)
 	end
 end
 
-local function safeThread(f)
-	task.spawn(function()
-		local ok, err = pcall(f)
-		if not ok then
-			catch(err)
-		end
-	end)
+-- ===== SCAN SYSTEM =====
+local visited = {}
+local queue = {}
+
+local function extractURLs(src)
+	local urls = {}
+
+	for url in string.gmatch(src, 'HttpGet%(%s*"(.-)"%s*%)') do
+		table.insert(urls, url)
+	end
+
+	return urls
 end
 
--- ===== MAIN LOGIC =====
-local function main()
+local function scan(url)
+	if visited[url] then return end
+	visited[url] = true
 
-	safe(function()
-		task.wait(0.3)
-		ES.progress += 25
-	end)
-
-	safe(function()
-		task.wait(0.3)
-		ES.progress += 25
-	end)
-
-	safe(function()
-		task.wait(0.3)
-		ES.progress += 25
-	end)
-
-	safe(function()
-		task.wait(0.3)
-		ES.progress += 25
-	end)
-
-safe(function()
-	local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"
-
-	-- ===== FETCH =====
 	local ok, src = pcall(function()
 		return game:HttpGet(url)
 	end)
 
 	if not ok then
-		ES.error = true
-		ES.lastError = "HttpGet failed: " .. tostring(src)
-		warn("[ ES ERROR ]:", ES.lastError)
-		return
+		return catch("HttpGet failed: "..tostring(src))
 	end
 
-	-- ===== VALIDATE CONTENT =====
 	if not src or src == "" then
-		ES.error = true
-		ES.lastError = "Loader.lua is empty"
-		warn("[ ES ERROR ]:", ES.lastError)
-		return
+		return catch("Empty script: "..url)
 	end
 
-	if #src < 20 then
-		ES.error = true
-		ES.lastError = "Loader.lua suspicious (too short)"
-		warn("[ ES ERROR ]:", ES.lastError)
-		return
-	end
-
-	-- ===== COMPILE CHECK (NO EXECUTE) =====
+	-- ✅ compile check
 	local f, err = loadstring(src)
-
 	if not f then
-		ES.error = true
-		ES.lastError = "Compile error: " .. tostring(err)
-		warn("[ ES ERROR ]:", ES.lastError)
-		return
+		return catch("Compile error: "..err.." | "..url)
 	end
 
-	end)
+	-- 🔍 หา loadstring ต่อ
+	for _, u in ipairs(extractURLs(src)) do
+		table.insert(queue, u)
+	end
+
+	-- 📊 progress จริง
+	local count = 0
+	for _ in pairs(visited) do count += 1 end
+	ES.progress = math.clamp(count * 15, 0, ES.max)
+end
+
+-- ===== MAIN =====
+local function main()
+
+	-- 🔥 ใช้ Loader ตัวใหม่
+	table.insert(queue, "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/Loader.lua")
+
+	while #queue > 0 do
+		if ES.error then break end
+
+		local url = table.remove(queue, 1)
+
+		safe(function()
+			scan(url)
+		end)
+	end
+
 end
 
 -- RUN
 safe(main)
 
--- DONE CHECK
-task.delay(1.5,function()
+-- DONE
+task.delay(0.5,function()
 	if not ES.error then
+		ES.progress = ES.max
 		ES.done = true
 	end
 end)
