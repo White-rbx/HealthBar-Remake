@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.58 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.59 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -435,7 +435,7 @@ Error:
 			end
 		end)
 	end
-end)}):Play()
+end)
 
 TweenService:Create(Load, TweenInfo.new(0.5), {
 	BackgroundTransparency = 0
