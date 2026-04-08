@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.62 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.63 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -379,7 +379,7 @@ Error:
 
 		btnBar.Visible = true
 
-		"[ ExperienceSettings SetUp | Error found ]:", msg)
+		warn("[ ExperienceSettings SetUp | Error found ]:", msg)
 
 		connection:Disconnect()
 		return
