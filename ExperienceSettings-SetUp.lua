@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.55 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.56 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -239,15 +239,15 @@ Canvas.Position = UDim2.new(0.1,0,0.5,0)
 Canvas.Size = UDim2.new(0.8,0,0.5,0)
 Canvas.Parent = Frame
 
-local warn = Instance.new("TextLabel")
-warn.BackgroundTransparency = 1
-warn.TextTransparency = 1
-warn.Size = UDim2.new(1,0,0,30)
-warn.TextSize = 18
-warn.TextColor3 = Color3.new(1,1,1)
-warn.Text = "We're setting up for you!"
-warn.TextWrap = true
-warn.Parent = Canvas
+local twarn = Instance.new("TextLabel")
+twarn.BackgroundTransparency = 1
+twarn.TextTransparency = 1
+twarn.Size = UDim2.new(1,0,0,30)
+twarn.TextSize = 18
+twarn.TextColor3 = Color3.new(1,1,1)
+twarn.Text = "We're setting up for you!"
+twarn.TextWrap = true
+twarn.Parent = Canvas
 
 local CanBar = Instance.new("CanvasGroup")
 CanBar.Size = UDim2.new(0.7,0,0,20)
@@ -333,7 +333,7 @@ TweenService:Create(Canvas, TweenInfo.new(0.5), {
 	GroupTransparency = 1
 }):Play()
 
-TweenService:Create(warn, TweenInfo.new(0.5), {
+TweenService:Create(twarn, TweenInfo.new(0.5), {
 	TextTransparency = 0
 }):Play()
 
@@ -351,28 +351,47 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 
 local current = 0
 
-RunService.RenderStepped:Connect(function()
+local connection
+
+connection = RunService.RenderStepped:Connect(function()
 	local target = math.clamp((ES.progress or 0)/(ES.max or 100),0,1)
 	current = current + (target - current) * 0.15
 	Load.Size = UDim2.new(current,0,1,0)
 
-if ES.error then
-	local msg = ES.lastError or "Unknown error"
+	if ES.error then
+		local msg = ES.lastError or "Unknown error"
 
-	warn.Text = [[Whoops! Looks like we got an errors.\nPlease wait for the next update!
-			Error:\n]]..msg
-	btnBar.Visible = true
+		twarn.Text = [[Whoops! Looks like we got an errors.\nPlease wait for the next update!
+Error:\n]]..msg
 
-	-- 💥 ส่ง console จากฝั่ง UI ด้วย
-	warn("[ExperienceSettings Set | Error found ]:", msg)
-end
+		btnBar.Visible = true
+		warn("[ExperienceSettings Set | Error found ]:", msg)
+
+		-- 💥 หยุดทุกอย่าง
+		connection:Disconnect()
+		return
+	end
+
+	if ES.done then
+		connection:Disconnect()
+
+		-- fade out
+		TweenService:Create(Canvas, TweenInfo.new(0.5), {
+			GroupTransparency = 1
+		}):Play()
+
+		task.delay(0.6,function()
+			if Folder then Folder:Destroy() end
+		end)
+	end
+end)
 
 	if ES.done and not ES.error then
 		TweenService:Create(Canvas, TweenInfo.new(0.5), {
 	GroupTransparency = 1
 }):Play()
 
-TweenService:Create(warn, TweenInfo.new(0.5), {
+TweenService:Create(twarn, TweenInfo.new(0.5), {
 	TextTransparency = 1
 }):Play()
 
