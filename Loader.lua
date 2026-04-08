@@ -1,4 +1,4 @@
--- Well 2.341
+-- Well 2.342
 
 -- Reset
 getgenv().ES = nil
@@ -97,8 +97,6 @@ task.delay(0.5,function()
 		ES.done = true
 	end
 end)
-
-error2()
 
 -- Loader
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
