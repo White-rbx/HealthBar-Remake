@@ -1,5 +1,12 @@
 local Version = [[0.1.383 Alpha
-Add tittle]]
+Add tittle
+ISSUES DAMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMM 
+MMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMM
+MMMMNNNNNNN
+NNN!!!!!!!!!!!]]
 -- This executor
 
 getgenv().ES = nil
@@ -388,14 +395,14 @@ Frame.Music.Name = "Music"
 Frame.Settings.Name = "Settings"
 
 --[ Tittle ]
-Frame.Home.Inside.Tittle.Text = "Home"
-Frame.Edit.Inside.Tittle.Text = "Editor"
-Frame.Console.Inside.Tittle.Text = "Console"
-Frame.Folder.Inside.Tittle.Text = "Folder Explorer"
-Frame.Bookmark.Inside.Tittle.Text = "Bookmark"
-Frame.Search.Inside.Tittle.Text = "Search Script"
-Frame.Music.Inside.Tittle.Text = "Music"
-Frame.Settings.Inside.Tittle.Text = "Settings"
+Frame.Home.Tittle.Text = "Home"
+Frame.Edit.Tittle.Text = "Editor"
+Frame.Console.Tittle.Text = "Console"
+Frame.Folder.Tittle.Text = "Folder Explorer"
+Frame.Bookmark.Tittle.Text = "Bookmark"
+Frame.Search.Tittle.Text = "Search Script"
+Frame.Music.Tittle.Text = "Music"
+Frame.Settings.Tittle.Text = "Settings"
 
 --[ Visible ]
 Frame.Console.Inside.soon.Visible = true
