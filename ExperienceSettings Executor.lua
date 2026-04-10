@@ -1,4 +1,4 @@
-local Version = [[0.1.382 Alpha
+local Version = [[0.1.383 Alpha
 Add tittle]]
 -- This executor
 
@@ -346,6 +346,7 @@ local function Configure(frame)
 	local Tittle = Instance.new("TextLabel")
 	Tittle.Name = "Tittle"
 	Tittle.Size = UDim2.new(0.95,0,0.09,0)
+	Tittle.Position = UDim2.new(0.025,0,0.05,0)
 	Tittle.BackgroundTransparency = 1
 	Tittle.TextScaled = true
 	Tittle.Text = "Unknown Page"
@@ -353,7 +354,7 @@ local function Configure(frame)
 	Tittle.TextStrokeColor3 = Color3.new(1,1,1)
 	Tittle.TextStrokeTransparency = 0
 	Tittle.TextXAlignment = Enum.TextXAlignment.Left
-	Tittle.Parent = Inside
+	Tittle.Parent = frame
     
     local soon = Instance.new("TextLabel")
     soon.Name = "soon"
