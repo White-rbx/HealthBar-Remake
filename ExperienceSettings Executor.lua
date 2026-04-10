@@ -1,4 +1,4 @@
-local Version = [[0.1.38 Alpha
+local Version = [[0.1.382 Alpha
 Add tittle]]
 -- This executor
 
@@ -276,7 +276,6 @@ end)
 
 -- Close: oc.Image = "rbxassetid://120294896493053"
 
-local oc = oc
 local container = Bg2
 
 local function clampPosition()
@@ -4705,12 +4704,10 @@ Bar.BackgroundTransparency = 1
 Bar.Parent = Inside
 ListLayout(Bar, 0, 10, HLeft, VCenter, SLayout, FillH)
 
---[[
 local oc = oc
 local inside = Inside
 local Bg = Bg
 local Bghr = Bghr
-]]
 
 local bounceInfo = TweenInfo.new(
     0.4,
