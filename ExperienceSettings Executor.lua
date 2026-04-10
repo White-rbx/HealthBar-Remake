@@ -1,5 +1,5 @@
-local Version = [[0.1.377 Alpha
-Less annoying floating toggle button]]
+local Version = [[0.1.38 Alpha
+Add tittle]]
 -- This executor
 
 getgenv().ES = nil
@@ -338,11 +338,23 @@ local function Configure(frame)
     
     local Inside = Instance.new("Frame")
     Inside.Name = "Inside"
-    Inside.Size = UDim2.new(0.95,0,0.9,0)
-    Inside.Position = UDim2.new(0.025,0,1,0) -- On is (0.025,0,0.05,0)
+    Inside.Size = UDim2.new(0.95,0,0.8,0)
+    Inside.Position = UDim2.new(0.025,0,2,0) -- On is (0.025,0,0.15,0)
     Inside.BackgroundTransparency = 1
     Inside.Active = false
     Inside.Parent = frame
+
+	local Tittle = Instance.new("TextLabel")
+	Tittle.Name = "Tittle"
+	Tittle.Size = UDim2.new(0.95,0,0.09,0)
+	Tittle.BackgroundTransparency = 1
+	Tittle.TextScaled = true
+	Tittle.Text = "Unknown Page"
+	Tittle.TextColor3 = Color3.new(1,1,1)
+	Tittle.TextStrokeColor3 = Color3.new(1,1,1)
+	Tittle.TextStrokeTransparency = 0
+	Tittle.TextXAlignment = Enum.TextXAlignment.Left
+	Tittle.Parent = Inside
     
     local soon = Instance.new("TextLabel")
     soon.Name = "soon"
@@ -374,6 +386,16 @@ Frame.Bookmark.Name = "Bookmark"
 Frame.Search.Name = "Search"
 Frame.Music.Name = "Music"
 Frame.Settings.Name = "Settings"
+
+--[ Tittle ]
+Frame.Home.Inside.Tittle.Text = "Home"
+Frame.Edit.Inside.Tittle.Text = "Editor"
+Frame.Console.Inside.Tittle.Text = "Console"
+Frame.Folder.Inside.Tittle.Text = "Folder Explorer"
+Frame.Bookmark.Inside.Tittle.Text = "Bookmark"
+Frame.Search.Inside.Tittle.Text = "Search Script"
+Frame.Music.Inside.Tittle.Text = "Music"
+Frame.Settings.Inside.Tittle.Text = "Settings"
 
 --[ Visible ]
 Frame.Console.Inside.soon.Visible = true
@@ -4683,10 +4705,12 @@ Bar.BackgroundTransparency = 1
 Bar.Parent = Inside
 ListLayout(Bar, 0, 10, HLeft, VCenter, SLayout, FillH)
 
+--[[
 local oc = oc
 local inside = Inside
 local Bg = Bg
 local Bghr = Bghr
+]]
 
 local bounceInfo = TweenInfo.new(
     0.4,
@@ -4775,7 +4799,7 @@ local function activateTab(name)
 
             if inside then
                 TweenService:Create(inside, insideTween, {
-                    Position = UDim2.new(0.025,0,0.05,0)
+                    Position = UDim2.new(0.025,0,0.15,0)
                 }):Play()
             end
         else
