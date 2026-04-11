@@ -1,4 +1,4 @@
-local Version = [[0.1.388 Alpha
+local Version = [[0.1.389 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -319,6 +319,7 @@ local Frame = {
     Home = Instance.new("CanvasGroup"),
     Edit = Instance.new("CanvasGroup"),
     Console = Instance.new("CanvasGroup"),
+	ExpInfo = Instance.new("CanvasGroup"),
     Folder = Instance.new("CanvasGroup"),
     Bookmark = Instance.new("CanvasGroup"),
     Search = Instance.new("CanvasGroup"),
