@@ -1,4 +1,4 @@
-local Version = [[0.1.39 Alpha
+local Version = [[0.1.391 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -2948,10 +2948,10 @@ local function checkAssets()
 
 	local current = countAssets()
 
-	if current == 58 then
-		noti(4,"All assets loaded (58/58)",color.green)
+	if current == 59 then
+		noti(4,"All assets loaded (59/59)",color.green)
 	else
-		noti(4,"Assets missing "..current.."/58",color.orange)
+		noti(4,"Assets missing "..current.."/59",color.orange)
 	end
 
 end
