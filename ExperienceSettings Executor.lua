@@ -1,4 +1,4 @@
-local Version = [[0.1.387 Alpha
+local Version = [[0.1.388 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -372,6 +372,7 @@ end
 Configure(Frame.Home)
 Configure(Frame.Edit)
 Configure(Frame.Console)
+Configure(Frame.ExpInfo)
 Configure(Frame.Folder)
 Configure(Frame.Bookmark)
 Configure(Frame.Search)
@@ -382,6 +383,7 @@ Configure(Frame.Settings)
 Frame.Home.Name = "Home"
 Frame.Edit.Name = "Edit"
 Frame.Console.Name = "Console"
+Frame.ExpInfo.Name = "ExperienceInfo"
 Frame.Folder.Name = "Folder"
 Frame.Bookmark.Name = "Bookmark"
 Frame.Search.Name = "Search"
@@ -392,6 +394,7 @@ Frame.Settings.Name = "Settings"
 Frame.Home.Tittle.Text = "Home"
 Frame.Edit.Tittle.Text = "Editor"
 Frame.Console.Tittle.Text = "Console"
+Frame.ExpInfo.Tittle.Text = "Experience Info"
 Frame.Folder.Tittle.Text = "Folder Explorer"
 Frame.Bookmark.Tittle.Text = "Bookmark"
 Frame.Search.Tittle.Text = "Search Script"
@@ -400,6 +403,7 @@ Frame.Settings.Tittle.Text = "Settings"
 
 --[ Visible ]
 Frame.Console.Inside.soon.Visible = true
+Frame.ExpInfo.Inside.soon.Visible = true
 Frame.Folder.Inside.soon.Visible = true
 Frame.Bookmark.Inside.soon.Visible = true
 Frame.Search.Inside.soon.Visible = true
@@ -4930,6 +4934,7 @@ Close.BackgroundColor3 = Color3.fromRGB(170,0,0)
 home = Btn("Home", 70503788933260)
 edit = Btn("Edit", 89040201197978)
 console = Btn("Console", 76584386272665)
+expinfo = Btn("ExperienceInfo", 98945717252202)
 folder = Btn("Folder", 86157935898545)
 bookmark = Btn("Bookmark", 71272710123832)
 search = Btn("Search", 133955276215666)
