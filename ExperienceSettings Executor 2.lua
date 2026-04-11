@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.21
+-- ES Executor 2 | 0.22
 
 ------------------------------------------------------------------------------------------
 
@@ -248,7 +248,7 @@ end
 --------------------------------------------------
 
 local ASSET_PATH = "ExperienceSettings-Executor/Assets"
-local TOTAL_ASSETS = 57
+local TOTAL_ASSETS = 59
 
 local function asset(path)
 	local ok, result = pcall(function()
@@ -346,7 +346,7 @@ if getcustomasset then
 ["folder-"] = getcustomasset("ExperienceSettings-Executor/Assets/folder-.png"),
 ["search"] = getcustomasset("ExperienceSettings-Executor/Assets/search.png"),
 ["music-note"] = getcustomasset("ExperienceSettings-Executor/Assets/music-note.png"),
-
+["game-info"] = getcustomasset("ExperienceSettings-Executor/Assets/game-info.png"),
 		  }
 	end)
 end
@@ -436,6 +436,7 @@ setIcon(inside.Close,"cross-white")
 setIcon(inside.Home,"home")
 setIcon(inside.Edit,"editor")
 setIcon(inside.Console,"console")
+setIcon(inside.ExpInfo,"game-info")
 setIcon(inside.Folder,"folder")
 setIcon(inside.Bookmark,"bookmark")
 setIcon(inside.Search,"search")
@@ -447,6 +448,7 @@ setIcon(inside.Settings,"settings")
 local vHome = windows.Home.Inside
 local vEditor = windows.Edit.Inside
 local vConsole = windows.Console.Inside
+local vExpInfo = windows.ExpInfo.Inside
 local vFolder = windows.Folder.Inside
 local vBookmark = windows.Bookmark.Inside
 local vSearch = windows.Search.Inside
@@ -474,6 +476,9 @@ setIcon(vEditExe.Clear,"erase")
 
 
 --[ Console ]--
+
+
+--[ ExpInfo ]--
 
 
 --[ Folder ]--
