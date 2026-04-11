@@ -1,4 +1,4 @@
-local Version = [[0.1.391 Alpha
+local Version = [[0.1.392 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -4936,7 +4936,7 @@ Close.BackgroundColor3 = Color3.fromRGB(170,0,0)
 home = Btn("Home", 70503788933260)
 edit = Btn("Edit", 89040201197978)
 console = Btn("Console", 76584386272665)
-expinfo = Btn("ExperienceInfo", 98945717252202)
+expinfo = Btn("ExpInfo", 98945717252202)
 folder = Btn("Folder", 86157935898545)
 bookmark = Btn("Bookmark", 71272710123832)
 search = Btn("Search", 133955276215666)
