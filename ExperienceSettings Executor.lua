@@ -1,4 +1,4 @@
-local Version = [[0.1.385 Alpha
+local Version = [[0.1.386 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -3430,10 +3430,10 @@ local function scriptadd(existingFile)
 	scr.Name = filename
 	scr.Text = filename
 	scr.BackgroundTransparency = 1
-	scr.Size = UDim2.new(0.7,0,0,30)
+	scr.Size = UDim2.new(0.74,0,0,28)
 	scr.BackgroundColor3 = Color3.fromRGB(255,255,255)
 	scr.TextColor3 = Color3.new(1,1,1)
-	scr.TextXAlignment = Enum.TextXAlignment.Left
+	scr.TextXAlignment = Enum.TextXAlignment.Center
 	scr.TextScaled = true
 	scr.Parent = back
 
@@ -3455,7 +3455,7 @@ local function scriptadd(existingFile)
 	des.BackgroundTransparency = 0.5
 	des.BackgroundColor3 = Color3.new(0,0,0)
 	des.Image = "rbxassetid://136855726459065"
-	des.Parent = scr
+	des.Parent = back
 	Stroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
 	Corner(0.2,0,des)
 	
@@ -3501,19 +3501,17 @@ local function loadExistingTabs()
 			
 			local filename = file:match("[^/\\]+$")
 			
-			local scr = Instance.new("TextButton")
-			scr.Name = filename
-			scr.Text = filename
-			scr.Size = UDim2.new(1,0,0,30)
-			scr.BackgroundColor3 = Color3.fromRGB(255,255,255)
-			scr.TextColor3 = Color3.fromRGB(0,0,0)
-			scr.TextSize = 12
-			scr.Parent = stabi
+	        local scr = Instance.new("TextButton")
+        	scr.Name = filename
+         	scr.Text = filename
+         	scr.BackgroundTransparency = 1
+         	scr.Size = UDim2.new(0.74,0,0,28)
+         	scr.BackgroundColor3 = Color3.fromRGB(255,255,255)
+         	scr.TextColor3 = Color3.new(1,1,1)
+         	scr.TextXAlignment = Enum.TextXAlignment.Center
+         	scr.TextScaled = true
+        	scr.Parent = back
 			
-			Corner(0.1,0,scr)
-			Stroke(scr, ASMBorder,255,255,255,LJMRound,1,0)
-			uia(scr,4)
-
 			scr.MouseButton1Click:Connect(function()
 				if currentFile then
 					saveCurrent()
