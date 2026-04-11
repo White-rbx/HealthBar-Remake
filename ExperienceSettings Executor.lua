@@ -1,4 +1,4 @@
-local Version = [[0.1.384 Alpha
+local Version = [[0.1.385 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -1051,8 +1051,7 @@ editb.TextTransparency = 1
 editb.TextSize = 15
 editb.TextWrap = true
 editb.RichText = true
-editb.Text = ""
-editb.PlaceholderText = 'print("Hello, World!")'
+editb.Text = 'print("Hello, World!")'
 editb.TextColor3 = Color3.fromRGB(255,255,255)
 editb.TextXAlignment = Enum.TextXAlignment.Left
 editb.TextYAlignment = Enum.TextYAlignment.Top
@@ -2665,7 +2664,7 @@ stab.Parent = Frame.Edit.Inside
 Corner(0.15,0,stab)
 Stroke(stab, ASMBorder, 255,255,255, LJMRound, 2, 0)
 Gradient(stab, 90,0,0,
-  Color3.fromRGB(85,0,127),
+  Color3.fromRGB(0,0,255),
   Color3.fromRGB(0,255,255)
 )
 
@@ -3412,23 +3411,31 @@ local function scriptadd(existingFile)
 		end
 	end
 
-	local scr = Instance.new("TextButton")
-	scr.Name = filename
-	scr.Text = filename
-	scr.Size = UDim2.new(1,0,0,30)
-	scr.BackgroundColor3 = Color3.fromRGB(255,255,255)
-	scr.TextColor3 = Color3.new(1,1,1)
-	scr.TextXAlignment = Enum.TextXAlignment.Left
-	scr.TextScaled = true
-	scr.Parent = stabi
-	Gradient(scr, 90,0,0,
+	local back = Instance.new("Frame")
+	back.Name = "Script"
+	back.Active = true
+	back.Size = UDim2.new(1,0,0,30)
+	back.BackgroundColor3 = Color3.new(1,1,1)
+	back.Parent = stabi
+	Gradient(back, 90,0,0,
 	  Color3.fromRGB(0,150,150),
 	  Color3.fromRGB(150,0,150)
 	 )
 	
-	Corner(0.1,0,scr)
-	Stroke(scr, ASMBorder,255,255,255,LJMRound,1,0)
-	uia(scr,4)
+	Corner(0.1,0,back)
+	Stroke(back, ASMBorder,255,255,255,LJMRound,1,0)
+	uia(back,4)
+
+	local scr = Instance.new("TextButton")
+	scr.Name = filename
+	scr.Text = filename
+	scr.BackgroundTransparency = 1
+	scr.Size = UDim2.new(0.7,0,0,30)
+	scr.BackgroundColor3 = Color3.fromRGB(255,255,255)
+	scr.TextColor3 = Color3.new(1,1,1)
+	scr.TextXAlignment = Enum.TextXAlignment.Left
+	scr.TextScaled = true
+	scr.Parent = back
 
 	scr.MouseButton1Click:Connect(function()
 		if currentFile then
@@ -3444,13 +3451,13 @@ local function scriptadd(existingFile)
 	local des = Instance.new("ImageButton")
 	des.Name = "Destroy"
 	des.Size = UDim2.new(1,0,1,0)
-	des.Position = UDim2.new(0.7,0,0,0)
+	des.Position = UDim2.new(0.75,0,0,0)
 	des.BackgroundTransparency = 0.5
 	des.BackgroundColor3 = Color3.new(0,0,0)
 	des.Image = "rbxassetid://136855726459065"
 	des.Parent = scr
 	Stroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
-	Corner(0.1,0,des)
+	Corner(0.2,0,des)
 	
 	uia(des,1)
 
