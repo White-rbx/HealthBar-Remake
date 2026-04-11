@@ -1,4 +1,4 @@
-local Version = [[0.1.389 Alpha
+local Version = [[0.1.39 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -384,7 +384,7 @@ Configure(Frame.Settings)
 Frame.Home.Name = "Home"
 Frame.Edit.Name = "Edit"
 Frame.Console.Name = "Console"
-Frame.ExpInfo.Name = "ExperienceInfo"
+Frame.ExpInfo.Name = "ExpInfo"
 Frame.Folder.Name = "Folder"
 Frame.Bookmark.Name = "Bookmark"
 Frame.Search.Name = "Search"
@@ -395,7 +395,7 @@ Frame.Settings.Name = "Settings"
 Frame.Home.Tittle.Text = "Home"
 Frame.Edit.Tittle.Text = "Editor"
 Frame.Console.Tittle.Text = "Console"
-Frame.ExpInfo.Tittle.Text = "Experience Info"
+Frame.ExpInfo.Tittle.Text = "Experience Information"
 Frame.Folder.Tittle.Text = "Folder Explorer"
 Frame.Bookmark.Tittle.Text = "Bookmark"
 Frame.Search.Tittle.Text = "Search Script"
@@ -2773,7 +2773,8 @@ local assets = {
 	["yellow-shade"] = "https://i.postimg.cc/zXFZWQp9/yellow-shade.png",
 	["zip"] = "https://i.postimg.cc/ncGb7WTN/zip.png",
 	["folder"] = "https://i.postimg.cc/D0qVxphs/folder.png",
-	["music-note"] = "https://i.postimg.cc/rFLBM6hF/music-note.png"
+	["music-note"] = "https://i.postimg.cc/rFLBM6hF/music-note.png",
+	["game-info"] = "https://i.postimg.cc/T1Bzsq22/game-info.png"
 }
 
 -------------------------------------------------
