@@ -1,12 +1,6 @@
-local Version = [[0.1.383 Alpha
-Add tittle
-ISSUES DAMMMMMMMMMMM
-MMMMMMMMMMMMMMMMMMMMMMMM 
-MMMMMMMMMMMMMM
-MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
-MMMMMMMMMM
-MMMMNNNNNNN
-NNN!!!!!!!!!!!]]
+local Version = [[0.1.384 Alpha
+Fixed Script Tabs in Editor.
+Re-gui in Script Tabs.]]
 -- This executor
 
 getgenv().ES = nil
@@ -2682,7 +2676,7 @@ stabi.Size = UDim2.new(1,0,0.8,0)
 stabi.BackgroundTransparency = 1
 stabi.Active = false
 stabi.Parent = stab
-ListLayout(stabi, 0,5, HLeft, VCenter, SName, FillH)
+ListLayout(stabi, 0,5, HLeft, VCenter, SLayout, FillH)
 
 local function uia(parent, num)
   local Ui = Instance.new("UIAspectRatioConstraint")
@@ -2695,6 +2689,7 @@ addbtn.Name = "Z9999999999999999999999999999999999999999999999999999999999999999
 addbtn.Size = UDim2.new(1,0,1,0)
 addbtn.BackgroundColor3 = Color3.new(0,0,0)
 addbtn.Image = "rbxassetid://115181877700997"
+addbtn.LayoutOrder = 99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999
 addbtn.Parent = stabi
 uia(addbtn, 1)
 Corner(0.2,0,addbtn)
@@ -3409,7 +3404,7 @@ local function scriptadd(existingFile)
 	else
 		-- สร้างไฟล์ใหม่
 		i += 1
-		filename = "Script " .. i .. ".lua"
+		filename = "Untitled " .. i .. ".lua"
 		fullpath = tabsPath .. "/" .. filename
 
 		if not isfile(fullpath) then
@@ -3422,13 +3417,13 @@ local function scriptadd(existingFile)
 	scr.Text = filename
 	scr.Size = UDim2.new(1,0,0,30)
 	scr.BackgroundColor3 = Color3.fromRGB(255,255,255)
-	scr.TextColor3 = Color3.fromRGB(0,0,0)
+	scr.TextColor3 = Color3.new(1,1,1)
 	scr.TextXAlignment = Enum.TextXAlignment.Left
-	scr.TextSize = 12
+	scr.TextScaled = true
 	scr.Parent = stabi
 	Gradient(scr, 90,0,0,
-	  Color3.fromRGB(0,255,255),
-	  Color3.fromRGB(255,255,255)
+	  Color3.fromRGB(0,150,150),
+	  Color3.fromRGB(150,0,150)
 	 )
 	
 	Corner(0.1,0,scr)
@@ -3450,9 +3445,12 @@ local function scriptadd(existingFile)
 	des.Name = "Destroy"
 	des.Size = UDim2.new(1,0,1,0)
 	des.Position = UDim2.new(0.7,0,0,0)
-	des.BackgroundTransparency = 1
+	des.BackgroundTransparency = 0.5
+	des.BackgroundColor3 = Color3.new(0,0,0)
 	des.Image = "rbxassetid://136855726459065"
 	des.Parent = scr
+	Stroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
+	Corner(0.1,0,des)
 	
 	uia(des,1)
 
