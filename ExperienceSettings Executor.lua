@@ -1,4 +1,4 @@
-local Version = [[0.1.386 Alpha
+local Version = [[0.1.387 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -3471,7 +3471,7 @@ local function scriptadd(existingFile)
 			delfile(fullpath)
 		end
 		
-		scr:Destroy()
+		back:Destroy()
 	end)
 end
 
