@@ -1,4 +1,4 @@
-local Version = [[0.1.392 Alpha
+local Version = [[0.1.3925 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -1000,6 +1000,10 @@ scr("VSCode", "VSCode Open Source | by @Cherry | [PC ONLY]",
 
 scr("sUNC", "Unc Test | by @Alexchad", 
   [[loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Unc-Test-67860"))()
+]])
+
+scr("YTMP", "YouTube Music Player | by Termux_404",
+	[[loadstring(game:HttpGet(('https://raw.githubusercontent.com/Dan41/Roblox-Scripts/refs/heads/main/Youtube%20Music%20Player/YoutubeMusicPlayer.lua'),true))()
 ]])
 
 -- Update scroll automatically
