@@ -1,4 +1,4 @@
-local ver = " UIs 4.267 "
+local ver = " UIs 4.2672 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -344,14 +344,14 @@ Example
 
 -- functions
 local user = {
-    plr  = "You: ",
-    chat = "AI: ",
-    Error = "Error: ",
-    Suc   = "Success: ",
-    Warn  = "Warning: ",
-    Info  = "Information: ",
+    plr  = "[ You ]: ",
+    chat = "[ AI ]: ",
+    Error = "[ Error ]: ",
+    Suc   = "[ Success ]: ",
+    Warn  = "[ Warning ]: ",
+    Info  = "[ Information ]: ",
     Nill = "",
-    Sys = "System: ",
+    Sys = "[ System ]: ",
 	Nil = "",
 }
 
@@ -429,12 +429,14 @@ local GPT_PRESETS = {
     PRO   = {mt = 256, t = 0.7},
     PLUS  = {mt = 512, t = 0.75},
     THINKING = {mt = 1024, t = 0.8},
+	MASTER = {mt = 2048, t = 0.9},
 }
 local GEMINI_PRESETS = {
     FREE  = {mt = 64,  t = 0.4},
     PRO   = {mt = 256, t = 0.7},
     PLUS  = {mt = 512, t = 0.75},
     THINKING = {mt = 1024, t = 0.8},
+	MASTER = {mt = 2048, t = 0.9},
 }
 
 -- ========== SERVICES & UTIL ==========
@@ -490,14 +492,14 @@ local ch, se, tb, si, st, con, con2
 
 -- ========== user labels & safe text function (already exist in user code, but we keep fallback) ==========
 local user = {
-    plr  = "You: ",
-    chat = "AI: ",
-    Error = "Error: ",
-    Suc   = "Success: ",
-    Warn  = "Warning: ",
-    Info  = "Information: ",
+    plr  = "[ You ]: ",
+    chat = "[ AI ]: ",
+    Error = "[ Error ]: ",
+    Suc   = "[ Success ]: ",
+    Warn  = "[ Warning ]: ",
+    Info  = "[ Information ]: ",
     Nill = "",
-    Sys = "System: ",
+    Sys = "[ System ]: ",
 	Nil = "",
 }
 
@@ -752,8 +754,8 @@ local HELP_TEXT = [=[
 /CheckURLStatus [URL] - HEAD request to URL
 /CheckSYN - check syn.request availability
 /EnableUSLD - enable unknown-language debug printing
-/GPTSwitch [FREE/PRO/PLUS/THINKING]
-/GEMINISwitch [FREE/PRO/PLUS/THINKING]
+/GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER]
+/GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER]
 /ResetRateLimit or /ReRateLimit - resets local queue/backoff
 /DumpStatus - prints current state
 /InstanceTool ("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]
@@ -932,7 +934,7 @@ local function hookGlobalChat()
 
 			safeTxt(
 				user.Nill,
-				"[GLOBAL] "..name..": "..text,
+				"[GLOBAL] ["..name.."]: "..text,
 				r,g,b
 			)
 
@@ -960,7 +962,7 @@ local function hookGlobalChat()
 
 			safeTxt(
 				user.Nill,
-				"[GLOBAL] "..msgData.FromSpeaker..": "..msgData.Message,
+				"[GLOBAL] ["..msgData.FromSpeaker.."]: "..msgData.Message,
 				r,g,b
 			)
 
@@ -1074,7 +1076,7 @@ local function handleCommand(msg)
         if choice and GPT_PRESETS[choice:upper()] then
             currentPresetGPT = choice:upper()
             safeTxt(user.Suc, "GPT preset set: "..currentPresetGPT,0,255,0)
-        else safeTxt(user.Error, "Usage: /GPTSwitch [FREE/PRO/PLUS]",255,0,0) end
+        else safeTxt(user.Error, "Usage: /GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER]",255,0,0) end
         return true
     end
     if lower:match("^/geminiswitch") then
@@ -1082,7 +1084,7 @@ local function handleCommand(msg)
         if choice and GEMINI_PRESETS[choice:upper()] then
             currentPresetGemini = choice:upper()
             safeTxt(user.Suc, "Gemini preset set: "..currentPresetGemini,0,255,0)
-        else safeTxt(user.Error, "Usage: /GEMINISwitch [FREE/PRO/PLUS]",255,0,0) end
+        else safeTxt(user.Error, "Usage: /GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER]",255,0,0) end
         return true
     end
     if lower:match("^/resetratelimit") or lower:match("^/reratelimit") then
