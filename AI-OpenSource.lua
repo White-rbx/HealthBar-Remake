@@ -12,6 +12,7 @@ local update = [[
 (:13/4/2026 | 8:42 pm: A) Add "New message" TextLabel. Important for using /globalchat but still in development.
 (:14/4/2026 | 1:26 am: N) New message system is finally here!
 (:14/4/2026 | 1:33 am: F) FIXED NEW MESSAGE SYSTEM REVERSE WHAT THE FUCK.
+(:14/4/2026 | 1:52 am: B) Buff from 99+ to 999+ in new message system.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1319,7 +1320,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
 		unread += (current - lastCount)
 
 			newmg.Visible = true
-			newmg.Text = (unread > 99) and "99+" or tostring(unread)
+			newmg.Text = (unread > 999) and "999+" or tostring(unread)
 		end
 	else
 		unread = 0
