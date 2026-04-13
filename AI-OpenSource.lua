@@ -1,4 +1,4 @@
-local ver = " UIs 4.2695 "
+local ver = " UIs 4.2698 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -12,7 +12,7 @@ local update = [[
 (:13/4/2026 | 8:42 pm: A) Add "New message" TextLabel. Important for using /globalchat but still in development.
 (:14/4/2026 | 1:26 am: N) New message system is finally here!
 (:14/4/2026 | 1:33 am: F) FIXED NEW MESSAGE SYSTEM REVERSE WHAT THE FUCK.
-(:14/4/2026 | 1:52 am: B) Buff from 99+ to 999+ in new message system.
+(:14/4/2026 | 1:52 am - 2:27 am: B) Buff from 99+ to 9999+ in new message system.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1320,7 +1320,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
 		unread += (current - lastCount)
 
 			newmg.Visible = true
-			newmg.Text = (unread > 999) and "999+" or tostring(unread)
+			newmg.Text = (unread > 9999) and "9999+" or tostring(unread)
 		end
 	else
 		unread = 0
@@ -1332,7 +1332,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
 end)
 
 while true do
-	task.wait(0.05)
+	task.wait(0.01)
 	safeTxt(user.Error, "OH MY GOD! THIS A TEST.", 255,0,0)
 end
 
