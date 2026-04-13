@@ -1,4 +1,4 @@
-local ver = " gpt Test 4.266 "
+local ver = " UIs 4.267 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -9,6 +9,7 @@ local update = [[
 (:30/1/2026 | 8:12 pm: U) Update
 (:30/1/2026 | 8:59 pm: D) Disabled top button for bug.
 (:28/3/2026 | 8:32 pm: F&R) Fixed /Globalchat not working and rename from AI-OpenSource to AI-Thinking.
+(:13/4/2026 | 8:42 pm: A) Add "New message" TextLabel. Important for using /globalchat but still in development.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -144,6 +145,7 @@ local TouchInputService = game:GetService("TouchInputService")
 
 --================================--
 local Menu = CoreGui:WaitForChild("ExperienceSettings").Menu
+local vAI = Menu.TopBar.Holder.z8_ChatGPT
 local gpt = Menu.ChatGPT
 
 gpt.Line:Destroy()
@@ -194,7 +196,7 @@ tl2.Position = UDim2.new(0,0,0.07,0)
 tl2.Size = UDim2.new(0.2,0,0.03,0)
 tl2.BackgroundTransparency = 1
 tl2.Active = false
-tl2.Text = "Version: TEST"
+tl2.Text = "Version:"..ver
 tl2.TextXAlignment = Enum.TextXAlignment.Left
 tl2.TextColor3 = Color3.fromRGB(255,255,255)
 tl2.TextScaled = true
@@ -311,6 +313,18 @@ si.AutomaticCanvasSize = Enum.AutomaticSize.Y
 si.CanvasSize = UDim2.new(0,0,0,0)
 si.Parent = ins
 ListLayout(si, 0, 3, HLeft, VTop, SLayout, FillV)
+
+local newmg = Instance.new("TextLabel")
+newmg.Name = "NewMessage"
+newmg.Position = UDim2.new(0.5,0,0.6,0)
+newmg.Size = UDim2.new(0,20,0,20)
+newmg.BackgroundColor3 = Color3.new(1,1,1)
+newmg.Active = false
+newmg.Text = "-"
+newmg.TextScaled = true
+newmg.TextColor3 = Color3.new(0,0,0)
+newmg.Visible = false
+newmg.Parent = vAI
 
 --[[
 Note
