@@ -1,4 +1,4 @@
-local ver = " UIs 4.2673 "
+local ver = " UIs 4.268 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -10,6 +10,7 @@ local update = [[
 (:30/1/2026 | 8:59 pm: D) Disabled top button for bug.
 (:28/3/2026 | 8:32 pm: F&R) Fixed /Globalchat not working and rename from AI-OpenSource to AI-Thinking.
 (:13/4/2026 | 8:42 pm: A) Add "New message" TextLabel. Important for using /globalchat but still in development.
+(:14/4/2026 | 1:26 am: N) New message system is finally here!
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1287,6 +1288,52 @@ task.spawn(function()
         end
         task.wait(8)
     end
+end)
+
+local OFF_IMAGE = "rbxassetid://92243936349090"
+
+local unread = 0
+local lastCount = 0
+
+local function countAll()
+	local count = 0
+	for _, v in ipairs(si:GetChildren()) do
+		if not v:IsA("UIListLayout")
+		and not v:IsA("UIPadding")
+		and not v:IsA("UICorner")
+		and not v:IsA("UIStroke") then
+			count += 1
+		end
+	end
+	return count
+end
+
+lastCount = countAll()
+
+game:GetService("RunService").RenderStepped:Connect(function()
+	local current = countAll()
+
+	-- ถ้า vAI "ปิด"
+	if vAI.Image == OFF_IMAGE then
+		if current > lastCount then
+			unread += (current - lastCount)
+
+			newmg.Visible = true
+			newmg.Text = (unread > 99) and "99+" or tostring(unread)
+		end
+	end
+
+	lastCount = current
+end)
+
+
+vAI.MouseButton1Click:Connect(function()
+	-- ถ้าเปิด (Image เปลี่ยนจาก OFF)
+	if vAI.Image ~= OFF_IMAGE then
+		unread = 0
+		newmg.Text = "0"
+		newmg.Visible = false
+	end
 end)
 
 -- End of script
