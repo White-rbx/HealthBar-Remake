@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.63 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.64 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -273,11 +273,15 @@ Corner(1,0, Load)
 
 local btnBar = Instance.new("TextButton")
 btnBar.Visible = false
+btnBar.Active = true
 btnBar.Position = UDim2.new(0.4,0,0.4,0)
 btnBar.Size = UDim2.new(0.2,0,0.2,0)
+btnBar.BackgroundColor3 = Color3.new(1,0,0)
 btnBar.Text = "Close"
+btnBar.TextSize = 18
 btnBar.Parent = Canvas
 Corner(0.15,0,btnBar)
+Stroke(btnBar, ASMBorder, 170,0,0, LJMRound, 3, 0)
 
 btnBar.MouseButton1Click:Connect(function()
 	if Folder then Folder:Destroy() end
