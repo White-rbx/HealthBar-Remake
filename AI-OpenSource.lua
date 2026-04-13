@@ -1,4 +1,4 @@
-local ver = " UIs 4.2698 "
+local ver = " UIs 4.2699 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1330,10 +1330,5 @@ game:GetService("RunService").RenderStepped:Connect(function()
 
 	lastCount = current
 end)
-
-while true do
-	task.wait(0.01)
-	safeTxt(user.Error, "OH MY GOD! THIS A TEST.", 255,0,0)
-end
 
 -- End of script
