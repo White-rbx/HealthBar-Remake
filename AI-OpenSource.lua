@@ -1,4 +1,4 @@
-local ver = " UIs 4.2672 "
+local ver = " UIs 4.2673 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -325,6 +325,7 @@ newmg.TextScaled = true
 newmg.TextColor3 = Color3.new(0,0,0)
 newmg.Visible = false
 newmg.Parent = vAI
+Corner(1,0,newmg)
 
 --[[
 Note
