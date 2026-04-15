@@ -1,4 +1,4 @@
-local ver = " UIs 4.2699 "
+local ver = " UIs 4.27 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -13,6 +13,7 @@ local update = [[
 (:14/4/2026 | 1:26 am: N) New message system is finally here!
 (:14/4/2026 | 1:33 am: F) FIXED NEW MESSAGE SYSTEM REVERSE WHAT THE FUCK.
 (:14/4/2026 | 1:52 am - 2:27 am: B) Buff from 99+ to 9999+ in new message system.
+(:15/4/2026 | 3:04 pm: A) Add Colorful to message and changed BackgroundTransparency to 0.9.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -363,9 +364,10 @@ local user = {
 local function txt(user, text, R, G, B)
     local cha = Instance.new("TextLabel")
     cha.Name = "Text"
-    cha.Size = UDim2.new(0.97, 0, 0, 0) -- default height (ปรับภายหลังได้)
+    cha.Size = UDim2.new(0.97, 0, 0, 0)
     cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
-    cha.BackgroundTransparency = 1
+    cha.BackgroundTransparency = 0.9
+	cha.BackgroundColor3 = Color3.fromRGB(255,255,255)
     cha.Text = tostring(user) .. tostring(text)
     cha.TextSize = 16
     cha.RichText = true
@@ -374,6 +376,10 @@ local function txt(user, text, R, G, B)
     cha.TextYAlignment = Enum.TextYAlignment.Top
     cha.AutomaticSize = Enum.AutomaticSize.Y
     cha.Parent = si
+	Corner(0,10,cha)
+
+	-- Get color from text
+	cha.BackgroundColor3 = Color3.fromRGB(cha.TextColor3)
 
 	task.defer(function()
 	local layout = si:FindFirstChildOfClass("UIListLayout")
