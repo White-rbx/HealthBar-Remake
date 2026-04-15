@@ -1,4 +1,4 @@
-local ver = " UIs 4.272 "
+local ver = " UIs 4.273 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -13,7 +13,7 @@ local update = [[
 (:14/4/2026 | 1:26 am: N) New message system is finally here!
 (:14/4/2026 | 1:33 am: F) FIXED NEW MESSAGE SYSTEM REVERSE WHAT THE FUCK.
 (:14/4/2026 | 1:52 am - 2:27 am: B) Buff from 99+ to 9999+ in new message system.
-(:15/4/2026 | 3:15 pm: A) Add Colorful to message and changed BackgroundTransparency to 0.85
+(:15/4/2026 | 3:29 pm: A) Add Colorful to message and changed BackgroundTransparency to 0.85
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -179,7 +179,7 @@ t.BackgroundTransparency = 0.8
 t.BackgroundColor3 = Color3.fromRGB(255,255,255)
 t.Active = false
 t.Parent = ins
-Corner(1, 0, t)
+Corner(0.15, 0, t)
 Stroke(t, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
 
 -- TextLabel
@@ -316,7 +316,7 @@ si.ScrollingDirection = Enum.ScrollingDirection.Y
 si.AutomaticCanvasSize = Enum.AutomaticSize.Y
 si.CanvasSize = UDim2.new(0,0,0,0)
 si.Parent = ins
-ListLayout(si, 0, 3, HLeft, VTop, SLayout, FillV)
+ListLayout(si, 0, 5, HLeft, VTop, SLayout, FillV)
 
 local newmg = Instance.new("TextLabel")
 newmg.Name = "NewMessage"
@@ -364,6 +364,7 @@ local user = {
 local function txt(user, text, R, G, B)
     local cha = Instance.new("TextLabel")
     cha.Name = "Text"
+	cha.Active = false
     cha.Size = UDim2.new(0.97, 0, 0, 0)
     cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     cha.BackgroundTransparency = 0.85
@@ -376,7 +377,7 @@ local function txt(user, text, R, G, B)
     cha.TextYAlignment = Enum.TextYAlignment.Top
     cha.AutomaticSize = Enum.AutomaticSize.Y
     cha.Parent = si
-	Corner(0,10,cha)
+	Corner(0,5,cha)
 
 	-- Get color from text
 	cha.BackgroundColor3 = cha.TextColor3
