@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.795
+-- So uhm just a script lol. 4.796
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1468,11 +1468,7 @@ end
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/LighterCyan.ai.lua"))()
 -- หา LighterCyan.ai ด้วย WaitForChild
 local gui = game:GetService("CoreGui")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("UnibarLeftFrame")
-	:WaitForChild("HealthBar")
-	:WaitForChild("ExperienceSettings")
+    :WaitForChild("ExperienceSettings", 120)
 	:WaitForChild("LighterCyan.ai")
 
 -- ใช้ toggle เดิมของนาย
