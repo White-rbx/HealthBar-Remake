@@ -1,4 +1,4 @@
-local Version = [[0.1.3926 Alpha
+local Version = [[0.1.3927 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -407,6 +407,7 @@ Frame.Music.Tittle.Text = "Music and Audio"
 Frame.Settings.Tittle.Text = "Settings"
 
 --[ Visible ]
+Frame.AutoExe.Inside.soon.Visible = true
 Frame.Console.Inside.soon.Visible = true
 Frame.ExpInfo.Inside.soon.Visible = true
 Frame.Folder.Inside.soon.Visible = true
@@ -2784,7 +2785,7 @@ local assets = {
 	["folder"] = "https://i.postimg.cc/D0qVxphs/folder.png",
 	["music-note"] = "https://i.postimg.cc/rFLBM6hF/music-note.png",
 	["game-info"] = "https://i.postimg.cc/T1Bzsq22/game-info.png",
-	["Auto-Exe-White"] = "https://i.postimg.cc/SKBGv76C/Auto-Exe-White.png",
+	["autoexewhite"] = "https://i.postimg.cc/bY1KQPWH/autoexewhite.png",
 }
 
 -------------------------------------------------
