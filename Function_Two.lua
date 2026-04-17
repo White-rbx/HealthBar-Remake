@@ -1,4 +1,4 @@
--- So this another script lol 0.9
+-- So this another script lol 1.0
 
 
 -- =====>> Saved Functions <<=====
@@ -218,6 +218,20 @@ local function createToggle(parent, text, callback, defaultState)
 end
 --// =====================================================
 
+
+-- <<===== LIGHTERCYAN.AI =====>>
+-- << main loadstring >>
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/LighterCyan.ai.lua"))()
+-- หา LighterCyan.ai ด้วย WaitForChild
+local gui = game:GetService("CoreGui")
+    :WaitForChild("ExperienceSettings", 120)
+	:WaitForChild("LighterCyan.ai")
+
+-- ใช้ toggle เดิมของนาย
+createToggle(BFrame, "LighterCyan.ai (Discontinued)", function(state)
+	gui.Enabled = state  -- เปิด/ปิดตามสวิตช์
+end, false) -- default: ปิด
+-- <<===== END LIGHTERCYAN =====>>
 
 --// =====================================================
 --// PHYSICS VISUAL DEBUGGER (FINAL + MODEL REMOVE FIX)
