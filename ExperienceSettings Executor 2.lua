@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.23
+-- ES Executor 2 | 0.24
 
 ------------------------------------------------------------------------------------------
 
@@ -347,7 +347,7 @@ if getcustomasset then
 ["search"] = getcustomasset("ExperienceSettings-Executor/Assets/search.png"),
 ["music-note"] = getcustomasset("ExperienceSettings-Executor/Assets/music-note.png"),
 ["game-info"] = getcustomasset("ExperienceSettings-Executor/Assets/game-info.png"),
-["Auto-Exe-White"] = getcustomasset("ExperienceSettings-Executor/Assets/Auto-Exe-White.png"),
+["autoexewhite"] = getcustomasset("ExperienceSettings-Executor/Assets/autoexewhite.png"),
 		  }
 	end)
 end
@@ -436,7 +436,7 @@ local windows = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.B
 setIcon(inside.Close,"cross-white")
 setIcon(inside.Home,"home")
 setIcon(inside.Edit,"editor")
-setIcon(inside.AutoExe, "Auto-Exe-White")
+setIcon(inside.AutoExe, "autoexewhite")
 setIcon(inside.Console,"console")
 setIcon(inside.ExpInfo,"game-info")
 setIcon(inside.Folder,"folder")
