@@ -1,4 +1,4 @@
--- Ok 2.66
+-- Ok 2.67
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -77,6 +77,7 @@ local function setupValueGui()
     if not gui then
         gui = Instance.new("ScreenGui")
         gui.Name = "ValueGui"
+		gui.DisplayOrder = 2147483645
         gui.Parent = folder
     end
 
@@ -521,6 +522,7 @@ local menuGui = Instance.new("ScreenGui")
 menuGui.Name = "Menu"
 menuGui.ResetOnSpawn = false
 menuGui.IgnoreGuiInset = true
+menuGui.DisplayOrder = 2147483646
 menuGui.Parent = expSettings
 
 -- Main TopBar holder (small)
@@ -1132,7 +1134,6 @@ end
 -- ===== Functions loadstring() =====
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Functions.lua"))()
 print("[ Functions Loadstring ] Successful loaded.")
-
 local lder = game:GetService("CoreGui"):WaitForChild("TopBarApp")
                                       :WaitForChild("TopBarApp")
                                       :WaitForChild("UnibarLeftFrame")
