@@ -1,4 +1,4 @@
-local Version = [[0.1.3925 Alpha
+local Version = [[0.1.3926 Alpha
 Fixed Script Tabs in Editor.
 Re-gui in Script Tabs.]]
 -- This executor
@@ -318,6 +318,7 @@ Bghr.Parent = Bg
 local Frame = {
     Home = Instance.new("CanvasGroup"),
     Edit = Instance.new("CanvasGroup"),
+	AutoExe = Instance.new("CanvasGroup"),
     Console = Instance.new("CanvasGroup"),
 	ExpInfo = Instance.new("CanvasGroup"),
     Folder = Instance.new("CanvasGroup"),
@@ -372,6 +373,7 @@ end
 
 Configure(Frame.Home)
 Configure(Frame.Edit)
+Configure(Frame.AutoExe)
 Configure(Frame.Console)
 Configure(Frame.ExpInfo)
 Configure(Frame.Folder)
@@ -383,6 +385,7 @@ Configure(Frame.Settings)
 --[ Name ]
 Frame.Home.Name = "Home"
 Frame.Edit.Name = "Edit"
+Frame.AutoExe.Name = "AutoExe"
 Frame.Console.Name = "Console"
 Frame.ExpInfo.Name = "ExpInfo"
 Frame.Folder.Name = "Folder"
@@ -394,12 +397,13 @@ Frame.Settings.Name = "Settings"
 --[ Tittle ]
 Frame.Home.Tittle.Text = "Home"
 Frame.Edit.Tittle.Text = "Editor"
+Frame.AutoExe.Tittle.Text = "Auto Execute"
 Frame.Console.Tittle.Text = "Console"
 Frame.ExpInfo.Tittle.Text = "Experience Information"
-Frame.Folder.Tittle.Text = "Folder Explorer"
-Frame.Bookmark.Tittle.Text = "Bookmark"
+Frame.Folder.Tittle.Text = "Device Folder"
+Frame.Bookmark.Tittle.Text = "Bookmark Script"
 Frame.Search.Tittle.Text = "Search Script"
-Frame.Music.Tittle.Text = "Music"
+Frame.Music.Tittle.Text = "Music and Audio"
 Frame.Settings.Tittle.Text = "Settings"
 
 --[ Visible ]
@@ -714,6 +718,7 @@ For Integrated Development Environment (IDE) programing.
      • getLoad(function()
         print("hi")
        end)
+
  3. getLoad.fromURL("") -- loadstring()
      • Working like loadstring but take long
      
@@ -730,7 +735,7 @@ For Integrated Development Environment (IDE) programing.
      • Download all pngs ( Important for getcustomasset )
      
  8. getLoad:Data(Download.FailedAsset("png"))
-     • Same as Download
+     • Same as Download but its only load failed assets
      
  9. getLoad:Data(Check.Asset("png"))
      • Check all assets png
@@ -758,7 +763,7 @@ For Integrated Development Environment (IDE) programing.
 --====[NOT SUPPORT ]====--
 
 --[ Mobile Executor ]--
- 1. JJsploit ( Currently checking )
+ 1. JJsploit ( FREAKIN' DEAD LOL )
  
 --[ Pc Executor ( Confirmed by website ) ]--
  1. Xeno
@@ -2778,7 +2783,8 @@ local assets = {
 	["zip"] = "https://i.postimg.cc/ncGb7WTN/zip.png",
 	["folder"] = "https://i.postimg.cc/D0qVxphs/folder.png",
 	["music-note"] = "https://i.postimg.cc/rFLBM6hF/music-note.png",
-	["game-info"] = "https://i.postimg.cc/T1Bzsq22/game-info.png"
+	["game-info"] = "https://i.postimg.cc/T1Bzsq22/game-info.png",
+	["Auto-Exe-White"] = "https://i.postimg.cc/SKBGv76C/Auto-Exe-White.png",
 }
 
 -------------------------------------------------
@@ -2952,10 +2958,10 @@ local function checkAssets()
 
 	local current = countAssets()
 
-	if current == 59 then
-		noti(4,"All assets loaded (59/59)",color.green)
+	if current == 60 then
+		noti(4,"All assets loaded (60/6p)",color.green)
 	else
-		noti(4,"Assets missing "..current.."/59",color.orange)
+		noti(4,"Assets missing "..current.."/60",color.orange)
 	end
 
 end
@@ -4939,6 +4945,7 @@ Close.BackgroundColor3 = Color3.fromRGB(170,0,0)
 
 home = Btn("Home", 70503788933260)
 edit = Btn("Edit", 89040201197978)
+autoexe = Btn("AutoExe", 138873910046129)
 console = Btn("Console", 76584386272665)
 expinfo = Btn("ExpInfo", 98945717252202)
 folder = Btn("Folder", 86157935898545)
