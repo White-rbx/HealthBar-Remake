@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.22
+-- ES Executor 2 | 0.23
 
 ------------------------------------------------------------------------------------------
 
@@ -248,7 +248,7 @@ end
 --------------------------------------------------
 
 local ASSET_PATH = "ExperienceSettings-Executor/Assets"
-local TOTAL_ASSETS = 59
+local TOTAL_ASSETS = 60
 
 local function asset(path)
 	local ok, result = pcall(function()
@@ -347,6 +347,7 @@ if getcustomasset then
 ["search"] = getcustomasset("ExperienceSettings-Executor/Assets/search.png"),
 ["music-note"] = getcustomasset("ExperienceSettings-Executor/Assets/music-note.png"),
 ["game-info"] = getcustomasset("ExperienceSettings-Executor/Assets/game-info.png"),
+["Auto-Exe-White"] = getcustomasset("ExperienceSettings-Executor/Assets/Auto-Exe-White.png"),
 		  }
 	end)
 end
@@ -435,6 +436,7 @@ local windows = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.B
 setIcon(inside.Close,"cross-white")
 setIcon(inside.Home,"home")
 setIcon(inside.Edit,"editor")
+setIcon(inside.AutoExe, "Auto-Exe-White")
 setIcon(inside.Console,"console")
 setIcon(inside.ExpInfo,"game-info")
 setIcon(inside.Folder,"folder")
@@ -447,6 +449,7 @@ setIcon(inside.Settings,"settings")
 --[[ Windows ]]--
 local vHome = windows.Home.Inside
 local vEditor = windows.Edit.Inside
+local vAutoExe = windows.AutoExe.Inside
 local vConsole = windows.Console.Inside
 local vExpInfo = windows.ExpInfo.Inside
 local vFolder = windows.Folder.Inside
@@ -473,6 +476,8 @@ setIcon(vEditExe.PasteAndExecute,"paste-and-execute")
 setIcon(vEditExe.Paste,"paste")
 setIcon(vEditExe.Copy,"copy")
 setIcon(vEditExe.Clear,"erase")
+
+--[ AutoExe ]--
 
 
 --[ Console ]--
