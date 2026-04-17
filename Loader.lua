@@ -1,4 +1,4 @@
--- Well 2.342
+-- Well 2.343
 
 -- Reset
 getgenv().ES = nil
@@ -201,6 +201,9 @@ task.spawn(function()
 end)
 -- ==============
 
+-- Function_Two.lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Function_Two.lua"))()
+
 -- Location
 local CoreGui = game:GetService("CoreGui")
 local expsting = CoreGui:WaitForChild("TopBarApp")
@@ -293,9 +296,6 @@ task.spawn(function()
         end
     end
 end)
-
--- Function_Two.lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Function_Two.lua"))()
 
 -- BouncyAndHiglightImagsButton
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/BouncyAndHighlightImageButton.lua"))()
