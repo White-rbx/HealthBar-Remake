@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.796
+-- So uhm just a script lol. 4.797
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1463,19 +1463,6 @@ local function createToggle(parent, text, callback, defaultState)
 end
 
 -- =====>> TOGGLE SWITCH <<=====
--- <<===== LIGHTERCYAN.AI =====>>
--- << main loadstring >>
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/LighterCyan.ai.lua"))()
--- หา LighterCyan.ai ด้วย WaitForChild
-local gui = game:GetService("CoreGui")
-    :WaitForChild("ExperienceSettings", 120)
-	:WaitForChild("LighterCyan.ai")
-
--- ใช้ toggle เดิมของนาย
-createToggle(BFrame, "LighterCyan.ai (Discontinued)", function(state)
-	gui.Enabled = state  -- เปิด/ปิดตามสวิตช์
-end, false) -- default: ปิด
--- <<===== END LIGHTERCYAN =====>>
 
 -- <<===== HEALTHBAR =====>>
 -- 🔍 หา HealthBar หลัก
