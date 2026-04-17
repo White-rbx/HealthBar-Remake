@@ -1,4 +1,4 @@
--- Well 2.343
+-- Well 2.344
 
 -- Reset
 getgenv().ES = nil
@@ -201,9 +201,6 @@ task.spawn(function()
 end)
 -- ==============
 
--- Function_Two.lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Function_Two.lua"))()
-
 -- Location
 local CoreGui = game:GetService("CoreGui")
 local expsting = CoreGui:WaitForChild("TopBarApp")
@@ -224,6 +221,9 @@ until loader and loader.Size == UDim2.new(1,0,1,0)
 
 -- ตอนนี้ย้าย parent
 expsting.Parent = CoreGui
+
+-- Function_Two.lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Function_Two.lua"))()
 
 
 -- Auto-destroy Load_Background
