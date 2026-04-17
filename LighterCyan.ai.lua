@@ -1,4 +1,4 @@
--- 1
+-- 2
 
 -- string starting//
 -- 7 script (IMPORTANT)
@@ -6,7 +6,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/LigherCyan.
 
 -- string:LighterCyan:ai()
 -- Parent Finder
-local Ex = game:GetService("CoreGui").ExperienceSettings
+local Ex = game:GetService("CoreGui"):WaitForChild("ExperienceSettings", 120)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --[[
