@@ -1,4 +1,4 @@
--- Well 2.344
+-- Well 2.345
 
 -- Reset
 getgenv().ES = nil
@@ -222,9 +222,6 @@ until loader and loader.Size == UDim2.new(1,0,1,0)
 -- ตอนนี้ย้าย parent
 expsting.Parent = CoreGui
 
--- Function_Two.lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Function_Two.lua"))()
-
 
 -- Auto-destroy Load_Background
 task.wait(3)
@@ -296,6 +293,9 @@ task.spawn(function()
         end
     end
 end)
+
+-- Function_Two.lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Function_Two.lua"))()
 
 -- BouncyAndHiglightImagsButton
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/BouncyAndHighlightImageButton.lua"))()
