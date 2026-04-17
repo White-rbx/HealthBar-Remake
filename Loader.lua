@@ -1,4 +1,4 @@
--- Loader script 0.829
+-- Loader script 0.83
 
 ------------------------------------------------------------------------------------------
 
@@ -137,6 +137,7 @@ local TouchInputService = game:GetService("TouchInputService")
 -- ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Name = "LoaderSettings"
+gui.DisplayOrder = 2147483646
 gui.Parent = CoreGui
 
 -- Frame
