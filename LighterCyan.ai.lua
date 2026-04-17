@@ -1,4 +1,4 @@
--- 2
+-- 3
 
 -- string starting//
 -- 7 script (IMPORTANT)
@@ -6,7 +6,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/LigherCyan.
 
 -- string:LighterCyan:ai()
 -- Parent Finder
-local Ex = game:GetService("CoreGui"):WaitForChild("ExperienceSettings", 120)
+local Ex = game:GetService("CoreGui").TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.ExperienceSettings
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --[[
@@ -129,7 +129,7 @@ end
 local Gui = Instance.new("ScreenGui")
 Gui.Name = "LighterCyan.ai"
 Gui.ResetOnSpawn = false
-Gui.DisplayOrder = 2147483644
+Gui.DisplayOrder = 2147483643
 Gui.Parent = Ex -- Ex คือ PlayerGui ในสคริปต์นี้
 createUIListLayout(Gui, 0, 5, HCenter, VBottom, SName, FillV)
 
