@@ -1,6 +1,5 @@
-local Version = [[0.1.3927 Alpha
-Fixed Script Tabs in Editor.
-Re-gui in Script Tabs.]]
+local Version = [[0.1.3928 Alpha
+Fixed Text wrapped properties on TextViewer in Device Folder.]]
 -- This executor
 
 getgenv().ES = nil
@@ -4198,7 +4197,7 @@ if not layout then
 end
 
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	filelist.CanvasSize = UDim2.new(1000,0,0, layout.AbsoluteContentSize.Y + 10)
+	filelist.CanvasSize = UDim2.new(100,0,0, layout.AbsoluteContentSize.Y + 10)
 end)
 
 local FDScroll = Instance.new("ScrollingFrame")
@@ -4207,7 +4206,7 @@ FDScroll.Size = UDim2.new(0.64,0,0.8,0)
 FDScroll.Position = UDim2.new(0.36,0,0,0)
 FDScroll.BackgroundTransparency = 0
 FDScroll.BackgroundColor3 = Color3.new(0,0,0)
-FDScroll.CanvasSize = UDim2.new(0,0,0,0)
+FDScroll.CanvasSize = UDim2.new(100,0,0,0)
 FDScroll.ScrollBarThickness = 1
 FDScroll.Active = true
 FDScroll.Parent = folderIn
@@ -4230,7 +4229,7 @@ LineNumViwer.Parent = FDScroll
 local FDtxtview = Instance.new("TextLabel")
 FDtxtview.Name = "TextViewer"
 FDtxtview.BackgroundTransparency = 1
-FDtxtview.Size = UDim2.new(1,0,1,0)
+FDtxtview.Size = UDim2.new(100,0,1,0)
 FDtxtview.Position = UDim2.new(0,30,0,0)
 FDtxtview.BackgroundColor3 = Color3.new(0,0,0)
 FDtxtview.TextColor3 = Color3.new(1,1,1)
@@ -4628,7 +4627,7 @@ function refreshFileList()
 	task.defer(function()
 		local layout = filelist:FindFirstChildOfClass("UIListLayout")
 		if layout then
-			filelist.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y + 10)
+			filelist.CanvasSize = UDim2.new(100,0,0, layout.AbsoluteContentSize.Y + 10)
 		end
 	end)
 
