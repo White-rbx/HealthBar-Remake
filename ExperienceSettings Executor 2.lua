@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.24
+-- ES Executor 2 | 0.25
 
 ------------------------------------------------------------------------------------------
 
@@ -500,6 +500,8 @@ local vFT = {
 	Copy = vFolderTabs:FindFirstChild("Copy"),
 	PTE = vFolderTabs:FindFirstChild("PTE"),
 }
+
+vFT.PTE.BackgroundColor3 = Color3.new(1,0.5,0.5)
 
 local function getText()
 	return (vFDTextViewer and vFDTextViewer.Text) or ""
