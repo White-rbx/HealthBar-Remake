@@ -1,6 +1,5 @@
-local Version = [[0.1.3927 Alpha
-Fixed Script Tabs in Editor.
-Re-gui in Script Tabs.]]
+local Version = [[0.1.3928 Alpha
+Fixed Text wrapped made Line Number not balance.]]
 -- This executor
 
 getgenv().ES = nil
@@ -4198,7 +4197,7 @@ if not layout then
 end
 
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-	filelist.CanvasSize = UDim2.new(1000,0,0, layout.AbsoluteContentSize.Y + 10)
+	filelist.CanvasSize = UDim2.new(100,0,0, layout.AbsoluteContentSize.Y + 10)
 end)
 
 local FDScroll = Instance.new("ScrollingFrame")
@@ -4218,6 +4217,8 @@ LineNumViwer.Size = UDim2.new(0,30,1,0)
 LineNumViwer.BackgroundColor3 = Color3.fromRGB(48,48,48)
 LineNumViwer.Active = false
 LineNumViwer.TextColor3 = Color3.fromRGB(129,129,129)
+LineNumViwer.TextStrokeTransparency = 0
+LineNumViwer.TextStrokeColor3 = Color3.fromRGB(80,80,80)
 LineNumViwer.BorderSizePixel = 0
 LineNumViwer.TextSize = 15
 LineNumViwer.Font = Enum.Font.Code
@@ -4230,7 +4231,7 @@ LineNumViwer.Parent = FDScroll
 local FDtxtview = Instance.new("TextLabel")
 FDtxtview.Name = "TextViewer"
 FDtxtview.BackgroundTransparency = 1
-FDtxtview.Size = UDim2.new(1,0,1,0)
+FDtxtview.Size = UDim2.new(100,0,1,0)
 FDtxtview.Position = UDim2.new(0,30,0,0)
 FDtxtview.BackgroundColor3 = Color3.new(0,0,0)
 FDtxtview.TextColor3 = Color3.new(1,1,1)
@@ -4557,7 +4558,7 @@ local function fdlists(T, active, icon, ObjectName, offset, filePath)
 
 				task.defer(function()
 					local y = FDtxtview.TextBounds.Y
-					FDScroll.CanvasSize = UDim2.new(0,0,0, y + 20)
+					FDScroll.CanvasSize = UDim2.new(100,0,0, y + 20)
 				end)
 
 			end
@@ -4628,7 +4629,7 @@ function refreshFileList()
 	task.defer(function()
 		local layout = filelist:FindFirstChildOfClass("UIListLayout")
 		if layout then
-			filelist.CanvasSize = UDim2.new(0,0,0, layout.AbsoluteContentSize.Y + 10)
+			filelist.CanvasSize = UDim2.new(100,0,0, layout.AbsoluteContentSize.Y + 10)
 		end
 	end)
 
