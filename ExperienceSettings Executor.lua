@@ -1,4 +1,4 @@
-local Version = [[0.1.3929 Alpha
+local Version = [[0.1.393 Alpha
 Fixed Layout in autocorrect syntax.]]
 -- This executor
 
@@ -3983,7 +3983,7 @@ local function createSuggestion(keywordName, colorHex, transparency)
 	label.BackgroundColor3 = Color3.fromRGB(40,40,40)
 	label.BackgroundTransparency = transparency
 	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.LayoutOrder = 0
+	label.LayoutOrder = layout
 	label.TextScaled = true
 	label.RichText = true
 	label.Text = '<font color="'..colorHex..'">'..keywordName..'</font>'
@@ -4028,7 +4028,7 @@ local function updateSuggestions()
 
 			local transparency = (lowerKeyword == lowerCurrent) and 0 or 0.5
 
-			local layout = (lowerKeyword == lowerCurrent) and 2 or 1
+			local layout = (lowerKeyword == lowerCurrent) and 0 or 1
 
 			createSuggestion(keywordName, color, transparency, layout)
 			matchCount += 1
@@ -4036,7 +4036,7 @@ local function updateSuggestions()
 	end
 
 	if matchCount == 0 then
-		createSuggestion(current, "#ffffff", 1, 0)
+		createSuggestion(current, "#ffffff", 1, 2)
 		matchCount = 1
 	end
 
