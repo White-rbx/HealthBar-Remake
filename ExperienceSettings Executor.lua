@@ -1,4 +1,4 @@
-local Version = [[0.1.393 Alpha
+local Version = [[0.1.3931 Alpha
 Fixed Layout in autocorrect syntax.]]
 -- This executor
 
@@ -3976,7 +3976,7 @@ end
 
 
 --// CREATE SUGGESTION
-local function createSuggestion(keywordName, colorHex, transparency)
+local function createSuggestion(keywordName, colorHex, transparency, layout)
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.new(1,0,0,22)
