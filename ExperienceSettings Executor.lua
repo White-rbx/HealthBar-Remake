@@ -1,5 +1,5 @@
-local Version = [[0.1.3928 Alpha
-Fixed Text wrapped made Line Number not balance.]]
+local Version = [[0.1.3929 Alpha
+Fixed Layout in autocorrect syntax.]]
 -- This executor
 
 getgenv().ES = nil
@@ -3983,6 +3983,7 @@ local function createSuggestion(keywordName, colorHex, transparency)
 	label.BackgroundColor3 = Color3.fromRGB(40,40,40)
 	label.BackgroundTransparency = transparency
 	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.LayoutOrder = 0
 	label.TextScaled = true
 	label.RichText = true
 	label.Text = '<font color="'..colorHex..'">'..keywordName..'</font>'
@@ -4027,13 +4028,15 @@ local function updateSuggestions()
 
 			local transparency = (lowerKeyword == lowerCurrent) and 0 or 0.5
 
-			createSuggestion(keywordName, color, transparency)
+			local layout = (lowerKeyword == lowerCurrent) and 2 or 1
+
+			createSuggestion(keywordName, color, transparency, layout)
 			matchCount += 1
 		end
 	end
 
 	if matchCount == 0 then
-		createSuggestion(current, "#ffffff", 1)
+		createSuggestion(current, "#ffffff", 1, 0)
 		matchCount = 1
 	end
 
