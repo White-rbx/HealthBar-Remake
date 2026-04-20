@@ -1,4 +1,4 @@
-local Version = [[0.1.3931 Alpha
+local Version = [[0.1.3932 Alpha
 Fixed Layout in autocorrect syntax.]]
 -- This executor
 
@@ -2784,7 +2784,7 @@ local assets = {
 	["folder"] = "https://i.postimg.cc/D0qVxphs/folder.png",
 	["music-note"] = "https://i.postimg.cc/rFLBM6hF/music-note.png",
 	["game-info"] = "https://i.postimg.cc/T1Bzsq22/game-info.png",
-	["autoexewhite"] = "https://i.postimg.cc/bY1KQPWH/autoexewhite.png",
+	["autoexewhite"] = "https://i.postimg.cc/MH8fDV9V/autoexewhite.png",
 }
 
 -------------------------------------------------
@@ -2959,7 +2959,7 @@ local function checkAssets()
 	local current = countAssets()
 
 	if current == 60 then
-		noti(4,"All assets loaded (60/6p)",color.green)
+		noti(4,"All assets loaded (60/60)",color.green)
 	else
 		noti(4,"Assets missing "..current.."/60",color.orange)
 	end
