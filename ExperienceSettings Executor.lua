@@ -1,4 +1,4 @@
-local Version = [[0.1.3932 Alpha
+local Version = [[0.1.3933 Alpha
 Fixed Layout in autocorrect syntax.]]
 -- This executor
 
@@ -415,7 +415,7 @@ Frame.Search.Inside.soon.Visible = true
 Frame.Music.Inside.soon.Visible = true
 Frame.Settings.Inside.soon.Visible = true
 
-Frame.Folder.Inside.soon.Text = [[<b><font size="15">In developing</font></b>
+Frame.AutoExe.Inside.soon.Text = [[<b><font size="15">Coming Soon...</font></b>
 But "AutoExe" is exist, so try to check on ExperienceSettings-Executor Folder on your device!]]
 ------------------------------------------------------------
 local topn = Instance.new("Frame")
@@ -2876,6 +2876,8 @@ end
 --------------------------------------------------
 
 local function downloadAsset(name,url)
+
+	noti(15,'this take a while to load please wait until you see "Execute!". Also you can type "getLoad:Data(Check.Asset("png"))" in Editor and execute to see how many asset have been loaded.',color.yellow)
 
 	local path = ASSET_PATH.."/"..name..".png"
 
