@@ -1,4 +1,4 @@
-local Version = [[0.1.3933 Alpha
+local Version = [[0.1.3934 Alpha
 Fixed Layout in autocorrect syntax.]]
 -- This executor
 
@@ -2402,6 +2402,13 @@ local enumList = {
 "WrapLayerDebugMode",
 "WrapTargetDebugMode",
 "ZIndexBehavior",
+"Data",
+"Settings",
+"fromURL",
+"fromPath",
+"ServerSide",
+"ServerRun",
+"ServerExecute",
 }
 
 local enums = {}
@@ -2508,13 +2515,13 @@ local cooldown = false
 local detected = false
 
 editb:GetPropertyChangedSignal("Text"):Connect(function()
-	local found = editb.Text:match("%f[%w]getLoad%f[%W]")
+	local found = editb.Text:match("%f[%w]getLoad%f[%W]") or editb.Text:match("%f[%w]Data%f[%W]") or editb.Text:match("%f[%w]Settings%f[%W]") or editb.Text:match("%f[%w]fromURL%f[%W]") or editb.Text:match("%f[%w]fromPath%f[%W]") or editb.Text:match("%f[%w]ServerSide%f[%W]") or editb.Text:match("%f[%w]ServerRun%f[%W]") or editb.Text:match("%f[%w]ServerExecute%f[%W]")
 
 	if found and not detected and not cooldown then
 		detected = true
 		cooldown = true
 		
-		noti(10, "[ getLoad ] is not made by Executor sUNC, so it only can use for ExperienceSettings.", color.yellow)
+		noti(10, "these enum is not made by official sUNC, so it only can use for the ExperienceSettings.", color.yellow)
 
 		task.delay(20,function()
 			cooldown = false
@@ -2877,7 +2884,7 @@ end
 
 local function downloadAsset(name,url)
 
-	noti(15,'this take a while to load please wait until you see "Execute!". Also you can type "getLoad:Data(Check.Asset("png"))" in Editor and execute to see how many asset have been loaded.',color.yellow)
+	-- noti(15,'this take a while to load please wait until you see "Execute!". Also you can type "getLoad:Data(Check.Asset("png"))" in Editor and execute to see how many asset have been loaded.',color.yellow)
 
 	local path = ASSET_PATH.."/"..name..".png"
 
