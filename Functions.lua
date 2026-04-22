@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.798
+-- So uhm just a script lol. 4.799
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1552,7 +1552,7 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 	local part
 	local holderGui
 	local speed = 16
-	local minSpeed, maxSpeed = 1, 50000
+	local minSpeed, maxSpeed = 0.0001, 50000
 
 	-- helper: disconnect safely
 	local function addConn(c)
@@ -1573,11 +1573,11 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		local b = Instance.new("TextButton")
 		b.Name = name
 		b.Text = labelText
-		b.Size = UDim2.new(0, 50, 0, 50)
+		b.Size = UDim2.new(0, 75, 0, 75)
 		b.Position = pos
-		b.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		b.BackgroundColor3 = Color3.fromRGB(18,18,21)
 		b.BackgroundTransparency = 0.5
-		b.TextColor3 = Color3.fromRGB(0, 0, 0)
+		b.TextColor3 = Color3.new(1,1,1)
 		b.TextScaled = true
 		b.Font = Enum.Font.SourceSansBold
 		b.BorderSizePixel = 0
@@ -1586,7 +1586,7 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		b.Parent = parent
 
 		local uc = Instance.new("UICorner")
-		uc.CornerRadius = UDim.new(0, 8)
+		uc.CornerRadius = UDim.new(1,0)
 		uc.Parent = b
 
 		local st = Instance.new("UIStroke")
@@ -1606,12 +1606,12 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		frame.Name = "SpeedController"
 		frame.Size = UDim2.new(0, 285, 0, 60)
 		frame.Position = UDim2.new(0.385, 0, 0.1, 0)
-		frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		frame.BackgroundTransparency = 0.6
+		frame.BackgroundColor3 = Color3.fromRGB(18,18,21)
+		frame.BackgroundTransparency = 0.5
 		frame.Parent = parent
 
 		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 8)
+		corner.CornerRadius = UDim.new(1,0)
 		corner.Parent = frame
 
 		local stroke = Instance.new("UIStroke")
@@ -1626,7 +1626,8 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		defaultBtn.Text = "Default"
 		defaultBtn.Size = UDim2.new(0, 80, 1, 0)
 		defaultBtn.Position = UDim2.new(0, 8, 0, 0)
-		defaultBtn.BackgroundTransparency = 0.5
+		defaultBtn.BackgroundTransparency = 1
+		defaultBtn.TextColor3 = Color3.new(1,1,1)
 		defaultBtn.Parent = frame
 
 		local speedBox = Instance.new("TextBox")
@@ -1634,9 +1635,10 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		speedBox.PlaceholderText = "SpeedType"
 		speedBox.Text = tostring(speed)
 		speedBox.Size = UDim2.new(0, 110, 1, 0)
-		speedBox.Position = UDim2.new(0, 100, 0, 0)
+		speedBox.Position = UDim2.new(0, 95, 0, 0)
 		speedBox.BackgroundTransparency = 0.5
-		speedBox.TextScaled = true -- ✅ Added as requested
+		speedBox.TextScaled = true
+		speedBox.TextColor3 = Color3.new(1,1,1)
 		speedBox.Parent = frame
 
 		local enterBtn = Instance.new("TextButton")
@@ -1644,24 +1646,19 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		enterBtn.Text = "Enter"
 		enterBtn.Size = UDim2.new(0, 60, 1, 0)
 		enterBtn.Position = UDim2.new(0, 216, 0, 0)
-		enterBtn.BackgroundTransparency = 0.5
+		enterBtn.BackgroundTransparency = 1
+		enterBtn.TextColor3 = Color3.new(1,1,1)
 		enterBtn.Parent = frame
 
 		for _, v in ipairs({ defaultBtn, speedBox, enterBtn }) do
 			local c = Instance.new("UICorner")
-			c.CornerRadius = UDim.new(0, 8)
+			c.CornerRadius = UDim.new(0, 10)
 			c.Parent = v
-			local s = Instance.new("UIStroke")
-			s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			s.LineJoinMode = Enum.LineJoinMode.Round
-			s.Color = Color3.fromRGB(255, 255, 255)
-			s.Thickness = 1
-			s.Parent = v
 			if not v:IsA("TextBox") then
 				v.TextScaled = true
 			end
 			v.Font = Enum.Font.SourceSansBold
-			v.TextColor3 = Color3.fromRGB(0, 0, 0)
+			v.TextColor3 = Color3.fromRGB(255,255,255)
 		end
 
 		enterBtn.MouseButton1Click:Connect(function()
@@ -1738,12 +1735,13 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		holderGui.Parent = Menu
 
 		part = Instance.new("Part")
-		part.Name = "ExperienceSettingsCamera"
-		part.Size = Vector3.new(5,5,5)
+		part.Name = "ESCamera"
+		part.Size = Vector3.new(3,3,3)
 		part.Transparency = 1
 		part.Locked = true
 		part.Anchored = true
 		part.CanCollide = false
+		part.CanTouch = false
 		part.CFrame = hrp.CFrame
 		part.Parent = workspace
 
@@ -1830,7 +1828,7 @@ createToggle(BFrame, "Flashlight (FirstPerson & GFX 6+)", function(state)
 
         -- สร้าง Part
         flashlightPart = Instance.new("Part")
-        flashlightPart.Name = "FlashlightHeading(ExpSettings)"
+        flashlightPart.Name = "FlashlightHeading(ES)"
         flashlightPart.Size = Vector3.new(1, 1, 1)
         flashlightPart.Transparency = 1
         flashlightPart.Anchored = true
