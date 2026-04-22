@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.799
+-- So uhm just a script lol. 4.8
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1710,12 +1710,12 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 	local function bindButton(btn, key)
 		btn.MouseButton1Down:Connect(function()
 			mobileKeys[key] = true
-			btn:TweenSize(UDim2.new(0, 55, 0, 55), "Out", "Sine", 0.1, true)
+			btn:TweenSize(UDim2.new(0, 75, 0, 75), "Out", "Sine", 0.1, true)
 			ensureMovementLoop()
 		end)
 		btn.MouseButton1Up:Connect(function()
 			mobileKeys[key] = false
-			btn:TweenSize(UDim2.new(0, 50, 0, 50), "Out", "Sine", 0.1, true)
+			btn:TweenSize(UDim2.new(0, 80, 0, 80), "Out", "Sine", 0.1, true)
 		end)
 	end
 
@@ -1750,12 +1750,12 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		player.CameraMode = Enum.CameraMode.LockFirstPerson
 		cam.CameraSubject = part
 
-		local w = makeButton(holderGui, "W", "↑", UDim2.new(0.05, 0, 0.65, 0))
-		local a = makeButton(holderGui, "A", "←", UDim2.new(0, 0, 0.75, 0))
-		local s = makeButton(holderGui, "S", "↓", UDim2.new(0.05, 0, 0.85, 0))
-		local d = makeButton(holderGui, "D", "→", UDim2.new(0.1, 0, 0.75, 0))
-		local q = makeButton(holderGui, "Q", "Up", UDim2.new(0.85, 0, 0.65, 0))
-		local e = makeButton(holderGui, "E", "Down", UDim2.new(0.85, 0, 0.85, 0))
+		local w = makeButton(holderGui, "W", "↑", UDim2.new(0.08, 0, 0.48, 0))
+		local a = makeButton(holderGui, "A", "←", UDim2.new(0.01, 0, 0.63, 0))
+		local s = makeButton(holderGui, "S", "↓", UDim2.new(0.08, 0, 0.75, 0))
+		local d = makeButton(holderGui, "D", "→", UDim2.new(0.15, 0, 0.63, 0))
+		local q = makeButton(holderGui, "Q", "Up", UDim2.new(0.85, 0, 0.5, 0))
+		local e = makeButton(holderGui, "E", "Down", UDim2.new(0.85, 0, 0.73, 0))
 
 		for _,b in ipairs({w,a,s,d,q,e}) do bindButton(b,b.Name) end
 		createSpeedController(holderGui)
