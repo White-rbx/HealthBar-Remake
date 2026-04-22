@@ -1,4 +1,4 @@
-local Version = [[0.1.3934 Alpha
+local Version = [[0.1.3935 Alpha
 Fixed Layout in autocorrect syntax.]]
 -- This executor
 
@@ -2521,7 +2521,7 @@ editb:GetPropertyChangedSignal("Text"):Connect(function()
 		detected = true
 		cooldown = true
 		
-		noti(10, "these enum is not made by official sUNC, so it only can use for the ExperienceSettings.", color.yellow)
+		noti(10, "these syntax that you typed is not made by official sUNC, so it only can use for the ExperienceSettings.", color.yellow)
 
 		task.delay(20,function()
 			cooldown = false
@@ -2884,8 +2884,6 @@ end
 
 local function downloadAsset(name,url)
 
-	-- noti(15,'this take a while to load please wait until you see "Execute!". Also you can type "getLoad:Data(Check.Asset("png"))" in Editor and execute to see how many asset have been loaded.',color.yellow)
-
 	local path = ASSET_PATH.."/"..name..".png"
 
 	if isfile and isfile(path) then
@@ -2965,6 +2963,8 @@ end
 
 local function checkAssets()
 
+	noti(4,"Checking all assets...",color.yellow)
+
 	local current = countAssets()
 
 	if current == 60 then
@@ -2980,6 +2980,8 @@ end
 --------------------------------------------------
 
 local function deleteAssets()
+
+	noti(4, "Deleting all PNG assets...", color.orange)
 
 	if not isfolder(ASSET_PATH) then
 		return
@@ -3206,10 +3208,12 @@ function getLoad:Data(data)
 	end
 
 	if data.mode == "DownloadAsset" then
+		noti(15,'this take a while to load please wait until you see "Execute Script!". Also you can type "getLoad:Data(Check.Asset("png"))" in Editor and execute to see how many asset have been loaded.',color.yellow)
 		loadAssets("all")
 	end
 
 	if data.mode == "DownloadFailed" then
+		noti(15,'this take a while to load please wait until you see "Execute Script!". Also you can type "getLoad:Data(Check.Asset("png"))" in Editor and execute to see how many asset have been loaded.',color.yellow)
 		loadAssets("failed")
 	end
 
