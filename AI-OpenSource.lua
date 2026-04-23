@@ -1,4 +1,4 @@
-local ver = " UIs 4.273 "
+local ver = " UIs 4.274 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -392,10 +392,9 @@ end)
     return cha
 end
 
-txt(user.Nill, "Nothing is working! Please wait for the next update!", 180,180,180)
+txt(user.Nill, "Working fine!", 180,180,180)
 txt(user.Nill, "Version:" .. ver .. "| © Copyright LighterCyan", 180, 180, 180)
 txt(user.Info, update, 0, 170, 255)
-txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-Thinking or not? With respect.", 255, 255, 0)
 txt(user.Info, "Use /help for more information or commands. Add api is /addapi", 0,170,255) 
 -- txt(user.Nill, 
 --[[ What is AI-OpenSource?
@@ -419,6 +418,8 @@ AI-Thinking close for now. We'll be right back soon! maybe
 
 AI MIGHT BE BUG BECAUSE OF TEXTLABEL
 ]=], 255,0,0)
+
+txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-Thinking or not? With respect.", 255, 255, 0)
 txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
 
 -- ===========================
@@ -760,18 +761,18 @@ local HELP_TEXT = [=[
 /OpenWebsiteInExperience or /OWINE [URL] - open site
 /Loadstring [URL] - loadstring(url)()
 /Script [[CODE]] - run code
-/Debug [on/off] - show debug logs
+/Debug [on/off] - show debug logs (NOT WORKING)
 /CheckHTTP - check executor http
 /CheckURLStatus [URL] - HEAD request to URL
 /CheckSYN - check syn.request availability
-/EnableUSLD - enable unknown-language debug printing
+/EnableUSLD - enable unknown-language debug printing (NOT WORKING)
 /GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER]
 /GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER]
 /ResetRateLimit or /ReRateLimit - resets local queue/backoff
 /DumpStatus - prints current state
 /InstanceTool ("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]
 /GlobalChat [ON/OFF] - stream global chat (client-side view only)
-/SpyChat [ON/OFF] - stream whisper messages (client-side view only)
+/SpyChat [ON/OFF] - stream whisper messages (client-side view only) (NOT WORKING)
 ]=]
 
 local function clearChatLogs()
@@ -1015,7 +1016,7 @@ local function handleCommand(msg)
             if not provider or not key then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini] [API] [yes/no]",255,0,0); return true end
             currentProvider = provider
             currentApiKey = key
-            safeTxt(user.Info, "Key set (unconfirmed). Click Confirm or type /addapi ... yes to save",0,170,255)
+            safeTxt(user.Info, "Key set! Please check you have read API warning if yes please check your API is correct. Now if you want longer limit text generate try '/geminiswitch' or '/gptswitch' to make it limit longer.",0,170,255)
             return true
         end
     end
