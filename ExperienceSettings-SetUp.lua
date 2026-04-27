@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.67 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.68 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -331,6 +331,9 @@ ban(
 	"Test please appeal on our discord community."
 )
 
+local banData = isBanned()
+local isBannedUser = banData ~= nil
+
 local anim = {
 	0,85215834651365,113081160999318,110302272078310,74005522254669,74901110508812,
 	100677834962357,119529343123060,102721895347323,112327619673337,73610060099140,
@@ -398,27 +401,26 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 }):Play()
 
 -- =========================
+
+if isBannedUser then
+	Canvas.Visible = true
+
+	twarn.Text = "You have been banned.\n"
+		.. "Reason: " .. banData.Reason .. "\n"
+		.. "Description: " .. banData.Description
+
+	btnBar.Text = "I agree and close the UI."
+	btnBar.Visible = true
+
+	return
+end
+
 local current = 0
 local connection
 local finished = false -- กันรันซ้ำ
 
 connection = RunService.RenderStepped:Connect(function()
 	if finished then return end
-
-	local banData = isBanned()
-	if banData then
-		finished = true
-
-		twarn.Text = "You have been banned.\n"
-			.. "Reason: " .. banData.Reason .. "\n"
-			.. "Description: " .. banData.Description
-
-		btnBar.Text = "I agree and close the UI."
-		btnBar.Visible = true
-
-		error("You're banned.")
-		return
-	end
 
 	-- ===== PROGRESS =====
 	local target = math.clamp((ES.progress or 0)/(ES.max or 100),0,1)
