@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.32
+-- ES Executor 2 | 0.33
 
 ------------------------------------------------------------------------------------------
 
@@ -588,7 +588,7 @@ local csicon = {
 --// SETTINGS
 local ASSET = "rbxasset://"..ASSET_PATH.."/"
 
-local MAX_LOGS = 250
+local MAX_LOGS = 999999999
 local LINE_HEIGHT = 25
 
 --// LOG SYSTEM
@@ -625,6 +625,7 @@ local function addLog(icon, text)
   c.TextColor3 = Color3.new(1,1,1)
   c.Text = text
   c.Font = Enum.Font.Code
+  c.TextWrapped = true
   c.TextXAlignment = Enum.TextXAlignment.Left
   c.TextYAlignment = Enum.TextYAlignment.Top
   c.Parent = a
