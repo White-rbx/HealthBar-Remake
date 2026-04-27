@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.38
+-- ES Executor 2 | 0.39
 
 ------------------------------------------------------------------------------------------
 
@@ -604,14 +604,11 @@ local function addLog(icon, text)
 	a.AutomaticSize = Enum.AutomaticSize.Y
 	a.Parent = CSScoll
 
-	-- layout ภายใน log
-	local innerLayout = ListLayout(a, 0, 3, HLeft, VTop, SLayout, FillH)
-	innerLayout.Padding = UDim.new(0,5)
-
 	-- 🖼 icon
 	local b = Instance.new("ImageLabel")
 	b.Name = "icon"
 	b.Size = UDim2.new(0,25,0,25)
+	b.Position = UDim2.new(0,0,0,0)
 	b.BackgroundTransparency = 1
 	b.Image = icon
 	b.Parent = a
@@ -619,12 +616,13 @@ local function addLog(icon, text)
 	-- 📜 text
 	local c = Instance.new("TextLabel")
 	c.Name = "TypeLog"
+	c.Position = UDim2.new(0,30,0,0)
 	c.Size = UDim2.new(1,-30,0,0)
 	c.BackgroundTransparency = 1
 	c.Text = text
 	c.Font = Enum.Font.Code
 	c.TextColor3 = Color3.new(1,1,1)
-	c.TextSize = 13
+	c.TextSize = 18
 	c.TextWrapped = true
 	c.TextXAlignment = Enum.TextXAlignment.Left
 	c.TextYAlignment = Enum.TextYAlignment.Top
@@ -645,7 +643,7 @@ local function addLog(icon, text)
 		c.TextColor3 = Color3.fromRGB(255,0,0)
 	end
 
-	-- 🔥 update canvas (รองรับ multi-line)
+	-- 🔥 update canvas
 	local layout = CSScoll:FindFirstChildOfClass("UIListLayout")
 
 	task.defer(function()
