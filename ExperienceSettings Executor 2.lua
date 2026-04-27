@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.31
+-- ES Executor 2 | 0.32
 
 ------------------------------------------------------------------------------------------
 
@@ -624,6 +624,7 @@ local function addLog(icon, text)
   c.TextSize = 13
   c.TextColor3 = Color3.new(1,1,1)
   c.Text = text
+  c.Font = Enum.Font.Code
   c.TextXAlignment = Enum.TextXAlignment.Left
   c.TextYAlignment = Enum.TextYAlignment.Top
   c.Parent = a
@@ -643,17 +644,25 @@ local function addLog(icon, text)
 	end
 
 	-- 📏 resize
-	task.wait()
+	c:GetPropertyChangedSignal("TextBounds"):Wait()
+
 	local textHeight = c.TextBounds.Y
-	local lines = math.ceil(textHeight / LINE_HEIGHT)
-	local newHeight = math.max(LINE_HEIGHT, lines * LINE_HEIGHT)
+	local newHeight = math.max(25, textHeight)
 
 	a.Size = UDim2.new(1,0,0,newHeight)
-	c.Size = UDim2.new(1,-25,0,newHeight)
+	c.Size = UDim2.new(1,-30,0,newHeight)
 
-	totalHeight += newHeight
-	CSScoll.CanvasSize = UDim2.new(0,0,0,totalHeight)
-	CSScoll.CanvasPosition = Vector2.new(0, totalHeight)
+	-- 💡 ใช้ UIListLayout แทน totalHeight
+	local layout = CSScoll:FindFirstChildOfClass("UIListLayout")
+	local canvasY = layout.AbsoluteContentSize.Y
+
+	CSScoll.CanvasSize = UDim2.new(0,0,0,canvasY)
+
+	-- 🔥 scroll ลงล่างแบบไม่ทะลุ
+	local viewY = CSScoll.AbsoluteSize.Y
+	local maxScroll = math.max(0, canvasY - viewY)
+
+	CSScoll.CanvasPosition = Vector2.new(0, maxScroll)
 end
 
 local old_print = print
