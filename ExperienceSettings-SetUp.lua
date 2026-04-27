@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.7 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.71 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -397,8 +397,8 @@ if banData then
 	task.defer(function()
 		if twarn then
 			twarn.Text = "You have been banned.\n"
-				"Reason: " .. banData.Reason .. "\n"
-				"Description: " .. banData.Description
+				.. "Reason: " .. banData.Reason .. "\n"
+				.. "Description: " .. banData.Description
 		end
 
 		if btnBar then
