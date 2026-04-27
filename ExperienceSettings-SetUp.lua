@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.66 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.67 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -416,7 +416,7 @@ connection = RunService.RenderStepped:Connect(function()
 		btnBar.Text = "I agree and close the UI."
 		btnBar.Visible = true
 
-		connection:Disconnect()
+		error("You're banned.")
 		return
 	end
 
