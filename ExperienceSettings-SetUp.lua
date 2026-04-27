@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.71 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.72 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -310,11 +310,7 @@ ban(
 	"You are the CEO you cannot using our script."
 )
 
-ban(
-	"5teve3019D",
-	"Test.",
-	"Test please appeal on our discord community."
-)
+--[[]]
 
 local banData = isBanned()
 local isBannedUser = banData ~= nil
@@ -403,6 +399,7 @@ if banData then
 
 		if btnBar then
 			btnBar.Visible = true
+			btnBar.Text = "I agree and close the UI."
 		end
 	end)
 
