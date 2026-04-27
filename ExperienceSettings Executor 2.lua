@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.25
+-- ES Executor 2 | 0.26
 
 ------------------------------------------------------------------------------------------
 
@@ -107,6 +107,46 @@ local function Padding(parent, bottom, left, right, top)
     return pad
 end
 -- =====END FUNCTION UIPADDING======
+
+local function Aspect(parent, AspectRatio, AspectType, DominantAxis)
+end--// ENUM SHORTCUTS
+local Axis = Enum.DominantAxis
+local Type = Enum.AspectType
+
+-- optional ultra-short aliases
+local Width = Axis.Width
+local Height = Axis.Height
+
+local Fit = Type.FitWithinMaxSize
+local Scale = Type.ScaleWithParentSize
+
+
+--// ASPECT FUNCTION
+function Aspect(parent, ratio, aspectType, dominantAxis)
+	if not parent then return end
+	
+	-- prevent duplicates
+	local existing = parent:FindFirstChildOfClass("UIAspectRatioConstraint")
+	if existing then
+		-- update instead
+		existing.AspectRatio = ratio or existing.AspectRatio
+		existing.AspectType = aspectType or existing.AspectType
+		existing.DominantAxis = dominantAxis or existing.DominantAxis
+		return existing
+	end
+	
+	-- create new
+	local constraint = Instance.new("UIAspectRatioConstraint")
+	constraint.Parent = parent
+	
+	constraint.AspectRatio = ratio or 1
+	constraint.AspectType = aspectType or Fit
+	constraint.DominantAxis = dominantAxis or Width
+	
+	return constraint
+end
+
+-- =====END FUNCTION UIASPECTRATIONCONSTRAINT=====
 
 --====== CLIENT SERVICES ======--
 
@@ -431,8 +471,6 @@ end
 local inside = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.Background.Inside.Holder  
 local windows = game:GetService("CoreGui")["ExperienceSettings-Executor"].Main.Background.Windows  
   
---[ Music ]--  
---[ Settings ]----[[ Inside ]]--
 setIcon(inside.Close,"cross-white")
 setIcon(inside.Home,"home")
 setIcon(inside.Edit,"editor")
@@ -481,10 +519,230 @@ setIcon(vEditExe.Clear,"erase")
 
 
 --[ Console ]--
+local CSFrame = Instance.new("Frame")
+CSFrame.Name = "ConsoleFrame"
+CSFrame.Size = UDim2.new(0.88,0,1,0)
+CSFrame.Active = false
+CSFrame.BackgroundTransparency = 1
+CSFrame.Parent = vConsole
 
+local CSTabs = Instance.new("CanvasGroup")
+CSTabs.Name = "ConsoleTabs"
+CSTabs.Position = UDim2.new(0.9, 0, 0, 0)
+CSTabs.Size = UDim2.new(0.1,0,1,0)
+CSTabs.BackgroundColor3 = Color3.new(0,0,0)
+CSTabs.Active = false
+CSTabs.Parent = vConsole
+Corner(10,0,CSTabs)
+Stroke(CSTabs, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+local CSTabsInside = Instance.new("Frame")
+CSTabsInside.Name = "ConsoleTabsInside"
+CSTabsInside.Position = UDim2.new(0.1,0,0.02,0)
+CSTabsInside.Size = UDim2.new(0.8,0,0.96,0)
+CSTabsInside.Active = false
+CSTabsInside.BackgroundTransparency = 1
+CSTabsInside.Parent = CSTabs
+
+local CSScoll = Instance.new("ScrollingFrame")
+CSScoll.Name = "ConsoleScrollingFrame"
+CSScoll.Size = UDim2.new(1,0,0.9,0)
+CSScoll.BackgroundColor3 = Color3.new(0,0,0)
+CSScoll.CanvasSize = UDim2.new(0,0,0,0)
+CSScoll.ScrollBarThickness = 0
+CSScoll.BorderSizePixel = 0
+CSScoll.Parent = CSFrame
+ListLayout(CSScoll, 0, 5, HLeft, VTop, SLayout, FillV)
+
+local CSCodeBox = Instance.new("CanvasGroup")
+CSCodeBox.Name = "ConsoleCodeBox"
+CSCodeBox.Position = UDim2.new(0,0,0.1,0)
+CSCodeBox.Size = UDim2.new(1,0,0.1,0)
+CSCodeBox.BackgroundColor3 = Color3.fromRGB(111,111,111)
+CSCodeBox.BorderColor3 = Color3.fromRGB(89,89,89)
+CSCodeBox.BorderMode = Enum.BorderMode.Inset
+CSCodeBox.BorderSizePixel = 5
+CSCodeBox.Active = false
+CSCodeBox.Parent = CSFrame
+
+local CSScript = Instance.new("TextBox")
+CSScript.Name = "ConsoleScript"
+CSScript.Size = UDim2.new(1,0,1,0)
+CSScript.BackgroundTransparency = 1
+CSScript.PlaceholderText = "> Type command here with one line. ( use ';' to go next line. )"
+CSScript.Text = ""
+CSScript.PlaceholderColor3 = Color3.fromRGB(207,207,207)
+CSScript.TextColor3 = Color3.new(1,1,1)
+CSScript.TextScaled = true
+CSScript.TextXAlignment = Enum.TextXAlignment.Left
+CSScript.Font = Code
+CSScript.Parent = CSCodeBox
+
+local csicon = {
+  print = setIcon(CSScoll:FindFirstChild("icon"), "print"),
+  info = setIcon(CSScoll:FindFirstChild("icon"), "info"),
+  warn = setIcon(CSScoll:FindFirstChild("icon"), "warn"),
+  error = setIcon(CSScoll:FindFirstChild("icon"), "error")
+}
+
+--// SETTINGS
+local ASSET_PATH = "your/path/here" -- แก้เป็น path ของนาย
+local ASSET = "rbxasset://"..ASSET_PATH.."/"
+
+local MAX_LOGS = 300
+local LINE_HEIGHT = 25
+
+--// SERVICES
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+--// UI ROOT
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CustomConsole"
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+--// MAIN FRAME
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0.5,0,0.5,0)
+Main.Position = UDim2.new(0.25,0,0.25,0)
+Main.BackgroundColor3 = Color3.fromRGB(20,20,20)
+Main.Parent = ScreenGui
+
+--// SCROLL
+local CSScoll = Instance.new("ScrollingFrame")
+CSScoll.Size = UDim2.new(1,0,0.85,0)
+CSScoll.BackgroundTransparency = 1
+CSScoll.CanvasSize = UDim2.new(0,0,0,0)
+CSScoll.ScrollBarThickness = 6
+CSScoll.Parent = Main
+
+local Layout = Instance.new("UIListLayout")
+Layout.Parent = CSScoll
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
+Layout.Padding = UDim.new(0,5)
+
+--// INPUT BOX
+local Box = Instance.new("TextBox")
+Box.Size = UDim2.new(1,0,0.15,0)
+Box.Position = UDim2.new(0,0,0.85,0)
+Box.PlaceholderText = "> Type command..."
+Box.Text = ""
+Box.TextColor3 = Color3.new(1,1,1)
+Box.BackgroundColor3 = Color3.fromRGB(40,40,40)
+Box.Parent = Main
+
+--// LOG SYSTEM
+local totalHeight = 0
+
+local function addLog(icon, text)
+	if #CSScoll:GetChildren() > MAX_LOGS then
+		CSScoll:ClearAllChildren()
+		totalHeight = 0
+	end
+
+	local a = Instance.new("Frame")
+	a.Size = UDim2.new(1,0,0,LINE_HEIGHT)
+	a.BackgroundTransparency = 1
+	a.Parent = CSScoll
+
+	local b = Instance.new("ImageLabel")
+	b.Size = UDim2.new(0,20,0,20)
+	b.BackgroundTransparency = 1
+	b.Image = icon
+	b.Parent = a
+
+	local c = Instance.new("TextLabel")
+	c.Position = UDim2.new(0,25,0,0)
+	c.Size = UDim2.new(1,-25,0,LINE_HEIGHT)
+	c.BackgroundTransparency = 1
+	c.TextSize = 13
+	c.TextWrapped = true
+	c.TextXAlignment = Enum.TextXAlignment.Left
+	c.TextYAlignment = Enum.TextYAlignment.Top
+	c.Text = text
+	c.TextColor3 = Color3.new(1,1,1)
+	c.Parent = a
+
+	-- 🎨 color
+	if icon:find("print") then
+		b.ImageColor3 = Color3.fromRGB(0,255,0)
+	elseif icon:find("info") then
+		b.ImageColor3 = Color3.fromRGB(0,255,255)
+		c.TextColor3 = Color3.fromRGB(0,255,255)
+	elseif icon:find("warn") then
+		b.ImageColor3 = Color3.fromRGB(255,255,0)
+		c.TextColor3 = Color3.fromRGB(255,255,0)
+	elseif icon:find("error") then
+		b.ImageColor3 = Color3.fromRGB(255,0,0)
+		c.TextColor3 = Color3.fromRGB(255,0,0)
+	end
+
+	-- 📏 resize
+	task.wait()
+	local textHeight = c.TextBounds.Y
+	local lines = math.ceil(textHeight / LINE_HEIGHT)
+	local newHeight = math.max(LINE_HEIGHT, lines * LINE_HEIGHT)
+
+	a.Size = UDim2.new(1,0,0,newHeight)
+	c.Size = UDim2.new(1,-25,0,newHeight)
+
+	totalHeight += newHeight
+	CSScoll.CanvasSize = UDim2.new(0,0,0,totalHeight)
+	CSScoll.CanvasPosition = Vector2.new(0, totalHeight)
+end
+
+--// CONSOLE HOOK
+local old_print = print
+local old_warn = warn
+local old_error = error
+
+print = function(...)
+	local msg = table.concat({...}, " ")
+	addLog(ASSET.."print.png", msg)
+	old_print(...)
+end
+
+warn = function(...)
+	local msg = table.concat({...}, " ")
+	addLog(ASSET.."warn.png", msg)
+	old_warn(...)
+end
+
+error = function(...)
+	local msg = table.concat({...}, " ")
+	addLog(ASSET.."error.png", msg)
+	old_error(...)
+end
+
+--// INFO FUNCTION
+local function info(...)
+	local msg = table.concat({...}, " ")
+	addLog(ASSET.."info.png", msg)
+end
+
+--// COMMAND EXECUTE
+Box.FocusLost:Connect(function(enter)
+	if enter then
+		local txt = Box.Text
+		Box.Text = ""
+
+		if txt ~= "" then
+			addLog(ASSET.."print.png", "> "..txt)
+
+			local func, err = loadstring(txt)
+			if func then
+				local ok, res = pcall(func)
+				if not ok then
+					addLog(ASSET.."error.png", res)
+				end
+			else
+				addLog(ASSET.."error.png", err)
+			end
+		end
+	end
+end)
 
 --[ ExpInfo ]--
-
 
 --[ Folder ]--
 local vFolderBar = vFolder.FolderBar
