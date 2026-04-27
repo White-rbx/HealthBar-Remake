@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.68 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.69 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -190,21 +190,6 @@ local old = CoreGui:FindFirstChild("ExperienceSettings-SetUp")
 if old then
 	old:Destroy()
 end
-
--- ES GLOBAL
-getgenv().ES = getgenv().ES or {
-	progress = 0,
-	max = 100,
-	error = false,
-	done = false,
-	lastError = nil
-}
-
-local ES = getgenv().ES
-
--- Mark initialized
-if ES.initialized then return end
-ES.initialized = true
 
 -- Folder
 local Folder = Instance.new("Folder")
@@ -402,18 +387,44 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 
 -- =========================
 
-if isBannedUser then
-	Canvas.Visible = true
+getgenv().__ES_READY = false
+getgenv().__ES_BANNED = false
 
-	twarn.Text = "You have been banned.\n"
-		.. "Reason: " .. banData.Reason .. "\n"
-		.. "Description: " .. banData.Description
+if banData then
+	getgenv().__ES_BANNED = true
+	getgenv().ES = nil
 
-	btnBar.Text = "I agree and close the UI."
-	btnBar.Visible = true
+	task.defer(function()
+		if twarn then
+			twarn.Text = "You have been banned.\n"
+				.. banData.Reason .. "\n"
+				.. banData.Description
+		end
+
+		if btnBar then
+			btnBar.Visible = true
+		end
+	end)
 
 	return
 end
+
+-- ✅ CREATE ES เฉพาะคนที่ผ่าน
+getgenv().ES = {
+	progress = 0,
+	max = 100,
+	error = false,
+	done = false,
+	lastError = nil
+}
+
+local ES = getgenv().ES
+
+if ES.initialized then return end
+ES.initialized = true
+
+
+getgenv().__ES_READY = true
 
 local current = 0
 local connection
