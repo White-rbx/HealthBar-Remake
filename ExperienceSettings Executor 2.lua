@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.29
+-- ES Executor 2 | 0.30
 
 ------------------------------------------------------------------------------------------
 
@@ -588,8 +588,8 @@ local csicon = {
 --// SETTINGS
 local ASSET = "rbxasset://"..ASSET_PATH.."/"
 
-local MAX_LOGS = 300
-local LINE_HEIGHT = 25
+local MAX_LOGS = 250
+local LINE_HEIGHT = 50
 
 --// LOG SYSTEM
 local totalHeight = 0
@@ -606,7 +606,7 @@ local function addLog(icon, text)
   a.BackgroundTransparency = 1
   a.Active = false
   a.Parent = CSScoll
-  ListLayout(a, 0, 3, HLeft, VCenter, SLayout, FillH)
+  ListLayout(a, 0, 3, HLeft, VTop, SLayout, FillH)
   
   local b = Instance.new("ImageLabel")
   b.Name = "icon"
