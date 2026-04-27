@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.65 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.66 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -327,7 +327,7 @@ ban(
 
 ban(
 	"5teve3019D",
-	"Test."
+	"Test.",
 	"Test please appeal on our discord community."
 )
 
