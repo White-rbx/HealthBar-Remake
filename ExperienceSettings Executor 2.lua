@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.37
+-- ES Executor 2 | 0.38
 
 ------------------------------------------------------------------------------------------
 
@@ -605,10 +605,8 @@ local function addLog(icon, text)
 	a.Parent = CSScoll
 
 	-- layout ภายใน log
-	local innerLayout = Instance.new("UIListLayout")
-	innerLayout.FillDirection = Enum.FillDirection.Horizontal
+	local innerLayout = ListLayout(a, 0, 3, HLeft, VTop, SLayout, FillH)
 	innerLayout.Padding = UDim.new(0,5)
-	innerLayout.Parent = a
 
 	-- 🖼 icon
 	local b = Instance.new("ImageLabel")
