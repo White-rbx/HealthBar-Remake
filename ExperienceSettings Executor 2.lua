@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.28
+-- ES Executor 2 | 0.29
 
 ------------------------------------------------------------------------------------------
 
@@ -610,12 +610,12 @@ local function addLog(icon, text)
   
   local b = Instance.new("ImageLabel")
   b.Name = "icon"
-  b.Size = UDim2.new(1,0,1,0)
+  b.Size = UDim2.new(0,25,0,25)
   b.Active = false
   b.BackgroundTransparency = 1
   b.Image = icon
   b.Parent = a
-  Aspect(b, 1, Fit, Width)
+  -- Aspect(b, 1, Fit, Width)
   
   local c = Instance.new("TextLabel")
   c.Name = "TypeLog"
