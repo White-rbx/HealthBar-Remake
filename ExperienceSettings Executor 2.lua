@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.34
+-- ES Executor 2 | 0.35
 
 ------------------------------------------------------------------------------------------
 
@@ -588,46 +588,46 @@ local csicon = {
 --// SETTINGS
 local ASSET = "rbxasset://"..ASSET_PATH.."/"
 
-local MAX_LOGS = 999999999
 local LINE_HEIGHT = 25
-
---// LOG SYSTEM
-local totalHeight = 0
+local MAX_LOGS = 300
 
 local function addLog(icon, text)
+	-- 🧹 limit log (ลบทั้งก้อนแบบง่าย)
 	if #CSScoll:GetChildren() > MAX_LOGS then
 		CSScoll:ClearAllChildren()
-		totalHeight = 0
 	end
 
-  local a = Instance.new("Frame")
-  a.Name = "Log"
-  a.Size = UDim2.new(1,0,0,0)
-  a.BackgroundTransparency = 1
-  a.Active = false
-  a.Parent = CSScoll
-  ListLayout(a, 0, 3, HLeft, VTop, SLayout, FillH)
-  
-  local b = Instance.new("ImageLabel")
-  b.Name = "icon"
-  b.Size = UDim2.new(0,25,0,25)
-  b.Active = false
-  b.BackgroundTransparency = 1
-  b.Image = icon
-  b.Parent = a
-  -- Aspect(b, 1, Fit, Width)
-  
-  local c = Instance.new("TextLabel")
-  c.Name = "TypeLog"
-  c.Size = UDim2.new(0.958,0,0,0)
-  c.BackgroundTransparency = 1
-  c.TextSize = 16
-  c.TextColor3 = Color3.new(1,1,1)
-  c.Text = text
-  c.Font = Enum.Font.Code
-  c.TextXAlignment = Enum.TextXAlignment.Left
-  c.TextYAlignment = Enum.TextYAlignment.Top
-  c.Parent = a
+	-- 📦 container
+	local a = Instance.new("Frame")
+	a.Name = "Log"
+	a.Size = UDim2.new(1,0,0,LINE_HEIGHT)
+	a.BackgroundTransparency = 1
+	a.Parent = CSScoll
+
+	ListLayout(a, 0, 3, HLeft, VTop, SLayout, FillH)
+
+	-- 🖼️ icon
+	local b = Instance.new("ImageLabel")
+	b.Name = "icon"
+	b.Size = UDim2.new(0,25,0,25)
+	b.BackgroundTransparency = 1
+	b.Image = icon
+	b.Parent = a
+
+	-- 📝 text
+	local c = Instance.new("TextLabel")
+	c.Name = "TypeLog"
+	c.Position = UDim2.new(0,30,0,0)
+	c.Size = UDim2.new(1,-30,0,LINE_HEIGHT)
+	c.BackgroundTransparency = 1
+	c.TextSize = 13
+	c.TextColor3 = Color3.new(1,1,1)
+	c.Text = text
+	c.Font = Enum.Font.Code
+	c.TextXAlignment = Enum.TextXAlignment.Left
+	c.TextYAlignment = Enum.TextYAlignment.Top
+	c.TextWrapped = true
+	c.Parent = a
 
 	-- 🎨 color
 	if icon:find("print") then
@@ -643,29 +643,32 @@ local function addLog(icon, text)
 		c.TextColor3 = Color3.fromRGB(255,0,0)
 	end
 
-	-- 📏 resize
+	-- 📏 FIX WRAP + AUTO HEIGHT
 	c:GetPropertyChangedSignal("TextBounds"):Wait()
 
 	local textHeight = c.TextBounds.Y
-	local newHeight = math.max(25, textHeight)
+	local lines = math.max(1, math.ceil(textHeight / LINE_HEIGHT))
+
+	-- 🔥 padding กันชน (แก้ wrap bug)
+	local paddingPerLine = 2
+	local extraPadding = (lines - 1) * paddingPerLine
+
+	local newHeight = (lines * LINE_HEIGHT) + extraPadding
 
 	a.Size = UDim2.new(1,0,0,newHeight)
 	c.Size = UDim2.new(1,-30,0,newHeight)
 
-	-- 💡 ใช้ UIListLayout แทน totalHeight
+	-- 📜 update canvas (ใช้ layout จริง)
 	local layout = CSScoll:FindFirstChildOfClass("UIListLayout")
 	local canvasY = layout.AbsoluteContentSize.Y
-	local canvasX = layout.AbsoluteContentSize.X
 
-	CSScoll.CanvasSize = UDim2.new(0,canvasX,0,canvasY)
+	CSScoll.CanvasSize = UDim2.new(0,0,0,canvasY)
 
-	-- 🔥 scroll ลงล่างแบบไม่ทะลุ
+	-- ⬇️ scroll ลงล่างแบบไม่ทะลุ
 	local viewY = CSScoll.AbsoluteSize.Y
-    local viewX = CSScoll.AbsoluteSize.X
-	local maxScroll = math.max(nil, canvasY - viewY)
-	local maxScroll2 = math.max(canvasX - viewX, nil)
+	local maxScroll = math.max(0, canvasY - viewY)
 
-	CSScoll.CanvasPosition = Vector2.new(maxScroll2, maxScroll)
+	CSScoll.CanvasPosition = Vector2.new(0, maxScroll)
 end
 
 local old_print = print
