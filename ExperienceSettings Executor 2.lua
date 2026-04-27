@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.27
+-- ES Executor 2 | 0.28
 
 ------------------------------------------------------------------------------------------
 
@@ -533,7 +533,7 @@ CSTabs.Size = UDim2.new(0.1,0,1,0)
 CSTabs.BackgroundColor3 = Color3.new(0,0,0)
 CSTabs.Active = false
 CSTabs.Parent = vConsole
-Corner(10,0,CSTabs)
+Corner(0,10,CSTabs)
 Stroke(CSTabs, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
 local CSTabsInside = Instance.new("Frame")
@@ -556,7 +556,7 @@ ListLayout(CSScoll, 0, 5, HLeft, VTop, SLayout, FillV)
 
 local CSCodeBox = Instance.new("CanvasGroup")
 CSCodeBox.Name = "ConsoleCodeBox"
-CSCodeBox.Position = UDim2.new(0.9,0,0.1,0)
+CSCodeBox.Position = UDim2.new(0,0,0.9,0)
 CSCodeBox.Size = UDim2.new(1,0,0.1,0)
 CSCodeBox.BackgroundColor3 = Color3.fromRGB(111,111,111)
 CSCodeBox.BorderColor3 = Color3.fromRGB(89,89,89)
