@@ -1,4 +1,4 @@
-local Version = [[0.1.3936 Alpha
+local Version = [[0.1.3937 Alpha
 Add console (TEST)]]
 -- This executor
 
@@ -6,6 +6,14 @@ getgenv().ES = nil
 
 -- Load SetUp
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
+
+repeat task.wait() until getgenv().__ES_READY or getgenv().__ES_BANNED
+
+if getgenv().__ES_BANNED then
+	warn("You're banned from ExperienceSettings Executor.")
+	return
+end
+
 
 local ES = getgenv().ES
 
