@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.64 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.65 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -242,7 +242,7 @@ Canvas.Parent = Frame
 local twarn = Instance.new("TextLabel")
 twarn.BackgroundTransparency = 1
 twarn.TextTransparency = 1
-twarn.Size = UDim2.new(1,0,0,30)
+twarn.Size = UDim2.new(1,0,0,90)
 twarn.TextSize = 18
 twarn.TextColor3 = Color3.new(1,1,1)
 twarn.Text = "We're setting up for you. Its may take a few seconds!"
@@ -251,7 +251,7 @@ twarn.Parent = Canvas
 
 local CanBar = Instance.new("CanvasGroup")
 CanBar.Size = UDim2.new(0.7,0,0,20)
-CanBar.Position = UDim2.new(0.15,0,0,65)
+CanBar.Position = UDim2.new(0.15,0,0,105)
 CanBar.BackgroundTransparency = 1
 CanBar.Parent = Canvas
 Corner(1,0,CanBar)
@@ -274,18 +274,62 @@ Corner(1,0, Load)
 local btnBar = Instance.new("TextButton")
 btnBar.Visible = false
 btnBar.Active = true
-btnBar.Position = UDim2.new(0.4,0,0.4,0)
+btnBar.Position = UDim2.new(0.4,0,0.4,30)
 btnBar.Size = UDim2.new(0.2,0,0.2,0)
 btnBar.BackgroundColor3 = Color3.new(1,0,0)
 btnBar.Text = "Close"
+btnBar.TextWrapped = true
+btnBar.TextColor3 = Color3.new(1,1,1)
 btnBar.TextSize = 18
 btnBar.Parent = Canvas
 Corner(0.15,0,btnBar)
 Stroke(btnBar, ASMBorder, 170,0,0, LJMRound, 3, 0)
 
 btnBar.MouseButton1Click:Connect(function()
-	if Folder then Folder:Destroy() end
+	if Folder then
+		Folder:Destroy()
+	end
 end)
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local BannedList = {}
+
+local function ban(User, Reason, Description)
+	table.insert(BannedList, {
+		User = tostring(User),
+		Reason = Reason,
+		Description = Description
+	})
+end
+
+local function isBanned()
+	for _, data in ipairs(BannedList) do
+		local target = data.User
+
+		if tonumber(target) and player.UserId == tonumber(target) then
+			return data
+		end
+
+		if string.lower(player.Name) == string.lower(target) then
+			return data
+		end
+	end
+	return nil
+end
+
+ban(
+	"Roblox",
+	"I'm sorry I had to...",
+	"You are the CEO you cannot using our script."
+)
+
+ban(
+	"5teve3019D",
+	"Test."
+	"Test please appeal on our discord community."
+)
 
 local anim = {
 	0,85215834651365,113081160999318,110302272078310,74005522254669,74901110508812,
@@ -354,14 +398,27 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 }):Play()
 
 -- =========================
--- 💀 CORE LOOP (FIX ALL BUG)
--- =========================
 local current = 0
 local connection
 local finished = false -- กันรันซ้ำ
 
 connection = RunService.RenderStepped:Connect(function()
 	if finished then return end
+
+	local banData = isBanned()
+	if banData then
+		finished = true
+
+		twarn.Text = "You have been banned.\n"
+			.. "Reason: " .. banData.Reason .. "\n"
+			.. "Description: " .. banData.Description
+
+		btnBar.Text = "I agree and close the UI."
+		btnBar.Visible = true
+
+		connection:Disconnect()
+		return
+	end
 
 	-- ===== PROGRESS =====
 	local target = math.clamp((ES.progress or 0)/(ES.max or 100),0,1)
