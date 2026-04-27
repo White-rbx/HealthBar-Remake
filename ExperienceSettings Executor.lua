@@ -1,5 +1,5 @@
-local Version = [[0.1.3935 Alpha
-Fixed Layout in autocorrect syntax.]]
+local Version = [[0.1.3936 Alpha
+Add console (TEST)]]
 -- This executor
 
 getgenv().ES = nil
@@ -544,7 +544,7 @@ if not isfolder(base) then
 end
 
 -- สร้าง sub folders
-local folders = { "Workspace", "AutoExe", "Tabs", "Assets", "Logs" }
+local folders = { "Workspace", "AutoExe", "Tabs", "Save", "Assets", "Logs", ".Config" }
 
 for _, folder in ipairs(folders) do
 	local path = base .. "/" .. folder
@@ -552,7 +552,6 @@ for _, folder in ipairs(folders) do
 		makefolder(path)
 	end
 end
-
 
 -- Execute button
 local executeBtn = eftabs and eftabs:FindFirstChild("Execute")
