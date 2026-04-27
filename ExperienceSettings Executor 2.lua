@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.35
+-- ES Executor 2 | 0.36
 
 ------------------------------------------------------------------------------------------
 
@@ -592,21 +592,19 @@ local LINE_HEIGHT = 25
 local MAX_LOGS = 300
 
 local function addLog(icon, text)
-	-- 🧹 limit log (ลบทั้งก้อนแบบง่าย)
 	if #CSScoll:GetChildren() > MAX_LOGS then
 		CSScoll:ClearAllChildren()
 	end
 
-	-- 📦 container
 	local a = Instance.new("Frame")
 	a.Name = "Log"
-	a.Size = UDim2.new(1,0,0,LINE_HEIGHT)
+	a.Size = UDim2.new(1,0,0,0)
 	a.BackgroundTransparency = 1
+	a.AutomaticSize = Enum.AutomaticSize.Y
 	a.Parent = CSScoll
 
 	ListLayout(a, 0, 3, HLeft, VTop, SLayout, FillH)
 
-	-- 🖼️ icon
 	local b = Instance.new("ImageLabel")
 	b.Name = "icon"
 	b.Size = UDim2.new(0,25,0,25)
@@ -614,19 +612,18 @@ local function addLog(icon, text)
 	b.Image = icon
 	b.Parent = a
 
-	-- 📝 text
 	local c = Instance.new("TextLabel")
 	c.Name = "TypeLog"
 	c.Position = UDim2.new(0,30,0,0)
-	c.Size = UDim2.new(1,-30,0,LINE_HEIGHT)
+	c.Size = UDim2.new(1,-30,0,0)
 	c.BackgroundTransparency = 1
 	c.TextSize = 13
-	c.TextColor3 = Color3.new(1,1,1)
 	c.Text = text
 	c.Font = Enum.Font.Code
+	c.TextWrapped = true
 	c.TextXAlignment = Enum.TextXAlignment.Left
 	c.TextYAlignment = Enum.TextYAlignment.Top
-	c.TextWrapped = true
+	c.AutomaticSize = Enum.AutomaticSize.Y
 	c.Parent = a
 
 	-- 🎨 color
@@ -643,32 +640,18 @@ local function addLog(icon, text)
 		c.TextColor3 = Color3.fromRGB(255,0,0)
 	end
 
-	-- 📏 FIX WRAP + AUTO HEIGHT
-	c:GetPropertyChangedSignal("TextBounds"):Wait()
-
-	local textHeight = c.TextBounds.Y
-	local lines = math.max(1, math.ceil(textHeight / LINE_HEIGHT))
-
-	-- 🔥 padding กันชน (แก้ wrap bug)
-	local paddingPerLine = 2
-	local extraPadding = (lines - 1) * paddingPerLine
-
-	local newHeight = (lines * LINE_HEIGHT) + extraPadding
-
-	a.Size = UDim2.new(1,0,0,newHeight)
-	c.Size = UDim2.new(1,-30,0,newHeight)
-
-	-- 📜 update canvas (ใช้ layout จริง)
+	-- 💡 update canvas (ใช้ layout จริง)
 	local layout = CSScoll:FindFirstChildOfClass("UIListLayout")
-	local canvasY = layout.AbsoluteContentSize.Y
 
-	CSScoll.CanvasSize = UDim2.new(0,0,0,canvasY)
+	task.defer(function()
+		local canvasY = layout.AbsoluteContentSize.Y
+		CSScoll.CanvasSize = UDim2.new(0,0,0,canvasY)
 
-	-- ⬇️ scroll ลงล่างแบบไม่ทะลุ
-	local viewY = CSScoll.AbsoluteSize.Y
-	local maxScroll = math.max(0, canvasY - viewY)
+		local viewY = CSScoll.AbsoluteSize.Y
+		local maxScroll = math.max(0, canvasY - viewY)
 
-	CSScoll.CanvasPosition = Vector2.new(0, maxScroll)
+		CSScoll.CanvasPosition = Vector2.new(0, maxScroll)
+	end)
 end
 
 local old_print = print
