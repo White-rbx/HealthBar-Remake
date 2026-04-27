@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.33
+-- ES Executor 2 | 0.34
 
 ------------------------------------------------------------------------------------------
 
@@ -621,11 +621,10 @@ local function addLog(icon, text)
   c.Name = "TypeLog"
   c.Size = UDim2.new(0.958,0,0,0)
   c.BackgroundTransparency = 1
-  c.TextSize = 13
+  c.TextSize = 16
   c.TextColor3 = Color3.new(1,1,1)
   c.Text = text
   c.Font = Enum.Font.Code
-  c.TextWrapped = true
   c.TextXAlignment = Enum.TextXAlignment.Left
   c.TextYAlignment = Enum.TextYAlignment.Top
   c.Parent = a
@@ -656,14 +655,17 @@ local function addLog(icon, text)
 	-- 💡 ใช้ UIListLayout แทน totalHeight
 	local layout = CSScoll:FindFirstChildOfClass("UIListLayout")
 	local canvasY = layout.AbsoluteContentSize.Y
+	local canvasX = layout.AbsoluteContentSize.X
 
-	CSScoll.CanvasSize = UDim2.new(0,0,0,canvasY)
+	CSScoll.CanvasSize = UDim2.new(0,canvasX,0,canvasY)
 
 	-- 🔥 scroll ลงล่างแบบไม่ทะลุ
 	local viewY = CSScoll.AbsoluteSize.Y
-	local maxScroll = math.max(0, canvasY - viewY)
+    local viewX = CSScoll.AbsoluteSize.X
+	local maxScroll = math.max(nil, canvasY - viewY)
+	local maxScroll2 = math.max(canvasX - viewX, nil)
 
-	CSScoll.CanvasPosition = Vector2.new(0, maxScroll)
+	CSScoll.CanvasPosition = Vector2.new(maxScroll2, maxScroll)
 end
 
 local old_print = print
