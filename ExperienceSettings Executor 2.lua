@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.26
+-- ES Executor 2 | 0.27
 
 ------------------------------------------------------------------------------------------
 
@@ -556,7 +556,7 @@ ListLayout(CSScoll, 0, 5, HLeft, VTop, SLayout, FillV)
 
 local CSCodeBox = Instance.new("CanvasGroup")
 CSCodeBox.Name = "ConsoleCodeBox"
-CSCodeBox.Position = UDim2.new(0,0,0.1,0)
+CSCodeBox.Position = UDim2.new(0.9,0,0.1,0)
 CSCodeBox.Size = UDim2.new(1,0,0.1,0)
 CSCodeBox.BackgroundColor3 = Color3.fromRGB(111,111,111)
 CSCodeBox.BorderColor3 = Color3.fromRGB(89,89,89)
@@ -575,7 +575,7 @@ CSScript.PlaceholderColor3 = Color3.fromRGB(207,207,207)
 CSScript.TextColor3 = Color3.new(1,1,1)
 CSScript.TextScaled = true
 CSScript.TextXAlignment = Enum.TextXAlignment.Left
-CSScript.Font = Code
+CSScript.Font = Enum.Font.Code
 CSScript.Parent = CSCodeBox
 
 local csicon = {
@@ -586,50 +586,10 @@ local csicon = {
 }
 
 --// SETTINGS
-local ASSET_PATH = "your/path/here" -- แก้เป็น path ของนาย
 local ASSET = "rbxasset://"..ASSET_PATH.."/"
 
 local MAX_LOGS = 300
 local LINE_HEIGHT = 25
-
---// SERVICES
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-
---// UI ROOT
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CustomConsole"
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
-
---// MAIN FRAME
-local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0.5,0,0.5,0)
-Main.Position = UDim2.new(0.25,0,0.25,0)
-Main.BackgroundColor3 = Color3.fromRGB(20,20,20)
-Main.Parent = ScreenGui
-
---// SCROLL
-local CSScoll = Instance.new("ScrollingFrame")
-CSScoll.Size = UDim2.new(1,0,0.85,0)
-CSScoll.BackgroundTransparency = 1
-CSScoll.CanvasSize = UDim2.new(0,0,0,0)
-CSScoll.ScrollBarThickness = 6
-CSScoll.Parent = Main
-
-local Layout = Instance.new("UIListLayout")
-Layout.Parent = CSScoll
-Layout.SortOrder = Enum.SortOrder.LayoutOrder
-Layout.Padding = UDim.new(0,5)
-
---// INPUT BOX
-local Box = Instance.new("TextBox")
-Box.Size = UDim2.new(1,0,0.15,0)
-Box.Position = UDim2.new(0,0,0.85,0)
-Box.PlaceholderText = "> Type command..."
-Box.Text = ""
-Box.TextColor3 = Color3.new(1,1,1)
-Box.BackgroundColor3 = Color3.fromRGB(40,40,40)
-Box.Parent = Main
 
 --// LOG SYSTEM
 local totalHeight = 0
@@ -640,28 +600,32 @@ local function addLog(icon, text)
 		totalHeight = 0
 	end
 
-	local a = Instance.new("Frame")
-	a.Size = UDim2.new(1,0,0,LINE_HEIGHT)
-	a.BackgroundTransparency = 1
-	a.Parent = CSScoll
-
-	local b = Instance.new("ImageLabel")
-	b.Size = UDim2.new(0,20,0,20)
-	b.BackgroundTransparency = 1
-	b.Image = icon
-	b.Parent = a
-
-	local c = Instance.new("TextLabel")
-	c.Position = UDim2.new(0,25,0,0)
-	c.Size = UDim2.new(1,-25,0,LINE_HEIGHT)
-	c.BackgroundTransparency = 1
-	c.TextSize = 13
-	c.TextWrapped = true
-	c.TextXAlignment = Enum.TextXAlignment.Left
-	c.TextYAlignment = Enum.TextYAlignment.Top
-	c.Text = text
-	c.TextColor3 = Color3.new(1,1,1)
-	c.Parent = a
+  local a = Instance.new("Frame")
+  a.Name = "Log"
+  a.Size = UDim2.new(1,0,0,0)
+  a.BackgroundTransparency = 1
+  a.Active = false
+  a.Parent = CSScoll
+  ListLayout(a, 0, 3, HLeft, VCenter, SLayout, FillH)
+  
+  local b = Instance.new("ImageLabel")
+  b.Name = "icon"
+  b.Size = UDim2.new(1,0,1,0)
+  b.Active = false
+  b.BackgroundTransparency = 1
+  b.Image = icon
+  b.Parent = a
+  Aspect(b, 1, Fit, Width)
+  
+  local c = Instance.new("TextLabel")
+  c.Name = "TypeLog"
+  c.Size = UDim2.new(0.958,0,0,0)
+  c.BackgroundTransparency = 1
+  c.TextSize = 13
+  c.TextColor3 = Color3.new(1,1,1)
+  c.Text = text
+  c.TextXAlignment = Enum.TextXAlignment.Left
+  c.Parent = a
 
 	-- 🎨 color
 	if icon:find("print") then
@@ -691,7 +655,6 @@ local function addLog(icon, text)
 	CSScoll.CanvasPosition = Vector2.new(0, totalHeight)
 end
 
---// CONSOLE HOOK
 local old_print = print
 local old_warn = warn
 local old_error = error
@@ -721,10 +684,10 @@ local function info(...)
 end
 
 --// COMMAND EXECUTE
-Box.FocusLost:Connect(function(enter)
+CSScript.FocusLost:Connect(function(enter)
 	if enter then
-		local txt = Box.Text
-		Box.Text = ""
+		local txt = CSScript.Text
+		CSScript.Text = ""
 
 		if txt ~= "" then
 			addLog(ASSET.."print.png", "> "..txt)
