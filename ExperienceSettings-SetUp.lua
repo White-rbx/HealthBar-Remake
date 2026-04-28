@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.722 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.723 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -340,7 +340,7 @@ end
 ContentProvider:PreloadAsync(preload)
 
 -- 🎬 INTRO
-TweenService:Create(Frame, TweenInfo.new(0.5), {BackgroundTransparency = 0.6}):Play()
+TweenService:Create(Frame, TweenInfo.new(0.5), {BackgroundTransparency = 0.35}):Play()
 TweenService:Create(Image, TweenInfo.new(0.5), {ImageTransparency = 0}):Play()
 
 Image.Image = "rbxassetid://"..anim[1]
