@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.72 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.721 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -308,7 +308,9 @@ ban(
 	"Roblox",
 	"I'm sorry I had to...",
 	"You are the CEO you cannot using our script."
-)
+) -- Crazy LMAO
+
+ban("5teve3019D", "Spamming on discord community.", "Spamming is not allowed. Dms Gray's to appeal.")
 
 --[[]]
 
