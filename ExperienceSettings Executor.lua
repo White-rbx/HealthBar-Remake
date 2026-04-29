@@ -1,4 +1,4 @@
-local Version = [[0.1.3938 Alpha
+local Version = [[0.1.3939 Alpha
 Add console (TEST)]]
 -- This executor
 
@@ -266,7 +266,7 @@ local aspectConstraint = Instance.new("UIAspectRatioConstraint")
 local st = CoreGui["ExperienceSettings-Executor"].Main.Background2.connect.UIStroke
 Gradient(st, 0, 0, 0,
     Color3.fromRGB(255,255,255),
-    Color3.fromRGB(255,255,0)
+    Color3.fromRGB(255,0,0)
 )
 
 local gr = st.UIGradient
