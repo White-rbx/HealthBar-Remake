@@ -1,4 +1,4 @@
--- Well 2.35
+-- Well 2.351
 
 -- Reset
 getgenv().ES = nil
@@ -346,11 +346,11 @@ task.spawn(function()
         local OC = holder:FindFirstChild("a1_Open/Close")
         if not OC then continue end
 
-        OC.BackgroundColor3 = Color3.fromRGB(255,185,0)
+        OC.BackgroundColor3 = Color3.fromRGB(255,125,125)
 
         local stroke = OC:FindFirstChildOfClass("UIStroke")
         if stroke then
-            stroke.Color = Color3.fromRGB(255,255,0)
+            stroke.Color = Color3.fromRGB(255,p,0)
         end
 
         if OC.Image == "rbxassetid://112166445155251" then
