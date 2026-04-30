@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.39
+-- ES Executor 2 | 0.4
 
 ------------------------------------------------------------------------------------------
 
@@ -589,12 +589,18 @@ local csicon = {
 local ASSET = "rbxasset://"..ASSET_PATH.."/"
 
 local LINE_HEIGHT = 25
-local MAX_LOGS = 300
+local MAX_LOGS = 550
 
 local function addLog(icon, text)
 	if #CSScoll:GetChildren() > MAX_LOGS then
-		CSScoll:ClearAllChildren()
-	end
+    for _, child in ipairs(CSScoll:GetChildren()) do
+        -- Check if the child is a log (and NOT the layout)
+        if not child:IsA("UIListLayout") then
+            child:Destroy()
+        end
+    end
+end
+
 
 	-- 📦 container
 	local a = Instance.new("Frame")
