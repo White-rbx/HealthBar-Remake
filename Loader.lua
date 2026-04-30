@@ -1,4 +1,4 @@
--- Well 2.351
+-- Well 2.352
 
 -- Reset
 getgenv().ES = nil
@@ -356,7 +356,7 @@ task.spawn(function()
         if OC.Image == "rbxassetid://112166445155251" then
             OC.Image = "rbxassetid://133900380566355"
         elseif OC.Image == "rbxassetid://103716616779537" then
-            OC.Image = "rbxassetid://104816266946857" -- Burning
+            OC.Image = "rbxassetid://126566279053159" -- Burning
         end
     end
 end)
