@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.83
+-- So uhm just a script lol. 4.84
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1735,7 +1735,7 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		holderGui.Parent = Menu
 
 		part = Instance.new("Part")
-		part.Name = "ESCamera"
+		part.Name = "ESCameraPart"
 		part.Size = Vector3.new(3,3,3)
 		part.Transparency = 1
 		part.Locked = true
@@ -1763,6 +1763,7 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 	else
 		disconnectAll()
 		local old = Menu:FindFirstChild("FreeCamGui")
+		local part = Workspace:FindFirstChild("ESCameraPart")
 		if old then old:Destroy() end
 		if part then part:Destroy() end
 
