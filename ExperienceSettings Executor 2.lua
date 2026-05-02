@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.4
+-- ES Executor 2 | 0.5
 
 ------------------------------------------------------------------------------------------
 
@@ -663,55 +663,101 @@ end
 	end)
 end
 
+--// CACHE กัน log ซ้ำ
+local recentLogs = {}
+
+local function isDuplicate(msg)
+	if recentLogs[msg] then
+		return true
+	end
+	recentLogs[msg] = true
+
+	-- ล้าง cache ภายใน 0.1 วิ (กัน memory บวม)
+	task.delay(0.1, function()
+		recentLogs[msg] = nil
+	end)
+
+	return false
+end
+
+local LogService = game:GetService("LogService")
+
+LogService.MessageOut:Connect(function(msg, type)
+	if isDuplicate(msg) then return end
+
+	if type == Enum.MessageType.MessageOutput then
+		addLog(ASSET.."print.png", msg)
+
+	elseif type == Enum.MessageType.MessageInfo then
+		addLog(ASSET.."info.png", msg)
+
+	elseif type == Enum.MessageType.MessageWarning then
+		addLog(ASSET.."warn.png", msg)
+
+	elseif type == Enum.MessageType.MessageError then
+		addLog(ASSET.."error.png", msg)
+	end
+end)
+	
 local old_print = print
 local old_warn = warn
 local old_error = error
 
 print = function(...)
 	local msg = table.concat({...}, " ")
-	addLog(ASSET.."print.png", msg)
+	if not isDuplicate(msg) then
+		addLog(ASSET.."print.png", msg)
+	end
 	old_print(...)
 end
 
 warn = function(...)
 	local msg = table.concat({...}, " ")
-	addLog(ASSET.."warn.png", msg)
+	if not isDuplicate(msg) then
+		addLog(ASSET.."warn.png", msg)
+	end
 	old_warn(...)
 end
 
 error = function(...)
 	local msg = table.concat({...}, " ")
-	addLog(ASSET.."error.png", msg)
+	if not isDuplicate(msg) then
+		addLog(ASSET.."error.png", msg)
+	end
 	old_error(...)
 end
 
---// INFO FUNCTION
 local function info(...)
 	local msg = table.concat({...}, " ")
-	addLog(ASSET.."info.png", msg)
+	if not isDuplicate(msg) then
+		addLog(ASSET.."info.png", msg)
+	end
 end
 
---// COMMAND EXECUTE
 CSScript.FocusLost:Connect(function(enter)
-	if enter then
-		local txt = CSScript.Text
-		CSScript.Text = ""
+	if not enter then return end
 
-		if txt ~= "" then
-			addLog(ASSET.."print.png", "> "..txt)
+	local txt = CSScript.Text
+	CSScript.Text = ""
 
-			local func, err = loadstring(txt)
-			if func then
-				local ok, res = pcall(func)
-				if not ok then
-					addLog(ASSET.."error.png", res)
-				end
-			else
-				addLog(ASSET.."error.png", err)
-			end
-		end
+	if txt == "" then return end
+
+	addLog(ASSET.."print.png", "> "..txt)
+
+	local func, err = loadstring(txt)
+	if not func then
+		addLog(ASSET.."error.png", err)
+		return
+	end
+
+	local ok, res = pcall(func)
+	if not ok then
+		addLog(ASSET.."error.png", res)
+	elseif res ~= nil then
+		addLog(ASSET.."info.png", tostring(res))
 	end
 end)
+	
 
 --[ ExpInfo ]--
 
