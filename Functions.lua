@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.82
+-- So uhm just a script lol. 4.83
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1552,7 +1552,7 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 	local part
 	local holderGui
 	local speed = 16
-	local minSpeed, maxSpeed = 0.0001, 50000
+	local minSpeed, maxSpeed = 0.0001, 9223372036854775807
 
 	-- helper: disconnect safely
 	local function addConn(c)
@@ -1725,11 +1725,11 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 		if existing then existing:Destroy() end
 
 		for _,v in ipairs(CoreGui:GetDescendants()) do
-			if v.Name == "FrameHolder" then v:Destroy() end
+			if v.Name == "FreeCamGui" then v:Destroy() end
 		end
 
 		holderGui = Instance.new("Frame")
-		holderGui.Name = "FrameHolder"
+		holderGui.Name = "FreeCamGui"
 		holderGui.Size = UDim2.new(1, 0, 1, 0)
 		holderGui.BackgroundTransparency = 1
 		holderGui.Parent = Menu
@@ -1762,9 +1762,9 @@ createToggle(BFrame, "FreeCam (Mobile)", function(state)
 
 	else
 		disconnectAll()
-		local old = Menu:FindFirstChild("FrameHolder")
+		local old = Menu:FindFirstChild("FreeCamGui")
 		if old then old:Destroy() end
-		if part and part.Parent then part:Destroy() end
+		if part then part:Destroy() end
 
 		hrp.Anchored = false
 		humanoid.AutoRotate = true
