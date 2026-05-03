@@ -1,4 +1,4 @@
-local ver = " UIs 4.28 "
+local ver = " UIs 4.281 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -680,7 +680,7 @@ local function endpointsFor(provider)
                         {
                             role = "user",
                             content = {
-                                { type = "text", text = prompt }
+                                { type = "input_text", text = prompt }
                             }
                         }
                     },
@@ -689,7 +689,7 @@ local function endpointsFor(provider)
                     temperature = preset.t
                 }
                 return jsonEncode(body)
-            end,
+			end,
             parseResult = function(bodyText)
                 local d = jsonDecode(bodyText)
                 if not d then return nil end
