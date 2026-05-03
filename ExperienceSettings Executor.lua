@@ -1,4 +1,4 @@
-local Version = [[0.1.394 Alpha
+local Version = [[0.1.395 Alpha
 BURNING 🔥🔥🔥🔥]]
 -- This executor
 
@@ -425,6 +425,9 @@ Frame.Settings.Inside.soon.Visible = true
 
 Frame.AutoExe.Inside.soon.Text = [[<b><font size="15">Coming Soon...</font></b>
 But "AutoExe" is exist, so try to check on ExperienceSettings-Executor Folder on your device!]]
+
+Frame.Console.Inside.soon.Text = [[<b><font size="15">Something was wrong...</font></b>
+Tried to load console while executing. Please open dex explorer and find "ExperienceSettings-Executor" folder in CoreGui and destroy all folder that have same name or rejoin the game.]]
 ------------------------------------------------------------
 local topn = Instance.new("Frame")
 topn.Name = "TopNoity"
