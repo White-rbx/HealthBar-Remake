@@ -1,4 +1,4 @@
-local ver = " UIs 4.274 "
+local ver = " UIs 4.28 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -14,6 +14,7 @@ local update = [[
 (:14/4/2026 | 1:33 am: F) FIXED NEW MESSAGE SYSTEM REVERSE WHAT THE FUCK.
 (:14/4/2026 | 1:52 am - 2:27 am: B) Buff from 99+ to 9999+ in new message system.
 (:15/4/2026 | 3:29 pm: A) Add Colorful to message and changed BackgroundTransparency to 0.85
+(:4/5/2026 | 5:10 am: F) Fixed AI ChatGPT Response.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -674,9 +675,18 @@ local function endpointsFor(provider)
                 local preset = GPT_PRESETS[currentPresetGPT] or GPT_PRESETS.FREE
                 local body = {
                     model = currentModel,
-                    input = prompt,
-                    max_tokens = preset.mt,
-                    temperature = preset.t,
+
+                    input = {
+                        {
+                            role = "user",
+                            content = {
+                                { type = "text", text = prompt }
+                            }
+                        }
+                    },
+
+                    max_output_tokens = preset.mt,
+                    temperature = preset.t
                 }
                 return jsonEncode(body)
             end,
