@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.51
+-- ES Executor 2 | 0.52
 
 ------------------------------------------------------------------------------------------
 
@@ -519,6 +519,8 @@ setIcon(vEditExe.Clear,"erase")
 
 
 --[ Console ]--
+vConsole.soon.Visible = false
+
 local CSFrame = Instance.new("Frame")
 CSFrame.Name = "ConsoleFrame"
 CSFrame.Size = UDim2.new(0.88,0,1,0)
@@ -776,7 +778,7 @@ local vFT = {
 	PTE = vFolderTabs:FindFirstChild("PTE"),
 }
 
-vFT.PTE.BackgroundColor3 = Color3.new(1,0.5,0.5)
+-- vFT.PTE.BackgroundColor3 = Color3.new(1,0.5,0.5)
 
 local function getText()
 	return (vFDTextViewer and vFDTextViewer.Text) or ""
@@ -855,7 +857,7 @@ if vFT.PTE then
 		if text == "" then return end
 
 		if vEDEdit then
-			vEDEdit.Text = text
+			vEREdit.Text = text
 			noti(5, "Paste to editor!", color.green)
 		end
 
