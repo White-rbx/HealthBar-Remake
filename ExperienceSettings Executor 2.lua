@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.5
+-- ES Executor 2 | 0.51
 
 ------------------------------------------------------------------------------------------
 
@@ -589,7 +589,7 @@ local csicon = {
 local ASSET = "rbxasset://"..ASSET_PATH.."/"
 
 local LINE_HEIGHT = 25
-local MAX_LOGS = 550
+local MAX_LOGS = 1250
 
 local function addLog(icon, text)
 	if #CSScoll:GetChildren() > MAX_LOGS then
