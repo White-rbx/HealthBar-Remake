@@ -1,5 +1,5 @@
-local Version = [[0.1.395 Alpha
-BURNING 🔥🔥🔥🔥]]
+local Version = [[0.1.396 Alpha
+Fixed Edit ScrollingFrame position not stable.]]
 -- This executor
 
 --[[
@@ -2643,13 +2643,13 @@ local function getLines(text)
 	return t
 end
 
---// RENDER
+--[[// RENDER
 local function render()
 
 	local lines = getLines(editBox.Text)
 	local total = #lines
 
-	scroll.CanvasSize = UDim2.new(0, 10000, 0, total * LINE_HEIGHT)
+	scroll.CanvasSize = UDim2.new(1000, 0, 0, total * LINE_HEIGHT)
 
 	local first = math.floor(scroll.CanvasPosition.Y / LINE_HEIGHT) + 1
 	local last = math.min(first + VISIBLE_BUFFER, total)
@@ -2682,11 +2682,12 @@ local function render()
 	lineNumbers.Size = UDim2.new(0,46,0,(last-first+1)*LINE_HEIGHT)
 end
 
+
 editBox:GetPropertyChangedSignal("Text"):Connect(render)
 scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(render)
 
 render()
-
+]]
 
 --[ End of syntax script ]
 
