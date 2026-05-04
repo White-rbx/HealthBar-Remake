@@ -1,4 +1,4 @@
-local Version = [[0.1.396 Alpha
+local Version = [[0.1.397 Alpha
 Fixed Edit ScrollingFrame position not stable.]]
 -- This executor
 
@@ -2643,7 +2643,7 @@ local function getLines(text)
 	return t
 end
 
---[[// RENDER
+--// RENDER
 local function render()
 
 	local lines = getLines(editBox.Text)
@@ -2687,7 +2687,6 @@ editBox:GetPropertyChangedSignal("Text"):Connect(render)
 scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(render)
 
 render()
-]]
 
 --[ End of syntax script ]
 
