@@ -1,5 +1,5 @@
-local Version = [[0.1.397 Alpha
-Fixed Edit ScrollingFrame position not stable.]]
+local Version = [[0.1.398 Alpha
+Changed some keywords that doesn't exist to official luai from Roblox.]]
 -- This executor
 
 --[[
@@ -1158,12 +1158,28 @@ local COLORS = {
 
 
 local keywords = {  
-	["local"]=true, ["function"]=true, ["return"]=true,  
-	["if"]=true, ["then"]=true, ["elseif"]=true, ["else"]=true,  
-	["for"]=true, ["while"]=true, ["do"]=true, ["end"]=true,  
-	["break"]=true, ["continue"]=true, ["in"]=true,  
-	["repeat"]=true, ["until"]=true,  
-	["not"]=true, ["and"]=true, ["or"]=true, ["true"]=true, ["false"]=true
+["break"]=true,
+["do"]=true,
+["else"]=true,
+["elseif"]=true,
+["end"]=true,
+["false"]=true,
+["for"]=true,
+["function"]=true,
+["if"]=true,
+["in"]=true,
+["local"]=true,
+["nil"]=true,
+["not"]=true,
+["or"]=true,
+["repeat"]=true,
+["return"]=true,
+["then"]=true,
+["true"]=true,
+["until"]=true,
+["while"]=true,
+["type"]=true,
+["goto"]=true,
 }
 
 local datatype = {
