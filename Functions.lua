@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.84
+-- So uhm just a script lol. 4.85
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -341,7 +341,7 @@ imag.Name = "a1_Icon"
 imag.Active = false
 imag.Size = UDim2.new(0,100,0,100)
 imag.BackgroundTransparency = 0.3
-imag.Image = "rbxassetid://139120548101030"
+imag.Image = "rbxassetid://89394692512627"
 imag.Parent = in1
 Corner(0, 8, imag)
 
@@ -408,8 +408,12 @@ If your ExperienceSettings was Disabled there are three reasons,
  • HumanoidRootPart was removed too long.
  • The Experience doesn't support the ExperienceSettings.
  • Script failed to load.
-If you enjoy it, you can support me on ScriptBlox!
-Thank you for using ExperienceSettings!
+If you enjoy it, you can support me on discord!
+Thank you for using ExperienceSettings! ♥️
+
+54% Gui is made by hand
+10% Script is made by hand
+36% Script is made by ai
 
 Creator: @5teve3019D (Gui, Little Script)
 Helper: ChatGPT (Script) <-- He got a lot of complaints lol.
@@ -473,7 +477,7 @@ tip.Position = UDim2.new(0,0,0.88,0)
 tip.BackgroundTransparency = 1
 tip.TextColor3 = Color3.fromRGB(255,255,255)
 tip.TextScaled = true
-tip.Text = "Oh, if the ExperienceSettings was disabled. You can hide the text there -->>"
+tip.Text = "Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."
 tip.Parent = In
 
 local hid = Instance.new("TextButton")
