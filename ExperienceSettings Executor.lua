@@ -1,5 +1,5 @@
-local Version = [[0.1.398 Alpha
-Changed some keywords that doesn't exist to official luai from Roblox.]]
+local Version = [[0.1.4 Alpha
+Bigger guis 🤤🤤😋.]]
 -- This executor
 
 --[[
@@ -325,7 +325,7 @@ clampPosition()
 
 local Bghr = Instance.new("CanvasGroup")
 Bghr.Name = "Windows"
-Bghr.Size = UDim2.new(1,0,0.75,0)
+Bghr.Size = UDim2.new(1,0,0.85,0)
 Bghr.BackgroundTransparency = 1
 Bghr.Active = false
 Bghr.Position = UDim2.new(0,0,-1,0)
@@ -440,7 +440,7 @@ Tried to load console while executing. Please open dex explorer and find "Experi
 ------------------------------------------------------------
 local topn = Instance.new("Frame")
 topn.Name = "TopNoity"
-topn.Position = UDim2.new(0,0,0.1,0)
+topn.Position = UDim2.new(0,0,0.02,0)
 topn.Size = UDim2.new(1,0,0,43)
 topn.BackgroundTransparency = 1
 topn.Active = false
@@ -4832,7 +4832,7 @@ oc.MouseButton1Click:Connect(function()
 
     -- เลื่อน Bghr ขึ้นมา
     TweenService:Create(Bghr, bgInfo, {
-        Position = UDim2.new(0,0,0.1,0)
+        Position = UDim2.new(0,0,0.02,0)
     }):Play()
 
 end)
