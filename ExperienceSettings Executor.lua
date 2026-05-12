@@ -1,5 +1,7 @@
-local Version = [[0.1.4 Alpha
-Bigger guis 🤤🤤😋.]]
+local Version = [[0.1.41 Alpha
+- Adjust Notify Topbar Transparency set to 0.25 for easier to see text.
+- Adjust "time" in Notify Topbar line size frame offset set to 2.
+- Adjust Notify Topbar Position set scale to 0.033 for balance.]]
 -- This executor
 
 --[[
@@ -440,7 +442,7 @@ Tried to load console while executing. Please open dex explorer and find "Experi
 ------------------------------------------------------------
 local topn = Instance.new("Frame")
 topn.Name = "TopNoity"
-topn.Position = UDim2.new(0,0,0.02,0)
+topn.Position = UDim2.new(0,0,0.033,0)
 topn.Size = UDim2.new(1,0,0,43)
 topn.BackgroundTransparency = 1
 topn.Active = false
@@ -472,7 +474,7 @@ local function noti(times, text, colorValue)
     local txt = Instance.new("TextLabel")
     txt.Name = "Notify"
     txt.BackgroundColor3 = Color3.fromRGB(18,18,21)
-    txt.BackgroundTransparency = 0.5
+    txt.BackgroundTransparency = 0.25
     txt.TextWrap = true
     txt.RichText = true
     txt.TextScaled = false
@@ -483,7 +485,7 @@ local function noti(times, text, colorValue)
     txt.ClipsDescendants = true
     txt.Parent = topn
 
-    Corner(0.15,0,txt)
+    Corner(0,10,txt)
 
     -- แปลง Color3 → RGB
     local r = finalColor.R * 255
@@ -517,7 +519,7 @@ local function noti(times, text, colorValue)
     local bar = Instance.new("Frame")
     bar.Name = "time"
     bar.Position = UDim2.new(0,0,0.9,0)
-    bar.Size = UDim2.new(1,0,0.05,0)
+    bar.Size = UDim2.new(1,0,0,2)
     bar.BackgroundColor3 = finalColor
     bar.BorderSizePixel = 0
     bar.Parent = txt
@@ -526,7 +528,7 @@ local function noti(times, text, colorValue)
     local barTween = TweenService:Create(
         bar,
         TweenInfo.new(times, Enum.EasingStyle.Linear),
-        {Size = UDim2.new(0,0,0.05,0)}
+        {Size = UDim2.new(0,0,0,2)}
     )
     barTween:Play()
 
