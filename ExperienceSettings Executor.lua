@@ -1,8 +1,9 @@
-local Version = [[0.1.42 Alpha
+local Version = [[0.1.43 Alpha
 - Adjust Notify Topbar Transparency set to 0.25 for easier to see text.
 - Adjust "time" in Notify Topbar line size frame offset set to 2.
 - Adjust Notify Topbar Position set scale to 0.033 for balance.
-- Set Enum of Executor ScreeGui to None.]]
+- Set Enum of Executor ScreeGui to None.
+- Adjust Position of open/close that called "connect" set to offset 15 and scale 0.015.]]
 -- This executor
 
 --[[
@@ -257,14 +258,14 @@ Bg2.Parent = Windows
 local oc = Instance.new("ImageButton")
 oc.Name = "connect"
 oc.Size = UDim2.new(0.04,0,0.08,0)
-oc.Position = UDim2.new(0,220,0.02,0)
+oc.Position = UDim2.new(0,15,0.015,0)
 oc.BackgroundColor3 = Color3.fromRGB(18,18,21)
 oc.Transparency = 0.08
 oc.Draggable = true
 oc.Image = "rbxassetid://116278455133074" -- Open
 oc.Parent = Bg2
 Corner(1,0, oc)
-Stroke(oc, ASMBorder, 255,255,255, LJMRound, 3, 0)
+Stroke(oc, ASMBorder, 255,255,255, LJMRound, 2, 0)
 
 -- Season
 oc.Image = "rbxassetid://117526277216392"
@@ -486,7 +487,7 @@ local function noti(times, text, colorValue)
     txt.ClipsDescendants = true
     txt.Parent = topn
 
-    Corner(0,10,txt)
+    Corner(0,7,txt)
 
     -- แปลง Color3 → RGB
     local r = finalColor.R * 255
