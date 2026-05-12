@@ -1,7 +1,8 @@
-local Version = [[0.1.41 Alpha
+local Version = [[0.1.42 Alpha
 - Adjust Notify Topbar Transparency set to 0.25 for easier to see text.
 - Adjust "time" in Notify Topbar line size frame offset set to 2.
-- Adjust Notify Topbar Position set scale to 0.033 for balance.]]
+- Adjust Notify Topbar Position set scale to 0.033 for balance.
+- Set Enum of Executor ScreeGui to None.]]
 -- This executor
 
 --[[
@@ -231,7 +232,7 @@ Folder.Parent = CoreGui
 local Windows = Instance.new("ScreenGui")
 Windows.Name = "Main"
 Windows.DisplayOrder = 2147483647
-Windows.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+Windows.ScreenInsets = Enum.ScreenInsets.None
 Windows.Parent = Folder
 
 local Bg = Instance.new("Frame")
