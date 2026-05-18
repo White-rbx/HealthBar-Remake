@@ -1,4 +1,4 @@
--- Loader script 0.83
+-- Loader script 0.9
 
 ------------------------------------------------------------------------------------------
 
@@ -301,7 +301,9 @@ local DEFAULT_DATA = {
         HideMenu = false,
         SettingsTransparency = 0.3,
         UIScale = 1,
-        DraggableUI = false
+        DraggableUI = false,
+        CrosshairID = "rbxassetid://118624373632520",
+        ToolCrosshairID = "rbxassetid://73868291781876"
     }
 }
 
@@ -1415,11 +1417,250 @@ task.spawn(function()
     applyDraggable(Data.UI.DraggableUI)
 end)
 
+--// =====================================================
+--// CROSSHAIR SYSTEM
+--// =====================================================
 
+local DEFAULT_CROSSHAIR = "rbxassetid://118624373632520"
+local DEFAULT_TOOL_CROSSHAIR = "rbxassetid://73868291781876"
 
+local TARGET_SHIFT = nil
+local CROSSHAIR_READY = false
 
+--============================--
+-- FIND TARGETSHIFT
+--============================--
 
+task.spawn(function()
 
+	while not CROSSHAIR_READY do
+
+		local ES = CoreGui:FindFirstChild("ExperienceSettings")
+
+		if ES then
+
+			local menu = ES:FindFirstChild("Menu")
+
+			if menu then
+
+				local middle = menu:FindFirstChild("MiddleScreen")
+
+				if middle then
+
+					local target = middle:FindFirstChild("TargetShift")
+
+					if target and target:IsA("ImageLabel") then
+						TARGET_SHIFT = target
+						CROSSHAIR_READY = true
+						break
+					end
+				end
+			end
+		end
+
+		task.wait(0.2)
+	end
+
+	-- APPLY SAVED IMAGE
+	if TARGET_SHIFT then
+		TARGET_SHIFT.Image = Data.UI.CrosshairID or DEFAULT_CROSSHAIR
+	end
+
+end)
+
+--============================--
+-- APPLY FUNCTION
+--============================--
+
+local function applyCrosshair(id)
+
+	if not id or id == "" or id == "0" then
+		id = DEFAULT_CROSSHAIR
+	end
+
+	Data.UI.CrosshairID = id
+
+	if CROSSHAIR_READY and TARGET_SHIFT then
+		TARGET_SHIFT.Image = id
+	end
+end
+
+--============================--
+-- APPLY TOOL CROSSHAIR
+--============================--
+
+local function applyToolCrosshair()
+
+	if not TARGET_SHIFT then
+		return
+	end
+
+	local toolEnabled = false
+
+	local player = game:GetService("Players").LocalPlayer
+
+	local char = player.Character
+
+	if char then
+		for _, v in ipairs(char:GetChildren()) do
+			if v:IsA("Tool") then
+				toolEnabled = true
+				break
+			end
+		end
+	end
+
+	if toolEnabled then
+		TARGET_SHIFT.Image =
+			Data.UI.ToolCrosshairID or DEFAULT_TOOL_CROSSHAIR
+	else
+		TARGET_SHIFT.Image =
+			Data.UI.CrosshairID or DEFAULT_CROSSHAIR
+	end
+end
+
+--============================--
+-- TOOL WATCHER
+--============================--
+
+task.spawn(function()
+
+	local player = game:GetService("Players").LocalPlayer
+
+	local function bindCharacter(char)
+
+		char.ChildAdded:Connect(function(v)
+			if v:IsA("Tool") then
+				task.wait()
+				applyToolCrosshair()
+			end
+		end)
+
+		char.ChildRemoved:Connect(function(v)
+			if v:IsA("Tool") then
+				task.wait()
+				applyToolCrosshair()
+			end
+		end)
+
+		task.wait()
+		applyToolCrosshair()
+	end
+
+	if player.Character then
+		bindCharacter(player.Character)
+	end
+
+	player.CharacterAdded:Connect(bindCharacter)
+
+end)
+
+Txt(
+    "Custom Crosshair ID",
+    255,255,255,
+    true, "Type Image ID",
+    true, "Save",
+
+    -- LIVE PREVIEW
+    function(box)
+
+        local text = tostring(box.Text or "")
+
+        if text == "" or text == "0" then
+            applyCrosshair(DEFAULT_CROSSHAIR)
+            return
+        end
+
+        text = text:gsub("rbxassetid://","")
+
+        applyCrosshair("rbxassetid://" .. text)
+
+    end,
+
+    -- SAVE
+    function(box, btn)
+
+        local text = tostring(box.Text or "")
+
+        if text == "" or text == "0" then
+            Data.UI.CrosshairID = DEFAULT_CROSSHAIR
+        else
+            text = text:gsub("rbxassetid://","")
+            Data.UI.CrosshairID =
+                "rbxassetid://" .. text
+        end
+
+        saveData(Data)
+
+        btn.TextColor3 = Color3.fromRGB(0,255,0)
+
+        task.delay(0.35,function()
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+        end)
+
+        applyToolCrosshair()
+
+    end, ins2
+)
+
+Txt(
+    "Custom Tool Crosshair ID",
+    255,255,255,
+    true, "Type Image ID",
+    true, "Save",
+
+    -- LIVE PREVIEW
+    function(box)
+
+        local text = tostring(box.Text or "")
+
+        if text == "" or text == "0" then
+            Data.UI.ToolCrosshairID =
+                DEFAULT_TOOL_CROSSHAIR
+
+            applyToolCrosshair()
+            return
+        end
+
+        text = text:gsub("rbxassetid://","")
+
+        Data.UI.ToolCrosshairID =
+            "rbxassetid://" .. text
+
+        applyToolCrosshair()
+
+    end,
+
+    -- SAVE
+    function(box, btn)
+
+        local text = tostring(box.Text or "")
+
+        if text == "" or text == "0" then
+
+            Data.UI.ToolCrosshairID =
+                DEFAULT_TOOL_CROSSHAIR
+
+        else
+
+            text = text:gsub("rbxassetid://","")
+
+            Data.UI.ToolCrosshairID =
+                "rbxassetid://" .. text
+        end
+
+        saveData(Data)
+
+        btn.TextColor3 = Color3.fromRGB(0,255,0)
+
+        task.delay(0.35,function()
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+        end)
+
+        applyToolCrosshair()
+
+    end, ins2
+)
 
 
 
