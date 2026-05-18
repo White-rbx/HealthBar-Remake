@@ -1,4 +1,4 @@
--- Loader script 0.9
+-- Loader script 0.92
 
 ------------------------------------------------------------------------------------------
 
@@ -1558,36 +1558,29 @@ end)
 Txt(
     "Custom Crosshair ID",
     255,255,255,
+
     true, "Type Image ID",
+
     true, "Save",
 
-    -- LIVE PREVIEW
-    function(box)
+    nil,
 
-        local text = tostring(box.Text or "")
-
-        if text == "" or text == "0" then
-            applyCrosshair(DEFAULT_CROSSHAIR)
-            return
-        end
-
-        text = text:gsub("rbxassetid://","")
-
-        applyCrosshair("rbxassetid://" .. text)
-
-    end,
-
-    -- SAVE
     function(box, btn)
 
         local text = tostring(box.Text or "")
 
         if text == "" or text == "0" then
-            Data.UI.CrosshairID = DEFAULT_CROSSHAIR
+
+            Data.UI.CrosshairID =
+                "rbxassetid://118624373632520"
+
         else
+
             text = text:gsub("rbxassetid://","")
+
             Data.UI.CrosshairID =
                 "rbxassetid://" .. text
+
         end
 
         saveData(Data)
@@ -1598,40 +1591,23 @@ Txt(
             btn.TextColor3 = Color3.fromRGB(255,255,255)
         end)
 
-        applyToolCrosshair()
+    end,
 
-    end, ins2
+    nil,
+
+    ins2
 )
 
 Txt(
     "Custom Tool Crosshair ID",
     255,255,255,
+
     true, "Type Image ID",
+
     true, "Save",
 
-    -- LIVE PREVIEW
-    function(box)
+    nil,
 
-        local text = tostring(box.Text or "")
-
-        if text == "" or text == "0" then
-            Data.UI.ToolCrosshairID =
-                DEFAULT_TOOL_CROSSHAIR
-
-            applyToolCrosshair()
-            return
-        end
-
-        text = text:gsub("rbxassetid://","")
-
-        Data.UI.ToolCrosshairID =
-            "rbxassetid://" .. text
-
-        applyToolCrosshair()
-
-    end,
-
-    -- SAVE
     function(box, btn)
 
         local text = tostring(box.Text or "")
@@ -1639,7 +1615,7 @@ Txt(
         if text == "" or text == "0" then
 
             Data.UI.ToolCrosshairID =
-                DEFAULT_TOOL_CROSSHAIR
+                "rbxassetid://73868291781876"
 
         else
 
@@ -1647,6 +1623,7 @@ Txt(
 
             Data.UI.ToolCrosshairID =
                 "rbxassetid://" .. text
+
         end
 
         saveData(Data)
@@ -1657,9 +1634,11 @@ Txt(
             btn.TextColor3 = Color3.fromRGB(255,255,255)
         end)
 
-        applyToolCrosshair()
+    end,
 
-    end, ins2
+    nil,
+
+    ins2
 )
 
 
