@@ -1,4 +1,4 @@
--- So uhm just a script lol. 4.85
+-- So uhm just a script lol. 5
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -634,7 +634,9 @@ local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-local camera = workspace.CurrentCamera
+local function getCamera()
+	return workspace.CurrentCamera
+end
 
 -- UI
 -- shl = ปุ่ม ShiftLock
@@ -672,14 +674,35 @@ end
 local function bindCharacter(char)
 	humanoid = char:WaitForChild("Humanoid", 5)
 	root = char:WaitForChild("HumanoidRootPart", 5)
+
+	humanoid.AutoRotate = true
+
+	equippedTool = nil
+	updateTS()
+
+	char.ChildAdded:Connect(function(child)
+		if child:IsA("Tool") then
+			equippedTool = child
+			updateTS()
+		end
+	end)
+
+	char.ChildRemoved:Connect(function(child)
+		if child:IsA("Tool") and equippedTool == child then
+			equippedTool = nil
+			updateTS()
+		end
+	end)
 end
-bindCharacter(player.Character or player.CharacterAdded:Wait())
-player.CharacterAdded:Connect(bindCharacter)
 
 --========================================================--
 -- อัปเดต ts (สถานะอย่างเดียว)
 --========================================================--
 local function updateTS()
+if shiftEnabled and UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+		UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+	end
+	
 	if not shiftEnabled then
 		ts.Visible = false
 		return
@@ -788,13 +811,16 @@ player.Backpack.ChildAdded:Connect(bindTool)
 -- ระบบหมุนตัว + กล้องเอียงขวาแบบ Roblox SHIFT LOCK
 --========================================================--
 RunService.RenderStepped:Connect(function()
-
+    local camera = getCamera()
     if ts then
 		ts.Position = UDim2.new(0.5, 0, 0.5, 0)
 	end
 		
 	if not shiftEnabled then
-		if humanoid then humanoid.AutoRotate = true end
+		if humanoid then 
+		   humanoid.AutoRotate = true 
+		   humanoid.CameraOffset = Vector3.zero
+		end
 		return
 	end
 
@@ -815,18 +841,13 @@ RunService.RenderStepped:Connect(function()
 	local newCamPos = camera.CFrame.Position + worldOffset
 
 	-- สำคัญ: ใช้กล้องเดิมคง LookVector → มองขึ้น/ลงได้อิสระ
-	camera.CFrame = CFrame.new(newCamPos, newCamPos + camLook)
+	humanoid.CameraOffset = Vector3.new(2.3,0,0)
 end)
 
 --========================================================--
 -- เมื่อกดปุ่ม UI (shl)
 --========================================================--
-shl.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1
-	or input.UserInputType == Enum.UserInputType.Touch then
-		updateShiftLock(not shiftEnabled)
-	end
-end)
+
 
 --=========================--
 -- เล็ง 
@@ -834,9 +855,13 @@ end)
 
 local UserInputService = game:GetService("UserInputService")
 
-UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+
+	if gameProcessedEvent then
+		return
+	end
+
 	if input.UserInputType == Enum.UserInputType.MouseButton1
-	and not gameProcessedEvent
 	and aimEnabled then
 
 		PerformAimRaycast()
