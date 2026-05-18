@@ -1,4 +1,4 @@
--- So uhm just a script lol. 5.1
+-- So uhm just a script lol. 5.15
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -669,6 +669,27 @@ local function tween(obj, t, data)
 end
 
 --========================================================--
+-- อัปเดต ts (สถานะอย่างเดียว)
+--========================================================--
+local function updateTS()
+if shiftEnabled and UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+		UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+	end
+	
+	if not shiftEnabled then
+		ts.Visible = false
+		return
+	end
+
+	ts.Visible = true
+	if equippedTool then
+		ts.Image = TS_TOOL
+	else
+		ts.Image = TS_NO_TOOL
+	end
+end
+
+--========================================================--
 -- อัปเดต Character
 --========================================================--
 local function bindCharacter(char)
@@ -697,27 +718,6 @@ end
 
 bindCharacter(player.Character or player.CharacterAdded:Wait())
 player.CharacterAdded:Connect(bindCharacter)
-
---========================================================--
--- อัปเดต ts (สถานะอย่างเดียว)
---========================================================--
-local function updateTS()
-if shiftEnabled and UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
-		UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
-	end
-	
-	if not shiftEnabled then
-		ts.Visible = false
-		return
-	end
-
-	ts.Visible = true
-	if equippedTool then
-		ts.Image = TS_TOOL
-	else
-		ts.Image = TS_NO_TOOL
-	end
-end
 
 --========================================================--
 -- AIM SYSTEM
