@@ -1,4 +1,4 @@
--- So uhm just a script lol. 5
+-- So uhm just a script lol. 5.1
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -695,6 +695,9 @@ local function bindCharacter(char)
 	end)
 end
 
+bindCharacter(player.Character or player.CharacterAdded:Wait())
+player.CharacterAdded:Connect(bindCharacter)
+
 --========================================================--
 -- อัปเดต ts (สถานะอย่างเดียว)
 --========================================================--
@@ -744,6 +747,8 @@ end)
 -- เปิด/ปิด Shift Lock
 --========================================================--
 local function updateShiftLock(state)
+	local camera = getCamera()
+	
 	shiftEnabled = state
 	updateTS()
 
@@ -835,11 +840,12 @@ RunService.RenderStepped:Connect(function()
 		root.CFrame = CFrame.new(root.Position, root.Position + flat)
 	end
 
-	-- OFFSET SHIFT LOCK แบบ Roblox
+	--[[ OFFSET SHIFT LOCK แบบ Roblox
 	local offset = Vector3.new(2.3,0,0) -- ขยับขวา/ขึ้นเล็กน้อย
 	local worldOffset = camera.CFrame:VectorToWorldSpace(offset)
 	local newCamPos = camera.CFrame.Position + worldOffset
-
+    ]]
+		
 	-- สำคัญ: ใช้กล้องเดิมคง LookVector → มองขึ้น/ลงได้อิสระ
 	humanoid.CameraOffset = Vector3.new(2.3,0,0)
 end)
