@@ -1,4 +1,4 @@
--- Loader script 0.97
+-- Loader script 0.98
 
 ------------------------------------------------------------------------------------------
 
@@ -1624,6 +1624,56 @@ task.spawn(function()
 	end
 
 	player.CharacterAdded:Connect(bindCharacter)
+
+end)
+
+--====================================================--
+-- ANTI DEFAULT OVERRIDE
+-- Functions.lua กันดื้อ
+--====================================================--
+
+task.spawn(function()
+
+	while true do
+
+		if TARGET_SHIFT then
+
+			local current =
+				TARGET_SHIFT.Image
+
+			-- TOOL MODE
+			if isToolEnabled() then
+
+				local wanted =
+					getToolCrosshair()
+
+				if current == DEFAULT_TOOL_CROSSHAIR
+				and wanted ~= DEFAULT_TOOL_CROSSHAIR then
+
+					TARGET_SHIFT.Image =
+						wanted
+				end
+
+			-- NORMAL MODE
+			else
+
+				local wanted =
+					getNormalCrosshair()
+
+				if current == DEFAULT_CROSSHAIR
+				and wanted ~= DEFAULT_CROSSHAIR then
+
+					TARGET_SHIFT.Image =
+						wanted
+				end
+
+			end
+
+		end
+
+		task.wait(0.05)
+
+	end
 
 end)
 
