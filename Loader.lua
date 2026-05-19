@@ -1,4 +1,4 @@
--- Loader script 0.92
+-- Loader script 0.93
 
 ------------------------------------------------------------------------------------------
 
@@ -1421,15 +1421,23 @@ end)
 --// CROSSHAIR SYSTEM
 --// =====================================================
 
-local DEFAULT_CROSSHAIR = "rbxassetid://118624373632520"
-local DEFAULT_TOOL_CROSSHAIR = "rbxassetid://73868291781876"
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+
+local DEFAULT_CROSSHAIR =
+    "rbxassetid://118624373632520"
+
+local DEFAULT_TOOL_CROSSHAIR =
+    "rbxassetid://73868291781876"
 
 local TARGET_SHIFT = nil
 local CROSSHAIR_READY = false
 
---============================--
--- FIND TARGETSHIFT
---============================--
+--====================================================--
+-- FIND TARGETSHIFT (NON-BLOCKING)
+--====================================================--
 
 task.spawn(function()
 
@@ -1443,15 +1451,19 @@ task.spawn(function()
 
 			if menu then
 
-				local middle = menu:FindFirstChild("MiddleScreen")
+				local middle =
+					menu:FindFirstChild("MiddleScreen")
 
 				if middle then
 
-					local target = middle:FindFirstChild("TargetShift")
+					local target =
+						middle:FindFirstChild("TargetShift")
 
 					if target and target:IsA("ImageLabel") then
+
 						TARGET_SHIFT = target
 						CROSSHAIR_READY = true
+
 						break
 					end
 				end
@@ -1461,45 +1473,53 @@ task.spawn(function()
 		task.wait(0.2)
 	end
 
-	-- APPLY SAVED IMAGE
+	-- APPLY SAVED IMAGE ON LOAD
+	task.wait()
+
 	if TARGET_SHIFT then
-		TARGET_SHIFT.Image = Data.UI.CrosshairID or DEFAULT_CROSSHAIR
+
+		local char = player.Character
+
+		local toolEnabled = false
+
+		if char then
+			for _, v in ipairs(char:GetChildren()) do
+				if v:IsA("Tool") then
+					toolEnabled = true
+					break
+				end
+			end
+		end
+
+		if toolEnabled then
+
+			TARGET_SHIFT.Image =
+				Data.UI.ToolCrosshairID
+				or DEFAULT_TOOL_CROSSHAIR
+
+		else
+
+			TARGET_SHIFT.Image =
+				Data.UI.CrosshairID
+				or DEFAULT_CROSSHAIR
+		end
 	end
 
 end)
 
---============================--
--- APPLY FUNCTION
---============================--
+--====================================================--
+-- APPLY CROSSHAIR
+--====================================================--
 
-local function applyCrosshair(id)
-
-	if not id or id == "" or id == "0" then
-		id = DEFAULT_CROSSHAIR
-	end
-
-	Data.UI.CrosshairID = id
-
-	if CROSSHAIR_READY and TARGET_SHIFT then
-		TARGET_SHIFT.Image = id
-	end
-end
-
---============================--
--- APPLY TOOL CROSSHAIR
---============================--
-
-local function applyToolCrosshair()
+local function applyCrosshair()
 
 	if not TARGET_SHIFT then
 		return
 	end
 
-	local toolEnabled = false
-
-	local player = game:GetService("Players").LocalPlayer
-
 	local char = player.Character
+
+	local toolEnabled = false
 
 	if char then
 		for _, v in ipairs(char:GetChildren()) do
@@ -1511,40 +1531,49 @@ local function applyToolCrosshair()
 	end
 
 	if toolEnabled then
+
 		TARGET_SHIFT.Image =
-			Data.UI.ToolCrosshairID or DEFAULT_TOOL_CROSSHAIR
+			Data.UI.ToolCrosshairID
+			or DEFAULT_TOOL_CROSSHAIR
+
 	else
+
 		TARGET_SHIFT.Image =
-			Data.UI.CrosshairID or DEFAULT_CROSSHAIR
+			Data.UI.CrosshairID
+			or DEFAULT_CROSSHAIR
+
 	end
 end
 
---============================--
+--====================================================--
 -- TOOL WATCHER
---============================--
+--====================================================--
 
 task.spawn(function()
-
-	local player = game:GetService("Players").LocalPlayer
 
 	local function bindCharacter(char)
 
 		char.ChildAdded:Connect(function(v)
+
 			if v:IsA("Tool") then
 				task.wait()
-				applyToolCrosshair()
+				applyCrosshair()
 			end
+
 		end)
 
 		char.ChildRemoved:Connect(function(v)
+
 			if v:IsA("Tool") then
 				task.wait()
-				applyToolCrosshair()
+				applyCrosshair()
 			end
+
 		end)
 
 		task.wait()
-		applyToolCrosshair()
+		applyCrosshair()
+
 	end
 
 	if player.Character then
@@ -1555,90 +1584,114 @@ task.spawn(function()
 
 end)
 
+--====================================================--
+-- CUSTOM CROSSHAIR ID
+--====================================================--
+
 Txt(
-    "Custom Crosshair ID",
-    255,255,255,
+	"Custom Crosshair ID",
 
-    true, "Type Image ID",
+	255,255,255,
 
-    true, "Save",
+	true, "Type Image ID",
 
-    nil,
+	true, "Save",
 
-    function(box, btn)
+	nil,
 
-        local text = tostring(box.Text or "")
+	function(box, btn)
 
-        if text == "" or text == "0" then
+		local text = tostring(box.Text or "")
 
-            Data.UI.CrosshairID =
-                "rbxassetid://118624373632520"
+		if text == "" or text == "0" then
 
-        else
+			Data.UI.CrosshairID =
+				DEFAULT_CROSSHAIR
 
-            text = text:gsub("rbxassetid://","")
+		else
 
-            Data.UI.CrosshairID =
-                "rbxassetid://" .. text
+			text =
+				text:gsub("rbxassetid://","")
 
-        end
+			Data.UI.CrosshairID =
+				"rbxassetid://" .. text
 
-        saveData(Data)
+		end
 
-        btn.TextColor3 = Color3.fromRGB(0,255,0)
+		saveData(Data)
 
-        task.delay(0.35,function()
-            btn.TextColor3 = Color3.fromRGB(255,255,255)
-        end)
+		applyCrosshair()
 
-    end,
+		btn.TextColor3 =
+			Color3.fromRGB(0,255,0)
 
-    nil,
+		task.delay(0.35,function()
 
-    ins2
+			btn.TextColor3 =
+				Color3.fromRGB(255,255,255)
+
+		end)
+
+	end,
+
+	nil,
+
+	ins2
 )
 
+--====================================================--
+-- CUSTOM TOOL CROSSHAIR ID
+--====================================================--
+
 Txt(
-    "Custom Tool Crosshair ID",
-    255,255,255,
+	"Custom Tool Crosshair ID",
 
-    true, "Type Image ID",
+	255,255,255,
 
-    true, "Save",
+	true, "Type Image ID",
 
-    nil,
+	true, "Save",
 
-    function(box, btn)
+	nil,
 
-        local text = tostring(box.Text or "")
+	function(box, btn)
 
-        if text == "" or text == "0" then
+		local text = tostring(box.Text or "")
 
-            Data.UI.ToolCrosshairID =
-                "rbxassetid://73868291781876"
+		if text == "" or text == "0" then
 
-        else
+			Data.UI.ToolCrosshairID =
+				DEFAULT_TOOL_CROSSHAIR
 
-            text = text:gsub("rbxassetid://","")
+		else
 
-            Data.UI.ToolCrosshairID =
-                "rbxassetid://" .. text
+			text =
+				text:gsub("rbxassetid://","")
 
-        end
+			Data.UI.ToolCrosshairID =
+				"rbxassetid://" .. text
 
-        saveData(Data)
+		end
 
-        btn.TextColor3 = Color3.fromRGB(0,255,0)
+		saveData(Data)
 
-        task.delay(0.35,function()
-            btn.TextColor3 = Color3.fromRGB(255,255,255)
-        end)
+		applyCrosshair()
 
-    end,
+		btn.TextColor3 =
+			Color3.fromRGB(0,255,0)
 
-    nil,
+		task.delay(0.35,function()
 
-    ins2
+			btn.TextColor3 =
+				Color3.fromRGB(255,255,255)
+
+		end)
+
+	end,
+
+	nil,
+
+	ins2
 )
 
 
