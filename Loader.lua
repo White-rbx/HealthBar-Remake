@@ -1,4 +1,4 @@
--- Loader script 0.95
+-- Loader script 0.96
 
 ------------------------------------------------------------------------------------------
 
@@ -1418,7 +1418,7 @@ task.spawn(function()
 end)
 
 --// =====================================================
---// CROSSHAIR SYSTEM
+--// CROSSHAIR SYSTEM (FIXED)
 --// =====================================================
 
 local Players = game:GetService("Players")
@@ -1433,87 +1433,62 @@ local DEFAULT_TOOL_CROSSHAIR =
 	"rbxassetid://73868291781876"
 
 local TARGET_SHIFT = nil
-local CROSSHAIR_READY = false
 
 --====================================================--
--- FIND TARGETSHIFT (NON-BLOCKING)
+-- GET IMAGE FROM DATA
 --====================================================--
 
-task.spawn(function()
+local function getNormalCrosshair()
 
-	while not CROSSHAIR_READY do
+	local id = Data.UI.CrosshairID
 
-		local ES =
-			CoreGui:FindFirstChild("ExperienceSettings")
+	if not id
+	or id == ""
+	or id == "0" then
 
-		if ES then
-
-			local menu =
-				ES:FindFirstChild("Menu")
-
-			if menu then
-
-				local middle =
-					menu:FindFirstChild("MiddleScreen")
-
-				if middle then
-
-					local target =
-						middle:FindFirstChild("TargetShift")
-
-					if target
-					and target:IsA("ImageLabel") then
-
-						TARGET_SHIFT = target
-						CROSSHAIR_READY = true
-
-						break
-					end
-				end
-			end
-		end
-
-		task.wait(0.2)
+		return DEFAULT_CROSSHAIR
 	end
 
-	-- INITIAL APPLY
-	task.wait()
+	return id
+end
 
-	if TARGET_SHIFT then
+local function getToolCrosshair()
 
-		local char = player.Character
+	local id = Data.UI.ToolCrosshairID
 
-		local toolEnabled = false
+	if not id
+	or id == ""
+	or id == "0" then
 
-		if char then
-			for _, v in ipairs(char:GetChildren()) do
-				if v:IsA("Tool") then
-					toolEnabled = true
-					break
-				end
-			end
-		end
+		return DEFAULT_TOOL_CROSSHAIR
+	end
 
-		if toolEnabled then
+	return id
+end
 
-			TARGET_SHIFT.Image =
-				Data.UI.ToolCrosshairID
-				or DEFAULT_TOOL_CROSSHAIR
+--====================================================--
+-- TOOL CHECK
+--====================================================--
 
-		else
+local function isToolEnabled()
 
-			TARGET_SHIFT.Image =
-				Data.UI.CrosshairID
-				or DEFAULT_CROSSHAIR
+	local char = player.Character
 
+	if not char then
+		return false
+	end
+
+	for _, v in ipairs(char:GetChildren()) do
+		if v:IsA("Tool") then
+			return true
 		end
 	end
 
-end)
+	return false
+end
 
 --====================================================--
--- NORMAL APPLY
--- ไม่ overwrite image มั่ว
+-- APPLY CROSSHAIR
 --====================================================--
 
 local function applyCrosshair()
@@ -1522,135 +1497,52 @@ local function applyCrosshair()
 		return
 	end
 
-	local char = player.Character
-
-	local toolEnabled = false
-
-	if char then
-		for _, v in ipairs(char:GetChildren()) do
-			if v:IsA("Tool") then
-				toolEnabled = true
-				break
-			end
-		end
-	end
-
-	--================================================--
-	-- TOOL MODE
-	--================================================--
-
-	if toolEnabled then
-
-		local toolImage =
-			Data.UI.ToolCrosshairID
-
-		if not toolImage
-		or toolImage == ""
-		or toolImage == "0" then
-
-			toolImage =
-				DEFAULT_TOOL_CROSSHAIR
-
-		end
+	if isToolEnabled() then
 
 		TARGET_SHIFT.Image =
-			toolImage
-
-	--================================================--
-	-- NORMAL MODE
-	--================================================--
+			getToolCrosshair()
 
 	else
 
-		local normalImage =
-			Data.UI.CrosshairID
-
-		if not normalImage
-		or normalImage == ""
-		or normalImage == "0" then
-
-			normalImage =
-				DEFAULT_CROSSHAIR
-
-		end
-
 		TARGET_SHIFT.Image =
-			normalImage
+			getNormalCrosshair()
 
 	end
 end
 
 --====================================================--
--- FORCE REFRESH
--- save แล้ว apply ทันที
+-- FIND TARGETSHIFT
+-- NON-BLOCKING
 --====================================================--
 
-local function forceRefreshCrosshair()
+task.spawn(function()
 
-	if not TARGET_SHIFT then
-		return
-	end
+	while true do
 
-	local char = player.Character
+		local target =
+			CoreGui:FindFirstChild(
+				"TargetShift",
+				true
+			)
 
-	local toolEnabled = false
+		if target
+		and target:IsA("ImageLabel") then
 
-	if char then
-		for _, v in ipairs(char:GetChildren()) do
-			if v:IsA("Tool") then
-				toolEnabled = true
-				break
-			end
-		end
-	end
+			TARGET_SHIFT = target
 
-	--============================--
-	-- TOOL MODE
-	--============================--
+			-- APPLY ล่าสุดจาก DATA ทันที
+			applyCrosshair()
 
-	if toolEnabled then
-
-		local toolImage =
-			Data.UI.ToolCrosshairID
-
-		if not toolImage
-		or toolImage == ""
-		or toolImage == "0" then
-
-			toolImage =
-				DEFAULT_TOOL_CROSSHAIR
-
+			break
 		end
 
-		TARGET_SHIFT.Image =
-			toolImage
-
-	--============================--
-	-- NORMAL MODE
-	--============================--
-
-	else
-
-		local normalImage =
-			Data.UI.CrosshairID
-
-		if not normalImage
-		or normalImage == ""
-		or normalImage == "0" then
-
-			normalImage =
-				DEFAULT_CROSSHAIR
-
-		end
-
-		TARGET_SHIFT.Image =
-			normalImage
-
+		task.wait(0.2)
 	end
-end
+
+end)
 
 --====================================================--
--- TOOL WATCHER
+-- CHARACTER WATCHER
 --====================================================--
 
 task.spawn(function()
@@ -1660,11 +1552,8 @@ task.spawn(function()
 		char.ChildAdded:Connect(function(v)
 
 			if v:IsA("Tool") then
-
 				task.wait()
-
 				applyCrosshair()
-
 			end
 
 		end)
@@ -1672,17 +1561,13 @@ task.spawn(function()
 		char.ChildRemoved:Connect(function(v)
 
 			if v:IsA("Tool") then
-
 				task.wait()
-
 				applyCrosshair()
-
 			end
 
 		end)
 
 		task.wait()
-
 		applyCrosshair()
 
 	end
@@ -1736,12 +1621,11 @@ Txt(
 		end
 
 		saveData(Data)
-		applyCrosshair()
 
 		-- APPLY NOW
-		forceRefreshCrosshair()
+		applyCrosshair()
 
-		-- VISUAL CONFIRM
+		-- VISUAL
 		btn.TextColor3 =
 			Color3.fromRGB(0,255,0)
 
@@ -1800,12 +1684,11 @@ Txt(
 		end
 
 		saveData(Data)
-		applyCrosshair()
 
 		-- APPLY NOW
-		forceRefreshCrosshair()
+		applyCrosshair()
 
-		-- VISUAL CONFIRM
+		-- VISUAL
 		btn.TextColor3 =
 			Color3.fromRGB(0,255,0)
 
