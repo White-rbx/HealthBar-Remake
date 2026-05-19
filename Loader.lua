@@ -1,4 +1,4 @@
--- Loader script 0.93
+-- Loader script 0.94
 
 ------------------------------------------------------------------------------------------
 
@@ -1427,10 +1427,10 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 
 local DEFAULT_CROSSHAIR =
-    "rbxassetid://118624373632520"
+	"rbxassetid://118624373632520"
 
 local DEFAULT_TOOL_CROSSHAIR =
-    "rbxassetid://73868291781876"
+	"rbxassetid://73868291781876"
 
 local TARGET_SHIFT = nil
 local CROSSHAIR_READY = false
@@ -1443,11 +1443,13 @@ task.spawn(function()
 
 	while not CROSSHAIR_READY do
 
-		local ES = CoreGui:FindFirstChild("ExperienceSettings")
+		local ES =
+			CoreGui:FindFirstChild("ExperienceSettings")
 
 		if ES then
 
-			local menu = ES:FindFirstChild("Menu")
+			local menu =
+				ES:FindFirstChild("Menu")
 
 			if menu then
 
@@ -1459,7 +1461,8 @@ task.spawn(function()
 					local target =
 						middle:FindFirstChild("TargetShift")
 
-					if target and target:IsA("ImageLabel") then
+					if target
+					and target:IsA("ImageLabel") then
 
 						TARGET_SHIFT = target
 						CROSSHAIR_READY = true
@@ -1473,7 +1476,7 @@ task.spawn(function()
 		task.wait(0.2)
 	end
 
-	-- APPLY SAVED IMAGE ON LOAD
+	-- INITIAL APPLY
 	task.wait()
 
 	if TARGET_SHIFT then
@@ -1502,16 +1505,78 @@ task.spawn(function()
 			TARGET_SHIFT.Image =
 				Data.UI.CrosshairID
 				or DEFAULT_CROSSHAIR
+
 		end
 	end
 
 end)
 
 --====================================================--
--- APPLY CROSSHAIR
+-- NORMAL APPLY
+-- ไม่ overwrite image มั่ว
 --====================================================--
 
 local function applyCrosshair()
+
+	if not TARGET_SHIFT then
+		return
+	end
+
+	local current = TARGET_SHIFT.Image
+
+	local char = player.Character
+
+	local toolEnabled = false
+
+	if char then
+		for _, v in ipairs(char:GetChildren()) do
+			if v:IsA("Tool") then
+				toolEnabled = true
+				break
+			end
+		end
+	end
+
+	--================================================--
+	-- TOOL MODE
+	--================================================--
+
+	if toolEnabled then
+
+		if current == DEFAULT_TOOL_CROSSHAIR
+		or current == ""
+		or current == "0" then
+
+			TARGET_SHIFT.Image =
+				Data.UI.ToolCrosshairID
+				or DEFAULT_TOOL_CROSSHAIR
+
+		end
+
+	--================================================--
+	-- NORMAL MODE
+	--================================================--
+
+	else
+
+		if current == DEFAULT_CROSSHAIR
+		or current == ""
+		or current == "0" then
+
+			TARGET_SHIFT.Image =
+				Data.UI.CrosshairID
+				or DEFAULT_CROSSHAIR
+
+		end
+	end
+end
+
+--====================================================--
+-- FORCE REFRESH
+-- save แล้ว apply ทันที
+--====================================================--
+
+local function forceRefreshCrosshair()
 
 	if not TARGET_SHIFT then
 		return
@@ -1556,8 +1621,11 @@ task.spawn(function()
 		char.ChildAdded:Connect(function(v)
 
 			if v:IsA("Tool") then
+
 				task.wait()
+
 				applyCrosshair()
+
 			end
 
 		end)
@@ -1565,13 +1633,17 @@ task.spawn(function()
 		char.ChildRemoved:Connect(function(v)
 
 			if v:IsA("Tool") then
+
 				task.wait()
+
 				applyCrosshair()
+
 			end
 
 		end)
 
 		task.wait()
+
 		applyCrosshair()
 
 	end
@@ -1601,9 +1673,12 @@ Txt(
 
 	function(box, btn)
 
-		local text = tostring(box.Text or "")
+		local text =
+			tostring(box.Text or "")
 
-		if text == "" or text == "0" then
+		-- RESET
+		if text == ""
+		or text == "0" then
 
 			Data.UI.CrosshairID =
 				DEFAULT_CROSSHAIR
@@ -1611,7 +1686,10 @@ Txt(
 		else
 
 			text =
-				text:gsub("rbxassetid://","")
+				text:gsub(
+					"rbxassetid://",
+					""
+				)
 
 			Data.UI.CrosshairID =
 				"rbxassetid://" .. text
@@ -1620,8 +1698,10 @@ Txt(
 
 		saveData(Data)
 
-		applyCrosshair()
+		-- APPLY NOW
+		forceRefreshCrosshair()
 
+		-- VISUAL CONFIRM
 		btn.TextColor3 =
 			Color3.fromRGB(0,255,0)
 
@@ -1656,9 +1736,12 @@ Txt(
 
 	function(box, btn)
 
-		local text = tostring(box.Text or "")
+		local text =
+			tostring(box.Text or "")
 
-		if text == "" or text == "0" then
+		-- RESET
+		if text == ""
+		or text == "0" then
 
 			Data.UI.ToolCrosshairID =
 				DEFAULT_TOOL_CROSSHAIR
@@ -1666,7 +1749,10 @@ Txt(
 		else
 
 			text =
-				text:gsub("rbxassetid://","")
+				text:gsub(
+					"rbxassetid://",
+					""
+				)
 
 			Data.UI.ToolCrosshairID =
 				"rbxassetid://" .. text
@@ -1675,8 +1761,10 @@ Txt(
 
 		saveData(Data)
 
-		applyCrosshair()
+		-- APPLY NOW
+		forceRefreshCrosshair()
 
+		-- VISUAL CONFIRM
 		btn.TextColor3 =
 			Color3.fromRGB(0,255,0)
 
