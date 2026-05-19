@@ -1,4 +1,4 @@
--- Loader script 0.94
+-- Loader script 0.95
 
 ------------------------------------------------------------------------------------------
 
@@ -1522,8 +1522,6 @@ local function applyCrosshair()
 		return
 	end
 
-	local current = TARGET_SHIFT.Image
-
 	local char = player.Character
 
 	local toolEnabled = false
@@ -1543,15 +1541,20 @@ local function applyCrosshair()
 
 	if toolEnabled then
 
-		if current == DEFAULT_TOOL_CROSSHAIR
-		or current == ""
-		or current == "0" then
+		local toolImage =
+			Data.UI.ToolCrosshairID
 
-			TARGET_SHIFT.Image =
-				Data.UI.ToolCrosshairID
-				or DEFAULT_TOOL_CROSSHAIR
+		if not toolImage
+		or toolImage == ""
+		or toolImage == "0" then
+
+			toolImage =
+				DEFAULT_TOOL_CROSSHAIR
 
 		end
+
+		TARGET_SHIFT.Image =
+			toolImage
 
 	--================================================--
 	-- NORMAL MODE
@@ -1559,15 +1562,21 @@ local function applyCrosshair()
 
 	else
 
-		if current == DEFAULT_CROSSHAIR
-		or current == ""
-		or current == "0" then
+		local normalImage =
+			Data.UI.CrosshairID
 
-			TARGET_SHIFT.Image =
-				Data.UI.CrosshairID
-				or DEFAULT_CROSSHAIR
+		if not normalImage
+		or normalImage == ""
+		or normalImage == "0" then
+
+			normalImage =
+				DEFAULT_CROSSHAIR
 
 		end
+
+		TARGET_SHIFT.Image =
+			normalImage
+
 	end
 end
 
@@ -1595,17 +1604,47 @@ local function forceRefreshCrosshair()
 		end
 	end
 
+	--============================--
+	-- TOOL MODE
+	--============================--
+
 	if toolEnabled then
 
-		TARGET_SHIFT.Image =
+		local toolImage =
 			Data.UI.ToolCrosshairID
-			or DEFAULT_TOOL_CROSSHAIR
+
+		if not toolImage
+		or toolImage == ""
+		or toolImage == "0" then
+
+			toolImage =
+				DEFAULT_TOOL_CROSSHAIR
+
+		end
+
+		TARGET_SHIFT.Image =
+			toolImage
+
+	--============================--
+	-- NORMAL MODE
+	--============================--
 
 	else
 
-		TARGET_SHIFT.Image =
+		local normalImage =
 			Data.UI.CrosshairID
-			or DEFAULT_CROSSHAIR
+
+		if not normalImage
+		or normalImage == ""
+		or normalImage == "0" then
+
+			normalImage =
+				DEFAULT_CROSSHAIR
+
+		end
+
+		TARGET_SHIFT.Image =
+			normalImage
 
 	end
 end
@@ -1697,6 +1736,7 @@ Txt(
 		end
 
 		saveData(Data)
+		applyCrosshair()
 
 		-- APPLY NOW
 		forceRefreshCrosshair()
@@ -1760,6 +1800,7 @@ Txt(
 		end
 
 		saveData(Data)
+		applyCrosshair()
 
 		-- APPLY NOW
 		forceRefreshCrosshair()
