@@ -1,4 +1,4 @@
--- So uhm just a script lol. 5.2
+-- So uhm just a script lol. 5.21
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -785,7 +785,6 @@ end
 -- ปุ่ม shl
 --========================================================--
 shl.MouseButton1Click:Connect(function()
-	warn("[ ES DEBUG ]: Variable call 'shl' has been click!")
 	updateShiftLock(not shiftEnabled)
 end)
 
