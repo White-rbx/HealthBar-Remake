@@ -1,4 +1,4 @@
--- Loader script 0.96
+-- Loader script 0.97
 
 ------------------------------------------------------------------------------------------
 
@@ -1497,15 +1497,62 @@ local function applyCrosshair()
 		return
 	end
 
+	local current =
+		TARGET_SHIFT.Image
+
+	--================================================--
+	-- TOOL MODE
+	--================================================--
+
 	if isToolEnabled() then
 
-		TARGET_SHIFT.Image =
+		local newTool =
 			getToolCrosshair()
+
+		-- ถ้าปัจจุบันยังเป็น default
+		-- หรือเป็นค่าว่าง
+		-- ให้เปลี่ยนทันที
+
+		if current == DEFAULT_TOOL_CROSSHAIR
+		or current == ""
+		or current == "0" then
+
+			TARGET_SHIFT.Image =
+				newTool
+
+		-- ถ้า save ใหม่แล้ว
+		-- แต่ current ยังไม่ตรง
+		-- force update
+
+		elseif current ~= newTool then
+
+			TARGET_SHIFT.Image =
+				newTool
+
+		end
+
+	--================================================--
+	-- NORMAL MODE
+	--================================================--
 
 	else
 
-		TARGET_SHIFT.Image =
+		local newNormal =
 			getNormalCrosshair()
+
+		if current == DEFAULT_CROSSHAIR
+		or current == ""
+		or current == "0" then
+
+			TARGET_SHIFT.Image =
+				newNormal
+
+		elseif current ~= newNormal then
+
+			TARGET_SHIFT.Image =
+				newNormal
+
+		end
 
 	end
 end
