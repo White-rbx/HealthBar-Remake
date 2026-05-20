@@ -1,4 +1,4 @@
--- Loader script 0.98
+-- Loader script 0.99
 
 ------------------------------------------------------------------------------------------
 
@@ -861,16 +861,21 @@ Txt(
 
 -- background watcher (ไม่บล็อก)
 task.spawn(function()
-    while true do
-        if not MENU_INSTANCE then
-            local menu = tryFindMenu()
-            if menu then
-                MENU_INSTANCE = menu
-                applyHideMenu()
-            end
-        end
-        task.wait(0.25)
-    end
+	while true do
+		if not MENU_INSTANCE then
+			local menu =
+				findByPath(
+					CoreGui,
+					"ExperienceSettings.Menu"
+				)
+			if menu
+			and menu:IsA("ScreenGui") then
+				MENU_INSTANCE = menu
+				applyHideMenu()
+			end
+			end
+		task.wait(0.25)
+	end
 end)
 
 Txt(
@@ -1271,7 +1276,7 @@ local lowSwitchUI = Txt(
     nil,
     function(box, btn)
         btn.Text = "Finding Low Players Server..."
-        btn.TextColor3 = Color3.fromRGB(255,170,0)
+        btn.TextColor3 = Color3.fromRGB(255,255,0)
 
         local start = tick()
         local found = false
@@ -1414,7 +1419,7 @@ end
 
 -- apply ตอนโหลด
 task.spawn(function()
-    applyDraggable(Data.UI.DraggableUI)
+    applyDraggableUI(Data.UI.DraggableUI)
 end)
 
 --// =====================================================
