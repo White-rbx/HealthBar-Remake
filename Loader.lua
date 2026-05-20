@@ -1,4 +1,4 @@
--- Well 2.352
+-- Well 2.353
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -219,7 +219,7 @@ end)
 
 -- Location
 local CoreGui = game:GetService("CoreGui")
-local expsting = CoreGui:WaitForChild("TopBarApp")
+local expsting = CoreGui:FindFirstChild("TopBarApp")
     :WaitForChild("TopBarApp")
     :WaitForChild("UnibarLeftFrame")
     :WaitForChild("HealthBar")
