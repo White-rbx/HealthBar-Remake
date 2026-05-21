@@ -1,4 +1,4 @@
-local ver = " UIs 4.283 "
+local ver = " UIs 4.2832 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1263,26 +1263,32 @@ local function handleCommand(msg)
         return true
     end
     if lower:match("^/globalchat") then
-    	local t = msg:match("^/globalchat%s*(%S*)") or ""
-	    local newState = (t:upper() == "ON")
-
-    	-- 🔥 กัน spam toggle
-    	if GLOBAL_CHAT_ON == newState then
-    		safeTxt(user.Info, "Already "..tostring(newState),255,255,0)
-    		return true
-    	end
-
-    	GLOBAL_CHAT_ON = newState
-
-    	if GLOBAL_CHAT_ON then
-    		hookGlobalChat()
-    	else
-    		unhookGlobalChat()
-    	end
-
-    	safeTxt(user.Suc, "GlobalChat: "..tostring(GLOBAL_CHAT_ON), 0,255,0)
-    	return true
-    end
+	local arg =
+		(msg:match("^/globalchat%s+(%S+)") or ""):lower()
+	local state =
+		(arg == "on")
+	-- prevent spam toggle
+	if GLOBAL_CHAT_ON == state then
+		safeTxt(
+			user.Info,
+			"GlobalChat already "..tostring(state),
+			255,255,0
+		)
+		return true
+	end
+	GLOBAL_CHAT_ON = state
+	if state then
+		hookGlobalChat()
+	else
+		unhookGlobalChat()
+	end
+	safeTxt(
+		user.Suc,
+		"GlobalChat: "..tostring(state),
+		0,255,0
+	)
+	return true
+end
     if lower:match("^/spychat") then
         local t = msg:match("^/spychat%s*(%S*)") or ""
         SPY_CHAT_ON = (t:upper() == "ON")
