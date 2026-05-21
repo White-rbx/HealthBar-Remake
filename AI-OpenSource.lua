@@ -1,4 +1,4 @@
-local ver = " UIs 4.281 "
+local ver = " UIs 4.282 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -348,7 +348,7 @@ Example
  txt(user.Sys, "", 255, 90, 0) -- Orange
 ]]
 
--- functions
+--[[ functions
 local user = {
     plr  = "[ You ]: ",
     chat = "[ AI ]: ",
@@ -358,6 +358,20 @@ local user = {
     Info  = "[ Information ]: ",
     Nill = "",
     Sys = "[ System ]: ",
+	Nil = "",
+}
+]]
+
+-- ========== user labels & safe text function (already exist in user code, but we keep fallback) ==========
+local user = {
+    plr  = "[ 👤 ]: ",
+    chat = "[ 🤖 ]: ",
+    Error = "[ ❌ ]: ",
+    Suc   = "[ ✅ ]: ",
+    Warn  = "[ ⚠️ ]: ",
+    Info  = "[ ℹ️ ]: ",
+    Nill = "",
+    Sys = "[ 🖥️ ]: ",
 	Nil = "",
 }
 
@@ -502,19 +516,6 @@ local UI = {
 }
 -- convenience locals bound to UI fields for readability (will update after hook)
 local ch, se, tb, si, st, con, con2
-
--- ========== user labels & safe text function (already exist in user code, but we keep fallback) ==========
-local user = {
-    plr  = "[ You ]: ",
-    chat = "[ AI ]: ",
-    Error = "[ Error ]: ",
-    Suc   = "[ Success ]: ",
-    Warn  = "[ Warning ]: ",
-    Info  = "[ Information ]: ",
-    Nill = "",
-    Sys = "[ System ]: ",
-	Nil = "",
-}
 
 -- assume txt(user, text, r,g,b) already exists in global; if not provide fallback
 if type(txt) ~= "function" then
