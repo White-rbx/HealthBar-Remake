@@ -1,4 +1,4 @@
-local ver = " UIs 4.282 "
+local ver = " UIs 4.283 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -839,153 +839,290 @@ local TextChatService = game:GetService("TextChatService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local GLOBAL_CHAT_ON = false
 local SPY_CHAT_ON = false
+--[[local CHAT_COLOR_MODE = "RANDOM"]]
+
+--// =====================================================
+--// GLOBAL CHAT SYSTEM
+--// =====================================================
+
+local GLOBAL_CHAT_ON = false
 local GLOBAL_CONN_OLD = nil
 local GLOBAL_CONN_NEW = nil
-local CHAT_COLOR_MODE = "RANDOM"
 
 local lastMsg = ""
 
+-- =====================================================
+-- DUPLICATE CHECK
+-- =====================================================
+
 local function isDuplicate(name, text)
-	local key = name..":"..text
-	if key == lastMsg then return true end
+
+	local key = tostring(name)..":"..tostring(text)
+
+	if key == lastMsg then
+		return true
+	end
+
 	lastMsg = key
+
 	return false
+
 end
+
+-- =====================================================
+-- FIND PLAYER
+-- =====================================================
 
 local function getPlayerByName(name)
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr.Name == name or plr.DisplayName == name then
+
+	for _,plr in ipairs(Players:GetPlayers()) do
+
+		if plr.Name == name then
 			return plr
 		end
+
+		if plr.DisplayName == name then
+			return plr
+		end
+
 	end
+
+	return nil
+
 end
 
+-- =====================================================
+-- RANDOM COLOR
+-- =====================================================
+
 local function getRandomColor(name)
+
 	local seed = 0
-	for i = 1, #name do
-		seed += string.byte(name, i)
+
+	for i = 1,#name do
+		seed += string.byte(name,i)
 	end
 
 	local r = (seed * 123) % 200 + 55
 	local g = (seed * 321) % 200 + 55
 	local b = (seed * 213) % 200 + 55
 
-	return r, g, b
+	return r,g,b
+
 end
 
+-- =====================================================
+-- BOOST COLOR
+-- =====================================================
+
 local function boostColor(r,g,b)
+
 	local maxVal = math.max(r,g,b)
 
 	if maxVal < 120 and maxVal > 0 then
+
 		local scale = 120 / maxVal
-		r = math.clamp(r * scale, 0, 255)
-		g = math.clamp(g * scale, 0, 255)
-		b = math.clamp(b * scale, 0, 255)
+
+		r = math.clamp(r * scale,0,255)
+		g = math.clamp(g * scale,0,255)
+		b = math.clamp(b * scale,0,255)
+
 	end
 
 	return r,g,b
+
 end
+
+-- =====================================================
+-- CHAT COLOR
+-- =====================================================
 
 local function getChatColor(name)
 
-	if CHAT_COLOR_MODE == "CUSTOM" then
-		return 0,255,255
-	end
+	local r,g,b = getRandomColor(name)
 
-	if CHAT_COLOR_MODE == "RANDOM" then
-		local r,g,b = getRandomColor(name)
-		return boostColor(r,g,b)
-	end
+	return boostColor(r,g,b)
 
-	if CHAT_COLOR_MODE == "TEAM" then
-		local plr = getPlayerByName(name)
-
-		if plr and plr.Team and plr.Team.TeamColor then
-			local c = plr.Team.TeamColor.Color
-			local r,g,b =
-				math.floor(c.R * 255),
-				math.floor(c.G * 255),
-				math.floor(c.B * 255)
-			return boostColor(r,g,b)
-		end
-
-		local r,g,b = getRandomColor(name)
-		return boostColor(r,g,b)
-	end
-
-	return 200,200,200
 end
 
-local function unhookGlobalChat()
-	if GLOBAL_CONN_OLD then
-		GLOBAL_CONN_OLD:Disconnect()
-		GLOBAL_CONN_OLD = nil
+-- =====================================================
+-- FORMAT PLAYER TAG
+-- =====================================================
+
+local function formatPlayerTag(player, fallbackName)
+
+	if player then
+
+		local username = player.Name
+		local nickname = player.DisplayName
+
+		-- same nickname
+		if username == nickname then
+			return "[🗨️] [@"..username.."]"
+		end
+
+		return "[🗨️] [@"..username.."] ["..nickname.."]"
+
 	end
+
+	return "[🗨️] [@"..tostring(fallbackName).."]"
+
+end
+
+-- =====================================================
+-- UNHOOK
+-- =====================================================
+
+local function unhookGlobalChat()
 
 	if GLOBAL_CONN_NEW then
 		GLOBAL_CONN_NEW:Disconnect()
 		GLOBAL_CONN_NEW = nil
 	end
+
+	if GLOBAL_CONN_OLD then
+		GLOBAL_CONN_OLD:Disconnect()
+		GLOBAL_CONN_OLD = nil
+	end
+
 end
+
+-- =====================================================
+-- HOOK
+-- =====================================================
 
 local function hookGlobalChat()
 
 	unhookGlobalChat()
 
+	-- =========================================
+	-- NEW CHAT SYSTEM
+	-- =========================================
+
 	pcall(function()
-		GLOBAL_CONN_NEW = TextChatService.MessageReceived:Connect(function(msg)
 
-			if not GLOBAL_CHAT_ON then return end
-			if not msg.TextSource then return end
+		GLOBAL_CONN_NEW =
+			TextChatService.MessageReceived:Connect(function(msg)
 
-			local name = msg.TextSource.Name
-			local text = msg.Text or ""
+			if not GLOBAL_CHAT_ON then
+				return
+			end
 
-			if name == Players.LocalPlayer.Name then return end
-			if isDuplicate(name, text) then return end
+			if not msg.TextSource then
+				return
+			end
 
-			local player = Players:GetPlayerByUserId(msg.TextSource.UserId)
+			local text = tostring(msg.Text or "")
+
+			local userId = msg.TextSource.UserId
+			local username = msg.TextSource.Name
+
+			local player =
+				Players:GetPlayerByUserId(userId)
+
+			-- ignore local player
+			if player == Players.LocalPlayer then
+				return
+			end
+
+			-- duplicate
+			if isDuplicate(username,text) then
+				return
+			end
 
 			local r,g,b
+
 			if player then
 				r,g,b = getChatColor(player.Name)
 			else
-				r,g,b = getChatColor(name)
+				r,g,b = getChatColor(username)
 			end
+
+			local tag =
+				formatPlayerTag(player,username)
 
 			safeTxt(
 				user.Nill,
-				"[GLOBAL] ["..name.."]: "..text,
+				tag..": "..text,
 				r,g,b
 			)
 
 		end)
+
 	end)
+
+	-- =========================================
+	-- OLD CHAT SYSTEM
+	-- =========================================
 
 	pcall(function()
 
-		local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-		if not chatEvents then return end
+		local chatEvents =
+			ReplicatedStorage:FindFirstChild(
+				"DefaultChatSystemChatEvents"
+			)
 
-		local event = chatEvents:FindFirstChild("OnMessageDoneFiltering")
-		if not event then return end
+		if not chatEvents then
+			return
+		end
 
-		GLOBAL_CONN_OLD = event.OnClientEvent:Connect(function(msgData)
+		local event =
+			chatEvents:FindFirstChild(
+				"OnMessageDoneFiltering"
+			)
 
-			if not GLOBAL_CHAT_ON then return end
-			if type(msgData) ~= "table" then return end
-			if not msgData.FromSpeaker or not msgData.Message then return end
+		if not event then
+			return
+		end
 
-			if msgData.FromSpeaker == Players.LocalPlayer.Name then return end
-			if isDuplicate(msgData.FromSpeaker, msgData.Message) then return end
+		GLOBAL_CONN_OLD =
+			event.OnClientEvent:Connect(function(msgData)
 
-			local r,g,b = getChatColor(msgData.FromSpeaker)
+			if not GLOBAL_CHAT_ON then
+				return
+			end
+
+			if type(msgData) ~= "table" then
+				return
+			end
+
+			if not msgData.FromSpeaker then
+				return
+			end
+
+			if not msgData.Message then
+				return
+			end
+
+			local username =
+				tostring(msgData.FromSpeaker)
+
+			local text =
+				tostring(msgData.Message)
+
+			local player =
+				getPlayerByName(username)
+
+			-- ignore local player
+			if player == Players.LocalPlayer then
+				return
+			end
+
+			-- duplicate
+			if isDuplicate(username,text) then
+				return
+			end
+
+			local r,g,b =
+				getChatColor(username)
+
+			local tag =
+				formatPlayerTag(player,username)
 
 			safeTxt(
 				user.Nill,
-				"[GLOBAL] ["..msgData.FromSpeaker.."]: "..msgData.Message,
+				tag..": "..text,
 				r,g,b
 			)
 
