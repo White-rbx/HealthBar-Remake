@@ -1,4 +1,4 @@
-local ver = " UIs 4.2851 "
+local ver = " UIs 4.2852 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -175,7 +175,7 @@ ins.Parent = gpt
 -- text
 local t = Instance.new("Frame")
 t.Name = "Text"
-t.Position = UDim2.new(0.1,0,1,-40)
+t.Position = UDim2.new(0.03,0,1,-40)
 t.Size = UDim2.new(0.8,0,0,40)
 t.BackgroundTransparency = 0.8
 t.BackgroundColor3 = Color3.fromRGB(255,255,255)
@@ -315,7 +315,7 @@ Corner(0, 8, se)
 -- clear 
 local clrse = Instance.new("TextButton")
 clrse.Name = "Clear"
-clrse.Position = UDim2.new(-0.1,6,0.08,0)
+clrse.Position = UDim2.new(1.1,0,0.08,0)
 clrse.Size = UDim2.new(0,35,0,35)
 clrse.Text = "X"
 clrse.TextScaled = true
