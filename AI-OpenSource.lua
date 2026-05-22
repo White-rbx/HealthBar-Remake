@@ -1,4 +1,4 @@
-local ver = " UIs 4.2832 "
+local ver = " UIs 4.285 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -15,6 +15,7 @@ local update = [[
 (:14/4/2026 | 1:52 am - 2:27 am: B) Buff from 99+ to 9999+ in new message system.
 (:15/4/2026 | 3:29 pm: A) Add Colorful to message and changed BackgroundTransparency to 0.85
 (:4/5/2026 | 5:10 am: F) Fixed AI ChatGPT Response.
+(:23/5/2026 | 1:45 am: R) Re-gui to make easier to use.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -174,8 +175,8 @@ ins.Parent = gpt
 -- text
 local t = Instance.new("Frame")
 t.Name = "Text"
-t.Position = UDim2.new(0,0,1,-40)
-t.Size = UDim2.new(1,0,0,40)
+t.Position = UDim2.new(0.1,0,1,-40)
+t.Size = UDim2.new(0.8,0,0,40)
 t.BackgroundTransparency = 0.8
 t.BackgroundColor3 = Color3.fromRGB(255,255,255)
 t.Active = false
@@ -282,13 +283,14 @@ st.Visible = false
 local ch = Instance.new("TextBox")
 ch.Name = "chat"
 ch.Position = UDim2.new(0.02,0,0.02,0)
-ch.Size = UDim2.new(0.8,0,0.96,0)
+ch.Size = UDim2.new(0.965,0,0.96,0)
 ch.BackgroundTransparency = 1
 ch.TextColor3 = Color3.fromRGB(255,255,255)
 ch.RichText = true
+ch.TextScaled = true
 ch.Text = ""
-ch.PlaceholderText = "Type /Help or Say something..."
-ch.TextSize = 16
+ch.PlaceholderText = "Type /Help to show all commands or Say something..."
+-- ch.TextSize = 16
 ch.TextWrap = true
 ch.TextWrapped = true
 ch.TextXAlignment = Enum.TextXAlignment.Left
@@ -299,25 +301,47 @@ ch.Parent = t
 -- send
 local se = Instance.new("TextButton")
 se.Name = "Send"
-se.Position = UDim2.new(0.932,0,0.08,0)
+se.Position = UDim2.new(1,6,0.08,0)
 se.Size = UDim2.new(0,35,0,35)
-se.Text = "→"
+se.Text = "✓"
 se.TextScaled = true
 se.TextColor3 = Color3.fromRGB(255,255,255)
-se.BackgroundTransparency = 1
+se.BackgroundColor3 = Color3.fromRGB(0,170,255)
+se.BackgroundTransparency = 0.5
 se.Parent = t
+Stroke(se, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+-- clear 
+local clrse = Instance.new("TextButton")
+clrse.Name = "Clear"
+clrse.Position = UDim2.new(-0.6,-6,0.08,0)
+clrse.Size = UDim2.new(0,35,0,35)
+clrse.Text = "X"
+clrse.TextScaled = true
+clrse.TextColor3 = Color3.fromRGB(255,255,255)
+clrse.BackgroundColor3 = Color3.fromRGB(255,0,0)
+clrse.BackgroundTransparency = 0.5
+clrse.Parent = t
+Stroke(clrse, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+clrse.MouseButton1Click:Connect(function()
+	ch.Text = ""
+end)
 
 -- ScrollingFrame 
 local si = Instance.new("ScrollingFrame")
 si.Name = "ChatLogs"
 si.Position = UDim2.new(0,0,0.13,0)
 si.Size = UDim2.new(1,0,0.75,0)
-si.BackgroundTransparency = 1
+si.BackgroundTransparency = 0.5
+si.BackgroundColor3 = Color3.new(0,0,0)
 si.ScrollingDirection = Enum.ScrollingDirection.Y
 si.AutomaticCanvasSize = Enum.AutomaticSize.Y
 si.CanvasSize = UDim2.new(0,0,0,0)
 si.Parent = ins
 ListLayout(si, 0, 5, HLeft, VTop, SLayout, FillV)
+Corner(0, 8, si)
+Stroke(si, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
 local newmg = Instance.new("TextLabel")
 newmg.Name = "NewMessage"
