@@ -1,4 +1,4 @@
-local ver = " UIs 4.2852 "
+local ver = " UIs 4.2853 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -15,7 +15,8 @@ local update = [[
 (:14/4/2026 | 1:52 am - 2:27 am: B) Buff from 99+ to 9999+ in new message system.
 (:15/4/2026 | 3:29 pm: A) Add Colorful to message and changed BackgroundTransparency to 0.85
 (:4/5/2026 | 5:10 am: F) Fixed AI ChatGPT Response.
-(:23/5/2026 | 1:45 am: R) Re-gui to make easier to use.
+(:23/5/2026 | 1:45 am: R) Re-gui to make easier to use, and added Clear button!
+(:23/5/2026 | 2:06 am: F) Fixed button position.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -315,7 +316,7 @@ Corner(0, 8, se)
 -- clear 
 local clrse = Instance.new("TextButton")
 clrse.Name = "Clear"
-clrse.Position = UDim2.new(1.1,0,0.08,0)
+clrse.Position = UDim2.new(1,48,0.08,0)
 clrse.Size = UDim2.new(0,35,0,35)
 clrse.Text = "X"
 clrse.TextScaled = true
