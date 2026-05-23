@@ -1,4 +1,4 @@
-local ver = " UIs 4.2853 "
+local ver = " UIs 4.2863 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -17,6 +17,7 @@ local update = [[
 (:4/5/2026 | 5:10 am: F) Fixed AI ChatGPT Response.
 (:23/5/2026 | 1:45 am: R) Re-gui to make easier to use, and added Clear button!
 (:23/5/2026 | 2:06 am: F) Fixed button position.
+(:23/5/2026 | -:-- --: U) Upgrade gemini with 3.1 flash lite. Added /geminiswitchmodel and /gptswitchmodel
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -402,6 +403,50 @@ local user = {
 	Nil = "",
 }
 
+local function richify(text)
+
+	text = tostring(text)
+
+	-- code block
+	text = text:gsub("```([%s%S]-)```", function(code)
+		return '<font face="Code"><font color="rgb(255,200,120)">'..
+			code..
+		'</font></font>'
+	end)
+
+	-- bold + italic
+	text = text:gsub("%*%*%*([%s%S]-)%*%*%*", "<b><i>%1</i></b>")
+
+	-- bold
+	text = text:gsub("%*%*([%s%S]-)%*%*", "<b>%1</b>")
+
+	-- italic
+	text = text:gsub("%*([%s%S]-)%*", "<i>%1</i>")
+
+	-- underline
+	text = text:gsub("_([%s%S]-)_", "<u>%1</u>")
+
+	-- strikethrough
+	text = text:gsub("%-([%s%S]-)%-", "<s>%1</s>")
+
+	-- big header
+	text = text:gsub("^# ([^\n]+)",
+		'<font size="28"><b>%1</b></font>'
+	)
+
+	-- small text
+	text = text:gsub("^%-# ([^\n]+)",
+		'<font size="12">%1</font>'
+	)
+
+	-- link color
+	text = text:gsub("(https?://[%w-_%.%?%.:/%+=&]+)", function(url)
+		return '<font color="rgb(80,170,255)"><u>'..url..'</u></font>'
+	end)
+
+	return text
+end
+
 -- ChatLogs Line
 local function txt(user, text, R, G, B)
     local cha = Instance.new("TextLabel")
@@ -411,7 +456,7 @@ local function txt(user, text, R, G, B)
     cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     cha.BackgroundTransparency = 0.85
 	cha.BackgroundColor3 = Color3.fromRGB(255,255,255)
-    cha.Text = tostring(user) .. tostring(text)
+    cha.Text = richify(tostring(user) .. tostring(text))
     cha.TextSize = 16
     cha.RichText = true
     cha.TextWrapped = true
@@ -493,6 +538,26 @@ local GEMINI_PRESETS = {
 	MASTER = {mt = 2048, t = 0.9},
 }
 
+--// =========================================
+--// MODELS
+--// =========================================
+
+local OPENAI_MODELS = {
+	FREE = "gpt-4o-mini",
+	FAST = "gpt-5-mini",
+	SMART = "gpt-5",
+	THINK = "o4-mini",
+}
+
+local GEMINI_MODELS = {
+	FREE = "gemini-2.5-flash-lite",
+	FAST = "gemini-3.1-flash-lite",
+	SMART = "gemini-2.5-flash",
+	THINK = "gemini-2.5-pro",
+}
+
+local currentGeminiModel = "FAST"
+
 -- ========== SERVICES & UTIL ==========
 local CoreGui = game:GetService("CoreGui")
 local GuiService = game:GetService("GuiService")
@@ -561,11 +626,15 @@ local function safeTxt(u, t, r,g,b)
 end
 
 -- ========== STATE ==========
-local currentProvider = nil -- "openai" | "gemini" | "custom"
+-- ========== STATE ==========
+local currentProvider = nil
 local currentApiKey = nil
 local currentCustomUrl = nil
 local currentCustomAuth = nil
-local currentModel = "gpt-4o-mini" -- default for OpenAI branch
+-- model state
+local currentOpenAIModel = "FREE"
+local currentGeminiModel = "FAST"
+-- token presets
 local currentPresetGPT = "FREE"
 local currentPresetGemini = "FREE"
 
@@ -644,7 +713,12 @@ local function endpointsFor(provider)
     provider = tostring(provider or "openai"):lower()
     if provider == "gemini" then
         return {
-            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+            url =
+	"https://generativelanguage.googleapis.com/v1beta/models/"
+	..
+	GEMINI_MODELS[currentGeminiModel]
+	..
+	":generateContent",
             makeHeaders = function(key)
                 return { ["Content-Type"] = "application/json", ["x-goog-api-key"] = key }
             end,
@@ -804,8 +878,10 @@ local HELP_TEXT = [=[
 /CheckURLStatus [URL] - HEAD request to URL
 /CheckSYN - check syn.request availability
 /EnableUSLD - enable unknown-language debug printing (NOT WORKING)
-/GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER]
-/GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER]
+/GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER] - Change Text limit
+/GPTSwitchModel [FREE/FAST/SMART/THINK] - Change Text limit
+/GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER] - Change model
+/GEMINISwitchModel [FREE/FAST/SMART/THINK] - Change model
 /ResetRateLimit or /ReRateLimit - resets local queue/backoff
 /DumpStatus - prints current state
 /InstanceTool ("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]
@@ -1266,6 +1342,28 @@ local function handleCommand(msg)
         else safeTxt(user.Error, "Usage: /GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER]",255,0,0) end
         return true
     end
+	if lower:match("^/gptswitchmodel") then
+	local choice =
+		(msg:match("^/gptswitchmodel%s+(%S+)") or "")
+		:upper()
+	if OPENAI_MODELS[choice] then
+		currentOpenAIModel = choice
+		safeTxt(
+			user.Suc,
+			"OpenAI model: "
+			..
+			tostring(OPENAI_MODELS[choice]),
+			0,255,0
+		)
+		else
+		safeTxt(
+			user.Error,
+			"Usage: /GPTSwitchModel [FREE/FAST/SMART/THINK]",
+			255,0,0
+		)
+		end
+	return true
+	end
     if lower:match("^/geminiswitch") then
         local choice = msg:match("^/geminiswitch%s+(%S+)")
         if choice and GEMINI_PRESETS[choice:upper()] then
@@ -1274,6 +1372,28 @@ local function handleCommand(msg)
         else safeTxt(user.Error, "Usage: /GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER]",255,0,0) end
         return true
     end
+	if lower:match("^/geminiswitchmodel") then
+	local choice =
+		(msg:match("^/geminiswitchmodel%s+(%S+)") or "")
+		:upper()
+	if GEMINI_MODELS[choice] then
+		currentGeminiModel = choice
+		safeTxt(
+			user.Suc,
+			"Gemini model: "
+			..
+			tostring(GEMINI_MODELS[choice]),
+			0,255,0
+		)
+		else
+		safeTxt(
+			user.Error,
+			"Usage: /GeminiSwitchModel [FREE/FAST/SMART/THINK]",
+			255,0,0
+		)
+		end
+	return true
+end
     if lower:match("^/resetratelimit") or lower:match("^/reratelimit") then
         requestQueue = {}
         isProcessingQueue = false
