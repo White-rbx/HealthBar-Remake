@@ -1,4 +1,4 @@
-local ver = " UIs 5.21 "
+local ver = " UIs 5.22 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1056,7 +1056,7 @@ local function showNotes()
 
 	if #notes.notes <= 0 then
 
-		safeTxt(
+		txt(
 			user.Info,
 			"No notes saved",
 			255,255,0
@@ -1068,7 +1068,7 @@ local function showNotes()
 
 	for i,v in ipairs(notes.notes) do
 
-		safeTxt(
+		txt(
 			user.Nill,
 			"[NOTE "..i.."] "
 			..
@@ -1088,7 +1088,7 @@ local function showMemories()
 
 	local mem = loadMemories()
 
-	safeTxt(
+	txt(
 		user.Info,
 		"=== SESSION MEMORIES ===",
 		0,170,255
@@ -1096,7 +1096,7 @@ local function showMemories()
 
 	for i,v in ipairs(sessionMemories) do
 
-		safeTxt(
+		txt(
 			user.Nill,
 			"[SESSION "..i.."] "
 			..
@@ -1106,7 +1106,7 @@ local function showMemories()
 
 	end
 
-	safeTxt(
+	txt(
 		user.Info,
 		"=== GLOBAL MEMORIES ===",
 		255,170,0
@@ -1114,7 +1114,7 @@ local function showMemories()
 
 	for i,v in ipairs(mem.memoriesGlobal) do
 
-		safeTxt(
+		txt(
 			user.Nill,
 			"[GLOBAL "..i.."] "
 			..
