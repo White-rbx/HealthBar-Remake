@@ -1,4 +1,4 @@
-local ver = " UIs 4.2878 "
+local ver = " UIs 4.5 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -18,6 +18,7 @@ local update = [[
 (:23/5/2026 | 1:45 am: R) Re-gui to make easier to use, and added Clear button!
 (:23/5/2026 | 2:06 am: F) Fixed button position.
 (:23/5/2026 | 6:59 pm: U) Upgrade gemini with 3.1 flash lite. Added /geminiswitchmodel and /gptswitchmodel
+(:23/5/2026 | 8:56 pm: A) Added memory for AI to remember what you chatting! also added 5 commands.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -611,6 +612,238 @@ end)
     return cha
 end
 
+--// =========================================  
+--// AI STORAGE SYSTEM  
+--// =========================================  
+  
+local HttpService =  
+	game:GetService("HttpService")  
+  
+-- existing folder  
+local ESFolder = "ExperienceSettings/"  
+  
+-- AI folders  
+local AIFolder =  
+	ESFolder .. "AI-Thinking/"  
+  
+local ImageFolder =  
+	AIFolder .. "ImageGenerative/"  
+  
+-- =========================================  
+-- MAKE FOLDER  
+-- =========================================  
+  
+local function makeFolder(path)  
+  
+	if not isfolder(path) then  
+		makefolder(path)  
+	end  
+  
+end  
+  
+makeFolder(AIFolder)  
+makeFolder(ImageFolder)  
+  
+-- =========================================  
+-- JSON CREATE  
+-- =========================================  
+  
+local function createJSON(path,defaultTable)  
+  
+	if not isfile(path) then  
+  
+		writefile(  
+			path,  
+			HttpService:JSONEncode(defaultTable)  
+		)  
+  
+	end  
+  
+end  
+  
+-- =========================================  
+-- FILE PATHS  
+-- =========================================  
+  
+local AI_MEMORY_PATH =  
+	AIFolder .. "AImemories.json"  
+  
+local NOTE_PATH =  
+	AIFolder .. "Note.json"  
+  
+-- =========================================  
+-- CREATE FILES  
+-- =========================================  
+  
+createJSON(  
+	AI_MEMORY_PATH,  
+	{  
+		memories = {}  
+	}  
+)  
+  
+createJSON(  
+	NOTE_PATH,  
+	{  
+		notes = {}  
+	}  
+)  
+  
+--// =========================================  
+--// MEMORY SYSTEM  
+--// =========================================  
+  
+local function loadMemories()  
+  
+	local ok,data = pcall(function()  
+  
+		return HttpService:JSONDecode(  
+			readfile(AI_MEMORY_PATH)  
+		)  
+  
+	end)  
+  
+	if ok and type(data) == "table" then  
+  
+		data.memories =  
+			data.memories or {}  
+  
+		return data  
+  
+	end  
+  
+	return {  
+		memories = {}  
+	}  
+  
+end  
+  
+local function saveMemories(tbl)  
+  
+	writefile(  
+		AI_MEMORY_PATH,  
+		HttpService:JSONEncode(tbl)  
+	)  
+  
+end  
+  
+local function remember(text)  
+  
+	local mem = loadMemories()  
+  
+	table.insert(  
+		mem.memories,  
+		{  
+			text = tostring(text),  
+			time = os.time()  
+		}  
+	)  
+  
+	saveMemories(mem)  
+  
+end  
+  
+local function clearMemories()  
+  
+	saveMemories({  
+		memories = {}  
+	})  
+  
+end  
+  
+local function buildMemoryPrompt(prompt)  
+  
+	local memories =  
+		loadMemories()  
+  
+	local memoryText = ""  
+  
+	for i,v in ipairs(memories.memories) do  
+  
+		memoryText ..=  
+			"- "  
+			..  
+			tostring(v.text)  
+			..  
+			"\n"  
+  
+	end  
+  
+	return  
+		"MEMORIES:\n"  
+		..  
+		memoryText  
+		..  
+		"\nUSER:\n"  
+		..  
+		tostring(prompt)  
+  
+end  
+  
+--// =========================================  
+--// NOTE SYSTEM  
+--// =========================================  
+  
+local function loadNotes()  
+  
+	local ok,data = pcall(function()  
+  
+		return HttpService:JSONDecode(  
+			readfile(NOTE_PATH)  
+		)  
+  
+	end)  
+  
+	if ok and type(data) == "table" then  
+  
+		data.notes =  
+			data.notes or {}  
+  
+		return data  
+  
+	end  
+  
+	return {  
+		notes = {}  
+	}  
+  
+end  
+  
+local function saveNotes(tbl)  
+  
+	writefile(  
+		NOTE_PATH,  
+		HttpService:JSONEncode(tbl)  
+	)  
+  
+end  
+  
+local function addNote(text)  
+  
+	local notes =  
+		loadNotes()  
+  
+	table.insert(  
+		notes.notes,  
+		{  
+			text = tostring(text),  
+			time = os.time()  
+		}  
+	)  
+  
+	saveNotes(notes)  
+  
+end  
+  
+local function clearNotes()  
+  
+	saveNotes({  
+		notes = {}  
+	})  
+  
+end
+
+
 txt(user.Nill, "# Working fine!", 180,180,180)
 txt(user.Nill, "**Version**:" .. ver .. "| © Copyright *LighterCyan*", 180, 180, 180)
 txt(user.Info, update, 0, 170, 255)
@@ -755,7 +988,6 @@ local function safeTxt(u, t, r,g,b)
     end
 end
 
--- ========== STATE ==========
 -- ========== STATE ==========
 local currentProvider = nil
 local currentApiKey = nil
@@ -906,7 +1138,7 @@ local function endpointsFor(provider)
             makeBody = function(prompt)
                 local preset = GPT_PRESETS[currentPresetGPT] or GPT_PRESETS.FREE
                 local body = {
-                    model = currentModel,
+                    model = OPENAI_MODELS[currentOpenAIModel],
 
                     input = {
                         {
@@ -950,7 +1182,7 @@ end
 -- ========== askAI (single entry) ==========
 local function detectProviderFromKey(key)
     if tostring(key):match("^sk%-") then return "openai" end
-    if tostring(key):match("^AIza") then return "google" end
+    if tostring(key):match("^AIza") then return "gemini" end
     if tostring(key):match("^AI") or tostring(key):match("^AIz") then return "gemini" end
     -- simple heuristics: default openai
     return "openai"
@@ -1572,6 +1804,78 @@ end
         safeTxt(user.Suc, "SpyChat: "..tostring(SPY_CHAT_ON),0,255,0)
         return true
     end
+	if lower:match("^/ftr%s+") or
+lower:match("^/forcetoremember%s+") then
+	local text =
+		msg:match("^/%S+%s+(.+)")
+	if text then
+		remember(text)
+		safeTxt(
+			user.Suc,
+			"Memory saved.",
+			0,255,0
+		)
+	end
+	return true
+	end
+	if lower:match("^/delmemories") then
+	clearMemories()
+	safeTxt(
+		user.Suc,
+		"All memories deleted.",
+		0,255,0
+	)
+	return true
+end
+if lower:match("^/note%s+") then
+	local text =
+		msg:match("^/note%s+(.+)")
+	if text then
+		addNote(text)
+		safeTxt(
+			user.Suc,
+			"Note saved.",
+			0,255,0
+		)
+	end
+	return true
+end
+if lower:match("^/shownote") then
+	local notes =
+		loadNotes()
+	if #notes.notes <= 0 then
+		safeTxt(
+			user.Info,
+			"No notes found.",
+			255,255,0
+		)
+		return true
+	end
+	safeTxt(
+		user.Nill,
+		"========== NOTES ==========",
+		0,170,255
+	)
+	for i,v in ipairs(notes.notes) do
+		local text =
+			tostring(v.text or "nil")
+		safeTxt(
+			user.Nill,
+			"["..i.."] "..text,
+			255,255,255
+		)
+	end
+	return true
+end
+if lower:match("^/delallnote") then
+	clearNotes()
+	safeTxt(
+		user.Suc,
+		"All notes deleted.",
+		0,255,0
+	)
+	return true
+	end
 
     return false
 end
