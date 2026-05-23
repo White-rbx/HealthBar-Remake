@@ -1,4 +1,4 @@
-local ver = " UIs 4.2873 "
+local ver = " UIs 4.2878 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1009,9 +1009,9 @@ local HELP_TEXT = [=[
 /CheckSYN - check syn.request availability
 /EnableUSLD - enable unknown-language debug printing (NOT WORKING)
 /GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER] - Change Text limit
-/GPTSwitchModel [FREE/FAST/SMART/THINK] - Change Text limit
+/GPTModel [FREE/FAST/SMART/THINK] - Change Text limit
 /GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER] - Change model
-/GEMINISwitchModel [FREE/FAST/SMART/THINK] - Change model
+/GEMINIModel [FREE/FAST/SMART/THINK] - Change model
 /ResetRateLimit or /ReRateLimit - resets local queue/backoff
 /DumpStatus - prints current state
 /InstanceTool ("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]
@@ -1472,9 +1472,9 @@ local function handleCommand(msg)
         else safeTxt(user.Error, "Usage: /GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER]",255,0,0) end
         return true
     end
-	if lower:match("^/gptswitchmodel") then
+	if lower:match("^/gptmodel") then
 	local choice =
-		(msg:match("^/gptswitchmodel%s+(%S+)") or "")
+		(msg:match("^/gptmodel%s+(%S+)") or "")
 		:upper()
 	if OPENAI_MODELS[choice] then
 		currentOpenAIModel = choice
@@ -1488,7 +1488,7 @@ local function handleCommand(msg)
 		else
 		safeTxt(
 			user.Error,
-			"Usage: /GPTSwitchModel [FREE/FAST/SMART/THINK]",
+			"Usage: /GPTModel [FREE/FAST/SMART/THINK]",
 			255,0,0
 		)
 		end
@@ -1502,9 +1502,9 @@ local function handleCommand(msg)
         else safeTxt(user.Error, "Usage: /GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER]",255,0,0) end
         return true
     end
-	if lower:match("^/geminiswitchmodel") then
+	if lower:match("^/geminimodel") then
 	local choice =
-		(msg:match("^/geminiswitchmodel%s+(%S+)") or "")
+		(msg:match("^/geminimodel%s+(%S+)") or "")
 		:upper()
 	if GEMINI_MODELS[choice] then
 		currentGeminiModel = choice
@@ -1518,7 +1518,7 @@ local function handleCommand(msg)
 		else
 		safeTxt(
 			user.Error,
-			"Usage: /GeminiSwitchModel [FREE/FAST/SMART/THINK]",
+			"Usage: /GeminiModel [FREE/FAST/SMART/THINK]",
 			255,0,0
 		)
 		end
