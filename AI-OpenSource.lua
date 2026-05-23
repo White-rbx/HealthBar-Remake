@@ -1,4 +1,4 @@
-local ver = " UIs 5.1 "
+local ver = " UIs 5.2 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1429,7 +1429,7 @@ local HELP_TEXT = [=[
 **/AddAPI** *[ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no]*
 **/UnsaveAPI** or **/UnApi** - remove key
 **/OpenWebsiteInExperience** | **/OWINE** *URL* - open site
-**/Loadstring** *URL* - loadstring(game:HttpGet("url")()
+**/Loadstring** *URL* - 'loadstring(game:HttpGet("url")()'
 **/Script** *[[CODE]]* - run code
 **/Debug** *on/off* - show debug logs (NOT WORKING)
 **/CheckHTTP** - check executor http
@@ -1440,7 +1440,7 @@ local HELP_TEXT = [=[
 **/GPTModel** *[FREE/FAST/SMART/THINK]* - Change Text limit
 **/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER]* - Change model
 **/GEMINIModel** *[FREE/FAST/SMART/THINK]* - Change model
-**/ResetRateLimit** | /ReRateLimit - resets local queue/backoff
+**/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
 **/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]*
 **/GlobalChat** *[ON/OFF]* - stream global chat (client-side view only)
