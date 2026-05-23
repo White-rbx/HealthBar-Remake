@@ -1,4 +1,4 @@
-local ver = " UIs 4.2872 "
+local ver = " UIs 4.2873 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -627,8 +627,7 @@ txt(user.Nill,
   
 # Available commands
   use **/Help** for more *commands*.
-", 180, 180, 180)
-]]
+]], 180, 180, 180)
 	
 -- txt(user.Nill, "Welcome back Tester", 0, 255, 0)
 
