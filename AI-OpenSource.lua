@@ -1,4 +1,4 @@
-local ver = " UIs 4.5 "
+local ver = " UIs 5 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -612,235 +612,431 @@ end)
     return cha
 end
 
---// =========================================  
---// AI STORAGE SYSTEM  
---// =========================================  
-  
-local HttpService =  
-	game:GetService("HttpService")  
-  
--- existing folder  
-local ESFolder = "ExperienceSettings/"  
-  
--- AI folders  
-local AIFolder =  
-	ESFolder .. "AI-Thinking/"  
-  
-local ImageFolder =  
-	AIFolder .. "ImageGenerative/"  
-  
--- =========================================  
--- MAKE FOLDER  
--- =========================================  
-  
-local function makeFolder(path)  
-  
-	if not isfolder(path) then  
-		makefolder(path)  
-	end  
-  
-end  
-  
-makeFolder(AIFolder)  
-makeFolder(ImageFolder)  
-  
--- =========================================  
--- JSON CREATE  
--- =========================================  
-  
-local function createJSON(path,defaultTable)  
-  
-	if not isfile(path) then  
-  
-		writefile(  
-			path,  
-			HttpService:JSONEncode(defaultTable)  
-		)  
-  
-	end  
-  
-end  
-  
--- =========================================  
--- FILE PATHS  
--- =========================================  
-  
-local AI_MEMORY_PATH =  
-	AIFolder .. "AImemories.json"  
-  
-local NOTE_PATH =  
-	AIFolder .. "Note.json"  
-  
--- =========================================  
--- CREATE FILES  
--- =========================================  
-  
-createJSON(  
-	AI_MEMORY_PATH,  
-	{  
-		memories = {}  
-	}  
-)  
-  
-createJSON(  
-	NOTE_PATH,  
-	{  
-		notes = {}  
-	}  
-)  
-  
---// =========================================  
---// MEMORY SYSTEM  
---// =========================================  
-  
-local function loadMemories()  
-  
-	local ok,data = pcall(function()  
-  
-		return HttpService:JSONDecode(  
-			readfile(AI_MEMORY_PATH)  
-		)  
-  
-	end)  
-  
-	if ok and type(data) == "table" then  
-  
-		data.memories =  
-			data.memories or {}  
-  
-		return data  
-  
-	end  
-  
-	return {  
-		memories = {}  
-	}  
-  
-end  
-  
-local function saveMemories(tbl)  
-  
-	writefile(  
-		AI_MEMORY_PATH,  
-		HttpService:JSONEncode(tbl)  
-	)  
-  
-end  
-  
-local function remember(text)  
-  
-	local mem = loadMemories()  
-  
-	table.insert(  
-		mem.memories,  
-		{  
-			text = tostring(text),  
-			time = os.time()  
-		}  
-	)  
-  
-	saveMemories(mem)  
-  
-end  
-  
-local function clearMemories()  
-  
-	saveMemories({  
-		memories = {}  
-	})  
-  
-end  
-  
-local function buildMemoryPrompt(prompt)  
-  
-	local memories =  
-		loadMemories()  
-  
-	local memoryText = ""  
-  
-	for i,v in ipairs(memories.memories) do  
-  
-		memoryText ..=  
-			"- "  
-			..  
-			tostring(v.text)  
-			..  
-			"\n"  
-  
-	end  
-  
-	return  
-		"MEMORIES:\n"  
-		..  
-		memoryText  
-		..  
-		"\nUSER:\n"  
-		..  
-		tostring(prompt)  
-  
-end  
-  
---// =========================================  
---// NOTE SYSTEM  
---// =========================================  
-  
-local function loadNotes()  
-  
-	local ok,data = pcall(function()  
-  
-		return HttpService:JSONDecode(  
-			readfile(NOTE_PATH)  
-		)  
-  
-	end)  
-  
-	if ok and type(data) == "table" then  
-  
-		data.notes =  
-			data.notes or {}  
-  
-		return data  
-  
-	end  
-  
-	return {  
-		notes = {}  
-	}  
-  
-end  
-  
-local function saveNotes(tbl)  
-  
-	writefile(  
-		NOTE_PATH,  
-		HttpService:JSONEncode(tbl)  
-	)  
-  
-end  
-  
-local function addNote(text)  
-  
-	local notes =  
-		loadNotes()  
-  
-	table.insert(  
-		notes.notes,  
-		{  
-			text = tostring(text),  
-			time = os.time()  
-		}  
-	)  
-  
-	saveNotes(notes)  
-  
-end  
-  
-local function clearNotes()  
-  
-	saveNotes({  
-		notes = {}  
-	})  
-  
+--// =========================================
+--// AI STORAGE + MEMORY SYSTEM
+--// =========================================
+
+local HttpService =
+	game:GetService("HttpService")
+
+-- existing folder
+local ESFolder = "ExperienceSettings/"
+
+-- AI folders
+local AIFolder =
+	ESFolder .. "AI-Thinking/"
+
+local ImageFolder =
+	AIFolder .. "ImageGenerative/"
+
+-- =========================================
+-- MAKE FOLDER
+-- =========================================
+
+local function makeFolder(path)
+
+	if not isfolder(path) then
+		makefolder(path)
+	end
+
+end
+
+makeFolder(AIFolder)
+makeFolder(ImageFolder)
+
+-- =========================================
+-- JSON CREATE
+-- =========================================
+
+local function createJSON(path,defaultTable)
+
+	if not isfile(path) then
+
+		writefile(
+			path,
+			HttpService:JSONEncode(defaultTable)
+		)
+
+	end
+
+end
+
+-- =========================================
+-- FILE PATHS
+-- =========================================
+
+local AI_MEMORY_PATH =
+	AIFolder .. "AImemories.json"
+
+local NOTE_PATH =
+	AIFolder .. "Note.json"
+
+-- =========================================
+-- CREATE FILES
+-- =========================================
+
+createJSON(
+	AI_MEMORY_PATH,
+	{
+		memories = {},
+		memoriesGlobal = {}
+	}
+)
+
+createJSON(
+	NOTE_PATH,
+	{
+		notes = {}
+	}
+)
+
+--// =========================================
+--// MEMORY SETTINGS
+--// =========================================
+
+local AUTO_REMEMBER = true
+local AUTO_REMEMBER_GLOBAL = false
+
+local MAX_GLOBAL_MEMORY = 525
+
+-- temporary session memory
+local sessionMemories = {}
+
+--// =========================================
+--// MEMORY SYSTEM
+--// =========================================
+
+local function loadMemories()
+
+	local ok,data = pcall(function()
+
+		return HttpService:JSONDecode(
+			readfile(AI_MEMORY_PATH)
+		)
+
+	end)
+
+	if ok and type(data) == "table" then
+
+		data.memories =
+			data.memories or {}
+
+		data.memoriesGlobal =
+			data.memoriesGlobal or {}
+
+		return data
+
+	end
+
+	return {
+		memories = {},
+		memoriesGlobal = {}
+	}
+
+end
+
+local function saveMemories(tbl)
+
+	writefile(
+		AI_MEMORY_PATH,
+		HttpService:JSONEncode(tbl)
+	)
+
+end
+
+-- =========================================
+-- MANUAL REMEMBER
+-- =========================================
+
+local function remember(text)
+
+	local mem = loadMemories()
+
+	table.insert(
+		mem.memories,
+		{
+			text = tostring(text),
+			time = os.time()
+		}
+	)
+
+	saveMemories(mem)
+
+end
+
+-- =========================================
+-- AUTO REMEMBER
+-- =========================================
+
+local function autoRemember(text)
+
+	text = tostring(text)
+
+	-- ignore commands
+	if text:sub(1,1) == "/" then
+		return
+	end
+
+	-- ignore empty
+	if text:gsub("%s+","") == "" then
+		return
+	end
+
+	-- =====================================
+	-- SESSION MEMORY
+	-- =====================================
+
+	if AUTO_REMEMBER then
+
+		table.insert(
+			sessionMemories,
+			{
+				text = text,
+				time = os.time()
+			}
+		)
+
+	end
+
+	-- =====================================
+	-- GLOBAL MEMORY
+	-- =====================================
+
+	if AUTO_REMEMBER_GLOBAL then
+
+		local mem = loadMemories()
+
+		table.insert(
+			mem.memoriesGlobal,
+			{
+				text = text,
+				time = os.time()
+			}
+		)
+
+		-- limit memory
+		while #mem.memoriesGlobal > MAX_GLOBAL_MEMORY do
+			table.remove(mem.memoriesGlobal,1)
+		end
+
+		saveMemories(mem)
+
+	end
+
+end
+
+-- =========================================
+-- CLEAR MEMORY
+-- =========================================
+
+local function clearMemories()
+
+	saveMemories({
+		memories = {},
+		memoriesGlobal = {}
+	})
+
+	sessionMemories = {}
+
+end
+
+-- =========================================
+-- BUILD MEMORY PROMPT
+-- =========================================
+
+local function buildMemoryPrompt(prompt)
+
+	local mem = loadMemories()
+
+	local finalMemory = ""
+
+	-- =====================================
+	-- SESSION MEMORY
+	-- =====================================
+
+	for _,v in ipairs(sessionMemories) do
+
+		finalMemory ..=
+			"[SESSION] "
+			..
+			tostring(v.text)
+			..
+			"\n"
+
+	end
+
+	-- =====================================
+	-- GLOBAL MEMORY
+	-- =====================================
+
+	for _,v in ipairs(mem.memoriesGlobal) do
+
+		finalMemory ..=
+			"[GLOBAL] "
+			..
+			tostring(v.text)
+			..
+			"\n"
+
+	end
+
+	return
+		"You are an AI with persistent memory.\n"
+		..
+		"You remember the user and previous conversations.\n\n"
+		..
+		"MEMORIES:\n"
+		..
+		finalMemory
+		..
+		"\nUSER:\n"
+		..
+		tostring(prompt)
+
+end
+
+--// =========================================
+--// NOTE SYSTEM
+--// =========================================
+
+local function loadNotes()
+
+	local ok,data = pcall(function()
+
+		return HttpService:JSONDecode(
+			readfile(NOTE_PATH)
+		)
+
+	end)
+
+	if ok and type(data) == "table" then
+
+		data.notes =
+			data.notes or {}
+
+		return data
+
+	end
+
+	return {
+		notes = {}
+	}
+
+end
+
+local function saveNotes(tbl)
+
+	writefile(
+		NOTE_PATH,
+		HttpService:JSONEncode(tbl)
+	)
+
+end
+
+local function addNote(text)
+
+	local notes =
+		loadNotes()
+
+	table.insert(
+		notes.notes,
+		{
+			text = tostring(text),
+			time = os.time()
+		}
+	)
+
+	saveNotes(notes)
+
+end
+
+local function clearNotes()
+
+	saveNotes({
+		notes = {}
+	})
+
+end
+
+-- =========================================
+-- SHOW NOTES
+-- =========================================
+
+local function showNotes()
+
+	local notes =
+		loadNotes()
+
+	if #notes.notes <= 0 then
+
+		safeTxt(
+			user.Info,
+			"No notes saved",
+			255,255,0
+		)
+
+		return
+
+	end
+
+	for i,v in ipairs(notes.notes) do
+
+		safeTxt(
+			user.Nill,
+			"[NOTE "..i.."] "
+			..
+			tostring(v.text),
+			180,180,180
+		)
+
+	end
+
+end
+
+-- =========================================
+-- SHOW MEMORIES
+-- =========================================
+
+local function showMemories()
+
+	local mem = loadMemories()
+
+	safeTxt(
+		user.Info,
+		"=== SESSION MEMORIES ===",
+		0,170,255
+	)
+
+	for i,v in ipairs(sessionMemories) do
+
+		safeTxt(
+			user.Nill,
+			"[SESSION "..i.."] "
+			..
+			tostring(v.text),
+			180,180,180
+		)
+
+	end
+
+	safeTxt(
+		user.Info,
+		"=== GLOBAL MEMORIES ===",
+		255,170,0
+	)
+
+	for i,v in ipairs(mem.memoriesGlobal) do
+
+		safeTxt(
+			user.Nill,
+			"[GLOBAL "..i.."] "
+			..
+			tostring(v.text),
+			180,180,180
+		)
+
+	end
+
 end
 
 
@@ -1804,80 +2000,165 @@ end
         safeTxt(user.Suc, "SpyChat: "..tostring(SPY_CHAT_ON),0,255,0)
         return true
     end
-	if lower:match("^/ftr%s+") or
-lower:match("^/forcetoremember%s+") then
+-- =========================================
+-- FORCE REMEMBER
+-- =========================================
+
+if lower:match("^/forcetoremember%s+") or
+lower:match("^/ftr%s+") then
+
 	local text =
-		msg:match("^/%S+%s+(.+)")
-	if text then
+		msg:match("^/%S+%s+(.+)$")
+
+	if text and text ~= "" then
+
 		remember(text)
+
 		safeTxt(
 			user.Suc,
-			"Memory saved.",
+			"Memory saved",
 			0,255,0
 		)
-	end
-	return true
-	end
-	if lower:match("^/delmemories") then
-	clearMemories()
-	safeTxt(
-		user.Suc,
-		"All memories deleted.",
-		0,255,0
-	)
-	return true
-end
-if lower:match("^/note%s+") then
-	local text =
-		msg:match("^/note%s+(.+)")
-	if text then
-		addNote(text)
-		safeTxt(
-			user.Suc,
-			"Note saved.",
-			0,255,0
-		)
-	end
-	return true
-end
-if lower:match("^/shownote") then
-	local notes =
-		loadNotes()
-	if #notes.notes <= 0 then
-		safeTxt(
-			user.Info,
-			"No notes found.",
-			255,255,0
-		)
-		return true
-	end
-	safeTxt(
-		user.Nill,
-		"========== NOTES ==========",
-		0,170,255
-	)
-	for i,v in ipairs(notes.notes) do
-		local text =
-			tostring(v.text or "nil")
-		safeTxt(
-			user.Nill,
-			"["..i.."] "..text,
-			255,255,255
-		)
-	end
-	return true
-end
-if lower:match("^/delallnote") then
-	clearNotes()
-	safeTxt(
-		user.Suc,
-		"All notes deleted.",
-		0,255,0
-	)
-	return true
+
 	end
 
-    return false
+	return true
+
+end
+
+-- =========================================
+-- DELETE MEMORIES
+-- =========================================
+
+if lower:match("^/delmemories") then
+
+	clearMemories()
+
+	safeTxt(
+		user.Suc,
+		"All memories deleted",
+		255,80,80
+	)
+
+	return true
+
+end
+
+-- =========================================
+-- AUTO REMEMBER
+-- =========================================
+
+if lower:match("^/autoremember%s+") then
+
+	local state =
+		(msg:match("^/autoremember%s+(%S+)") or "")
+		:lower()
+
+	AUTO_REMEMBER =
+		(state == "on")
+
+	safeTxt(
+		user.Suc,
+		"AutoRemember: "
+		..
+		tostring(AUTO_REMEMBER),
+		0,255,0
+	)
+
+	return true
+
+end
+
+-- =========================================
+-- AUTO REMEMBER GLOBAL
+-- =========================================
+
+if lower:match("^/autorememberglobal%s+") then
+
+	local state =
+		(msg:match("^/autorememberglobal%s+(%S+)") or "")
+		:lower()
+
+	AUTO_REMEMBER_GLOBAL =
+		(state == "on")
+
+	safeTxt(
+		user.Suc,
+		"AutoRememberGlobal: "
+		..
+		tostring(AUTO_REMEMBER_GLOBAL),
+		0,255,0
+	)
+
+	return true
+
+end
+
+-- =========================================
+-- SHOW MEMORIES
+-- =========================================
+
+if lower:match("^/showmemories") then
+
+	showMemories()
+
+	return true
+
+end
+
+-- =========================================
+-- NOTE
+-- =========================================
+
+if lower:match("^/note%s+") then
+
+	local text =
+		msg:match("^/%S+%s+(.+)$")
+
+	if text and text ~= "" then
+
+		addNote(text)
+
+		safeTxt(
+			user.Suc,
+			"Note added",
+			0,255,0
+		)
+
+	end
+
+	return true
+
+end
+
+-- =========================================
+-- SHOW NOTE
+-- =========================================
+
+if lower:match("^/shownote") then
+
+	showNotes()
+
+	return true
+
+end
+
+-- =========================================
+-- DELETE NOTES
+-- =========================================
+
+if lower:match("^/delallnote") then
+
+	clearNotes()
+
+	safeTxt(
+		user.Suc,
+		"All notes deleted",
+		255,80,80
+	)
+
+	return true
+
 end
 
 -- ========== UI HOOK & BIND (safe, replace old) ==========
