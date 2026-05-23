@@ -1,4 +1,4 @@
-local ver = " UIs 5 "
+local ver = " UIs 5.1 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1423,28 +1423,36 @@ end
 
 -- ========== COMMANDS ==========
 local HELP_TEXT = [=[
-/Help - show commands
-/Cal or /Calculate [expr] - safe math
-/ClearText - clear chat logs
-/AddAPI [ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no]
-/UnsaveAPI or /UnApi - remove key
-/OpenWebsiteInExperience or /OWINE [URL] - open site
-/Loadstring [URL] - loadstring(url)()
-/Script [[CODE]] - run code
-/Debug [on/off] - show debug logs (NOT WORKING)
-/CheckHTTP - check executor http
-/CheckURLStatus [URL] - HEAD request to URL
-/CheckSYN - check syn.request availability
-/EnableUSLD - enable unknown-language debug printing (NOT WORKING)
-/GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER] - Change Text limit
-/GPTModel [FREE/FAST/SMART/THINK] - Change Text limit
-/GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER] - Change model
-/GEMINIModel [FREE/FAST/SMART/THINK] - Change model
-/ResetRateLimit or /ReRateLimit - resets local queue/backoff
-/DumpStatus - prints current state
-/InstanceTool ("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]
-/GlobalChat [ON/OFF] - stream global chat (client-side view only)
-/SpyChat [ON/OFF] - stream whisper messages (client-side view only) (NOT WORKING)
+**/Help** - show commands
+**/Cal** | **/Calculate** *math* - simple math
+**/ClearText** - clear chat logs
+**/AddAPI** *[ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no]*
+**/UnsaveAPI** or **/UnApi** - remove key
+**/OpenWebsiteInExperience** | **/OWINE** *URL* - open site
+**/Loadstring** *URL* - loadstring(game:HttpGet("url")()
+**/Script** *[[CODE]]* - run code
+**/Debug** *on/off* - show debug logs (NOT WORKING)
+**/CheckHTTP** - check executor http
+**/CheckURLStatus** *URL* - HEAD request to URL
+**/CheckSYN** - check syn.request availability
+**/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
+**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER]* - Change Text limit
+**/GPTModel** *[FREE/FAST/SMART/THINK]* - Change Text limit
+**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER]* - Change model
+**/GEMINIModel** *[FREE/FAST/SMART/THINK]* - Change model
+**/ResetRateLimit** | /ReRateLimit - resets local queue/backoff
+**/DumpStatus** - prints current state
+**/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]*
+**/GlobalChat** *[ON/OFF]* - stream global chat (client-side view only)
+**/SpyChat** *[ON/OFF]* - stream whisper messages (client-side view only) (NOT WORKING)
+**/ForceToRemember** | **/FTR** *TEXT* - Force AI to remember
+**/DelMemories** - Delete all memories from AK
+**/AutoRememberGlobal** - Make AI to remember anything while chatting **(MEMORY SAVE EVEN LEAVE THE GAME)**
+**/AutoRemember** - Make AI to remember anything while chatting **(MEMORY SAVE ONLY IN-GAME)**
+**/ShowMemories** - Show all memories 
+**/Note** *TEXT* - Note message to not to be forget.
+**/ShowNote** - Show all notes that you write.
+**/DelAllNote** - Delete all note that you write will be gone forever.
 ]=]
 
 local function clearChatLogs()
@@ -1620,14 +1628,14 @@ local function formatPlayerTag(player, fallbackName)
 
 		-- same nickname
 		if username == nickname then
-			return "[🗨️] [@"..username.."]"
+			return "[🗨️] [**@"..username.."**]"
 		end
 
-		return "[🗨️] [@"..username.."] ["..nickname.."]"
+		return "[🗨️] [@"..username.."] [**"..nickname.."**]"
 
 	end
 
-	return "[🗨️] [@"..tostring(fallbackName).."]"
+	return "[🗨️] [**@"..tostring(fallbackName).."**]"
 
 end
 
@@ -2159,6 +2167,9 @@ if lower:match("^/delallnote") then
 
 	return true
 
+end
+
+	return false
 end
 
 -- ========== UI HOOK & BIND (safe, replace old) ==========
