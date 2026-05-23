@@ -1,4 +1,4 @@
-local ver = " UIs 4.287 "
+local ver = " UIs 4.2871 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -17,7 +17,7 @@ local update = [[
 (:4/5/2026 | 5:10 am: F) Fixed AI ChatGPT Response.
 (:23/5/2026 | 1:45 am: R) Re-gui to make easier to use, and added Clear button!
 (:23/5/2026 | 2:06 am: F) Fixed button position.
-(:23/5/2026 | T:ES T-: U) Upgrade gemini with 3.1 flash lite. Added /geminiswitchmodel and /gptswitchmodel
+(:23/5/2026 | 6:59 pm: U) Upgrade gemini with 3.1 flash lite. Added /geminiswitchmodel and /gptswitchmodel
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -611,35 +611,35 @@ end)
     return cha
 end
 
-txt(user.Nill, "Working fine!", 180,180,180)
-txt(user.Nill, "Version:" .. ver .. "| © Copyright LighterCyan", 180, 180, 180)
+txt(user.Nill, "# Working fine!", 180,180,180)
+txt(user.Nill, "**Version**:" .. ver .. "| © Copyright *LighterCyan*", 180, 180, 180)
 txt(user.Info, update, 0, 170, 255)
-txt(user.Info, "Use /help for more information or commands. Add api is /addapi", 0,170,255) 
--- txt(user.Nill, 
---[[ What is AI-OpenSource?
-  AI-OpenSource is a tool for questioning to AIs (ChatGPT/Gemini) by putting API Key.
+txt(user.Info, "Use **/help** for more *information* or commands. Add api is **/addapi**", 0,170,255) 
+txt(user.Nill, 
+[[ # What is AI-Thinking?
+  AI-Thinking is a **tool for questioning to AIs** (ChatGPT/Gemini) by putting **your API Key**.
   
-What AI model you using?
-  We use gpt-4o-mini and gemini-2.5-flash
+# What AI model you using?
+  We use **gpt-4o-mini** and **gemini-3.1-flash**
   
-This is safe to put api key?
-  Yes, this is safe to put your api key, but make sure do NOT share your api.
+# This is safe to put api key?
+  **Yes**, this is **safe to put your api key**, but make sure do **NOT** share your api.
   
-Available commands
-  use /Help
+# Available commands
+  use **/Help** for more *commands*.
 ", 180, 180, 180)
-
-txt(user.Nill, "Welcome back Tester", 0, 255, 0)
 ]]
-txt(user.Nill, [=[
-[==> OFFICIAL ANNOUNCEMENT <==]
-AI-Thinking close for now. We'll be right back soon! maybe 
+	
+-- txt(user.Nill, "Welcome back Tester", 0, 255, 0)
 
-AI MIGHT BE BUG BECAUSE OF TEXTLABEL
+txt(user.Nill, [=[
+# OFFICIAL ANNOUNCEMENT 
+AI is not bug with broken text because of text limit, use **/geminiswitch** or **/gptswitch** to change text limit
 ]=], 255,0,0)
 
-txt(user.Warn, "Stop! For your safety, please do not share your API and avoid being stared at by people around you. Due to safety and privacy concerns, you confirm that you will use your API to continue using our AI-Thinking or not? With respect.", 255, 255, 0)
-txt(user.Nill, "[====== Chat ======]", 180, 180, 180)
+txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
+**With respect**.]], 255, 255, 0)
+txt(user.Nill, "# [====== Chat ======]", 180, 180, 180)
 
 -- ===========================
 -- AI-OpenSource: Full runtime (UI hook, commands, executor HTTP, Gemini/OpenAI)
