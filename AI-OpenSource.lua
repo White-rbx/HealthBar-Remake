@@ -1,4 +1,4 @@
-local ver = " UIs 5.2 "
+local ver = " UIs 5.21 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -612,6 +612,93 @@ end)
     return cha
 end
 
+txt(user.Nill, "# Working fine!", 180,180,180)
+txt(user.Nill, "**Version**:" .. ver .. "| © Copyright *LighterCyan*", 180, 180, 180)
+txt(user.Info, update, 0, 170, 255)
+txt(user.Info, "Use **/help** for more *information* or commands. Add api is **/addapi**", 0,170,255) 
+txt(user.Nill, 
+[[ # What is AI-Thinking?
+  AI-Thinking is a **tool for questioning to AIs** (ChatGPT/Gemini) by putting **your API Key**.
+  
+# What AI model you using?
+  We use **gpt-4o-mini** and **gemini-3.1-flash**
+  
+# This is safe to put api key?
+  **Yes**, this is **safe to put your api key**, but make sure do **NOT** share your api.
+  
+# Available commands
+  use **/Help** for more *commands*.
+]], 180, 180, 180)
+	
+-- txt(user.Nill, "Welcome back Tester", 0, 255, 0)
+
+txt(user.Nill, [[
+# OFFICIAL ANNOUNCEMENT 
+AI is not bug with broken text because of text limit, use **/geminiswitch** or **/gptswitch** to change text limit.]], 255,0,0)
+
+txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
+**With respect**.]], 255, 255, 0)
+txt(user.Nill, "# [====== Chat ======]", 180, 180, 180)
+
+-- ===========================
+-- AI-OpenSource: Full runtime (UI hook, commands, executor HTTP, Gemini/OpenAI)
+-- Place this where your client script runs (LocalScript / executor-run context)
+-- It expects your UI already exists (CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame)
+-- Uses executor http (syn.request / http_request / request / fluxus.request) when available.
+
+-- ========== CONFIG ==========
+local saveFileName = "ai_open_source_key.txt" -- optional save
+local DEBUG_MODE = false
+local REQUEST_INTERVAL = 0.8 -- min delay between outbound requests (seconds) to reduce 429
+local VALIDATION_DELAY = 6 -- seconds after pressing Confirm to validate key
+local QUEUE_MAX_RETRIES = 4
+
+-- profile presets
+local GPT_PRESETS = {
+    FREE  = {mt = 64,  t = 0.5},
+    PRO   = {mt = 256, t = 0.7},
+    PLUS  = {mt = 512, t = 0.75},
+    THINKING = {mt = 1024, t = 0.8},
+	MASTER = {mt = 2048, t = 0.9},
+}
+local GEMINI_PRESETS = {
+    FREE  = {mt = 64,  t = 0.4},
+    PRO   = {mt = 256, t = 0.7},
+    PLUS  = {mt = 512, t = 0.75},
+    THINKING = {mt = 1024, t = 0.8},
+	MASTER = {mt = 2048, t = 0.9},
+}
+
+--// =========================================
+--// MODELS
+--// =========================================
+
+local OPENAI_MODELS = {
+	FREE = "gpt-4o-mini",
+	FAST = "gpt-5-mini",
+	SMART = "gpt-5",
+	THINK = "o4-mini",
+}
+
+local GEMINI_MODELS = {
+	FREE = "gemini-2.5-flash-lite",
+	FAST = "gemini-3.1-flash-lite",
+	SMART = "gemini-2.5-flash",
+	THINK = "gemini-2.5-pro",
+}
+
+local currentGeminiModel = "FAST"
+
+-- ========== SERVICES & UTIL ==========
+local CoreGui = game:GetService("CoreGui")
+local GuiService = game:GetService("GuiService")
+local StarterGui = game:GetService("StarterGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local lp = Players.LocalPlayer
+
 --// =========================================
 --// AI STORAGE + MEMORY SYSTEM
 --// =========================================
@@ -1038,94 +1125,6 @@ local function showMemories()
 	end
 
 end
-
-
-txt(user.Nill, "# Working fine!", 180,180,180)
-txt(user.Nill, "**Version**:" .. ver .. "| © Copyright *LighterCyan*", 180, 180, 180)
-txt(user.Info, update, 0, 170, 255)
-txt(user.Info, "Use **/help** for more *information* or commands. Add api is **/addapi**", 0,170,255) 
-txt(user.Nill, 
-[[ # What is AI-Thinking?
-  AI-Thinking is a **tool for questioning to AIs** (ChatGPT/Gemini) by putting **your API Key**.
-  
-# What AI model you using?
-  We use **gpt-4o-mini** and **gemini-3.1-flash**
-  
-# This is safe to put api key?
-  **Yes**, this is **safe to put your api key**, but make sure do **NOT** share your api.
-  
-# Available commands
-  use **/Help** for more *commands*.
-]], 180, 180, 180)
-	
--- txt(user.Nill, "Welcome back Tester", 0, 255, 0)
-
-txt(user.Nill, [[
-# OFFICIAL ANNOUNCEMENT 
-AI is not bug with broken text because of text limit, use **/geminiswitch** or **/gptswitch** to change text limit.]], 255,0,0)
-
-txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
-**With respect**.]], 255, 255, 0)
-txt(user.Nill, "# [====== Chat ======]", 180, 180, 180)
-
--- ===========================
--- AI-OpenSource: Full runtime (UI hook, commands, executor HTTP, Gemini/OpenAI)
--- Place this where your client script runs (LocalScript / executor-run context)
--- It expects your UI already exists (CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame)
--- Uses executor http (syn.request / http_request / request / fluxus.request) when available.
-
--- ========== CONFIG ==========
-local saveFileName = "ai_open_source_key.txt" -- optional save
-local DEBUG_MODE = false
-local REQUEST_INTERVAL = 0.8 -- min delay between outbound requests (seconds) to reduce 429
-local VALIDATION_DELAY = 6 -- seconds after pressing Confirm to validate key
-local QUEUE_MAX_RETRIES = 4
-
--- profile presets
-local GPT_PRESETS = {
-    FREE  = {mt = 64,  t = 0.5},
-    PRO   = {mt = 256, t = 0.7},
-    PLUS  = {mt = 512, t = 0.75},
-    THINKING = {mt = 1024, t = 0.8},
-	MASTER = {mt = 2048, t = 0.9},
-}
-local GEMINI_PRESETS = {
-    FREE  = {mt = 64,  t = 0.4},
-    PRO   = {mt = 256, t = 0.7},
-    PLUS  = {mt = 512, t = 0.75},
-    THINKING = {mt = 1024, t = 0.8},
-	MASTER = {mt = 2048, t = 0.9},
-}
-
---// =========================================
---// MODELS
---// =========================================
-
-local OPENAI_MODELS = {
-	FREE = "gpt-4o-mini",
-	FAST = "gpt-5-mini",
-	SMART = "gpt-5",
-	THINK = "o4-mini",
-}
-
-local GEMINI_MODELS = {
-	FREE = "gemini-2.5-flash-lite",
-	FAST = "gemini-3.1-flash-lite",
-	SMART = "gemini-2.5-flash",
-	THINK = "gemini-2.5-pro",
-}
-
-local currentGeminiModel = "FAST"
-
--- ========== SERVICES & UTIL ==========
-local CoreGui = game:GetService("CoreGui")
-local GuiService = game:GetService("GuiService")
-local StarterGui = game:GetService("StarterGui")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
-local lp = Players.LocalPlayer
 
 -- executor http detection (function returning response-like table)
 local httpRequestFunc = nil
