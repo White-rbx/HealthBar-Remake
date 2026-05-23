@@ -1,4 +1,4 @@
-local ver = " UIs 4.2863 "
+local ver = " UIs 4.287 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -17,7 +17,7 @@ local update = [[
 (:4/5/2026 | 5:10 am: F) Fixed AI ChatGPT Response.
 (:23/5/2026 | 1:45 am: R) Re-gui to make easier to use, and added Clear button!
 (:23/5/2026 | 2:06 am: F) Fixed button position.
-(:23/5/2026 | -:-- --: U) Upgrade gemini with 3.1 flash lite. Added /geminiswitchmodel and /gptswitchmodel
+(:23/5/2026 | T:ES T-: U) Upgrade gemini with 3.1 flash lite. Added /geminiswitchmodel and /gptswitchmodel
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -403,47 +403,175 @@ local user = {
 	Nil = "",
 }
 
-local function richify(text)
+local function escapeRichText(text)
 
 	text = tostring(text)
 
-	-- code block
+	text = text:gsub("&", "&amp;")
+	text = text:gsub("<", "&lt;")
+	text = text:gsub(">", "&gt;")
+	text = text:gsub('"', "&quot;")
+	text = text:gsub("'", "&apos;")
+
+	return text
+
+end
+
+local function richify(text)
+
+	text = escapeRichText(text)
+	-- =========================================
+	-- MULTI LINE CODE BLOCK
+	-- ```code```
+	-- =========================================
 	text = text:gsub("```([%s%S]-)```", function(code)
-		return '<font face="Code"><font color="rgb(255,200,120)">'..
+
+		code = code:gsub("^%s*\n", "")
+		code = code:gsub("\n%s*$", "")
+
+		return
+			'<font face="Code">'..
+			'<font color="rgb(255,200,120)">'..
 			code..
-		'</font></font>'
+			'</font>'..
+			'</font>'
+
 	end)
+	-- =========================================
+	-- INLINE CODE
+	-- `code`
+	-- =========================================
+	text = text:gsub("`(.-)`", function(code)
+		return
+			'<font face="Code">'..
+			'<font color="rgb(255,220,150)">'..
+			code..
+			'</font>'..
+			'</font>'
 
-	-- bold + italic
-	text = text:gsub("%*%*%*([%s%S]-)%*%*%*", "<b><i>%1</i></b>")
-
-	-- bold
-	text = text:gsub("%*%*([%s%S]-)%*%*", "<b>%1</b>")
-
-	-- italic
-	text = text:gsub("%*([%s%S]-)%*", "<i>%1</i>")
-
-	-- underline
-	text = text:gsub("_([%s%S]-)_", "<u>%1</u>")
-
-	-- strikethrough
-	text = text:gsub("%-([%s%S]-)%-", "<s>%1</s>")
-
-	-- big header
-	text = text:gsub("^# ([^\n]+)",
-		'<font size="28"><b>%1</b></font>'
+	end)
+	-- =========================================
+	-- SMALL TEXT
+	-- -# TEXT
+	-- =========================================
+	text = text:gsub(
+		"(^%-# ([^\n]+))",
+		function(full,content)
+			return
+				'<font size="12">'..
+				content..
+				'</font>'
+		end
+	)
+	-- multiline small text
+	text = text:gsub(
+		"\n%-# ([^\n]+)",
+		function(content)
+			return
+				'\n<font size="12">'..
+				content..
+				'</font>'
+		end
 	)
 
-	-- small text
-	text = text:gsub("^%-# ([^\n]+)",
-		'<font size="12">%1</font>'
+	-- =========================================
+	-- SIZE TITLE
+	-- =========================================
+	-- h4
+text = text:gsub(
+	"\n#### ([^\n]+)",
+	'\n<font size="18"><b>%1</b></font>'
+)
+
+text = text:gsub(
+	"^#### ([^\n]+)",
+	'<font size="18"><b>%1</b></font>'
+)
+
+-- h3
+text = text:gsub(
+	"\n### ([^\n]+)",
+	'\n<font size="20"><b>%1</b></font>'
+)
+
+text = text:gsub(
+	"^### ([^\n]+)",
+	'<font size="20"><b>%1</b></font>'
+)
+
+-- h2
+text = text:gsub(
+	"\n## ([^\n]+)",
+	'\n<font size="24"><b>%1</b></font>'
+)
+
+text = text:gsub(
+	"^## ([^\n]+)",
+	'<font size="24"><b>%1</b></font>'
+)
+
+-- h1
+text = text:gsub(
+	"\n# ([^\n]+)",
+	'\n<font size="28"><b>%1</b></font>'
+)
+
+text = text:gsub(
+	"^# ([^\n]+)",
+	'<font size="28"><b>%1</b></font>'
+)
+	-- =========================================
+	-- BOLD + ITALIC
+	-- ***TEXT***
+	-- =========================================
+	text = text:gsub(
+		"%*%*%*([%s%S]-)%*%*%*",
+		"<b><i>%1</i></b>"
 	)
-
-	-- link color
-	text = text:gsub("(https?://[%w-_%.%?%.:/%+=&]+)", function(url)
-		return '<font color="rgb(80,170,255)"><u>'..url..'</u></font>'
-	end)
-
+	-- =========================================
+	-- BOLD
+	-- **TEXT**
+	-- =========================================
+	text = text:gsub(
+		"%*%*([%s%S]-)%*%*",
+		"<b>%1</b>"
+	)
+	-- =========================================
+	-- ITALIC
+	-- *TEXT*
+	-- =========================================
+	text = text:gsub(
+		"%*([%s%S]-)%*",
+		"<i>%1</i>"
+	)
+	-- =========================================
+	-- UNDERLINE
+	-- _TEXT_
+	-- =========================================
+	text = text:gsub(
+		"_([%s%S]-)_",
+		"<u>%1</u>"
+	)
+	-- =========================================
+	-- STRIKETHROUGH
+	-- ~TEXT~
+	-- =========================================
+	text = text:gsub(
+		"~([%s%S]-)~",
+		"<s>%1</s>"
+	)
+	-- =========================================
+	-- LINKS
+	-- =========================================
+	text = text:gsub(
+		"(https?://[%w%-%._~:/%?#%[%]@!$&'%(%)%*%+,;=]+)",
+		function(url)
+			return
+				'<font color="rgb(80,170,255)">'..
+				'<u>'..url..'</u>'..
+				'</font>'
+		end
+	)
 	return text
 end
 
@@ -456,7 +584,11 @@ local function txt(user, text, R, G, B)
     cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     cha.BackgroundTransparency = 0.85
 	cha.BackgroundColor3 = Color3.fromRGB(255,255,255)
-    cha.Text = richify(tostring(user) .. tostring(text))
+    cha.Text =
+	escapeRichText(tostring(user))
+	..
+	richify(tostring(text))
+	
     cha.TextSize = 16
     cha.RichText = true
     cha.TextWrapped = true
