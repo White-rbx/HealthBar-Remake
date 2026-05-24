@@ -1,6 +1,6 @@
-local ver = " UIs 5.242 "
+local ver = " UIs 5.243 "
 local update = [[
--- Update logs --
+# -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
 (:8/1/2026 | 6:00 pm: R) Raw reset GitHub bug.
 (:8/1/2026 | 6:22 pm: !) Fixed bug again
@@ -639,7 +639,7 @@ AI is not bug with broken text because of text limit, use **/geminiswitch** or *
 
 txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
 **With respect**.]], 255, 255, 0)
-txt(user.Warn,[[ ## 1 command is enabled 
+txt(user.Warn,[[# 1 command is enabled 
 **/AutoRemember** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) ]], 255,255,0)
 txt(user.Nill, "### [====== Chat ======]", 180, 180, 180)
 
@@ -843,7 +843,7 @@ local function remember(text)
 	text = tostring(text)
 
 	-- SESSION MEMORY
-	if AutoRemember then
+	if AUTO_REMEMBER then
 
 		table.insert(
 			sessionMemories,
@@ -856,7 +856,7 @@ local function remember(text)
 	end
 
 	-- GLOBAL MEMORY
-	if AutoRememberGlobal then
+	if AUTO_REMEMBER_GLOBAL then
 
 		local mem =
 			loadMemories()
@@ -873,7 +873,7 @@ local function remember(text)
 		)
 
 		-- LIMIT
-		while #mem.memoriesGlobal > MAX_GLOBAL_MEMORIES do
+		while #mem.memoriesGlobal > MAX_GLOBAL_MEMORY do
 			table.remove(mem.memoriesGlobal,1)
 		end
 
@@ -1017,7 +1017,7 @@ local function buildMemoryPrompt(prompt)
 
 	return
 [[
-You are an AI inside Roblox.
+You are an AI inside Roblox created by @5teve3019D.
 
 You HAVE memory.
 
@@ -2134,44 +2134,38 @@ end
 -- /AutoRemember [ON/OFF]
 -- =========================================
 
-if lower:match("^/autoremember") then
+if
+	lower:match("^/1autorememberingame") or
+	lower:match("^/1arig")
+then
 
 	local state =
-		(msg:match("^/autoremember%s+(%S+)") or "")
+		(msg:match("^/%S+%s+(%S+)") or "")
 		:lower()
 
-	if state == "on" then
-
-		AUTO_REMEMBER = true
-
-		safeTxt(
-			user.Suc,
-			"AutoRemember: ON",
-			0,255,0
-		)
-
-	elseif state == "off" then
-
-		AUTO_REMEMBER = false
-
-		safeTxt(
-			user.Suc,
-			"AutoRemember: OFF",
-			255,170,0
-		)
-
-	else
+	if state ~= "on" and state ~= "off" then
 
 		safeTxt(
 			user.Error,
-			"Usage: /AutoRemember [ON/OFF]",
+			"Usage: /1ARIG [ON/OFF]",
 			255,0,0
 		)
 
+		return true
 	end
 
-	return true
+	AUTO_REMEMBER =
+		(state == "on")
 
+	safeTxt(
+		user.Suc,
+		"AutoRemember: "
+		..
+		tostring(AUTO_REMEMBER),
+		0,255,0
+	)
+
+	return true
 end
 
 -- =========================================
@@ -2179,44 +2173,38 @@ end
 -- /AutoRememberGlobal [ON/OFF]
 -- =========================================
 
-if lower:match("^/autorememberglobal") then
+if
+	lower:match("^/2autorememberglobal") or
+	lower:match("^/2arg")
+then
 
 	local state =
-		(msg:match("^/autorememberglobal%s+(%S+)") or "")
+		(msg:match("^/%S+%s+(%S+)") or "")
 		:lower()
 
-	if state == "on" then
-
-		AUTO_REMEMBER_GLOBAL = true
-
-		safeTxt(
-			user.Suc,
-			"AutoRememberGlobal: ON",
-			0,255,0
-		)
-
-	elseif state == "off" then
-
-		AUTO_REMEMBER_GLOBAL = false
-
-		safeTxt(
-			user.Suc,
-			"AutoRememberGlobal: OFF",
-			255,170,0
-		)
-
-	else
+	if state ~= "on" and state ~= "off" then
 
 		safeTxt(
 			user.Error,
-			"Usage: /AutoRememberGlobal [ON/OFF]",
+			"Usage: /2ARG [ON/OFF]",
 			255,0,0
 		)
 
+		return true
 	end
 
-	return true
+	AUTO_REMEMBER_GLOBAL =
+		(state == "on")
 
+	safeTxt(
+		user.Suc,
+		"AutoRememberGlobal: "
+		..
+		tostring(AUTO_REMEMBER_GLOBAL),
+		0,255,0
+	)
+
+	return true
 end
 
 -- =========================================
