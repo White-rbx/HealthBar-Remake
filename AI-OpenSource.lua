@@ -1,4 +1,4 @@
-local ver = " UIs 5.247 "
+local ver = " UIs 5.248 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1105,8 +1105,8 @@ Your limit:
 **/SpyChat** *[ON/OFF]* - stream whisper messages (client-side view only) (NOT WORKING)
 **/ForceToRemember** | **/FTR** *TEXT* - Force AI to remember
 **/DelMemories** - Delete all memories from AK
-**/AutoRememberGlobal** - Make AI to remember anything while chatting **(MEMORY SAVE EVEN LEAVE THE GAME)**
-**/AutoRemember** - Make AI to remember anything while chatting **(MEMORY SAVE ONLY IN-GAME)**
+**/2AutoRemeeberGlobal** | **/2ARG** - Make AI to remember anything while chatting **(MEMORY SAVE EVEN LEAVE THE GAME)**
+**/1AutoRememberInGame** | **/1ARIG** - Make AI to remember anything while chatting **(MEMORY SAVE ONLY IN-GAME)**
 **/ShowMemories** - Show all memories 
 **/Note** *TEXT* - Note message to not to be forget.
 **/ShowNote** - Show all notes that you write.
@@ -1596,8 +1596,8 @@ local HELP_TEXT = [=[
 **/SpyChat** *[ON/OFF]* - stream whisper messages (client-side view only) (NOT WORKING)
 **/ForceToRemember** | **/FTR** *TEXT* - Force AI to remember
 **/DelMemories** - Delete all memories from AK
-**/AutoRememberGlobal** - Make AI to remember anything while chatting **(MEMORY SAVE EVEN LEAVE THE GAME)**
-**/AutoRemember** - Make AI to remember anything while chatting **(MEMORY SAVE ONLY IN-GAME)**
+**/2AutoRemeeberGlobal** | **/2ARG** - Make AI to remember anything while chatting **(MEMORY SAVE EVEN LEAVE THE GAME)**
+**/1AutoRememberInGame** | **/1ARIG** - Make AI to remember anything while chatting **(MEMORY SAVE ONLY IN-GAME)**
 **/ShowMemories** - Show all memories 
 **/Note** *TEXT* - Note message to not to be forget.
 **/ShowNote** - Show all notes that you write.
