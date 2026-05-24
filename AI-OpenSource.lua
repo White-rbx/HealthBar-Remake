@@ -1,4 +1,4 @@
-local ver = " UIs 5.22 "
+local ver = " UIs 5.24 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -19,6 +19,7 @@ local update = [[
 (:23/5/2026 | 2:06 am: F) Fixed button position.
 (:23/5/2026 | 6:59 pm: U) Upgrade gemini with 3.1 flash lite. Added /geminiswitchmodel and /gptswitchmodel
 (:23/5/2026 | 8:56 pm: A) Added memory for AI to remember what you chatting! also added 5 commands.
+(24/5/2027 | 12:47 pm: F) Fixed AI doesn't remember.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -837,17 +838,46 @@ end
 
 local function remember(text)
 
-	local mem = loadMemories()
+	text = tostring(text)
 
-	table.insert(
-		mem.memories,
-		{
-			text = tostring(text),
-			time = os.time()
-		}
-	)
+	-- SESSION MEMORY
+	if AutoRemember then
 
-	saveMemories(mem)
+		table.insert(
+			sessionMemories,
+			{
+				text = text,
+				time = os.time()
+			}
+		)
+
+	end
+
+	-- GLOBAL MEMORY
+	if AutoRememberGlobal then
+
+		local mem =
+			loadMemories()
+
+		mem.memoriesGlobal =
+			mem.memoriesGlobal or {}
+
+		table.insert(
+			mem.memoriesGlobal,
+			{
+				text = text,
+				time = os.time()
+			}
+		)
+
+		-- LIMIT
+		while #mem.memoriesGlobal > MAX_GLOBAL_MEMORIES do
+			table.remove(mem.memoriesGlobal,1)
+		end
+
+		saveMemories(mem)
+
+	end
 
 end
 
@@ -933,17 +963,15 @@ end
 
 local function buildMemoryPrompt(prompt)
 
-	local mem = loadMemories()
+	local data =
+		loadMemories()
 
-	local finalMemory = ""
+	local memoryText = ""
 
-	-- =====================================
-	-- SESSION MEMORY
-	-- =====================================
-
+	-- session memory
 	for _,v in ipairs(sessionMemories) do
 
-		finalMemory ..=
+		memoryText ..=
 			"[SESSION] "
 			..
 			tostring(v.text)
@@ -952,13 +980,10 @@ local function buildMemoryPrompt(prompt)
 
 	end
 
-	-- =====================================
-	-- GLOBAL MEMORY
-	-- =====================================
+	-- global memory
+	for _,v in ipairs(data.memoriesGlobal or {}) do
 
-	for _,v in ipairs(mem.memoriesGlobal) do
-
-		finalMemory ..=
+		memoryText ..=
 			"[GLOBAL] "
 			..
 			tostring(v.text)
@@ -968,13 +993,9 @@ local function buildMemoryPrompt(prompt)
 	end
 
 	return
-		"You are an AI with persistent memory.\n"
-		..
-		"You remember the user and previous conversations.\n\n"
-		..
 		"MEMORIES:\n"
 		..
-		finalMemory
+		memoryText
 		..
 		"\nUSER:\n"
 		..
@@ -1397,7 +1418,13 @@ local function askAI(prompt, onSuccess, onError)
     end
 
     local headers = epi.makeHeaders(currentApiKey)
-    local body = epi.makeBody(prompt)
+
+    -- inject memories
+    local finalPrompt =
+	    buildMemoryPrompt(prompt)
+
+    local body =
+    	epi.makeBody(finalPrompt)
 
     enqueueRequest({
         url = epi.url,
@@ -2055,20 +2082,36 @@ end
 -- AUTO REMEMBER
 -- =========================================
 
-if lower:match("^/autoremember%s+") then
+if lower:match("^/autoremember") then
 
 	local state =
 		(msg:match("^/autoremember%s+(%S+)") or "")
 		:lower()
 
-	AUTO_REMEMBER =
-		(state == "on")
+	if state == "on" then
+
+		AutoRemember = true
+
+	elseif state == "off" then
+
+		AutoRemember = false
+
+	else
+
+		safeTxt(
+			user.Error,
+			"Usage: /AutoRemember [ON/OFF]",
+			255,0,0
+		)
+
+		return true
+	end
 
 	safeTxt(
 		user.Suc,
 		"AutoRemember: "
 		..
-		tostring(AUTO_REMEMBER),
+		tostring(AutoRemember),
 		0,255,0
 	)
 
@@ -2080,20 +2123,36 @@ end
 -- AUTO REMEMBER GLOBAL
 -- =========================================
 
-if lower:match("^/autorememberglobal%s+") then
+if lower:match("^/autorememberglobal") then
 
 	local state =
 		(msg:match("^/autorememberglobal%s+(%S+)") or "")
 		:lower()
 
-	AUTO_REMEMBER_GLOBAL =
-		(state == "on")
+	if state == "on" then
+
+		AutoRememberGlobal = true
+
+	elseif state == "off" then
+
+		AutoRememberGlobal = false
+
+	else
+
+		safeTxt(
+			user.Error,
+			"Usage: /AutoRememberGlobal [ON/OFF]",
+			255,0,0
+		)
+
+		return true
+	end
 
 	safeTxt(
 		user.Suc,
 		"AutoRememberGlobal: "
 		..
-		tostring(AUTO_REMEMBER_GLOBAL),
+		tostring(AutoRememberGlobal),
 		0,255,0
 	)
 
@@ -2107,7 +2166,40 @@ end
 
 if lower:match("^/showmemories") then
 
-	showMemories()
+	local data =
+		loadMemories()
+
+	safeTxt(
+		user.Info,
+		"===== SESSION =====",
+		255,255,0
+	)
+
+	for i,v in ipairs(sessionMemories) do
+
+		safeTxt(
+			user.Nill,
+			"["..i.."] "..tostring(v.text),
+			200,200,200
+		)
+
+	end
+
+	safeTxt(
+		user.Info,
+		"===== GLOBAL =====",
+		0,255,255
+	)
+
+	for i,v in ipairs(data.memoriesGlobal or {}) do
+
+		safeTxt(
+			user.Nill,
+			"["..i.."] "..tostring(v.text),
+			200,200,200
+		)
+
+	end
 
 	return true
 
@@ -2289,12 +2381,41 @@ local function hookUI(timeoutSeconds)
         end
         safeTxt(user.plr, raw, 255,255,255)
         ch.Text = ""
-        askAI(raw, function(answer)
-            safeTxt(user.chat, answer or "(no answer)", 85,255,255)
-        end, function(err)
-            safeTxt(user.Error, "AI request failed: "..tostring(err),255,0,0)
-        end)
+        local finalPrompt = buildMemoryPrompt(raw)
+
+askAI(finalPrompt, function(answer)
+
+    -- auto remember local
+    if AUTO_REMEMBER then
+
+        remember(raw, false)
+        remember(answer, false)
+
     end
+
+    -- auto remember global
+    if AUTO_REMEMBER_GLOBAL then
+
+        remember(raw, true)
+        remember(answer, true)
+
+    end
+
+    safeTxt(
+        user.chat,
+        answer or "(no answer)",
+        85,255,255
+    )
+
+end, function(err)
+
+    safeTxt(
+        user.Error,
+        "AI request failed: "..tostring(err),
+        255,0,0
+    )
+
+end)
 
     -- connect UI events
     if se and se:IsA("TextButton") then
