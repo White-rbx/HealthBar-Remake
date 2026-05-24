@@ -1,4 +1,4 @@
-local ver = " UIs 5.244 "
+local ver = " UIs 5.245 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1053,6 +1053,7 @@ If the memory is empty
 - simple just say you do not know yet
 
 If the user doesn't mention memory, you can have a normal conversation with them without focusing on memory, but you must still adhere to the rules.
+However, instead of focusing too much on Roblox, you should also pay attention to what users are saying. But if a user is talking about something dangerous or inappropriate, you should tell them that this is inappropriate and that we should talk about something else.
   
 MEMORIES:  
 ]]  
