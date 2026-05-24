@@ -1,4 +1,4 @@
-local ver = " UIs 5.241 "
+local ver = " UIs 5.242 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -639,7 +639,9 @@ AI is not bug with broken text because of text limit, use **/geminiswitch** or *
 
 txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
 **With respect**.]], 255, 255, 0)
-txt(user.Nill, "# [====== Chat ======]", 180, 180, 180)
+txt(user.Warn,[[ ## 1 command is enabled 
+**/AutoRemember** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) ]], 255,255,0)
+txt(user.Nill, "### [====== Chat ======]", 180, 180, 180)
 
 -- ===========================
 -- AI-OpenSource: Full runtime (UI hook, commands, executor HTTP, Gemini/OpenAI)
@@ -968,7 +970,10 @@ local function buildMemoryPrompt(prompt)
 
 	local memoryText = ""
 
-	-- session memory
+	-- =========================================
+	-- SESSION MEMORY
+	-- =========================================
+
 	for _,v in ipairs(sessionMemories) do
 
 		memoryText ..=
@@ -980,7 +985,10 @@ local function buildMemoryPrompt(prompt)
 
 	end
 
-	-- global memory
+	-- =========================================
+	-- GLOBAL MEMORY
+	-- =========================================
+
 	for _,v in ipairs(data.memoriesGlobal or {}) do
 
 		memoryText ..=
@@ -992,14 +1000,56 @@ local function buildMemoryPrompt(prompt)
 
 	end
 
+	-- =========================================
+	-- EMPTY MEMORY
+	-- =========================================
+
+	if memoryText == "" then
+
+		memoryText =
+			"No memories stored.\n"
+
+	end
+
+	-- =========================================
+	-- FINAL PROMPT
+	-- =========================================
+
 	return
-		"MEMORIES:\n"
-		..
-		memoryText
-		..
-		"\nUSER:\n"
-		..
-		tostring(prompt)
+[[
+You are an AI inside Roblox.
+
+You HAVE memory.
+
+The memory section below is REAL persistent memory data.
+
+You must:
+- use memories naturally
+- remember past conversations
+- remember the user's preferences
+- remember your own previous replies
+
+Never say:
+- "I cannot remember"
+- "I don't have memory"
+- "I cannot store memories"
+- "I cannot access previous chats"
+
+Because memory system EXISTS and is ACTIVE.
+
+If memories are empty:
+- simply say you do not know yet
+
+MEMORIES:
+]]
+	..
+	memoryText
+	..
+[[
+USER:
+]]
+	..
+	tostring(prompt)
 
 end
 
@@ -1449,6 +1499,7 @@ end
 
 -- ========== COMMANDS ==========
 local HELP_TEXT = [=[
+# All Command (30 commands)
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
@@ -2080,6 +2131,7 @@ end
 
 -- =========================================
 -- AUTO REMEMBER
+-- /AutoRemember [ON/OFF]
 -- =========================================
 
 if lower:match("^/autoremember") then
@@ -2090,11 +2142,23 @@ if lower:match("^/autoremember") then
 
 	if state == "on" then
 
-		AutoRemember = true
+		AUTO_REMEMBER = true
+
+		safeTxt(
+			user.Suc,
+			"AutoRemember: ON",
+			0,255,0
+		)
 
 	elseif state == "off" then
 
-		AutoRemember = false
+		AUTO_REMEMBER = false
+
+		safeTxt(
+			user.Suc,
+			"AutoRemember: OFF",
+			255,170,0
+		)
 
 	else
 
@@ -2104,16 +2168,7 @@ if lower:match("^/autoremember") then
 			255,0,0
 		)
 
-		return true
 	end
-
-	safeTxt(
-		user.Suc,
-		"AutoRemember: "
-		..
-		tostring(AutoRemember),
-		0,255,0
-	)
 
 	return true
 
@@ -2121,6 +2176,7 @@ end
 
 -- =========================================
 -- AUTO REMEMBER GLOBAL
+-- /AutoRememberGlobal [ON/OFF]
 -- =========================================
 
 if lower:match("^/autorememberglobal") then
@@ -2131,11 +2187,23 @@ if lower:match("^/autorememberglobal") then
 
 	if state == "on" then
 
-		AutoRememberGlobal = true
+		AUTO_REMEMBER_GLOBAL = true
+
+		safeTxt(
+			user.Suc,
+			"AutoRememberGlobal: ON",
+			0,255,0
+		)
 
 	elseif state == "off" then
 
-		AutoRememberGlobal = false
+		AUTO_REMEMBER_GLOBAL = false
+
+		safeTxt(
+			user.Suc,
+			"AutoRememberGlobal: OFF",
+			255,170,0
+		)
 
 	else
 
@@ -2145,16 +2213,7 @@ if lower:match("^/autorememberglobal") then
 			255,0,0
 		)
 
-		return true
 	end
-
-	safeTxt(
-		user.Suc,
-		"AutoRememberGlobal: "
-		..
-		tostring(AutoRememberGlobal),
-		0,255,0
-	)
 
 	return true
 
