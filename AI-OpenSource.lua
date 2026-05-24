@@ -1,4 +1,4 @@
-local ver = " UIs 5.24 "
+local ver = " UIs 5.241 "
 local update = [[
 -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2416,6 +2416,7 @@ end, function(err)
     )
 
 end)
+end
 
     -- connect UI events
     if se and se:IsA("TextButton") then
