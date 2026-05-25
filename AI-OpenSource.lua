@@ -1,4 +1,4 @@
-local ver = " UIs 5.249 "
+local ver = " UIs 5.2491 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -19,7 +19,8 @@ local update = [[
 (:23/5/2026 | 2:06 am: F) Fixed button position.
 (:23/5/2026 | 6:59 pm: U) Upgrade gemini with 3.1 flash lite. Added /geminiswitchmodel and /gptswitchmodel
 (:23/5/2026 | 8:56 pm: A) Added memory for AI to remember what you chatting! also added 5 commands.
-(24/5/2027 | 12:47 pm: F) Fixed AI doesn't remember.
+(:24/5/2026 | 12:47 pm: F) Fixed AI doesn't remember.
+(:25/5/2026 | 4:58 pm: C) Changed AI emoji from [ 🤖 ] to [ ✨ ].
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -395,7 +396,7 @@ local user = {
 -- ========== user labels & safe text function (already exist in user code, but we keep fallback) ==========
 local user = {
     plr  = "[ 👤 ]: ",
-    chat = "[ 🤖 ]: ",
+    chat = "[ ✨ ]: ",
     Error = "[ ❌ ]: ",
     Suc   = "[ ✅ ]: ",
     Warn  = "[ ⚠️ ]: ",
