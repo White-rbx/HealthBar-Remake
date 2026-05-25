@@ -1,4 +1,4 @@
-local ver = " UIs 5.26 "
+local ver = " UIs 5.261 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2684,6 +2684,7 @@ end, function(err)
         255,0,0
     )
 
+end)
 end)
 end
 
