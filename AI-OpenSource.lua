@@ -1,4 +1,4 @@
-local ver = " UIs 5.261 "
+local ver = " UIs 5.262 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2471,48 +2471,50 @@ end
 -- /AllowCam [ON/OFF]
 -- =========================================
 
-if lower:match("^/allowcam") then
+if lower:match("^/allowcam%s+") then
 
-	local state =
-		raw:match("^/allowcam%s+(%S+)")
+	local value =
+		msg:match("^/%S+%s+(%S+)$")
 
-	state =
-		tostring(state or "")
-		:lower()
+	if value then
 
-	if state == "on" then
+		value = value:lower()
 
-		ALLOW_CAM = true
+		if value == "on" then
 
-		safeTxt(
-			user.Suc,
-			"AllowCam enabled",
-			0,255,0
-		)
+			ALLOW_CAM = true
 
-	elseif state == "off" then
+			safeTxt(
+				user.Suc,
+				"AI Camera Vision Enabled",
+				0,255,0
+			)
 
-		ALLOW_CAM = false
+		elseif value == "off" then
 
-		safeTxt(
-			user.Warn,
-			"AllowCam disabled",
-			255,170,0
-		)
+			ALLOW_CAM = false
 
-	else
+			safeTxt(
+				user.Info,
+				"AI Camera Vision Disabled",
+				255,170,0
+			)
 
-		safeTxt(
-			user.Error,
-			"Usage: /AllowCam [ON/OFF]",
-			255,0,0
-		)
+		else
+
+			safeTxt(
+				user.Warn,
+				"Usage: /AllowCam [ON/OFF]",
+				255,200,0
+			)
+
+		end
 
 	end
 
 	return true
 
-	end
+end
 
 	return false
 end
@@ -2637,7 +2639,9 @@ local function hookUI(timeoutSeconds)
         ch.Text = ""
         local finalPrompt = buildMemoryPrompt(raw)
 
-askAI(finalPrompt, function(answer)
+-- =========================================
+-- BUILD PROMPT
+-- =========================================
 
 local finalPrompt =
 	buildMemoryPrompt(raw)
@@ -2652,42 +2656,51 @@ if ALLOW_CAM then
 
 end
 
+-- =========================================
+-- ASK AI
+-- =========================================
+
 askAI(finalPrompt, function(answer)
 
-    -- auto remember local
-    if AUTO_REMEMBER then
+	-- auto remember local
+	if AUTO_REMEMBER then
 
-        remember(raw, false)
-        remember(answer, false)
+		remember(raw)
 
-    end
+		if answer and answer ~= "" then
+			remember(answer)
+		end
 
-    -- auto remember global
-    if AUTO_REMEMBER_GLOBAL then
+	end
 
-        remember(raw, true)
-        remember(answer, true)
+	-- auto remember global
+	if AUTO_REMEMBER_GLOBAL then
 
-    end
+		remember(raw)
 
-    safeTxt(
-        user.chat,
-        answer or "(no answer)",
-        85,255,255
-    )
+		if answer and answer ~= "" then
+			remember(answer)
+		end
+
+	end
+
+	safeTxt(
+		user.chat,
+		answer or "(no answer)",
+		85,255,255
+	)
 
 end, function(err)
 
-    safeTxt(
-        user.Error,
-        "AI request failed: "..tostring(err),
-        255,0,0
-    )
+	safeTxt(
+		user.Error,
+		"AI request failed: "..tostring(err),
+		255,0,0
+	)
 
-end)
 end)
 end
-
+	
     -- connect UI events
     if se and se:IsA("TextButton") then
         se.MouseButton1Click:Connect(sendFromUI)
