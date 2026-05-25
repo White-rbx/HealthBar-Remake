@@ -1,4 +1,4 @@
-local ver = " UIs 5.267 "
+local ver = " UIs 5.268 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -22,7 +22,8 @@ local update = [[
 (:24/5/2026 | 12:47 pm: F) Fixed AI doesn't remember.
 (:25/5/2026 | 4:58 pm: C) Changed AI emoji from [ 🤖 ] to [ ✨ ]. ( FOR AI DO NOT USE THIS PREFIX BECAUSE YOU ALREADY HAVE IT JUST SAY WITHOUT [ ✨ ], FOR ONE MORE TIME PLEASE DO NOT USE IT. )
 (:25/5/2026 | 5:53 pm: N) New command! called "/AllowCam" to make AI see Roblox world! if command is enabled.
-(:2t/5/2026 | 7:16 pm: F? Fixed RichText cannot escape. (Actually tell AI LOL)
+(:25/5/2026 | 7:16 pm: F) Fixed RichText cannot escape. (Actually tell AI LOL)
+(:25/5/2026 | 9:21 pm: R) Rename one command called "/Globalchat" to "/Herechat" to match Roblox chat.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1140,7 +1141,7 @@ Your limit:
 **/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
 **/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] 「「CODE」」*
-**/GlobalChat** *[ON/OFF]* - stream global chat (client-side view only)
+**/HereChat** *[ON/OFF]* - stream here chat (client-side view only)
 **/SpyChat** *[ON/OFF]* - stream whisper messages (client-side view only) (NOT WORKING)
 **/ForceToRemember** | **/FTR** *TEXT* - Force AI to remember
 **/DelMemories** - Delete all memories from AK
@@ -1750,7 +1751,7 @@ local HELP_TEXT = [=[
 **/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
 **/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]*
-**/GlobalChat** *[ON/OFF]* - stream global chat (client-side view only)
+**/HereChat** *[ON/OFF]* - stream here chat (client-side view only)
 **/SpyChat** *[ON/OFF]* - stream whisper messages (client-side view only) (NOT WORKING)
 **/ForceToRemember** | **/FTR** *TEXT* - Force AI to remember
 **/DelMemories** - Delete all memories from AK
@@ -1936,14 +1937,14 @@ local function formatPlayerTag(player, fallbackName)
 
 		-- same nickname
 		if username == nickname then
-			return "[🗨️] [**@"..username.."**]"
+			return "[ 🗨️ ] [**@"..username.."**]"
 		end
 
-		return "[🗨️] [@"..username.."] [**"..nickname.."**]"
+		return "[ 🗨️ ] [@"..username.."] [**"..nickname.."**]"
 
 	end
 
-	return "[🗨️] [**@"..tostring(fallbackName).."**]"
+	return "[ 🗨️ ] [**@"..tostring(fallbackName).."**]"
 
 end
 
@@ -2283,16 +2284,16 @@ end
         createInstanceTool(msg)
         return true
     end
-    if lower:match("^/globalchat") then
+    if lower:match("^/herechat") then
 	local arg =
-		(msg:match("^/globalchat%s+(%S+)") or ""):lower()
+		(msg:match("^/herechat%s+(%S+)") or ""):lower()
 	local state =
 		(arg == "on")
 	-- prevent spam toggle
 	if GLOBAL_CHAT_ON == state then
 		safeTxt(
 			user.Info,
-			"GlobalChat already "..tostring(state),
+			"HereChat already "..tostring(state),
 			255,255,0
 		)
 		return true
@@ -2305,7 +2306,7 @@ end
 	end
 	safeTxt(
 		user.Suc,
-		"GlobalChat: "..tostring(state),
+		"HereChat: "..tostring(state),
 		0,255,0
 	)
 	return true
