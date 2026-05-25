@@ -1,4 +1,4 @@
-local ver = " UIs 5.2492 "
+local ver = " UIs 5.26 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -21,6 +21,7 @@ local update = [[
 (:23/5/2026 | 8:56 pm: A) Added memory for AI to remember what you chatting! also added 5 commands.
 (:24/5/2026 | 12:47 pm: F) Fixed AI doesn't remember.
 (:25/5/2026 | 4:58 pm: C) Changed AI emoji from [ 🤖 ] to [ ✨ ]. ( FOR AI DO NOT USE THIS PREFIX BECAUSE YOU ALREADY HAVE IT JUST SAY WITHOUT [ ✨ ]. )
+(:25/5/2026 | 5:53 pm: N) New command! called "/AllowCam" to make AI see Roblox world! if command is enabled.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1123,7 +1124,7 @@ Your limit:
 **/SpyChat** *[ON/OFF]* - stream whisper messages (client-side view only) (NOT WORKING)
 **/ForceToRemember** | **/FTR** *TEXT* - Force AI to remember
 **/DelMemories** - Delete all memories from AK
-**/2AutoRemeeberGlobal** | **/2ARG** - Make AI to remember anything while chatting **(MEMORY SAVE EVEN LEAVE THE GAME)**
+**/2AutoRememberGlobal** | **/2ARG** - Make AI to remember anything while chatting **(MEMORY SAVE EVEN LEAVE THE GAME)**
 **/1AutoRememberInGame** | **/1ARIG** - Make AI to remember anything while chatting **(MEMORY SAVE ONLY IN-GAME)**
 **/ShowMemories** - Show all memories 
 **/Note** *TEXT* - Note message to not to be forget.
@@ -1284,6 +1285,76 @@ local function showMemories()
 		)
 
 	end
+
+end
+
+-- =========================================
+-- CAMERA VISION SETTINGS
+-- =========================================
+
+local ALLOW_CAM = false
+
+-- =========================================
+-- CAMERA VISION
+-- =========================================
+
+local function getVisibleParts()
+
+	if not ALLOW_CAM then
+		return "Camera access disabled."
+	end
+
+	local Camera =
+		workspace.CurrentCamera
+
+	if not Camera then
+		return "No camera."
+	end
+
+	local visible = {}
+
+	for _,v in ipairs(workspace:GetDescendants()) do
+
+		if v:IsA("BasePart") then
+
+			local distance =
+				(
+					v.Position
+					-
+					Camera.CFrame.Position
+				).Magnitude
+
+			-- limit range
+			if distance <= 120 then
+
+				local pos,onscreen =
+					Camera:WorldToViewportPoint(
+						v.Position
+					)
+
+				if onscreen then
+
+					table.insert(
+						visible,
+						v.Name
+					)
+
+				end
+
+			end
+
+		end
+
+	end
+
+	if #visible <= 0 then
+		return "Nothing visible."
+	end
+
+	return table.concat(
+		visible,
+		", "
+	)
 
 end
 
@@ -1614,7 +1685,7 @@ local HELP_TEXT = [=[
 **/SpyChat** *[ON/OFF]* - stream whisper messages (client-side view only) (NOT WORKING)
 **/ForceToRemember** | **/FTR** *TEXT* - Force AI to remember
 **/DelMemories** - Delete all memories from AK
-**/2AutoRemeeberGlobal** | **/2ARG** - Make AI to remember anything while chatting **(MEMORY SAVE EVEN LEAVE THE GAME)**
+**/2AutoRememberGlobal** | **/2ARG** - Make AI to remember anything while chatting **(MEMORY SAVE EVEN LEAVE THE GAME)**
 **/1AutoRememberInGame** | **/1ARIG** - Make AI to remember anything while chatting **(MEMORY SAVE ONLY IN-GAME)**
 **/ShowMemories** - Show all memories 
 **/Note** *TEXT* - Note message to not to be forget.
@@ -2396,6 +2467,52 @@ if lower:match("^/delallnote") then
 	return true
 
 end
+-- =========================================
+-- /AllowCam [ON/OFF]
+-- =========================================
+
+if lower:match("^/allowcam") then
+
+	local state =
+		raw:match("^/allowcam%s+(%S+)")
+
+	state =
+		tostring(state or "")
+		:lower()
+
+	if state == "on" then
+
+		ALLOW_CAM = true
+
+		safeTxt(
+			user.Suc,
+			"AllowCam enabled",
+			0,255,0
+		)
+
+	elseif state == "off" then
+
+		ALLOW_CAM = false
+
+		safeTxt(
+			user.Warn,
+			"AllowCam disabled",
+			255,170,0
+		)
+
+	else
+
+		safeTxt(
+			user.Error,
+			"Usage: /AllowCam [ON/OFF]",
+			255,0,0
+		)
+
+	end
+
+	return true
+
+	end
 
 	return false
 end
@@ -2519,6 +2636,21 @@ local function hookUI(timeoutSeconds)
         safeTxt(user.plr, raw, 255,255,255)
         ch.Text = ""
         local finalPrompt = buildMemoryPrompt(raw)
+
+askAI(finalPrompt, function(answer)
+
+local finalPrompt =
+	buildMemoryPrompt(raw)
+
+-- inject camera vision
+if ALLOW_CAM then
+
+	finalPrompt ..=
+		"\n\nCURRENT CAMERA VISION:\n"
+		..
+		getVisibleParts()
+
+end
 
 askAI(finalPrompt, function(answer)
 
