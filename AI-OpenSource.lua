@@ -1,4 +1,4 @@
-local ver = " UIs 5.262 "
+local ver = " UIs 5.265 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1099,7 +1099,7 @@ Your limit:
 - In-Game Memory saver had no limit request
 - Global Memory saver had limit at 1000 request
 
-# All Command (30 commands) that all user can control the chat.
+# All Command (31 commands) that all user can control the chat.
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
@@ -1130,6 +1130,7 @@ Your limit:
 **/Note** *TEXT* - Note message to not to be forget.
 **/ShowNote** - Show all notes that you write.
 **/DelAllNote** - Delete all note that you write will be gone forever.	
+**/AllowCam** *[ON/OFF]* - This allows the AI to see what we are looking at on Roblox World and then process that information.
 
 MEMORIES:
 ]]
@@ -1294,6 +1295,9 @@ end
 
 local ALLOW_CAM = false
 
+local SCAN_RADIUS = 120
+local VIEW_DOT = 0.45
+
 -- =========================================
 -- CAMERA VISION
 -- =========================================
@@ -1313,31 +1317,76 @@ local function getVisibleParts()
 
 	local visible = {}
 
-	for _,v in ipairs(workspace:GetDescendants()) do
+	-- nearby objects only
+	local nearby =
+		workspace:GetPartBoundsInRadius(
+			Camera.CFrame.Position,
+			SCAN_RADIUS
+		)
+
+	local rayParams =
+		RaycastParams.new()
+
+	rayParams.FilterType =
+		Enum.RaycastFilterType.Blacklist
+
+	rayParams.FilterDescendantsInstances = {
+		game.Players.LocalPlayer.Character
+	}
+
+	for _,v in ipairs(nearby) do
 
 		if v:IsA("BasePart") then
 
-			local distance =
-				(
+			if not v.CanTouch then
+				continue
+			end
+
+			-- screen check
+			local pos,onscreen =
+				Camera:WorldToViewportPoint(
 					v.Position
-					-
-					Camera.CFrame.Position
-				).Magnitude
+				)
 
-			-- limit range
-			if distance <= 120 then
+			if onscreen then
 
-				local pos,onscreen =
-					Camera:WorldToViewportPoint(
+				-- front vision check
+				local direction =
+					(
 						v.Position
+						-
+						Camera.CFrame.Position
 					)
 
-				if onscreen then
-
-					table.insert(
-						visible,
-						v.Name
+				local dot =
+					direction.Unit:Dot(
+						Camera.CFrame.LookVector
 					)
+
+				if dot > VIEW_DOT then
+
+					-- line of sight
+					local result =
+						workspace:Raycast(
+							Camera.CFrame.Position,
+							direction,
+							rayParams
+						)
+
+					if result
+					and result.Instance then
+
+						if result.Instance == v
+						or result.Instance:IsDescendantOf(v.Parent) then
+
+							table.insert(
+								visible,
+								v.Name
+							)
+
+						end
+
+					end
 
 				end
 
@@ -1691,6 +1740,7 @@ local HELP_TEXT = [=[
 **/Note** *TEXT* - Note message to not to be forget.
 **/ShowNote** - Show all notes that you write.
 **/DelAllNote** - Delete all note that you write will be gone forever.
+**/AllowCam** *[ON/OFF]* - This allows the AI to see what we are looking at on Roblox World and then process that information.
 ]=]
 
 local function clearChatLogs()
