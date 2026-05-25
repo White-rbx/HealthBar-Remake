@@ -1,4 +1,4 @@
-local ver = " UIs 5.265 "
+local ver = " UIs 5.266 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -20,7 +20,7 @@ local update = [[
 (:23/5/2026 | 6:59 pm: U) Upgrade gemini with 3.1 flash lite. Added /geminiswitchmodel and /gptswitchmodel
 (:23/5/2026 | 8:56 pm: A) Added memory for AI to remember what you chatting! also added 5 commands.
 (:24/5/2026 | 12:47 pm: F) Fixed AI doesn't remember.
-(:25/5/2026 | 4:58 pm: C) Changed AI emoji from [ 🤖 ] to [ ✨ ]. ( FOR AI DO NOT USE THIS PREFIX BECAUSE YOU ALREADY HAVE IT JUST SAY WITHOUT [ ✨ ]. )
+(:25/5/2026 | 4:58 pm: C) Changed AI emoji from [ 🤖 ] to [ ✨ ]. ( FOR AI DO NOT USE THIS PREFIX BECAUSE YOU ALREADY HAVE IT JUST SAY WITHOUT [ ✨ ], FOR ONE MORE TIME PLEASE DO NOT USE IT. )
 (:25/5/2026 | 5:53 pm: N) New command! called "/AllowCam" to make AI see Roblox world! if command is enabled.
 ]]
 
@@ -1709,7 +1709,7 @@ end
 
 -- ========== COMMANDS ==========
 local HELP_TEXT = [=[
-# All Command (30 commands)
+# All Command (31 commands)
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
@@ -2521,44 +2521,50 @@ end
 -- /AllowCam [ON/OFF]
 -- =========================================
 
-if lower:match("^/allowcam%s+") then
+if lower:match("^/allowcam") then
 
 	local value =
-		msg:match("^/%S+%s+(%S+)$")
+		lower:match("^/allowcam%s+(%S+)$")
 
-	if value then
+	if not value then
 
-		value = value:lower()
+		safeTxt(
+			user.Warn,
+			"Usage: /AllowCam [ON/OFF]",
+			255,200,0
+		)
 
-		if value == "on" then
+		return true
 
-			ALLOW_CAM = true
+	end
 
-			safeTxt(
-				user.Suc,
-				"AI Camera Vision Enabled",
-				0,255,0
-			)
+	if value == "on" then
 
-		elseif value == "off" then
+		ALLOW_CAM = true
 
-			ALLOW_CAM = false
+		safeTxt(
+			user.Suc,
+			"AI Camera Vision Enabled",
+			0,255,0
+		)
 
-			safeTxt(
-				user.Info,
-				"AI Camera Vision Disabled",
-				255,170,0
-			)
+	elseif value == "off" then
 
-		else
+		ALLOW_CAM = false
 
-			safeTxt(
-				user.Warn,
-				"Usage: /AllowCam [ON/OFF]",
-				255,200,0
-			)
+		safeTxt(
+			user.Info,
+			"AI Camera Vision Disabled",
+			255,170,0
+		)
 
-		end
+	else
+
+		safeTxt(
+			user.Warn,
+			"Usage: /AllowCam [ON/OFF]",
+			255,200,0
+		)
 
 	end
 
