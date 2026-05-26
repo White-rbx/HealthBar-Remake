@@ -1,4 +1,4 @@
-local ver = " UIs 5.268 "
+local ver = " UIs 5.27 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -24,6 +24,7 @@ local update = [[
 (:25/5/2026 | 5:53 pm: N) New command! called "/AllowCam" to make AI see Roblox world! if command is enabled.
 (:25/5/2026 | 7:16 pm: F) Fixed RichText cannot escape. (Actually tell AI LOL)
 (:25/5/2026 | 9:21 pm: R) Rename one command called "/Globalchat" to "/Herechat" to match Roblox chat.
+(:26/5/2026 | 5:36 pm: A) Added ViewportFrame to AI to make sure what is AI seeing.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -160,6 +161,7 @@ local TouchInputService = game:GetService("TouchInputService")
 --================================--
 local Menu = CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
+local vHolder = Menu:WaitForChild("HolderScreen")
 local gpt = Menu.ChatGPT
 
 gpt.Line:Destroy()
@@ -616,6 +618,25 @@ end)
 
     return cha
 end
+
+--[[
+local vpf = Instance.new("ViewportFrame")
+vpf.Name = "AI_Perspective"
+vpf.Position = UDim2.new(0.034, 0, 0, 0)
+vpf.Size = UDim2.new(0, 400, 0, 200)
+vpf.Active = true
+vpf.Visible = true
+vpf.Ambient = Color3.new(1,1,1)
+vpf.BackgroundColor3 = Color3.new(0.75,0.75,0.75)
+vpf.Draggable = true
+vpf.Parent = vHolder
+Corner(0,8,vpf)
+Stroke(vpf, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+
+local wModel = Instance.new("Model")
+wModel.Name = "World_Model"
+wModel.Parent = vpf
+]]
 
 txt(user.Nill, "# Working fine!", 180,180,180)
 txt(user.Nill, "**Version**:" .. ver .. "| © Copyright *LighterCyan*", 180, 180, 180)
@@ -1320,25 +1341,112 @@ local SCAN_RADIUS = 120
 local VIEW_DOT = 0.45
 
 -- =========================================
+-- VIEWPORT SYSTEM
+-- =========================================
+
+local Camera =
+	workspace.CurrentCamera
+
+local AIViewport
+local WorldModel
+local ViewportCamera
+
+local MAX_CLONES = 150
+
+local function createViewport()
+
+	if AIViewport then
+		return
+	end
+
+	AIViewport = Instance.new("ViewportFrame")
+	AIViewport.Name = "AI_Perspective"
+	AIViewport.Position = UDim2.new(0.034, 0, 0, 0)
+	AIViewport.Size = UDim2.new(0, 400, 0, 200)
+	AIViewport.Active = true
+	AIViewport.Visible = true
+	AIViewport.Ambient = Color3.new(1,1,1)
+	AIViewport.BackgroundColor3 = Color3.new(0.75,0.75,0.75)
+	AIViewport.Draggable = true
+	AIViewport.Parent = vHolder
+
+	Corner(0,8,AIViewport)
+	Stroke(
+		AIViewport,
+		ASMBorder,
+		255,
+		255,
+		255,
+		LJMRound,
+		1,
+		0
+	)
+
+	WorldModel = Instance.new("WorldModel")
+	WorldModel.Name = "World_Model"
+	WorldModel.Parent = AIViewport
+
+	ViewportCamera = Instance.new("Camera")
+	ViewportCamera.Parent = AIViewport
+
+	AIViewport.CurrentCamera =
+		ViewportCamera
+
+end
+
+local function destroyViewport()
+
+	if AIViewport then
+		AIViewport:Destroy()
+	end
+
+	AIViewport = nil
+	WorldModel = nil
+	ViewportCamera = nil
+
+end
+
+local function clearViewport()
+
+	if not WorldModel then
+		return
+	end
+
+	for _,v in ipairs(WorldModel:GetChildren()) do
+		v:Destroy()
+	end
+
+end
+
+-- =========================================
 -- CAMERA VISION
 -- =========================================
 
 local function getVisibleParts()
 
+	-- disable everything
 	if not ALLOW_CAM then
+
+		destroyViewport()
+
 		return "Camera access disabled."
+
 	end
 
-	local Camera =
-		workspace.CurrentCamera
+	-- create viewport when enabled
+	createViewport()
 
 	if not Camera then
 		return "No camera."
 	end
 
+	clearViewport()
+
+	ViewportCamera.CFrame =
+		Camera.CFrame
+
 	local visible = {}
 
-	-- nearby objects only
 	local nearby =
 		workspace:GetPartBoundsInRadius(
 			Camera.CFrame.Position,
@@ -1355,7 +1463,13 @@ local function getVisibleParts()
 		game.Players.LocalPlayer.Character
 	}
 
+	local cloneCount = 0
+
 	for _,v in ipairs(nearby) do
+
+		if cloneCount >= MAX_CLONES then
+			break
+		end
 
 		if v:IsA("BasePart") then
 
@@ -1363,7 +1477,6 @@ local function getVisibleParts()
 				continue
 			end
 
-			-- screen check
 			local pos,onscreen =
 				Camera:WorldToViewportPoint(
 					v.Position
@@ -1371,7 +1484,6 @@ local function getVisibleParts()
 
 			if onscreen then
 
-				-- front vision check
 				local direction =
 					(
 						v.Position
@@ -1386,7 +1498,6 @@ local function getVisibleParts()
 
 				if dot > VIEW_DOT then
 
-					-- line of sight
 					local result =
 						workspace:Raycast(
 							Camera.CFrame.Position,
@@ -1404,6 +1515,25 @@ local function getVisibleParts()
 								visible,
 								v.Name
 							)
+
+							-- ====================
+							-- CLONE TO VIEWPORT
+							-- ====================
+
+							local success,clone =
+								pcall(function()
+									return v:Clone()
+								end)
+
+							if success
+							and clone then
+
+								clone.Anchored = true
+								clone.Parent = WorldModel
+
+								cloneCount += 1
+
+							end
 
 						end
 
