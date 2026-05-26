@@ -1,4 +1,4 @@
-local ver = " UIs 5.277 "
+local ver = " UIs 5.278 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2839,6 +2839,7 @@ if lower:match("^/allowcam") then
 
 		ALLOW_CAM = false
 
+		destroyViewport()
 		safeTxt(
 			user.Info,
 			"AI Camera Vision Disabled",
