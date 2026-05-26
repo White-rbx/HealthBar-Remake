@@ -1,4 +1,4 @@
-local ver = " UIs 5.272 "
+local ver = " UIs 5.275 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1341,8 +1341,8 @@ local ALLOW_CAM = false
 local SCAN_RADIUS = 120
 local VIEW_DOT = 0.45
 
-local MAX_CLONES = 150
-local CLONES_PER_FRAME = 3
+local MAX_CLONES = 15000
+local CLONES_PER_FRAME = 1
 
 -- =========================================
 -- SERVICES
