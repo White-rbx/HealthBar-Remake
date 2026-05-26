@@ -1,4 +1,4 @@
--- Well 2.353
+-- Well 2.355
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -8,21 +8,97 @@
  THANK YOU FOR READINGGGGG *COUGH* *COUGH* *COUGH* *Died adorably*
 ]]
 
--- Reset
+-- =========================================
+-- RESET
+-- =========================================
+
 getgenv().ES = nil
+getgenv().__ES_READY = nil
+getgenv().__ES_BANNED = nil
 
--- Load SetUp
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"))()
+-- =========================================
+-- SAFE LOAD SETUP
+-- =========================================
 
-repeat task.wait() until getgenv().__ES_READY or getgenv().__ES_BANNED
+local ok,err =
+	pcall(function()
 
-if getgenv().__ES_BANNED then
-	warn("You're banned from ExperienceSettings.")
+		loadstring(
+			game:HttpGet(
+				"https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ExperienceSettings-SetUp.lua"
+			)
+		)()
+
+	end)
+
+if not ok then
+
+	warn(
+		"[ ES ERROR ] Failed to load setup:",
+		err
+	)
+
 	return
+
 end
 
+-- =========================================
+-- WAIT READY
+-- =========================================
+
+local timeout = 15
+local start = tick()
+
+repeat
+	task.wait()
+until
+	getgenv().__ES_READY
+	or getgenv().__ES_BANNED
+	or tick() - start >= timeout
+
+-- =========================================
+-- TIMEOUT
+-- =========================================
+
+if tick() - start >= timeout then
+
+	warn(
+		"[ ES ERROR ] Setup timeout."
+	)
+
+	return
+
+end
+
+-- =========================================
+-- BAN CHECK
+-- =========================================
+
+if getgenv().__ES_BANNED then
+
+	warn(
+		"You're banned from ExperienceSettings."
+	)
+
+	return
+
+end
+
+-- =========================================
+-- ES OBJECT
+-- =========================================
 
 local ES = getgenv().ES
+
+if not ES then
+
+	warn(
+		"[ ES ERROR ] ES missing."
+	)
+
+	return
+
+end
 
 -- ===== ERROR SYSTEM =====
 local function catch(err)
@@ -80,9 +156,14 @@ local function scan(url)
 	end
 
 	-- 📊 progress จริง
-	local count = 0
-	for _ in pairs(visited) do count += 1 end
-	ES.progress = math.clamp(count * 15, 0, ES.max)
+	local scannedCount = 0
+	scannedCount += 1
+ES.progress =
+	math.clamp(
+		scannedCount * 15,
+		0,
+		ES.max
+	)
 end
 
 -- ===== MAIN =====
