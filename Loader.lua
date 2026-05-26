@@ -1,4 +1,4 @@
--- Well 2.355
+-- Well 2.356
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -117,15 +117,50 @@ end
 -- ===== SCAN SYSTEM =====
 local visited = {}
 local queue = {}
+local scannedCount = 0
 
 local function extractURLs(src)
+
 	local urls = {}
 
-	for url in string.gmatch(src, 'HttpGet%(%s*"(.-)"%s*%)') do
-		table.insert(urls, url)
+	-- ""
+	for url in string.gmatch(
+		src,
+		'HttpGet%s*%(%s*"([^"]+)"'
+	) do
+
+		if url:match("^https?://") then
+			table.insert(urls,url)
+		end
+
+	end
+
+	-- ''
+	for url in string.gmatch(
+		src,
+		"HttpGet%s*%(%s*'([^']+)'"
+	) do
+
+		if url:match("^https?://") then
+			table.insert(urls,url)
+		end
+
+	end
+
+	-- [[ ]]
+	for url in string.gmatch(
+		src,
+		'HttpGet%s*%(%s*%[%[(.-)%]%]'
+	) do
+
+		if url:match("^https?://") then
+			table.insert(urls,url)
+		end
+
 	end
 
 	return urls
+
 end
 
 local function scan(url)
@@ -156,7 +191,6 @@ local function scan(url)
 	end
 
 	-- 📊 progress จริง
-	local scannedCount = 0
 	scannedCount += 1
 ES.progress =
 	math.clamp(
