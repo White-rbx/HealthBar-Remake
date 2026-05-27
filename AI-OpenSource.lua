@@ -1,4 +1,4 @@
-local ver = " UIs 5.34 "
+local ver = " UIs 5.341 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1396,7 +1396,7 @@ local SCAN_RADIUS = 360 -- Do not change
 local VIEW_DOT = 0.45 -- Do not change 
 
 local MAX_CLONES = 1500000 -- Do not change 
-local CLONES_PER_FRAME = 30 -- Do not change 
+local CLONES_PER_FRAME = 5 -- Do not change 
 
 -- =========================================
 -- SERVICES
@@ -1615,20 +1615,25 @@ end
 -- PROCESS CLONE QUEUE
 -- =========================================
 
+local ProcessingQueue = false
+
 local function processQueue()
+
+	if ProcessingQueue then
+		return
+	end
 
 	if #CloneQueue <= 0 then
 		return
 	end
 
-	local delayPerClone =
-		CLONE_TIME / CLONES_PER_SECOND
+	ProcessingQueue = true
 
 	task.spawn(function()
 
 		local processed = 0
 
-		while processed < CLONES_PER_SECOND
+		while processed < CLONES_PER_FRAME
 		and #CloneQueue > 0 do
 
 			local part =
@@ -1642,22 +1647,66 @@ local function processQueue()
 
 				if clone then
 
-					clone.Transparency = 1
+					-- =========================
+					-- TWEEN APPEAR
+					-- =========================
 
-					local tween =
-						TweenService:Create(
-							clone,
-							TweenInfo.new(
-								0.15,
-								Enum.EasingStyle.Linear
-							),
-							{
-								Transparency =
-									part.Transparency
-							}
-						)
+					if clone:IsA("BasePart") then
 
-					tween:Play()
+						local originalTransparency =
+							part.Transparency
+
+						clone.Transparency = 1
+
+						local tween =
+							TweenService:Create(
+								clone,
+								TweenInfo.new(
+									0.15,
+									Enum.EasingStyle.Linear
+								),
+								{
+									Transparency =
+										originalTransparency
+								}
+							)
+
+						tween:Play()
+
+					else
+
+						-- model support
+						for _,obj in ipairs(
+							clone:GetDescendants()
+						) do
+
+							if obj:IsA("BasePart") then
+
+								local originalTransparency =
+									obj.Transparency
+
+								obj.Transparency = 1
+
+								local tween =
+									TweenService:Create(
+										obj,
+										TweenInfo.new(
+											0.15,
+											Enum.EasingStyle.Linear
+										),
+										{
+											Transparency =
+												originalTransparency
+										}
+									)
+
+								tween:Play()
+
+							end
+
+						end
+
+					end
 
 				end
 
@@ -1665,9 +1714,11 @@ local function processQueue()
 
 			processed += 1
 
-			task.wait(delayPerClone)
+			task.wait()
 
 		end
+
+		ProcessingQueue = false
 
 	end)
 
