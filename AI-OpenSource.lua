@@ -1,4 +1,4 @@
-local ver = " UIs 5.343 "
+local ver = " UIs 5.345 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1395,8 +1395,8 @@ local ALLOW_SEE_CHILDREN = false
 local SCAN_RADIUS = 360 -- Do not change 
 local VIEW_DOT = 0.45 -- Do not change 
 
-local MAX_CLONES = 1500000 -- Do not change 
-local CLONES_PER_FRAME = 15 -- Do not change 
+local MAX_CLONES = 320 -- Do not change 
+local CLONES_PER_FRAME = 2 -- Do not change 
 
 -- =========================================
 -- SERVICES
