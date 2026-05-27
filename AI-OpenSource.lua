@@ -1,4 +1,4 @@
-local ver = " UIs 5.349 "
+local ver = " UIs 5.35 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1392,11 +1392,11 @@ local ALLOW_CAM = false
 local ALLOW_PROPERTIES = false
 local ALLOW_SEE_CHILDREN = false
 
-local SCAN_RADIUS = 180 -- Do not change 
-local VIEW_DOT = 0.35 -- Do not change 
+local SCAN_RADIUS = 120
+local VIEW_DOT = 0.35
 
-local MAX_CLONES = 3200 -- Do not change 
-local CLONES_PER_FRAME = 2 -- Do not change 
+local MAX_CLONES = 250
+local CLONES_PER_FRAME = 2 
 
 -- =========================================
 -- SERVICES
@@ -1500,7 +1500,7 @@ end
 -- SAFE CLONE
 -- =========================================
 
-local MAX_CHILDREN_PER_MODEL = 6400
+local MAX_CHILDREN_PER_MODEL = 40
 
 local function createClone(part)
 
@@ -1532,7 +1532,9 @@ local function createClone(part)
 				local childCount = 0
 
 				for _,child in ipairs(
-					part.Parent:GetDescendants()
+					if not part.Parent:IsA("Model") then
+                    	return part:Clone()
+                    end
 				) do
 
 					if childCount >= MAX_CHILDREN_PER_MODEL then
