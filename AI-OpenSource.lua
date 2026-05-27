@@ -1,4 +1,4 @@
-local ver = " UIs 5.348 "
+local ver = " UIs 5.349 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1392,8 +1392,8 @@ local ALLOW_CAM = false
 local ALLOW_PROPERTIES = false
 local ALLOW_SEE_CHILDREN = false
 
-local SCAN_RADIUS = 360 -- Do not change 
-local VIEW_DOT = 0.45 -- Do not change 
+local SCAN_RADIUS = 180 -- Do not change 
+local VIEW_DOT = 0.35 -- Do not change 
 
 local MAX_CLONES = 3200 -- Do not change 
 local CLONES_PER_FRAME = 2 -- Do not change 
@@ -1495,10 +1495,6 @@ local function destroyViewport()
 	ViewportCamera = nil
 
 end
-
--- =========================================
--- SAFE CLONE
--- =========================================
 
 -- =========================================
 -- SAFE CLONE
@@ -1885,7 +1881,7 @@ RunService.RenderStepped:Connect(function(dt)
 	updateTick += dt
 
 	-- update 5 times/sec only
-	if updateTick < 0.2 then
+	if updateTick < 0.05 then
 		return
 	end
 
