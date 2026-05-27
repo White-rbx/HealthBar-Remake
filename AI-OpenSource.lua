@@ -1,4 +1,4 @@
-local ver = " UIs 5.32 "
+local ver = " UIs 5.33 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1605,6 +1605,8 @@ local function createClone(part)
 	end
 
 	clone.Parent = WorldModel
+
+    return clone
 
 	CloneCache[part] = clone
 
