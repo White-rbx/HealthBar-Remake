@@ -1,4 +1,4 @@
-local ver = " UIs 5.341 "
+local ver = " UIs 5.343 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1396,7 +1396,7 @@ local SCAN_RADIUS = 360 -- Do not change
 local VIEW_DOT = 0.45 -- Do not change 
 
 local MAX_CLONES = 1500000 -- Do not change 
-local CLONES_PER_FRAME = 5 -- Do not change 
+local CLONES_PER_FRAME = 15 -- Do not change 
 
 -- =========================================
 -- SERVICES
@@ -1615,112 +1615,72 @@ end
 -- PROCESS CLONE QUEUE
 -- =========================================
 
-local ProcessingQueue = false
+local MAX_CLONE_TIME =
+	1 / 240
+-- ~4ms per frame
 
 local function processQueue()
-
-	if ProcessingQueue then
-		return
-	end
 
 	if #CloneQueue <= 0 then
 		return
 	end
 
-	ProcessingQueue = true
+	local start =
+		os.clock()
 
-	task.spawn(function()
+	local processed = 0
 
-		local processed = 0
+	while #CloneQueue > 0 do
 
-		while processed < CLONES_PER_FRAME
-		and #CloneQueue > 0 do
+		-- stop if took too long
+		if os.clock() - start
+		>= MAX_CLONE_TIME then
+			break
+		end
 
-			local part =
-				table.remove(CloneQueue,1)
+		-- faster than table.remove(queue,1)
+		local part =
+			CloneQueue[#CloneQueue]
 
-			if part
-			and part.Parent then
+		CloneQueue[#CloneQueue] = nil
 
-				local clone =
-					createClone(part)
+		if part
+		and part.Parent then
 
-				if clone then
+			local clone =
+				createClone(part)
 
-					-- =========================
-					-- TWEEN APPEAR
-					-- =========================
+			if clone then
 
-					if clone:IsA("BasePart") then
+				-- fade in
+				if clone:IsA("BasePart") then
 
-						local originalTransparency =
-							part.Transparency
+					local targetTransparency =
+						part.Transparency
 
-						clone.Transparency = 1
+					clone.Transparency = 1
 
-						local tween =
-							TweenService:Create(
-								clone,
-								TweenInfo.new(
-									0.15,
-									Enum.EasingStyle.Linear
-								),
-								{
-									Transparency =
-										originalTransparency
-								}
-							)
-
-						tween:Play()
-
-					else
-
-						-- model support
-						for _,obj in ipairs(
-							clone:GetDescendants()
-						) do
-
-							if obj:IsA("BasePart") then
-
-								local originalTransparency =
-									obj.Transparency
-
-								obj.Transparency = 1
-
-								local tween =
-									TweenService:Create(
-										obj,
-										TweenInfo.new(
-											0.15,
-											Enum.EasingStyle.Linear
-										),
-										{
-											Transparency =
-												originalTransparency
-										}
-									)
-
-								tween:Play()
-
-							end
-
-						end
-
-					end
+					TweenService:Create(
+						clone,
+						TweenInfo.new(
+							0.12,
+							Enum.EasingStyle.Linear
+						),
+						{
+							Transparency =
+								targetTransparency
+						}
+					):Play()
 
 				end
 
 			end
 
-			processed += 1
-
-			task.wait()
-
 		end
 
-		ProcessingQueue = false
+		processed += 1
 
-	end)
+	end
 
 end
 
