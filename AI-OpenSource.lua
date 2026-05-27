@@ -1,4 +1,4 @@
-local ver = " UIs 5.35 "
+local ver = " UIs 5.351 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1531,11 +1531,11 @@ local function createClone(part)
 
 				local childCount = 0
 
-				for _,child in ipairs(
-					if not part.Parent:IsA("Model") then
-                    	return part:Clone()
-                    end
-				) do
+				if not part.Parent:IsA("Model") then
+                  return part:Clone()
+                end
+
+                for _, child in ipairs(part.Parent:GetDescendants()) do
 
 					if childCount >= MAX_CHILDREN_PER_MODEL then
 						break
