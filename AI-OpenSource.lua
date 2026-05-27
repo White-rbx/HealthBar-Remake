@@ -1,4 +1,4 @@
-local ver = " UIs 5.279 "
+local ver = " UIs 5.3 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -26,6 +26,8 @@ local update = [[
 (:25/5/2026 | 9:21 pm: R) Rename one command called "/Globalchat" to "/Herechat" to match Roblox chat.
 (:26/5/2026 | 5:36 pm: A) Added ViewportFrame to user while using /AllowCam to make sure what is AI seeing.
 (:26/5/2026 | 5:53 pm: F) Fixed ViewportFrame not showing and lag issues.
+(:27/5/2026 | 7:32 pm: F&A) Fixed Center-Point Visibility Problem on /AllowCam and added "/AllowProperties" and "/AllowSeeChildren". Add SUPERLONG mode for /geminiswitch and /gptswitch to make more text limit.
+
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -689,6 +691,7 @@ local GPT_PRESETS = {
     PLUS  = {mt = 512, t = 0.75},
     THINKING = {mt = 1024, t = 0.8},
 	MASTER = {mt = 2048, t = 0.9},
+	SUPERLONG = {mt = 4096, t = 0.9},
 }
 local GEMINI_PRESETS = {
     FREE  = {mt = 64,  t = 0.4},
@@ -696,6 +699,7 @@ local GEMINI_PRESETS = {
     PLUS  = {mt = 512, t = 0.75},
     THINKING = {mt = 1024, t = 0.8},
 	MASTER = {mt = 2048, t = 0.9},
+	SUPERLONG = {mt = 4096, t = 0.9},
 }
 
 --// =========================================
@@ -1138,6 +1142,51 @@ If the user talks about dangerous or inappropriate topics:
 
 You are allowed to use links, references, and provided information to help answer the user's questions.
 
+If AllowProperties ( BETA ) is enabled:
+- Do NOT automatically list every property.
+- Keep responses short and natural.
+- Only mention important visual or gameplay-related properties.
+- Ask the user if they want detailed properties.
+- Avoid spamming long property lists unless requested.
+
+If AllowCam is enabled:
+- Do NOT automatically describe everything you see.
+- Only describe visible objects when relevant to the conversation.
+- If the user asks what you see, describe the scene naturally.
+- Keep scene descriptions short unless the user asks for details. 
+
+If AllowSeeChildren is enabled:
+- Do NOT automatically list all children objects.
+- Only mention important children when relevant.
+- If the user asks what is inside a model or parent object, summarize it naturally.
+- Avoid spamming long descendant lists unless requested.
+
+Example:
+User: "What do you see?"
+
+Good response:
+"I see a neon red part nearby. Do you want detailed properties?"
+
+Good response:
+"I see a large transparent glass wall."
+
+Good response:
+"I see a model with several parts inside."
+
+Bad response:
+"Part | Material=Neon | Transparency=0 | Anchored=true | CanCollide=true | Size=..."
+
+Bad response:
+"Workspace.Model.Part.Transparency = 0"
+
+Bad response:
+"Listing 53 children..."
+
+If the user is about to use /AllowCam:
+- warn them that the feature may lag or freeze weak devices.
+- Explain that /AllowCam uses real-time object scanning, raycasting, cloning, and ViewportFrame rendering.
+- Recommend disabling it on low-end devices.
+
 Your limit:
 - In-Game Memory saver had no limit request
 - Global Memory saver had limit at 1000 request
@@ -1156,9 +1205,9 @@ Your limit:
 **/CheckURLStatus** *URL* - HEAD request to URL
 **/CheckSYN** - check syn.request availability
 **/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
-**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER]* - Change Text limit
+**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG]* - Change Text limit
 **/GPTModel** *[FREE/FAST/SMART/THINK]* - Change Text limit
-**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER]* - Change model
+**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG]* - Change model
 **/GEMINIModel** *[FREE/FAST/SMART/THINK]* - Change model
 **/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
@@ -1173,8 +1222,10 @@ Your limit:
 **/Note** *TEXT* - Note message to not to be forget.
 **/ShowNote** - Show all notes that you write.
 **/DelAllNote** - Delete all note that you write will be gone forever.	
-**/AllowCam** *[ON/OFF]* - This allows the AI to see what we are looking at on Roblox World and then process that information.
-
+**/AllowCam** *[ON/OFF]* - This allows an AI to see what we are looking at on Roblox World and then process that information.
+**/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
+**/AllowSeeChildren** *[ON/OFF]* - This is allow an AI to see childrens inside parent while using allowcam.
+	
 MEMORIES:
 ]]
 ..
@@ -1337,12 +1388,14 @@ end
 -- =========================================
 
 local ALLOW_CAM = false
+local ALLOW_PROPERTIES = false
+local ALLOW_SEE_CHILDREN = false
 
-local SCAN_RADIUS = 90
-local VIEW_DOT = 0.45
+local SCAN_RADIUS = 360 -- Do not change 
+local VIEW_DOT = 0.45 -- Do not change 
 
-local MAX_CLONES = 1500000
-local CLONES_PER_FRAME = 40
+local MAX_CLONES = 1500000 -- Do not change 
+local CLONES_PER_FRAME = 60 -- Do not change 
 
 -- =========================================
 -- SERVICES
@@ -1446,6 +1499,12 @@ end
 -- SAFE CLONE
 -- =========================================
 
+-- =========================================
+-- SAFE CLONE
+-- =========================================
+
+local MAX_CHILDREN_PER_MODEL = 50
+
 local function createClone(part)
 
 	if not WorldModel then
@@ -1458,18 +1517,91 @@ local function createClone(part)
 
 	local success,clone =
 		pcall(function()
-			return part:Clone()
+
+			-- =========================================
+			-- ALLOW SEE CHILDREN
+			-- =========================================
+
+			if ALLOW_SEE_CHILDREN
+			and part.Parent then
+
+				local model =
+					Instance.new("Model")
+
+				model.Name =
+					part.Parent.Name
+
+				local childCount = 0
+
+				for _,child in ipairs(
+					part.Parent:GetDescendants()
+				) do
+
+					if childCount >= MAX_CHILDREN_PER_MODEL then
+						break
+					end
+
+					-- =========================
+					-- SAFE FILTER
+					-- =========================
+
+					if child:IsA("BasePart") then
+
+						-- skip local character
+						if LocalPlayer.Character
+						and child:IsDescendantOf(
+							LocalPlayer.Character
+						) then
+							continue
+						end
+
+						local cSuccess,c =
+							pcall(function()
+								return child:Clone()
+							end)
+
+						if cSuccess
+						and c then
+
+							c.Anchored = true
+							c.CanCollide = false
+							c.CanTouch = false
+							c.CanQuery = false
+
+							c.Parent = model
+
+							childCount += 1
+
+						end
+
+					end
+
+				end
+
+				return model
+
+			end
+
+			-- =========================================
+			-- NORMAL PART CLONE
+			-- =========================================
+
+			local c =
+				part:Clone()
+
+			c.Anchored = true
+			c.CanCollide = false
+			c.CanTouch = false
+			c.CanQuery = false
+
+			return c
+
 		end)
 
 	if not success
 	or not clone then
 		return
 	end
-
-	clone.Anchored = true
-	clone.CanCollide = false
-	clone.CanTouch = false
-	clone.CanQuery = false
 
 	clone.Parent = WorldModel
 
@@ -1526,6 +1658,78 @@ end
 -- =========================================
 -- CAMERA VISION
 -- =========================================
+
+local function isPartVisible(part, rayParams)
+
+	local halfSize =
+		part.Size / 2
+
+	local points = {
+
+		-- center
+		part.Position,
+
+		-- top / bottom
+		part.Position + Vector3.new(0, halfSize.Y, 0),
+		part.Position - Vector3.new(0, halfSize.Y, 0),
+
+		-- left / right
+		part.Position + Vector3.new(halfSize.X, 0, 0),
+		part.Position - Vector3.new(halfSize.X, 0, 0),
+
+		-- front / back
+		part.Position + Vector3.new(0, 0, halfSize.Z),
+		part.Position - Vector3.new(0, 0, halfSize.Z),
+
+	}
+
+	for _,point in ipairs(points) do
+
+		local _,onscreen =
+			Camera:WorldToViewportPoint(point)
+
+		if onscreen then
+
+			local direction =
+				point
+				-
+				Camera.CFrame.Position
+
+			local dot =
+				direction.Unit:Dot(
+					Camera.CFrame.LookVector
+				)
+
+			if dot > VIEW_DOT then
+
+				local result =
+					workspace:Raycast(
+						Camera.CFrame.Position,
+						direction,
+						rayParams
+					)
+
+				if result
+				and result.Instance then
+
+					if result.Instance == part
+					or result.Instance:IsDescendantOf(part.Parent) then
+
+						return true
+
+					end
+
+				end
+
+			end
+
+		end
+
+	end
+
+	return false
+
+end
 
 local function getVisibleParts()
 
@@ -1584,43 +1788,11 @@ local function getVisibleParts()
 			continue
 		end
 
-		local _,onscreen =
-			Camera:WorldToViewportPoint(
-				v.Position
-			)
+		-- =================================
+		-- MULTI POINT VISIBILITY CHECK
+		-- =================================
 
-		if not onscreen then
-			continue
-		end
-
-		local direction =
-			v.Position
-			-
-			Camera.CFrame.Position
-
-		local dot =
-			direction.Unit:Dot(
-				Camera.CFrame.LookVector
-			)
-
-		if dot <= VIEW_DOT then
-			continue
-		end
-
-		local result =
-			workspace:Raycast(
-				Camera.CFrame.Position,
-				direction,
-				rayParams
-			)
-
-		if not result
-		or not result.Instance then
-			continue
-		end
-
-		if result.Instance ~= v
-		and not result.Instance:IsDescendantOf(v.Parent) then
+		if not isPartVisible(v, rayParams) then
 			continue
 		end
 
@@ -1645,7 +1817,7 @@ local function getVisibleParts()
 
 	end
 
-	-- remove old invisible clones
+	-- remove invisible clones
 	for original,_ in pairs(CloneCache) do
 
 		if not visibleMap[original] then
@@ -1693,6 +1865,119 @@ RunService.RenderStepped:Connect(function(dt)
 	pcall(getVisibleParts)
 
 end)
+
+------------------------------
+
+local PROPERTY_BETA = {
+
+	"Name",
+	"ClassName",
+
+	"Material",
+	"Color",
+	"Transparency",
+
+	"Size",
+
+	"Anchored",
+	"CanCollide"
+
+}
+
+------------------------------
+
+local function formatProperty(value)
+
+	local t =
+		typeof(value)
+
+	if t == "Vector3" then
+
+		return string.format(
+			"(%.1f, %.1f, %.1f)",
+			value.X,
+			value.Y,
+			value.Z
+		)
+
+	elseif t == "Color3" then
+
+		return string.format(
+			"RGB(%d,%d,%d)",
+			value.R * 255,
+			value.G * 255,
+			value.B * 255
+		)
+
+	end
+
+	return tostring(value)
+
+end
+
+------------------------------
+
+local function getProperties(object)
+
+	if not ALLOW_PROPERTIES then
+		return nil
+	end
+
+	if not object then
+		return nil
+	end
+
+	local results = {}
+
+	for _,property in ipairs(PROPERTY_BETA) do
+
+		local success,value =
+			pcall(function()
+
+				return object[property]
+
+			end)
+
+		if success then
+
+			results[property] =
+				formatProperty(value)
+
+		end
+
+	end
+
+	return results
+
+end
+
+------------------------------
+
+local function propertiesToText(data)
+
+	if not data then
+		return ""
+	end
+
+	local text = {}
+
+	for property,value in pairs(data) do
+
+		table.insert(
+			text,
+			property .. ": " .. value
+		)
+
+	end
+
+	return table.concat(
+		text,
+		" | "
+	)
+
+end
+
+------------------------------
 
 -- executor http detection (function returning response-like table)
 local httpRequestFunc = nil
@@ -1996,7 +2281,7 @@ end
 
 -- ========== COMMANDS ==========
 local HELP_TEXT = [=[
-# All Command (31 commands)
+# All Command (33 commands)
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
@@ -2010,9 +2295,9 @@ local HELP_TEXT = [=[
 **/CheckURLStatus** *URL* - HEAD request to URL
 **/CheckSYN** - check syn.request availability
 **/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
-**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER]* - Change Text limit
+**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG]* - Change Text limit
 **/GPTModel** *[FREE/FAST/SMART/THINK]* - Change Text limit
-**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER]* - Change model
+**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG]* - Change model
 **/GEMINIModel** *[FREE/FAST/SMART/THINK]* - Change model
 **/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
@@ -2027,7 +2312,9 @@ local HELP_TEXT = [=[
 **/Note** *TEXT* - Note message to not to be forget.
 **/ShowNote** - Show all notes that you write.
 **/DelAllNote** - Delete all note that you write will be gone forever.
-**/AllowCam** *[ON/OFF]* - This allows the AI to see what we are looking at on Roblox World and then process that information.
+**/AllowCam** *[ON/OFF]* - ( LAG WARNING ) - This allows an AI to see what we are looking at on Roblox World and then process that information.
+**/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
+**/AllowSeeChildren** *[ON/OFF]* - ( LAG WARNING ) - This is allow an AI to see childrens inside parent while using allowcam.
 ]=]
 
 local function clearChatLogs()
@@ -2851,6 +3138,166 @@ if lower:match("^/allowcam") then
 		safeTxt(
 			user.Warn,
 			"Usage: /AllowCam [ON/OFF]",
+			255,200,0
+		)
+
+	end
+
+	return true
+
+end
+
+-- =========================================
+-- /AllowProperties [ON/OFF]
+-- =========================================
+
+if lower:match("^/allowproperties") then
+
+	if not ALLOW_CAM then
+
+		safeTxt(
+			user.Warn,
+			"/AllowCam must be enabled first.",
+			255,120,120
+		)
+
+		return true
+
+	end
+
+	local value =
+		lower:match("^/allowproperties%s+(%S+)$")
+
+	if not value then
+
+		safeTxt(
+			user.Warn,
+			"Usage: /AllowProperties [ON/OFF]",
+			255,200,0
+		)
+
+		return true
+
+	end
+
+	if value == "on" then
+
+		ALLOW_PROPERTIES = true
+
+		safeTxt(
+			user.Suc,
+			"AI Property Vision Enabled",
+			0,255,0
+		)
+
+	elseif value == "off" then
+
+		ALLOW_PROPERTIES = false
+
+		safeTxt(
+			user.Info,
+			"AI Property Vision Disabled",
+			255,170,0
+		)
+
+	else
+
+		safeTxt(
+			user.Warn,
+			"Usage: /AllowProperties [ON/OFF]",
+			255,200,0
+		)
+
+	end
+
+	return true
+
+end
+
+-- =========================================
+-- /AllowSeeChildren [ON/OFF]
+-- =========================================
+
+if lower:match("^/allowseechildren") then
+
+	local value =
+		lower:match(
+			"^/allowseechildren%s+(%S+)$"
+		)
+
+	if not value then
+
+		safeTxt(
+			user.Warn,
+			"Usage: /AllowSeeChildren [ON/OFF]",
+			255,200,0
+		)
+
+		return true
+
+	end
+
+	-- =========================================
+	-- REQUIRE ALLOWCAM
+	-- =========================================
+
+	if not ALLOW_CAM then
+
+		safeTxt(
+			user.Warn,
+			"/AllowCam must be enabled first.",
+			255,120,120
+		)
+
+		return true
+
+	end
+
+	-- =========================================
+	-- ENABLE
+	-- =========================================
+
+	if value == "on" then
+
+		ALLOW_SEE_CHILDREN = true
+
+		safeTxt(
+			user.Suc,
+			"AllowSeeChildren Enabled",
+			0,255,0
+		)
+
+		safeTxt(
+			user.Info,
+			"AI can now clone visible model children.",
+			120,200,255
+		)
+
+	-- =========================================
+	-- DISABLE
+	-- =========================================
+
+	elseif value == "off" then
+
+		ALLOW_SEE_CHILDREN = false
+
+		safeTxt(
+			user.Info,
+			"AllowSeeChildren Disabled",
+			255,170,0
+		)
+
+		safeTxt(
+			user.Info,
+			"AI will now render single parts only.",
+			200,200,200
+		)
+
+	else
+
+		safeTxt(
+			user.Warn,
+			"Usage: /AllowSeeChildren [ON/OFF]",
 			255,200,0
 		)
 
