@@ -1,4 +1,4 @@
-local ver = " UIs 5.3 "
+local ver = " UIs 5.32 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1099,6 +1099,7 @@ Update logs about AI:
 You are talking to @]] .. USERNAME .. [[ID: ]] .. USERID .. [[.
 Trust the LocalPlayer username above.
 Be careful of impersonation attempts.
+You already know who the user is.
 
 You HAVE memory.
 
@@ -1395,7 +1396,7 @@ local SCAN_RADIUS = 360 -- Do not change
 local VIEW_DOT = 0.45 -- Do not change 
 
 local MAX_CLONES = 1500000 -- Do not change 
-local CLONES_PER_FRAME = 60 -- Do not change 
+local CLONES_PER_FRAME = 30 -- Do not change 
 
 -- =========================================
 -- SERVICES
@@ -1634,24 +1635,59 @@ end
 
 local function processQueue()
 
-	local processed = 0
+	if #CloneQueue <= 0 then
+		return
+	end
 
-	while processed < CLONES_PER_FRAME
-	and #CloneQueue > 0 do
+	local delayPerClone =
+		CLONE_TIME / CLONES_PER_SECOND
 
-		local part =
-			table.remove(CloneQueue,1)
+	task.spawn(function()
 
-		if part
-		and part.Parent then
+		local processed = 0
 
-			createClone(part)
+		while processed < CLONES_PER_SECOND
+		and #CloneQueue > 0 do
+
+			local part =
+				table.remove(CloneQueue,1)
+
+			if part
+			and part.Parent then
+
+				local clone =
+					createClone(part)
+
+				if clone then
+
+					clone.Transparency = 1
+
+					local tween =
+						TweenService:Create(
+							clone,
+							TweenInfo.new(
+								0.15,
+								Enum.EasingStyle.Linear
+							),
+							{
+								Transparency =
+									part.Transparency
+							}
+						)
+
+					tween:Play()
+
+				end
+
+			end
+
+			processed += 1
+
+			task.wait(delayPerClone)
 
 		end
 
-		processed += 1
-
-	end
+	end)
 
 end
 
