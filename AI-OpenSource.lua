@@ -1,4 +1,4 @@
-local ver = " UIs 5.345 "
+local ver = " UIs 5.347 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -668,7 +668,7 @@ AI is not bug with broken text because of text limit, use **/geminiswitch** or *
 txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
 **With respect**.]], 255, 255, 0)
 txt(user.Warn,[[# 1 command is enabled 
-**/AutoRemember** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) ]], 255,255,0)
+**/1AutoRememberInGame** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) ]], 255,255,0)
 txt(user.Nill, "### [====== Chat ======]", 180, 180, 180)
 
 -- ===========================
@@ -1395,7 +1395,7 @@ local ALLOW_SEE_CHILDREN = false
 local SCAN_RADIUS = 360 -- Do not change 
 local VIEW_DOT = 0.45 -- Do not change 
 
-local MAX_CLONES = 320 -- Do not change 
+local MAX_CLONES = 3200 -- Do not change 
 local CLONES_PER_FRAME = 2 -- Do not change 
 
 -- =========================================
@@ -1663,7 +1663,7 @@ local function processQueue()
 					TweenService:Create(
 						clone,
 						TweenInfo.new(
-							0.12,
+							0.32,
 							Enum.EasingStyle.Linear
 						),
 						{
