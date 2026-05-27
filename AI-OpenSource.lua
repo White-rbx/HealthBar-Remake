@@ -1,4 +1,4 @@
-local ver = " UIs 5.347 "
+local ver = " UIs 5.348 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1504,7 +1504,7 @@ end
 -- SAFE CLONE
 -- =========================================
 
-local MAX_CHILDREN_PER_MODEL = 50
+local MAX_CHILDREN_PER_MODEL = 6400
 
 local function createClone(part)
 
