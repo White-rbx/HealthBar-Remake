@@ -1,4 +1,4 @@
-local ver = " UIs 5.33 "
+local ver = " UIs 5.34 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1512,8 +1512,9 @@ local function createClone(part)
 		return
 	end
 
+	-- already cloned
 	if CloneCache[part] then
-		return
+		return CloneCache[part]
 	end
 
 	local success,clone =
@@ -1542,10 +1543,7 @@ local function createClone(part)
 						break
 					end
 
-					-- =========================
 					-- SAFE FILTER
-					-- =========================
-
 					if child:IsA("BasePart") then
 
 						-- skip local character
@@ -1606,28 +1604,10 @@ local function createClone(part)
 
 	clone.Parent = WorldModel
 
-    return clone
-
+	-- cache AFTER parenting
 	CloneCache[part] = clone
 
-end
-
--- =========================================
--- REMOVE OLD CLONES
--- =========================================
-
-local function removeClone(part)
-
-	local clone =
-		CloneCache[part]
-
-	if clone then
-
-		clone:Destroy()
-
-		CloneCache[part] = nil
-
-	end
+	return clone
 
 end
 
