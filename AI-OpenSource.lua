@@ -1,4 +1,4 @@
-local ver = " UIs 5.356 "
+local ver = " UIs 5.357 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1888,10 +1888,17 @@ end)
 -- AUTO SAFETY SYSTEM
 -- =========================================
 
-local AUTO_DISABLE_FPS = 1
-local AUTO_DISABLE_TIME = 5
-
 local lowFpsTime = 0
+
+local FPS_RULES = {
+
+	[9] = 35,
+	[6] = 25,
+	[4] = 13,
+	[2] = 8,
+	[0] = 0
+
+}
 
 RunService.RenderStepped:Connect(function(dt)
 
@@ -1902,15 +1909,37 @@ RunService.RenderStepped:Connect(function(dt)
 	local fps =
 		math.floor(1 / dt)
 
-	-- =========================
-	-- LOW FPS DETECT
-	-- =========================
+	local requiredTime = nil
 
-	if fps <= AUTO_DISABLE_FPS then
+	-- =========================================
+	-- FIND FPS RULE
+	-- =========================================
+
+	for limit,timeNeeded in pairs(FPS_RULES) do
+
+		if fps <= limit then
+
+			if not requiredTime
+			or timeNeeded < requiredTime then
+
+				requiredTime =
+					timeNeeded
+
+			end
+
+		end
+
+	end
+
+	-- =========================================
+	-- LOW FPS DETECTED
+	-- =========================================
+
+	if requiredTime then
 
 		lowFpsTime += dt
 
-		if lowFpsTime >= AUTO_DISABLE_TIME then
+		if lowFpsTime >= requiredTime then
 
 			ALLOW_CAM = false
 
@@ -1920,12 +1949,24 @@ RunService.RenderStepped:Connect(function(dt)
 				"[AI Camera] Automatically disabled for safety."
 			)
 
-			txt(user.Warn,[[AI Camera Automatic turn allowcam off for safety from getting crash.]], 255, 255, 0)
+			txt(
+				user.Warn,
+				[[AI Camera automatically disabled for safety.
+(Error: ]] ..
+				fps ..
+				[[ FPS detected)]],
+				255,
+				255,
+				0
+			)
+
+			lowFpsTime = 0
 
 		end
 
 	else
 
+		-- FPS stable
 		lowFpsTime = 0
 
 	end
