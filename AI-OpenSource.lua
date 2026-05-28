@@ -1,4 +1,4 @@
-local ver = " UIs 5.351 "
+local ver = " UIs 5.353 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -27,7 +27,7 @@ local update = [[
 (:26/5/2026 | 5:36 pm: A) Added ViewportFrame to user while using /AllowCam to make sure what is AI seeing.
 (:26/5/2026 | 5:53 pm: F) Fixed ViewportFrame not showing and lag issues.
 (:27/5/2026 | 7:32 pm: F&A) Fixed Center-Point Visibility Problem on /AllowCam and added "/AllowProperties" and "/AllowSeeChildren". Add SUPERLONG mode for /geminiswitch and /gptswitch to make more text limit.
-
+(:28/5/2026 | 8:00 pm: F) Fixed lag as possible.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1392,11 +1392,14 @@ local ALLOW_CAM = false
 local ALLOW_PROPERTIES = false
 local ALLOW_SEE_CHILDREN = false
 
-local SCAN_RADIUS = 120
-local VIEW_DOT = 0.35
+-- wider AI vision
+local SCAN_RADIUS = 220
+local VIEW_DOT = 0.18
 
-local MAX_CLONES = 250
-local CLONES_PER_FRAME = 2 
+-- mobile friendly
+local MAX_CLONES = 180
+local CLONES_PER_FRAME = 3
+local MAX_CHILDREN_PER_MODEL = 20
 
 -- =========================================
 -- SERVICES
@@ -1407,6 +1410,9 @@ local Players =
 
 local RunService =
 	game:GetService("RunService")
+
+local TweenService =
+	game:GetService("TweenService")
 
 local LocalPlayer =
 	Players.LocalPlayer
@@ -1437,21 +1443,26 @@ local function createViewport()
 
 	AIViewport = Instance.new("ViewportFrame")
 	AIViewport.Name = "AI_Perspective"
-	AIViewport.Position = UDim2.new(0.034,0,0,0)
-	AIViewport.Size = UDim2.new(0,400,0,200)
-	AIViewport.Active = true
-	AIViewport.Visible = true
+
+	AIViewport.Position =
+		UDim2.new(0.034,0,0,0)
+
+	AIViewport.Size =
+		UDim2.new(0,400,0,200)
+
 	AIViewport.BackgroundColor3 =
 		Color3.fromRGB(190,190,190)
+
+	AIViewport.BorderSizePixel = 0
+	AIViewport.Active = true
+	AIViewport.Visible = true
+	AIViewport.Parent = vHolder
 
 	AIViewport.Ambient =
 		Color3.new(1,1,1)
 
 	AIViewport.LightColor =
 		Color3.new(1,1,1)
-
-	AIViewport.Draggable = true
-	AIViewport.Parent = vHolder
 
 	Corner(0,8,AIViewport)
 
@@ -1497,10 +1508,36 @@ local function destroyViewport()
 end
 
 -- =========================================
--- SAFE CLONE
+-- REMOVE CLONE
 -- =========================================
 
-local MAX_CHILDREN_PER_MODEL = 40
+local function removeClone(part)
+
+	local clone =
+		CloneCache[part]
+
+	if clone then
+
+		clone:Destroy()
+
+		CloneCache[part] = nil
+
+	end
+
+end
+
+-- =========================================
+-- CREATE CLONE
+-- =========================================
+
+local function setupPart(c)
+
+	c.Anchored = true
+	c.CanCollide = false
+	c.CanTouch = false
+	c.CanQuery = false
+
+end
 
 local function createClone(part)
 
@@ -1508,7 +1545,7 @@ local function createClone(part)
 		return
 	end
 
-	-- already cloned
+	-- already exists
 	if CloneCache[part] then
 		return CloneCache[part]
 	end
@@ -1516,12 +1553,13 @@ local function createClone(part)
 	local success,clone =
 		pcall(function()
 
-			-- =========================================
-			-- ALLOW SEE CHILDREN
-			-- =========================================
+			-- =====================================
+			-- SEE CHILDREN
+			-- =====================================
 
 			if ALLOW_SEE_CHILDREN
-			and part.Parent then
+			and part.Parent
+			and part.Parent:IsA("Model") then
 
 				local model =
 					Instance.new("Model")
@@ -1531,45 +1569,38 @@ local function createClone(part)
 
 				local childCount = 0
 
-				if not part.Parent:IsA("Model") then
-                  return part:Clone()
-                end
+				for _,child in ipairs(
+					part.Parent:GetDescendants()
+				) do
 
-                for _, child in ipairs(part.Parent:GetDescendants()) do
-
-					if childCount >= MAX_CHILDREN_PER_MODEL then
+					if childCount
+					>= MAX_CHILDREN_PER_MODEL then
 						break
 					end
 
-					-- SAFE FILTER
-					if child:IsA("BasePart") then
+					if not child:IsA("BasePart") then
+						continue
+					end
 
-						-- skip local character
-						if LocalPlayer.Character
-						and child:IsDescendantOf(
-							LocalPlayer.Character
-						) then
-							continue
-						end
+					if LocalPlayer.Character
+					and child:IsDescendantOf(
+						LocalPlayer.Character
+					) then
+						continue
+					end
 
-						local cSuccess,c =
-							pcall(function()
-								return child:Clone()
-							end)
+					local ok,c =
+						pcall(function()
+							return child:Clone()
+						end)
 
-						if cSuccess
-						and c then
+					if ok and c then
 
-							c.Anchored = true
-							c.CanCollide = false
-							c.CanTouch = false
-							c.CanQuery = false
+						setupPart(c)
 
-							c.Parent = model
+						c.Parent = model
 
-							childCount += 1
-
-						end
+						childCount += 1
 
 					end
 
@@ -1579,17 +1610,13 @@ local function createClone(part)
 
 			end
 
-			-- =========================================
-			-- NORMAL PART CLONE
-			-- =========================================
+			-- =====================================
+			-- NORMAL PART
+			-- =====================================
 
-			local c =
-				part:Clone()
+			local c = part:Clone()
 
-			c.Anchored = true
-			c.CanCollide = false
-			c.CanTouch = false
-			c.CanQuery = false
+			setupPart(c)
 
 			return c
 
@@ -1602,77 +1629,54 @@ local function createClone(part)
 
 	clone.Parent = WorldModel
 
-	-- cache AFTER parenting
 	CloneCache[part] = clone
+
+	-- =====================================
+	-- MOBILE FRIENDLY FADE
+	-- =====================================
+
+	if clone:IsA("BasePart") then
+
+		local target =
+			part.Transparency
+
+		clone.Transparency = 1
+
+		TweenService:Create(
+			clone,
+			TweenInfo.new(
+				0.08,
+				Enum.EasingStyle.Linear
+			),
+			{
+				Transparency = target
+			}
+		):Play()
+
+	end
 
 	return clone
 
 end
 
 -- =========================================
--- PROCESS CLONE QUEUE
+-- PROCESS QUEUE
 -- =========================================
-
-local MAX_CLONE_TIME =
-	1 / 240
--- ~4ms per frame
 
 local function processQueue()
 
-	if #CloneQueue <= 0 then
-		return
-	end
-
-	local start =
-		os.clock()
-
 	local processed = 0
 
-	while #CloneQueue > 0 do
+	while processed < CLONES_PER_FRAME
+	and #CloneQueue > 0 do
 
-		-- stop if took too long
-		if os.clock() - start
-		>= MAX_CLONE_TIME then
-			break
-		end
-
-		-- faster than table.remove(queue,1)
 		local part =
-			CloneQueue[#CloneQueue]
-
-		CloneQueue[#CloneQueue] = nil
+			table.remove(CloneQueue,1)
 
 		if part
 		and part.Parent then
 
-			local clone =
-				createClone(part)
-
-			if clone then
-
-				-- fade in
-				if clone:IsA("BasePart") then
-
-					local targetTransparency =
-						part.Transparency
-
-					clone.Transparency = 1
-
-					TweenService:Create(
-						clone,
-						TweenInfo.new(
-							0.32,
-							Enum.EasingStyle.Linear
-						),
-						{
-							Transparency =
-								targetTransparency
-						}
-					):Play()
-
-				end
-
-			end
+			createClone(part)
 
 		end
 
@@ -1683,7 +1687,7 @@ local function processQueue()
 end
 
 -- =========================================
--- CAMERA VISION
+-- VISIBILITY CHECK
 -- =========================================
 
 local function isPartVisible(part, rayParams)
@@ -1691,62 +1695,62 @@ local function isPartVisible(part, rayParams)
 	local halfSize =
 		part.Size / 2
 
+	-- more stable visibility
 	local points = {
 
-		-- center
 		part.Position,
 
-		-- top / bottom
-		part.Position + Vector3.new(0, halfSize.Y, 0),
-		part.Position - Vector3.new(0, halfSize.Y, 0),
+		part.Position + Vector3.new( halfSize.X,0,0),
+		part.Position + Vector3.new(-halfSize.X,0,0),
 
-		-- left / right
-		part.Position + Vector3.new(halfSize.X, 0, 0),
-		part.Position - Vector3.new(halfSize.X, 0, 0),
+		part.Position + Vector3.new(0, halfSize.Y,0),
+		part.Position + Vector3.new(0,-halfSize.Y,0),
 
-		-- front / back
-		part.Position + Vector3.new(0, 0, halfSize.Z),
-		part.Position - Vector3.new(0, 0, halfSize.Z),
+		part.Position + Vector3.new(0,0, halfSize.Z),
+		part.Position + Vector3.new(0,0,-halfSize.Z),
 
 	}
 
 	for _,point in ipairs(points) do
 
-		local _,onscreen =
+		local screenPos,onscreen =
 			Camera:WorldToViewportPoint(point)
 
-		if onscreen then
+		if not onscreen then
+			continue
+		end
 
-			local direction =
-				point
-				-
-				Camera.CFrame.Position
+		local direction =
+			point
+			-
+			Camera.CFrame.Position
 
-			local dot =
-				direction.Unit:Dot(
-					Camera.CFrame.LookVector
-				)
+		local dot =
+			direction.Unit:Dot(
+				Camera.CFrame.LookVector
+			)
 
-			if dot > VIEW_DOT then
+		-- wider vision cone
+		if dot <= VIEW_DOT then
+			continue
+		end
 
-				local result =
-					workspace:Raycast(
-						Camera.CFrame.Position,
-						direction,
-						rayParams
-					)
+		local result =
+			workspace:Raycast(
+				Camera.CFrame.Position,
+				direction,
+				rayParams
+			)
 
-				if result
-				and result.Instance then
+		if result
+		and result.Instance then
 
-					if result.Instance == part
-					or result.Instance:IsDescendantOf(part.Parent) then
+			if result.Instance == part
+			or result.Instance:IsDescendantOf(
+				part.Parent
+			) then
 
-						return true
-
-					end
-
-				end
+				return true
 
 			end
 
@@ -1758,13 +1762,17 @@ local function isPartVisible(part, rayParams)
 
 end
 
+-- =========================================
+-- CAMERA VISION
+-- =========================================
+
 local function getVisibleParts()
 
 	if not ALLOW_CAM then
 
 		destroyViewport()
 
-		return "Camera access disabled."
+		return "Camera disabled."
 
 	end
 
@@ -1779,8 +1787,6 @@ local function getVisibleParts()
 
 	ViewportCamera.FieldOfView =
 		Camera.FieldOfView
-
-	local visible = {}
 
 	local nearby =
 		workspace:GetPartBoundsInRadius(
@@ -1815,20 +1821,11 @@ local function getVisibleParts()
 			continue
 		end
 
-		-- =================================
-		-- MULTI POINT VISIBILITY CHECK
-		-- =================================
-
 		if not isPartVisible(v, rayParams) then
 			continue
 		end
 
 		visibleMap[v] = true
-
-		table.insert(
-			visible,
-			v.Name
-		)
 
 		-- queue clone
 		if not CloneCache[v] then
@@ -1844,7 +1841,10 @@ local function getVisibleParts()
 
 	end
 
-	-- remove invisible clones
+	-- =====================================
+	-- REMOVE INVISIBLE
+	-- =====================================
+
 	for original,_ in pairs(CloneCache) do
 
 		if not visibleMap[original] then
@@ -1856,15 +1856,6 @@ local function getVisibleParts()
 	end
 
 	processQueue()
-
-	if #visible <= 0 then
-		return "Nothing visible."
-	end
-
-	return table.concat(
-		visible,
-		", "
-	)
 
 end
 
@@ -1882,8 +1873,8 @@ RunService.RenderStepped:Connect(function(dt)
 
 	updateTick += dt
 
-	-- update 5 times/sec only
-	if updateTick < 0.05 then
+	-- smoother refresh
+	if updateTick < 0.08 then
 		return
 	end
 
