@@ -1,4 +1,4 @@
-local ver = " UIs 5.359 "
+local ver = " UIs 5.36 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1894,10 +1894,10 @@ local lowFpsTime = 0
 
 local FPS_RULES = {
 
-	[6] = 25,
-	[4] = 13,
-	[2] = 8,
-	[0] = 5,
+	[6] = 60,
+	[4] = 40,
+	[2] = 30,
+	[0] = 25,
 
 }
 
