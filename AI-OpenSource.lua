@@ -1,4 +1,4 @@
-local ver = " UIs 5.353 "
+local ver = " UIs 5.356 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -27,7 +27,7 @@ local update = [[
 (:26/5/2026 | 5:36 pm: A) Added ViewportFrame to user while using /AllowCam to make sure what is AI seeing.
 (:26/5/2026 | 5:53 pm: F) Fixed ViewportFrame not showing and lag issues.
 (:27/5/2026 | 7:32 pm: F&A) Fixed Center-Point Visibility Problem on /AllowCam and added "/AllowProperties" and "/AllowSeeChildren". Add SUPERLONG mode for /geminiswitch and /gptswitch to make more text limit.
-(:28/5/2026 | 8:00 pm: F) Fixed lag as possible.
+(:28/5/2026 | 8:00 pm: F) Fixed lag as possible. and add safety from crashing by automatic allowcam turn off itself.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1645,7 +1645,7 @@ local function createClone(part)
 		TweenService:Create(
 			clone,
 			TweenInfo.new(
-				0.08,
+				0.6,
 				Enum.EasingStyle.Linear
 			),
 			{
@@ -1881,6 +1881,54 @@ RunService.RenderStepped:Connect(function(dt)
 	updateTick = 0
 
 	pcall(getVisibleParts)
+
+end)
+
+-- =========================================
+-- AUTO SAFETY SYSTEM
+-- =========================================
+
+local AUTO_DISABLE_FPS = 1
+local AUTO_DISABLE_TIME = 5
+
+local lowFpsTime = 0
+
+RunService.RenderStepped:Connect(function(dt)
+
+	if not ALLOW_CAM then
+		return
+	end
+
+	local fps =
+		math.floor(1 / dt)
+
+	-- =========================
+	-- LOW FPS DETECT
+	-- =========================
+
+	if fps <= AUTO_DISABLE_FPS then
+
+		lowFpsTime += dt
+
+		if lowFpsTime >= AUTO_DISABLE_TIME then
+
+			ALLOW_CAM = false
+
+			destroyViewport()
+
+			warn(
+				"[AI Camera] Automatically disabled for safety."
+			)
+
+			txt(user.Warn,[[AI Camera Automatic turn allowcam off for safety from getting crash.]], 255, 255, 0)
+
+		end
+
+	else
+
+		lowFpsTime = 0
+
+	end
 
 end)
 
