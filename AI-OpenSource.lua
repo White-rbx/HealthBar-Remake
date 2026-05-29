@@ -1,4 +1,4 @@
-local ver = " UIs 5.361 "
+local ver = " UIs 5.37 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -28,6 +28,7 @@ local update = [[
 (:26/5/2026 | 5:53 pm: F) Fixed ViewportFrame not showing and lag issues.
 (:27/5/2026 | 7:32 pm: F&A) Fixed Center-Point Visibility Problem on /AllowCam and added "/AllowProperties" and "/AllowSeeChildren". Add SUPERLONG mode for /geminiswitch and /gptswitch to make more text limit.
 (:28/5/2026 | 8:00 pm: F) Fixed lag as possible. and add safety from crashing by automatic allowcam turn off itself.
+(:29/5/2026 | 8:10 pm: F) Fixed lag issues for mobile device.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1394,14 +1395,14 @@ local ALLOW_CAM = false
 local ALLOW_PROPERTIES = false
 local ALLOW_SEE_CHILDREN = false
 
--- wider AI vision
-local SCAN_RADIUS = 220
-local VIEW_DOT = 0.18
+-- balanced AI vision
+local SCAN_RADIUS = 140
+local VIEW_DOT = 0.22
 
--- mobile friendly
-local MAX_CLONES = 1800
+-- performance
+local MAX_CLONES = 1200
 local CLONES_PER_FRAME = 1
-local MAX_CHILDREN_PER_MODEL = 20
+local MAX_CHILDREN_PER_MODEL = 12
 
 -- =========================================
 -- SERVICES
@@ -1412,9 +1413,6 @@ local Players =
 
 local RunService =
 	game:GetService("RunService")
-
-local TweenService =
-	game:GetService("TweenService")
 
 local LocalPlayer =
 	Players.LocalPlayer
@@ -1432,6 +1430,7 @@ local ViewportCamera
 
 local CloneCache = {}
 local CloneQueue = {}
+local QueuedMap = {}
 
 -- =========================================
 -- CREATE VIEWPORT
@@ -1444,7 +1443,9 @@ local function createViewport()
 	end
 
 	AIViewport = Instance.new("ViewportFrame")
-	AIViewport.Name = "AI_Perspective"
+
+	AIViewport.Name =
+		"AI_Perspective"
 
 	AIViewport.Position =
 		UDim2.new(0.034,0,0,0)
@@ -1458,13 +1459,14 @@ local function createViewport()
 	AIViewport.BorderSizePixel = 0
 	AIViewport.Active = true
 	AIViewport.Visible = true
-	AIViewport.Parent = vHolder
 
 	AIViewport.Ambient =
 		Color3.new(1,1,1)
 
 	AIViewport.LightColor =
 		Color3.new(1,1,1)
+
+	AIViewport.Parent = vHolder
 
 	Corner(0,8,AIViewport)
 
@@ -1479,11 +1481,17 @@ local function createViewport()
 		0
 	)
 
-	WorldModel = Instance.new("WorldModel")
-	WorldModel.Parent = AIViewport
+	WorldModel =
+		Instance.new("WorldModel")
 
-	ViewportCamera = Instance.new("Camera")
-	ViewportCamera.Parent = AIViewport
+	WorldModel.Parent =
+		AIViewport
+
+	ViewportCamera =
+		Instance.new("Camera")
+
+	ViewportCamera.Parent =
+		AIViewport
 
 	AIViewport.CurrentCamera =
 		ViewportCamera
@@ -1502,6 +1510,7 @@ local function destroyViewport()
 
 	table.clear(CloneCache)
 	table.clear(CloneQueue)
+	table.clear(QueuedMap)
 
 	AIViewport = nil
 	WorldModel = nil
@@ -1526,20 +1535,26 @@ local function removeClone(part)
 
 	end
 
+	QueuedMap[part] = nil
+
+end
+
+-- =========================================
+-- SAFE PART SETUP
+-- =========================================
+
+local function setupPart(part)
+
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+
 end
 
 -- =========================================
 -- CREATE CLONE
 -- =========================================
-
-local function setupPart(c)
-
-	c.Anchored = true
-	c.CanCollide = false
-	c.CanTouch = false
-	c.CanQuery = false
-
-end
 
 local function createClone(part)
 
@@ -1547,9 +1562,13 @@ local function createClone(part)
 		return
 	end
 
-	-- already exists
+	-- already cloned
 	if CloneCache[part] then
+
+		QueuedMap[part] = nil
+
 		return CloneCache[part]
+
 	end
 
 	local success,clone =
@@ -1571,8 +1590,9 @@ local function createClone(part)
 
 				local childCount = 0
 
+				-- faster than GetDescendants
 				for _,child in ipairs(
-					part.Parent:GetDescendants()
+					part.Parent:GetChildren()
 				) do
 
 					if childCount
@@ -1584,6 +1604,7 @@ local function createClone(part)
 						continue
 					end
 
+					-- skip local player
 					if LocalPlayer.Character
 					and child:IsDescendantOf(
 						LocalPlayer.Character
@@ -1599,6 +1620,9 @@ local function createClone(part)
 					if ok and c then
 
 						setupPart(c)
+
+						c.Transparency =
+							child.Transparency
 
 						c.Parent = model
 
@@ -1616,13 +1640,19 @@ local function createClone(part)
 			-- NORMAL PART
 			-- =====================================
 
-			local c = part:Clone()
+			local c =
+				part:Clone()
 
 			setupPart(c)
+
+			c.Transparency =
+				part.Transparency
 
 			return c
 
 		end)
+
+	QueuedMap[part] = nil
 
 	if not success
 	or not clone then
@@ -1633,30 +1663,6 @@ local function createClone(part)
 
 	CloneCache[part] = clone
 
-	-- =====================================
-	-- MOBILE FRIENDLY FADE
-	-- =====================================
-
-	if clone:IsA("BasePart") then
-
-		local target =
-			part.Transparency
-
-		clone.Transparency = 1
-
-		TweenService:Create(
-			clone,
-			TweenInfo.new(
-				0,
-				Enum.EasingStyle.Linear
-			),
-			{
-				Transparency = target
-			}
-		):Play()
-
-	end
-
 	return clone
 
 end
@@ -1666,6 +1672,10 @@ end
 -- =========================================
 
 local function processQueue()
+
+	if #CloneQueue <= 0 then
+		return
+	end
 
 	local processed = 0
 
@@ -1679,6 +1689,10 @@ local function processQueue()
 		and part.Parent then
 
 			createClone(part)
+
+		else
+
+			QueuedMap[part] = nil
 
 		end
 
@@ -1697,26 +1711,54 @@ local function isPartVisible(part, rayParams)
 	local halfSize =
 		part.Size / 2
 
-	-- more stable visibility
 	local points = {
 
 		part.Position,
 
-		part.Position + Vector3.new( halfSize.X,0,0),
-		part.Position + Vector3.new(-halfSize.X,0,0),
+		part.Position + Vector3.new(
+			halfSize.X,
+			0,
+			0
+		),
 
-		part.Position + Vector3.new(0, halfSize.Y,0),
-		part.Position + Vector3.new(0,-halfSize.Y,0),
+		part.Position + Vector3.new(
+			-halfSize.X,
+			0,
+			0
+		),
 
-		part.Position + Vector3.new(0,0, halfSize.Z),
-		part.Position + Vector3.new(0,0,-halfSize.Z),
+		part.Position + Vector3.new(
+			0,
+			halfSize.Y,
+			0
+		),
+
+		part.Position + Vector3.new(
+			0,
+			-halfSize.Y,
+			0
+		),
+
+		part.Position + Vector3.new(
+			0,
+			0,
+			halfSize.Z
+		),
+
+		part.Position + Vector3.new(
+			0,
+			0,
+			-halfSize.Z
+		),
 
 	}
 
 	for _,point in ipairs(points) do
 
-		local screenPos,onscreen =
-			Camera:WorldToViewportPoint(point)
+		local _,onscreen =
+			Camera:WorldToViewportPoint(
+				point
+			)
 
 		if not onscreen then
 			continue
@@ -1732,7 +1774,6 @@ local function isPartVisible(part, rayParams)
 				Camera.CFrame.LookVector
 			)
 
-		-- wider vision cone
 		if dot <= VIEW_DOT then
 			continue
 		end
@@ -1768,20 +1809,30 @@ end
 -- CAMERA VISION
 -- =========================================
 
+local overlap =
+	OverlapParams.new()
+
+overlap.FilterType =
+	Enum.RaycastFilterType.Blacklist
+
+overlap.FilterDescendantsInstances = {
+	LocalPlayer.Character
+}
+
 local function getVisibleParts()
 
 	if not ALLOW_CAM then
 
 		destroyViewport()
 
-		return "Camera disabled."
+		return
 
 	end
 
 	createViewport()
 
 	if not Camera then
-		return "No camera."
+		return
 	end
 
 	ViewportCamera.CFrame =
@@ -1793,7 +1844,8 @@ local function getVisibleParts()
 	local nearby =
 		workspace:GetPartBoundsInRadius(
 			Camera.CFrame.Position,
-			SCAN_RADIUS
+			SCAN_RADIUS,
+			overlap
 		)
 
 	local rayParams =
@@ -1829,13 +1881,16 @@ local function getVisibleParts()
 
 		visibleMap[v] = true
 
-		-- queue clone
-		if not CloneCache[v] then
+		-- queue only once
+		if not CloneCache[v]
+		and not QueuedMap[v] then
 
 			table.insert(
 				CloneQueue,
 				v
 			)
+
+			QueuedMap[v] = true
 
 		end
 
@@ -1849,7 +1904,9 @@ local function getVisibleParts()
 
 	for original,_ in pairs(CloneCache) do
 
-		if not visibleMap[original] then
+		if not original
+		or not original.Parent
+		or not visibleMap[original] then
 
 			removeClone(original)
 
@@ -1875,8 +1932,8 @@ RunService.RenderStepped:Connect(function(dt)
 
 	updateTick += dt
 
-	-- smoother refresh
-	if updateTick < 0.08 then
+	-- stable mobile refresh
+	if updateTick < 0.12 then
 		return
 	end
 
@@ -1894,10 +1951,10 @@ local lowFpsTime = 0
 
 local FPS_RULES = {
 
-	[6] = 60,
-	[4] = 45,
-	[2] = 35,
-	[0] = 25,
+	[6] = 60, -- Still playable 
+	[4] = 45, -- Still almost playable 
+	[2] = 35, -- Danger had come
+	[0] = 25, -- RECOVER TIME
 
 }
 
