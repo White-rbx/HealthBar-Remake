@@ -1,4 +1,4 @@
-local ver = " UIs 5.3797 "
+local ver = " UIs 5.3798 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1567,6 +1567,7 @@ local function createViewport()
 		Color3.fromRGB(190,190,190)
 
 	AIViewport.BorderSizePixel = 0
+	AIViewport.ZIndex = 10
 	AIViewport.Active = true
 	AIViewport.Draggable = true
 
