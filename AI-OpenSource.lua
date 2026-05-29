@@ -1,4 +1,4 @@
-local ver = " UIs 5.3795 "
+local ver = " UIs 5.3796 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -3417,31 +3417,41 @@ if lower:match("^/allowcam") then
 
 	elseif value == "off" then
 
-	ALLOW_CAM = false
+		ALLOW_CAM = false
 
-	destroyViewport()
+		destroyViewport()
 
-	safeTxt(
-		user.Info,
-		"AI Camera Vision Disabled",
-		255,170,0
-	)
+		safeTxt(
+			user.Info,
+			"AI Camera Vision Disabled",
+			255,170,0
+		)
 
-	-- auto disable children mode
-	if ALLOW_SEE_CHILDREN then
+		-- auto disable children mode
+		if ALLOW_SEE_CHILDREN then
 
-		ALLOW_SEE_CHILDREN = false
+			ALLOW_SEE_CHILDREN = false
+
+			safeTxt(
+				user.Warn,
+				"AllowSeeChildren Disabled Automatically by AllowCam.",
+				255,255,0
+			)
+
+		end
+
+	else
 
 		safeTxt(
 			user.Warn,
-			"AllowSeeChildren Disabled Automatically by AllowCam.",
-			255,255,0
+			"Usage: /AllowCam [ON/OFF]",
+			255,200,0
 		)
 
 	end
-	end
-			
+
 	return true
+
 end
 
 -- =========================================
