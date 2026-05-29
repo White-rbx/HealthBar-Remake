@@ -1,4 +1,4 @@
-local ver = " UIs 5.3791 "
+local ver = " UIs 5.3792 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1498,11 +1498,11 @@ local ALLOW_SEE_CHILDREN = false
 local SCAN_RADIUS = 140
 local VIEW_DOT = 0.22
 
-local MAX_CLONES = 250
+local MAX_CLONES = 450
 local MAX_CHILDREN_PER_MODEL = 12
 
 -- streaming speed
-local STREAM_DELAY = 0.02
+local STREAM_DELAY = 0.08
 
 -- =========================================
 -- SERVICES
@@ -1537,6 +1537,7 @@ local CloneQueue = {}
 
 local CloneState = {}
 local ModelCache = {}
+local LastVisible = {}
 
 local QueueIndex = 1
 
@@ -1567,6 +1568,7 @@ local function createViewport()
 
 	AIViewport.BorderSizePixel = 0
 	AIViewport.Active = true
+	AIViewport.Draggable = true
 
 	AIViewport.Parent = vHolder
 
@@ -1908,6 +1910,57 @@ task.spawn(function()
 end)
 
 -- =========================================
+-- CLEANUP WORKER
+-- =========================================
+
+task.spawn(function()
+
+	while true do
+
+		task.wait(1)
+
+		for original,clone in pairs(CloneCache) do
+
+			-- original destroyed
+			if not original
+			or not original.Parent then
+
+				if clone then
+					clone:Destroy()
+				end
+
+				CloneCache[original] = nil
+				CloneState[original] = nil
+				LastVisible[original] = nil
+
+				continue
+
+			end
+
+			-- not visible long enough
+			local last =
+				LastVisible[original]
+
+			if last
+			and tick() - last >= 5 then
+
+				if clone then
+					clone:Destroy()
+				end
+
+				CloneCache[original] = nil
+				CloneState[original] = nil
+				LastVisible[original] = nil
+
+			end
+
+		end
+
+	end
+
+end)
+
+-- =========================================
 -- CAMERA VISION
 -- =========================================
 
@@ -1965,6 +2018,7 @@ local function getVisibleParts()
 			continue
 		end
 
+		LastVisible[v] = tick()
 		CloneState[v] = "queued"
 
 		table.insert(
