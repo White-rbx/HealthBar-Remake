@@ -1,4 +1,4 @@
-local ver = " UIs 5.378 "
+local ver = " UIs 5.379 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1502,7 +1502,7 @@ local MAX_CLONES = 1200
 local MAX_CHILDREN_PER_MODEL = 12
 
 -- streaming speed
-local STREAM_DELAY = 0.18
+local STREAM_DELAY = 1.3
 
 -- =========================================
 -- SERVICES
