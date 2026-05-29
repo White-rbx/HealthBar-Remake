@@ -1,4 +1,4 @@
-local ver = " UIs 5.3793 "
+local ver = " UIs 5.3794 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1329,7 +1329,7 @@ Your limit:
 **/DelAllNote** - Delete all note that you write will be gone forever.	
 **/AllowCam** *[ON/OFF]* - This allows an AI to see what we are looking at on Roblox World and then process that information.
 **/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
-**/AllowSeeChildren** *[ON/OFF]* - This is allow an AI to see childrens inside parent while using allowcam.
+**/AllowSeeChildren** *[ON/OFF]* - ( BUG DO NOT USE ) - This is allow an AI to see childrens inside parent while using allowcam.
 	
 MEMORIES:
 ]]
@@ -2607,7 +2607,7 @@ local HELP_TEXT = [=[
 **/DelAllNote** - Delete all note that you write will be gone forever.
 **/AllowCam** *[ON/OFF]* - ( LAG WARNING ) - This allows an AI to see what we are looking at on Roblox World and then process that information.
 **/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
-**/AllowSeeChildren** *[ON/OFF]* - ( LAG WARNING ) - This is allow an AI to see childrens inside parent while using allowcam.
+**/AllowSeeChildren** *[ON/OFF]* - ( LAG WARNING, BUG DO NOT USE ) - This is allow an AI to see childrens inside parent while using allowcam.
 ]=]
 
 local function clearChatLogs()
@@ -3417,27 +3417,30 @@ if lower:match("^/allowcam") then
 
 	elseif value == "off" then
 
-		ALLOW_CAM = false
+	ALLOW_CAM = false
 
-		destroyViewport()
-		safeTxt(
-			user.Info,
-			"AI Camera Vision Disabled",
-			255,170,0
-		)
+	destroyViewport()
 
-	else
+	safeTxt(
+		user.Info,
+		"AI Camera Vision Disabled",
+		255,170,0
+	)
+
+	-- auto disable children mode
+	if ALLOW_SEE_CHILDREN then
+
+		ALLOW_SEE_CHILDREN = false
 
 		safeTxt(
 			user.Warn,
-			"Usage: /AllowCam [ON/OFF]",
-			255,200,0
+			"AllowSeeChildren Disabled Automatically by AllowCam.",
+			255,255,0
 		)
 
 	end
-
+			
 	return true
-
 end
 
 -- =========================================
