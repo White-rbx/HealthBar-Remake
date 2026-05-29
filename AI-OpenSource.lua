@@ -1,4 +1,4 @@
-local ver = " UIs 5.3798 "
+local ver = " UIs 5.379 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1495,10 +1495,10 @@ end
 local ALLOW_CAM = false
 local ALLOW_SEE_CHILDREN = false
 
-local SCAN_RADIUS = 140
+local SCAN_RADIUS = 500
 local VIEW_DOT = 0.22
 
-local MAX_CLONES = 1200
+local MAX_CLONES = 1400
 local MAX_CHILDREN_PER_MODEL = 12
 
 -- streaming speed
