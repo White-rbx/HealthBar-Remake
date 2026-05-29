@@ -1,9 +1,5 @@
-local Version = [[0.1.43 Alpha
-- Adjust Notify Topbar Transparency set to 0.25 for easier to see text.
-- Adjust "time" in Notify Topbar line size frame offset set to 2.
-- Adjust Notify Topbar Position set scale to 0.033 for balance.
-- Set Enum of Executor ScreeGui to None.
-- Adjust Position of open/close that called "connect" set to offset 15 and scale 0.015.]]
+local Version = [[0.1.44 Alpha
+- Delayed ]]
 -- This executor
 
 --[[
@@ -386,7 +382,7 @@ local function Configure(frame)
     soon.BackgroundTransparency = 1
     soon.TextColor3 = Color3.fromRGB(255,255,255)
     soon.RichText = true
-    soon.Text = [[ <b><font size="15">Coming soon...</font></b> ]]
+    soon.Text = [[ <b><font size="15">Delayed. Sorry! We are busy on main ExperienceSettings.</font></b> ]]
     soon.Parent = Inside
     Corner(0.1,0,soon)
 end
@@ -436,7 +432,7 @@ Frame.Search.Inside.soon.Visible = true
 Frame.Music.Inside.soon.Visible = true
 Frame.Settings.Inside.soon.Visible = true
 
-Frame.AutoExe.Inside.soon.Text = [[<b><font size="15">Coming Soon...</font></b>
+Frame.AutoExe.Inside.soon.Text = [[<b><font size="15">Delayed.</font></b>
 But "AutoExe" is exist, so try to check on ExperienceSettings-Executor Folder on your device!]]
 
 Frame.Console.Inside.soon.Text = [[<b><font size="15">Something was wrong...</font></b>
