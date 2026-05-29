@@ -1,4 +1,4 @@
-local ver = " UIs 5.373 "
+local ver = " UIs 5.378 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -29,6 +29,7 @@ local update = [[
 (:27/5/2026 | 7:32 pm: F&A) Fixed Center-Point Visibility Problem on /AllowCam and added "/AllowProperties" and "/AllowSeeChildren". Add SUPERLONG mode for /geminiswitch and /gptswitch to make more text limit.
 (:28/5/2026 | 8:00 pm: F) Fixed lag as possible. and add safety from crashing by automatic allowcam turn off itself.
 (:29/5/2026 | 8:10 pm: F) Fixed lag issues for mobile device.
+(:29/5/2026 | 9:55 pm: S) Switch from instant build to streaming to improve performance on low-quality devices.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1488,21 +1489,20 @@ local function showMemories()
 end
 
 -- =========================================
--- CAMERA VISION SETTINGS
+-- SETTINGS
 -- =========================================
 
 local ALLOW_CAM = false
-local ALLOW_PROPERTIES = false
 local ALLOW_SEE_CHILDREN = false
 
--- balanced AI vision
 local SCAN_RADIUS = 140
 local VIEW_DOT = 0.22
 
--- performance
 local MAX_CLONES = 1200
-local CLONES_PER_FRAME = 1
 local MAX_CHILDREN_PER_MODEL = 12
+
+-- streaming speed
+local STREAM_DELAY = 0.18
 
 -- =========================================
 -- SERVICES
@@ -1521,16 +1521,24 @@ local Camera =
 	workspace.CurrentCamera
 
 -- =========================================
--- VIEWPORT SYSTEM
+-- VIEWPORT
 -- =========================================
 
 local AIViewport
 local WorldModel
 local ViewportCamera
 
+-- =========================================
+-- CACHE
+-- =========================================
+
 local CloneCache = {}
 local CloneQueue = {}
-local QueuedMap = {}
+
+local CloneState = {}
+local ModelCache = {}
+
+local QueueIndex = 1
 
 -- =========================================
 -- CREATE VIEWPORT
@@ -1542,44 +1550,25 @@ local function createViewport()
 		return
 	end
 
-	AIViewport = Instance.new("ViewportFrame")
+	AIViewport =
+		Instance.new("ViewportFrame")
 
 	AIViewport.Name =
 		"AI_Perspective"
 
-	AIViewport.Position =
-		UDim2.new(0.034,0,0,0)
-
 	AIViewport.Size =
 		UDim2.new(0,400,0,200)
+
+	AIViewport.Position =
+		UDim2.new(0.034,0,0,0)
 
 	AIViewport.BackgroundColor3 =
 		Color3.fromRGB(190,190,190)
 
 	AIViewport.BorderSizePixel = 0
 	AIViewport.Active = true
-	AIViewport.Visible = true
-
-	AIViewport.Ambient =
-		Color3.new(1,1,1)
-
-	AIViewport.LightColor =
-		Color3.new(1,1,1)
 
 	AIViewport.Parent = vHolder
-
-	Corner(0,8,AIViewport)
-
-	Stroke(
-		AIViewport,
-		ASMBorder,
-		255,
-		255,
-		255,
-		LJMRound,
-		1,
-		0
-	)
 
 	WorldModel =
 		Instance.new("WorldModel")
@@ -1610,32 +1599,14 @@ local function destroyViewport()
 
 	table.clear(CloneCache)
 	table.clear(CloneQueue)
-	table.clear(QueuedMap)
+	table.clear(CloneState)
+	table.clear(ModelCache)
+
+	QueueIndex = 1
 
 	AIViewport = nil
 	WorldModel = nil
 	ViewportCamera = nil
-
-end
-
--- =========================================
--- REMOVE CLONE
--- =========================================
-
-local function removeClone(part)
-
-	local clone =
-		CloneCache[part]
-
-	if clone then
-
-		clone:Destroy()
-
-		CloneCache[part] = nil
-
-	end
-
-	QueuedMap[part] = nil
 
 end
 
@@ -1662,25 +1633,33 @@ local function createClone(part)
 		return
 	end
 
-	-- already cloned
-	if CloneCache[part] then
-
-		QueuedMap[part] = nil
-
-		return CloneCache[part]
-
+	if CloneState[part] == "cloned" then
+		return
 	end
+
+	if CloneState[part] == "cloning" then
+		return
+	end
+
+	CloneState[part] = "cloning"
 
 	local success,clone =
 		pcall(function()
 
 			-- =====================================
-			-- SEE CHILDREN
+			-- MODEL STREAMING
 			-- =====================================
 
 			if ALLOW_SEE_CHILDREN
 			and part.Parent
 			and part.Parent:IsA("Model") then
+
+				-- already created model
+				if ModelCache[part.Parent] then
+
+					return ModelCache[part.Parent]
+
+				end
 
 				local model =
 					Instance.new("Model")
@@ -1688,49 +1667,60 @@ local function createClone(part)
 				model.Name =
 					part.Parent.Name
 
+				model.Parent =
+					WorldModel
+
+				ModelCache[part.Parent] =
+					model
+
 				local childCount = 0
 
-				-- faster than GetDescendants
-				for _,child in ipairs(
-					part.Parent:GetChildren()
-				) do
+				-- slow stream
+				task.spawn(function()
 
-					if childCount
-					>= MAX_CHILDREN_PER_MODEL then
-						break
+					for _,child in ipairs(
+						part.Parent:GetChildren()
+					) do
+
+						if childCount
+						>= MAX_CHILDREN_PER_MODEL then
+							break
+						end
+
+						if not child:IsA("BasePart") then
+							continue
+						end
+
+						if LocalPlayer.Character
+						and child:IsDescendantOf(
+							LocalPlayer.Character
+						) then
+							continue
+						end
+
+						local ok,c =
+							pcall(function()
+								return child:Clone()
+							end)
+
+						if ok and c then
+
+							setupPart(c)
+
+							c.Transparency =
+								child.Transparency
+
+							c.Parent = model
+
+							childCount += 1
+
+						end
+
+						task.wait(0.03)
+
 					end
 
-					if not child:IsA("BasePart") then
-						continue
-					end
-
-					-- skip local player
-					if LocalPlayer.Character
-					and child:IsDescendantOf(
-						LocalPlayer.Character
-					) then
-						continue
-					end
-
-					local ok,c =
-						pcall(function()
-							return child:Clone()
-						end)
-
-					if ok and c then
-
-						setupPart(c)
-
-						c.Transparency =
-							child.Transparency
-
-						c.Parent = model
-
-						childCount += 1
-
-					end
-
-				end
+				end)
 
 				return model
 
@@ -1752,53 +1742,27 @@ local function createClone(part)
 
 		end)
 
-	QueuedMap[part] = nil
-
 	if not success
 	or not clone then
+
+		CloneState[part] = nil
+
 		return
 	end
 
-	clone.Parent = WorldModel
+	-- model already parented
+	if not clone.Parent then
+
+		clone.Parent =
+			WorldModel
+
+	end
 
 	CloneCache[part] = clone
 
+	CloneState[part] = "cloned"
+
 	return clone
-
-end
-
--- =========================================
--- PROCESS QUEUE
--- =========================================
-
-local function processQueue()
-
-	if #CloneQueue <= 0 then
-		return
-	end
-
-	local processed = 0
-
-	while processed < CLONES_PER_FRAME
-	and #CloneQueue > 0 do
-
-		local part =
-			table.remove(CloneQueue,1)
-
-		if part
-		and part.Parent then
-
-			createClone(part)
-
-		else
-
-			QueuedMap[part] = nil
-
-		end
-
-		processed += 1
-
-	end
 
 end
 
@@ -1806,7 +1770,27 @@ end
 -- VISIBILITY CHECK
 -- =========================================
 
-local function isPartVisible(part, rayParams)
+local rayParams =
+	RaycastParams.new()
+
+rayParams.FilterType =
+	Enum.RaycastFilterType.Blacklist
+
+rayParams.FilterDescendantsInstances = {
+	LocalPlayer.Character
+}
+
+local overlap =
+	OverlapParams.new()
+
+overlap.FilterType =
+	Enum.RaycastFilterType.Blacklist
+
+overlap.FilterDescendantsInstances = {
+	LocalPlayer.Character
+}
+
+local function isPartVisible(part)
 
 	local halfSize =
 		part.Size / 2
@@ -1816,39 +1800,15 @@ local function isPartVisible(part, rayParams)
 		part.Position,
 
 		part.Position + Vector3.new(
-			halfSize.X,
-			0,
-			0
-		),
-
-		part.Position + Vector3.new(
-			-halfSize.X,
-			0,
-			0
-		),
-
-		part.Position + Vector3.new(
 			0,
 			halfSize.Y,
 			0
 		),
 
-		part.Position + Vector3.new(
+		part.Position - Vector3.new(
 			0,
-			-halfSize.Y,
+			halfSize.Y,
 			0
-		),
-
-		part.Position + Vector3.new(
-			0,
-			0,
-			halfSize.Z
-		),
-
-		part.Position + Vector3.new(
-			0,
-			0,
-			-halfSize.Z
 		),
 
 	}
@@ -1906,18 +1866,47 @@ local function isPartVisible(part, rayParams)
 end
 
 -- =========================================
--- CAMERA VISION
+-- STREAM WORKER
 -- =========================================
 
-local overlap =
-	OverlapParams.new()
+task.spawn(function()
 
-overlap.FilterType =
-	Enum.RaycastFilterType.Blacklist
+	while true do
 
-overlap.FilterDescendantsInstances = {
-	LocalPlayer.Character
-}
+		task.wait(STREAM_DELAY)
+
+		if not ALLOW_CAM then
+			continue
+		end
+
+		local part =
+			CloneQueue[QueueIndex]
+
+		if not part then
+			continue
+		end
+
+		CloneQueue[QueueIndex] = nil
+
+		QueueIndex += 1
+
+		if not part.Parent then
+
+			CloneState[part] = nil
+
+			continue
+
+		end
+
+		createClone(part)
+
+	end
+
+end)
+
+-- =========================================
+-- CAMERA VISION
+-- =========================================
 
 local function getVisibleParts()
 
@@ -1948,17 +1937,6 @@ local function getVisibleParts()
 			overlap
 		)
 
-	local rayParams =
-		RaycastParams.new()
-
-	rayParams.FilterType =
-		Enum.RaycastFilterType.Blacklist
-
-	rayParams.FilterDescendantsInstances = {
-		LocalPlayer.Character
-	}
-
-	local visibleMap = {}
 	local count = 0
 
 	for _,v in ipairs(nearby) do
@@ -1975,46 +1953,25 @@ local function getVisibleParts()
 			continue
 		end
 
-		if not isPartVisible(v, rayParams) then
+		-- already loaded
+		if CloneState[v] then
 			continue
 		end
 
-		visibleMap[v] = true
-
-		-- queue only once
-		if not CloneCache[v]
-		and not QueuedMap[v] then
-
-			table.insert(
-				CloneQueue,
-				v
-			)
-
-			QueuedMap[v] = true
-
+		if not isPartVisible(v) then
+			continue
 		end
+
+		CloneState[v] = "queued"
+
+		table.insert(
+			CloneQueue,
+			v
+		)
 
 		count += 1
 
 	end
-
-	-- =====================================
-	-- REMOVE INVISIBLE
-	-- =====================================
-
-	for original,_ in pairs(CloneCache) do
-
-		if not original
-		or not original.Parent
-		or not visibleMap[original] then
-
-			removeClone(original)
-
-		end
-
-	end
-
-	processQueue()
 
 end
 
@@ -2032,8 +1989,8 @@ RunService.RenderStepped:Connect(function(dt)
 
 	updateTick += dt
 
-	-- stable mobile refresh
-	if updateTick < 0.12 then
+	-- mobile friendly refresh
+	if updateTick < 0.15 then
 		return
 	end
 
