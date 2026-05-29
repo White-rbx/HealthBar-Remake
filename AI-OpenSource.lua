@@ -1,4 +1,4 @@
-local ver = " UIs 5.36 "
+local ver = " UIs 5.361 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1399,8 +1399,8 @@ local SCAN_RADIUS = 220
 local VIEW_DOT = 0.18
 
 -- mobile friendly
-local MAX_CLONES = 180
-local CLONES_PER_FRAME = 3
+local MAX_CLONES = 1800
+local CLONES_PER_FRAME = 1
 local MAX_CHILDREN_PER_MODEL = 20
 
 -- =========================================
@@ -1647,7 +1647,7 @@ local function createClone(part)
 		TweenService:Create(
 			clone,
 			TweenInfo.new(
-				0.6,
+				0,
 				Enum.EasingStyle.Linear
 			),
 			{
@@ -1895,8 +1895,8 @@ local lowFpsTime = 0
 local FPS_RULES = {
 
 	[6] = 60,
-	[4] = 40,
-	[2] = 30,
+	[4] = 45,
+	[2] = 35,
 	[0] = 25,
 
 }
