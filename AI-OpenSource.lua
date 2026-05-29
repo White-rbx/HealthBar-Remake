@@ -1,4 +1,4 @@
-local ver = " UIs 5.3794 "
+local ver = " UIs 5.3795 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -3438,6 +3438,7 @@ if lower:match("^/allowcam") then
 			255,255,0
 		)
 
+	end
 	end
 			
 	return true
