@@ -1,4 +1,4 @@
-local ver = " UIs 5.379 "
+local ver = " UIs 5.3791 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1498,11 +1498,11 @@ local ALLOW_SEE_CHILDREN = false
 local SCAN_RADIUS = 140
 local VIEW_DOT = 0.22
 
-local MAX_CLONES = 1200
+local MAX_CLONES = 250
 local MAX_CHILDREN_PER_MODEL = 12
 
 -- streaming speed
-local STREAM_DELAY = 1.3
+local STREAM_DELAY = 0.02
 
 -- =========================================
 -- SERVICES
@@ -1569,6 +1569,9 @@ local function createViewport()
 	AIViewport.Active = true
 
 	AIViewport.Parent = vHolder
+
+	Corner(0,8,AIViewport)
+	Stroke(AIViewport, ASMBorder, 255, 255,255, LJMRound, 1, 0)
 
 	WorldModel =
 		Instance.new("WorldModel")
