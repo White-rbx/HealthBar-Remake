@@ -1,4 +1,4 @@
-local ver = " UIs 5.371 "
+local ver = " UIs 5.373 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -742,6 +742,87 @@ local CURRENT_DATE =
 local CURRENT_TIME =
 	os.date("%X")
 
+-- =========================================
+-- GAME INFO
+-- =========================================
+
+local gameName = "Unknown"
+local creatorName = "Unknown"
+local genre = "Unknown"
+
+local currentPlayers =
+	#Players:GetPlayers()
+
+local maxPlayers =
+	Players.MaxPlayers
+
+-- =========================================
+-- SAFE GAME INFO
+-- =========================================
+
+pcall(function()
+
+	local info =
+		MarketplaceService:GetProductInfo(
+			game.PlaceId
+		)
+
+	-- =============================
+	-- GAME NAME
+	-- =============================
+
+	if info.Name then
+
+		gameName =
+			tostring(info.Name)
+
+	end
+
+	-- =============================
+	-- CREATOR
+	-- =============================
+
+	if info.Creator
+	and info.Creator.Name then
+
+		creatorName =
+			tostring(
+				info.Creator.Name
+			)
+
+	end
+
+	-- =============================
+	-- GENRE
+	-- =============================
+
+	if info.Genre then
+
+		genre =
+			tostring(info.Genre)
+
+	end
+
+end)
+
+-- =========================================
+-- PLAYER UPDATE
+-- =========================================
+
+Players.PlayerAdded:Connect(function()
+
+	currentPlayers =
+		#Players:GetPlayers()
+
+end)
+
+Players.PlayerRemoving:Connect(function()
+
+	currentPlayers =
+		#Players:GetPlayers()
+
+end)
+
 --// =========================================
 --// AI STORAGE + MEMORY SYSTEM
 --// =========================================
@@ -1100,10 +1181,24 @@ Current real date:
 Current real time:
 ]] .. CURRENT_TIME .. [[
 
-AI Version: ]] .. ver .. [[
+AI Version: 
+]] .. ver .. [[
 
 Update logs about AI:
 ]] .. update .. [[
+
+Game name:
+]] .. gameName .. [[
+
+Game creator:
+]] .. creatorName .. [[
+
+Players in-game:
+]] .. currentPlayers .. "/" .. maxPlayers .. [[
+
+Genre:
+]] .. genre .. [[
+
 
 You are talking to @]] .. USERNAME .. [[ID: ]] .. USERID .. [[.
 Trust the LocalPlayer username above.
