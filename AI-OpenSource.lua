@@ -1,4 +1,4 @@
-local ver = " UIs 5.3792 "
+local ver = " UIs 5.3793 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1885,11 +1885,22 @@ task.spawn(function()
 		end
 
 		local part =
-			CloneQueue[QueueIndex]
+	CloneQueue[QueueIndex]
 
-		if not part then
-			continue
-		end
+-- queue exhausted
+if QueueIndex > #CloneQueue then
+
+	table.clear(CloneQueue)
+
+	QueueIndex = 1
+
+	continue
+
+end
+
+if not part then
+	continue
+end
 
 		CloneQueue[QueueIndex] = nil
 
@@ -1942,7 +1953,8 @@ task.spawn(function()
 				LastVisible[original]
 
 			if last
-			and tick() - last >= 5 then
+and CloneState[original] == "cloned"
+and tick() - last >= 5 then
 
 				if clone then
 					clone:Destroy()
@@ -2009,22 +2021,24 @@ local function getVisibleParts()
 			continue
 		end
 
-		-- already loaded
-		if CloneState[v] then
-			continue
-		end
-
 		if not isPartVisible(v) then
-			continue
-		end
+	continue
+end
 
-		LastVisible[v] = tick()
-		CloneState[v] = "queued"
+-- ALWAYS refresh visibility
+LastVisible[v] = tick()
 
-		table.insert(
-			CloneQueue,
-			v
-		)
+-- already exists
+if CloneState[v] then
+	continue
+end
+
+CloneState[v] = "queued"
+
+table.insert(
+	CloneQueue,
+	v
+)
 
 		count += 1
 
