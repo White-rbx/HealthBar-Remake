@@ -1,5 +1,5 @@
-local Version = [[0.1.44 Alpha
-- Delayed ]]
+local Version = [[0.1.45 Alpha
+- Delayed again]]
 -- This executor
 
 --[[
@@ -436,7 +436,10 @@ Frame.AutoExe.Inside.soon.Text = [[<b><font size="15">Delayed.</font></b>
 But "AutoExe" is exist, so try to check on ExperienceSettings-Executor Folder on your device!]]
 
 Frame.Console.Inside.soon.Text = [[<b><font size="15">Something was wrong...</font></b>
-Tried to load console while executing. Please open dex explorer and find "ExperienceSettings-Executor" folder in CoreGui and destroy all folder that have same name or rejoin the game.]]
+Tried to load console while executing. Please open dex explorer and find "ExperienceSettings-Executor" folder in CoreGui and destroy all folder that have same name or rejoin the game and execute again.]]
+
+Frame.Search.Inside.soon.Text = [[<b><font size="15">Something was wrong...</font></b>
+Tried to load seacrh while executing. Please open dex explorer and find "ExperienceSettings-Executor" folder in CoreGui and destroy all folder that have same name or rejoin the game and execute again.]]
 ------------------------------------------------------------
 local topn = Instance.new("Frame")
 topn.Name = "TopNoity"
