@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.9
+-- ES Executor 2 | 0.54
 
 ------------------------------------------------------------------------------------------
 
@@ -867,7 +867,7 @@ end
 --[ Bookmark ]--
 --[ Search ]--
 vSearch.soon.Visible = true
-Frame.Search.Inside.soon.Text = [[<b><font size="15">Delayed</font></b>
+vSearch.soon.Text = [[<b><font size="15">Delayed</font></b>
 Search was temporarily halted due to my mental state. Don't dm me about it just wait the update.]]
 	
 local _search = Instance.new("CanvasGroup")
