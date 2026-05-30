@@ -1,4 +1,4 @@
-local Version = [[0.1.45 Alpha
+local Version = [[0.1.46 Alpha
 - Delayed again]]
 -- This executor
 
@@ -382,7 +382,7 @@ local function Configure(frame)
     soon.BackgroundTransparency = 1
     soon.TextColor3 = Color3.fromRGB(255,255,255)
     soon.RichText = true
-    soon.Text = [[ <b><font size="15">Delayed. Sorry! We are busy on main ExperienceSettings.</font></b> ]]
+    soon.Text = [[ <b><font size="15">Not now, Sorry! We are busy on main ExperienceSettings.</font></b> ]]
     soon.Parent = Inside
     Corner(0.1,0,soon)
 end
