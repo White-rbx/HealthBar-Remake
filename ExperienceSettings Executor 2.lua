@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.52
+-- ES Executor 2 | 0.9
 
 ------------------------------------------------------------------------------------------
 
@@ -866,6 +866,52 @@ end
 
 --[ Bookmark ]--
 --[ Search ]--
+vSearch.soon.Visible = true
+Frame.Search.Inside.soon.Text = [[<b><font size="15">Delayed</font></b>
+Search was temporarily halted due to my mental state. Don't dm me about it just wait the update.]]
+	
+local _search = Instance.new("CanvasGroup")
+_search.Name = "Page"
+_search.Size = UDim2.new(0.7,0,1,0)
+_search.BackgroundTransparency = 1
+_search.Active = false
+_search.Parent = vSearch
+
+local _script = Instance.new("CanvasGroup")
+_script.Name = "Script"
+_script.Size = UDim2.new(0.3,0,1,0)
+_script.Position = UDim2.new(0.7,0,0,0)
+_script.BackgroundTransparency = 1
+_script.Active = false
+_script.Parent = vSearch
+
+local SearchBar = Instance.new("Frame")
+SearchBar.Name = "Searcher"
+SearchBar.Size = UDim2.new(1,0,0.15,0)
+SearchBar.BackgroundTransparency = 1
+SearchBar.Parent = _search
+ListLayout(SearchBar, 0, 3, HCenter, VCenter, SLayout, FillH)
+
+local _TB = Instance.new("TextBox")
+_TB.Name = "SearchScript"
+_TB.Size = UDim2.new(0.5,0,0.7,0)
+_TB.BackgroundColor3 = Color3.fromRGB(140,140,140)
+_TB.BackgroundTransparency = 0.5
+_TB.Text = ""
+_TB.PlaceholderText = "Search anything you want."
+_TB.TextScaled = true
+_TB.BorderSizePixel = 5
+_TB.BorderMode = Enum.BorderMode.Inset
+_TB.PlaceholderColor3 = Color3.fromRGB(150,150,150)
+_TB.ClearTextOnFocus = false
+_TB.TextSize = 16
+_TB.TextColor3 = Color3.new(1,1,1)
+_TB.Parent = SearchBar
+Corner(0,5,_TB)
+Stroke(_TB, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+
+
 --[ Music ]--
 --[ Settings ]--
 
