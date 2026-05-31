@@ -1,4 +1,4 @@
-local ver = " UIs 5.385 "
+local ver = " UIs 5.386 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -694,8 +694,8 @@ local GPT_PRESETS = {
     PLUS  = {mt = 512, t = 0.75},
     THINKING = {mt = 1024, t = 0.8},
 	MASTER = {mt = 2048, t = 0.9},
-	SUPERLONG = {mt = 4096, t = 0.9},
-	CREATIVE = {mt = 12288, t = 0.9},
+	SUPERLONG = {mt = 4096, t = 1},
+	CREATIVE = {mt = 12288, t = 2},
 }
 local GEMINI_PRESETS = {
     FREE  = {mt = 64,  t = 0.4},
@@ -703,8 +703,8 @@ local GEMINI_PRESETS = {
     PLUS  = {mt = 512, t = 0.75},
     THINKING = {mt = 1024, t = 0.8},
 	MASTER = {mt = 2048, t = 0.9},
-	SUPERLONG = {mt = 4096, t = 0.9},
-	CREATIVE = {mt = 12288, t = 0.9},
+	SUPERLONG = {mt = 4096, t = 1},
+	CREATIVE = {mt = 12288, t = 2},
 }
 
 --// =========================================
@@ -712,19 +712,19 @@ local GEMINI_PRESETS = {
 --// =========================================
 
 local OPENAI_MODELS = {
-	["gpt-4o-mini"] = "gpt-4o-mini",
-	["gpt-5-mini"] = "gpt-5-mini",
-	["gpt-5"] = "gpt-5",
-	["o4-mini"] = "o4-mini",
-	["gpt-5.5"] = "gpt-5.5",
+	"gpt-4o-mini",
+	"gpt-5-mini",
+	"gpt-5",
+	"o4-mini",
+	"gpt-5.5",
 }
 
 local GEMINI_MODELS = {
-	["gemini-2.5-flash-lite"] = "gemini-2.5-flash-lite",
-	["gemini-3.1-flash-lite"] = "gemini-3.1-flash-lite",
-	["gemini-2.5-flash"] = "gemini-2.5-flash",
-	["gemini-2.5-pro"] = "gemini-2.5-pro",
-	["gemini-3.5-flash"] = "gemini-3.5-flash",
+	"gemini-2.5-flash-lite",
+	"gemini-3.1-flash-lite",
+	"gemini-2.5-flash",
+	"gemini-2.5-pro",
+	"gemini-3.5-flash",
 }
 
 local currentGeminiModel = "gemini-3.1-flash-lite"
@@ -3086,7 +3086,7 @@ local function handleCommand(msg)
         if choice and GPT_PRESETS[choice:upper()] then
             currentPresetGPT = choice:upper()
             safeTxt(user.Suc, "GPT preset set: "..currentPresetGPT,0,255,0)
-        else safeTxt(user.Error, "Usage: /GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER]",255,0,0) end
+        else safeTxt(user.Error, "Usage: /GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]",255,0,0) end
         return true
     end
 	if lower:match("^/gptmodel") then
@@ -3105,7 +3105,12 @@ local function handleCommand(msg)
 		else
 		safeTxt(
 			user.Error,
-			"Usage: /GPTModel [FREE/FAST/SMART/THINK]",
+			[[Usage: /GPTModel 
+	*• gpt-4o-mini*
+    *• gpt-5-mini*
+    *• gpt-5*
+    *• o4-mini*
+    *• gpt-5.5*]],
 			255,0,0
 		)
 		end
@@ -3116,7 +3121,7 @@ local function handleCommand(msg)
         if choice and GEMINI_PRESETS[choice:upper()] then
             currentPresetGemini = choice:upper()
             safeTxt(user.Suc, "Gemini preset set: "..currentPresetGemini,0,255,0)
-        else safeTxt(user.Error, "Usage: /GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER]",255,0,0) end
+        else safeTxt(user.Error, "Usage: /GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]",255,0,0) end
         return true
     end
 	if lower:match("^/geminimodel") then
@@ -3135,7 +3140,12 @@ local function handleCommand(msg)
 		else
 		safeTxt(
 			user.Error,
-			"Usage: /GeminiModel [FREE/FAST/SMART/THINK]",
+			[[Usage: /GeminiModel 
+	*• gemini-2.5-flash-lite*
+    *• gemini-3.1-flash-lite*
+    *• gemini-2.5-flash*
+    *• gemini-2.5-pro*
+    *• gemini-3.5-flash*]],
 			255,0,0
 		)
 		end
