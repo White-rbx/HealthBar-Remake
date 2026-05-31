@@ -1,4 +1,4 @@
-local ver = " UIs 5.384 "
+local ver = " UIs 5.385 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -695,7 +695,7 @@ local GPT_PRESETS = {
     THINKING = {mt = 1024, t = 0.8},
 	MASTER = {mt = 2048, t = 0.9},
 	SUPERLONG = {mt = 4096, t = 0.9},
-	CREATIVE = {mt = 12,288, t = 0.9},
+	CREATIVE = {mt = 12288, t = 0.9},
 }
 local GEMINI_PRESETS = {
     FREE  = {mt = 64,  t = 0.4},
@@ -704,7 +704,7 @@ local GEMINI_PRESETS = {
     THINKING = {mt = 1024, t = 0.8},
 	MASTER = {mt = 2048, t = 0.9},
 	SUPERLONG = {mt = 4096, t = 0.9},
-	CREATIVE = {mt = 12,288, t = 0.9},
+	CREATIVE = {mt = 12288, t = 0.9},
 }
 
 --// =========================================
