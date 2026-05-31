@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.54
+-- ES Executor 2 | 0.6
 
 ------------------------------------------------------------------------------------------
 
@@ -890,7 +890,7 @@ SearchBar.Name = "Searcher"
 SearchBar.Size = UDim2.new(1,0,0.15,0)
 SearchBar.BackgroundTransparency = 1
 SearchBar.Parent = _search
-ListLayout(SearchBar, 0, 3, HCenter, VCenter, SLayout, FillH)
+ListLayout(SearchBar, 0, 5, HCenter, VCenter, SLayout, FillH)
 
 local _TB = Instance.new("TextBox")
 _TB.Name = "SearchScript"
@@ -909,6 +909,46 @@ _TB.TextColor3 = Color3.new(1,1,1)
 _TB.Parent = SearchBar
 Corner(0,5,_TB)
 Stroke(_TB, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+local filter = Instance.new("ImageButton")
+filter.Name = "Filter"
+filter.Size = UDim2.new(1,0,0.7,0)
+filter.BackgroundColor3 = Color3.new(1,1,1)
+filter.BackgroundTransparency = 0.5
+filter.Image = "rbxassetid://"
+ffilter.ImageColor3 = Color3.new(1,1,1)
+filter.Parent = SearchBar
+Aspect(filter, 1, Fit, Width)
+Corner(0, 5, filter)
+Stroke(filter, ASMBorder, 217,7,255, LJMRound, 1, 0)
+Gradient(filter, 45, 0, 0, Color3.fromRGB(255,85,255), Color3.fromRGB(85,0,255))
+
+local sea = Instance.new("ImageButton")
+sea.Name = "SearchButton"
+sea.Size = UDim2.new(1,0,0.7,0)
+sea.BackgroundColor3 = Color3.new(1,1,1)
+sea.BackgroundTransparency = 0.5
+sea.Image = "rbxassetid://"
+sea.ImageColor3 = Color3.new(1,1,1)
+sea.Parent = SearchBar
+Aspect(sea, 1, Fit, Width)
+Corner(0, 5, sea)
+Stroke(sea, ASMBorder, 0,255,255, LJMRound, 1, 0)
+Gradient(sea, 45, 0, 0, Color3.fromRGB(0,255,255), Color3.fromRGB(0,0,255))
+
+local selectF = Instance.new("Frame")
+selectF.Name = "SelectFilter"
+selectF.Size = UDim2.new(0,300,0,200)
+selectF.Position = UDim2.new(0,0,0.15,0)
+selectF.BackgroundColor3 = Color3.new(1,1,1)
+selectF.BackgroundTransparency = 0.3
+selectF.BorderSizePixel = 5
+selectF.BorderMode = Enum.BorderMode.Inset
+selectF.Parent = _search
+Corner(0,5,selectF)
+Stroke(selectF, ASMBorder, 255,255,0, LJMRound, 1, 0)
+Gradient(selectF, 45, 0, 0, Color3.fromRGB(255,255,0), Color3.fromRGB(255,100,0))
+ListLayout(selectF, 0, 0, HCenter, VTop, SLayout, FillV)
 
 
 
