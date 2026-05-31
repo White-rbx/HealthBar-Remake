@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.61
+-- ES Executor 2 | 0.62
 
 ------------------------------------------------------------------------------------------
 
@@ -388,6 +388,8 @@ if getcustomasset then
 ["music-note"] = getcustomasset("ExperienceSettings-Executor/Assets/music-note.png"),
 ["game-info"] = getcustomasset("ExperienceSettings-Executor/Assets/game-info.png"),
 ["autoexewhite"] = getcustomasset("ExperienceSettings-Executor/Assets/autoexewhite.png"),
+["filters"] = getcustomasset("ExperienceSettings-Executor/Assets/Filters.png"),
+["rscript"] = getcustomasset("ExperienceSettings-Executor/Assets/Rscript.png"),
 		  }
 	end)
 end
@@ -915,31 +917,33 @@ filter.Name = "Filter"
 filter.Size = UDim2.new(1,0,0.7,0)
 filter.BackgroundColor3 = Color3.new(1,1,1)
 filter.BackgroundTransparency = 0.5
-filter.Image = "rbxassetid://"
+filter.Image = "rbxassetid://134089160838664"
 filter.ImageColor3 = Color3.new(1,1,1)
 filter.Parent = SearchBar
 Aspect(filter, 1, Fit, Width)
 Corner(0, 5, filter)
 Stroke(filter, ASMBorder, 217,7,255, LJMRound, 1, 0)
 Gradient(filter, 45, 0, 0, Color3.fromRGB(255,85,255), Color3.fromRGB(85,0,255))
+setIcon(filter, "filters")
 
 local sea = Instance.new("ImageButton")
 sea.Name = "SearchButton"
 sea.Size = UDim2.new(1,0,0.7,0)
 sea.BackgroundColor3 = Color3.new(1,1,1)
 sea.BackgroundTransparency = 0.5
-sea.Image = "rbxassetid://"
+sea.Image = "rbxassetid://133955276215666"
 sea.ImageColor3 = Color3.new(1,1,1)
 sea.Parent = SearchBar
 Aspect(sea, 1, Fit, Width)
 Corner(0, 5, sea)
 Stroke(sea, ASMBorder, 0,255,255, LJMRound, 1, 0)
 Gradient(sea, 45, 0, 0, Color3.fromRGB(0,255,255), Color3.fromRGB(0,0,255))
+setIcon(sea, "search")
 
 local selectF = Instance.new("Frame")
 selectF.Name = "SelectFilter"
 selectF.Size = UDim2.new(0,300,0,200)
-selectF.Position = UDim2.new(0,0,0.15,0)
+selectF.Position = UDim2.new(0,2,0.15,0)
 selectF.BackgroundColor3 = Color3.new(1,1,1)
 selectF.BackgroundTransparency = 0.3
 selectF.BorderSizePixel = 5
