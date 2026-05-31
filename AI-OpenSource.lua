@@ -1,4 +1,4 @@
-local ver = " UIs 5.387 "
+local ver = " UIs 5.388 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -728,6 +728,7 @@ local GEMINI_MODELS = {
 }
 
 local currentGeminiModel = "gemini-3.1-flash-lite"
+local currentOpenAIModel = "gpt-4o-mini"
 
 -- ========== SERVICES & UTIL ==========
 local CoreGui = game:GetService("CoreGui")
@@ -2435,7 +2436,7 @@ local function endpointsFor(provider)
             url =
 	"https://generativelanguage.googleapis.com/v1beta/models/"
 	..
-	GEMINI_MODELS[currentGeminiModel]
+	currentGeminiModel
 	..
 	":generateContent",
             makeHeaders = function(key)
@@ -2495,7 +2496,7 @@ local function endpointsFor(provider)
             makeBody = function(prompt)
                 local preset = GPT_PRESETS[currentPresetGPT] or GPT_PRESETS.FREE
                 local body = {
-                    model = OPENAI_MODELS[currentOpenAIModel],
+                    model = currentOpenAIModel,
 
                     input = {
                         {
@@ -3092,7 +3093,7 @@ local function handleCommand(msg)
 	if lower:match("^/gptmodel") then
 	local choice =
 		(msg:match("^/gptmodel%s+(%S+)") or "")
-		:upper()
+		:lower()
 	if OPENAI_MODELS[choice] then
 		currentOpenAIModel = choice
 		safeTxt(
@@ -3127,7 +3128,7 @@ local function handleCommand(msg)
 	if lower:match("^/geminimodel") then
 	local choice =
 		(msg:match("^/geminimodel%s+(%S+)") or "")
-		:upper()
+		:lower()
 	if GEMINI_MODELS[choice] then
 		currentGeminiModel = choice
 		safeTxt(
@@ -3773,13 +3774,31 @@ local function hookUI(timeoutSeconds)
         ch.Text = ""
         local finalPrompt = buildMemoryPrompt(raw)
 
-		local StartTime = tick()
+-- =========================================
+-- BUILD PROMPT
+-- =========================================
+
+-- inject camera vision
+if ALLOW_CAM then
+
+	finalPrompt ..=
+		"\n\nCURRENT CAMERA VISION:\n"
+		..
+		getVisibleParts()
+
+end
+
+local StartTime = tick()
 
 safeTxt(
-	user.AI,
+	user.chat,
 	"⌛ Thinking...",
 	255,255,0
 )
+
+-- =========================================
+-- ASK AI
+-- =========================================
 
 askAI(finalPrompt, function(answer)
 
@@ -3812,7 +3831,7 @@ askAI(finalPrompt, function(answer)
 	end
 
 	safeTxt(
-		user.Nil,
+		user.Nill,
 		"[ ⚡ ]: Time took "
 		..
 		TimeTakes
@@ -3844,67 +3863,6 @@ end, function(err)
 		"s. | "
 		..
 		tostring(err),
-		255,0,0
-	)
-
-end)
-
--- =========================================
--- BUILD PROMPT
--- =========================================
-
-local finalPrompt =
-	buildMemoryPrompt(raw)
-
--- inject camera vision
-if ALLOW_CAM then
-
-	finalPrompt ..=
-		"\n\nCURRENT CAMERA VISION:\n"
-		..
-		getVisibleParts()
-
-end
-
--- =========================================
--- ASK AI
--- =========================================
-
-askAI(finalPrompt, function(answer)
-
-	-- auto remember local
-	if AUTO_REMEMBER then
-
-		remember(raw)
-
-		if answer and answer ~= "" then
-			remember(answer)
-		end
-
-	end
-
-	-- auto remember global
-	if AUTO_REMEMBER_GLOBAL then
-
-		remember(raw)
-
-		if answer and answer ~= "" then
-			remember(answer)
-		end
-
-	end
-
-	safeTxt(
-		user.chat,
-		answer or "(no answer)",
-		85,255,255
-	)
-
-end, function(err)
-
-	safeTxt(
-		user.Error,
-		"AI request failed: "..tostring(err),
 		255,0,0
 	)
 
