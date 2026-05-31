@@ -1,4 +1,4 @@
-local ver = " UIs 5.386 "
+local ver = " UIs 5.387 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -695,7 +695,7 @@ local GPT_PRESETS = {
     THINKING = {mt = 1024, t = 0.8},
 	MASTER = {mt = 2048, t = 0.9},
 	SUPERLONG = {mt = 4096, t = 1},
-	CREATIVE = {mt = 12288, t = 2},
+	CREATIVE = {mt = 12288, t = 1},
 }
 local GEMINI_PRESETS = {
     FREE  = {mt = 64,  t = 0.4},
@@ -704,7 +704,7 @@ local GEMINI_PRESETS = {
     THINKING = {mt = 1024, t = 0.8},
 	MASTER = {mt = 2048, t = 0.9},
 	SUPERLONG = {mt = 4096, t = 1},
-	CREATIVE = {mt = 12288, t = 2},
+	CREATIVE = {mt = 12288, t = 1},
 }
 
 --// =========================================
@@ -712,19 +712,19 @@ local GEMINI_PRESETS = {
 --// =========================================
 
 local OPENAI_MODELS = {
-	"gpt-4o-mini",
-	"gpt-5-mini",
-	"gpt-5",
-	"o4-mini",
-	"gpt-5.5",
+	["gpt-4o-mini"] = true,
+	["gpt-5-mini"] = true,
+	["gpt-5"] = true,
+	["o4-mini"] = true,
+	["gpt-5.5"] = true,
 }
 
 local GEMINI_MODELS = {
-	"gemini-2.5-flash-lite",
-	"gemini-3.1-flash-lite",
-	"gemini-2.5-flash",
-	"gemini-2.5-pro",
-	"gemini-3.5-flash",
+	["gemini-2.5-flash-lite"] = true,
+	["gemini-3.1-flash-lite"] = true,
+	["gemini-2.5-flash"] = true,
+	["gemini-2.5-pro"] = true,
+	["gemini-3.5-flash"] = true,
 }
 
 local currentGeminiModel = "gemini-3.1-flash-lite"
@@ -3772,6 +3772,82 @@ local function hookUI(timeoutSeconds)
         safeTxt(user.plr, raw, 255,255,255)
         ch.Text = ""
         local finalPrompt = buildMemoryPrompt(raw)
+
+		local StartTime = tick()
+
+safeTxt(
+	user.AI,
+	"⌛ Thinking...",
+	255,255,0
+)
+
+askAI(finalPrompt, function(answer)
+
+	local TimeTakes =
+		string.format(
+			"%.2f",
+			tick() - StartTime
+		)
+
+	-- auto remember local
+	if AUTO_REMEMBER then
+
+		remember(raw)
+
+		if answer and answer ~= "" then
+			remember(answer)
+		end
+
+	end
+
+	-- auto remember global
+	if AUTO_REMEMBER_GLOBAL then
+
+		remember(raw)
+
+		if answer and answer ~= "" then
+			remember(answer)
+		end
+
+	end
+
+	safeTxt(
+		user.Nil,
+		"[ ⚡ ]: Time took "
+		..
+		TimeTakes
+		..
+		"s.",
+		0,255,0
+	)
+
+	safeTxt(
+		user.chat,
+		answer or "(no answer)",
+		85,255,255
+	)
+
+end, function(err)
+
+	local TimeTakes =
+		string.format(
+			"%.2f",
+			tick() - StartTime
+		)
+
+	safeTxt(
+		user.Error,
+		"Failed after "
+		..
+		TimeTakes
+		..
+		"s. | "
+		..
+		tostring(err),
+		255,0,0
+	)
+
+end)
 
 -- =========================================
 -- BUILD PROMPT
