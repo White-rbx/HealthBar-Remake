@@ -1,4 +1,4 @@
-local ver = " UIs 5.379 "
+local ver = " UIs 5.383 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -30,6 +30,7 @@ local update = [[
 (:28/5/2026 | 8:00 pm: F) Fixed lag as possible. and add safety from crashing by automatic allowcam turn off itself.
 (:29/5/2026 | 8:10 pm: F) Fixed lag issues for mobile device.
 (:29/5/2026 | 9:55 pm: S) Switch from instant build to streaming to improve performance on low-quality devices.
+(:31/5/2026 | 4:42 pm: S) Say hello to Gemini-3.5-flash and gpt-5.5! + add CREATIVE to /geminiswitch and /gptswitch.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -694,6 +695,7 @@ local GPT_PRESETS = {
     THINKING = {mt = 1024, t = 0.8},
 	MASTER = {mt = 2048, t = 0.9},
 	SUPERLONG = {mt = 4096, t = 0.9},
+	CREATIVE = {mt = 12,288, t = 0.9},
 }
 local GEMINI_PRESETS = {
     FREE  = {mt = 64,  t = 0.4},
@@ -702,6 +704,7 @@ local GEMINI_PRESETS = {
     THINKING = {mt = 1024, t = 0.8},
 	MASTER = {mt = 2048, t = 0.9},
 	SUPERLONG = {mt = 4096, t = 0.9},
+	CREATIVE = {mt = 12,288, t = 0.9},
 }
 
 --// =========================================
@@ -709,20 +712,22 @@ local GEMINI_PRESETS = {
 --// =========================================
 
 local OPENAI_MODELS = {
-	FREE = "gpt-4o-mini",
-	FAST = "gpt-5-mini",
-	SMART = "gpt-5",
-	THINK = "o4-mini",
+	gpt-4o-mini = "gpt-4o-mini",
+	gpt-5-mini = "gpt-5-mini",
+	gpt-5 = "gpt-5",
+	o4-mini = "o4-mini",
+	gpt-5.5 = "gpt-5.5",
 }
 
 local GEMINI_MODELS = {
-	FREE = "gemini-2.5-flash-lite",
-	FAST = "gemini-3.1-flash-lite",
-	SMART = "gemini-2.5-flash",
-	THINK = "gemini-2.5-pro",
+	gemini-2.5-flash-lite = "gemini-2.5-flash-lite",
+	gemini-3.1-flash-lite = "gemini-3.1-flash-lite",
+	gemini-2.5-flash = "gemini-2.5-flash",
+	gemini-2.5-pro = "gemini-2.5-pro",
+	gemini-3.5-flash = "gemini-3.5-flash",
 }
 
-local currentGeminiModel = "FAST"
+local currentGeminiModel = "gemini-3.1-flash-lite"
 
 -- ========== SERVICES & UTIL ==========
 local CoreGui = game:GetService("CoreGui")
@@ -1310,10 +1315,20 @@ Your limit:
 **/CheckURLStatus** *URL* - HEAD request to URL
 **/CheckSYN** - check syn.request availability
 **/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
-**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG]* - Change Text limit
-**/GPTModel** *[FREE/FAST/SMART/THINK]* - Change Text limit
-**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG]* - Change model
-**/GEMINIModel** *[FREE/FAST/SMART/THINK]* - Change model
+**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]* - Change Text limit
+**/GPTModel** - Change Text limit
+	• gpt-4o-mini  - Default
+    • gpt-5-mini
+    • gpt-5
+    • o4-mini
+    • gpt-5.5
+**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]* - Change model
+**/GEMINIModel** - Change model
+	• gemini-2.5-flash-lite
+    • gemini-3.1-flash-lite  - Default
+    • gemini-2.5-flash
+    • gemini-2.5-pro
+    • gemini-3.5-flash
 **/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
 **/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] 「「CODE」」*
@@ -2336,11 +2351,11 @@ local currentApiKey = nil
 local currentCustomUrl = nil
 local currentCustomAuth = nil
 -- model state
-local currentOpenAIModel = "FREE"
-local currentGeminiModel = "FAST"
+local currentOpenAIModel = "gpt-4o-mini"
+local currentGeminiModel = "gemini-3.1-flash-lite"
 -- token presets
-local currentPresetGPT = "FREE"
-local currentPresetGemini = "FREE"
+local currentPresetGPT = "PRO"
+local currentPresetGemini = "PRO"
 
 -- queue for requests to avoid spamming
 local requestQueue = {}
@@ -2589,10 +2604,20 @@ local HELP_TEXT = [=[
 **/CheckURLStatus** *URL* - HEAD request to URL
 **/CheckSYN** - check syn.request availability
 **/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
-**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG]* - Change Text limit
-**/GPTModel** *[FREE/FAST/SMART/THINK]* - Change Text limit
-**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG]* - Change model
-**/GEMINIModel** *[FREE/FAST/SMART/THINK]* - Change model
+**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]* - Change Text limit
+**/GPTModel** - Change Text limit
+    *• gpt-4o-mini* - Default
+    *• gpt-5-mini*
+    *• gpt-5*
+    *• o4-mini*
+    *• gpt-5.5*
+**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]* - Change model
+**/GEMINIModel** - Change model
+    *• gemini-2.5-flash-lite*
+    *• gemini-3.1-flash-lite* - Default
+    *• gemini-2.5-flash*
+    *• gemini-2.5-pro*
+    *• gemini-3.5-flash*
 **/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
 **/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]*
