@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.6
+-- ES Executor 2 | 0.61
 
 ------------------------------------------------------------------------------------------
 
@@ -916,7 +916,7 @@ filter.Size = UDim2.new(1,0,0.7,0)
 filter.BackgroundColor3 = Color3.new(1,1,1)
 filter.BackgroundTransparency = 0.5
 filter.Image = "rbxassetid://"
-ffilter.ImageColor3 = Color3.new(1,1,1)
+filter.ImageColor3 = Color3.new(1,1,1)
 filter.Parent = SearchBar
 Aspect(filter, 1, Fit, Width)
 Corner(0, 5, filter)
