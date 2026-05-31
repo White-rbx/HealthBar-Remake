@@ -1,4 +1,4 @@
-local ver = " UIs 5.388 "
+local ver = " UIs 5.389 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -31,6 +31,7 @@ local update = [[
 (:29/5/2026 | 8:10 pm: F) Fixed lag issues for mobile device.
 (:29/5/2026 | 9:55 pm: S) Switch from instant build to streaming to improve performance on low-quality devices.
 (:31/5/2026 | 4:42 pm: S) Say hello to Gemini-3.5-flash and gpt-5.5! + add CREATIVE to /geminiswitch and /gptswitch.
+(:1/6/2026 | 1:17 am: A) AllowCam is unavailable for now that mean AI may not respond after use Allowcam. please do allowcam be disabled and wait the update.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -696,6 +697,7 @@ local GPT_PRESETS = {
 	MASTER = {mt = 2048, t = 0.9},
 	SUPERLONG = {mt = 4096, t = 1},
 	CREATIVE = {mt = 12288, t = 1},
+	SUPERCREATIVE = {mt = 36864, t = 2},
 }
 local GEMINI_PRESETS = {
     FREE  = {mt = 64,  t = 0.4},
@@ -705,6 +707,7 @@ local GEMINI_PRESETS = {
 	MASTER = {mt = 2048, t = 0.9},
 	SUPERLONG = {mt = 4096, t = 1},
 	CREATIVE = {mt = 12288, t = 1},
+	SUPERCREATIVE = {mt = 36864, t = 2},
 }
 
 --// =========================================
@@ -1316,14 +1319,14 @@ Your limit:
 **/CheckURLStatus** *URL* - HEAD request to URL
 **/CheckSYN** - check syn.request availability
 **/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
-**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]* - Change Text limit
+**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit
 **/GPTModel** - Change Text limit
 	• gpt-4o-mini  - Default
     • gpt-5-mini
     • gpt-5
     • o4-mini
     • gpt-5.5
-**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]* - Change model
+**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change model
 **/GEMINIModel** - Change model
 	• gemini-2.5-flash-lite
     • gemini-3.1-flash-lite  - Default
@@ -2605,14 +2608,14 @@ local HELP_TEXT = [=[
 **/CheckURLStatus** *URL* - HEAD request to URL
 **/CheckSYN** - check syn.request availability
 **/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
-**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]* - Change Text limit
+**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit
 **/GPTModel** - Change Text limit
     *• gpt-4o-mini* - Default
     *• gpt-5-mini*
     *• gpt-5*
     *• o4-mini*
     *• gpt-5.5*
-**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]* - Change model
+**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change model
 **/GEMINIModel** - Change model
     *• gemini-2.5-flash-lite*
     *• gemini-3.1-flash-lite* - Default
@@ -3087,7 +3090,7 @@ local function handleCommand(msg)
         if choice and GPT_PRESETS[choice:upper()] then
             currentPresetGPT = choice:upper()
             safeTxt(user.Suc, "GPT preset set: "..currentPresetGPT,0,255,0)
-        else safeTxt(user.Error, "Usage: /GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]",255,0,0) end
+        else safeTxt(user.Error, "Usage: /GPTSwitch [FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]",255,0,0) end
         return true
     end
 	if lower:match("^/gptmodel") then
@@ -3122,7 +3125,7 @@ local function handleCommand(msg)
         if choice and GEMINI_PRESETS[choice:upper()] then
             currentPresetGemini = choice:upper()
             safeTxt(user.Suc, "Gemini preset set: "..currentPresetGemini,0,255,0)
-        else safeTxt(user.Error, "Usage: /GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE]",255,0,0) end
+        else safeTxt(user.Error, "Usage: /GEMINISwitch [FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]",255,0,0) end
         return true
     end
 	if lower:match("^/geminimodel") then
