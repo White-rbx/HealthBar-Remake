@@ -1,4 +1,4 @@
-local ver = " UIs 5.383 "
+local ver = " UIs 5.384 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -712,19 +712,19 @@ local GEMINI_PRESETS = {
 --// =========================================
 
 local OPENAI_MODELS = {
-	gpt-4o-mini = "gpt-4o-mini",
-	gpt-5-mini = "gpt-5-mini",
-	gpt-5 = "gpt-5",
-	o4-mini = "o4-mini",
-	gpt-5.5 = "gpt-5.5",
+	["gpt-4o-mini"] = "gpt-4o-mini",
+	["gpt-5-mini"] = "gpt-5-mini",
+	["gpt-5"] = "gpt-5",
+	["o4-mini"] = "o4-mini",
+	["gpt-5.5"] = "gpt-5.5",
 }
 
 local GEMINI_MODELS = {
-	gemini-2.5-flash-lite = "gemini-2.5-flash-lite",
-	gemini-3.1-flash-lite = "gemini-3.1-flash-lite",
-	gemini-2.5-flash = "gemini-2.5-flash",
-	gemini-2.5-pro = "gemini-2.5-pro",
-	gemini-3.5-flash = "gemini-3.5-flash",
+	["gemini-2.5-flash-lite"] = "gemini-2.5-flash-lite",
+	["gemini-3.1-flash-lite"] = "gemini-3.1-flash-lite",
+	["gemini-2.5-flash"] = "gemini-2.5-flash",
+	["gemini-2.5-pro"] = "gemini-2.5-pro",
+	["gemini-3.5-flash"] = "gemini-3.5-flash",
 }
 
 local currentGeminiModel = "gemini-3.1-flash-lite"
