@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.62
+-- ES Executor 2 | 0.63
 
 ------------------------------------------------------------------------------------------
 
@@ -869,8 +869,8 @@ end
 --[ Bookmark ]--
 --[ Search ]--
 vSearch.soon.Visible = true
-vSearch.soon.Text = [[<b><font size="15">Delayed</font></b>
-Search was temporarily halted due to my mental state. Don't dm me about it just wait the update.]]
+vSearch.soon.Text = [[<b><font size="15">In-developing</font></b>
+Search Script may takes a long time to develop. Please wait until we announce in discord.]]
 	
 local _search = Instance.new("CanvasGroup")
 _search.Name = "Page"
@@ -954,7 +954,56 @@ Stroke(selectF, ASMBorder, 255,255,0, LJMRound, 1, 0)
 Gradient(selectF, 45, 0, 0, Color3.fromRGB(255,255,0), Color3.fromRGB(255,100,0))
 ListLayout(selectF, 0, 0, HCenter, VTop, SLayout, FillV)
 
+local Open = false
+local Busy = false
 
+filter.MouseButton1Click:Connect(function()
+
+	if Busy then
+		return
+	end
+
+	Busy = true
+
+	Open = not Open
+
+	local Tween
+
+	if Open then
+
+		selectF.Visible = true
+
+		Tween = TweenService:Create(
+			selectF,
+			TweenInfo.new(0.15),
+			{
+				Size = UDim2.new(0,300,0,200)
+			}
+		)
+
+	else
+
+		Tween = TweenService:Create(
+			selectF,
+			TweenInfo.new(0.15),
+			{
+				Size = UDim2.new(0,300,0,0)
+			}
+		)
+
+	end
+
+	Tween:Play()
+
+	Tween.Completed:Wait()
+
+	if not Open then
+		selectF.Visible = false
+	end
+
+	Busy = false
+
+end)
 
 --[ Music ]--
 --[ Settings ]--
