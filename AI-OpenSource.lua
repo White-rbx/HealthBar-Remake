@@ -1,4 +1,4 @@
-local ver = " UIs 5.393 "
+local ver = " UIs 5.394 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2967,7 +2967,7 @@ local function formatPlayerTag(player, fallbackName)
 			return "[ 🗨️ ] [**@"..username.."**]"
 		end
 
-		return "[ 🗨️ ] [@"..username.."] [**"..nickname.."**]"
+		return "[ 🗨️ ] [@%"..username.."%] [**"..nickname.."**]"
 
 	end
 
