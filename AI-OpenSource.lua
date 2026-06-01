@@ -1,4 +1,4 @@
-local ver = " UIs 5.396 "
+local ver = " UIs 5.397 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -455,10 +455,10 @@ text = text:gsub(
 		escId += 1
 
 		local key =
-			"@@ESC_" ..
-			escId ..
-			"@@"
-
+	"§ESC" ..
+	escId ..
+	"§"
+	
 		escaped[key] = content
 
 		return key
@@ -3956,9 +3956,6 @@ safeTxt(
 	255,255,0
 )
 
-
-print("======== PROMPT ========")
-print(finalPrompt)
 -- =========================================
 -- ASK AI
 -- =========================================
