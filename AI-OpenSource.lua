@@ -1,4 +1,4 @@
-local ver = " UIs 5.394 "
+local ver = " UIs 5.395 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -439,31 +439,32 @@ local function richify(text)
 
 	text = escapeRichText(text)
 
-	-- =========================================
-	-- ESCAPE ZONE
-	-- %...%
-	-- =========================================
+-- =========================================
+-- ESCAPE ZONE
+-- %...%
+-- SUPPORT MULTI LINE
+-- =========================================
 
-	local escaped = {}
-	local escId = 0
+local escaped = {}
+local escId = 0
 
-	text = text:gsub(
-		"%%(.-)%%",
-		function(content)
+text = text:gsub(
+	"%%([%s%S]-)%%",
+	function(content)
 
-			escId += 1
+		escId += 1
 
-			local key =
-				"@@ESC_" ..
-				escId ..
-				"@@"
+		local key =
+			"@@ESC_" ..
+			escId ..
+			"@@"
 
-			escaped[key] = content
+		escaped[key] = content
 
-			return key
+		return key
 
-		end
-	)
+	end
+)
 	
 	-- =========================================
 	-- MULTI LINE CODE BLOCK
@@ -624,12 +625,16 @@ text = text:gsub(
 
 	for key, content in pairs(escaped) do
 
-		text = text:gsub(
-			key,
-			content
-		)
+	text = text:gsub(
+		key,
+		"<font face=\"Code\">"
+		..
+		content
+		..
+		"</font>"
+	)
 
-	end
+end
 
 	return text
 end
