@@ -1,4 +1,4 @@
-local ver = " UIs 5.39 "
+local ver = " UIs 5.391 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2544,7 +2544,7 @@ end
 -- ========== askAI (single entry) ==========
 local function detectProviderFromKey(key)
     if tostring(key):match("^sk%-") then return "openai" end
-    if tostring(key):match("^AIza") tostring(key):match("^AQ%.") or then return "gemini" end
+    if tostring(key):match("^AIza") or tostring(key):match("^AQ%.") then return "gemini" end
     if tostring(key):match("^AI") or tostring(key):match("^AIz") then return "gemini" end
     -- simple heuristics: default openai
     return "openai"
