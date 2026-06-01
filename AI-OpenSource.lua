@@ -1,4 +1,4 @@
-local ver = " UIs 5.392 "
+local ver = " UIs 5.393 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -33,6 +33,7 @@ local update = [[
 (:31/5/2026 | 4:42 pm: S) Say hello to Gemini-3.5-flash and gpt-5.5! + add CREATIVE to /geminiswitch and /gptswitch.
 (:1/6/2026 | 1:17 am: A) AllowCam is unavailable for now that mean AI may not respond after use Allowcam. please do allowcam be disabled and wait the update.
 (:1/6/2026 | 4:10 pm: A) Add new string match google API key it called "AQ."
+('1/6/2026 | 5:32 pm: F) Fixed Allowcam.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -437,6 +438,33 @@ end
 local function richify(text)
 
 	text = escapeRichText(text)
+
+	-- =========================================
+	-- ESCAPE ZONE
+	-- %...%
+	-- =========================================
+
+	local escaped = {}
+	local escId = 0
+
+	text = text:gsub(
+		"%%(.-)%%",
+		function(content)
+
+			escId += 1
+
+			local key =
+				"@@ESC_" ..
+				escId ..
+				"@@"
+
+			escaped[key] = content
+
+			return key
+
+		end
+	)
+	
 	-- =========================================
 	-- MULTI LINE CODE BLOCK
 	-- ```code```
@@ -589,6 +617,20 @@ text = text:gsub(
 				'</font>'
 		end
 	)
+
+	-- =========================================
+	-- RESTORE ESCAPE ZONE
+	-- =========================================
+
+	for key, content in pairs(escaped) do
+
+		text = text:gsub(
+			key,
+			content
+		)
+
+	end
+
 	return text
 end
 
@@ -1186,6 +1228,20 @@ Allowed Formatting:
 - Underline: _A_
 - Strikethrough: ~A~
 - Links: https://example.com
+- Escape Formatting: %A%
+
+Escape Rule:
+Wrap text with % and % to prevent formatting.
+
+Example:
+%**Hello**%
+Output: → **Hello**
+
+%*Hello*%
+Output: → *Hello*
+
+%# Title%
+Output: → # Title
 
 Current real date:
 ]] .. CURRENT_DATE .. [[
@@ -2288,6 +2344,99 @@ local function propertiesToText(data)
 	return table.concat(
 		text,
 		" | "
+	)
+
+end
+
+--------------------------------------------------
+-- BUILD VISION TEXT FOR AI
+--------------------------------------------------
+
+local function buildVisionText()
+
+	if not ALLOW_CAM then
+		return ""
+	end
+
+	if not Camera then
+		return ""
+	end
+
+	local result = {}
+
+	local nearby =
+		workspace:GetPartBoundsInRadius(
+			Camera.CFrame.Position,
+			SCAN_RADIUS,
+			overlap
+		)
+
+	for _,part in ipairs(nearby) do
+
+		if not part:IsA("BasePart") then
+			continue
+		end
+
+		if part.Transparency >= 1 then
+			continue
+		end
+
+		if not isPartVisible(part) then
+			continue
+		end
+
+		local line =
+			part.Name
+
+		-- model name
+		if part.Parent
+		and part.Parent:IsA("Model") then
+
+			line =
+				part.Parent.Name
+				..
+				" > "
+				..
+				part.Name
+
+		end
+
+		-- properties
+		if ALLOW_PROPERTIES then
+
+			local props =
+				getProperties(part)
+
+			local propText =
+				propertiesToText(props)
+
+			if propText ~= "" then
+
+				line ..=
+					" { "
+					..
+					propText
+					..
+					" }"
+
+			end
+
+		end
+
+		table.insert(
+			result,
+			line
+		)
+
+	end
+
+	if #result == 0 then
+		return "Nothing visible."
+	end
+
+	return table.concat(
+		result,
+		"\n"
 	)
 
 end
@@ -3786,10 +3935,13 @@ local function hookUI(timeoutSeconds)
 -- inject camera vision
 if ALLOW_CAM then
 
+	local vision =
+		buildVisionText()
+
 	finalPrompt ..=
 		"\n\nCURRENT CAMERA VISION:\n"
 		..
-		getVisibleParts()
+		vision
 
 end
 
@@ -3801,6 +3953,9 @@ safeTxt(
 	255,255,0
 )
 
+
+print("======== PROMPT ========")
+print(finalPrompt)
 -- =========================================
 -- ASK AI
 -- =========================================
