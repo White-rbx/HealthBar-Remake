@@ -1,4 +1,4 @@
-local ver = " UIs 5.389 "
+local ver = " UIs 5.39 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -32,6 +32,7 @@ local update = [[
 (:29/5/2026 | 9:55 pm: S) Switch from instant build to streaming to improve performance on low-quality devices.
 (:31/5/2026 | 4:42 pm: S) Say hello to Gemini-3.5-flash and gpt-5.5! + add CREATIVE to /geminiswitch and /gptswitch.
 (:1/6/2026 | 1:17 am: A) AllowCam is unavailable for now that mean AI may not respond after use Allowcam. please do allowcam be disabled and wait the update.
+(:1/6/2026 | 4:10 pm: A) Add new string match google API key it called "AQ."
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -2543,7 +2544,7 @@ end
 -- ========== askAI (single entry) ==========
 local function detectProviderFromKey(key)
     if tostring(key):match("^sk%-") then return "openai" end
-    if tostring(key):match("^AIza") then return "gemini" end
+    if tostring(key):match("^AIza") tostring(key):match("^AQ%.") or then return "gemini" end
     if tostring(key):match("^AI") or tostring(key):match("^AIz") then return "gemini" end
     -- simple heuristics: default openai
     return "openai"
