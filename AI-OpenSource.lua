@@ -1,4 +1,4 @@
-local ver = " UIs 5.391 "
+local ver = " UIs 5.392 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -306,6 +306,7 @@ ch.BackgroundTransparency = 1
 ch.TextColor3 = Color3.fromRGB(255,255,255)
 ch.RichText = true
 ch.TextScaled = true
+ch.TextSize = 28
 ch.Text = ""
 ch.PlaceholderText = "Type /Help to show all commands or Say something..."
 -- ch.TextSize = 16
