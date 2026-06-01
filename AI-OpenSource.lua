@@ -1,4 +1,4 @@
-local ver = " UIs 5.395 "
+local ver = " UIs 5.396 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -627,11 +627,7 @@ text = text:gsub(
 
 	text = text:gsub(
 		key,
-		"<font face=\"Code\">"
-		..
 		content
-		..
-		"</font>"
 	)
 
 end
@@ -722,6 +718,8 @@ txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API
 **With respect**.]], 255, 255, 0)
 txt(user.Warn,[[# 1 command is enabled 
 **/1AutoRememberInGame** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) ]], 255,255,0)
+txt(user.Nill, [[# If you doesn't know how to put **API**
+`/addapi gemini/chatgpt YOUR_API_KEY yes/no`]], 255,150,0)
 txt(user.Nill, "### [====== Chat ======]", 180, 180, 180)
 
 -- ===========================
