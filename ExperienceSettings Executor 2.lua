@@ -1,4 +1,4 @@
--- ES Executor 2 | 0.63
+-- ES Executor 2 | 0.65
 
 ------------------------------------------------------------------------------------------
 
@@ -942,7 +942,8 @@ setIcon(sea, "search")
 
 local selectF = Instance.new("Frame")
 selectF.Name = "SelectFilter"
-selectF.Size = UDim2.new(0,300,0,200)
+selectF.Size = UDim2.new(0,300,0,0)
+selectF.Visible = false
 selectF.Position = UDim2.new(0,2,0.15,0)
 selectF.BackgroundColor3 = Color3.new(1,1,1)
 selectF.BackgroundTransparency = 0.3
@@ -977,7 +978,7 @@ filter.MouseButton1Click:Connect(function()
 			selectF,
 			TweenInfo.new(0.15),
 			{
-				Size = UDim2.new(0,300,0,200)
+				Size = UDim2.new(0,300,0,250)
 			}
 		)
 
@@ -1005,6 +1006,60 @@ filter.MouseButton1Click:Connect(function()
 
 end)
 
+local txtA = {
+  Default = Instance.new("TextButton"),
+  MostView = Instance.new("TextButton"),
+  MostLike = Instance.new("TextButton"),
+  MostDislike = Instance.new("TextButton"),
+  Universal = Instance.new("TextButton"),
+  Key = Instance.new("TextButton"),
+  Keyless = Instance.new("TextButton"),
+  Verified = Instance.new("TextButton"),
+  NoVerified = Instance.new("TextButton"),
+  Patched = Instance.new("TextButton"),
+  NoPatched = Instance.new("TextButton"),
+}
+local function seS(txta)
+  txta.Size = UDim2.new(1,0,0,20)
+  txta.BackgroundTransparency = 1
+  txta.TextSize = 10
+  txta.Parent = selectF
+end
+
+seS(txtA.Default)
+seS(txtA.MostView)
+seS(txtA.MostLike)
+seS(txtA.MostDislike)
+seS(txtA.Universal)
+seS(txtA.Key)
+seS(txtA.Keyless)
+seS(txtA.Verified)
+seS(txtA.NoVerified)
+seS(txtA.Patched)
+seS(txtA.NoPatched)
+
+txtA.Default.Name = "Default"
+txtA.MostLike.Name = "MostLike"
+txtA.MostDislike.Name = "MostDislike"
+txtA.Universal.Name = "Universal"
+txtA.Key.Name = "Key"
+txtA.Keyless.Name = "Keyless"
+txtA.Verified.Name = "Verified"
+txtA.NoVerified.Name = "NoVerified"
+txtA.Patched.Name = "Patched"
+txtA.NoPatched.Name = "NoPatched"
+
+txtA.Default.Text = "Default"
+txtA.MostLike.Text = "Mos tLike"
+txtA.MostDislike.Text = "Most Dislike"
+txtA.Universal.Text = "Universal"
+txtA.Key.Text = "Key"
+txtA.Keyless.Text = "Keyless"
+txtA.Verified.Text = "Verified"
+txtA.NoVerified.Text = "No Verified"
+txtA.Patched.Text = "Patched"
+txtA.NoPatched.Text = "No Patched"
+ 
 --[ Music ]--
 --[ Settings ]--
 
