@@ -1,4 +1,4 @@
--- Ok 2.68
+-- Ok 2.69
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -541,6 +541,7 @@ hr.Size = UDim2.new(0, 300, 1, 0)
 hr.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 hr.BackgroundTransparency = 0.08
 hr.Parent = mtb
+hr.ZIndex = 2147483645
 createUICorner(hr, 1, 0)
 createUIListLayout(hr, 0, 10, HCenter, VCenter, FillH)
 
