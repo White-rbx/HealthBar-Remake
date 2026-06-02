@@ -1,4 +1,4 @@
-local ver = " UIs 5.397 "
+local ver = " UIs 5.398 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -718,8 +718,41 @@ txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API
 **With respect**.]], 255, 255, 0)
 txt(user.Warn,[[# 1 command is enabled 
 **/1AutoRememberInGame** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) ]], 255,255,0)
-txt(user.Nill, [[# If you doesn't know how to put **API**
-`/addapi gemini/chatgpt YOUR_API_KEY yes/no`]], 255,150,0)
+txt(user.Nill, [[# If you don't know how to add an API
+
+1. Go to:
+   • Google AI Studio:
+     %https://aistudio.google.com/app/api-keys%
+   • OpenAI:
+     %https://platform.openai.com/api-keys%
+
+2. Create an API key.
+   • Google AI:
+     Must be 18+ in supported regions.
+     ★ Information:
+     %https://ai.google.dev/gemini-api/docs/available-regions?authuser=5%
+   • OpenAI:
+     Requires API credits/billing.
+     ★ Information:
+     %https://platform.openai.com/settings/organization/billing/overview%
+
+3. Copy your API key.
+   • Google AI:
+     Starts with "AIza" or "AQ."
+   • OpenAI:
+     Starts with "sk-"
+
+4. Launch Roblox.
+5. Execute ExperienceSettings.
+6. Open AI-Thinking.
+7. Run:
+   `/addapi [GEMINI/CHATGPT] [%YOUR_API_KEY%] [YES/NO]`
+     Example:
+     `/addapi GEMINI AQ.xxxxxxxxx YES`
+     `/addapi CHATGPT sk-xxxxxxxxx YES`
+
+8. Enjoy :)
+]], 255,150,0)
 txt(user.Nill, "### [====== Chat ======]", 180, 180, 180)
 
 -- ===========================
