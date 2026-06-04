@@ -1,4 +1,4 @@
-local ver = " UIs 5.45 "
+local ver = " UIs 5.46 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -741,8 +741,7 @@ local function IsAtBottom()
 	if not layout then return true end
 
 	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
-
-	return si.CanvasPosition.Y >= (maxY - THRESHOLD)
+	return si.CanvasPosition.Y >= (maxY - 12)
 end
 
 local function ScrollToBottom()
@@ -758,7 +757,9 @@ end
 
 local function txt(user, text, R, G, B)
 
-	autoFollow = IsAtBottom()
+	-- 🔥 snapshot (IMPORTANT: prevent race condition)
+	local style = TEXT_STYLE
+	local autoFollow = IsAtBottom()
 
 	local cha = Instance.new("TextLabel")
 	cha.Name = "Text"
@@ -791,19 +792,25 @@ local function txt(user, text, R, G, B)
 	end
 
 
-	-- Detect user scroll (Discord behavior)
+	-- 🔥 Discord-style scroll update (ONLY TRACK, DON'T FORCE)
 	si:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-		autoFollow = IsAtBottom()
+		-- optional: could track user behavior if needed
 	end)
 
 
 	task.spawn(function()
 
-		if TEXT_STYLE == "INSTANT" then
+		-- =========================
+		-- INSTANT MODE
+		-- =========================
+		if style == "INSTANT" then
 
 			cha.Text = prefix .. safeRichify(text)
 
-		elseif TEXT_STYLE == "EACHTEXT" then
+		-- =========================
+		-- EACHTEXT MODE
+		-- =========================
+		elseif style == "EACHTEXT" then
 
 			local chunks = {}
 			for chunk in tostring(text):gmatch("%S+%s*") do
@@ -821,47 +828,49 @@ local function txt(user, text, R, G, B)
 
 			end
 
-			-- auto scroll after finish chunking
-			task.defer(function()
-				if autoFollow then
-					ScrollToBottom()
-				end
-			end)
-
-		elseif TEXT_STYLE == "EACHLINE" then
+		-- =========================
+		-- EACHLINE MODE
+		-- =========================
+		elseif style == "EACHLINE" then
 
 			local current = ""
-			local lines = {}
 
 			for line in tostring(text):gmatch("([^\n]*)\n?") do
 				if line ~= "" then
-					table.insert(lines, line)
-				end
-			end
-
-			if #lines == 0 then
-				cha.Text = prefix .. safeRichify(text)
-			else
-				for _, line in ipairs(lines) do
 					current ..= line .. "\n"
 					cha.Text = prefix .. safeRichify(current)
 					task.wait(0.05)
 				end
 			end
 
+		-- =========================
+		-- DEFAULT MODE
+		-- =========================
 		else
 			cha.Text = prefix .. safeRichify(text)
 		end
 
 
-		-- FINAL AUTO SCROLL (Discord behavior)
+		-- =========================
+		-- FINAL DISCORD SCROLL
+		-- =========================
 		task.defer(function()
+
+			local layout = si:FindFirstChildOfClass("UIListLayout")
+			if not layout then return end
+
+			local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
+			if maxY < 0 then maxY = 0 end
+
+			-- only follow if user was already at bottom
 			if autoFollow then
-				ScrollToBottom()
+				si.CanvasPosition = Vector2.new(0, maxY)
 			end
+
 		end)
 
 	end)
+
 
 	Corner(0, 5, cha)
 
@@ -915,9 +924,8 @@ AI is not bug with broken text because of text limit, use **/geminiswitch** or *
 
 txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
 **With respect**.]], 255, 255, 0)
-txt(user.Warn,[[# 2 command is enabled 
-**/1AutoRememberInGame** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) 
-**/TextAnimation** *[ON/OFF]* - Text Animation Settings when you say something or else.]], 255,255,0)
+txt(user.Warn,[[# 1 command is enabled 
+**/1AutoRememberInGame** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) ]], 255,255,0)
 txt(user.Nill, [[# If you don't know how to add an API
 
 1. Go to:
@@ -3499,7 +3507,7 @@ local function handleCommand(msg)
 		else
 		safeTxt(
 			user.Error,
-			[[Usage: /GPTModel 
+			[[Usage: /gPTModel 
 	*• gpt-4o-mini*
     *• gpt-5-mini*
     *• gpt-5*
@@ -3534,7 +3542,7 @@ local function handleCommand(msg)
 		else
 		safeTxt(
 			user.Error,
-			[[Usage: /GeminiModel 
+			[[Usage: /geminiModel 
 	*• gemini-2.5-flash-lite*
     *• gemini-3.1-flash-lite*
     *• gemini-2.5-flash*
@@ -4044,11 +4052,10 @@ if lower:match("^/allowseechildren") then
 
 end
 
-if msg:lower():match("^/textstyle") then
+if msg:lower():sub(1,10) == "/textstyle" then
 
 	local args = msg:match("^/textstyle%s*(.*)$") or ""
-	args = args:match("^%s*(.-)%s*$")
-	args = args:upper()
+	args = args:match("^%s*(.-)%s*$"):upper()
 
 	if args == "INSTANT"
 	or args == "EACHTEXT"
@@ -4056,20 +4063,10 @@ if msg:lower():match("^/textstyle") then
 
 		TEXT_STYLE = args
 
-		safeTxt(
-			user.Suc,
-			"TextStyle: " .. args,
-			0,255,0
-		)
+		safeTxt(user.Suc, "TextStyle: " .. args, 0,255,0)
 
 	else
-
-		safeTxt(
-			user.Warn,
-			"Usage: /TEXTSTYLE [INSTANT/EACHTEXT/EACHLINE]",
-			255,200,0
-		)
-
+		safeTxt(user.Warn, "Usage: /textstyle [INSTANT/EACHTEXT/EACHLINE]", 255,200,0)
 	end
 
 	return true
