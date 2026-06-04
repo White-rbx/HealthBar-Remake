@@ -1,4 +1,4 @@
-local ver = " UIs 5.44 "
+local ver = " UIs 5.45 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -732,181 +732,144 @@ local function richify(text)
 
 end
 
--- ChatLogs Line
-local function txt(user, text, R, G, B)
-	local function IsAtBottom()
+-- ChatLogs Line (Discord Style Fixed)
+local autoFollow = true
+local THRESHOLD = 12
 
-	return
-		si.CanvasPosition.Y >=
-		(
-			si.AbsoluteCanvasSize.Y
-			-
-			si.AbsoluteWindowSize.Y
-			-
-			10
-		)
+local function IsAtBottom()
+	local layout = si:FindFirstChildOfClass("UIListLayout")
+	if not layout then return true end
 
+	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
+
+	return si.CanvasPosition.Y >= (maxY - THRESHOLD)
 end
 
-local followScroll =
-	IsAtBottom()
-	
-    local cha = Instance.new("TextLabel")
-    cha.Name = "Text"
+local function ScrollToBottom()
+	local layout = si:FindFirstChildOfClass("UIListLayout")
+	if not layout then return end
+
+	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
+	if maxY < 0 then maxY = 0 end
+
+	si.CanvasPosition = Vector2.new(0, maxY)
+end
+
+
+local function txt(user, text, R, G, B)
+
+	autoFollow = IsAtBottom()
+
+	local cha = Instance.new("TextLabel")
+	cha.Name = "Text"
 	cha.Active = false
-    cha.Size = UDim2.new(0.97, 0, 0, 0)
-    cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
-    cha.BackgroundTransparency = 0.85
-	cha.BackgroundColor3 = Color3.fromRGB(255,255,255)	
-    cha.TextSize = 16
+	cha.Size = UDim2.new(0.97, 0, 0, 0)
+	cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+	cha.BackgroundTransparency = 0.85
+	cha.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	cha.TextSize = 16
 	cha.BorderSizePixel = 5
 	cha.BorderMode = Enum.BorderMode.Inset
-    cha.RichText = true
-    cha.TextWrapped = true
-    cha.TextXAlignment = Enum.TextXAlignment.Left
-    cha.TextYAlignment = Enum.TextYAlignment.Top
-    cha.AutomaticSize = Enum.AutomaticSize.Y
+	cha.RichText = true
+	cha.TextWrapped = true
+	cha.TextXAlignment = Enum.TextXAlignment.Left
+	cha.TextYAlignment = Enum.TextYAlignment.Top
+	cha.AutomaticSize = Enum.AutomaticSize.Y
 	cha.Text = "Responding..."
 	cha.Visible = true
 	cha.Parent = si
 
 
-local prefix =
-		escapeRichText(
-			tostring(user)
-		)
+	local prefix = escapeRichText(tostring(user))
 
 	local function safeRichify(str)
-
-		local ok,result =
-			pcall(
-				richify,
-				tostring(str)
-			)
-
+		local ok, result = pcall(richify, tostring(str))
 		if ok then
 			return result
 		end
-
-		return escapeRichText(
-			tostring(str)
-		)
-
+		return escapeRichText(tostring(str))
 	end
+
+
+	-- Detect user scroll (Discord behavior)
+	si:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+		autoFollow = IsAtBottom()
+	end)
+
 
 	task.spawn(function()
 
 		if TEXT_STYLE == "INSTANT" then
 
-			cha.Text =
-				prefix ..
-				safeRichify(text)
+			cha.Text = prefix .. safeRichify(text)
 
 		elseif TEXT_STYLE == "EACHTEXT" then
 
 			local chunks = {}
-
 			for chunk in tostring(text):gmatch("%S+%s*") do
-
-				table.insert(
-					chunks,
-					chunk
-				)
-
+				table.insert(chunks, chunk)
 			end
 
 			local current = ""
 
-			for _,chunk in ipairs(chunks) do
+			for _, chunk in ipairs(chunks) do
 
 				current ..= chunk
-
-				cha.Text =
-					prefix ..
-					safeRichify(current)
-				if followScroll then
-
-	local layout =
-		si:FindFirstChildOfClass(
-			"UIListLayout"
-		)
-
-	if layout then
-
-		si.CanvasPosition =
-			Vector2.new(
-				0,
-				layout.AbsoluteContentSize.Y
-			)
-
-	end
-
-					end
+				cha.Text = prefix .. safeRichify(current)
 
 				task.wait(0.03)
 
 			end
 
+			-- auto scroll after finish chunking
+			task.defer(function()
+				if autoFollow then
+					ScrollToBottom()
+				end
+			end)
+
 		elseif TEXT_STYLE == "EACHLINE" then
 
 			local current = ""
-
 			local lines = {}
 
 			for line in tostring(text):gmatch("([^\n]*)\n?") do
-
 				if line ~= "" then
-
-					table.insert(
-						lines,
-						line
-					)
-
+					table.insert(lines, line)
 				end
-
 			end
 
 			if #lines == 0 then
-
-				cha.Text =
-					prefix ..
-					safeRichify(text)
-
+				cha.Text = prefix .. safeRichify(text)
 			else
-
-				for _,line in ipairs(lines) do
-
-					current ..=
-						line ..
-						"\n"
-
-					cha.Text =
-						prefix ..
-						safeRichify(current)
-
+				for _, line in ipairs(lines) do
+					current ..= line .. "\n"
+					cha.Text = prefix .. safeRichify(current)
 					task.wait(0.05)
-
 				end
-
 			end
 
 		else
-
-			cha.Text =
-				prefix ..
-				safeRichify(text)
-
+			cha.Text = prefix .. safeRichify(text)
 		end
+
+
+		-- FINAL AUTO SCROLL (Discord behavior)
+		task.defer(function()
+			if autoFollow then
+				ScrollToBottom()
+			end
+		end)
 
 	end)
 
-	Corner(0,5,cha)
+	Corner(0, 5, cha)
 
-	-- Get color from text
 	cha.BackgroundColor3 = cha.TextColor3
 
 	return cha
 end
+
 --[[
 local vpf = Instance.new("ViewportFrame")
 vpf.Name = "AI_Perspective"
@@ -4081,23 +4044,21 @@ if lower:match("^/allowseechildren") then
 
 end
 
-if lower:match("^/textstyle") then
+if msg:lower():match("^/textstyle") then
 
-	local t =
-		(msg:match(
-			"^/textstyle%s*(%S*)"
-		) or "")
-		:upper()
+	local args = msg:match("^/textstyle%s*(.*)$") or ""
+	args = args:match("^%s*(.-)%s*$")
+	args = args:upper()
 
-	if t == "INSTANT"
-	or t == "EACHTEXT"
-	or t == "EACHLINE" then
+	if args == "INSTANT"
+	or args == "EACHTEXT"
+	or args == "EACHLINE" then
 
-		TEXT_STYLE = t
+		TEXT_STYLE = args
 
 		safeTxt(
 			user.Suc,
-			"TextStyle: " .. t,
+			"TextStyle: " .. args,
 			0,255,0
 		)
 
@@ -4112,7 +4073,6 @@ if lower:match("^/textstyle") then
 	end
 
 	return true
-
 end
 
 	return false
