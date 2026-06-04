@@ -1,4 +1,4 @@
-local ver = " UIs 5.42 "
+local ver = " UIs 5.43 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -747,67 +747,121 @@ local function txt(user, text, R, G, B)
     cha.TextXAlignment = Enum.TextXAlignment.Left
     cha.TextYAlignment = Enum.TextYAlignment.Top
     cha.AutomaticSize = Enum.AutomaticSize.Y
-	cha.Text = ""
+	cha.Text = "Responding..."
 	cha.Visible = true
 	cha.Parent = si
 
-    local prefix =
-	escapeRichText(tostring(user))
 
-if TEXT_STYLE == "INSTANT" then
-
-	cha.Text =
-		prefix ..
-		richify(
-			tostring(text)
+local prefix =
+		escapeRichText(
+			tostring(user)
 		)
 
-elseif TEXT_STYLE == "EACHTEXT" then
+	local function safeRichify(str)
 
-	local chunks = {}
+		local ok,result =
+			pcall(
+				richify,
+				tostring(str)
+			)
 
-	for chunk in tostring(text):gmatch("%S+%s*") do
-		table.insert(
-			chunks,
-			chunk
-		)
-	end
-
-	local current = ""
-
-	for _, chunk in ipairs(chunks) do
-
-		current ..= chunk
-
-		cha.Text =
-			prefix ..
-			richify(current)
-
-		task.wait(0.03)
-
-	end
-
-elseif TEXT_STYLE == "EACHLINE" then
-
-	local current = ""
-
-	for line in tostring(text):gmatch("[^\n]*\n?") do
-
-		if line == "" then
-			break
+		if ok then
+			return result
 		end
 
-		current ..= line
-
-		cha.Text =
-			prefix ..
-			richify(current)
-
-		task.wait(0.05)
+		return escapeRichText(
+			tostring(str)
+		)
 
 	end
 
-end
+	task.spawn(function()
+
+		if TEXT_STYLE == "INSTANT" then
+
+			cha.Text =
+				prefix ..
+				safeRichify(text)
+
+		elseif TEXT_STYLE == "EACHTEXT" then
+
+			local chunks = {}
+
+			for chunk in tostring(text):gmatch("%S+%s*") do
+
+				table.insert(
+					chunks,
+					chunk
+				)
+
+			end
+
+			local current = ""
+
+			for _,chunk in ipairs(chunks) do
+
+				current ..= chunk
+
+				cha.Text =
+					prefix ..
+					safeRichify(current)
+
+				task.wait(0.03)
+
+			end
+
+		elseif TEXT_STYLE == "EACHLINE" then
+
+			local current = ""
+
+			local lines = {}
+
+			for line in tostring(text):gmatch("([^\n]*)\n?") do
+
+				if line ~= "" then
+
+					table.insert(
+						lines,
+						line
+					)
+
+				end
+
+			end
+
+			if #lines == 0 then
+
+				cha.Text =
+					prefix ..
+					safeRichify(text)
+
+			else
+
+				for _,line in ipairs(lines) do
+
+					current ..=
+						line ..
+						"\n"
+
+					cha.Text =
+						prefix ..
+						safeRichify(current)
+
+					task.wait(0.05)
+
+				end
+
+			end
+
+		else
+
+			cha.Text =
+				prefix ..
+				safeRichify(text)
+
+		end
+
+	end)
 
 	Corner(0,5,cha)
 
