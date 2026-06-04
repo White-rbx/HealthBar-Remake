@@ -1,4 +1,4 @@
-local ver = " UIs 5.398 "
+local ver = " UIs 5.399 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -33,7 +33,8 @@ local update = [[
 (:31/5/2026 | 4:42 pm: S) Say hello to Gemini-3.5-flash and gpt-5.5! + add CREATIVE to /geminiswitch and /gptswitch.
 (:1/6/2026 | 1:17 am: A) AllowCam is unavailable for now that mean AI may not respond after use Allowcam. please do allowcam be disabled and wait the update.
 (:1/6/2026 | 4:10 pm: A) Add new string match google API key it called "AQ."
-('1/6/2026 | 5:32 pm: F) Fixed Allowcam.
+(:1/6/2026 | 5:32 pm: F) Fixed Allowcam.
+(:4/6/2026 | 6:51 pm: P) Prevent RichText conflicts.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -439,200 +440,296 @@ local function richify(text)
 
 	text = escapeRichText(text)
 
--- =========================================
--- ESCAPE ZONE
--- %...%
--- SUPPORT MULTI LINE
--- =========================================
+	-- =========================================
+	-- PROTECTED TOKENS
+	-- =========================================
 
-local escaped = {}
-local escId = 0
+	local protected = {}
+	local tokenId = 0
 
-text = text:gsub(
-	"%%([%s%S]-)%%",
-	function(content)
+	local function protect(content)
 
-		escId += 1
+		tokenId += 1
 
 		local key =
-	"§ESC" ..
-	escId ..
-	"§"
-	
-		escaped[key] = content
+			"⟦TOKEN_" ..
+			tokenId ..
+			"⟧"
+
+		protected[key] = content
 
 		return key
 
 	end
-)
-	
+
 	-- =========================================
-	-- MULTI LINE CODE BLOCK
-	-- ```code```
+	-- ESCAPE
+	-- %...%
 	-- =========================================
-	text = text:gsub("```([%s%S]-)```", function(code)
 
-		code = code:gsub("^%s*\n", "")
-		code = code:gsub("\n%s*$", "")
+	text = text:gsub(
+		"%%([%s%S]-)%%",
+		function(content)
 
-		return
-			'<font face="Code">'..
-			'<font color="rgb(255,200,120)">'..
-			code..
-			'</font>'..
-			'</font>'
+			return protect(content)
 
-	end)
+		end
+	)
+
+	-- =========================================
+	-- CODE BLOCK
+	-- ```...```
+	-- =========================================
+
+	text = text:gsub(
+		"```([%s%S]-)```",
+		function(code)
+
+			code = code:gsub("^%s*\n","")
+			code = code:gsub("\n%s*$","")
+
+			return protect(
+
+				'<font face="Code">' ..
+				'<font color="rgb(255,200,120)">' ..
+				code ..
+				'</font>' ..
+				'</font>'
+
+			)
+
+		end
+	)
+
 	-- =========================================
 	-- INLINE CODE
-	-- `code`
+	-- `...`
 	-- =========================================
-	text = text:gsub("`(.-)`", function(code)
-		return
-			'<font face="Code">'..
-			'<font color="rgb(255,220,150)">'..
-			code..
-			'</font>'..
-			'</font>'
 
-	end)
+	text = text:gsub(
+		"`([^`\n]-)`",
+		function(code)
+
+			return protect(
+
+				'<font face="Code">' ..
+				'<font color="rgb(255,220,150)">' ..
+				code ..
+				'</font>' ..
+				'</font>'
+
+			)
+
+		end
+	)
+
+	-- =========================================
+	-- LINKS
+	-- =========================================
+
+	text = text:gsub(
+		"(https?://[%w%-%._~:/%?#%[%]@!$&'%(%)%*%+,;=]+)",
+		function(url)
+
+			return protect(
+
+				'<font color="rgb(80,170,255)">' ..
+				'<u>' ..
+				url ..
+				'</u>' ..
+				'</font>'
+
+			)
+
+		end
+	)
+
 	-- =========================================
 	-- SMALL TEXT
 	-- -# TEXT
 	-- =========================================
+
 	text = text:gsub(
 		"(^%-# ([^\n]+))",
-		function(full,content)
+		function(_,content)
+
 			return
-				'<font size="12">'..
-				content..
+				'<font size="12">' ..
+				content ..
 				'</font>'
+
 		end
 	)
-	-- multiline small text
+
 	text = text:gsub(
 		"\n%-# ([^\n]+)",
 		function(content)
+
 			return
-				'\n<font size="12">'..
-				content..
+				'\n<font size="12">' ..
+				content ..
 				'</font>'
+
 		end
 	)
 
 	-- =========================================
-	-- SIZE TITLE
+	-- HEADERS
 	-- =========================================
-	-- h4
-text = text:gsub(
-	"\n#### ([^\n]+)",
-	'\n<font size="18"><b>%1</b></font>'
-)
 
-text = text:gsub(
-	"^#### ([^\n]+)",
-	'<font size="18"><b>%1</b></font>'
-)
+	text = text:gsub(
+		"\n#### ([^\n]+)",
+		'\n<font size="18"><b>%1</b></font>'
+	)
 
--- h3
-text = text:gsub(
-	"\n### ([^\n]+)",
-	'\n<font size="20"><b>%1</b></font>'
-)
+	text = text:gsub(
+		"^#### ([^\n]+)",
+		'<font size="18"><b>%1</b></font>'
+	)
 
-text = text:gsub(
-	"^### ([^\n]+)",
-	'<font size="20"><b>%1</b></font>'
-)
+	text = text:gsub(
+		"\n### ([^\n]+)",
+		'\n<font size="20"><b>%1</b></font>'
+	)
 
--- h2
-text = text:gsub(
-	"\n## ([^\n]+)",
-	'\n<font size="24"><b>%1</b></font>'
-)
+	text = text:gsub(
+		"^### ([^\n]+)",
+		'<font size="20"><b>%1</b></font>'
+	)
 
-text = text:gsub(
-	"^## ([^\n]+)",
-	'<font size="24"><b>%1</b></font>'
-)
+	text = text:gsub(
+		"\n## ([^\n]+)",
+		'\n<font size="24"><b>%1</b></font>'
+	)
 
--- h1
-text = text:gsub(
-	"\n# ([^\n]+)",
-	'\n<font size="28"><b>%1</b></font>'
-)
+	text = text:gsub(
+		"^## ([^\n]+)",
+		'<font size="24"><b>%1</b></font>'
+	)
 
-text = text:gsub(
-	"^# ([^\n]+)",
-	'<font size="28"><b>%1</b></font>'
-)
+	text = text:gsub(
+		"\n# ([^\n]+)",
+		'\n<font size="28"><b>%1</b></font>'
+	)
+
+	text = text:gsub(
+		"^# ([^\n]+)",
+		'<font size="28"><b>%1</b></font>'
+	)
+
 	-- =========================================
 	-- BOLD + ITALIC
-	-- ***TEXT***
 	-- =========================================
+
 	text = text:gsub(
-		"%*%*%*([%s%S]-)%*%*%*",
-		"<b><i>%1</i></b>"
-	)
-	-- =========================================
-	-- BOLD
-	-- **TEXT**
-	-- =========================================
-	text = text:gsub(
-		"%*%*([%s%S]-)%*%*",
-		"<b>%1</b>"
-	)
-	-- =========================================
-	-- ITALIC
-	-- *TEXT*
-	-- =========================================
-	text = text:gsub(
-		"%*([%s%S]-)%*",
-		"<i>%1</i>"
-	)
-	-- =========================================
-	-- UNDERLINE
-	-- _TEXT_
-	-- =========================================
-	text = text:gsub(
-		"_([%s%S]-)_",
-		"<u>%1</u>"
-	)
-	-- =========================================
-	-- STRIKETHROUGH
-	-- ~TEXT~
-	-- =========================================
-	text = text:gsub(
-		"~([%s%S]-)~",
-		"<s>%1</s>"
-	)
-	-- =========================================
-	-- LINKS
-	-- =========================================
-	text = text:gsub(
-		"(https?://[%w%-%._~:/%?#%[%]@!$&'%(%)%*%+,;=]+)",
-		function(url)
-			return
-				'<font color="rgb(80,170,255)">'..
-				'<u>'..url..'</u>'..
-				'</font>'
+		"%*%*%*([^\n]-)%*%*%*",
+		function(content)
+
+			return protect(
+				"<b><i>" ..
+				content ..
+				"</i></b>"
+			)
+
 		end
 	)
 
 	-- =========================================
-	-- RESTORE ESCAPE ZONE
+	-- BOLD
 	-- =========================================
 
-	for key, content in pairs(escaped) do
-
 	text = text:gsub(
-		key,
-		content
+		"%*%*([^\n]-)%*%*",
+		function(content)
+
+			return protect(
+				"<b>" ..
+				content ..
+				"</b>"
+			)
+
+		end
 	)
 
-end
+	-- =========================================
+	-- ITALIC
+	-- =========================================
+
+	text = text:gsub(
+		"%*([^\n]-)%*",
+		function(content)
+
+			return protect(
+				"<i>" ..
+				content ..
+				"</i>"
+			)
+
+		end
+	)
+
+	-- =========================================
+	-- UNDERLINE
+	-- =========================================
+
+	text = text:gsub(
+		"_([^\n]-)_",
+		function(content)
+
+			return protect(
+				"<u>" ..
+				content ..
+				"</u>"
+			)
+
+		end
+	)
+
+	-- =========================================
+	-- STRIKE
+	-- =========================================
+
+	text = text:gsub(
+		"~([^\n]-)~",
+		function(content)
+
+			return protect(
+				"<s>" ..
+				content ..
+				"</s>"
+			)
+
+		end
+	)
+
+	-- =========================================
+	-- RESTORE TOKENS
+	-- =========================================
+
+	local changed = true
+
+	while changed do
+
+		changed = false
+
+		for key,value in pairs(protected) do
+
+			local newText =
+				text:gsub(key,value)
+
+			if newText ~= text then
+
+				changed = true
+				text = newText
+
+			end
+
+		end
+
+	end
 
 	return text
+
 end
 
 -- ChatLogs Line
@@ -722,19 +819,19 @@ txt(user.Nill, [[# If you don't know how to add an API
 
 1. Go to:
    • Google AI Studio:
-     %https://aistudio.google.com/app/api-keys%
+     https://aistudio.google.com/app/api-keys
    • OpenAI:
-     %https://platform.openai.com/api-keys%
+     https://platform.openai.com/api-keys
 
 2. Create an API key.
    • Google AI:
      Must be 18+ in supported regions.
      ★ Information:
-     %https://ai.google.dev/gemini-api/docs/available-regions?authuser=5%
+     https://ai.google.dev/gemini-api/docs/available-regions?authuser=5
    • OpenAI:
      Requires API credits/billing.
      ★ Information:
-     %https://platform.openai.com/settings/organization/billing/overview%
+     https://platform.openai.com/settings/organization/billing/overview
 
 3. Copy your API key.
    • Google AI:
@@ -752,7 +849,8 @@ txt(user.Nill, [[# If you don't know how to add an API
      `/addapi CHATGPT sk-xxxxxxxxx YES`
 
 8. Enjoy :)
-]], 255,150,0)
+
+**If you didn't see anything here.. Please scroll up.]], 255,150,0)
 txt(user.Nill, "### [====== Chat ======]", 180, 180, 180)
 
 -- ===========================
