@@ -1,17 +1,58 @@
--- Value 1.0
+-- Value 1.1
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
 
-local HealthBar = game:GetService("CoreGui"):WaitForChild("TopBarApp")
-    :WaitForChild("TopBarApp")
-    :WaitForChild("UnibarLeftFrame")
-    :WaitForChild("HealthBar")
-    :WaitForChild("ValueFolder")
+local fpsLabel
+local uiStroke
 
-local valueGui = HealthBar:WaitForChild("ValueGui")
-local point = valueGui:WaitForChild("point")
-local fpsLabel = point:WaitForChild("FPSLabel") :: TextLabel
-local uiStroke = fpsLabel:WaitForChild("UIStroke") :: UIStroke
+local function refreshObjects()
+
+	local success, label =
+		pcall(function()
+
+			return CoreGui
+				.TopBarApp
+				.TopBarApp
+				.UnibarLeftFrame
+				.HealthBar
+				.ValueFolder
+				.ValueGui
+				.point
+				.FPSLabel
+
+		end)
+
+	if success and label then
+
+		fpsLabel = label
+
+		uiStroke =
+			label:FindFirstChildOfClass(
+				"UIStroke"
+			)
+
+	end
+
+end
+
+refreshObjects()
+
+CoreGui.DescendantAdded:Connect(function(obj)
+
+	if obj.Name == "FPSLabel"
+	and obj:IsA("TextLabel") then
+
+		fpsLabel = obj
+
+		uiStroke =
+			obj:WaitForChild(
+				"UIStroke"
+			)
+
+	end
+
+end)
 
 -- Function to get color based on FPS
 local function getFPSColor(fps: number)
@@ -54,12 +95,37 @@ end
 
 -- Main loop
 local lastTime = tick()
-RunService.RenderStepped:Connect(function()
-    local currentTime = tick()
-    local fps = 1 / (currentTime - lastTime)
-    lastTime = currentTime
 
-    local color = getFPSColor(fps)
-    tweenTextStroke(fpsLabel, color)
-    tweenStrokeColor(uiStroke, color)
+RunService.RenderStepped:Connect(function()
+
+	if not fpsLabel
+	or not fpsLabel.Parent
+	or not uiStroke
+	or not uiStroke.Parent then
+
+		refreshObjects()
+		return
+
+	end
+
+	local currentTime = tick()
+
+	local fps =
+		1 / (currentTime - lastTime)
+
+	lastTime = currentTime
+
+	local color =
+		getFPSColor(fps)
+
+	tweenTextStroke(
+		fpsLabel,
+		color
+	)
+
+	tweenStrokeColor(
+		uiStroke,
+		color
+	)
+
 end)
