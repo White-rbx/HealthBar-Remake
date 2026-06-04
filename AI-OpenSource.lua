@@ -1,4 +1,4 @@
-local ver = " UIs 5.41 "
+local ver = " UIs 5.42 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -747,6 +747,8 @@ local function txt(user, text, R, G, B)
     cha.TextXAlignment = Enum.TextXAlignment.Left
     cha.TextYAlignment = Enum.TextYAlignment.Top
     cha.AutomaticSize = Enum.AutomaticSize.Y
+	cha.Text = ""
+	cha.Visible = true
 	cha.Parent = si
 
     local prefix =
