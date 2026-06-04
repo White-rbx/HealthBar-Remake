@@ -1,4 +1,4 @@
-local ver = " UIs 5.4 "
+local ver = " UIs 5.41 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -35,7 +35,7 @@ local update = [[
 (:1/6/2026 | 4:10 pm: A) Add new string match google API key it called "AQ."
 (:1/6/2026 | 5:32 pm: F) Fixed Allowcam.
 (:4/6/2026 | 6:51 pm: P) Prevent RichText conflicts.
-(:4/6/2026 | 7:37 pm: A) Added new one command called "/TextAnimation" (Enable by default)
+(:4/6/2026 | 7:37 pm: A) Added new one command called "/TextStyle" (Enable by default)
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -732,8 +732,6 @@ local function richify(text)
 
 end
 
-local TEXT_ANIMATION = true
-
 -- ChatLogs Line
 local function txt(user, text, R, G, B)
     local cha = Instance.new("TextLabel")
@@ -754,19 +752,30 @@ local function txt(user, text, R, G, B)
     local prefix =
 	escapeRichText(tostring(user))
 
-if TEXT_ANIMATION then
+if TEXT_STYLE == "INSTANT" then
 
-	local words = {}
+	cha.Text =
+		prefix ..
+		richify(
+			tostring(text)
+		)
 
-	for word in tostring(text):gmatch("%S+") do
-		table.insert(words, word)
+elseif TEXT_STYLE == "EACHTEXT" then
+
+	local chunks = {}
+
+	for chunk in tostring(text):gmatch("%S+%s*") do
+		table.insert(
+			chunks,
+			chunk
+		)
 	end
 
 	local current = ""
 
-	for _, word in ipairs(words) do
+	for _, chunk in ipairs(chunks) do
 
-		current ..= word .. " "
+		current ..= chunk
 
 		cha.Text =
 			prefix ..
@@ -776,13 +785,27 @@ if TEXT_ANIMATION then
 
 	end
 
-else
+elseif TEXT_STYLE == "EACHLINE" then
 
-	cha.Text =
-		prefix ..
-		richify(tostring(text))
+	local current = ""
+
+	for line in tostring(text):gmatch("[^\n]*\n?") do
+
+		if line == "" then
+			break
+		end
+
+		current ..= line
+
+		cha.Text =
+			prefix ..
+			richify(current)
+
+		task.wait(0.05)
 
 	end
+
+end
 
 	Corner(0,5,cha)
 
@@ -1529,7 +1552,7 @@ Your limit:
 - In-Game Memory saver had no limit request
 - Global Memory saver had limit at 1000 request
 
-# All Command (31 commands) that all user can control the chat.
+# All Command (34 commands) that all user can control the chat.
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
@@ -1573,7 +1596,7 @@ Your limit:
 **/AllowCam** *[ON/OFF]* - This allows an AI to see what we are looking at on Roblox World and then process that information.
 **/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
 **/AllowSeeChildren** *[ON/OFF]* - ( BUG DO NOT USE ) - This is allow an AI to see childrens inside parent while using allowcam.
-**/TextAnimation** *[ON/OFF]* - Text Animation Settings when you say something or else.
+**/TextStyle** *[INSTANT/EACHTEXT/EACHLINE]* - Text Animation Settings, What kind text styles you'd like?
 	
 MEMORIES:
 ]]
@@ -2956,7 +2979,7 @@ local HELP_TEXT = [=[
 **/AllowCam** *[ON/OFF]* - ( LAG WARNING ) - This allows an AI to see what we are looking at on Roblox World and then process that information.
 **/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
 **/AllowSeeChildren** *[ON/OFF]* - ( LAG WARNING, BUG DO NOT USE ) - This is allow an AI to see childrens inside parent while using allowcam.
-**/TextAnimation** *[ON/OFF]* - Text Animation Settings when you say something or else.
+**/TextStyle** *[INSTANT/EACHTEXT/EACHLINE]* - Text Animation Settings, What kind text styles you'd like?
 ]=]
 
 local function clearChatLogs()
@@ -3973,31 +3996,23 @@ if lower:match("^/allowseechildren") then
 
 end
 
-if lower:match("^/textanimation") then
+if lower:match("^/textstyle") then
 
 	local t =
 		(msg:match(
-			"^/textanimation%s*(%S*)"
+			"^/textstyle%s*(%S*)"
 		) or "")
 		:upper()
 
-	if t == "ON" then
+	if t == "INSTANT"
+	or t == "EACHTEXT"
+	or t == "EACHLINE" then
 
-		TEXT_ANIMATION = true
-
-		safeTxt(
-			user.Suc,
-			"TextAnimation: ON",
-			0,255,0
-		)
-
-	elseif t == "OFF" then
-
-		TEXT_ANIMATION = false
+		TEXT_STYLE = t
 
 		safeTxt(
 			user.Suc,
-			"TextAnimation: OFF",
+			"TextStyle: " .. t,
 			0,255,0
 		)
 
@@ -4005,7 +4020,7 @@ if lower:match("^/textanimation") then
 
 		safeTxt(
 			user.Warn,
-			"Usage: /TEXTANIMATION [ON/OFF]",
+			"Usage: /TEXTSTYLE [INSTANT/EACHTEXT/EACHLINE]",
 			255,200,0
 		)
 
