@@ -1,4 +1,4 @@
-local ver = " UIs 5.43 "
+local ver = " UIs 5.44 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -734,6 +734,23 @@ end
 
 -- ChatLogs Line
 local function txt(user, text, R, G, B)
+	local function IsAtBottom()
+
+	return
+		si.CanvasPosition.Y >=
+		(
+			si.AbsoluteCanvasSize.Y
+			-
+			si.AbsoluteWindowSize.Y
+			-
+			10
+		)
+
+end
+
+local followScroll =
+	IsAtBottom()
+	
     local cha = Instance.new("TextLabel")
     cha.Name = "Text"
 	cha.Active = false
@@ -742,6 +759,8 @@ local function txt(user, text, R, G, B)
     cha.BackgroundTransparency = 0.85
 	cha.BackgroundColor3 = Color3.fromRGB(255,255,255)	
     cha.TextSize = 16
+	cha.BorderSizePixel = 5
+	cha.BorderMode = Enum.BorderMode.Inset
     cha.RichText = true
     cha.TextWrapped = true
     cha.TextXAlignment = Enum.TextXAlignment.Left
@@ -805,6 +824,24 @@ local prefix =
 				cha.Text =
 					prefix ..
 					safeRichify(current)
+				if followScroll then
+
+	local layout =
+		si:FindFirstChildOfClass(
+			"UIListLayout"
+		)
+
+	if layout then
+
+		si.CanvasPosition =
+			Vector2.new(
+				0,
+				layout.AbsoluteContentSize.Y
+			)
+
+	end
+
+					end
 
 				task.wait(0.03)
 
@@ -868,16 +905,8 @@ local prefix =
 	-- Get color from text
 	cha.BackgroundColor3 = cha.TextColor3
 
-	task.defer(function()
-	local layout = si:FindFirstChildOfClass("UIListLayout")
-	if layout then
-		si.CanvasPosition = Vector2.new(0, layout.AbsoluteContentSize.Y)
-	end
-end)
-
-    return cha
+	return cha
 end
-
 --[[
 local vpf = Instance.new("ViewportFrame")
 vpf.Name = "AI_Perspective"
