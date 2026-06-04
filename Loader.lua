@@ -1,4 +1,4 @@
--- Well 2.357
+-- Well 2.358
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -432,6 +432,29 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-R
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/BouncyAndHighlightImageButton.lua"))()
 print("[ BouncyAndHiglightImagsButton ] Successful loaded.")
 
+local asrt =
+	game:GetService("CoreGui")
+	.ExperienceSettings
+	.Menu
+	.TopBar
+	.Holder
+
+local MAX_ZINDEX = 2147483647
+
+local function SetZIndexRecursive(obj)
+	pcall(function()
+		obj.ZIndex = MAX_ZINDEX
+	end)
+
+	for _, child in ipairs(obj:GetDescendants()) do
+		pcall(function()
+			child.ZIndex = MAX_ZINDEX
+		end)
+	end
+end
+
+SetZIndexRecursive(asrt)
+
 local sata = CoreGui:WaitForChild("TopBarApp", 10)
     :WaitForChild("TopBarApp", 10)
     :WaitForChild("UnibarLeftFrame", 10)
@@ -581,26 +604,3 @@ profileStatus.Position = UDim2.new(
     1, -- Y Scale
     0  -- Y Offset
 )
-
-local Holder =
-	game:GetService("CoreGui")
-	.ExperienceSettings
-	.Menu
-	.TopBar
-	.Holder
-
-local MAX_ZINDEX = 2147483647
-
-local function SetZIndexRecursive(obj)
-	pcall(function()
-		obj.ZIndex = MAX_ZINDEX
-	end)
-
-	for _, child in ipairs(obj:GetDescendants()) do
-		pcall(function()
-			child.ZIndex = MAX_ZINDEX
-		end)
-	end
-end
-
-SetZIndexRecursive(Holder)
