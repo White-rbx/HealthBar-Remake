@@ -1,4 +1,4 @@
-local ver = " UIs 5.399 "
+local ver = " UIs 5.4 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -35,6 +35,7 @@ local update = [[
 (:1/6/2026 | 4:10 pm: A) Add new string match google API key it called "AQ."
 (:1/6/2026 | 5:32 pm: F) Fixed Allowcam.
 (:4/6/2026 | 6:51 pm: P) Prevent RichText conflicts.
+(:4/6/2026 | 7:37 pm: A) Added new one command called "/TextAnimation" (Enable by default)
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -452,10 +453,9 @@ local function richify(text)
 		tokenId += 1
 
 		local key =
-			"⟦TOKEN_" ..
-			tokenId ..
-			"⟧"
-
+	"§ESC" ..
+	tokenId ..
+	"§"
 		protected[key] = content
 
 		return key
@@ -732,6 +732,8 @@ local function richify(text)
 
 end
 
+local TEXT_ANIMATION = true
+
 -- ChatLogs Line
 local function txt(user, text, R, G, B)
     local cha = Instance.new("TextLabel")
@@ -740,19 +742,48 @@ local function txt(user, text, R, G, B)
     cha.Size = UDim2.new(0.97, 0, 0, 0)
     cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     cha.BackgroundTransparency = 0.85
-	cha.BackgroundColor3 = Color3.fromRGB(255,255,255)
-    cha.Text =
-	escapeRichText(tostring(user))
-	..
-	richify(tostring(text))
-	
+	cha.BackgroundColor3 = Color3.fromRGB(255,255,255)	
     cha.TextSize = 16
     cha.RichText = true
     cha.TextWrapped = true
     cha.TextXAlignment = Enum.TextXAlignment.Left
     cha.TextYAlignment = Enum.TextYAlignment.Top
     cha.AutomaticSize = Enum.AutomaticSize.Y
-    cha.Parent = si
+	cha.Parent = si
+
+    local prefix =
+	escapeRichText(tostring(user))
+
+if TEXT_ANIMATION then
+
+	local words = {}
+
+	for word in tostring(text):gmatch("%S+") do
+		table.insert(words, word)
+	end
+
+	local current = ""
+
+	for _, word in ipairs(words) do
+
+		current ..= word .. " "
+
+		cha.Text =
+			prefix ..
+			richify(current)
+
+		task.wait(0.03)
+
+	end
+
+else
+
+	cha.Text =
+		prefix ..
+		richify(tostring(text))
+
+	end
+
 	Corner(0,5,cha)
 
 	-- Get color from text
@@ -813,8 +844,9 @@ AI is not bug with broken text because of text limit, use **/geminiswitch** or *
 
 txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
 **With respect**.]], 255, 255, 0)
-txt(user.Warn,[[# 1 command is enabled 
-**/1AutoRememberInGame** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) ]], 255,255,0)
+txt(user.Warn,[[# 2 command is enabled 
+**/1AutoRememberInGame** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) 
+**/TextAnimation** *[ON/OFF]* - Text Animation Settings when you say something or else.]], 255,255,0)
 txt(user.Nill, [[# If you don't know how to add an API
 
 1. Go to:
@@ -1541,6 +1573,7 @@ Your limit:
 **/AllowCam** *[ON/OFF]* - This allows an AI to see what we are looking at on Roblox World and then process that information.
 **/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
 **/AllowSeeChildren** *[ON/OFF]* - ( BUG DO NOT USE ) - This is allow an AI to see childrens inside parent while using allowcam.
+**/TextAnimation** *[ON/OFF]* - Text Animation Settings when you say something or else.
 	
 MEMORIES:
 ]]
@@ -2879,7 +2912,7 @@ end
 
 -- ========== COMMANDS ==========
 local HELP_TEXT = [=[
-# All Command (33 commands)
+# All Command (34 commands)
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
@@ -2923,6 +2956,7 @@ local HELP_TEXT = [=[
 **/AllowCam** *[ON/OFF]* - ( LAG WARNING ) - This allows an AI to see what we are looking at on Roblox World and then process that information.
 **/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
 **/AllowSeeChildren** *[ON/OFF]* - ( LAG WARNING, BUG DO NOT USE ) - This is allow an AI to see childrens inside parent while using allowcam.
+**/TextAnimation** *[ON/OFF]* - Text Animation Settings when you say something or else.
 ]=]
 
 local function clearChatLogs()
@@ -3930,6 +3964,48 @@ if lower:match("^/allowseechildren") then
 		safeTxt(
 			user.Warn,
 			"Usage: /AllowSeeChildren [ON/OFF]",
+			255,200,0
+		)
+
+	end
+
+	return true
+
+end
+
+if lower:match("^/textanimation") then
+
+	local t =
+		(msg:match(
+			"^/textanimation%s*(%S*)"
+		) or "")
+		:upper()
+
+	if t == "ON" then
+
+		TEXT_ANIMATION = true
+
+		safeTxt(
+			user.Suc,
+			"TextAnimation: ON",
+			0,255,0
+		)
+
+	elseif t == "OFF" then
+
+		TEXT_ANIMATION = false
+
+		safeTxt(
+			user.Suc,
+			"TextAnimation: OFF",
+			0,255,0
+		)
+
+	else
+
+		safeTxt(
+			user.Warn,
+			"Usage: /TEXTANIMATION [ON/OFF]",
 			255,200,0
 		)
 
