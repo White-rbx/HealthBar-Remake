@@ -1,4 +1,4 @@
-local ver = " UIs 5.48 "
+local ver = " UIs 5.49 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -36,6 +36,7 @@ local update = [[
 (:1/6/2026 | 5:32 pm: F) Fixed Allowcam.
 (:4/6/2026 | 6:51 pm: P) Prevent RichText conflicts.
 (:4/6/2026 | 7:37 pm: A) Added new one command called "/TextStyle" (Enable by default)
+(:5/6/2026 | 11:8 pm: F) Fixed Scroll and TextStyle. Also ADDED COPY BUTTON YEPPPIE!!!
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -840,6 +841,17 @@ local function txt(user, text, R, G, B)
 	cha.Visible = true
 	cha.Parent = si
 
+	local cp = Instance.new("ImageButton")
+	cp.Name = "CopyButton"
+	cp.Position = UDim2.new(1,-30,1,-30)
+	cp.Size = UDim2.new(0,30,0,30)
+	cp.Image = "rbxassetid://85495702622937"
+	cp.BackgroundColor3 = cha.TextColor3
+	cp.BackgroundTransparency = 0.3
+	cp.ZIndex = 2
+	cp.Parent = cha
+	Corner(0,5,cp)
+
 	local prefix =
 		escapeRichText(
 			tostring(user)
@@ -994,6 +1006,31 @@ end
 		end
 
 	end)
+
+	cp.MouseButton1Click:Connect(function()
+
+	local raw =
+		tostring(text)
+
+	if setclipboard then
+		setclipboard(raw)
+	end
+
+	cp.ImageColor3 =
+		Color3.fromRGB(
+			0,255,0
+		)
+
+	task.delay(1,function()
+
+		cp.ImageColor3 =
+			Color3.new(
+				1,1,1
+			)
+
+	end)
+
+end)
 
 	Corner(
 		0,
