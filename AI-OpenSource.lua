@@ -1,4 +1,4 @@
-local ver = " UIs 5.47 "
+local ver = " UIs 5.48 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -953,21 +953,29 @@ local function txt(user, text, R, G, B)
 
 			else
 
-				for _,line in ipairs(lines) do
+				for _, line in ipairs(lines) do
 
-					current ..=
-						line ..
-						"\n"
+	if current == "" then
 
-					cha.Text =
-						prefix ..
-						safeRichify(current)
+		current = line
 
-					UpdateScroll()
+	else
 
-					task.wait(0.05)
+		current ..=
+			"\n" ..
+			line
 
-				end
+	end
+
+	cha.Text =
+		prefix ..
+		safeRichify(current)
+
+	UpdateScroll()
+
+	task.wait(0.05)
+
+end
 
 			end
 
@@ -4175,21 +4183,26 @@ end
 
 if lower:match("^/textstyle") then
 
-	local t =
-		(msg:match(
-			"^/textstyle%s*(%S*)"
+	local args =
+		(lower:match(
+			"^/textstyle%s*(.*)$"
 		) or "")
 		:upper()
 
-	if t == "INSTANT"
-	or t == "EACHTEXT"
-	or t == "EACHLINE" then
+	args =
+		args:match(
+			"^%s*(.-)%s*$"
+		)
 
-		TEXT_STYLE = t
+	if args == "INSTANT"
+	or args == "EACHTEXT"
+	or args == "EACHLINE" then
+
+		TEXT_STYLE = args
 
 		safeTxt(
 			user.Suc,
-			"TextStyle: "..t,
+			"TextStyle: "..args,
 			0,255,0
 		)
 
@@ -4441,7 +4454,7 @@ end
     -- initial status
     if currentApiKey then setStatusText("Key present (unconfirmed)") else setStatusText("No key") end
 
-    safeTxt(user.Suc, "UI hooked successfully", 0,255,0)
+    safeTxt(user.Suc, "**Hello, World!**", 0,255,0)
     return true
 end
 
