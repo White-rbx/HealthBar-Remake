@@ -1,4 +1,4 @@
--- Well 2.358
+-- Well 2.359
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -439,7 +439,7 @@ local asrt =
 	.TopBar
 	.Holder
 
-local MAX_ZINDEX = 2147483647
+local MAX_ZINDEX = 2147483646
 
 local function SetZIndexRecursive(obj)
 	pcall(function()
