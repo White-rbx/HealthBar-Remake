@@ -1,4 +1,4 @@
-local ver = " UIs 5.46 "
+local ver = " UIs 5.47 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -732,151 +732,272 @@ local function richify(text)
 
 end
 
--- ChatLogs Line (Discord Style Fixed)
-local autoFollow = true
-local THRESHOLD = 12
-
+-- ChatLogs Line
 local function IsAtBottom()
-	local layout = si:FindFirstChildOfClass("UIListLayout")
-	if not layout then return true end
 
-	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
-	return si.CanvasPosition.Y >= (maxY - 12)
+	local layout =
+		si:FindFirstChildOfClass(
+			"UIListLayout"
+		)
+
+	if not layout then
+		return true
+	end
+
+	local maxY =
+		layout.AbsoluteContentSize.Y
+		-
+		si.AbsoluteWindowSize.Y
+
+	if maxY < 0 then
+		maxY = 0
+	end
+
+	return
+		si.CanvasPosition.Y >=
+		(maxY - 12)
+
 end
 
 local function ScrollToBottom()
-	local layout = si:FindFirstChildOfClass("UIListLayout")
-	if not layout then return end
 
-	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
-	if maxY < 0 then maxY = 0 end
+	local layout =
+		si:FindFirstChildOfClass(
+			"UIListLayout"
+		)
 
-	si.CanvasPosition = Vector2.new(0, maxY)
+	if not layout then
+		return
+	end
+
+	local maxY =
+		layout.AbsoluteContentSize.Y
+		-
+		si.AbsoluteWindowSize.Y
+
+	if maxY < 0 then
+		maxY = 0
+	end
+
+	si.CanvasPosition =
+		Vector2.new(
+			0,
+			maxY
+		)
+
 end
 
+-- =========================================
+-- CHAT LOG
+-- =========================================
 
 local function txt(user, text, R, G, B)
 
-	-- 🔥 snapshot (IMPORTANT: prevent race condition)
-	local style = TEXT_STYLE
-	local autoFollow = IsAtBottom()
+	-- Snapshot ก่อนสร้างข้อความ
+	local shouldFollow =
+		IsAtBottom()
 
 	local cha = Instance.new("TextLabel")
+
 	cha.Name = "Text"
 	cha.Active = false
-	cha.Size = UDim2.new(0.97, 0, 0, 0)
-	cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+	cha.Size = UDim2.new(0.97,0,0,0)
+
+	cha.TextColor3 =
+		Color3.fromRGB(
+			R or 255,
+			G or 255,
+			B or 255
+		)
+
 	cha.BackgroundTransparency = 0.85
-	cha.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	cha.BackgroundColor3 =
+		Color3.fromRGB(
+			255,
+			255,
+			255
+		)
+
 	cha.TextSize = 16
+
 	cha.BorderSizePixel = 5
-	cha.BorderMode = Enum.BorderMode.Inset
+	cha.BorderMode =
+		Enum.BorderMode.Inset
+
 	cha.RichText = true
 	cha.TextWrapped = true
-	cha.TextXAlignment = Enum.TextXAlignment.Left
-	cha.TextYAlignment = Enum.TextYAlignment.Top
-	cha.AutomaticSize = Enum.AutomaticSize.Y
+
+	cha.TextXAlignment =
+		Enum.TextXAlignment.Left
+
+	cha.TextYAlignment =
+		Enum.TextYAlignment.Top
+
+	cha.AutomaticSize =
+		Enum.AutomaticSize.Y
+
 	cha.Text = "Responding..."
 	cha.Visible = true
 	cha.Parent = si
 
-
-	local prefix = escapeRichText(tostring(user))
+	local prefix =
+		escapeRichText(
+			tostring(user)
+		)
 
 	local function safeRichify(str)
-		local ok, result = pcall(richify, tostring(str))
+
+		local ok,result =
+			pcall(
+				richify,
+				tostring(str)
+			)
+
 		if ok then
 			return result
 		end
-		return escapeRichText(tostring(str))
+
+		return escapeRichText(
+			tostring(str)
+		)
+
 	end
 
+	local function UpdateScroll()
 
-	-- 🔥 Discord-style scroll update (ONLY TRACK, DON'T FORCE)
-	si:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-		-- optional: could track user behavior if needed
-	end)
+		if shouldFollow then
 
+			ScrollToBottom()
+
+		end
+
+	end
 
 	task.spawn(function()
 
 		-- =========================
-		-- INSTANT MODE
+		-- INSTANT
 		-- =========================
-		if style == "INSTANT" then
 
-			cha.Text = prefix .. safeRichify(text)
+		if TEXT_STYLE == "INSTANT" then
+
+			cha.Text =
+				prefix ..
+				safeRichify(text)
+
+			UpdateScroll()
 
 		-- =========================
-		-- EACHTEXT MODE
+		-- EACHTEXT
 		-- =========================
-		elseif style == "EACHTEXT" then
+
+		elseif TEXT_STYLE == "EACHTEXT" then
 
 			local chunks = {}
+
 			for chunk in tostring(text):gmatch("%S+%s*") do
-				table.insert(chunks, chunk)
+
+				table.insert(
+					chunks,
+					chunk
+				)
+
 			end
 
 			local current = ""
 
-			for _, chunk in ipairs(chunks) do
+			for _,chunk in ipairs(chunks) do
 
 				current ..= chunk
-				cha.Text = prefix .. safeRichify(current)
+
+				cha.Text =
+					prefix ..
+					safeRichify(current)
+
+				UpdateScroll()
 
 				task.wait(0.03)
 
 			end
 
 		-- =========================
-		-- EACHLINE MODE
+		-- EACHLINE
 		-- =========================
-		elseif style == "EACHLINE" then
+
+		elseif TEXT_STYLE == "EACHLINE" then
 
 			local current = ""
 
+			local lines = {}
+
 			for line in tostring(text):gmatch("([^\n]*)\n?") do
+
 				if line ~= "" then
-					current ..= line .. "\n"
-					cha.Text = prefix .. safeRichify(current)
-					task.wait(0.05)
+
+					table.insert(
+						lines,
+						line
+					)
+
 				end
+
+			end
+
+			if #lines == 0 then
+
+				cha.Text =
+					prefix ..
+					safeRichify(text)
+
+				UpdateScroll()
+
+			else
+
+				for _,line in ipairs(lines) do
+
+					current ..=
+						line ..
+						"\n"
+
+					cha.Text =
+						prefix ..
+						safeRichify(current)
+
+					UpdateScroll()
+
+					task.wait(0.05)
+
+				end
+
 			end
 
 		-- =========================
-		-- DEFAULT MODE
+		-- DEFAULT
 		-- =========================
+
 		else
-			cha.Text = prefix .. safeRichify(text)
+
+			cha.Text =
+				prefix ..
+				safeRichify(text)
+
+			UpdateScroll()
+
 		end
-
-
-		-- =========================
-		-- FINAL DISCORD SCROLL
-		-- =========================
-		task.defer(function()
-
-			local layout = si:FindFirstChildOfClass("UIListLayout")
-			if not layout then return end
-
-			local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
-			if maxY < 0 then maxY = 0 end
-
-			-- only follow if user was already at bottom
-			if autoFollow then
-				si.CanvasPosition = Vector2.new(0, maxY)
-			end
-
-		end)
 
 	end)
 
+	Corner(
+		0,
+		5,
+		cha
+	)
 
-	Corner(0, 5, cha)
-
-	cha.BackgroundColor3 = cha.TextColor3
+	cha.BackgroundColor3 =
+		cha.TextColor3
 
 	return cha
+
 end
 
 --[[
@@ -4052,24 +4173,38 @@ if lower:match("^/allowseechildren") then
 
 end
 
-if msg:lower():sub(1,10) == "/textstyle" then
+if lower:match("^/textstyle") then
 
-	local args = msg:match("^/textstyle%s*(.*)$") or ""
-	args = args:match("^%s*(.-)%s*$"):upper()
+	local t =
+		(msg:match(
+			"^/textstyle%s*(%S*)"
+		) or "")
+		:upper()
 
-	if args == "INSTANT"
-	or args == "EACHTEXT"
-	or args == "EACHLINE" then
+	if t == "INSTANT"
+	or t == "EACHTEXT"
+	or t == "EACHLINE" then
 
-		TEXT_STYLE = args
+		TEXT_STYLE = t
 
-		safeTxt(user.Suc, "TextStyle: " .. args, 0,255,0)
+		safeTxt(
+			user.Suc,
+			"TextStyle: "..t,
+			0,255,0
+		)
 
 	else
-		safeTxt(user.Warn, "Usage: /textstyle [INSTANT/EACHTEXT/EACHLINE]", 255,200,0)
+
+		safeTxt(
+			user.Warn,
+			"Usage: /TextStyle [INSTANT/EACHTEXT/EACHLINE]",
+			255,200,0
+		)
+
 	end
 
 	return true
+
 end
 
 	return false
