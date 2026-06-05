@@ -1,4 +1,4 @@
-local ver = " UIs 5.49 "
+local ver = " UIs 5.491 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -378,6 +378,7 @@ newmg.Text = "-"
 newmg.TextScaled = true
 newmg.TextColor3 = Color3.new(0,0,0)
 newmg.Visible = false
+newmg.ZIndex = 2147483647
 newmg.Parent = vAI
 Corner(1,0,newmg)
 
@@ -843,8 +844,8 @@ local function txt(user, text, R, G, B)
 
 	local cp = Instance.new("ImageButton")
 	cp.Name = "CopyButton"
-	cp.Position = UDim2.new(1,-30,1,-30)
-	cp.Size = UDim2.new(0,30,0,30)
+	cp.Position = UDim2.new(1,-25,1,-25)
+	cp.Size = UDim2.new(0,25,0,25)
 	cp.Image = "rbxassetid://85495702622937"
 	cp.BackgroundColor3 = cha.TextColor3
 	cp.BackgroundTransparency = 0.3
