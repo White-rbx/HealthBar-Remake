@@ -1,4 +1,4 @@
-local Version = [[0.1.47 Alpha
+local Version = [[0.1.48 Alpha
 - Search?]]
 -- This executor
 
@@ -264,7 +264,7 @@ Corner(1,0, oc)
 Stroke(oc, ASMBorder, 255,255,255, LJMRound, 2, 0)
 
 -- Season
-oc.Image = "rbxassetid://117526277216392"
+oc.Image = "rbxassetid://116278455133074"
 
 local aspectConstraint = Instance.new("UIAspectRatioConstraint")
   aspectConstraint.AspectRatio = 1 -- 1:1 Square ratio
@@ -275,7 +275,7 @@ local aspectConstraint = Instance.new("UIAspectRatioConstraint")
 local st = CoreGui["ExperienceSettings-Executor"].Main.Background2.connect.UIStroke
 Gradient(st, 0, 0, 0,
     Color3.fromRGB(255,255,255),
-    Color3.fromRGB(255,0,0)
+    Color3.fromRGB(0,255,255)
 )
 
 local gr = st.UIGradient
