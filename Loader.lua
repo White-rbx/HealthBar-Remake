@@ -1,4 +1,4 @@
--- Well 2.359
+-- Well 2.36
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -492,17 +492,17 @@ task.spawn(function()
         local OC = holder:FindFirstChild("a1_Open/Close")
         if not OC then continue end
 
-        OC.BackgroundColor3 = Color3.fromRGB(255,125,125)
+        OC.BackgroundColor3 = Color3.fromRGB(255,255,255)
 
         local stroke = OC:FindFirstChildOfClass("UIStroke")
         if stroke then
-            stroke.Color = Color3.fromRGB(255,p,0)
+            stroke.Color = Color3.fromRGB(255,255,255)
         end
 
         if OC.Image == "rbxassetid://112166445155251" then
             OC.Image = "rbxassetid://133900380566355"
         elseif OC.Image == "rbxassetid://103716616779537" then
-            OC.Image = "rbxassetid://126566279053159" -- Burning
+            OC.Image = "rbxassetid://103716616779537" -- normal
         end
     end
 end)
