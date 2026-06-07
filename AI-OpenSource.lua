@@ -1,4 +1,4 @@
-local ver = " UIs 5.495 "
+local ver = " UIs 5.496 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -804,7 +804,7 @@ local function txt(user, text, R, G, B)
 
 	cha.Name = "Text"
 	cha.Active = false
-	cha.Size = UDim2.new(0.97,0,0,0)
+	cha.Size = UDim2.new(0.97,0,0,66)
 
 	cha.TextColor3 =
 		Color3.fromRGB(
