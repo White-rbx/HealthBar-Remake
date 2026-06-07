@@ -1,4 +1,4 @@
-local ver = " UIs 5.491 "
+local ver = " UIs 5.495 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -36,7 +36,8 @@ local update = [[
 (:1/6/2026 | 5:32 pm: F) Fixed Allowcam.
 (:4/6/2026 | 6:51 pm: P) Prevent RichText conflicts.
 (:4/6/2026 | 7:37 pm: A) Added new one command called "/TextStyle" (Enable by default)
-(:5/6/2026 | 11:8 pm: F) Fixed Scroll and TextStyle. Also ADDED COPY BUTTON YEPPPIE!!!
+(:5/6/2026 | 11:08 pm: F) Fixed Scroll and TextStyle. Also ADDED COPY BUTTON YEPPPIE!!!
+(:7/6/2026 | 2:20 pm: A) Added Team to HereChat with color team too.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -3365,27 +3366,58 @@ local function getChatColor(name)
 
 end
 
+-- ==========
+-- TEAM TAG
+-- ==========
+local function getTeamTag(player)
+
+	if not player then
+		return ""
+	end
+
+	local team = player.Team
+
+	if not team then
+		return "[ Neutral ] "
+	end
+
+	local c = team.TeamColor.Color
+
+	local r = math.floor(c.R * 255)
+	local g = math.floor(c.G * 255)
+	local b = math.floor(c.B * 255)
+
+	return string.format(
+		'<font color="rgb(%d,%d,%d)">[ %s ]</font> ',
+		r,g,b,
+		team.Name
+	)
+
+end
+
 -- =====================================================
 -- FORMAT PLAYER TAG
 -- =====================================================
 
 local function formatPlayerTag(player, fallbackName)
 
+	local teamTag = getTeamTag(player)
+
 	if player then
 
 		local username = player.Name
 		local nickname = player.DisplayName
 
-		-- same nickname
 		if username == nickname then
-			return "[ 🗨️ ] [**@"..username.."**]"
+			return "[ 🗨️ ] "..teamTag.."[**@"..username.."**]"
 		end
 
-		return "[ 🗨️ ] [@%"..username.."%] [**"..nickname.."**]"
+		return "[ 🗨️ ] "..teamTag..
+			"[@%"..username.."%] [**"..nickname.."**]"
 
 	end
 
-	return "[ 🗨️ ] [**@"..tostring(fallbackName).."**]"
+	return "[ 🗨️ ] [ Neutral ] [**@"..tostring(fallbackName).."**]"
 
 end
 
@@ -3439,11 +3471,6 @@ local function hookGlobalChat()
 
 			local player =
 				Players:GetPlayerByUserId(userId)
-
-			-- ignore local player
-			if player == Players.LocalPlayer then
-				return
-			end
 
 			-- duplicate
 			if isDuplicate(username,text) then
