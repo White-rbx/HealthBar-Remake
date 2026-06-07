@@ -1,4 +1,4 @@
-local ver = " UIs 5.496 "
+local ver = " UIs 5.497 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -38,6 +38,7 @@ local update = [[
 (:4/6/2026 | 7:37 pm: A) Added new one command called "/TextStyle" (Enable by default)
 (:5/6/2026 | 11:08 pm: F) Fixed Scroll and TextStyle. Also ADDED COPY BUTTON YEPPPIE!!!
 (:7/6/2026 | 2:20 pm: A) Added Team to HereChat with color team too.
+(:7/6/2026 | 3:05 pm: A) Added new command called "/gstcb"
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -790,6 +791,12 @@ local function ScrollToBottom()
 
 end
 
+local GiveSpaceToCopyButton = false
+
+local function getCopySpace()
+	return GiveSpaceToCopyButton and 66 or 0
+end
+
 -- =========================================
 -- CHAT LOG
 -- =========================================
@@ -804,7 +811,12 @@ local function txt(user, text, R, G, B)
 
 	cha.Name = "Text"
 	cha.Active = false
-	cha.Size = UDim2.new(0.97,0,0,66)
+	cha.Size = UDim2.new(
+	0.97,
+	0,
+	0,
+	getCopySpace()
+)
 
 	cha.TextColor3 =
 		Color3.fromRGB(
@@ -1776,7 +1788,7 @@ Your limit:
 - In-Game Memory saver had no limit request
 - Global Memory saver had limit at 1000 request
 
-# All Command (34 commands) that all user can control the chat.
+# All Command (35 commands) that all user can control the chat.
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
@@ -1821,6 +1833,7 @@ Your limit:
 **/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
 **/AllowSeeChildren** *[ON/OFF]* - ( BUG DO NOT USE ) - This is allow an AI to see childrens inside parent while using allowcam.
 **/TextStyle** *[INSTANT/EACHTEXT/EACHLINE]* - Text Animation Settings, What kind text styles you'd like?
+**/GiveSpaceToCopyButton** | **/GSTCB** *[ON/OFF]* - Set TextLabel size to protect text getting overlap by copy button.
 	
 MEMORIES:
 ]]
@@ -3204,6 +3217,7 @@ local HELP_TEXT = [=[
 **/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
 **/AllowSeeChildren** *[ON/OFF]* - ( LAG WARNING, BUG DO NOT USE ) - This is allow an AI to see childrens inside parent while using allowcam.
 **/TextStyle** *[INSTANT/EACHTEXT/EACHLINE]* - Text Animation Settings, What kind text styles you'd like?
+~**/GiveSpaceToCopyButton**~ | **/GSTCB** *[ON/OFF]* - Set TextLabel size to protect text getting overlap by copy button.
 ]=]
 
 local function clearChatLogs()
@@ -4283,6 +4297,45 @@ if lower:match("^/textstyle") then
 
 	return true
 
+end
+
+	if lower:match("^/gstcb") --[[ or lower:match("^/givespacetocopybutton")]] then
+
+	local state =
+		(msg:match("^/gstcb%s+(%S+)") or "")
+		:upper()
+
+	if state == "ON" then
+
+		GiveSpaceToCopyButton = true
+
+		txt(
+			user.Nill,
+			"[ System ] CopyButton Space Enabled.",
+			0,255,0
+		)
+
+	elseif state == "OFF" then
+
+		GiveSpaceToCopyButton = false
+
+		txt(
+			user.Nill,
+			"[ System ] CopyButton Space Disabled.",
+			255,170,0
+		)
+
+	else
+
+		txt(
+			user.Nill,
+			"Usage: /GSTCB [ON/OFF]",
+			255,0,0
+		)
+
+	end
+
+	return
 end
 
 	return false
