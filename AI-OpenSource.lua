@@ -1,4 +1,4 @@
-local ver = " UIs 5.51 "
+local ver = " UIs 5.52 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -41,7 +41,8 @@ local update = [[
 (:7/6/2026 | 3:05 pm: A) Added new command called "/gstcb"
 (:8/6/2026 | 4:05 pm: A) Added [](<>) and fixed team name RichText cannot escape.
   • (:From 8/5/2026: F) Fixed bug Team name.
-      • GET THIS FUCKING TEAM BUG AWAY FROM HERECHAT PLEASE OH MY GOD. (Fixed)
+      • (2) GET THIS FUCKING TEAM BUG AWAY FROM HERECHAT PLEASE OH MY GOD. (Fixed)
+      • (3: 5:05 pm:) AHHHHHHHHHHHH
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -446,6 +447,28 @@ end
 
 local function richify(text)
 
+	-- =========================================
+-- PROTECTED RICHTEXT
+-- =========================================
+
+local richProtected = {}
+local richId = 0
+
+local function protectRich(content)
+
+	richId += 1
+
+	local key =
+		"§RICH" ..
+		richId ..
+		"§"
+
+	richProtected[key] = content
+
+	return key
+
+	end
+
 	text = escapeRichText(text)
 
 	-- =========================================
@@ -753,6 +776,14 @@ local function richify(text)
 
 		end
 
+	end
+
+	-- =========================================
+-- RESTORE RICHTEXT
+-- =========================================
+
+for key,value in pairs(richProtected) do
+	text = text:gsub(key,value)
 	end
 
 	return text
@@ -3484,17 +3515,17 @@ local function formatPlayerTag(player, fallbackName)
 
 			return "[ 🗨️ ] " ..
 				teamTag ..
-				"[@%" ..
+				"[**@" ..
 				username ..
-				"%]"
+				"**]"
 
 		end
 
 		return "[ 🗨️ ] " ..
 			teamTag ..
-			"[@%" ..
+			"[@" ..
 			username ..
-			"%] [**" ..
+			"] [**" ..
 			nickname ..
 			"**]"
 
@@ -3652,6 +3683,8 @@ local function hookGlobalChat()
 
 			local tag =
 				formatPlayerTag(player,username)
+
+			print("RAW:", tag..": "..text)
 
 			safeTxt(
 				user.Nill,
