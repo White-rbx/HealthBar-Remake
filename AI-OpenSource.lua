@@ -1,4 +1,4 @@
-local ver = " UIs 5.499 "
+local ver = " UIs 5.5 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -40,6 +40,7 @@ local update = [[
 (:7/6/2026 | 2:20 pm: A) Added Team to HereChat with color team too.
 (:7/6/2026 | 3:05 pm: A) Added new command called "/gstcb"
 (:8/6/2026 | 4:05 pm: A) Added [](<>) and fixed team name RichText cannot escape.
+  • (:From 8/5/2026: F) Fixed bug Team name.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -3438,7 +3439,7 @@ local function getTeamTag(player)
 	local team = player.Team
 
 	if not team then
-		return "[ Neutral ] "
+		return "<b>[ Neutral ]</b> "
 	end
 
 	local c = team.TeamColor.Color
@@ -3464,7 +3465,12 @@ end
 
 local function formatPlayerTag(player, fallbackName)
 
-	local teamTag = getTeamTag(player)
+	local teamTag = ""
+
+	if player then
+		-- Protect RichText TeamTag
+		teamTag = "%" .. getTeamTag(player) .. "%"
+	end
 
 	if player then
 
@@ -3474,26 +3480,27 @@ local function formatPlayerTag(player, fallbackName)
 		local nickname =
 			escapeRichText(player.DisplayName)
 
-		-- Same nickname
 		if username == nickname then
 
-			return
-				"[ 🗨️ ] " ..
+			return "[ 🗨️ ] " ..
 				teamTag ..
-				"[**@" .. username .. "**]"
+				"[**@" ..
+				username ..
+				"**]"
 
 		end
 
-		return
-			"[ 🗨️ ] " ..
+		return "[ 🗨️ ] " ..
 			teamTag ..
-			"[@%" .. username .. "%] " ..
-			"[**" .. nickname .. "**]"
+			"[@%" ..
+			username ..
+			"%] [**" ..
+			nickname ..
+			"**]"
 
 	end
 
-	return
-		"[ 🗨️ ] [ Neutral ] [**@" ..
+	return "[ 🗨️ ] [ **Neutral** ] [**@" ..
 		escapeRichText(
 			tostring(fallbackName)
 		) ..
