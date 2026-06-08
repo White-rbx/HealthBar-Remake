@@ -1,4 +1,4 @@
-local ver = " UIs 5.497 "
+local ver = " UIs 5.499 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -39,6 +39,7 @@ local update = [[
 (:5/6/2026 | 11:08 pm: F) Fixed Scroll and TextStyle. Also ADDED COPY BUTTON YEPPPIE!!!
 (:7/6/2026 | 2:20 pm: A) Added Team to HereChat with color team too.
 (:7/6/2026 | 3:05 pm: A) Added new command called "/gstcb"
+(:8/6/2026 | 4:05 pm: A) Added [](<>) and fixed team name RichText cannot escape.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -525,6 +526,26 @@ local function richify(text)
 			)
 
 		end
+	)
+
+	-- Link name
+
+	text = text:gsub(
+	"%[([^%]]+)%]%(%s*<?(https?://[^>%s]+)>?%s*%)",
+	function(label, url)
+
+		return protect(
+			'<font color="rgb(80,170,255)">' ..
+			'<u>' ..
+			label ..
+			'</u>' ..
+			'</font>' ..
+			' <font color="rgb(120,120,120)">(' ..
+			url ..
+			')</font>'
+		)
+
+	end
 	)
 
 	-- =========================================
@@ -1641,6 +1662,10 @@ Text Rules:
 - Never use <font>, <b>, <i>, <u>
 - Use normal plain text formatting only
 
+Link Rules:
+- Prefer [Title](URL) for long URLs.
+- Use direct URLs when the destination itself is important.
+
 Allowed Formatting:
 - Italic: *A*
 - Bold: **A**
@@ -1655,6 +1680,26 @@ Allowed Formatting:
 - Links: https://example.com
 - Escape Formatting: %A%
 
+Links:
+- Direct URL:
+  https://example.com
+
+- Named Link:
+  [Title](https://example.com)
+
+- Named Link with protected URL:
+  [Title](<https://example.com>)
+
+Named Links:
+Use [Title](URL) when you want a cleaner display name instead of showing the full URL.
+
+Example:
+[GitHub](https://github.com)
+	Output → GitHub
+
+[Google](https://google.com)
+	Output → Google
+	
 Escape Rule:
 Wrap text with % and % to prevent formatting.
 
@@ -3383,6 +3428,7 @@ end
 -- ==========
 -- TEAM TAG
 -- ==========
+
 local function getTeamTag(player)
 
 	if not player then
@@ -3401,11 +3447,14 @@ local function getTeamTag(player)
 	local g = math.floor(c.G * 255)
 	local b = math.floor(c.B * 255)
 
-	return string.format(
-		'<font color="rgb(%d,%d,%d)">[ %s ]</font> ',
-		r,g,b,
-		team.Name
-	)
+	local safeTeamName =
+	escapeRichText(team.Name)
+
+return string.format(
+	'<font color="rgb(%d,%d,%d)"><b>[ %s ]</b></font> ',
+	r,g,b,
+	safeTeamName
+)
 
 end
 
@@ -3419,19 +3468,36 @@ local function formatPlayerTag(player, fallbackName)
 
 	if player then
 
-		local username = player.Name
-		local nickname = player.DisplayName
+		local username =
+			escapeRichText(player.Name)
 
+		local nickname =
+			escapeRichText(player.DisplayName)
+
+		-- Same nickname
 		if username == nickname then
-			return "[ 🗨️ ] "..teamTag.."[**@"..username.."**]"
+
+			return
+				"[ 🗨️ ] " ..
+				teamTag ..
+				"[**@" .. username .. "**]"
+
 		end
 
-		return "[ 🗨️ ] "..teamTag..
-			"[@%"..username.."%] [**"..nickname.."**]"
+		return
+			"[ 🗨️ ] " ..
+			teamTag ..
+			"[@%" .. username .. "%] " ..
+			"[**" .. nickname .. "**]"
 
 	end
 
-	return "[ 🗨️ ] [ Neutral ] [**@"..tostring(fallbackName).."**]"
+	return
+		"[ 🗨️ ] [ Neutral ] [**@" ..
+		escapeRichText(
+			tostring(fallbackName)
+		) ..
+		"**]"
 
 end
 
