@@ -1,4 +1,4 @@
-local ver = " UIs 5.52 "
+local ver = " UIs 5.53 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -42,7 +42,8 @@ local update = [[
 (:8/6/2026 | 4:05 pm: A) Added [](<>) and fixed team name RichText cannot escape.
   • (:From 8/5/2026: F) Fixed bug Team name.
       • (2) GET THIS FUCKING TEAM BUG AWAY FROM HERECHAT PLEASE OH MY GOD. (Fixed)
-      • (3: 5:05 pm:) AHHHHHHHHHHHH
+      • (3: 5:44 pm:) AHHHHHHHHHHH
+      • (4: 8:24 pm:) Fuck these bug, herechat team tag.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -445,9 +446,7 @@ local function escapeRichText(text)
 
 end
 
-local function richify(text)
-
-	-- =========================================
+-- =========================================
 -- PROTECTED RICHTEXT
 -- =========================================
 
@@ -466,6 +465,22 @@ local function protectRich(content)
 	richProtected[key] = content
 
 	return key
+
+end
+
+local function richify(text)
+
+	-- =========================================
+	-- PROTECT RICHTEXT TOKENS
+	-- =========================================
+
+	for key,value in pairs(richProtected) do
+
+		text =
+			text:gsub(
+				value,
+				key
+			)
 
 	end
 
@@ -778,13 +793,22 @@ local function protectRich(content)
 
 	end
 
-	-- =========================================
+-- =========================================
 -- RESTORE RICHTEXT
 -- =========================================
 
 for key,value in pairs(richProtected) do
-	text = text:gsub(key,value)
-	end
+
+	text =
+		text:gsub(
+			key,
+			value
+		)
+
+end
+
+table.clear(richProtected)
+richId = 0
 
 	return text
 
@@ -3484,10 +3508,10 @@ local function getTeamTag(player)
 		escapeRichText(team.Name)
 
 	return string.format(
-		'<font color="rgb(%d,%d,%d)"><b>[ %s ]</b></font> ',
-		r,g,b,
-		safeTeamName
-	)
+	'<font color="rgb(%d,%d,%d)"><b>[ %s ]</b></font> ',
+	r,g,b,
+	safeTeamName
+)
 
 end
 
@@ -3499,9 +3523,12 @@ local function formatPlayerTag(player, fallbackName)
 
 	local teamTag = ""
 
-	if player then
-		teamTag = getTeamTag(player)
-	end
+if player then
+	teamTag =
+		protectRich(
+			getTeamTag(player)
+		)
+end
 
 	if player then
 
