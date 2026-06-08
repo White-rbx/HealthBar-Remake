@@ -1,4 +1,4 @@
-local ver = " UIs 5.53 "
+local ver = " UIs 5.54 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -43,7 +43,8 @@ local update = [[
   • (:From 8/5/2026: F) Fixed bug Team name.
       • (2) GET THIS FUCKING TEAM BUG AWAY FROM HERECHAT PLEASE OH MY GOD. (Fixed)
       • (3: 5:44 pm:) AHHHHHHHHHHH
-      • (4: 8:24 pm:) Fuck these bug, herechat team tag.
+      • (4: 6:24 pm:) Fuck these bug, herechat team tag.
+      • (5: 7:41 pm:) Fixed.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -3495,7 +3496,7 @@ local function getTeamTag(player)
 	local team = player.Team
 
 	if not team then
-		return "**[ Neutral ]** "
+		return "<b>[ Neutral ]</b> "
 	end
 
 	local c = team.TeamColor.Color
