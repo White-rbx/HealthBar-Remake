@@ -1,4 +1,4 @@
-local ver = " UIs 5.5 "
+local ver = " UIs 5.51 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -41,6 +41,7 @@ local update = [[
 (:7/6/2026 | 3:05 pm: A) Added new command called "/gstcb"
 (:8/6/2026 | 4:05 pm: A) Added [](<>) and fixed team name RichText cannot escape.
   • (:From 8/5/2026: F) Fixed bug Team name.
+      • GET THIS FUCKING TEAM BUG AWAY FROM HERECHAT PLEASE OH MY GOD. (Fixed)
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -3439,7 +3440,7 @@ local function getTeamTag(player)
 	local team = player.Team
 
 	if not team then
-		return "<b>[ Neutral ]</b> "
+		return "**[ Neutral ]** "
 	end
 
 	local c = team.TeamColor.Color
@@ -3449,13 +3450,13 @@ local function getTeamTag(player)
 	local b = math.floor(c.B * 255)
 
 	local safeTeamName =
-	escapeRichText(team.Name)
+		escapeRichText(team.Name)
 
-return string.format(
-	'<font color="rgb(%d,%d,%d)"><b>[ %s ]</b></font> ',
-	r,g,b,
-	safeTeamName
-)
+	return string.format(
+		'<font color="rgb(%d,%d,%d)"><b>[ %s ]</b></font> ',
+		r,g,b,
+		safeTeamName
+	)
 
 end
 
@@ -3468,8 +3469,7 @@ local function formatPlayerTag(player, fallbackName)
 	local teamTag = ""
 
 	if player then
-		-- Protect RichText TeamTag
-		teamTag = "%" .. getTeamTag(player) .. "%"
+		teamTag = getTeamTag(player)
 	end
 
 	if player then
@@ -3484,9 +3484,9 @@ local function formatPlayerTag(player, fallbackName)
 
 			return "[ 🗨️ ] " ..
 				teamTag ..
-				"[**@" ..
+				"[@%" ..
 				username ..
-				"**]"
+				"%]"
 
 		end
 
@@ -3500,7 +3500,7 @@ local function formatPlayerTag(player, fallbackName)
 
 	end
 
-	return "[ 🗨️ ] [ **Neutral** ] [**@" ..
+	return "[ 🗨️ ] **[ Neutral ]** [**@" ..
 		escapeRichText(
 			tostring(fallbackName)
 		) ..
