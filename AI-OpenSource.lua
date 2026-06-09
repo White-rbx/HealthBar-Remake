@@ -1,4 +1,4 @@
-local ver = " UIs 5.54 "
+local ver = " UIs 6.54 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -45,6 +45,7 @@ local update = [[
       • (3: 5:44 pm:) AHHHHHHHHHHH
       • (4: 6:24 pm:) Fuck these bug, herechat team tag.
       • (5: 7:41 pm:) Fixed.
+(:9/6/2026 | 8:59 pm: W) Welcome claude and deepseek! you are here with us! added /claudeswitch, /claudemodel /deepseekswitch, /deepseekmodel. Have fun!
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1258,6 +1259,28 @@ local GEMINI_PRESETS = {
 	SUPERCREATIVE = {mt = 36864, t = 2},
 }
 
+local CLAUDE_PRESETS = {
+    FREE  = {mt = 64,  t = 0.4},
+    PRO   = {mt = 256, t = 0.7},
+    PLUS  = {mt = 512, t = 0.75},
+    THINKING = {mt = 1024, t = 0.8},
+	MASTER = {mt = 2048, t = 0.9},
+	SUPERLONG = {mt = 4096, t = 1},
+	CREATIVE = {mt = 12288, t = 1},
+	SUPERCREATIVE = {mt = 36864, t = 1},
+}
+
+local DEEPSEEK_PRESETS = {
+    FREE  = {mt = 64,  t = 0.4},
+    PRO   = {mt = 256, t = 0.7},
+    PLUS  = {mt = 512, t = 0.75},
+    THINKING = {mt = 1024, t = 0.8},
+	MASTER = {mt = 2048, t = 0.9},
+	SUPERLONG = {mt = 4096, t = 1},
+	CREATIVE = {mt = 12288, t = 1},
+	SUPERCREATIVE = {mt = 36864, t = 1.2},
+}
+
 --// =========================================
 --// MODELS
 --// =========================================
@@ -1278,8 +1301,17 @@ local GEMINI_MODELS = {
 	["gemini-3.5-flash"] = true,
 }
 
-local currentGeminiModel = "gemini-3.1-flash-lite"
-local currentOpenAIModel = "gpt-4o-mini"
+local CLAUDE_MODELS = {
+	["claude-haiku-4"] = true,
+	["claude-sonnet-4"] = true,
+	["claude-sonnet-4-5"] = true,
+	["claude-opus-4"] = true,
+}
+
+local DEEPSEEK_MODELS = {
+	["deepseek-v4-flash"] = true,
+	["deepseek-v4-pro"] = true,
+}
 
 -- ========== SERVICES & UTIL ==========
 local CoreGui = game:GetService("CoreGui")
@@ -1891,37 +1923,47 @@ Your limit:
 - In-Game Memory saver had no limit request
 - Global Memory saver had limit at 1000 request
 
-# All Command (35 commands) that all user can control the chat.
+# All Command (39 commands) that all user can control the chat.
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
-**/AddAPI** *[ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no]*
+**/AddAPI** *[ChatGPT/Gemini/Claude/DeepSeek/custom] [API or URL] [APIKEY(if custom)] [yes/no]*
 **/UnsaveAPI** or **/UnApi** - remove key
 **/OpenWebsiteInExperience** | **/OWINE** *URL* - open site
 **/Loadstring** *URL* - 'loadstring(game:HttpGet("url")()'
-**/Script** *「「CODE」」* - run code
+**/Script** *[[CODE]* - run code
 **/Debug** *on/off* - show debug logs (NOT WORKING)
 **/CheckHTTP** - check executor http
 **/CheckURLStatus** *URL* - HEAD request to URL
 **/CheckSYN** - check syn.request availability
 **/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
 **/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit
-**/GPTModel** - Change Text limit
-	• gpt-4o-mini  - Default
-    • gpt-5-mini
-    • gpt-5
-    • o4-mini
-    • gpt-5.5
-**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change model
+**/GPTModel** - Change model
+    *• gpt-4o-mini* - Default
+    *• gpt-5-mini*
+    *• gpt-5*
+    *• o4-mini*
+    *• gpt-5.5*
+**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
 **/GEMINIModel** - Change model
-	• gemini-2.5-flash-lite
-    • gemini-3.1-flash-lite  - Default
-    • gemini-2.5-flash
-    • gemini-2.5-pro
-    • gemini-3.5-flash
+    *• gemini-2.5-flash-lite*
+    *• gemini-3.1-flash-lite* - Default
+    *• gemini-2.5-flash*
+    *• gemini-2.5-pro*
+    *• gemini-3.5-flash*
+**/CLAUDESwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
+**/CLAUDEModel** - Change model
+    *• claude-haiku-4*
+    *• claude-sonnet-4*
+    *• claude-sonnet-4-5* - Default
+    *• claude-opus-4
+**/DEEPSEEKSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit
+**/DEEPSEEKModel** - Change model
+    *• deepseek-v4-flash* - Default
+    *• deepseek-v4-pro*
 **/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
-**/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] 「「CODE」」*
+**/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]*
 **/HereChat** *[ON/OFF]* - stream here chat (client-side view only)
 **/SpyChat** *[ON/OFF]* - stream whisper messages (client-side view only) (NOT WORKING)
 **/ForceToRemember** | **/FTR** *TEXT* - Force AI to remember
@@ -1931,12 +1973,12 @@ Your limit:
 **/ShowMemories** - Show all memories 
 **/Note** *TEXT* - Note message to not to be forget.
 **/ShowNote** - Show all notes that you write.
-**/DelAllNote** - Delete all note that you write will be gone forever.	
-**/AllowCam** *[ON/OFF]* - This allows an AI to see what we are looking at on Roblox World and then process that information.
+**/DelAllNote** - Delete all note that you write will be gone forever.
+**/AllowCam** *[ON/OFF]* - ( LAG WARNING ) - This allows an AI to see what we are looking at on Roblox World and then process that information.
 **/AllowProperties** *[ON/OFF]* - ( BETA ) - This is allow an AI to read properties while using allowcam.
-**/AllowSeeChildren** *[ON/OFF]* - ( BUG DO NOT USE ) - This is allow an AI to see childrens inside parent while using allowcam.
+**/AllowSeeChildren** *[ON/OFF]* - ( LAG WARNING, BUG DO NOT USE ) - This is allow an AI to see childrens inside parent while using allowcam.
 **/TextStyle** *[INSTANT/EACHTEXT/EACHLINE]* - Text Animation Settings, What kind text styles you'd like?
-**/GiveSpaceToCopyButton** | **/GSTCB** *[ON/OFF]* - Set TextLabel size to protect text getting overlap by copy button.
+~**/GiveSpaceToCopyButton**~ | **/GSTCB** *[ON/OFF]* - Set TextLabel size to protect text getting overlap by copy button.
 	
 MEMORIES:
 ]]
@@ -3038,9 +3080,14 @@ local currentCustomAuth = nil
 -- model state
 local currentOpenAIModel = "gpt-4o-mini"
 local currentGeminiModel = "gemini-3.1-flash-lite"
+local currentClaudeModel = "claude-sonnet-4-5"
+local currentDeepSeekModel = "deepseek-v4-flash"
+
 -- token presets
 local currentPresetGPT = "PRO"
 local currentPresetGemini = "PRO"
+local currentPresetClaude = "PRO"
+local currentPresetDeepSeek = "PRO"
 
 -- queue for requests to avoid spamming
 local requestQueue = {}
@@ -3153,6 +3200,168 @@ local function endpointsFor(provider)
                 return nil
             end
         }
+
+	elseif provider == "claude" then
+
+	return {
+
+		url =
+			"https://api.anthropic.com/v1/messages",
+
+		makeHeaders = function(key)
+
+			return {
+
+				["Content-Type"] =
+					"application/json",
+
+				["x-api-key"] =
+					key,
+
+				["anthropic-version"] =
+					"2023-06-01"
+
+			}
+
+		end,
+
+		makeBody = function(prompt)
+
+			local preset =
+				CLAUDE_PRESETS[
+					currentPresetClaude
+				]
+
+			return jsonEncode({
+
+				model =
+					currentClaudeModel,
+
+				max_tokens =
+					preset.mt,
+
+				messages = {
+
+					{
+						role =
+							"user",
+
+						content =
+							prompt
+					}
+
+				}
+
+			})
+
+		end,
+
+		parseResult = function(bodyText)
+
+			local d =
+				jsonDecode(bodyText)
+
+			if not d then
+				return nil
+			end
+
+			if
+				d.content and
+				d.content[1] and
+				d.content[1].text
+			then
+
+				return
+					d.content[1].text
+
+			end
+
+			return nil
+
+		end
+
+	}
+	elseif provider == "deepseek" then
+
+	return {
+
+		url =
+			"https://api.deepseek.com/chat/completions",
+
+		makeHeaders = function(key)
+
+			return {
+
+				["Content-Type"] =
+					"application/json",
+
+				["Authorization"] =
+					"Bearer " .. key
+
+			}
+
+		end,
+
+		makeBody = function(prompt)
+
+			local preset =
+				DEEPSEEK_PRESETS[
+					currentPresetDeepSeek
+				]
+
+			return jsonEncode({
+
+				model =
+					currentDeepSeekModel,
+
+				messages = {
+
+					{
+						role =
+							"user",
+
+						content =
+							prompt
+					}
+
+				},
+
+				max_tokens =
+					preset.mt,
+
+				temperature =
+					preset.t
+
+			})
+
+		end,
+
+		parseResult = function(bodyText)
+
+			local d =
+				jsonDecode(bodyText)
+
+			if not d then
+				return nil
+			end
+
+			if
+				d.choices and
+				d.choices[1] and
+				d.choices[1].message and
+				d.choices[1].message.content
+			then
+
+				return
+					d.choices[1].message.content
+
+			end
+
+			return nil
+
+		end
+
+	}
     elseif provider == "custom" then
         return {
             url = currentCustomUrl,
@@ -3223,11 +3432,23 @@ end
 
 -- ========== askAI (single entry) ==========
 local function detectProviderFromKey(key)
-    if tostring(key):match("^sk%-") then return "openai" end
-    if tostring(key):match("^AIza") or tostring(key):match("^AQ%.") then return "gemini" end
-    if tostring(key):match("^AI") or tostring(key):match("^AIz") then return "gemini" end
-    -- simple heuristics: default openai
-    return "openai"
+
+	key = tostring(key)
+
+	if key:match("^sk%-ant") then
+		return "claude"
+	end
+
+	if key:match("^AIza") or key:match("^AQ%.") then
+		return "gemini"
+	end
+
+	if key:match("^sk%-") then
+		return "openai"
+	end
+
+	return "openai"
+
 end
 
 local function askAI(prompt, onSuccess, onError)
@@ -3275,11 +3496,11 @@ end
 
 -- ========== COMMANDS ==========
 local HELP_TEXT = [=[
-# All Command (34 commands)
+# All Command (39 commands)
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
-**/AddAPI** *[ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no]*
+**/AddAPI** *[ChatGPT/Gemini/Claude/DeepSeek/custom] [API or URL] [APIKEY(if custom)] [yes/no]*
 **/UnsaveAPI** or **/UnApi** - remove key
 **/OpenWebsiteInExperience** | **/OWINE** *URL* - open site
 **/Loadstring** *URL* - 'loadstring(game:HttpGet("url")()'
@@ -3290,19 +3511,29 @@ local HELP_TEXT = [=[
 **/CheckSYN** - check syn.request availability
 **/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
 **/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit
-**/GPTModel** - Change Text limit
+**/GPTModel** - Change model
     *• gpt-4o-mini* - Default
     *• gpt-5-mini*
     *• gpt-5*
     *• o4-mini*
     *• gpt-5.5*
-**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change model
+**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
 **/GEMINIModel** - Change model
     *• gemini-2.5-flash-lite*
     *• gemini-3.1-flash-lite* - Default
     *• gemini-2.5-flash*
     *• gemini-2.5-pro*
     *• gemini-3.5-flash*
+**/CLAUDESwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
+**/CLAUDEModel** - Change model
+    *• claude-haiku-4*
+    *• claude-sonnet-4*
+    *• claude-sonnet-4-5* - Default
+    *• claude-opus-4
+**/DEEPSEEKSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit
+**/DEEPSEEKModel** - Change model
+    *• deepseek-v4-flash* - Default
+    *• deepseek-v4-pro*
 **/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
 **/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]]*
@@ -3743,7 +3974,7 @@ local function handleCommand(msg)
     if lower:match("^/addapi") then
         local parts = {}
         for w in msg:gmatch("%S+") do table.insert(parts, w) end
-        if #parts < 3 then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini/custom] [API or URL] [APIKEY(if custom)] [yes/no]",255,0,0); return true end
+        if #parts < 3 then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini/Claude/DeepSeek/custom] [API or URL] [APIKEY(if custom)] [yes/no]",255,0,0); return true end
         local name = parts[2]:lower()
         if name == "custom" then
             currentProvider = "custom"
@@ -3894,6 +4125,115 @@ local function handleCommand(msg)
 		)
 		end
 	return true
+end
+	if lower:match("^/claudeswitch") then
+        local choice = msg:match("^/claudeswitch%s+(%S+)")
+        if choice and CLAUDE_PRESETS[choice:upper()] then
+            currentPresetClaude = choice:upper()
+            safeTxt(user.Suc, "Claude preset set: "..currentPresetClaude,0,255,0)
+        else safeTxt(user.Error, "Usage: /CLAUDESwitch [FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]",255,0,0) end
+        return true
+    end
+	if lower:match("^/claudemodel") then
+	local choice =
+		(msg:match("^/claudemodel%s+(%S+)") or "")
+		:lower()
+	if CLAUDE_MODELS[choice] then
+		currentClaudeModel = choice
+		safeTxt(
+			user.Suc,
+			"Claude model: "
+			..
+			tostring(CLAUDE_MODELS[choice]),
+			0,255,0
+		)
+		else
+		safeTxt(
+			user.Error,
+			[[Usage: /claudeModel 
+	*• claude-haiku-4*
+    *• claude-sonnet-4*
+    *• claude-sonnet-4-5*
+    *• claude-opus-4*]],
+			255,0,0
+		)
+		end
+	return true
+	end
+	if lower:match("^/deepseekswitch") then
+
+	local choice =
+		msg:match(
+			"^/deepseekswitch%s+(%S+)"
+		)
+
+	if choice and
+		DEEPSEEK_PRESETS[
+			choice:upper()
+		]
+	then
+
+		currentPresetDeepSeek =
+			choice:upper()
+
+		safeTxt(
+			user.Suc,
+			"DeepSeek preset set: " ..
+			currentPresetDeepSeek,
+			0,255,0
+		)
+
+	else
+
+		safeTxt(
+			user.Error,
+			"Usage: /DeepSeekSwitch [FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]",
+			255,0,0
+		)
+
+	end
+
+	return true
+
+end
+
+if lower:match("^/deepseekmodel") then
+
+	local choice =
+		(msg:match(
+			"^/deepseekmodel%s+(%S+)"
+		) or "")
+		:lower()
+
+	if DEEPSEEK_MODELS[choice] then
+
+		currentDeepSeekModel =
+			choice
+
+		safeTxt(
+			user.Suc,
+			"DeepSeek model: " ..
+			tostring(
+				DEEPSEEK_MODELS[choice]
+			),
+			0,255,0
+		)
+
+	else
+
+		safeTxt(
+			user.Error,
+			[[Usage: /DeepSeekModel
+
+• deepseek-v4-flash
+• deepseek-v4-pro]],
+			255,0,0
+		)
+
+	end
+
+	return true
+
 end
     if lower:match("^/resetratelimit") or lower:match("^/reratelimit") then
         requestQueue = {}
