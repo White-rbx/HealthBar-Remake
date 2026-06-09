@@ -1,4 +1,4 @@
-local ver = " UIs 6.54 "
+local ver = " UIs 6.55 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -46,6 +46,7 @@ local update = [[
       • (4: 6:24 pm:) Fuck these bug, herechat team tag.
       • (5: 7:41 pm:) Fixed.
 (:9/6/2026 | 8:59 pm: W) Welcome claude and deepseek! you are here with us! added /claudeswitch, /claudemodel /deepseekswitch, /deepseekmodel. Have fun!
+      • (1: 9:13 pm: F) Fixed bug.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -3984,12 +3985,24 @@ local function handleCommand(msg)
             safeTxt(user.Info, "Custom endpoint set (unsaved). Use /addapi custom <URL> <KEY> yes to save",0,170,255)
             return true
         else
-            local provider = (name:match("chat") and "openai") or (name:match("gemini") and "gemini") or nil
+            local provider =
+	(name:match("chat") and "openai")
+	or
+	(name:match("gemini") and "gemini")
+	or
+	(name:match("claude") and "claude")
+	or
+	(name:match("deepseek") and "deepseek")
+	or nil
             local key = parts[3]
             if not provider or not key then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini] [API] [yes/no]",255,0,0); return true end
             currentProvider = provider
             currentApiKey = key
-            safeTxt(user.Info, "Key set! Please check you have read API warning if yes please check your API is correct. Now if you want longer limit text generate try '/geminiswitch' or '/gptswitch' to make it limit longer.",0,170,255)
+            safeTxt(
+	user.Error,
+	"Usage: /addapi [ChatGPT/Gemini/Claude/DeepSeek/custom] [API or URL] [APIKEY(if custom)] [yes/no]",
+	255,0,0
+)
             return true
         end
     end
