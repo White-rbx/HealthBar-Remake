@@ -1,4 +1,4 @@
-local ver = " UIs 6.55 "
+local ver = " UIs 6.56 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -47,6 +47,7 @@ local update = [[
       • (5: 7:41 pm:) Fixed.
 (:9/6/2026 | 8:59 pm: W) Welcome claude and deepseek! you are here with us! added /claudeswitch, /claudemodel /deepseekswitch, /deepseekmodel. Have fun!
       • (1: 9:13 pm: F) Fixed bug.
+      • (2: 9:52 pm: F) Fixed bug API not matching.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -3973,39 +3974,89 @@ local function handleCommand(msg)
         return true
     end
     if lower:match("^/addapi") then
-        local parts = {}
-        for w in msg:gmatch("%S+") do table.insert(parts, w) end
-        if #parts < 3 then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini/Claude/DeepSeek/custom] [API or URL] [APIKEY(if custom)] [yes/no]",255,0,0); return true end
-        local name = parts[2]:lower()
-        if name == "custom" then
-            currentProvider = "custom"
-            currentCustomUrl = parts[3]
-            currentCustomAuth = parts[4] and parts[4] ~= "" and parts[4] or nil
-            currentApiKey = currentCustomAuth
-            safeTxt(user.Info, "Custom endpoint set (unsaved). Use /addapi custom <URL> <KEY> yes to save",0,170,255)
-            return true
-        else
-            local provider =
-	(name:match("chat") and "openai")
-	or
-	(name:match("gemini") and "gemini")
-	or
-	(name:match("claude") and "claude")
-	or
-	(name:match("deepseek") and "deepseek")
-	or nil
-            local key = parts[3]
-            if not provider or not key then safeTxt(user.Error, "Usage: /addapi [ChatGPT/Gemini] [API] [yes/no]",255,0,0); return true end
-            currentProvider = provider
-            currentApiKey = key
-            safeTxt(
-	user.Error,
-	"Usage: /addapi [ChatGPT/Gemini/Claude/DeepSeek/custom] [API or URL] [APIKEY(if custom)] [yes/no]",
-	255,0,0
-)
-            return true
-        end
+
+    local parts = {}
+
+    for w in msg:gmatch("%S+") do
+        table.insert(parts, w)
     end
+
+    if #parts < 3 then
+
+        safeTxt(
+            user.Error,
+            "Usage: /addapi [ChatGPT/Gemini/Claude/DeepSeek/custom] [API or URL] [APIKEY(if custom)] [yes/no]",
+            255,0,0
+        )
+
+        return true
+
+    end
+
+    local name = parts[2]:lower()
+
+    if name == "custom" then
+
+        currentProvider = "custom"
+        currentCustomUrl = parts[3]
+        currentCustomAuth = parts[4]
+
+        currentApiKey = currentCustomAuth
+
+        safeTxt(
+            user.Info,
+            "Custom endpoint set.",
+            0,170,255
+        )
+
+        return true
+
+    else
+
+        local provider =
+            (name:match("chat") and "openai")
+            or
+            (name:match("gemini") and "gemini")
+            or
+            (name:match("claude") and "claude")
+            or
+            (name:match("deepseek") and "deepseek")
+            or nil
+
+        local key = parts[3]
+
+        if not provider or not key then
+
+            safeTxt(
+                user.Error,
+                "Usage: /addapi [ChatGPT/Gemini/Claude/DeepSeek/custom] [API or URL] [APIKEY(if custom)] [yes/no]",
+                255,0,0
+            )
+
+            return true
+
+        end
+
+        currentProvider = provider
+        currentApiKey = key
+
+        safeTxt(
+	user.Suc,
+	[[Key set! Provider: ]]..provider..
+	[[
+
+Current Model Ready.
+
+/]]..provider..[[switch - change token limits.
+/]]..provider..[[model - change model.]],
+	0,255,0
+)
+
+        return true
+
+    end
+
+end
     if lower:match("^/unsaveapi") or lower:match("^/unapi") then
         currentProvider = nil; currentApiKey = nil; currentCustomUrl = nil; currentCustomAuth = nil
         safeTxt(user.Info, "API unsaved", 0,170,255)
