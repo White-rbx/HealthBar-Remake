@@ -1,4 +1,4 @@
-local ver = " UIs 6.58 "
+local ver = " UIs 6.59 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -49,6 +49,7 @@ local update = [[
       • (1: 9:13 pm: F) Fixed bug.
       • (2: 9:52 pm: F) Fixed bug API not matching.
 (:10/6/2026 | 3:56 pm: F) Fixed Team tag at TextStyle
+      • (1: 4:12 pm: B) Back Up version. Team tag will be fix soon.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -451,8 +452,6 @@ local function escapeRichText(text)
 
 end
 
-local function richify(text)
-
 -- =========================================
 -- PROTECTED RICHTEXT
 -- =========================================
@@ -473,7 +472,10 @@ local function protectRich(content)
 
 	return key
 
-	end
+end
+
+local function richify(text)
+
 
 	-- =========================================
 	-- PROTECT RICHTEXT TOKENS
@@ -3761,8 +3763,7 @@ local function formatPlayerTag(player, fallbackName)
 if player then
 	teamTag =
 		richify(
-			protectRich(
-				getTeamTag(player))
+			getTeamTag(player)
 		)
 end
 
