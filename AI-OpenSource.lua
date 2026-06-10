@@ -1,4 +1,4 @@
-local ver = " UIs 6.56 "
+local ver = " UIs 6.57 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -48,6 +48,7 @@ local update = [[
 (:9/6/2026 | 8:59 pm: W) Welcome claude and deepseek! you are here with us! added /claudeswitch, /claudemodel /deepseekswitch, /deepseekmodel. Have fun!
       • (1: 9:13 pm: F) Fixed bug.
       • (2: 9:52 pm: F) Fixed bug API not matching.
+(:10/6/2026 | 3:37 pm: F) Fixed Team tag at TextStyle
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -450,6 +451,8 @@ local function escapeRichText(text)
 
 end
 
+local function richify(text)
+
 -- =========================================
 -- PROTECTED RICHTEXT
 -- =========================================
@@ -470,9 +473,7 @@ local function protectRich(content)
 
 	return key
 
-end
-
-local function richify(text)
+	end
 
 	-- =========================================
 	-- PROTECT RICHTEXT TOKENS
