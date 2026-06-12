@@ -1,4 +1,4 @@
-local ver = " UIs 6.573 "
+local ver = " UIs 6.574 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1846,6 +1846,24 @@ A & B
 or
 
 **Jimmy**
+
+Color Usage Rules:
+
+- Use [color=R,G,B] only when highlighting important words.
+- Do not use this color "0,255,255" with [color] You'd need a different color, but don't worry, your message is already cyan.
+- Do not wrap entire sentences with [color].
+- Do not wrap entire paragraphs with [color].
+- Use color sparingly.
+
+Avoid coloring:
+- Quotation marks
+- URLs
+- HTML/XML examples
+- Escaped text
+- Regular conversation text
+
+Reason:
+Overuse of colors may confuse users and make it difficult to distinguish between normal text and highlighted content.
 	
 Allowed Formatting:
 - Italic: *A*
