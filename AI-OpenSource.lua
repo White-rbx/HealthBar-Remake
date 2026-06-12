@@ -1,4 +1,4 @@
-local ver = " UIs 6.572 "
+local ver = " UIs 6.573 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -51,6 +51,7 @@ local update = [[
 (:--/--/--- | --'-- --: F) Failed to load logs.
 (:12/6/2026 | 3:57 pm: U) Update prompt and added new formatting + fix team tag herechat bug.
       • (1: 5:38 pm: A) Added Mutil line for new formatting and now support another formatting.
+      • (2: 7:28 pm: F) Fixed prompt text color rules.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1816,6 +1817,35 @@ Color Rules:
 - Use [color=R,G,B]TEXT[/color]
 - Color tags may contain formatting such as **bold**, *italic*, _underline_, ~strike~, and multi-line text.
 - Do NOT generate <font color="">.
+	
+Color Formatting Rules:
+Do NOT place these characters directly inside
+[color=R,G,B]TEXT[/color]
+
+Restricted characters:
+- &
+- <
+- >
+- "
+- '
+
+Reason:
+These characters may be escaped by EscapeRichText
+and can cause unexpected rendering results.
+
+Bad:
+[color=0,255,255]"Jimmy"[/color]
+
+[color=255,0,0]A & B[/color]
+
+Good:
+"Jimmy"
+
+A & B
+
+or
+
+**Jimmy**
 	
 Allowed Formatting:
 - Italic: *A*
