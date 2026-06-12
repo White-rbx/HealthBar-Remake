@@ -1,4 +1,4 @@
-local ver = " UIs 6.571 "
+local ver = " UIs 6.572 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -50,6 +50,7 @@ local update = [[
       • (2: 9:52 pm: F) Fixed bug API not matching.
 (:--/--/--- | --'-- --: F) Failed to load logs.
 (:12/6/2026 | 3:57 pm: U) Update prompt and added new formatting + fix team tag herechat bug.
+      • (1: 5:38 pm: A) Added Mutil line for new formatting and now support another formatting.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -779,8 +780,10 @@ local function richify(text)
 	-- =========================================
 
 	text = text:gsub(
-	"%[color=(%d+),(%d+),(%d+)%](.-)%[/color%]",
+	"%[color=(%d+),(%d+),(%d+)%]([%s%S]-)%[/color%]",
 	function(r,g,b,content)
+
+		content = richify(content)
 
 		return protect(
 			string.format(
@@ -1809,6 +1812,11 @@ Text Rules:
 - Only use formatting listed in "Allowed Formatting".
 - Do not use unsupported markdown syntax.
 
+Color Rules:
+- Use [color=R,G,B]TEXT[/color]
+- Color tags may contain formatting such as **bold**, *italic*, _underline_, ~strike~, and multi-line text.
+- Do NOT generate <font color="">.
+	
 Allowed Formatting:
 - Italic: *A*
 - Bold: **A**
@@ -1840,6 +1848,9 @@ Output → # Title
 
 Color Example:
 [color=255,0,0]Red Text[/color]
+
+If want formatting:
+[color=255,0,0]**Red Text**[/color]
 
 Current real date:
 ]] .. CURRENT_DATE .. [[
