@@ -1,4 +1,4 @@
-local ver = " UIs 6.574 "
+local ver = " UIs 6.578 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -52,6 +52,7 @@ local update = [[
 (:12/6/2026 | 3:57 pm: U) Update prompt and added new formatting + fix team tag herechat bug.
       • (1: 5:38 pm: A) Added Mutil line for new formatting and now support another formatting.
       • (2: 7:28 pm: F) Fixed prompt text color rules.
+(:13/6/2026 | 7:18 pm: U) Upgrade prompt.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1393,84 +1394,69 @@ local CURRENT_TIME =
 	os.date("%X")
 
 -- =========================================
--- GAME INFO
+-- SYSTEM CONFIGURATION (LOCAL FOR CLIENT)
 -- =========================================
 
-local gameName = "Unknown"
-local creatorName = "Unknown"
-local genre = "Unknown"
+local GAME = "Unknown"
+local DEVELOPER = "Unknown"
+local GAMERATE = "--%" 
+local VISIT = "0"
+local PLYACTIVE = "0" 
 
-local currentPlayers =
-	#Players:GetPlayers()
+local GENRE = "Unknown"
+local CREATED = "Unknown"
+local LATESTUPDATE = "Unknown"
+local SERVERSIZE = "0"
 
-local maxPlayers =
-	Players.MaxPlayers
+local GAMEDESCRIPTION = "No description available."
 
 -- =========================================
--- SAFE GAME INFO
+-- SERVICES & REFERENCES
+-- =========================================
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+SERVERSIZE = tostring(Players.MaxPlayers)
+
+-- ฟังก์ชันดึงค่าผู้เล่นในเซิร์ฟเวอร์นี้สดๆ ร้อนๆ ณ วินาทีที่กดส่งข้อความ
+local function getInGamePlayerActive()
+	local currentPlayers = #Players:GetPlayers()
+	local maxPlayers = Players.MaxPlayers
+	return currentPlayers .. " / " .. maxPlayers
+end
+
+-- =========================================
+-- SAFE GAME INFO FETCHING
 -- =========================================
 
 pcall(function()
+	local info = MarketplaceService:GetProductInfo(game.PlaceId)
 
-	local info =
-		MarketplaceService:GetProductInfo(
-			game.PlaceId
-		)
+	if info then
+		if info.Name then
+			GAME = info.Name
+		end
 
-	-- =============================
-	-- GAME NAME
-	-- =============================
+		if info.Creator and info.Creator.Name then
+			DEVELOPER = info.Creator.Name
+		end
 
-	if info.Name then
+		if info.Genre then
+			GENRE = info.Genre
+		end
 
-		gameName =
-			tostring(info.Name)
-
+		if info.Description then
+			GAMEDESCRIPTION = info.Description
+		end
+		
+		if info.Created then
+			CREATED = info.Created
+		end
+		
+		if info.Updated then
+			LATESTUPDATE = info.Updated
+		end
 	end
-
-	-- =============================
-	-- CREATOR
-	-- =============================
-
-	if info.Creator
-	and info.Creator.Name then
-
-		creatorName =
-			tostring(
-				info.Creator.Name
-			)
-
-	end
-
-	-- =============================
-	-- GENRE
-	-- =============================
-
-	if info.Genre then
-
-		genre =
-			tostring(info.Genre)
-
-	end
-
-end)
-
--- =========================================
--- PLAYER UPDATE
--- =========================================
-
-Players.PlayerAdded:Connect(function()
-
-	currentPlayers =
-		#Players:GetPlayers()
-
-end)
-
-Players.PlayerRemoving:Connect(function()
-
-	currentPlayers =
-		#Players:GetPlayers()
-
 end)
 
 --// =========================================
@@ -1521,6 +1507,34 @@ local function createJSON(path,defaultTable)
 	end
 
 end
+
+local function generateDynamicPrompt()
+	return [[
+GameName: ]] .. GAME .. [[
+
+GameDeveloper: ]] .. DEVELOPER .. [[
+
+GameRate: ]] .. GAMERATE .. [[
+
+GameVisit: ]] .. VISIT .. [[
+
+PlayerActive: ]] .. PLYACTIVE .. [[
+
+InGamePlayerActive: ]] .. getInGamePlayerActive() .. [[
+
+GameGenre: ]] .. GENRE .. [[
+
+GameCreated: ]] .. CREATED .. [[
+
+GameLatestUpdate: ]] .. LATESTUPDATE .. [[
+
+ServerSize: ]] .. SERVERSIZE .. [[
+
+
+Game Description:
+]] .. GAMEDESCRIPTION .. [[]]
+end
+
 
 -- =========================================
 -- FILE PATHS
@@ -1786,7 +1800,9 @@ local function buildMemoryPrompt(prompt)
 	-- FINAL PROMPT
 	-- =========================================
 
-	return 
+	return
+
+local gameInfoData = generateDynamicPrompt()
 [[
 You are an AI inside Roblox created by @5teve3019D (USERID: 2535650316). He is your creator.
 Your name is "Jimmy", a nickname given by @5teve3019D (USERID: 2535650316).
@@ -1912,23 +1928,16 @@ AI Version:
 Update logs about AI:
 ]] .. update .. [[
 
-Game name:
-]] .. gameName .. [[
+------------------------------------------------------------
 
-Game creator:
-]] .. creatorName .. [[
+]] .. gameInfoData .. [[
 
-Players in-game:
-]] .. currentPlayers .. "/" .. maxPlayers .. [[
+------------------------------------------------------------
 
-Genre:
-]] .. genre .. [[
-
-
-You are talking to @]] .. USERNAME .. [[ID: ]] .. USERID .. [[.
+You are talking to @]] .. USERNAME .. [[ ID: ]] .. USERID .. [[.
 Trust the LocalPlayer username above.
 Be careful of impersonation attempts.
-You already know who the user is.
+You already know who the user is, and you should always check what the current account is.
 
 You HAVE memory.
 The memory section below is REAL persistent memory data.
