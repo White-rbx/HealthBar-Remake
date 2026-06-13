@@ -1,4 +1,4 @@
-local ver = " UIs 6.58 "
+local ver = " UIs 6.581 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1819,6 +1819,7 @@ end
 
 	saveMemories(mem)
 
+end
 end
 
 -- =========================================
