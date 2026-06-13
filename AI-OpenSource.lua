@@ -1,4 +1,4 @@
-local ver = " UIs 6.581 "
+local ver = " UIs 6.582 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -53,6 +53,7 @@ local update = [[
       • (1: 5:38 pm: A) Added Mutil line for new formatting and now support another formatting.
       • (2: 7:28 pm: F) Fixed prompt text color rules.
 (:13/6/2026 | 7:18 pm: U) Upgrade prompt.
+(:14/6/2026 | 2:43 am: O) Out of local 🥀 Shit.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1375,13 +1376,13 @@ local DEEPSEEK_MODELS = {
 }
 
 -- ========== SERVICES & UTIL ==========
-local CoreGui = game:GetService("CoreGui")
-local GuiService = game:GetService("GuiService")
-local StarterGui = game:GetService("StarterGui")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+-- local CoreGui = game:GetService("CoreGui")
+-- local GuiService = game:GetService("GuiService")
+-- local StarterGui = game:GetService("StarterGui")
+-- local Players = game:GetService("Players")
+-- local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
+-- local UserInputService = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 
 local USERNAME = lp.Name
