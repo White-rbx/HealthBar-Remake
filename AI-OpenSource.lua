@@ -1,4 +1,4 @@
-local ver = " UIs 6.582 "
+local ver = " UIs 6.583 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -54,6 +54,7 @@ local update = [[
       • (2: 7:28 pm: F) Fixed prompt text color rules.
 (:13/6/2026 | 7:18 pm: U) Upgrade prompt.
 (:14/6/2026 | 2:43 am: O) Out of local 🥀 Shit.
+(:14/6/2026 | 3:25 am: F) FUCK OFF OUT OF LOCAL I REDUCED YOU!
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1398,26 +1399,28 @@ local CURRENT_TIME =
 -- SYSTEM CONFIGURATION (LOCAL FOR CLIENT)
 -- =========================================
 
-local GAME = "Unknown"
-local DEVELOPER = "Unknown"
-local GAMERATE = "--%" 
-local VISIT = "0"
-local PLYACTIVE = "0" 
+local GAMEDATA = {
+ GAME = "Unknown",
+ DEVELOPER = "Unknown",
+ GAMERATE = "--%",
+ VISIT = "Failed to get data",
+ PLYACTIVE = "Failed to get data",
 
-local GENRE = "Unknown"
-local CREATED = "Unknown"
-local LATESTUPDATE = "Unknown"
-local SERVERSIZE = "0"
+ GENRE = "Unknown",
+ CREATED = "Unknown",
+ LATESTUPDATE = "Unknown",
+ SERVERSIZE = "Failed to get data",
 
-local GAMEDESCRIPTION = "No description available."
+ GAMEDESCRIPTION = "No description available."
+}
 
 -- =========================================
 -- SERVICES & REFERENCES
 -- =========================================
-local Players = game:GetService("Players")
-local MarketplaceService = game:GetService("MarketplaceService")
+--local Players = game:GetService("Players")
+--local MarketplaceService = game:GetService("MarketplaceService")
 
-SERVERSIZE = tostring(Players.MaxPlayers)
+GAMEDATA.SERVERSIZE = tostring(Players.MaxPlayers)
 
 -- ฟังก์ชันดึงค่าผู้เล่นในเซิร์ฟเวอร์นี้สดๆ ร้อนๆ ณ วินาทีที่กดส่งข้อความ
 local function getInGamePlayerActive()
@@ -1435,27 +1438,27 @@ pcall(function()
 
 	if info then
 		if info.Name then
-			GAME = info.Name
+			GAMEDATA.GAME = info.Name
 		end
 
 		if info.Creator and info.Creator.Name then
-			DEVELOPER = info.Creator.Name
+			GAMEDATA.DEVELOPER = info.Creator.Name
 		end
 
 		if info.Genre then
-			GENRE = info.Genre
+			GAMEDATA.GENRE = info.Genre
 		end
 
 		if info.Description then
-			GAMEDESCRIPTION = info.Description
+			GAMEDATA.GAMEDESCRIPTION = info.Description
 		end
 		
 		if info.Created then
-			CREATED = info.Created
+			GAMEDATA.CREATED = info.Created
 		end
 		
 		if info.Updated then
-			LATESTUPDATE = info.Updated
+			GAMEDATA.LATESTUPDATE = info.Updated
 		end
 	end
 end)
@@ -1511,29 +1514,29 @@ end
 
 local function generateDynamicPrompt()
 	return [[
-GameName: ]] .. GAME .. [[
+GameName: ]] .. GAMEDATA.GAME .. [[
 
-GameDeveloper: ]] .. DEVELOPER .. [[
+GameDeveloper: ]] .. GAMEDATA.DEVELOPER .. [[
 
-GameRate: ]] .. GAMERATE .. [[
+GameRate: ]] .. GAMEDATA.GAMERATE .. [[
 
-GameVisit: ]] .. VISIT .. [[
+GameVisit: ]] .. GAMEDATA.VISIT .. [[
 
-PlayerActive: ]] .. PLYACTIVE .. [[
+PlayerActive: ]] .. GAMEDATA.PLYACTIVE .. [[
 
 InGamePlayerActive: ]] .. getInGamePlayerActive() .. [[
 
-GameGenre: ]] .. GENRE .. [[
+GameGenre: ]] .. GAMEDATA.GENRE .. [[
 
-GameCreated: ]] .. CREATED .. [[
+GameCreated: ]] .. GAMEDATA.CREATED .. [[
 
-GameLatestUpdate: ]] .. LATESTUPDATE .. [[
+GameLatestUpdate: ]] .. GAMEDATA.LATESTUPDATE .. [[
 
-ServerSize: ]] .. SERVERSIZE .. [[
+ServerSize: ]] .. GAMEDATA.SERVERSIZE .. [[
 
 
 Game Description:
-]] .. GAMEDESCRIPTION .. [[]]
+]] .. GAMEDATA.GAMEDESCRIPTION .. [[]]
 end
 
 
