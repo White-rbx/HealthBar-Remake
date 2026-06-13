@@ -1,4 +1,4 @@
-local ver = " UIs 6.579 "
+local ver = " UIs 6.58 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1619,6 +1619,39 @@ local function saveMemories(tbl)
 
 end
 
+-- Normalize
+local function normalizeMemory(text)
+
+	return tostring(text)
+		:lower()
+		:gsub("%s+"," ")
+		:gsub("^%s+","")
+		:gsub("%s+$","")
+
+end
+
+-- Duplicate Checker
+local function memoryExists(tbl,text)
+
+	local target =
+		normalizeMemory(text)
+
+	for _,v in ipairs(tbl) do
+
+		if v.text and
+			normalizeMemory(v.text)
+			== target then
+
+			return true
+
+		end
+
+	end
+
+	return false
+
+end
+
 -- =========================================
 -- MANUAL REMEMBER
 -- =========================================
@@ -1630,14 +1663,18 @@ local function remember(text)
 	-- SESSION MEMORY
 	if AUTO_REMEMBER then
 
-		table.insert(
-			sessionMemories,
-			{
-				text = text,
-				time = os.time()
-			}
-		)
+		if not memoryExists(sessionMemories,text) then
 
+	table.insert(
+		sessionMemories,
+		{
+			role = "USER",
+			text = text,
+			time = os.time()
+		}
+	)
+
+		end
 	end
 
 	-- GLOBAL MEMORY
@@ -1649,13 +1686,21 @@ local function remember(text)
 		mem.memoriesGlobal =
 			mem.memoriesGlobal or {}
 
-		table.insert(
-			mem.memoriesGlobal,
-			{
-				text = text,
-				time = os.time()
-			}
-		)
+		if not memoryExists(
+	mem.memoriesGlobal,
+	text
+) then
+
+	table.insert(
+		mem.memoriesGlobal,
+		{
+			role = "USER",
+			text = text,
+			time = os.time()
+		}
+	)
+
+end
 
 		-- LIMIT
 		while #mem.memoriesGlobal > MAX_GLOBAL_MEMORY do
@@ -1665,6 +1710,34 @@ local function remember(text)
 		saveMemories(mem)
 
 	end
+
+end
+
+-- Remember AI
+local function rememberAI(text)
+
+	text = tostring(text)
+
+	local mem =
+		loadMemories()
+
+	if not memoryExists(
+		mem.memoriesGlobal,
+		text
+	) then
+
+		table.insert(
+			mem.memoriesGlobal,
+			{
+				role = "AI",
+				text = text,
+				time = os.time()
+			}
+		)
+
+	end
+
+	saveMemories(mem)
 
 end
 
@@ -1692,15 +1765,23 @@ local function autoRemember(text)
 
 	if AUTO_REMEMBER then
 
+	if not memoryExists(
+		sessionMemories,
+		text
+	) then
+
 		table.insert(
 			sessionMemories,
 			{
+				role = "USER",
 				text = text,
 				time = os.time()
 			}
 		)
 
 	end
+
+end
 
 	-- =====================================
 	-- GLOBAL MEMORY
@@ -1708,24 +1789,35 @@ local function autoRemember(text)
 
 	if AUTO_REMEMBER_GLOBAL then
 
-		local mem = loadMemories()
+	local mem =
+		loadMemories()
+
+	if not memoryExists(
+		mem.memoriesGlobal,
+		text
+	) then
 
 		table.insert(
 			mem.memoriesGlobal,
 			{
+				role = "USER",
 				text = text,
 				time = os.time()
 			}
 		)
 
-		-- limit memory
-		while #mem.memoriesGlobal > MAX_GLOBAL_MEMORY do
-			table.remove(mem.memoriesGlobal,1)
-		end
+	end
 
-		saveMemories(mem)
+	while #mem.memoriesGlobal > MAX_GLOBAL_MEMORY do
+
+		table.remove(
+			mem.memoriesGlobal,
+			1
+		)
 
 	end
+
+	saveMemories(mem)
 
 end
 
@@ -1776,14 +1868,16 @@ local function buildMemoryPrompt(prompt)
 
 	for _,v in ipairs(data.memoriesGlobal or {}) do
 
-		memoryText ..=
-			"[GLOBAL] "
-			..
-			tostring(v.text)
-			..
-			"\n"
+	memoryText ..=
+		"[" ..
+		tostring(v.role or "UNKNOWN") ..
+		"][GLOBAL] "
+		..
+		tostring(v.text)
+		..
+		"\n"
 
-	end
+end
 
 	-- =========================================
 	-- EMPTY MEMORY
