@@ -1,4 +1,4 @@
-local ver = " UIs 6.583 "
+local ver = " UIs 6.593 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -55,6 +55,7 @@ local update = [[
 (:13/6/2026 | 7:18 pm: U) Upgrade prompt.
 (:14/6/2026 | 2:43 am: O) Out of local 🥀 Shit.
 (:14/6/2026 | 3:25 am: F) FUCK OFF OUT OF LOCAL I REDUCED YOU!
+(:14/6/2026 | 1:21 pm: A) Added 5 new formatting✨
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -778,7 +779,146 @@ local function richify(text)
 		end
 	)
 
-	
+-- =========================================
+-- SIZE
+-- [size=NUM]TEXT[/size]
+-- =========================================
+
+text = text:gsub(
+	"%[size=(%d+)%]([%s%S]-)%[/size%]",
+	function(size, content)
+
+		content = richify(content)
+
+		return protect(
+			string.format(
+				'<font size="%d">%s</font>',
+				tonumber(size),
+				content
+			)
+		)
+
+	end
+	)
+
+-- =========================================
+-- FACE
+-- [face=FONT]TEXT[/face]
+-- =========================================
+
+text = text:gsub(
+	"%[face=([%w_%- ]+)%]([%s%S]-)%[/face%]",
+	function(face, content)
+
+		content = richify(content)
+
+		return protect(
+			string.format(
+				'<font face="%s">%s</font>',
+				face,
+				content
+			)
+		)
+
+	end
+	)
+
+	text = text:gsub(
+	"%[tran=([^%]]+)%]([%s%S]-)%[/tran%]",
+	function(tran, content)
+
+		local transparency
+
+		if tran:find("%%") then
+
+			transparency =
+				tonumber(
+					tran:gsub("%%","")
+				) / 100
+
+		else
+
+			transparency =
+				tonumber(tran)
+
+		end
+
+		transparency =
+			math.clamp(
+				transparency or 0,
+				0,
+				1
+			)
+
+		content = richify(content)
+
+		return protect(
+			string.format(
+				'<font transparency="%s">%s</font>',
+				transparency,
+				content
+			)
+		)
+
+	end
+	)
+
+	text = text:gsub(
+	"%[smallcaps%]([%s%S]-)%[/smallcaps%]",
+	function(content)
+
+		content = richify(content)
+
+		return protect(
+			"<smallcaps>" ..
+			content ..
+			"</smallcaps>"
+		)
+
+	end
+	)
+
+	text = text:gsub(
+	"%[mark=rgb%((.-)%)%]([%s%S]-)%[/mark%]",
+	function(color, content)
+
+		content = richify(content)
+
+		if color == "default" then
+
+			return protect(
+				"<mark>" ..
+				content ..
+				"</mark>"
+			)
+
+		end
+
+		local r,g,b =
+			color:match(
+				"(%d+),(%d+),(%d+)"
+			)
+
+		if r then
+
+			return protect(
+				string.format(
+					'<mark color="rgb(%d,%d,%d)">%s</mark>',
+					r,
+					g,
+					b,
+					content
+				)
+			)
+
+		end
+
+		return content
+
+	end
+	)
+
+
 	-- =========================================
 	-- TEXT COLOR CHANGER
 	-- =========================================
@@ -800,7 +940,8 @@ local function richify(text)
 		)
 
 	end
-)
+	)
+	
 	-- =========================================
 	-- RESTORE TOKENS
 	-- =========================================
@@ -1994,6 +2135,17 @@ Allowed Formatting:
 - Links: https://example.com
 - Escape Formatting: %A%
 - Color Text: [color=R,G,B]TEXT[/color]
+- Text Size: [size=Num]TEXT[/size]
+- Font Face: [face=Font]TEXT[/face]
+	★ Example: [face=Code]Code[/face]
+	! Use Roblox Font Enum.
+- Transparency Text: [tran=0-1 or 0%-100%]TEXT[/tran]
+	★ Example: [tran=0.5]50% Transparency[/tran]
+- Smallcaps Text: [smallcaps]TEXT[/smallcaps]
+- Mark Text: [mark=rgb(R,G,B or default)]TEXT[/mark]
+	★ Example: [mark=rgb(255,150,0)]Highlights Orange[/mark]
+- Soon... Do not use yet.
+	- Stroke Text: [stroke=rgb(R,G,B or default), tran=0-1 or 0%-100%, joins=round/bevel/miter, sizing=fixed/scaled]TEXT[/stroke]
 
 Link Rules:
 - Prefer [Title](URL) for long URLs.
@@ -2014,6 +2166,10 @@ Color Example:
 
 If want formatting:
 [color=255,0,0]**Red Text**[/color]
+
+You can overlay it.
+Example:
+[mark=rgb(255,0,0)][size=25][color=255,255,0]Bih yellow text with orange highlights[/color][/size][/mark]
 
 Current real date:
 ]] .. CURRENT_DATE .. [[
