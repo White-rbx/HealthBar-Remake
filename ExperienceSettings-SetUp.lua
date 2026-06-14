@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.723 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.8 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -230,8 +230,9 @@ twarn.TextTransparency = 1
 twarn.Size = UDim2.new(1,0,0,90)
 twarn.TextSize = 18
 twarn.TextColor3 = Color3.new(1,1,1)
-twarn.Text = "We're setting up for you. Its may take a few seconds!"
+twarn.Text = [[We're <mark color="rgb(255,255,0)" transparency="0.8">setting up</mark> for you. Its may take a few seconds!]]
 twarn.TextWrapped = true
+twarn.RichText = true
 twarn.Parent = Canvas
 
 local CanBar = Instance.new("CanvasGroup")
@@ -264,6 +265,7 @@ btnBar.Size = UDim2.new(0.2,0,0.2,0)
 btnBar.BackgroundColor3 = Color3.new(1,0,0)
 btnBar.Text = "Close"
 btnBar.TextWrapped = true
+btnBar.RichText = true
 btnBar.TextColor3 = Color3.new(1,1,1)
 btnBar.TextSize = 18
 btnBar.Parent = Canvas
@@ -392,14 +394,14 @@ if banData then
 
 	task.defer(function()
 		if twarn then
-			twarn.Text = "You have been banned.\n"
-				.. "Reason: " .. banData.Reason .. "\n"
-				.. "Description: " .. banData.Description
+			twarn.Text = "<b>You have been banned.</b>\n"
+				.. "Reason: <mark color='rgb(255,85,85)' transparency='0.5'>" .. banData.Reason .. "</mark>\n"
+				.. "Description: <font size='10'>" .. banData.Description .. "</font>"
 		end
 
 		if btnBar then
 			btnBar.Visible = true
-			btnBar.Text = "I agree and close the UI."
+			btnBar.Text = "I <font color='rgb(0,255,0)'>agree</font> and close the UI."
 		end
 	end)
 
@@ -443,10 +445,9 @@ connection = RunService.RenderStepped:Connect(function()
 
 		local msg = ES.lastError or "Unknown error"
 
-		twarn.Text = [[Whoops! Looks like we got an error.
+		twarn.Text = [[Whoops! Looks like we got an <mark color="rgb(255,0,0)" transparency="0.5">error</mark>.
 Please wait for the next update!
-Error:
-]] .. msg
+Error: <font size="5" face="Code">]] .. msg .. [[</font>]]
 
 		btnBar.Visible = true
 
