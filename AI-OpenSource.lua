@@ -1,4 +1,4 @@
-local ver = " UIs 6.593 - 1 "
+local ver = " UIs 6.593 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -57,8 +57,6 @@ local update = [[
 (:14/6/2026 | 3:25 am: F) FUCK OFF OUT OF LOCAL I REDUCED YOU!
 (:14/6/2026 | 1:21 pm: A) Added 5 new formatting✨
 ]]
-
-Shit -- text attempt to call a nil value.
 
 -- =====>> Saved Functions <<=====
 
