@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.8 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 0.81 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -447,7 +447,7 @@ connection = RunService.RenderStepped:Connect(function()
 
 		twarn.Text = [[Whoops! Looks like we got an <mark color="rgb(255,0,0)" transparency="0.5">error</mark>.
 Please wait for the next update!
-Error: <font size="5" face="Code">]] .. msg .. [[</font>]]
+Error: <font size="10" face="Code">]] .. msg .. [[</font>]]
 
 		btnBar.Visible = true
 
