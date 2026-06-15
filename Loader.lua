@@ -1,4 +1,4 @@
--- Well 2.36
+-- Well 2.361
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -6,6 +6,9 @@
  GUIS ARE NOT MADE BY AI, ANYWAY I'M STILL LEARNING SCRIPT!
 
  THANK YOU FOR READINGGGGG *COUGH* *COUGH* *COUGH* *Died adorably*
+
+
+  anyway you can see there's banned users. I'm not telling you how to- nah :3
 ]]
 
 -- =========================================
