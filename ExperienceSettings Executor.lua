@@ -1,4 +1,4 @@
-local Version = [[0.1.48 Alpha
+local Version = [[0.1.481 Alpha
 - Search?]]
 -- This executor
 
@@ -9,6 +9,8 @@ local Version = [[0.1.48 Alpha
 
  THANK YOU FOR READINGGGGG
  - from Loader.lua message
+
+ anyway you can see there's banned users. I'm not telling you how to- nah :3
 ]]
 
 getgenv().ES = nil
