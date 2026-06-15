@@ -1,4 +1,4 @@
-local ver = " UIs 6.593 "
+local ver = " UIs 6.594 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1355,57 +1355,57 @@ txt(user.Nill,
 
 txt(user.Nill, [[
 # OFFICIAL ANNOUNCEMENT 
-AI is not bug with broken text because of text limit, use **/geminiswitch** or **/gptswitch** to change text limit.]], 255,0,0)
+AI is **not** bug with broken text because of text limit, use **/geminiswitch** or **/gptswitch** to change text limit.]], 255,0,0)
 
 txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
 **With respect**.]], 255, 255, 0)
-txt(user.Warn,[[# 1 command is enabled 
+txt(user.Warn,[[# 1 command is [mark=rbg(0,255,0)]enabled[/mark]
 **/1AutoRememberInGame** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) ]], 255,255,0)
 txt(user.Nill, [[# If you don't know how to put API key
-**1. Go to the website **
+[size=18]**1. Go to the website **[/size]
 
-• Google AI (Gemini) - **Recommend** / *Free*
+• [color=0,255,255]Google AI (Gemini)[/color] - [color=0,255,0]**Recommend**[/color] / *Free*
   API:
   https://aistudio.google.com/app/api-keys
   Docs:
   https://ai.google.dev/gemini-api/docs/available-regions
 
-• OpenAI (ChatGPT) / *Paid*
+• [color=255,255,255]OpenAI (ChatGPT)[/color] / *Paid*
   API:
   https://platform.openai.com/api-keys
   Docs:
   https://openai.com/policies/row-terms-of-use/
 
-• Anthropic (Claude) *Paid*
+• [color=255,85,0]Anthropic (Claude)[/color] *Paid*
   API:
   https://console.anthropic.com/settings/keys
   Docs:
 https://www.anthropic.com/legal/archive/79dbc8c6-7f64-43d6-8101-207cede59a4d
 
-• DeepSeek / *Paid*
+• [color=0,150,150]DeepSeek[/color] / *Paid*
   API:
   https://platform.deepseek.com/api_keys
   Docs:
   https://cdn.deepseek.com/policies/en-US/deepseek-terms-of-use.html
 
-**2. Create API key and copy your API key.**
-• Gemini
+[size=18]**2. Create API key and copy your API key.**[/size]
+• **Gemini**
   Usually starts with:
   `AIza...` or `AQ.`
-• ChatGPT
+• **ChatGPT**
   Usually starts with:
   `sk-`
-• Claude
+• **Claude**
   Usually starts with:
   `sk-ant-`
-• DeepSeek
+• **DeepSeek**
   Usually starts with:
   `sk-`
 
-**3. Launch Roblox.
+[size=18]**3. Launch Roblox.
 4. Execute ExperienceSettings.
 5. Open AI-Thinking.
-6. Run: Command**
+6. Run: Command**[/size]
 /addapi [GEMINI/CHATGPT/CLAUDE/DEEPSEEK] [APIKEY] [YES/NO]
 
 Examples:
@@ -1415,9 +1415,9 @@ Examples:
 /addapi CLAUDE sk-ant-xxxxxxxx YES
 /addapi DEEPSEEK sk-xxxxxxxx YES
 ```
-**7. Enjoy **
+[size=18]**7. Enjoy **[/size]
 
-# Notes
+[size=18]# Notes[/size]
 • Never share your API key.
 • Gemini availability depends on region.
 • ChatGPT, Claude and DeepSeek may require credits.
@@ -1543,7 +1543,7 @@ local CURRENT_TIME =
 local GAMEDATA = {
  GAME = "Unknown",
  DEVELOPER = "Unknown",
- GAMERATE = "--%",
+ GAMERATE = "Failed to get data",
  VISIT = "Failed to get data",
  PLYACTIVE = "Failed to get data",
 
@@ -2120,6 +2120,11 @@ Avoid coloring:
 
 Reason:
 Overuse of colors may confuse users and make it difficult to distinguish between normal text and highlighted content.
+
+Tags rules:
+Use with caution as it may cause the game to freeze.
+	Like: Too many overlap tags.
+Don't forget to close a tag!
 	
 Allowed Formatting:
 - Italic: *A*
@@ -2134,6 +2139,8 @@ Allowed Formatting:
 - Strikethrough: ~A~
 - Links: https://example.com
 - Escape Formatting: %A%
+
+Tags:
 - Color Text: [color=R,G,B]TEXT[/color]
 - Text Size: [size=Num]TEXT[/size]
 - Font Face: [face=Font]TEXT[/face]
@@ -5207,8 +5214,8 @@ end
 		GiveSpaceToCopyButton = true
 
 		txt(
-			user.Nill,
-			"[ System ] CopyButton Space Enabled.",
+			user.Sys,
+			"CopyButton Space Enabled.",
 			0,255,0
 		)
 
@@ -5217,8 +5224,8 @@ end
 		GiveSpaceToCopyButton = false
 
 		txt(
-			user.Nill,
-			"[ System ] CopyButton Space Disabled.",
+			user.Sys,
+			"CopyButton Space Disabled.",
 			255,170,0
 		)
 
@@ -5447,9 +5454,10 @@ end, function(err)
 		..
 		TimeTakes
 		..
-		"s. | "
+		"s. | %"
 		..
-		tostring(err),
+		tostring(err) 
+		.. "%",
 		255,0,0
 	)
 
