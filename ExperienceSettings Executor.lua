@@ -1,4 +1,4 @@
-local Version = [[0.1.481 Alpha
+local Version = [[0.1.482 Alpha
 - Search?]]
 -- This executor
 
@@ -636,9 +636,10 @@ lauser.Name = "TheWelcome"
 lauser.Position = UDim2.new(0.215,0,0.25,0)
 lauser.Size = UDim2.new(0.75,0,0.5,0)
 lauser.BackgroundTransparency = 1
-lauser.Text = "Hello!, @Username."
+lauser.Text = "Hello! <b><font color="rgb(0,255,0)">@Username.</font></b>"
 lauser.TextColor3 = Color3.fromRGB(255,255,255)
 lauser.TextScaled = true
+lauser.RichText = true
 lauser.TextXAlignment = Enum.TextXAlignment.Left
 lauser.TextYAlignment = Enum.TextYAlignment.Center
 lauser.Parent = user
@@ -683,6 +684,17 @@ local greetings = {
     "What's up",
     "Hey",
     "Ay",
+	"Anything to do something?",
+	"Thanks for using!",
+	"How are you?",
+	"GogoGaga",
+	"Random Greetings btw",
+    "Also try <stroke color='rgb(85,255,255)' thickness='1' transparency='0'>ExperienceSettings</stroke>",
+	"Hmmm...",
+	"<b>Bing chil ling</b>",
+	"<font face='Jura'>TOYOTA</font>",
+	"<u><font color='rgb(0,100,255)'>English</font></u> or <u><font color='rgb(255,100,0)'>Spanish</font></u>",
+	"🏳️‍🌈?"
     timeGreeting
 }
 
@@ -690,7 +702,7 @@ local greetings = {
 local randomText = greetings[math.random(1, #greetings)]
 
 -- ใส่ชื่อผู้เล่น
-lauser.Text = randomText .. ", " .. player.Name .. "."
+lauser.Text = randomText .. " <b><font color="rgb(0,255,0)">" .. player.Name .. "</font></b>."
 
 --[[ Note ]]
 local frtxt = Instance.new("Frame")
