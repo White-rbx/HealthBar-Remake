@@ -1,4 +1,4 @@
-local ver = " UIs 6.61 "
+local ver = " UIs 6.611 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1558,8 +1558,8 @@ AI is **not** bug with broken text because of text limit, use **/geminiswitch** 
 
 txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
 **With respect**.]], 255, 255, 0)
-txt(user.Warn,[[# 1 command is [mark=rbg(0,255,0)]enabled[/mark]
-**/1AutoRememberInGame** ON - Make AI to remember anything while chatting (SAVE MEMORY (ONLY IN-GAME) ]], 255,255,0)
+txt(user.Warn,[[[size=28]1 command is [mark=rbg(0,255,0)]enabled[/mark][/size]
+**/1AutoRememberInGame** ON - Make AI to remember anything while chatting [size=12](SAVE MEMORY (ONLY IN-GAME)[/size] ]], 255,255,0)
 txt(user.Nill, [[# If you don't know how to put API key
 [size=18]**1. Go to the website **[/size]
 
