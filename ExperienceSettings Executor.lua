@@ -1,5 +1,5 @@
-local Version = [[0.1.484 Alpha
-- Search?]]
+local Version = [[0.1.4841 Alpha
+- Extra fixed🥀]
 -- This executor
 
 --[[
@@ -636,7 +636,7 @@ lauser.Name = "TheWelcome"
 lauser.Position = UDim2.new(0.215,0,0.25,0)
 lauser.Size = UDim2.new(0.75,0,0.5,0)
 lauser.BackgroundTransparency = 1
-lauser.Text = "Hello! <b><font color="rgb(0,255,0)">@Username.</font></b>"
+lauser.Text = "Hello! <b><font color='rgb(0,255,0)'>@Username.</font></b>"
 lauser.TextColor3 = Color3.fromRGB(255,255,255)
 lauser.TextScaled = true
 lauser.RichText = true
