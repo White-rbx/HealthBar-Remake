@@ -1,4 +1,4 @@
-local Version = [[0.1.483 Alpha
+local Version = [[0.1.484 Alpha
 - Search?]]
 -- This executor
 
@@ -702,7 +702,7 @@ local greetings = {
 local randomText = greetings[math.random(1, #greetings)]
 
 -- ใส่ชื่อผู้เล่น
-lauser.Text = randomText .. " <b><font color="rgb(0,255,0)">" .. player.Name .. "</font></b>."
+lauser.Text = randomText .. " <b><font color='rgb(0,255,0)'>" .. player.Name .. "</font></b>."
 
 --[[ Note ]]
 local frtxt = Instance.new("Frame")
