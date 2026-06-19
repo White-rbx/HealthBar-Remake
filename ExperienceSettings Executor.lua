@@ -1,5 +1,5 @@
-local Version = [[0.1.4841 Alpha
-- Extra fixed🥀]
+local Version = [[0.1.4842 Alpha
+- Extra fixed🥀]]
 -- This executor
 
 --[[
@@ -695,6 +695,15 @@ local greetings = {
 	"<font face='Jura'>TOYOTA</font>",
 	"<u><font color='rgb(0,100,255)'>English</font></u> or <u><font color='rgb(255,100,0)'>Spanish</font></u>",
 	"🏳️‍🌈?",
+	"<stroke color='rgb(255,100,255)' thickness='2' transparency='0'>Good boy for using executor,</stroke>",
+	"<font color='rgb(0,255,255)'>IT'S FREE!!!!</font>",
+	"Seeking for Jimmy?",
+	"🤌",
+	"Do you think how many greeting random texts?",
+	"Touch some <stroke color='rgb(0,200,0)' thickness='2' transparency='0'>grass</stroke> outside if you have,",
+	"Don't you mind if I say this. Remember exploiters are for...😏 want to know huh?",
+	"You're <font color='rgb(255,0,0)'>COOKED</font> if someone successful banned you🥀",
+	"Hi,",
     timeGreeting
 }
 
