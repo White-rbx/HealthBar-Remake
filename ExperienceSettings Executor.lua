@@ -1,4 +1,4 @@
-local Version = [[0.1.482 Alpha
+local Version = [[0.1.483 Alpha
 - Search?]]
 -- This executor
 
@@ -694,7 +694,7 @@ local greetings = {
 	"<b>Bing chil ling</b>",
 	"<font face='Jura'>TOYOTA</font>",
 	"<u><font color='rgb(0,100,255)'>English</font></u> or <u><font color='rgb(255,100,0)'>Spanish</font></u>",
-	"🏳️‍🌈?"
+	"🏳️‍🌈?",
     timeGreeting
 }
 
