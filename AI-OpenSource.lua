@@ -1,4 +1,4 @@
-local ver = " UIs 6.612 "
+local ver = " UIs 6.613 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -233,7 +233,8 @@ tl.Name = "Topic"
 tl.Size = UDim2.new(0.2,0,0.1,0)
 tl.BackgroundTransparency = 1
 tl.Active = false
-tl.Text = "AI-Thinking"
+tl.RichText = true
+tl.Text = "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"
 tl.TextColor3 = Color3.fromRGB(255,255,255)
 tl.TextScaled = true
 tl.Parent = ins
@@ -245,12 +246,27 @@ tl2.Position = UDim2.new(0,0,0.07,0)
 tl2.Size = UDim2.new(0.2,0,0.03,0)
 tl2.BackgroundTransparency = 1
 tl2.Active = false
-tl2.Text = "Version:"..ver
+tl2.RichText = true
+tl2.Text = "Version:<b>"..ver.."</b>"
 tl2.TextXAlignment = Enum.TextXAlignment.Left
 tl2.TextColor3 = Color3.fromRGB(255,255,255)
 tl2.TextScaled = true
 tl2.Parent = ins
 
+-- Unavailable
+local unava = Instance.new("TextLabel")
+unava.Name = "Unavailable"
+unava.Position = UDim2.new(0.23,0,0,0)
+unava.Size = UDim2.new(0.77,0,0.1,0)
+unava.BackgroundColor3 = Color3.new(0,0,0)
+unava.BackgroundTransparency = 0.7
+unava.TextColor3 = Color.new(1,0,0)
+unava.RichText = true
+unava.Text = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"
+unava.Font = Enum.Font.Code
+unava.TextSize = 12
+unava.Active = true
+unava.Parent = ins
 
 -- line
 local lin = Instance.new("Frame")
@@ -317,10 +333,12 @@ st.Parent = ins
 Corner(0, 8, st)
 Stroke(st, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
 
+--[[
 tb.Visible = false
 con.Visible = false
 con2.Visible = false
 st.Visible = false
+]]
 
 -- chat
 local ch = Instance.new("TextBox")
@@ -2357,8 +2375,8 @@ Tags:
   [smallcaps]TEXT[/smallcaps]
 
 - Mark Text:
-  [mark=rgb(R,G,B),tran=0-1] or [mark=rgb(R,G,B),tran=0%-100%]
-  [mark=rgb(default),tran=0-1] or [mark=rgb(default),tran=0%-100%]
+  [mark=rgb(R,G,B),tran=0-1]
+  [mark=rgb(default),tran=0-1]
   TEXT
   [/mark]
   
