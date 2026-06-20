@@ -1,4 +1,4 @@
-local ver = " UIs 6.614 "
+local ver = " UIs 6.62 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -256,16 +256,16 @@ tl2.Parent = ins
 -- Unavailable
 local unava = Instance.new("TextLabel")
 unava.Name = "Unavailable"
+unava.Active = false
 unava.Position = UDim2.new(0.23,0,0,0)
 unava.Size = UDim2.new(0.77,0,0.1,0)
 unava.BackgroundColor3 = Color3.new(0,0,0)
-unava.BackgroundTransparency = 0.7
+unava.BackgroundTransparency = 0.4
 unava.TextColor3 = Color3.new(1,0,0)
 unava.RichText = true
 unava.Text = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"
 unava.Font = Enum.Font.Code
-unava.TextSize = 12
-unava.Active = true
+unava.TextSize = 18
 unava.Parent = ins
 
 -- line
@@ -339,6 +339,11 @@ con.Visible = false
 con2.Visible = false
 st.Visible = false
 ]]
+
+tb.Active = false
+con.Active = false
+con2.Active = false
+st.Active = false
 
 -- chat
 local ch = Instance.new("TextBox")
