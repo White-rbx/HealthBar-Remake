@@ -1,4 +1,4 @@
-local ver = " UIs 6.611 "
+local ver = " UIs 6.612 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -56,7 +56,8 @@ local update = [[
 (:14/6/2026 | 2:43 am: O) Out of local 🥀 Shit.
 (:14/6/2026 | 3:25 am: F) FUCK OFF OUT OF LOCAL I REDUCED YOU!
 (:14/6/2026 | 1:21 pm: A) Added 5 new formatting✨
-(:15/6/2926 | 5:55 pm: A) Added new 3 commands and added new stroke formatting.
+(:15/6/2026 | 5:55 pm: A) Added new 3 commands and added new stroke formatting.
+(:20/6/2026 | 8:26 pm: F) Fixed prompt.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -2356,14 +2357,14 @@ Tags:
   [smallcaps]TEXT[/smallcaps]
 
 - Mark Text:
-  [mark=rgb(R,G,B)]
-  [mark=rgb(default)]
+  [mark=rgb(R,G,B),tran=0-1] or [mark=rgb(R,G,B),tran=0%-100%]
+  [mark=rgb(default),tran=0-1] or [mark=rgb(default),tran=0%-100%]
   TEXT
   [/mark]
   
   Examples:
-  [mark=rgb(255,150,0)]Orange Highlight[/mark]
-  [mark=rgb(default)]Default Highlight[/mark]
+  [mark=rgb(255,150,0),tran=0]Orange Highlight[/mark]
+  [mark=rgb(default),tran=0]Default Highlight[/mark]
 
 - Stroke Text:
   [stroke=rgb(R,G,B or default),tran=0-1 or 0%-100%,joins=round/bevel/miter,sizing=fixed/scaled]
@@ -2418,7 +2419,7 @@ Bad:
 
 [size=24]
 [color=255,0,0]
-[mark=rgb(255,255,0)]
+[mark=rgb(255,255,0),tran=0]
 [stroke=rgb(0,0,0)]
 [smallcaps]
 Hello
