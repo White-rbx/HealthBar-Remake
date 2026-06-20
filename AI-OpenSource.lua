@@ -1,4 +1,4 @@
-local ver = " UIs 6.62 "
+local ver = " UIs 6.621 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -265,7 +265,8 @@ unava.TextColor3 = Color3.new(1,0,0)
 unava.RichText = true
 unava.Text = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"
 unava.Font = Enum.Font.Code
-unava.TextSize = 18
+unava.TextSize = 24
+unava.ZIndex = 2
 unava.Parent = ins
 
 -- line
