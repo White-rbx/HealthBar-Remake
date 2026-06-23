@@ -1,4 +1,4 @@
-local ver = " UIs 6.621 "
+local ver = " UIs 6.622 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2590,7 +2590,7 @@ Your limit:
 **/UnsaveAPI** or **/UnApi** - remove key
 **/OpenWebsiteInExperience** | **/OWINE** *URL* - open site
 **/Loadstring** *URL* - 'loadstring(game:HttpGet("url")()'
-**/Script** *[[CODE]* - run code
+**/Script** *]]"[[CODE]]"[[* - run code
 **/Debug** *on/off* - show debug logs (NOT WORKING)
 **/CheckHTTP** - check executor http
 **/CheckURLStatus** *URL* - HEAD request to URL
@@ -2622,7 +2622,7 @@ Your limit:
     *• deepseek-v4-pro*
 **/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
-**/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] [[CODE]*
+**/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] ]]"[[CODE]]"[[*
 **/HereChat** *[ON/OFF]* - stream here chat (client-side view only)
 **/SpyChat** *[ON/OFF]* - stream whisper messages (client-side view only) (NOT WORKING)
 **/ForceToRemember** | **/FTR** *TEXT* - Force AI to remember
@@ -2641,6 +2641,13 @@ Your limit:
 **/TextCounts** *[ALL/USER/AI/SYSTEMONLY]* - Count messages in the chat.
 **/InstantScrollDown** - Instantly scroll to the bottom of the chat. Useful when you get lost in older messages.
 **/Chat** *TEXT* - Send a message through Roblox Chat.
+
+All commands that will be add soon (5 commands):
+- /ControlPlr [ON/OFF] - Allow an AI to control player. (/Allowcam must be enable)
+- /AllowCmds [ON/OFF] - Give an ability AI to run any command in the list.
+- /MusicPanel - Open Music Panel.
+- /GenImage - Open Generative Image. (With 🍌 Nano banana 2)
+- /NameAI TEXT - Give a nickname to an AI different from Jimmy.
 	
 MEMORIES:
 ]]
