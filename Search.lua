@@ -1,4 +1,4 @@
--- searcher... yes. 2.8774
+-- searcher... yes. 2.878
 
 -- =====>> Saved Functions <<=====
 
@@ -279,7 +279,7 @@ local SCRIPTBLOX_SEARCH =
 local SCRIPTBLOX_HOME =
     "https://scriptblox.com/api/script/fetch"
 
-local FALLBACK_IMAGE = "rbxassetid://140452968852400"
+local FALLBACK_IMAGE = "rbxassetid://118914662369732"
 
 -- =======================
 
