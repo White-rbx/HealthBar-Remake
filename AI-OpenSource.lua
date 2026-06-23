@@ -1,4 +1,4 @@
-local ver = " UIs 6.622 "
+local ver = " UIs 6.623 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2590,7 +2590,7 @@ Your limit:
 **/UnsaveAPI** or **/UnApi** - remove key
 **/OpenWebsiteInExperience** | **/OWINE** *URL* - open site
 **/Loadstring** *URL* - 'loadstring(game:HttpGet("url")()'
-**/Script** *]]"[[CODE]]"[[* - run code
+**/Script** *]] .."[[CODE]]".. [[* - run code
 **/Debug** *on/off* - show debug logs (NOT WORKING)
 **/CheckHTTP** - check executor http
 **/CheckURLStatus** *URL* - HEAD request to URL
@@ -2622,7 +2622,7 @@ Your limit:
     *• deepseek-v4-pro*
 **/ResetRateLimit** | **/ReRateLimit** - resets local queue/backoff
 **/DumpStatus** - prints current state
-**/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] ]]"[[CODE]]"[[*
+**/InstanceTool** *("NAME") ([sizeX,sizeY,sizeZ]) [MESHID] [TEXTUREID] [MESHOFFSETX,MESHOFFSETY,MESHOFFSETZ] [R,G,B] [TOOLIMAGE] ]] .."[[CODE]]".. [[*
 **/HereChat** *[ON/OFF]* - stream here chat (client-side view only)
 **/SpyChat** *[ON/OFF]* - stream whisper messages (client-side view only) (NOT WORKING)
 **/ForceToRemember** | **/FTR** *TEXT* - Force AI to remember
