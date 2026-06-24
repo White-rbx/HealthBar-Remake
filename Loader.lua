@@ -1,4 +1,4 @@
--- Loader script 2
+-- Loader script 2.1
 
 ------------------------------------------------------------------------------------------
 
@@ -1809,24 +1809,29 @@ Txt(
 )
 
 --======= PATH ========--
+local ES
+local List
+
 task.spawn(function()
 
-    local ES = game:GetService("CoreGui")
+    ES = game:GetService("CoreGui")
         :WaitForChild("ExperienceSettings")
         :WaitForChild("Menu")
-    Eng()
-end)
 
-local List = {
-  ai = ES:WaitForChild("AIOpenSource").Frame,
-  ab = ES:WaitForChild("About_Background").Inside,
-  bg = ES:WaitForChild("Background"),
-  hrs = ES:WaitForChild("HolderScreen"),
-  lb = ES:WaitForChild("Load_Background"),
-  ms = ES:WaitForChild("MiddleScreen"),
-  pfs = ES:WaitForChild("ProfileStatus"),
-  sh = ES:WaitForChild("Search"),
-}
+    List = {
+        ai = ES:WaitForChild("AIOpenSource").Frame,
+        ab = ES:WaitForChild("About_Background").Inside,
+        bg = ES:WaitForChild("Background"),
+        hrs = ES:WaitForChild("HolderScreen"),
+        lb = ES:WaitForChild("Load_Background"),
+        ms = ES:WaitForChild("MiddleScreen"),
+        pfs = ES:WaitForChild("ProfileStatus"),
+        sh = ES:WaitForChild("Search"),
+    }
+
+    Eng()
+
+end)
 
 
 --======= ENGLISH ========--
