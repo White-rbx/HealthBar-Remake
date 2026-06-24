@@ -1,4 +1,4 @@
--- Loader script 2.1
+-- Loader script 2.2
 
 ------------------------------------------------------------------------------------------
 
@@ -1808,32 +1808,6 @@ Txt(
 	ins2
 )
 
---======= PATH ========--
-local ES
-local List
-
-task.spawn(function()
-
-    ES = game:GetService("CoreGui")
-        :WaitForChild("ExperienceSettings")
-        :WaitForChild("Menu")
-
-    List = {
-        ai = ES:WaitForChild("AIOpenSource").Frame,
-        ab = ES:WaitForChild("About_Background").Inside,
-        bg = ES:WaitForChild("Background"),
-        hrs = ES:WaitForChild("HolderScreen"),
-        lb = ES:WaitForChild("Load_Background"),
-        ms = ES:WaitForChild("MiddleScreen"),
-        pfs = ES:WaitForChild("ProfileStatus"),
-        sh = ES:WaitForChild("Search"),
-    }
-
-    Eng()
-
-end)
-
-
 --======= ENGLISH ========--
 local function Eng()
 
@@ -1947,7 +1921,7 @@ List.bg.Inner_Background.Toggles.B_Frams.Frame9.Label.Text = "Hitbox Shower"
 List.lb.Skip.Text = "Close fuc#king annoying load bar"
 List.lb.Credit.Text = "Creator by @5teve3019D on ScriptBlox/HaxHell"
 List.lb.Loading.Text = "Loading"
-List.lb.Wait = "Starting ExperienceSettings. Please wait..."
+List.lb.Wait.Text = "Starting ExperienceSettings. Please wait..."
 
 -- ProfileStatus
 List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.Beta.Text = "It might have bug and it still in beta."
@@ -2073,7 +2047,7 @@ List.bg.Inner_Background.Toggles.B_Frams.Frame9.Label.Text = "Lluvia de hitboxes
 List.lb.Skip.Text = "Cerrar barra de carga molesta"
 List.lb.Credit.Text = "Creador por @5teve3019D en ScriptBlox/HaxHell"
 List.lb.Loading.Text = "Cargando"
-List.lb.Wait = "Iniciando ExperienceSettings. Por favor espera..."
+List.lb.Wait.Text = "Iniciando ExperienceSettings. Por favor espera..."
 
 -- ProfileStatus
 List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.Beta.Text = "Podría tener errores y todavía está en beta."
@@ -2086,6 +2060,33 @@ List.sh.SearchBar.Searcher.PlaceholderText = "[ Selecciona primero ] Buscador"
 
 end
 
+--======= PATH ========--
+local ES
+local List
+
+task.spawn(function()
+
+    ES = game:GetService("CoreGui")
+        :WaitForChild("ExperienceSettings")
+        :WaitForChild("Menu")
+
+	task.wait(7)
+
+    List = {
+        ai = ES:WaitForChild("AIOpenSource").Frame,
+        ab = ES:WaitForChild("About_Background").Inside,
+        bg = ES:WaitForChild("Background"),
+        hrs = ES:WaitForChild("HolderScreen"),
+        lb = ES:WaitForChild("Load_Background"),
+        ms = ES:WaitForChild("MiddleScreen"),
+        pfs = ES:WaitForChild("ProfileStatus"),
+        sh = ES:WaitForChild("Search"),
+    }
+
+    Eng()
+
+end)
+
 Txt(
     "English",
     255,255,255,
@@ -2094,27 +2095,31 @@ Txt(
     nil,
     function(_, btn)
 
-        local oldText = btn.Text
-        local oldColor = btn.TextColor3
+    if not List then
 
-        local ok, err = pcall(function()
-            Eng()
+        btn.Text = "Path Not Found"
+        btn.TextColor3 = Color3.fromRGB(255,0,0)
+
+        task.delay(2,function()
+
+            if btn and btn.Parent then
+                btn.Text = "Select"
+                btn.TextColor3 =
+                    Color3.fromRGB(0,255,0)
+            end
+
         end)
 
-        if not ok then
+        return
+    end
 
-            btn.Text = "Path Not Found"
-            btn.TextColor3 = Color3.fromRGB(255,0,0)
+    Eng()
 
-            task.delay(2,function()
-                if btn and btn.Parent then
-                    btn.Text = oldText
-                    btn.TextColor3 = oldColor
-                end
-            end)
+    btn.Text = "Select"
+    btn.TextColor3 =
+        Color3.fromRGB(0,255,0)
 
-            warn(err)
-        end
+end
 
     end,
     nil,
@@ -2129,27 +2134,31 @@ Txt(
     nil,
     function(_, btn)
 
-        local oldText = btn.Text
-        local oldColor = btn.TextColor3
+    if not List then
 
-        local ok, err = pcall(function()
-            Spa()
+        btn.Text = "Path Not Found"
+        btn.TextColor3 = Color3.fromRGB(255,0,0)
+
+        task.delay(2,function()
+
+            if btn and btn.Parent then
+                btn.Text = "Seleccionar"
+                btn.TextColor3 =
+                    Color3.fromRGB(0,255,0)
+            end
+
         end)
 
-        if not ok then
+        return
+    end
 
-            btn.Text = "Path Not Found"
-            btn.TextColor3 = Color3.fromRGB(255,0,0)
+    Spa()
 
-            task.delay(2,function()
-                if btn and btn.Parent then
-                    btn.Text = oldText
-                    btn.TextColor3 = oldColor
-                end
-            end)
+    btn.Text = "Seleccionar"
+    btn.TextColor3 =
+        Color3.fromRGB(0,255,0)
 
-            warn(err)
-        end
+end
 
     end,
     nil,
