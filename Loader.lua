@@ -1,4 +1,4 @@
--- Loader script 2.23
+-- Loader script 2.24
 
 ------------------------------------------------------------------------------------------
 
@@ -2083,6 +2083,8 @@ List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "Soltar to
 -- Search
 List.sh.SearchBar.Searcher.PlaceholderText = "[ Selecciona primero ] Buscador"
 
+end
+
 --======= THAI ========--
 local function Tha()
 
@@ -2209,119 +2211,71 @@ List.sh.SearchBar.Searcher.PlaceholderText = "[ เลือกก่อน ] �
 
 end
 
+local CurrentLanguage = "EN"
+
+local function RefreshLanguageButtons()
+
+    EngBtn.TextColor3 =
+        CurrentLanguage == "EN"
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,255,255)
+
+    SpaBtn.TextColor3 =
+        CurrentLanguage == "ES"
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,255,255)
+
+    ThaBtn.TextColor3 =
+        CurrentLanguage == "TH"
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,255,255)
+
 end
 
-Txt(
+local EngBtn = Txt(
     "English",
     255,255,255,
     false,nil,
     true,"Select",
     nil,
     function(_, btn)
-
-    if not List then
-
-        btn.Text = "Path Not Found"
-        btn.TextColor3 = Color3.fromRGB(255,0,0)
-
-        task.delay(2,function()
-
-            if btn and btn.Parent then
-                btn.Text = "Select"
-                btn.TextColor3 =
-                    Color3.fromRGB(0,255,0)
-            end
-
-        end)
-
-        return
-    end
-
-    Eng()
-
-    btn.Text = "Select"
-    btn.TextColor3 =
-        Color3.fromRGB(255,255,255)
-
+        CurrentLanguage = "EN"
+        Eng()
+        RefreshLanguageButtons()
     end,
     nil,
     ins2
-)
+).Button
 
-Txt(
+local SpaBtn = Txt(
     "Español",
     255,255,255,
     false,nil,
     true,"Seleccionar",
     nil,
     function(_, btn)
-
-    if not List then
-
-        btn.Text = "Path Not Found"
-        btn.TextColor3 = Color3.fromRGB(255,0,0)
-
-        task.delay(2,function()
-
-            if btn and btn.Parent then
-                btn.Text = "Seleccionar"
-                btn.TextColor3 =
-                    Color3.fromRGB(0,255,0)
-            end
-
-        end)
-
-        return
-    end
-
-    Spa()
-
-    btn.Text = "Seleccionar"
-    btn.TextColor3 =
-        Color3.fromRGB(255,255,255)
-
+        CurrentLanguage = "ES"
+        Spa()
+        RefreshLanguageButtons()
     end,
     nil,
     ins2
-)
+).Button
 
-Txt(
+local ThaBtn = Txt(
     "ไทย",
     255,255,255,
     false,nil,
     true,"เลือก",
     nil,
     function(_, btn)
-
-        if not List then
-
-            btn.Text = "ไม่พบ Path"
-            btn.TextColor3 =
-                Color3.fromRGB(255,0,0)
-
-            task.delay(2,function()
-
-                if btn and btn.Parent then
-                    btn.Text = "เลือก"
-                    btn.TextColor3 =
-                        Color3.fromRGB(0,255,0)
-                end
-
-            end)
-
-            return
-        end
-
+        CurrentLanguage = "TH"
         Tha()
-
-        btn.Text = "เลือก"
-        btn.TextColor3 =
-            Color3.fromRGB(255,255,255)
-
+        RefreshLanguageButtons()
     end,
     nil,
     ins2
-)
+).Button
 
 
 
