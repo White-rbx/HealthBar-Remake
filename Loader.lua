@@ -1,4 +1,4 @@
--- Loader script 0.99
+-- Loader script 2
 
 ------------------------------------------------------------------------------------------
 
@@ -1807,6 +1807,358 @@ Txt(
 
 	ins2
 )
+
+--======= PATH ========--
+task.spawn(function()
+
+    local ES = game:GetService("CoreGui")
+        :WaitForChild("ExperienceSettings")
+        :WaitForChild("Menu")
+    Eng()
+end)
+
+local List = {
+  ai = ES:WaitForChild("AIOpenSource").Frame,
+  ab = ES:WaitForChild("About_Background").Inside,
+  bg = ES:WaitForChild("Background"),
+  hrs = ES:WaitForChild("HolderScreen"),
+  lb = ES:WaitForChild("Load_Background"),
+  ms = ES:WaitForChild("MiddleScreen"),
+  pfs = ES:WaitForChild("ProfileStatus"),
+  sh = ES:WaitForChild("Search"),
+}
+
+
+--======= ENGLISH ========--
+local function Eng()
+
+-- AIThinking
+List.ai.Text.chat.PlaceholderText = "Type /Help to show all commands or Say something..."
+List.ai.Confirm_api.Text = "Confirm API"
+List.ai.Unsaved_API.Text = "Unsaved API"
+List.ai.api.PlaceholderText = "[ Your API here (ChatGPT or Gemini) ]"
+List.ai.Status.Text = "Status: No key"
+List.ai.Topic.Text = "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"
+List.ai.Unavailable.Text = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"
+-- List.ai.ver.Text = "Version:"
+
+-- About_Background
+List.ab.Scroll.About.Text = [[
+The ExperienceSettings is debug tools you can use on your own, there are a lot of tools!
+For HealthBar was a remake of better and smoother and ValueLabels for show values.
+If your ExperienceSettings was Disabled there are three reasons,
+ • HumanoidRootPart was removed too long.
+ • The Experience doesn't support the ExperienceSettings.
+ • Script failed to load.
+If you enjoy it, you can support me on discord!
+Thank you for using ExperienceSettings! ♥️
+
+54% Gui is made by hand
+10% Script is made by hand
+36% Script is made by ai
+
+Creator: @5teve3019D (Gui, Little Script)
+Helper: ChatGPT (Script) <-- He got a lot of complaints lol.
+Little Helper: Copilot of GitHub (Script)
+Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
+
+========================
+➕ = Add something
+📢 = Announcements
+🔨 = In-develop
+🔷 = Plan ahead for updates
+✅ = Done
+⚠️ = Have issues
+🟠 = Updating soon
+❌ = Bug
+⚫ = Cannot fix
+➖ = Disconnected or discontinued
+-------
+📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!
+-------
+🔁 In progress: No longer appear features
+-------
+❌ Failed: No longer appear unavailable features
+-------
+
+✨ SCRIPT CREDITS ✨
+[ Script Name ] by [ Creator ] [ Verification Status ]
+
+We want to say that your script is awesome, and it is used in our project for debugging and educational purposes.
+Thank you for your contribution :3 ❤️
+- Debugger
+
+-- Credits List --
+'Ketamine' by @Cherry (✓ Verified)
+'OG AFEM – Legacy' by @Imperial (✓ Verified)
+'Chat' by Unknown user
+'UNC' by Unknown user
+'REM' by @evildotcom (X Not verified)
+'GameProber' by @Imperial (✓ Verified)
+'AudioPlayer' by Unknown user
+'EmoteSelect' by Unknown user
+'Universal Movement Predictor' by @zephyrr (X Not verified)
+'Server Position Predictor' by @zephyrr (X Not verified)
+'Open Source Universal Chat' by @neutral (X Not verified)
+
+-- Notice to Script Creators --
+If you are a script creator listed above and do not want your script to be included,
+please contact us via our Discord forum, and we will remove it immediately.
+]]
+
+List.ab.Hide.Text = "Hide"
+List.ab.Help.Text = "Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."
+
+-- Background
+List.bg.Settings.Buttons.Leave.Text = "Leave"
+List.bg.Settings.Buttons["Reset character"].Text = "Reset character"
+List.bg.Settings.Buttons.Resume.Text = "Resume"
+List.bg.Settings.Pmax.SeeAll.Text = "Open Roblox Settings"
+List.bg.Settings.Pmax.Players.Text = "Player :"
+
+List.bg.Settings.B_Frame.Frame1.Label.Text = "Enable ValueLabels"
+List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - Recommend graphics 5+"
+List.bg.Settings.B_Frame.Frame3.Label.Text = "White Light"
+List.bg.Settings.B_Frame.Frame4.Label.Text = "RGB Light"
+List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (Beta)"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "Damage Overlay"
+List.bg.Settings.B_Frame.Frame7.Label.Text = "MoreToggles"
+
+List.bg.Inner_Background.Toggles.B_Frams.Frame1.Label.Text = "LighterCyan.ai (Discontinued)"
+List.bg.Inner_Background.Toggles.B_Frams:GetChildren()[13].Label.Text = "Show Physics"
+List.bg.Inner_Background.Toggles.B_Frams.Frame10.Label.Text = "Last Death"
+List.bg.Inner_Background.Toggles.B_Frams.Frame11.Label.Text = "ServerPositionPredictor (By @zephyrr)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame2.Label.Text = "Enable HealthBar"
+List.bg.Inner_Background.Toggles.B_Frams:GetChildren()[14].Label.Text = "Global Physics"
+List.bg.Inner_Background.Toggles.B_Frams.Frame3.Label.Text = "Disable Death Sound"
+List.bg.Inner_Background.Toggles.B_Frams.Frame4.Label.Text = "FreeCam (Mobile)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame5.Label.Text = "Almost Endless Fallen (-50K)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame6.Label.Text = "Flashlight (FirstPerson & GFX 6+)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame7.Label.Text = "ESP Highlight Players & Non-Players"
+List.bg.Inner_Background.Toggles.B_Frams.Frame8.Label.Text = "Shift Lock (Mobile)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame9.Label.Text = "Hitbox Shower"
+
+-- Load_Background
+List.lb.Skip.Text = "Close fuc#king annoying load bar"
+List.lb.Credit.Text = "Creator by @5teve3019D on ScriptBlox/HaxHell"
+List.lb.Loading.Text = "Loading"
+List.lb.Wait = "Starting ExperienceSettings. Please wait..."
+
+-- ProfileStatus
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.Beta.Text = "It might have bug and it still in beta."
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DeveloperConsole.Text = "Open Developer console"
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTool.Text = "Drop Tool"
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "Drop all tools"
+
+-- Search
+List.sh.SearchBar.Searcher.PlaceholderText = "[ Select first ] Searcher"
+
+end
+
+--======= SPAIN ========--
+local function Spa()
+
+-- AIThinking
+List.ai.Text.chat.PlaceholderText = "Escribe /Help para mostrar todos los comandos o di algo..."
+List.ai.Confirm_api.Text = "Confirmar API"
+List.ai.Unsaved_API.Text = "API no guardada"
+List.ai.api.PlaceholderText = "[ Tu API aquí (ChatGPT o Gemini) ]"
+List.ai.Status.Text = "Estado: Sin clave"
+List.ai.Topic.Text = "<b><stroke color='rgb(85,255,255)' thickness='2'>Pensamiento IA</stroke></b>"
+List.ai.Unavailable.Text = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>FUNCIONES NO DISPONIBLES (Antiguas)</stroke></b>"
+-- List.ai.ver.Text = "Versión:"
+
+-- About_Background
+List.ab.Scroll.About.Text = [[
+ExperienceSettings es una herramienta de depuración que puedes usar por tu cuenta; ¡tiene muchas herramientas!
+HealthBar fue un remake más fluido y mejor, y ValueLabels sirve para mostrar valores.
+Si tu ExperienceSettings está deshabilitado, hay tres razones:
+ • El HumanoidRootPart fue eliminado hace demasiado tiempo.
+ • El Experience no admite ExperienceSettings.
+ • El script no pudo cargarse.
+Si te gusta, ¡puedes apoyarme en Discord!
+¡Gracias por usar ExperienceSettings! ♥️
+
+54% de la GUI está hecha a mano
+10% del script está hecho a mano
+36% del script está hecho con IA
+
+Creador: @5teve3019D (GUI, pequeño script)
+Ayudante: ChatGPT (Script) <-- Sí, recibió muchas quejas jaja.
+Pequeño ayudante: Copilot de GitHub (Script)
+Dato curioso: lo antiguo es más feo que lo de ahora jajaja, te lo juro 😂 Ah, no has visto lo de antes :(
+
+========================
+➕ = Añadir algo
+📢 = Anuncios
+🔨 = En desarrollo
+🔷 = Plan para futuras actualizaciones
+✅ = Hecho
+⚠️ = Tiene problemas
+🟠 = Pronto se actualizará
+❌ = Error
+⚫ = No se puede arreglar
+➖ = Desconectado o descontinuado
+-------
+📌 Actualizado: esta información ya no aparece en las actualizaciones; ¡por favor únete a nuestra comunidad de Discord para seguirlas!
+-------
+🔁 En progreso: funciones que ya no aparecen
+-------
+❌ Fallado: funciones no disponibles que ya no aparecen
+-------
+
+✨ CRÉDITOS DEL SCRIPT ✨
+[ Nombre del script ] por [ Creador ] [ Estado de verificación ]
+
+Queremos decir que tu script es increíble y se usa en nuestro proyecto para depuración y fines educativos.
+Gracias por tu contribución :3 ❤️
+- Debugger
+
+-- Lista de créditos --
+'Ketamine' por @Cherry (✓ Verificado)
+'OG AFEM – Legacy' por @Imperial (✓ Verificado)
+'Chat' por usuario desconocido
+'UNC' por usuario desconocido
+'REM' por @evildotcom (X No verificado)
+'GameProber' por @Imperial (✓ Verificado)
+'AudioPlayer' por usuario desconocido
+'EmoteSelect' por usuario desconocido
+'Universal Movement Predictor' por @zephyrr (X No verificado)
+'Server Position Predictor' por @zephyrr (X No verificado)
+'Open Source Universal Chat' por @neutral (X No verificado)
+
+-- Aviso para creadores de scripts --
+Si eres creador de uno de los scripts mencionados arriba y no quieres que tu script esté incluido,
+por favor contáctanos a través de nuestro foro de Discord y lo eliminaremos de inmediato.
+]]
+
+List.ab.Hide.Text = "Ocultar"
+List.ab.Help.Text = "Oh, si ExperienceSettings está deshabilitado, puedes ocultar el texto pulsando el botón."
+
+-- Background
+List.bg.Settings.Buttons.Leave.Text = "Salir"
+List.bg.Settings.Buttons["Reset character"].Text = "Reiniciar personaje"
+List.bg.Settings.Buttons.Resume.Text = "Continuar"
+List.bg.Settings.Pmax.SeeAll.Text = "Abrir configuración de Roblox"
+List.bg.Settings.Pmax.Players.Text = "Jugador :"
+
+List.bg.Settings.B_Frame.Frame1.Label.Text = "Activar ValueLabels"
+List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - Se recomiendan gráficos 5+"
+List.bg.Settings.B_Frame.Frame3.Label.Text = "Luz blanca"
+List.bg.Settings.B_Frame.Frame4.Label.Text = "Luz RGB"
+List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (Beta)"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "Superposición de daño"
+List.bg.Settings.B_Frame.Frame7.Label.Text = "Más toggles"
+
+List.bg.Inner_Background.Toggles.B_Frams.Frame1.Label.Text = "LighterCyan.ai (Descontinuado)"
+List.bg.Inner_Background.Toggles.B_Frams:GetChildren()[13].Label.Text = "Mostrar física"
+List.bg.Inner_Background.Toggles.B_Frams.Frame10.Label.Text = "Última muerte"
+List.bg.Inner_Background.Toggles.B_Frams.Frame11.Label.Text = "ServerPositionPredictor (Por @zephyrr)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame2.Label.Text = "Activar HealthBar"
+List.bg.Inner_Background.Toggles.B_Frams:GetChildren()[14].Label.Text = "Física global"
+List.bg.Inner_Background.Toggles.B_Frams.Frame3.Label.Text = "Desactivar sonido de muerte"
+List.bg.Inner_Background.Toggles.B_Frams.Frame4.Label.Text = "FreeCam (Móvil)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame5.Label.Text = "Caída casi interminable (-50K)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame6.Label.Text = "Linterna (Primera persona y GFX 6+)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame7.Label.Text = "ESP resalta jugadores y no jugadores"
+List.bg.Inner_Background.Toggles.B_Frams.Frame8.Label.Text = "Shift Lock (Móvil)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame9.Label.Text = "Lluvia de hitboxes"
+
+-- Load_Background
+List.lb.Skip.Text = "Cerrar barra de carga molesta"
+List.lb.Credit.Text = "Creador por @5teve3019D en ScriptBlox/HaxHell"
+List.lb.Loading.Text = "Cargando"
+List.lb.Wait = "Iniciando ExperienceSettings. Por favor espera..."
+
+-- ProfileStatus
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.Beta.Text = "Podría tener errores y todavía está en beta."
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DeveloperConsole.Text = "Abrir consola de desarrollador"
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTool.Text = "Soltar herramienta"
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "Soltar todas las herramientas"
+
+-- Search
+List.sh.SearchBar.Searcher.PlaceholderText = "[ Selecciona primero ] Buscador"
+
+end
+
+Txt(
+    "English",
+    255,255,255,
+    false,nil,
+    true,"Select",
+    nil,
+    function(_, btn)
+
+        local oldText = btn.Text
+        local oldColor = btn.TextColor3
+
+        local ok, err = pcall(function()
+            Eng()
+        end)
+
+        if not ok then
+
+            btn.Text = "Path Not Found"
+            btn.TextColor3 = Color3.fromRGB(255,0,0)
+
+            task.delay(2,function()
+                if btn and btn.Parent then
+                    btn.Text = oldText
+                    btn.TextColor3 = oldColor
+                end
+            end)
+
+            warn(err)
+        end
+
+    end,
+    nil,
+    ins2
+)
+
+Txt(
+    "Español",
+    255,255,255,
+    false,nil,
+    true,"Seleccionar",
+    nil,
+    function(_, btn)
+
+        local oldText = btn.Text
+        local oldColor = btn.TextColor3
+
+        local ok, err = pcall(function()
+            Spa()
+        end)
+
+        if not ok then
+
+            btn.Text = "Path Not Found"
+            btn.TextColor3 = Color3.fromRGB(255,0,0)
+
+            task.delay(2,function()
+                if btn and btn.Parent then
+                    btn.Text = oldText
+                    btn.TextColor3 = oldColor
+                end
+            end)
+
+            warn(err)
+        end
+
+    end,
+    nil,
+    ins2
+)
+
+
+
+
+
+
+
+
+
 
 
 
