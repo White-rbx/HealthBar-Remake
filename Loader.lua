@@ -1,4 +1,4 @@
--- Loader script 2.21
+-- Loader script 2.22
 
 ------------------------------------------------------------------------------------------
 
@@ -2117,7 +2117,7 @@ Txt(
 
     btn.Text = "Select"
     btn.TextColor3 =
-        Color3.fromRGB(0,255,0)
+        Color3.fromRGB(255,255,255)
 
     end,
     nil,
@@ -2154,7 +2154,7 @@ Txt(
 
     btn.Text = "Seleccionar"
     btn.TextColor3 =
-        Color3.fromRGB(0,255,0)
+        Color3.fromRGB(255,255,255)
 
     end,
     nil,
