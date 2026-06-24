@@ -1,4 +1,4 @@
--- Loader script 2.22
+-- Loader script 2.23
 
 ------------------------------------------------------------------------------------------
 
@@ -1808,6 +1808,31 @@ Txt(
 	ins2
 )
 
+--======= PATH ========--
+local ES
+local List
+
+task.spawn(function()
+
+    ES = game:GetService("CoreGui")
+        :WaitForChild("ExperienceSettings")
+        :WaitForChild("Menu")
+
+	task.wait(7)
+
+    List = {
+        ai = ES:WaitForChild("AIOpenSource").Frame,
+        ab = ES:WaitForChild("About_Background").Inside,
+        bg = ES:WaitForChild("Background"),
+        hrs = ES:WaitForChild("HolderScreen"),
+        lb = ES:WaitForChild("Load_Background"),
+        ms = ES:WaitForChild("MiddleScreen"),
+        pfs = ES:WaitForChild("ProfileStatus"),
+        sh = ES:WaitForChild("Search"),
+    }
+
+end)
+
 --======= ENGLISH ========--
 local function Eng()
 
@@ -2058,34 +2083,133 @@ List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "Soltar to
 -- Search
 List.sh.SearchBar.Searcher.PlaceholderText = "[ Selecciona primero ] Buscador"
 
+--======= THAI ========--
+local function Tha()
+
+-- AIThinking
+List.ai.Text.chat.PlaceholderText = "พิมพ์ /Help เพื่อดูคำสั่งทั้งหมด หรือพิมพ์อะไรสักอย่าง..."
+List.ai.Confirm_api.Text = "ยืนยัน API"
+List.ai.Unsaved_API.Text = "API ยังไม่บันทึก"
+List.ai.api.PlaceholderText = "[ ใส่ API ของคุณที่นี่ (ChatGPT หรือ Gemini) ]"
+List.ai.Status.Text = "สถานะ: ไม่มีคีย์"
+List.ai.Topic.Text = "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"
+List.ai.Unavailable.Text = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>ฟีเจอร์ที่ใช้งานไม่ได้ (ของเก่า)</stroke></b>"
+-- List.ai.ver.Text = "Version:"
+
+-- About_Background
+List.ab.Scroll.About.Text = [[
+ExperienceSettings เป็นเครื่องมือดีบักที่คุณสามารถใช้ได้เอง มีเครื่องมือเยอะมาก!
+สำหรับ HealthBar นั้นเป็นเวอร์ชันรีเมคที่ลื่นกว่าและดีกว่า และ ValueLabels ใช้สำหรับแสดงค่า
+ถ้า ExperienceSettings ของคุณถูกปิดใช้งาน มีอยู่ 3 สาเหตุ:
+ • HumanoidRootPart ถูกลบไปนานเกินไป
+ • Experience นี้ไม่รองรับ ExperienceSettings
+ • สคริปต์โหลดไม่สำเร็จ
+ถ้าคุณชอบมัน คุณสามารถสนับสนุนฉันได้ทาง Discord!
+ขอบคุณที่ใช้ ExperienceSettings! ♥️
+
+54% ของ GUI ทำด้วยมือ
+10% ของสคริปต์ทำด้วยมือ
+36% ของสคริปต์ทำโดย AI
+
+ผู้สร้าง: @5teve3019D (GUI, สคริปต์ส่วนเล็ก)
+ผู้ช่วย: ChatGPT (สคริปต์) <-- เขาโดนบ่นเยอะมากเลย ฮ่าๆ
+ผู้ช่วยตัวเล็ก: Copilot ของ GitHub (สคริปต์)
+เกร็ดน่าสนใจ: ของเก่าขี้เหร่กว่าตอนนี้เยอะเลย ฉันสาบาน 😂 โอ้ คุณยังไม่เคยเห็นมันสินะ :(
+
+========================
+➕ = เพิ่มอะไรบางอย่าง
+📢 = ประกาศ
+🔨 = กำลังพัฒนา
+🔷 = แผนสำหรับอัปเดตในอนาคต
+✅ = เสร็จแล้ว
+⚠️ = มีปัญหา
+🟠 = จะอัปเดตเร็ว ๆ นี้
+❌ = บั๊ก
+⚫ = ไม่สามารถแก้ได้
+➖ = ตัดการเชื่อมต่อหรือยกเลิกการพัฒนา
+-------
+📌 อัปเดต: ข้อมูลในส่วนนี้จะไม่แสดงในอัปเดตอีกต่อไป กรุณาเข้าร่วมชุมชน Discord ของเราเพื่อรับข่าวสารต่อไป!
+-------
+🔁 อยู่ระหว่างดำเนินการ: ฟีเจอร์ที่ไม่แสดงอีกแล้ว
+-------
+❌ ล้มเหลว: ฟีเจอร์ที่ไม่พร้อมใช้งานซึ่งไม่แสดงอีกแล้ว
+-------
+
+✨ เครดิตสคริปต์ ✨
+[ ชื่อสคริปต์ ] โดย [ ผู้สร้าง ] [ สถานะการยืนยัน ]
+
+เราขอบอกว่าสคริปต์ของคุณยอดเยี่ยมมาก และถูกใช้ในโปรเจกต์ของเราเพื่อการดีบักและเพื่อการศึกษา
+ขอบคุณสำหรับผลงานของคุณ :3 ❤️
+- Debugger
+
+-- รายชื่อเครดิต --
+'Ketamine' โดย @Cherry (✓ ยืนยันแล้ว)
+'OG AFEM – Legacy' โดย @Imperial (✓ ยืนยันแล้ว)
+'Chat' โดยผู้ใช้ไม่ทราบชื่อ
+'UNC' โดยผู้ใช้ไม่ทราบชื่อ
+'REM' โดย @evildotcom (X ยังไม่ยืนยัน)
+'GameProber' โดย @Imperial (✓ ยืนยันแล้ว)
+'AudioPlayer' โดยผู้ใช้ไม่ทราบชื่อ
+'EmoteSelect' โดยผู้ใช้ไม่ทราบชื่อ
+'Universal Movement Predictor' โดย @zephyrr (X ยังไม่ยืนยัน)
+'Server Position Predictor' โดย @zephyrr (X ยังไม่ยืนยัน)
+'Open Source Universal Chat' โดย @neutral (X ยังไม่ยืนยัน)
+
+-- แจ้งเตือนสำหรับผู้สร้างสคริปต์ --
+หากคุณเป็นผู้สร้างสคริปต์ที่ระบุไว้ข้างต้น และไม่ต้องการให้สคริปต์ของคุณถูกรวมไว้
+กรุณาติดต่อเราผ่านฟอรัม Discord ของเรา และเราจะลบออกให้ทันที
+]]
+
+List.ab.Hide.Text = "ซ่อน"
+List.ab.Help.Text = "อ้อ ถ้า ExperienceSettings ถูกปิดใช้งาน คุณสามารถซ่อนข้อความได้โดยกดปุ่มนี้"
+
+-- Background
+List.bg.Settings.Buttons.Leave.Text = "ออก"
+List.bg.Settings.Buttons["Reset character"].Text = "รีเซ็ตตัวละคร"
+List.bg.Settings.Buttons.Resume.Text = "กลับเข้าเกม"
+List.bg.Settings.Pmax.SeeAll.Text = "เปิดการตั้งค่า Roblox"
+List.bg.Settings.Pmax.Players.Text = "ผู้เล่น :"
+
+List.bg.Settings.B_Frame.Frame1.Label.Text = "เปิด ValueLabels"
+List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - แนะนำกราฟิก 5+"
+List.bg.Settings.B_Frame.Frame3.Label.Text = "แสงสีขาว"
+List.bg.Settings.B_Frame.Frame4.Label.Text = "แสง RGB"
+List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (เบต้า)"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "โอเวอร์เลย์ความเสียหาย"
+List.bg.Settings.B_Frame.Frame7.Label.Text = "ตัวเลือกเพิ่มเติม"
+
+List.bg.Inner_Background.Toggles.B_Frams.Frame1.Label.Text = "LighterCyan.ai (เลิกพัฒนาแล้ว)"
+List.bg.Inner_Background.Toggles.B_Frams:GetChildren()[13].Label.Text = "แสดงฟิสิกส์"
+List.bg.Inner_Background.Toggles.B_Frams.Frame10.Label.Text = "การตายครั้งล่าสุด"
+List.bg.Inner_Background.Toggles.B_Frams.Frame11.Label.Text = "ServerPositionPredictor (โดย @zephyrr)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame2.Label.Text = "เปิด HealthBar"
+List.bg.Inner_Background.Toggles.B_Frams:GetChildren()[14].Label.Text = "ฟิสิกส์แบบรวม"
+List.bg.Inner_Background.Toggles.B_Frams.Frame3.Label.Text = "ปิดเสียงตาย"
+List.bg.Inner_Background.Toggles.B_Frams.Frame4.Label.Text = "FreeCam (มือถือ)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame5.Label.Text = "Almost Endless Fallen (-50K)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame6.Label.Text = "ไฟฉาย (บุคคลที่หนึ่ง & GFX 6+)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame7.Label.Text = "ESP ไฮไลต์ผู้เล่นและสิ่งที่ไม่ใช่ผู้เล่น"
+List.bg.Inner_Background.Toggles.B_Frams.Frame8.Label.Text = "Shift Lock (มือถือ)"
+List.bg.Inner_Background.Toggles.B_Frams.Frame9.Label.Text = "Hitbox Shower"
+
+-- Load_Background
+List.lb.Skip.Text = "ปิดแถบโหลดน่ารำคาญ"
+List.lb.Credit.Text = "ผู้สร้างโดย @5teve3019D บน ScriptBlox/HaxHell"
+List.lb.Loading.Text = "กำลังโหลด"
+List.lb.Wait.Text = "กำลังเริ่ม ExperienceSettings กรุณารอสักครู่..."
+
+-- ProfileStatus
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.Beta.Text = "อาจมีบั๊ก และยังอยู่ในช่วงเบต้า"
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DeveloperConsole.Text = "เปิดคอนโซลนักพัฒนา"
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTool.Text = "ทิ้งเครื่องมือ"
+List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "ทิ้งเครื่องมือทั้งหมด"
+
+-- Search
+List.sh.SearchBar.Searcher.PlaceholderText = "[ เลือกก่อน ] ตัวค้นหา"
+
 end
 
---======= PATH ========--
-local ES
-local List
-
-task.spawn(function()
-
-    ES = game:GetService("CoreGui")
-        :WaitForChild("ExperienceSettings")
-        :WaitForChild("Menu")
-
-	task.wait(7)
-
-    List = {
-        ai = ES:WaitForChild("AIOpenSource").Frame,
-        ab = ES:WaitForChild("About_Background").Inside,
-        bg = ES:WaitForChild("Background"),
-        hrs = ES:WaitForChild("HolderScreen"),
-        lb = ES:WaitForChild("Load_Background"),
-        ms = ES:WaitForChild("MiddleScreen"),
-        pfs = ES:WaitForChild("ProfileStatus"),
-        sh = ES:WaitForChild("Search"),
-    }
-
-    Eng()
-
-end)
+end
 
 Txt(
     "English",
@@ -2161,7 +2285,43 @@ Txt(
     ins2
 )
 
+Txt(
+    "ไทย",
+    255,255,255,
+    false,nil,
+    true,"เลือก",
+    nil,
+    function(_, btn)
 
+        if not List then
+
+            btn.Text = "ไม่พบ Path"
+            btn.TextColor3 =
+                Color3.fromRGB(255,0,0)
+
+            task.delay(2,function()
+
+                if btn and btn.Parent then
+                    btn.Text = "เลือก"
+                    btn.TextColor3 =
+                        Color3.fromRGB(0,255,0)
+                end
+
+            end)
+
+            return
+        end
+
+        Tha()
+
+        btn.Text = "เลือก"
+        btn.TextColor3 =
+            Color3.fromRGB(255,255,255)
+
+    end,
+    nil,
+    ins2
+)
 
 
 
