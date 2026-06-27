@@ -1,4 +1,4 @@
--- Loader script 2.39
+-- Loader script 2.4
 
 ------------------------------------------------------------------------------------------
 
@@ -1830,15 +1830,28 @@ local function UpdatePainSound(state)
     end
 
 
-    local sound = hrp:FindFirstChild("PainNoise")
+    local sounds = {}
 
-    if not sound or not sound:IsA("Sound") then
-        if painui and painui.Button then
-            painui.Button.Text = "No Sound"
-            painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
-        end
-        return
+for _,v in ipairs(hrp:GetChildren()) do
+    if v.Name == "PainNoise" and v:IsA("Sound") then
+        table.insert(sounds, v)
     end
+end
+
+if #sounds == 0 then
+    if painui and painui.Button then
+        painui.Button.Text = "No Sound"
+        painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+    end
+    return
+end
+
+-- Keep first sound, remove duplicates
+local sound = sounds[1]
+
+for i = 2, #sounds do
+    sounds[i]:Destroy()
+end
 
 
     if SoundState then
