@@ -1,12 +1,10 @@
--- Bah bah 2.1
+-- Bah bah 2.2
 -- LocalScript: HealthBar + PainOverlay + UIScale + Static Noise
--- One ImageLabel only, frame-cycled animation
 
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
-local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
 
@@ -40,6 +38,9 @@ local PAIN_FRAMES = {
 	"rbxassetid://103911595205799",
 }
 
+local DAMAGE_PULSE_DURATION = 0.35
+local DAMAGE_SOUND_DURATION = 0.18
+
 -- ========== STATE ==========
 local innerHealthBar = nil
 local Fill = nil
@@ -47,6 +48,7 @@ local humanoid = nil
 
 local currentFillTween = nil
 local overlayGui = nil
+local overlayHolder = nil
 local overlayImage = nil
 local overlayScale = nil
 local overlaySound = nil
@@ -54,6 +56,10 @@ local overlaySound = nil
 local healthConn = nil
 local painLoopStarted = false
 local frameIndex = 1
+local frameAccumulator = 0
+
+local damageHoldUntil = 0
+local damageSoundUntil = 0
 
 local currentTargetScale = 1
 local currentPulseAmp = 0
@@ -122,7 +128,6 @@ end
 
 local function ensureHealthBarTransparency(gui)
 	if not gui or not gui:IsA("GuiObject") then return end
-
 	if gui:IsA("ImageLabel") or gui:IsA("ImageButton") then
 		pcall(function()
 			gui.ImageTransparency = HEALTHBAR_IMAGE_TRANSPARENCY
@@ -160,32 +165,44 @@ local function setupOverlay()
 	local existing = CoreGui:FindFirstChild("DamageOverlay")
 	if existing and existing:IsA("ScreenGui") then
 		overlayGui = existing
-		overlayImage =
-			overlayGui:FindFirstChild("OverlayImage")
-			or overlayGui:FindFirstChildOfClass("ImageLabel")
-			or overlayGui:FindFirstChildOfClass("ImageButton")
 	else
 		overlayGui = Instance.new("ScreenGui")
 		overlayGui.Name = "DamageOverlay"
 		overlayGui.ResetOnSpawn = false
 		overlayGui.IgnoreGuiInset = true
 		overlayGui.DisplayOrder = 1
-		overlayGui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 		overlayGui.Enabled = true
 		overlayGui.Parent = CoreGui
-		overlayImage = nil
 	end
 
+	overlayHolder = overlayGui:FindFirstChild("OverlayHolder")
+	if not overlayHolder then
+		overlayHolder = Instance.new("Frame")
+		overlayHolder.Name = "OverlayHolder"
+		overlayHolder.Size = UDim2.fromScale(1, 1)
+		overlayHolder.BackgroundTransparency = 1
+		overlayHolder.Parent = overlayGui
+
+		local layout = Instance.new("UIListLayout")
+		layout.Name = "CenterLayout"
+		layout.FillDirection = Enum.FillDirection.Horizontal
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		layout.VerticalAlignment = Enum.VerticalAlignment.Center
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Parent = overlayHolder
+	end
+
+	overlayImage = overlayHolder:FindFirstChild("OverlayImage")
 	if not overlayImage then
-		local ima = Instance.new("ImageLabel")
-		ima.Name = "OverlayImage"
-		ima.Size = UDim2.new(1, 0, 1, 0)
-		ima.BackgroundTransparency = 1
-		ima.Image = PAIN_FRAMES[1]
-		ima.Active = false
-		ima.Visible = false
-		ima.Parent = overlayGui
-		overlayImage = ima
+		overlayImage = Instance.new("ImageLabel")
+		overlayImage.Name = "OverlayImage"
+		overlayImage.Size = UDim2.fromScale(1, 1)
+		overlayImage.BackgroundTransparency = 1
+		overlayImage.Image = PAIN_FRAMES[1]
+		overlayImage.Active = false
+		overlayImage.Visible = false
+		overlayImage.LayoutOrder = 1
+		overlayImage.Parent = overlayHolder
 	end
 
 	overlayScale = overlayImage:FindFirstChildOfClass("UIScale")
@@ -194,27 +211,35 @@ local function setupOverlay()
 		overlayScale.Parent = overlayImage
 	end
 	overlayScale.Scale = 1
+end
 
-	overlaySound = SoundService:FindFirstChild("PainNoise")
-	if not overlaySound then
-		overlaySound = Instance.new("Sound")
-		overlaySound.Name = "PainNoise"
-		overlaySound.SoundId = PAIN_SOUND_ASSET
-		overlaySound.Looped = true
-		overlaySound.Volume = 0
-		overlaySound.Parent = SoundService
+local function bindPainSoundToCharacter(character)
+	if overlaySound then
+		pcall(function()
+			overlaySound:Destroy()
+		end)
+		overlaySound = nil
 	end
+
+	if not character then return end
+	local hrp = character:WaitForChild("HumanoidRootPart", 5)
+	if not hrp then return end
+
+	overlaySound = Instance.new("Sound")
+	overlaySound.Name = "PainNoise"
+	overlaySound.SoundId = PAIN_SOUND_ASSET
+	overlaySound.Looped = true
+	overlaySound.Volume = 0
+	overlaySound.Parent = hrp
 end
 
 local function getPainProfile(percent)
 	percent = math.clamp(percent, 0, 1)
 
-	-- 100%+ = 1
 	if percent >= 0.999 then
 		return 1, 0, 0, 0, false, 0
 	end
 
-	-- 100% -> 90% -> 80% -> 65% -> 50%
 	if percent >= 0.9 then
 		local t = (1 - percent) / 0.1
 		return lerp(1, 1.8, t), 0, 0, 0, false, 0
@@ -229,7 +254,6 @@ local function getPainProfile(percent)
 		return lerp(3.0, 3.4, t), 0, 0, 0, false, 0
 	end
 
-	-- ต่ำกว่า 50% -> scale แบบเต้น + เสียง
 	if percent >= 0.4 then
 		local t = (0.5 - percent) / 0.1
 		return lerp(3.6, 3.0, t), 0.20, lerp(0.5, 1.0, t), lerp(8, 10, t), true, lerp(8, 10, t)
@@ -249,7 +273,7 @@ local function getPainProfile(percent)
 end
 
 local function applyPainProfile(percent)
-	if percent >= 0.999 then
+	if percent >= 0.999 and os.clock() > damageHoldUntil then
 		overlayImage.Visible = false
 		overlayScale.Scale = 1
 		currentTargetScale = 1
@@ -258,25 +282,23 @@ local function applyPainProfile(percent)
 		currentSoundVolume = 0
 		currentSoundPitch = 1
 		currentSoundEnabled = false
+		frameIndex = 1
+		overlayImage.Image = PAIN_FRAMES[1]
 		if overlaySound and overlaySound.IsPlaying then
 			overlaySound:Stop()
-		end
-		frameIndex = 1
-		if overlayImage then
-			overlayImage.Image = PAIN_FRAMES[1]
 		end
 		return
 	end
 
 	local scale, pulseAmp, vol, pitch, soundEnabled, pulseFreq = getPainProfile(percent)
-
-	overlayImage.Visible = true
 	currentTargetScale = scale
 	currentPulseAmp = pulseAmp
 	currentPulseFreq = pulseFreq
 	currentSoundVolume = vol
 	currentSoundPitch = pitch
 	currentSoundEnabled = soundEnabled
+
+	overlayImage.Visible = true
 end
 
 local function startPainLoop()
@@ -304,10 +326,15 @@ local function startPainLoop()
 			end
 
 			local percent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-			applyPainProfile(percent)
+			local recentlyDamaged = os.clock() < damageHoldUntil
 
-			if overlayImage.Visible then
-				if #PAIN_FRAMES > 0 then
+			-- เห็นเฉพาะตอนเลือดต่ำกว่า 50% หรือยังอยู่ในช่วงดาเมจ
+			if percent < 0.5 or recentlyDamaged then
+				applyPainProfile(percent)
+
+				frameAccumulator += PAIN_LOOP_STEP
+				if frameAccumulator >= PAIN_LOOP_STEP then
+					frameAccumulator = 0
 					frameIndex += 1
 					if frameIndex > #PAIN_FRAMES then
 						frameIndex = 1
@@ -316,29 +343,35 @@ local function startPainLoop()
 				end
 
 				local pulse = 0
-				if currentPulseAmp > 0 and currentPulseFreq > 0 then
+				if percent < 0.5 and currentPulseAmp > 0 and currentPulseFreq > 0 then
 					pulse = math.sin(os.clock() * currentPulseFreq) * currentPulseAmp
 				end
 
 				local target = math.clamp(currentTargetScale + pulse, 1, 10)
 				overlayScale.Scale = lerp(overlayScale.Scale, target, 0.35)
 
-				if currentSoundEnabled then
-					if overlaySound then
+				if overlaySound then
+					if percent < 0.5 then
 						overlaySound.Volume = math.clamp(currentSoundVolume, 0, 10)
 						overlaySound.PlaybackSpeed = math.clamp(currentSoundPitch, 0.1, 10)
-
 						if not overlaySound.IsPlaying then
 							overlaySound:Play()
 						end
-					end
-				else
-					if overlaySound and overlaySound.IsPlaying then
+					elseif os.clock() < damageSoundUntil then
+						overlaySound.Volume = 0.5
+						overlaySound.PlaybackSpeed = 1
+						if not overlaySound.IsPlaying then
+							overlaySound:Play()
+						end
+					else
 						overlaySound:Stop()
 					end
 				end
 			else
+				overlayImage.Visible = false
 				overlayScale.Scale = 1
+				frameIndex = 1
+				overlayImage.Image = PAIN_FRAMES[1]
 				if overlaySound and overlaySound.IsPlaying then
 					overlaySound:Stop()
 				end
@@ -411,7 +444,6 @@ local function tweenFillFullOnce()
 
 	pcall(function()
 		fill.Size = UDim2.new(0, 0, 1, 0)
-
 		local tweenInfo = TweenInfo.new(FULL_FILL_TWEEN_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 		local tween = TweenService:Create(fill, tweenInfo, {
 			Size = UDim2.new(1, 0, 1, 0)
@@ -420,7 +452,7 @@ local function tweenFillFullOnce()
 	end)
 end
 
-local function setupHumanoid(h)
+local function setupHumanoid(h, character)
 	if not h then return end
 
 	if healthConn then
@@ -433,6 +465,10 @@ local function setupHumanoid(h)
 	humanoid = h
 	local lastHealth = humanoid.Health
 
+	if character then
+		bindPainSoundToCharacter(character)
+	end
+
 	healthConn = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
 		if not Fill then
 			applyAllFixes()
@@ -443,23 +479,12 @@ local function setupHumanoid(h)
 			percent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
 		end
 
-		-- damage detected / health changed
-		applyPainProfile(percent)
-		tweenFill(percent)
-
-		-- ถ้าฟื้นจนเต็มอีกครั้ง ให้ซ่อน overlay
-		if percent >= 0.999 then
-			overlayImage.Visible = false
-			overlayScale.Scale = 1
-			if overlaySound and overlaySound.IsPlaying then
-				overlaySound:Stop()
-			end
-			frameIndex = 1
-			if overlayImage then
-				overlayImage.Image = PAIN_FRAMES[1]
-			end
+		if lastHealth and humanoid.Health < lastHealth then
+			damageHoldUntil = os.clock() + DAMAGE_PULSE_DURATION
+			damageSoundUntil = os.clock() + DAMAGE_SOUND_DURATION
 		end
 
+		tweenFill(percent)
 		lastHealth = humanoid.Health
 	end)
 end
@@ -468,7 +493,7 @@ local function onCharacterAdded(char)
 	task.spawn(function()
 		local h = char:WaitForChild("Humanoid", 5)
 		if h then
-			setupHumanoid(h)
+			setupHumanoid(h, char)
 		end
 
 		task.wait(0.1)
@@ -486,7 +511,7 @@ player.CharacterAdded:Connect(onCharacterAdded)
 if player.Character then
 	local h = player.Character:FindFirstChild("Humanoid")
 	if h then
-		setupHumanoid(h)
+		setupHumanoid(h, player.Character)
 	end
 	applyAllFixes()
 
