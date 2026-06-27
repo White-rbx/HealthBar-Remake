@@ -1,4 +1,4 @@
--- Loader script 2.32
+-- Loader script 2.33
 
 ------------------------------------------------------------------------------------------
 
@@ -1874,11 +1874,21 @@ local ui = Txt(
 
 task.spawn(function()
 
-    repeat
-        task.wait(.1)
-    until CoreGui:FindFirstChild("DamageOverlay")
+    local LastOverlay = nil
 
-    UpdatePainSound(false)
+    while true do
+        task.wait(0.25)
+
+        local Overlay = CoreGui:FindFirstChild("DamageOverlay")
+
+        if Overlay ~= LastOverlay then
+            LastOverlay = Overlay
+
+            if Overlay then
+                UpdatePainSound(SoundState)
+            end
+        end
+    end
 
 end)
 
