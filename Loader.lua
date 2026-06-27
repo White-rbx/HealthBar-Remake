@@ -1,4 +1,4 @@
--- Loader script 2.25
+-- Loader script 2.3
 
 ------------------------------------------------------------------------------------------
 
@@ -1807,6 +1807,73 @@ Txt(
 
 	ins2
 )
+
+local SoundState = nil -- nil = Waiting
+
+local ui = Txt(
+    "Pain Sound",
+    255,255,255,
+
+    false,nil,
+
+    true,nil,
+
+    function(state)
+
+        -- Waiting
+        if state == nil then
+            ui.Button.Text = "Waiting..."
+            ui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+            return
+        end
+
+        -- OFF
+        if state == false then
+            ui.Button.Text = "OFF"
+            ui.Button.TextColor3 = Color3.fromRGB(255,70,70)
+
+            -- TODO
+            -- Move PainNoise -> CoreGui.DamageOverlay
+
+            return
+        end
+
+        -- ON
+        ui.Button.Text = "ON"
+        ui.Button.TextColor3 = Color3.fromRGB(0,255,120)
+
+        -- TODO
+        -- Move PainNoise -> HumanoidRootPart
+
+    end,
+
+    nil,
+
+    SoundState,
+
+    ins
+)
+
+task.spawn(function()
+
+    while true do
+
+        local gui = CoreGui:FindFirstChild("DamageOverlay")
+
+        if gui then
+            break
+        end
+
+        task.wait(.1)
+
+    end
+
+    SoundState = false
+
+    ui.Button.Text = "OFF"
+    ui.Button.TextColor3 = Color3.fromRGB(255,70,70)
+
+end)
 
 --======= PATH ========--
 local ES
