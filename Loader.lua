@@ -1,4 +1,4 @@
--- Loader script 2.37
+-- Loader script 2.38
 
 ------------------------------------------------------------------------------------------
 
@@ -1818,19 +1818,21 @@ local function UpdatePainSound(state)
 
     SoundState = state
 
-    local overlay = CoreGui:FindFirstChild("DamageOverlay")
-    if not overlay then
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+    if not hrp then
         if painui and painui.Button then
-            painui.Button.Text = "Not Found"
+            painui.Button.Text = "No Character"
             painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
         end
         return
     end
 
 
-    local sound = overlay:FindFirstChild("PainNoise")
+    local sound = hrp:FindFirstChild("PainNoise")
 
-    if not sound then
+    if not sound or not sound:IsA("Sound") then
         if painui and painui.Button then
             painui.Button.Text = "No Sound"
             painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
@@ -1860,7 +1862,19 @@ local function UpdatePainSound(state)
 
 end
 
+local sounds = {}
 
+for _,v in ipairs(hrp:GetChildren()) do
+    if v.Name == "PainNoise" and v:IsA("Sound") then
+        table.insert(sounds, v)
+    end
+end
+
+local sound = sounds[1]
+
+for i = 2, #sounds do
+    sounds[i]:Destroy()
+end
 
 painui = Txt(
     "Pain Sound",
