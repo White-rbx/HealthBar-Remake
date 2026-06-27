@@ -1,4 +1,4 @@
--- Bah bah 2.2
+-- Bah bah 2.3
 -- LocalScript: HealthBar + PainOverlay + UIScale + Static Noise
 
 local RunService = game:GetService("RunService")
@@ -255,21 +255,45 @@ local function getPainProfile(percent)
 	end
 
 	if percent >= 0.4 then
-		local t = (0.5 - percent) / 0.1
-		return lerp(3.6, 3.0, t), 0.20, lerp(0.5, 1.0, t), lerp(8, 10, t), true, lerp(8, 10, t)
-	elseif percent >= 0.3 then
-		local t = (0.4 - percent) / 0.1
-		return lerp(3.0, 2.3, t), 0.10, lerp(1.0, 3.0, t), lerp(10, 12, t), true, lerp(10, 12, t)
-	elseif percent >= 0.2 then
-		local t = (0.3 - percent) / 0.1
-		return lerp(2.3, 1.75, t), 0.25, lerp(3.0, 6.0, t), lerp(12, 14, t), true, lerp(12, 14, t)
-	elseif percent >= 0.1 then
-		local t = (0.2 - percent) / 0.1
-		return lerp(1.75, 1.45, t), 0.15, lerp(6.0, 8.0, t), lerp(14, 16, t), true, lerp(14, 16, t)
-	else
-		local t = math.clamp((0.1 - percent) / 0.1, 0, 1)
-		return lerp(1.45, 1.10, t), 0.10, lerp(8.0, 10.0, t), lerp(16, 18, t), true, lerp(16, 18, t)
-	end
+	local t = (0.5 - percent) / 0.1
+	return lerp(3.6, 3.0, t), 0.20,
+		lerp(3, 5, t),   -- Volume
+		lerp(1.0, 1.1, t), -- PlaybackSpeed
+		true,
+		lerp(8, 10, t)
+
+elseif percent >= 0.3 then
+	local t = (0.4 - percent) / 0.1
+	return lerp(3.0, 2.3, t), 0.10,
+		lerp(5, 7, t),
+		lerp(1.1, 1.5, t),
+		true,
+		lerp(10, 12, t)
+
+elseif percent >= 0.2 then
+	local t = (0.3 - percent) / 0.1
+	return lerp(2.3, 1.75, t), 0.25,
+		lerp(7, 8, t),
+		lerp(1.5, 2.0, t),
+		true,
+		lerp(12, 14, t)
+
+elseif percent >= 0.1 then
+	local t = (0.2 - percent) / 0.1
+	return lerp(1.75, 1.45, t), 0.15,
+		lerp(8, 9, t),
+		lerp(2.0, 2.3, t),
+		true,
+		lerp(14, 16, t)
+
+else
+	local t = math.clamp((0.1 - percent) / 0.1, 0, 1)
+	return lerp(1.45, 1.10, t), 0.10,
+		lerp(9, 10, t),
+		lerp(2.3, 3.0, t),
+		true,
+		lerp(16, 18, t)
+end
 end
 
 local function applyPainProfile(percent)
