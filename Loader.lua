@@ -1,4 +1,4 @@
--- Loader script 2.43
+-- Loader script 2.44
 
 ------------------------------------------------------------------------------------------
 
@@ -1875,10 +1875,14 @@ end
 
 end
 
-local char = player.Character
-local hrp = char and char:FindFirstChild("HumanoidRootPart")
+task.spawn(function()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
 
-hrp.PainNoise.SoundId = ""
+    local sound = hrp:WaitForChild("PainNoise")
+
+    sound.SoundId = ""
+end)
 
 painui = Txt(
     "Pain Sound (DamageOverlay)",
