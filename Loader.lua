@@ -1,4 +1,4 @@
--- Loader script 2.35
+-- Loader script 2.36
 
 ------------------------------------------------------------------------------------------
 
@@ -1812,23 +1812,56 @@ local SoundState = false
 local painui
 
 local function MovePainSound()
+
     local overlay = CoreGui:FindFirstChild("DamageOverlay")
     if not overlay then return end
 
-    local sound = overlay:FindFirstChild("PainNoise")
-    if not sound then return end
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+    if not hrp then return end
+
+
+    local overlaySound = overlay:FindFirstChild("PainNoise")
+    local hrpSound = hrp:FindFirstChild("PainNoise")
+
 
     if SoundState then
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        -- ON
 
-        if hrp and sound.Parent ~= hrp then
-            sound.Parent = hrp
+        if hrpSound then
+            -- Already moved, remove duplicate
+            if overlaySound then
+                overlaySound:Destroy()
+            end
+
+            return
         end
+
+
+        if overlaySound then
+            -- Move from overlay to HRP
+            overlaySound.Parent = hrp
+        end
+
+
     else
-        if sound.Parent ~= overlay then
-            sound.Parent = overlay
+        -- OFF
+
+        if overlaySound then
+
+            -- Overlay already has it
+            if hrpSound then
+                hrpSound:Destroy()
+            end
+
+        elseif hrpSound then
+
+            -- Move back from HRP
+            hrpSound.Parent = overlay
+
         end
+
     end
 end
 
