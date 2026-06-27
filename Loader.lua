@@ -1,4 +1,4 @@
--- Loader script 2.36
+-- Loader script 2.37
 
 ------------------------------------------------------------------------------------------
 
@@ -1809,61 +1809,9 @@ Txt(
 )
 
 local SoundState = false
+local PainSoundId = "rbxassetid://126351915401997"
+
 local painui
-
-local function MovePainSound()
-
-    local overlay = CoreGui:FindFirstChild("DamageOverlay")
-    if not overlay then return end
-
-    local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-
-    if not hrp then return end
-
-
-    local overlaySound = overlay:FindFirstChild("PainNoise")
-    local hrpSound = hrp:FindFirstChild("PainNoise")
-
-
-    if SoundState then
-        -- ON
-
-        if hrpSound then
-            -- Already moved, remove duplicate
-            if overlaySound then
-                overlaySound:Destroy()
-            end
-
-            return
-        end
-
-
-        if overlaySound then
-            -- Move from overlay to HRP
-            overlaySound.Parent = hrp
-        end
-
-
-    else
-        -- OFF
-
-        if overlaySound then
-
-            -- Overlay already has it
-            if hrpSound then
-                hrpSound:Destroy()
-            end
-
-        elseif hrpSound then
-
-            -- Move back from HRP
-            hrpSound.Parent = overlay
-
-        end
-
-    end
-end
 
 
 local function UpdatePainSound(state)
@@ -1871,7 +1819,6 @@ local function UpdatePainSound(state)
     SoundState = state
 
     local overlay = CoreGui:FindFirstChild("DamageOverlay")
-
     if not overlay then
         if painui and painui.Button then
             painui.Button.Text = "Not Found"
@@ -1881,20 +1828,36 @@ local function UpdatePainSound(state)
     end
 
 
+    local sound = overlay:FindFirstChild("PainNoise")
+
+    if not sound then
+        if painui and painui.Button then
+            painui.Button.Text = "No Sound"
+            painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+        end
+        return
+    end
+
+
     if SoundState then
+        -- ON
+        sound.SoundId = PainSoundId
+
         if painui and painui.Button then
             painui.Button.Text = "ON"
             painui.Button.TextColor3 = Color3.fromRGB(0,255,120)
         end
+
     else
+        -- OFF
+        sound.SoundId = ""
+
         if painui and painui.Button then
             painui.Button.Text = "OFF"
             painui.Button.TextColor3 = Color3.fromRGB(255,70,70)
         end
     end
 
-
-    MovePainSound()
 end
 
 
@@ -1919,8 +1882,7 @@ painui = Txt(
 )
 
 
-
--- Overlay watcher
+-- Detect DamageOverlay loading/reloading
 task.spawn(function()
 
     local LastOverlay = nil
@@ -1928,39 +1890,19 @@ task.spawn(function()
     while true do
         task.wait(0.25)
 
-        local Overlay = CoreGui:FindFirstChild("DamageOverlay")
+        local overlay = CoreGui:FindFirstChild("DamageOverlay")
 
-        if Overlay ~= LastOverlay then
+        if overlay ~= LastOverlay then
 
-            LastOverlay = Overlay
+            LastOverlay = overlay
 
-            if Overlay then
-
+            if overlay then
                 UpdatePainSound(SoundState)
-
-                Overlay.ChildAdded:Connect(function(child)
-                    if child.Name == "PainNoise" then
-                        task.wait()
-                        MovePainSound()
-                    end
-                end)
-
             end
+
         end
+
     end
-
-end)
-
-
-
--- Respawn support
-player.CharacterAdded:Connect(function(char)
-
-    char:WaitForChild("HumanoidRootPart")
-
-    task.wait(0.2)
-
-    MovePainSound()
 
 end)
 
