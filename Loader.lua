@@ -1,4 +1,4 @@
--- Loader script 2.33
+-- Loader script 2.34
 
 ------------------------------------------------------------------------------------------
 
@@ -1808,7 +1808,7 @@ Txt(
 	ins2
 )
 
-local SoundState = false -- OFF เป็นค่าเริ่มต้น
+local SoundState = false
 
 local function MovePainSound()
     local overlay = CoreGui:FindFirstChild("DamageOverlay")
@@ -1862,7 +1862,7 @@ local ui = Txt(
     true,nil,
 
     function(state)
-        UpdatePainSound(state)
+        UpdatePainSound(SoundState)
     end,
 
     nil,
@@ -2297,25 +2297,6 @@ end
 
 local CurrentLanguage = "EN"
 
-local function RefreshLanguageButtons()
-
-    EngBtn.TextColor3 =
-        CurrentLanguage == "EN"
-        and Color3.fromRGB(0,255,0)
-        or Color3.fromRGB(255,255,255)
-
-    SpaBtn.TextColor3 =
-        CurrentLanguage == "ES"
-        and Color3.fromRGB(0,255,0)
-        or Color3.fromRGB(255,255,255)
-
-    ThaBtn.TextColor3 =
-        CurrentLanguage == "TH"
-        and Color3.fromRGB(0,255,0)
-        or Color3.fromRGB(255,255,255)
-
-end
-
 local EngBtn = Txt(
     "English",
     255,255,255,
@@ -2361,7 +2342,28 @@ local ThaBtn = Txt(
     ins2
 ).Button
 
+local function RefreshLanguageButtons()
 
+    if not (EngBtn and SpaBtn and ThaBtn) then
+        return
+	end
+
+    EngBtn.TextColor3 =
+        CurrentLanguage == "EN"
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,255,255)
+
+    SpaBtn.TextColor3 =
+        CurrentLanguage == "ES"
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,255,255)
+
+    ThaBtn.TextColor3 =
+        CurrentLanguage == "TH"
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,255,255)
+
+end
 
 
 
