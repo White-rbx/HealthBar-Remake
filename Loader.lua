@@ -1,4 +1,4 @@
--- Loader script 2.38
+-- Loader script 2.39
 
 ------------------------------------------------------------------------------------------
 
@@ -1860,20 +1860,6 @@ local function UpdatePainSound(state)
         end
     end
 
-end
-
-local sounds = {}
-
-for _,v in ipairs(hrp:GetChildren()) do
-    if v.Name == "PainNoise" and v:IsA("Sound") then
-        table.insert(sounds, v)
-    end
-end
-
-local sound = sounds[1]
-
-for i = 2, #sounds do
-    sounds[i]:Destroy()
 end
 
 painui = Txt(
