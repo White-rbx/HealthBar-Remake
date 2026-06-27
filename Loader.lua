@@ -1,4 +1,4 @@
--- Loader script 2.4
+-- Loader script 2.41
 
 ------------------------------------------------------------------------------------------
 
@@ -1874,6 +1874,8 @@ end
     end
 
 end
+
+sound.SoundID = ""
 
 painui = Txt(
     "Pain Sound",
