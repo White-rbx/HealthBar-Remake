@@ -1,4 +1,4 @@
--- Loader script 2.44
+-- Loader script 2.45
 
 ------------------------------------------------------------------------------------------
 
@@ -1875,15 +1875,6 @@ end
 
 end
 
-task.spawn(function()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart")
-
-    local sound = hrp:WaitForChild("PainNoise")
-
-    sound.SoundId = ""
-end)
-
 painui = Txt(
     "Pain Sound (DamageOverlay)",
     255,255,255,
@@ -1902,6 +1893,18 @@ painui = Txt(
 
     ins
 )
+
+player.CharacterAdded:Connect(function(char)
+
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+    hrp.ChildAdded:Connect(function(child)
+        if child.Name == "PainNoise" and child:IsA("Sound") then
+            UpdatePainSound(SoundState)
+        end
+    end)
+
+end)
 
 
 -- Detect DamageOverlay loading/reloading
