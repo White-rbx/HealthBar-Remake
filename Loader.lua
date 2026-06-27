@@ -1,4 +1,4 @@
--- Loader script 2.31
+-- Loader script 2.32
 
 ------------------------------------------------------------------------------------------
 
@@ -1808,11 +1808,52 @@ Txt(
 	ins2
 )
 
-local SoundState = nil
+local SoundState = false -- OFF เป็นค่าเริ่มต้น
 
-local ui
+local function MovePainSound()
+    local overlay = CoreGui:FindFirstChild("DamageOverlay")
+    if not overlay then return end
 
-ui = Txt(
+    local sound = overlay:FindFirstChild("PainNoise")
+    if not sound then return end
+
+    if SoundState then
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+        if hrp and sound.Parent ~= hrp then
+            sound.Parent = hrp
+        end
+    else
+        if sound.Parent ~= overlay then
+            sound.Parent = overlay
+        end
+    end
+end
+
+local function UpdatePainSound(state)
+
+    local overlay = CoreGui:FindFirstChild("DamageOverlay")
+    if not overlay then
+        ui.Button.Text = "Not Found"
+        ui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+        return
+    end
+
+    SoundState = state
+
+    if SoundState then
+        ui.Button.Text = "ON"
+        ui.Button.TextColor3 = Color3.fromRGB(0,255,120)
+    else
+        ui.Button.Text = "OFF"
+        ui.Button.TextColor3 = Color3.fromRGB(255,70,70)
+    end
+
+    MovePainSound()
+end
+
+local ui = Txt(
     "Pain Sound",
     255,255,255,
 
@@ -1820,54 +1861,24 @@ ui = Txt(
 
     true,nil,
 
-    nil,
-
-    function()
-
-        if SoundState == nil then
-            return
-        end
-
-        SoundState = not SoundState
-
-        if SoundState then
-            ui.Button.Text = "ON"
-            ui.Button.TextColor3 = Color3.fromRGB(0,255,120)
-
-            -- Move -> HRP
-
-        else
-            ui.Button.Text = "OFF"
-            ui.Button.TextColor3 = Color3.fromRGB(255,70,70)
-
-            -- Move -> DamageOverlay
-        end
-
+    function(state)
+        UpdatePainSound(state)
     end,
 
     nil,
+
+    SoundState,
 
     ins
 )
 
 task.spawn(function()
 
-    while true do
-
-        local gui = CoreGui:FindFirstChild("DamageOverlay")
-
-        if gui then
-            break
-        end
-
+    repeat
         task.wait(.1)
+    until CoreGui:FindFirstChild("DamageOverlay")
 
-    end
-
-    SoundState = false
-
-    ui.Button.Text = "OFF"
-    ui.Button.TextColor3 = Color3.fromRGB(255,70,70)
+    UpdatePainSound(false)
 
 end)
 
@@ -2018,7 +2029,7 @@ List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTool.Text = "Drop Tool"
 List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "Drop all tools"
 
 -- Search
-List.sh.SearchBar.Searcher.PlaceholderText = "[ Select first ] Searcher"
+List.sh.TopFrame.SearchBar.Searcher.PlaceholderText = "[ Select first ] Searcher"
 
 end
 
@@ -2144,7 +2155,7 @@ List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTool.Text = "Soltar her
 List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "Soltar todas las herramientas"
 
 -- Search
-List.sh.SearchBar.Searcher.PlaceholderText = "[ Selecciona primero ] Buscador"
+List.sh.TopFrame.SearchBar.Searcher.PlaceholderText = "[ Selecciona primero ] Buscador"
 
 end
 
@@ -2270,7 +2281,7 @@ List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTool.Text = "ทิ้�
 List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "ทิ้งเครื่องมือทั้งหมด"
 
 -- Search
-List.sh.SearchBar.Searcher.PlaceholderText = "[ เลือกก่อน ] ตัวค้นหา"
+List.sh.TopFrame.SearchBar.Searcher.PlaceholderText = "[ เลือกก่อน ] ตัวค้นหา"
 
 end
 
