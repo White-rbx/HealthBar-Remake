@@ -1,4 +1,4 @@
--- Loader script 2.45
+-- Loader script 2.46
 
 ------------------------------------------------------------------------------------------
 
@@ -1819,9 +1819,8 @@ local function UpdatePainSound(state)
     SoundState = state
 
     local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-    if not hrp then
+    if not char then
         if painui and painui.Button then
             painui.Button.Text = "No Character"
             painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
@@ -1830,28 +1829,41 @@ local function UpdatePainSound(state)
     end
 
 
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+
+    if not hrp then
+        if painui and painui.Button then
+            painui.Button.Text = "No HRP"
+            painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+        end
+        return
+    end
+
+
     local sounds = {}
 
-for _,v in ipairs(hrp:GetChildren()) do
-    if v.Name == "PainNoise" and v:IsA("Sound") then
-        table.insert(sounds, v)
+    for _,v in ipairs(hrp:GetChildren()) do
+        if v.Name == "PainNoise" and v:IsA("Sound") then
+            table.insert(sounds, v)
+        end
     end
-end
 
-if #sounds == 0 then
-    if painui and painui.Button then
-        painui.Button.Text = "No Sound"
-        painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+
+    if #sounds == 0 then
+        if painui and painui.Button then
+            painui.Button.Text = "No Sound"
+            painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+        end
+        return
     end
-    return
-end
 
--- Keep first sound, remove duplicates
-local sound = sounds[1]
 
-for i = 2, #sounds do
-    sounds[i]:Destroy()
-end
+    -- Keep one PainNoise
+    local sound = sounds[1]
+
+    for i = 2, #sounds do
+        sounds[i]:Destroy()
+    end
 
 
     if SoundState then
@@ -1875,6 +1887,8 @@ end
 
 end
 
+
+
 painui = Txt(
     "Pain Sound (DamageOverlay)",
     255,255,255,
@@ -1894,40 +1908,50 @@ painui = Txt(
     ins
 )
 
-player.CharacterAdded:Connect(function(char)
+
+
+local function WatchPainSound(char)
 
     local hrp = char:WaitForChild("HumanoidRootPart")
 
-    hrp.ChildAdded:Connect(function(child)
-        if child.Name == "PainNoise" and child:IsA("Sound") then
+
+    -- If PainNoise already exists
+    task.spawn(function()
+        local sound = hrp:WaitForChild("PainNoise", 5)
+
+        if sound then
             UpdatePainSound(SoundState)
         end
     end)
 
-end)
 
+    -- If PainNoise appears later
+    hrp.ChildAdded:Connect(function(child)
 
--- Detect DamageOverlay loading/reloading
-task.spawn(function()
+        if child.Name == "PainNoise" and child:IsA("Sound") then
 
-    local LastOverlay = nil
+            task.wait()
 
-    while true do
-        task.wait(0.25)
-
-        local overlay = CoreGui:FindFirstChild("DamageOverlay")
-
-        if overlay ~= LastOverlay then
-
-            LastOverlay = overlay
-
-            if overlay then
-                UpdatePainSound(SoundState)
-            end
+            UpdatePainSound(SoundState)
 
         end
 
-    end
+    end)
+
+end
+
+
+
+-- First spawn
+if player.Character then
+    WatchPainSound(player.Character)
+end
+
+
+-- Respawn
+player.CharacterAdded:Connect(function(char)
+
+    WatchPainSound(char)
 
 end)
 
