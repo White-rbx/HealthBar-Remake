@@ -1,4 +1,4 @@
--- Loader script 2.34
+-- Loader script 2.35
 
 ------------------------------------------------------------------------------------------
 
@@ -1809,6 +1809,7 @@ Txt(
 )
 
 local SoundState = false
+local painui
 
 local function MovePainSound()
     local overlay = CoreGui:FindFirstChild("DamageOverlay")
@@ -1831,29 +1832,41 @@ local function MovePainSound()
     end
 end
 
-local function UpdatePainSound(state)
 
-    local overlay = CoreGui:FindFirstChild("DamageOverlay")
-    if not overlay then
-        ui.Button.Text = "Not Found"
-        ui.Button.TextColor3 = Color3.fromRGB(170,170,170)
-        return
-    end
+local function UpdatePainSound(state)
 
     SoundState = state
 
-    if SoundState then
-        ui.Button.Text = "ON"
-        ui.Button.TextColor3 = Color3.fromRGB(0,255,120)
-    else
-        ui.Button.Text = "OFF"
-        ui.Button.TextColor3 = Color3.fromRGB(255,70,70)
+    local overlay = CoreGui:FindFirstChild("DamageOverlay")
+
+    if not overlay then
+        if painui and painui.Button then
+            painui.Button.Text = "Not Found"
+            painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+        end
+        return
     end
+
+
+    if SoundState then
+        if painui and painui.Button then
+            painui.Button.Text = "ON"
+            painui.Button.TextColor3 = Color3.fromRGB(0,255,120)
+        end
+    else
+        if painui and painui.Button then
+            painui.Button.Text = "OFF"
+            painui.Button.TextColor3 = Color3.fromRGB(255,70,70)
+        end
+    end
+
 
     MovePainSound()
 end
 
-local ui = Txt(
+
+
+painui = Txt(
     "Pain Sound",
     255,255,255,
 
@@ -1861,17 +1874,20 @@ local ui = Txt(
 
     true,nil,
 
-    function(state)
-        UpdatePainSound(SoundState)
-    end,
-
     nil,
+
+    function(state)
+        UpdatePainSound(state)
+    end,
 
     SoundState,
 
     ins
 )
 
+
+
+-- Overlay watcher
 task.spawn(function()
 
     local LastOverlay = nil
@@ -1882,13 +1898,36 @@ task.spawn(function()
         local Overlay = CoreGui:FindFirstChild("DamageOverlay")
 
         if Overlay ~= LastOverlay then
+
             LastOverlay = Overlay
 
             if Overlay then
+
                 UpdatePainSound(SoundState)
+
+                Overlay.ChildAdded:Connect(function(child)
+                    if child.Name == "PainNoise" then
+                        task.wait()
+                        MovePainSound()
+                    end
+                end)
+
             end
         end
     end
+
+end)
+
+
+
+-- Respawn support
+player.CharacterAdded:Connect(function(char)
+
+    char:WaitForChild("HumanoidRootPart")
+
+    task.wait(0.2)
+
+    MovePainSound()
 
 end)
 
