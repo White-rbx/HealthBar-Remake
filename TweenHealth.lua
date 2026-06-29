@@ -1,4 +1,4 @@
--- Bah bah 2.351
+-- Bah bah 2.352
 -- LocalScript: HealthBar + PainOverlay + UIScale + Static Noise
 
 local RunService = game:GetService("RunService")
@@ -18,23 +18,23 @@ local FULL_FILL_TWEEN_TIME = 5
 local PAIN_SOUND_ASSET = "rbxassetid://126351915401997" -- default, original: rbxassetid://126351915401997
 
 local PAIN_FRAMES = {
-	"rbxassetid://96879254983434",
-	"rbxassetid://78560495271932",
-	"rbxassetid://93946025207462",
-	"rbxassetid://105257528758532",
-	"rbxassetid://73483179055064",
-	"rbxassetid://136010240858607",
-	"rbxassetid://80073454439641",
-	"rbxassetid://129411412379170",
-	"rbxassetid://113905008572350",
-	"rbxassetid://76768283876168",
-	"rbxassetid://133442935057291",
-	"rbxassetid://99707786821960",
-	"rbxassetid://128020817481662",
-	"rbxassetid://85745216910474",
-	"rbxassetid://77614183505418",
-	"rbxassetid://80292339864919",
-	"rbxassetid://103911595205799",
+    "rbxassetid://96879254983434",
+    "rbxassetid://78560495271932",
+    "rbxassetid://93946025207462",
+    "rbxassetid://105257528758532",
+    "rbxassetid://73483179055064",
+    "rbxassetid://129859585758269",
+    "rbxassetid://136911054416816",
+    "rbxassetid://76279489893641",
+    "rbxassetid://73479414373169",
+    "rbxassetid://119223450722196",
+    "rbxassetid://133591090239187",
+    "rbxassetid://100019676388141",
+    "rbxassetid://140378202061940",
+    "rbxassetid://90055648136400",
+    "rbxassetid://122553589002743",
+    "rbxassetid://101480675389306",
+    "rbxassetid://81455574803019",
 }
 
 local ContentProvider = game:GetService("ContentProvider")
