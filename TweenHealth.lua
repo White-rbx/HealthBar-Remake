@@ -1,4 +1,4 @@
--- Bah bah 2.32
+-- Bah bah 2.35
 -- LocalScript: HealthBar + PainOverlay + UIScale + Static Noise
 
 local RunService = game:GetService("RunService")
@@ -14,7 +14,8 @@ local UICORNER_RADIUS = UDim.new(1, 0)
 local HEALTHBAR_IMAGE_TRANSPARENCY = 1
 
 local FULL_FILL_TWEEN_TIME = 5
-local PAIN_LOOP_STEP = 0.02
+local ALL_PAIN_FRAMES = 17
+local PAIN_LOOP_STEP = 1 / ALL_PAIN_FRAMES
 
 local PAIN_SOUND_ASSET = "rbxassetid://126351915401997" -- default, original: rbxassetid://126351915401997
 
@@ -37,6 +38,16 @@ local PAIN_FRAMES = {
 	"rbxassetid://80292339864919",
 	"rbxassetid://103911595205799",
 }
+
+local ContentProvider = game:GetService("ContentProvider")
+
+local preload = {}
+
+for _, imageId in ipairs(ALL_PAIN_FRAMES) do
+	table.insert(preload, imageId)
+end
+
+ContentProvider:PreloadAsync(preload)
 
 local DAMAGE_PULSE_DURATION = 0.35
 local DAMAGE_SOUND_DURATION = 0.18
