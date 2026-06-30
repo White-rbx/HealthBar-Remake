@@ -1,4 +1,4 @@
--- Bah bah 2.352
+-- Bah bah 2.36
 -- LocalScript: HealthBar + PainOverlay + UIScale + Static Noise
 
 local RunService = game:GetService("RunService")
@@ -210,6 +210,7 @@ local function setupOverlay()
 		overlayImage.Name = "OverlayImage"
 		overlayImage.Size = UDim2.fromScale(1, 1)
 		overlayImage.BackgroundTransparency = 1
+		overlayImage.ImageTransparency = 0.25
 		overlayImage.Image = PAIN_FRAMES[1]
 		overlayImage.Active = false
 		overlayImage.Visible = false
