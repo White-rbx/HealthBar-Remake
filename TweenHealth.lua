@@ -1,4 +1,4 @@
--- Bah bah 2.37
+-- Bah bah 2.373
 -- LocalScript: HealthBar + PainOverlay + UIScale + Static Noise
 
 local RunService = game:GetService("RunService")
@@ -368,57 +368,95 @@ local function startPainLoop()
 			-- เห็นเฉพาะตอนเลือดต่ำกว่า 50% หรือยังอยู่ในช่วงดาเมจ
 			if percent < 0.5 or recentlyDamaged then
 
-    -- เพิ่งเข้าช่วง Damage Overlay
-    if not overlayImage.Visible then
-        overlayScale.Scale = 10
-        overlayImage.Visible = true
-    end
+	-- เข้าสู่ Damage Overlay
+	if not overlayImage.Visible then
+		overlayScale.Scale = 10
+		overlayImage.Visible = true
+	end
 
-    applyPainProfile(percent)
+	applyPainProfile(percent)
 
-    frameAccumulator += PAIN_LOOP_STEP
-    if frameAccumulator >= PAIN_LOOP_STEP then
-        frameAccumulator = 0
-        frameIndex += 1
-        if frameIndex > #PAIN_FRAMES then
-            frameIndex = 1
-        end
-        overlayImage.Image = PAIN_FRAMES[frameIndex]
-    end
+	-- Animation
+	frameAccumulator += PAIN_LOOP_STEP
+	if frameAccumulator >= PAIN_LOOP_STEP then
+		frameAccumulator = 0
 
-    local pulse = 0
-    if percent < 0.5 and currentPulseAmp > 0 then
-        pulse = math.sin(os.clock() * currentPulseFreq) * currentPulseAmp
-    end
+		frameIndex += 1
+		if frameIndex > #PAIN_FRAMES then
+			frameIndex = 1
+		end
 
-    local target = math.clamp(currentTargetScale + pulse, 1, 10)
+		overlayImage.Image = PAIN_FRAMES[frameIndex]
+	end
 
-    overlayScale.Scale = lerp(
-        overlayScale.Scale,
-        target,
-        0.20 -- ปรับความเร็ว Tween ได้
-    )
+	-- Pulse
+	local pulse = 0
+	if percent < 0.5 and currentPulseAmp > 0 then
+		pulse = math.sin(os.clock() * currentPulseFreq) * currentPulseAmp
+	end
+
+	local target = math.clamp(currentTargetScale + pulse, 1, 10)
+
+	overlayScale.Scale = lerp(
+		overlayScale.Scale,
+		target,
+		0.20
+	)
+
+	-- ===== Pain Sound (ใส่กลับมา) =====
+	if overlaySound then
+
+		if percent < 0.5 then
+
+			overlaySound.Volume =
+				math.clamp(currentSoundVolume, 0, 10)
+
+			overlaySound.PlaybackSpeed =
+				math.clamp(currentSoundPitch, 0.1, 10)
+
+			if not overlaySound.IsPlaying then
+				overlaySound:Play()
+			end
+
+		elseif os.clock() < damageSoundUntil then
+
+			overlaySound.Volume = 0.5
+			overlaySound.PlaybackSpeed = 1
+
+			if not overlaySound.IsPlaying then
+				overlaySound:Play()
+			end
+
+		else
+
+			if overlaySound.IsPlaying then
+				overlaySound:Stop()
+			end
+
+		end
+
+	end
 
 else
 
-    -- ออกจากโหมด Damage
-    overlayScale.Scale = lerp(
-        overlayScale.Scale,
-        10,
-        0.20
-    )
+	-- ออกจาก Damage Overlay
+	overlayScale.Scale = lerp(
+		overlayScale.Scale,
+		10,
+		0.20
+	)
 
-    if math.abs(overlayScale.Scale - 10) < 0.05 then
-        overlayScale.Scale = 10
-        overlayImage.Visible = false
-    end
+	if math.abs(overlayScale.Scale - 10) < 0.05 then
+		overlayScale.Scale = 10
+		overlayImage.Visible = false
+	end
 
-    frameIndex = 1
-    overlayImage.Image = PAIN_FRAMES[1]
+	frameIndex = 1
+	overlayImage.Image = PAIN_FRAMES[1]
 
-    if overlaySound and overlaySound.IsPlaying then
-        overlaySound:Stop()
-    end
+	if overlaySound and overlaySound.IsPlaying then
+		overlaySound:Stop()
+	end
 
 end
 		end
