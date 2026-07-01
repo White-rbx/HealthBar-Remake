@@ -1,4 +1,4 @@
--- Bah bah 2.374
+-- Bah bah 2.375
 -- LocalScript: HealthBar + PainOverlay + UIScale + Static Noise
 
 local RunService = game:GetService("RunService")
@@ -443,7 +443,7 @@ else
 	overlayScale.Scale = lerp(
 		overlayScale.Scale,
 		10,
-		0.10
+		0.05
 	)
 
 	if math.abs(overlayScale.Scale - 10) < 0.05 then
