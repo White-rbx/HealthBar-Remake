@@ -1,4 +1,4 @@
--- Loader script 2.46
+-- Loader script 2.47
 
 ------------------------------------------------------------------------------------------
 
@@ -2072,7 +2072,7 @@ List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - Recommend graphics 5+"
 List.bg.Settings.B_Frame.Frame3.Label.Text = "White Light"
 List.bg.Settings.B_Frame.Frame4.Label.Text = "RGB Light"
 List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (Beta)"
-List.bg.Settings.B_Frame.Frame6.Label.Text = "Damage Overlay"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "<stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ EPILEPSY WARNING</b></font></stroke>"
 List.bg.Settings.B_Frame.Frame7.Label.Text = "MoreToggles"
 
 List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (Discontinued)"
@@ -2198,7 +2198,7 @@ List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - Se recomiendan gráficos
 List.bg.Settings.B_Frame.Frame3.Label.Text = "Luz blanca"
 List.bg.Settings.B_Frame.Frame4.Label.Text = "Luz RGB"
 List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (Beta)"
-List.bg.Settings.B_Frame.Frame6.Label.Text = "Superposición de daño"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "Superposición de daño <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ ADVERTENCIA SOBRE EPILEPSIA</b></font></stroke>"
 List.bg.Settings.B_Frame.Frame7.Label.Text = "Más toggles"
 
 List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (Descontinuado)"
@@ -2324,7 +2324,7 @@ List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - แนะนำกรา
 List.bg.Settings.B_Frame.Frame3.Label.Text = "แสงสีขาว"
 List.bg.Settings.B_Frame.Frame4.Label.Text = "แสง RGB"
 List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (เบต้า)"
-List.bg.Settings.B_Frame.Frame6.Label.Text = "โอเวอร์เลย์ความเสียหาย"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "โอเวอร์เลย์ความเสียหาย <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ คำเตือน: หากมีโรคลมชัก แนะนำห้ามใช้</b></font></stroke>"
 List.bg.Settings.B_Frame.Frame7.Label.Text = "ตัวเลือกเพิ่มเติม"
 
 List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (เลิกพัฒนาแล้ว)"
