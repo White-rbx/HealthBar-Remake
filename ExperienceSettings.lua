@@ -1,4 +1,4 @@
--- Ok 2.7
+-- Ok 2.71
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1072,7 +1072,7 @@ local function createToggle(parent, text, callback, defaultState)
     bar.Name = "Bar"
     bar.Size = UDim2.new(0.4,0,1,0)
     bar.Position = UDim2.new(0.6,0,0,0)
-    bar.BackgroundColor3 = Color3.fromRGB(66,66,66)
+    bar.BackgroundColor3 = Color3.fromRGB(0,0,0)
     bar.Parent = f
     createUICorner(bar,0.3,0)
 
@@ -1089,6 +1089,7 @@ local function createToggle(parent, text, callback, defaultState)
     txt.TextScaled = true
     txt.TextXAlignment = Enum.TextXAlignment.Left
     txt.Text = text
+	txt.TextColor3 = Color3.new(1,1,1)
 	txt.RichText = true
     txt.Parent = f
 
@@ -1418,7 +1419,7 @@ end, false)
 
 
 
-createToggle(BFrame, "ESP (Beta)", function(state)
+createToggle(BFrame, "ESP", function(state)
     if state then
         if _G.EnableESP then pcall(_G.EnableESP) end
     else
@@ -1738,7 +1739,7 @@ lder.Size = UDim2.new(0.65,0,1,0)
 local DamageOverlay = game:GetService("CoreGui"):WaitForChild("DamageOverlay")
 
 -- ใช้ฟังก์ชัน createToggle ที่คุณมีอยู่แล้ว
-createToggle(BFrame, "Damage Overlay <font color='#ff5555'><b>⚠ EPILEPSY WARNING</b></font>", function(state)
+createToggle(BFrame, "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ EPILEPSY WARNING</b></font></stroke>", function(state)
 	DamageOverlay.Enabled = state
 end, false) -- true = เปิดเริ่มต้น
 
