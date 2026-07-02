@@ -1,4 +1,4 @@
--- Ok 2.71
+-- Ok 2.72
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1065,6 +1065,7 @@ local function createToggle(parent, text, callback, defaultState)
     f.Name = "Frame" .. toggleCount
     f.Size = UDim2.new(1,0,0.1,0)
     f.BackgroundTransparency = 0
+	f.BackgroundColor3 = Color3.new(0,0,0)
     f.Parent = parent
     createUICorner(f, 0.3, 0)
 
@@ -1072,7 +1073,7 @@ local function createToggle(parent, text, callback, defaultState)
     bar.Name = "Bar"
     bar.Size = UDim2.new(0.4,0,1,0)
     bar.Position = UDim2.new(0.6,0,0,0)
-    bar.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    bar.BackgroundColor3 = Color3.fromRGB(66,66,66)
     bar.Parent = f
     createUICorner(bar,0.3,0)
 
