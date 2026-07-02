@@ -1,4 +1,4 @@
--- So uhm just a script lol. 5.24
+-- So uhm just a script lol. 5.25
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1429,7 +1429,7 @@ local function createToggle(parent, text, callback, defaultState)
     f.Size = UDim2.new(1,0,0.1,0)
     f.BackgroundTransparency = 0
     f.Parent = parent
-    Corner(f, 0.3, 0)
+    Corner(0.3, 0,f)
 
     local bar = Instance.new("Frame")
     bar.Name = "Bar"
@@ -1437,13 +1437,13 @@ local function createToggle(parent, text, callback, defaultState)
     bar.Position = UDim2.new(0.6,0,0,0)
     bar.BackgroundColor3 = Color3.fromRGB(0,0,0)
     bar.Parent = f
-    Corner(bar,0.3,0)
+    Corner(0.3,0,bar)
 
     local but = Instance.new("TextButton")
     but.Name = "ToggleButton"
     but.Size = UDim2.new(0.5,0,1,0)
     but.Parent = bar
-    Corner(but,0.3,0)
+    Corner(0.3,0,but)
 
     local txt = Instance.new("TextLabel")
     txt.Name = "Label"
