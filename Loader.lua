@@ -1,4 +1,4 @@
--- Loader script 2.47
+-- Loader script 2.48
 
 ------------------------------------------------------------------------------------------
 
@@ -2072,7 +2072,7 @@ List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - Recommend graphics 5+"
 List.bg.Settings.B_Frame.Frame3.Label.Text = "White Light"
 List.bg.Settings.B_Frame.Frame4.Label.Text = "RGB Light"
 List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (Beta)"
-List.bg.Settings.B_Frame.Frame6.Label.Text = "<stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ EPILEPSY WARNING</b></font></stroke>"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ EPILEPSY WARNING</b></font></stroke>"
 List.bg.Settings.B_Frame.Frame7.Label.Text = "MoreToggles"
 
 List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (Discontinued)"
