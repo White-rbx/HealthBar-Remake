@@ -1,4 +1,4 @@
--- So this another script lol 1.01
+-- So this another script lol 1.1
 
 
 -- =====>> Saved Functions <<=====
@@ -150,8 +150,9 @@ local function createToggle(parent, text, callback, defaultState)
     f.Name = "Frame" .. toggleCount
     f.Size = UDim2.new(1,0,0.05,0)
     f.BackgroundTransparency = 0
+	f.BackgroundColor3 = Color3.new(0,0,0)
     f.Parent = parent
-    Corner(0.3, 0, f)
+    Corner(0.3, 0,f)
 
     local bar = Instance.new("Frame")
     bar.Name = "Bar"
@@ -174,6 +175,8 @@ local function createToggle(parent, text, callback, defaultState)
     txt.TextScaled = true
     txt.TextXAlignment = Enum.TextXAlignment.Left
     txt.Text = text
+	txt.TextColor3 = Color3.new(1,1,1)
+	txt.RichText = true
     txt.Parent = f
 
     -- Toggle Logic
