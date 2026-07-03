@@ -1,4 +1,4 @@
--- Loader script 2.48
+-- Loader script 2.49
 
 ------------------------------------------------------------------------------------------
 
@@ -2324,7 +2324,7 @@ List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - แนะนำกรา
 List.bg.Settings.B_Frame.Frame3.Label.Text = "แสงสีขาว"
 List.bg.Settings.B_Frame.Frame4.Label.Text = "แสง RGB"
 List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (เบต้า)"
-List.bg.Settings.B_Frame.Frame6.Label.Text = "โอเวอร์เลย์ความเสียหาย <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ คำเตือน: หากมีโรคลมชัก แนะนำห้ามใช้</b></font></stroke>"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "โอเวอร์เลย์ความเสียหาย <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ คำเตือน: หากมีโรคลมชัก ไม่แนะนำให้ใช้</b></font></stroke>"
 List.bg.Settings.B_Frame.Frame7.Label.Text = "ตัวเลือกเพิ่มเติม"
 
 List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (เลิกพัฒนาแล้ว)"
