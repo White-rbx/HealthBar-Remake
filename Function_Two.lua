@@ -1,4 +1,4 @@
--- So this another script lol 1.22
+-- So this another script lol 1.23
 
 
 -- =====>> Saved Functions <<=====
@@ -521,12 +521,15 @@ end)
 --// TOGGLES (EXAMPLE)
 --// =====================================================
 
-createToggle(BFrame, "Show Physics", "Enabling this function will show you colorful lines called 'player speedometers' and landing points indicating where you will land.", function(on)
+createToggle(BFrame, "Show Physics",[[<b><u>Show Physics</u></b>
+Displays colorful trajectory lines ("player speedometers") and landing prediction points showing where your character is expected to land.]],
+	function(on)
     Physics.Enabled = on
     Physics.Global = false
 end, false)
 
-createToggle(BFrame, "Global Physics", "It's like Show Physics Toggle, but you're just seeing the physics of other players and objects too.", function(on)
+createToggle(BFrame, "Global Physics", [[<b><u>Global Physics</u></b>
+Same as Show Physics Toggle, but you're just seeing the physics of other players and objects too.]], function(on)
     Physics.Enabled = on
     Physics.Global = on
 end, false)
