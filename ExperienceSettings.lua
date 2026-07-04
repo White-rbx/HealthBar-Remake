@@ -452,6 +452,7 @@ local StarterGui = game:GetService("StarterGui")
 local GuiService = game:GetService("GuiService")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
+local TextService = game:GetService("TextService")
 
 -- ======= Helpers =======
 local function createUICorner(parent, scale, offset)
