@@ -1,4 +1,4 @@
--- Ok 2.72
+-- Ok 2.73
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1740,7 +1740,7 @@ lder.Size = UDim2.new(0.65,0,1,0)
 local DamageOverlay = game:GetService("CoreGui"):WaitForChild("DamageOverlay")
 
 -- ใช้ฟังก์ชัน createToggle ที่คุณมีอยู่แล้ว
-createToggle(BFrame, "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ EPILEPSY WARNING</b></font></stroke>", function(state)
+createToggle(BFrame, "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ FLASHING LIGHTS / PHOTOSENSITIVE EPILEPSY WARNING</b></font></stroke>", function(state)
 	DamageOverlay.Enabled = state
 end, false) -- true = เปิดเริ่มต้น
 
