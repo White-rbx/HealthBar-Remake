@@ -1,4 +1,4 @@
--- Ok 2.73
+-- Ok 3
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -478,6 +478,26 @@ local function createUIListLayout(parent, scale, offset, HZ, VT, FILL)
     list.Parent = parent
     return list
 end
+
+-- ====FUNCTION UISTROKE=====
+local ASMBorder = Enum.ApplyStrokeMode.Border
+local ASMContextual = Enum.ApplyStrokeMode.Contextual
+
+local LJMBevel = Enum.LineJoinMode.Bevel
+local LJMMiter = Enum.LineJoinMode.Miter
+local LJMRound = Enum.LineJoinMode.Round
+
+local function createUIStroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+    local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
+    stroke.ApplyStrokeMode = ASM or ASMBorder
+    stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
+    stroke.LineJoinMode = LJM or LJMRound
+    stroke.Thickness = Tn or 1
+    stroke.Transparency = Transy or 0
+    stroke.Parent = parent
+    return stroke
+end
+-- =====END FUNCTION UISTROKE=====
 
 local function tweenObject(obj, props, time, style, direction)
     time = time or 0.28
@@ -1058,7 +1078,7 @@ local UIList = Instance.new("UIListLayout"); UIList.Padding = UDim.new(0.01,0); 
 
 -- Toggle builder
 local toggleCount = 0
-local function createToggle(parent, text, callback, defaultState)
+local function createToggle(parent, text, description, callback, defaultState)
     toggleCount += 1
 
     local f = Instance.new("Frame")
@@ -1075,13 +1095,13 @@ local function createToggle(parent, text, callback, defaultState)
     bar.Position = UDim2.new(0.6,0,0,0)
     bar.BackgroundColor3 = Color3.fromRGB(66,66,66)
     bar.Parent = f
-    createUICorner(bar,0.3,0)
+    createUICorner(bar, 0.3, 0)
 
     local but = Instance.new("TextButton")
     but.Name = "ToggleButton"
     but.Size = UDim2.new(0.5,0,1,0)
     but.Parent = bar
-    createUICorner(but,0.3,0)
+    createUICorner(but, 0.3, 0)
 
     local txt = Instance.new("TextLabel")
     txt.Name = "Label"
@@ -1089,10 +1109,44 @@ local function createToggle(parent, text, callback, defaultState)
     txt.BackgroundTransparency = 1
     txt.TextScaled = true
     txt.TextXAlignment = Enum.TextXAlignment.Left
-    txt.Text = text
+    txt.Text = text or ""
 	txt.TextColor3 = Color3.new(1,1,1)
 	txt.RichText = true
     txt.Parent = f
+
+	local des = Instance.new("TextLabel")
+	des.Name = "Description"
+	des.Position = UDim2.new(0,-224,0,0)
+	des.BackgroundColor3 = Color3.new(0.1,0.1,0.1)
+	des.BackgroundTransparency = 0
+	des.TextWrapped = true
+    des.TextYAlignment = Enum.TextYAlignment.Top
+	des.Visible = false
+	des.TextSize = 12
+	des.Text = description or ""
+	des.TextColor3 = Color3.new(1,1,1)
+	des.RichText = true
+	des.ZIndex = 3
+	des.Parent = txt
+	createUICorner(des, 0.3, 0)
+	createUIStroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+	local bounds = TextService:GetTextSize(
+    des.Text,
+    des.TextSize,
+    des.Font,
+    Vector2.new(220, math.huge)
+)
+
+des.Size = UDim2.new(0,220,0,bounds.Y + 10)
+
+	txt.MouseEnter:Connect(function()
+    des.Visible = true
+end)
+
+txt.MouseLeave:Connect(function()
+    des.Visible = false
+end)
 
     -- Toggle Logic
     local toggle = defaultState or false
@@ -1187,7 +1241,11 @@ local valueGuiOK, ValueGui = pcall(function()
     return CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp"):WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar"):WaitForChild("ValueFolder"):WaitForChild("ValueGui")
 end)
 
-createToggle(BFrame, "Enable ValueLabels", function(state)
+createToggle(BFrame, "Enable ValueLabels", [[<b><u>ValueLabel</u></b>
+Show ValueLabel at the Top HealthBar.
+• FPS - Frame Per second
+• HP - Health ( How to read: 100.000 HP = 100 HP )
+• WS/s - Walkspeed per studs ( How to read: 16.000 WS/s = 16 WS/s )]], function(state)
     if valueGuiOK and ValueGui then
         pcall(function() ValueGui.Enabled = state end)
     end
@@ -1217,7 +1275,9 @@ local function restoreLightingSettings()
 end
 
 -- Shaders toggle
-createToggle(BFrame, "Shaders - Recommend graphics 5+", function(state)
+createToggle(BFrame, "Shaders - Sunset", [[<b><u>Shaders</u></b>
+What a beautiful sunset!
+Graphic quality recommend 6+]], function(state)
     if state then
         pcall(saveLightingSettings)
         -- Sky
@@ -1410,17 +1470,22 @@ local function toggleForLocalPlayer(state, rainbow)
     end
 end
 
-createToggle(BFrame, "White Light", function(state)
+createToggle(BFrame, "White Light", [[<b><u>White Light</u></b>
+Just a PointLight around the you.
+Useful in the dark.]], function(state)
     toggleForLocalPlayer(state, false) -- ปกติ ขาว
 end, false)
 
-createToggle(BFrame, "RGB Light", function(state)
+createToggle(BFrame, "RGB Light", [[<b><u>RGB Light</u></b>
+Same as White Light, but RGB.]], function(state)
     toggleForLocalPlayer(state, true) -- RGB (เดิม rainbow)
 end, false)
 
 
 
-createToggle(BFrame, "ESP", function(state)
+createToggle(BFrame, "ESP", [[<b><u>ESP</u></b>
+See all players around the map.
+Also TextLabel will change color following team color.]], function(state)
     if state then
         if _G.EnableESP then pcall(_G.EnableESP) end
     else
@@ -1740,7 +1805,25 @@ lder.Size = UDim2.new(0.65,0,1,0)
 local DamageOverlay = game:GetService("CoreGui"):WaitForChild("DamageOverlay")
 
 -- ใช้ฟังก์ชัน createToggle ที่คุณมีอยู่แล้ว
-createToggle(BFrame, "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ FLASHING LIGHTS / PHOTOSENSITIVE EPILEPSY WARNING</b></font></stroke>", function(state)
+createToggle(BFrame, "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>", [[<b><u>Damage Overlay</u></b>
+Displays visual damage effects when your character takes damage.
+
+<font color="#aaffaa">
+✔ Improves damage feedback.
+</font>
+
+<stroke color="rgb(255,0,0)" thickness="1">
+<font color="#ff5555">
+<b>⚠ Photosensitive Epilepsy Warning</b>
+
+This effect may contain:
+• Flashing lights
+• Rapid brightness changes
+• Screen color pulses
+
+If you experience dizziness, eye strain, or discomfort,
+please turn this feature <b>OFF</b> immediately.
+</font></stroke>]], function(state)
 	DamageOverlay.Enabled = state
 end, false) -- true = เปิดเริ่มต้น
 
@@ -1758,7 +1841,8 @@ task.spawn(function()
 
     createToggle(
         BFrame, -- Parent = ตัวแปรที่นายกำหนดไว้
-        "MoreToggles",
+        "MoreToggles", [[<b><u>MoreToggles</u></b>
+Open second toggle menu.]],
         function(state)
             pcall(function()
                 inner.Visible = state
