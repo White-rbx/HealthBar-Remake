@@ -1,4 +1,4 @@
--- So uhm just a script lol. 5.31
+-- So uhm just a script lol. 5.32
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -2089,7 +2089,7 @@ end
 --========================================================--
 
 createToggle(BFrame, "ESP Highlight Players & Non-Players", [[<b><u>ESP Highlight Players & Non-Players</u></b>
-It will highlight HumanoidRootPart. Players is <font color="rgb(0,255,0)>green</font> and Non-Players is <font color="rgb(255,10,10)">red</font>.]], function(state)
+It will highlight HumanoidRootPart. Players is <font color="rgb(0,255,0)">green</font> and Non-Players is <font color="rgb(255,10,10)">red</font>.]], function(state)
 	if state then
 		startESPLoop()   -- เปิด
 	else
