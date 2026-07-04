@@ -1,4 +1,4 @@
--- Ok 3.1
+-- Ok 3.2
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1077,6 +1077,18 @@ BFrame.BackgroundTransparency = 1; BFrame.Parent = settings
 
 local UIList = Instance.new("UIListLayout"); UIList.Padding = UDim.new(0.01,0); UIList.Parent = BFrame
 
+local function setHighPos(des, txt)
+    local absPos = txt.AbsolutePosition.Y
+    local screenY = workspace.CurrentCamera.ViewportSize.Y
+
+    -- ถ้าอยู่ครึ่งล่างของจอ
+    if absPos > screenY * 0.55 then
+        des.Position = UDim2.new(0,-220,1,-des.AbsoluteSize.Y)
+    else
+        des.Position = UDim2.new(0,-220,0,0)
+    end
+end
+
 -- Toggle builder
 local toggleCount = 0
 local function createToggle(parent, text, description, callback, defaultState)
@@ -1129,7 +1141,7 @@ local function createToggle(parent, text, description, callback, defaultState)
 	des.RichText = true
 	des.ZIndex = 3
 	des.Parent = txt
-	createUICorner(des, 0.3, 0)
+	createUICorner(des, 0, 8)
 	createUIStroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
 	local bounds = TextService:GetTextSize(
@@ -1140,6 +1152,10 @@ local function createToggle(parent, text, description, callback, defaultState)
 )
 
 des.Size = UDim2.new(0,220,0,bounds.Y + 10)
+
+task.defer(function()
+    setHighPos(des, txt)
+end)
 
 	txt.MouseEnter:Connect(function()
     des.Visible = true
