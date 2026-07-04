@@ -1,4 +1,4 @@
--- So uhm just a script lol. 5.26
+-- So uhm just a script lol. 5.3
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1421,7 +1421,7 @@ end
 
 -- Toggle builder
 local toggleCount = 0
-local function createToggle(parent, text, callback, defaultState)
+local function createToggle(parent, text, description, callback, defaultState)
     toggleCount += 1
 
     local f = Instance.new("Frame")
@@ -1452,10 +1452,44 @@ local function createToggle(parent, text, callback, defaultState)
     txt.BackgroundTransparency = 1
     txt.TextScaled = true
     txt.TextXAlignment = Enum.TextXAlignment.Left
-    txt.Text = text
+    txt.Text = text or ""
 	txt.TextColor3 = Color3.new(1,1,1)
 	txt.RichText = true
     txt.Parent = f
+
+	local des = Instance.new("TextLabel")
+	des.Name = "Description"
+	des.Position = UDim2.new(0,-224,0,0)
+	des.BackgroundColor3 = Color3.new(0.1,0.1,0.1)
+	des.BackgroundTransparency = 0
+	des.TextWrapped = true
+    des.TextYAlignment = Enum.TextYAlignment.Top
+	des.Visible = false
+	des.TextSize = 12
+	des.Text = description or ""
+	des.TextColor3 = Color3.new(1,1,1)
+	des.RichText = true
+	des.ZIndex = 3
+	des.Parent = txt
+	Corner(0,8,des)
+	Stroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+	local bounds = TextService:GetTextSize(
+    des.Text,
+    des.TextSize,
+    des.Font,
+    Vector2.new(220, math.huge)
+)
+
+des.Size = UDim2.new(0,220,0,bounds.Y + 10)
+
+	txt.MouseEnter:Connect(function()
+    des.Visible = true
+end)
+
+txt.MouseLeave:Connect(function()
+    des.Visible = false
+end)
 
     -- Toggle Logic
     local toggle = defaultState or false
@@ -1512,7 +1546,9 @@ local gui = game:GetService("CoreGui")
 	:WaitForChild("LighterCyan.ai")
 
 -- ใช้ toggle เดิมของนาย
-createToggle(BFrame, "LighterCyan.ai (Discontinued)", function(state)
+createToggle(BFrame, "LighterCyan.ai (Discontinued)", [[<b><u>LighterCyan.ai</u></b>
+It's discontinued bro.
+😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭]], function(state)
 	gui.Enabled = state  -- เปิด/ปิดตามสวิตช์
 end, false) -- default: ปิด
 -- <<===== END LIGHTERCYAN =====>>
@@ -1527,7 +1563,8 @@ local hb = game:GetService("CoreGui")
 	:WaitForChild("HealthBar")
 
 -- 🟩 Toggle รวม HealthBar
-createToggle(BFrame, "Enable HealthBar", function(state)
+createToggle(BFrame, "HealthBar", [[<b><u>HealthBar</u></b>
+Show HealthBar at the Top Right.]], function(state)
 	local fill = hb:FindFirstChild("Fill")
 	local outline = hb:FindFirstChild("Outline")
 	local stroke = hb:FindFirstChild("UIStroke")
@@ -1542,7 +1579,8 @@ end, true) -- default = ON
 -- ตัวแปรควบคุม loop
 local deathSoundLoopRunning = false
 
-createToggle(BFrame, "Disable Death Sound", function(state)
+createToggle(BFrame, "Death Sound", [[<b><u>Death Sound</u></b>
+Play sound after character dead.]], function(state)
 	local Players = game:GetService("Players")
 	local player = Players.LocalPlayer
 
@@ -1572,7 +1610,8 @@ end, false) -- default OFF
 -- ==============================
 -- ✅ ExperienceSettingsCamera (FreeCam Final - White Edition)
 -- รองรับ Mobile + Keyboard + Speed UI + Direction Fix
-createToggle(BFrame, "FreeCam (Mobile)", function(state)
+createToggle(BFrame, "FreeCam (Mobile)", [[<b><u>FreeCam</u></b>
+	Explore around the world with FreeCam! (Mobile Only)]], function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
@@ -1815,7 +1854,8 @@ end, false)
 local SavedFallen = workspace.FallenPartsDestroyHeight  
 local FallenToggleState = false  -- default = OFF
 
-createToggle(BFrame, "Almost Endless Fallen (-50K)", function(state)
+createToggle(BFrame, "Almost Endless Fallen (-50K)", [[<b><u>Almost Endless Fallen</u></b>
+Set FallenPartDestroyHeight at -50000.]], function(state)
 
     if state then
         -- ON Mode (ไม่บันทึกค่า)
@@ -1847,7 +1887,8 @@ local Camera = workspace.CurrentCamera
 local flashlightPart = nil
 local flashlightConn = nil
 
-createToggle(BFrame, "Flashlight (FirstPerson & GFX 6+)", function(state)
+createToggle(BFrame, "Flashlight", [[<b><u>Flashlight</u></b>
+It will make you in the first person with light, and also recommend set graphic quality at 6+]], function(state)
     if state then
         --------------------------------------------------
         --                    ON
@@ -2046,7 +2087,8 @@ end
 -- 🔘 TOGGLE BUTTON (พร้อมใช้งาน)
 --========================================================--
 
-createToggle(BFrame, "ESP Highlight Players & Non-Players", function(state)
+createToggle(BFrame, "ESP Highlight Players & Non-Players", [[<b><u>ESP Highlight Players & Non-Players</u></b>
+It will highlight HumanoidRootPart. Players is <font color="rgb(0,255,0)>green</font> and Non-Players is <font color="rgb(255,10,10)">red</font>.]], function(state)
 	if state then
 		startESPLoop()   -- เปิด
 	else
@@ -2057,7 +2099,8 @@ end, false) -- default OFF
 -- ========== END ESP ==========
 
 -- ======== SHIFT LOCK =======
-createToggle(BFrame, "Shift Lock (Mobile)", function(state)
+createToggle(BFrame, "Shift Lock (Mobile)", [[<b><u>Shift Lock</u></b>
+Shift Lock for Mobile players. Also you can CUSTOMIZE CROSSHAIR by open <b>Settings - 2</b> in <b>Settings - Loader Rejoiner</b>!]], function(state)
     sh.Visible = state
 end, false)
 -- ====== END SHIFT LOCK =====
@@ -2283,7 +2326,9 @@ end)
 -- TOGGLE (ใช้ของเดิม)
 --========================================
 
-createToggle(BFrame, "Hitbox Shower", function(on)
+createToggle(BFrame, "Hitbox Shower", [[<b><u>Hitbox Shower</u></b>
+See all hitbox players 
+(Using ViewportFrame)]],function(on)
     HitboxView.Enabled = on
     if not on then
         for plr in pairs(clones) do
@@ -2404,7 +2449,9 @@ end)
 --// TOGGLE
 --// ================================
 
-createToggle(BFrame, "Last Death", function(on)
+createToggle(BFrame, "Last Death", [[<b><u>Last Death</u></b>
+It will show last position where you die at
+as a frozen ghost character...]], function(on)
     LastDeath.Enabled = on
 
     if not on then
@@ -2610,7 +2657,10 @@ end
 --// TOGGLE
 --// ========================
 
-createToggle(BFrame, "ServerPositionPredictor (By @zephyrr)", function(on)
+createToggle(BFrame, "ServerPositionPredictor (By @zephyrr)", [[<b><u>ServerPositionPredictor</u></b>
+Showing between Server and Client.
+Server is a second character of you. (Displaying as like ping)
+Client is you.]], function(on)
     Predictor.Enabled = on
 
     if on then
