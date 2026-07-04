@@ -1,4 +1,4 @@
--- So this another script lol 1.1
+-- So this another script lol 1.2
 
 
 -- =====>> Saved Functions <<=====
@@ -202,6 +202,14 @@ local function createToggle(parent, text, description, callback, defaultState)
 )
 
 des.Size = UDim2.new(0,220,0,bounds.Y + 10)
+
+	txt.MouseEnter:Connect(function()
+    des.Visible = true
+end)
+
+txt.MouseLeave:Connect(function()
+    des.Visible = false
+end)
 
     -- Toggle Logic
     local toggle = defaultState or false
