@@ -1,4 +1,4 @@
--- Loader script 2.49
+-- Loader script 2.7
 
 ------------------------------------------------------------------------------------------
 
@@ -2072,7 +2072,7 @@ List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - Recommend graphics 5+"
 List.bg.Settings.B_Frame.Frame3.Label.Text = "White Light"
 List.bg.Settings.B_Frame.Frame4.Label.Text = "RGB Light"
 List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (Beta)"
-List.bg.Settings.B_Frame.Frame6.Label.Text = "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ EPILEPSY WARNING</b></font></stroke>"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ FLASHING LIGHTS / PHOTOSENSITIVE EPILEPSY WARNING</b></font></stroke>"
 List.bg.Settings.B_Frame.Frame7.Label.Text = "MoreToggles"
 
 List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (Discontinued)"
@@ -2198,7 +2198,7 @@ List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - Se recomiendan gráficos
 List.bg.Settings.B_Frame.Frame3.Label.Text = "Luz blanca"
 List.bg.Settings.B_Frame.Frame4.Label.Text = "Luz RGB"
 List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (Beta)"
-List.bg.Settings.B_Frame.Frame6.Label.Text = "Superposición de daño <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ ADVERTENCIA SOBRE EPILEPSIA</b></font></stroke>"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "Superposición de daño <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ ADVERTENCIA: LUCES INTERMITENTES / EPILEPSIA FOTOSENSIBLE</b></font></stroke>"
 List.bg.Settings.B_Frame.Frame7.Label.Text = "Más toggles"
 
 List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (Descontinuado)"
@@ -2324,7 +2324,7 @@ List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - แนะนำกรา
 List.bg.Settings.B_Frame.Frame3.Label.Text = "แสงสีขาว"
 List.bg.Settings.B_Frame.Frame4.Label.Text = "แสง RGB"
 List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (เบต้า)"
-List.bg.Settings.B_Frame.Frame6.Label.Text = "โอเวอร์เลย์ความเสียหาย <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ คำเตือน: หากมีโรคลมชัก ไม่แนะนำให้ใช้</b></font></stroke>"
+List.bg.Settings.B_Frame.Frame6.Label.Text = "โอเวอร์เลย์ความเสียหาย <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ คำเตือน: มีแสงกะพริบ อาจกระตุ้นอาการลมชักจากความไวต่อแสง</b></font></stroke>"
 List.bg.Settings.B_Frame.Frame7.Label.Text = "ตัวเลือกเพิ่มเติม"
 
 List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (เลิกพัฒนาแล้ว)"
@@ -2355,6 +2355,258 @@ List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "ทิ้
 
 -- Search
 List.sh.TopFrame.SearchBar.Searcher.PlaceholderText = "[ เลือกก่อน ] ตัวค้นหา"
+
+end
+
+--======= PORTUGUÊS (BRASIL) ========--
+local function PtBr()
+
+	-- AIThinking
+	List.ai.chat.PlaceholderText = "Digite /Ajuda para ver todos os comandos ou diga algo..."
+	List.ai.Confirm_api.Text = "Confirmar API"
+	List.ai.Unsaved_API.Text = "API não salva"
+	List.ai.api.PlaceholderText = "[ Sua API aqui (ChatGPT ou Gemini) ]"
+	List.ai.Status.Text = "Status: Sem chave"
+	List.ai.Topic.Text = "<b><stroke color='rgb(85,255,255)' thickness='2'>IA-Pensando</stroke></b>"
+	List.ai.Unavailable.Text = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>RECURSOS INDISPONÍVEIS (Antigos)</stroke></b>"
+	-- List.ai.ver.Text = "Versão:"
+
+	-- About_Background
+	List.ab.Scroll.About.Text = [[
+O ExperienceSettings é um conjunto de ferramentas de debug que você pode usar por conta própria. Existem muitas ferramentas!
+O HealthBar foi um remake mais suave e melhor, e o ValueLabels serve para mostrar valores.
+Se o seu ExperienceSettings estiver desativado, existem três motivos:
+ • O HumanoidRootPart foi removido por muito tempo.
+ • A experiência não suporta o ExperienceSettings.
+ • O script falhou ao carregar.
+Se você gostar, pode me apoiar no Discord!
+Obrigado por usar o ExperienceSettings! ♥️
+
+54% da interface foi feita manualmente
+10% do script foi feito manualmente
+36% do script foi feito por IA
+
+Criador: @5teve3019D (GUI, pequeno script)
+Ajudante: ChatGPT (script) <-- Ele recebeu muitas reclamações kkk.
+Pequeno ajudante: Copilot da GitHub (script)
+Curiosidade: o antigo era mais feio que o atual, eu juro 😂 Ah, você ainda não viu :(
+
+========================
+➕ = Adicionar algo
+📢 = Anúncios
+🔨 = Em desenvolvimento
+🔷 = Planejado para futuras atualizações
+✅ = Concluído
+⚠️ = Com problemas
+🟠 = Atualizando em breve
+❌ = Bug
+⚫ = Não pode ser corrigido
+➖ = Desconectado ou descontinuado
+-------
+📌 Atualizado: a atualização desta informação não aparece mais; entre na nossa comunidade no Discord para acompanhar as novidades!
+-------
+🔁 Em progresso: recursos que não aparecem mais
+-------
+❌ Falhou: recursos indisponíveis que não aparecem mais
+-------
+
+✨ CRÉDITOS DO SCRIPT ✨
+[ Nome do Script ] por [ Criador ] [ Status de Verificação ]
+
+Queremos dizer que o seu script é incrível e está sendo usado no nosso projeto para fins de debug e educação.
+Obrigado pela sua contribuição :3 ❤️
+- Debugger
+
+-- Lista de créditos --
+'Ketamine' por @Cherry (✓ Verificado)
+'OG AFEM – Legacy' por @Imperial (✓ Verificado)
+'Chat' por usuário desconhecido
+'UNC' por usuário desconhecido
+'REM' por @evildotcom (X Não verificado)
+'GameProber' por @Imperial (✓ Verificado)
+'AudioPlayer' por usuário desconhecido
+'EmoteSelect' por usuário desconhecido
+'Universal Movement Predictor' por @zephyrr (X Não verificado)
+'Server Position Predictor' por @zephyrr (X Não verificado)
+'Open Source Universal Chat' por @neutral (X Não verificado)
+
+-- Aviso aos criadores de script --
+Se você for um criador de script listado acima e não quiser que o seu script seja incluído,
+entre em contato pelo nosso fórum no Discord, e vamos removê-lo imediatamente.
+]]
+
+	List.ab.Hide.Text = "Ocultar"
+	List.ab.Help.Text = "Ah, se o ExperienceSettings estiver desativado, você pode ocultar este texto clicando no botão."
+
+	-- Background
+	List.bg.Settings.Buttons.Leave.Text = "Sair"
+	List.bg.Settings.Buttons["Reset character"].Text = "Resetar personagem"
+	List.bg.Settings.Buttons.Resume.Text = "Continuar"
+	List.bg.Settings.Pmax.SeeAll.Text = "Abrir configurações do Roblox"
+	List.bg.Settings.Pmax.Players.Text = "Jogador :"
+
+	List.bg.Settings.B_Frame.Frame1.Label.Text = "Ativar ValueLabels"
+	List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - Recomendado: gráficos 5+"
+	List.bg.Settings.B_Frame.Frame3.Label.Text = "Luz branca"
+	List.bg.Settings.B_Frame.Frame4.Label.Text = "Luz RGB"
+	List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (Beta)"
+	List.bg.Settings.B_Frame.Frame6.Label.Text = "Overlayer de dano <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ LUZES PISCANTES / AVISO DE EPILEPSIA FOTOSENSÍVEL</b></font></stroke>"
+	List.bg.Settings.B_Frame.Frame7.Label.Text = "Mais Toggles"
+
+	List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (Descontinuado)"
+	List.bg.Inner_Background.Toggles.B_Frame:GetChildren()[13].Label.Text = "Mostrar física"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame10.Label.Text = "Última morte"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame11.Label.Text = "ServerPositionPredictor (Por @zephyrr)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame2.Label.Text = "Ativar HealthBar"
+	List.bg.Inner_Background.Toggles.B_Frame:GetChildren()[14].Label.Text = "Física global"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame3.Label.Text = "Desativar som de morte"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame4.Label.Text = "FreeCam (Mobile)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame5.Label.Text = "Queda quase infinita (-50K)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame6.Label.Text = "Lanterna (Primeira pessoa & GFX 6+)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame7.Label.Text = "ESP destaca jogadores e não jogadores"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame8.Label.Text = "Shift Lock (Mobile)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame9.Label.Text = "Chuva de hitboxes"
+
+	-- Load_Background
+	List.lb.Skip.Text = "Fechar a barra de carregamento irritante"
+	List.lb.Credit.Text = "Criado por @5teve3019D no ScriptBlox/HaxHell"
+	List.lb.Loading.Text = "Carregando"
+	List.lb.Wait.Text = "Iniciando o ExperienceSettings. Aguarde..."
+
+	-- ProfileStatus
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.Beta.Text = "Pode ter bugs e ainda está em beta."
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DeveloperConsole.Text = "Abrir console de desenvolvedor"
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTool.Text = "Dropar ferramenta"
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "Dropar todas as ferramentas"
+
+	-- Search
+	List.sh.TopFrame.SearchBar.Searcher.PlaceholderText = "[ Selecione primeiro ] Pesquisar"
+
+end
+
+--======= РУССКИЙ ========--
+local function Ru()
+
+	-- AIThinking
+	List.ai.chat.PlaceholderText = "Введите /Help, чтобы показать все команды, или напишите что-нибудь..."
+	List.ai.Confirm_api.Text = "Подтвердить API"
+	List.ai.Unsaved_API.Text = "API не сохранён"
+	List.ai.api.PlaceholderText = "[ Ваш API здесь (ChatGPT или Gemini) ]"
+	List.ai.Status.Text = "Статус: нет ключа"
+	List.ai.Topic.Text = "<b><stroke color='rgb(85,255,255)' thickness='2'>ИИ-Мышление</stroke></b>"
+	List.ai.Unavailable.Text = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>НЕДОСТУПНЫЕ ФУНКЦИИ (Старые)</stroke></b>"
+	-- List.ai.ver.Text = "Версия:"
+
+	-- About_Background
+	List.ab.Scroll.About.Text = [[
+ExperienceSettings — это набор отладочных инструментов, которыми ты можешь пользоваться сам. Тут много разных инструментов!
+HealthBar — это ремейк, который работает плавнее и лучше, а ValueLabels показывают значения.
+Если ExperienceSettings отключён, есть три причины:
+ • HumanoidRootPart был удалён слишком давно.
+ • Эта Experience не поддерживает ExperienceSettings.
+ • Скрипт не смог загрузиться.
+Если тебе нравится этот проект, ты можешь поддержать меня в Discord!
+Спасибо за использование ExperienceSettings! ♥️
+
+54% интерфейса сделано вручную
+10% скрипта сделано вручную
+36% скрипта сделано ИИ
+
+Создатель: @5teve3019D (GUI, небольшой скрипт)
+Помощник: ChatGPT (скрипт) <-- На него было много жалоб лол.
+Маленький помощник: Copilot от GitHub (скрипт)
+Интересный факт: старый вариант был намного хуже, чем сейчас, клянусь 😂 О, ты его ещё не видел :(
+
+========================
+➕ = Добавить что-то
+📢 = Объявления
+🔨 = В разработке
+🔷 = Планируется в будущем обновлении
+✅ = Готово
+⚠️ = Есть проблемы
+🟠 = Скоро обновится
+❌ = Баг
+⚫ = Невозможно исправить
+➖ = Отключено или устарело
+-------
+📌 Обновлено: обновления этой информации больше не показываются, пожалуйста, присоединяйся к нашему Discord-сообществу, чтобы следить за новостями!
+-------
+🔁 В процессе: функции, которые больше не отображаются
+-------
+❌ Не удалось: недоступные функции, которые больше не отображаются
+-------
+
+✨ КРЕДИТЫ СКРИПТА ✨
+[ Название скрипта ] от [ Создатель ] [ Статус проверки ]
+
+Мы хотим сказать, что твой скрипт потрясающий, и он используется в нашем проекте для отладки и обучения.
+Спасибо за твой вклад :3 ❤️
+- Debugger
+
+-- Список кредитов --
+'Ketamine' от @Cherry (✓ Проверено)
+'OG AFEM – Legacy' от @Imperial (✓ Проверено)
+'Chat' от неизвестного пользователя
+'UNC' от неизвестного пользователя
+'REM' от @evildotcom (X Не проверено)
+'GameProber' от @Imperial (✓ Проверено)
+'AudioPlayer' от неизвестного пользователя
+'EmoteSelect' от неизвестного пользователя
+'Universal Movement Predictor' от @zephyrr (X Не проверено)
+'Server Position Predictor' от @zephyrr (X Не проверено)
+'Open Source Universal Chat' от @neutral (X Не проверено)
+
+-- Примечание для авторов скриптов --
+Если ты автор скрипта, указанного выше, и не хочешь, чтобы он был включён,
+свяжись с нами через наш Discord-форум, и мы удалим его сразу же.
+]]
+
+	List.ab.Hide.Text = "Скрыть"
+	List.ab.Help.Text = "Ах, если ExperienceSettings отключён, ты можешь скрыть этот текст, нажав кнопку."
+
+	-- Background
+	List.bg.Settings.Buttons.Leave.Text = "Выйти"
+	List.bg.Settings.Buttons["Reset character"].Text = "Сбросить персонажа"
+	List.bg.Settings.Buttons.Resume.Text = "Продолжить"
+	List.bg.Settings.Pmax.SeeAll.Text = "Открыть настройки Roblox"
+	List.bg.Settings.Pmax.Players.Text = "Игрок :"
+
+	List.bg.Settings.B_Frame.Frame1.Label.Text = "Включить ValueLabels"
+	List.bg.Settings.B_Frame.Frame2.Label.Text = "Шейдеры - рекомендуется графика 5+"
+	List.bg.Settings.B_Frame.Frame3.Label.Text = "Белый свет"
+	List.bg.Settings.B_Frame.Frame4.Label.Text = "RGB-свет"
+	List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (Beta)"
+	List.bg.Settings.B_Frame.Frame6.Label.Text = "Наложение урона <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ МИГАЮЩИЙ СВЕТ / ПРЕДУПРЕЖДЕНИЕ О ФОТОЧУВСТВИТЕЛЬНОЙ ЭПИЛЕПСИИ</b></font></stroke>"
+	List.bg.Settings.B_Frame.Frame7.Label.Text = "Ещё тумблеры"
+
+	List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (Устарело)"
+	List.bg.Inner_Background.Toggles.B_Frame:GetChildren()[13].Label.Text = "Показать физику"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame10.Label.Text = "Последняя смерть"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame11.Label.Text = "ServerPositionPredictor (От @zephyrr)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame2.Label.Text = "Включить HealthBar"
+	List.bg.Inner_Background.Toggles.B_Frame:GetChildren()[14].Label.Text = "Глобальная физика"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame3.Label.Text = "Отключить звук смерти"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame4.Label.Text = "FreeCam (Mobile)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame5.Label.Text = "Почти бесконечное падение (-50K)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame6.Label.Text = "Фонарик (Первое лицо & GFX 6+)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame7.Label.Text = "ESP выделяет игроков и неигроков"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame8.Label.Text = "Shift Lock (Mobile)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame9.Label.Text = "Дождь хитбоксов"
+
+	-- Load_Background
+	List.lb.Skip.Text = "Закрыть бесящую полосу загрузки"
+	List.lb.Credit.Text = "Создатель: @5teve3019D на ScriptBlox/HaxHell"
+	List.lb.Loading.Text = "Загрузка"
+	List.lb.Wait.Text = "Запуск ExperienceSettings. Пожалуйста, подожди..."
+
+	-- ProfileStatus
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.Beta.Text = "Возможны баги, и это всё ещё beta."
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DeveloperConsole.Text = "Открыть консоль разработчика"
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTool.Text = "Выбросить предмет"
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "Выбросить все предметы"
+
+	-- Search
+	List.sh.TopFrame.SearchBar.Searcher.PlaceholderText = "[ Сначала выбери ] Поиск"
 
 end
 
@@ -2405,9 +2657,39 @@ local ThaBtn = Txt(
     ins2
 ).Button
 
+local BraBtn = Txt(
+    "Português",
+    255,255,255,
+    false,nil,
+    true, "Selecionar",
+    nil,
+    function(_, btn)
+        CurrentLanguage = "PT-BR"
+        PrBr()
+        RefreshLanguageButtons()
+    end,
+    nil,
+    ins2
+).Button
+
+local RusBtn = Txt(
+    "Русский",
+    255,255,255,
+    false,nil,
+    true, "Выбрать",
+    nil,
+    function(_, btn)
+        CurrentLanguage = "RU"
+        Ru()
+        RefreshLanguageButtons()
+    end,
+    nil,
+    ins2
+).Button
+
 local function RefreshLanguageButtons()
 
-    if not (EngBtn and SpaBtn and ThaBtn) then
+    if not (EngBtn and SpaBtn and ThaBtn and BraBtn and RusBtn) then
         return
 	end
 
@@ -2423,6 +2705,16 @@ local function RefreshLanguageButtons()
 
     ThaBtn.TextColor3 =
         CurrentLanguage == "TH"
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,255,255)
+
+	BraBtn.TextColor3 =
+        CurrentLanguage == "PT-BR"
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,255,255)
+
+	RusBtn.TextColor3 =
+        CurrentLanguage == "RU"
         and Color3.fromRGB(0,255,0)
         or Color3.fromRGB(255,255,255)
 
