@@ -1,4 +1,4 @@
--- So this another script lol 1.2
+-- So this another script lol 1.21
 
 
 -- =====>> Saved Functions <<=====
@@ -127,6 +127,7 @@ local RunService = game:GetService("RunService")
 
 -- Animation / Transitions
 local TweenService = game:GetService("TweenService")
+local TextService = game:GetService("TextService")
 
 -- Input (Desktop / Mobile)
 local UserInputService = game:GetService("UserInputService")
