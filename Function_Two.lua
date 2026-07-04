@@ -1,4 +1,4 @@
--- So this another script lol 1.21
+-- So this another script lol 1.22
 
 
 -- =====>> Saved Functions <<=====
@@ -182,18 +182,20 @@ local function createToggle(parent, text, description, callback, defaultState)
 
 	local des = Instance.new("TextLabel")
 	des.Name = "Description"
-	des.Position = UDim2.new(0,0,0,-24)
-	des.BackgroundColor3 = Color3.new(0.3,0.3,0.3)
-	des.BackgroundTransparency = 0.3
+	des.Position = UDim2.new(0,-224,0,0)
+	des.BackgroundColor3 = Color3.new(0.1,0.1,0.1)
+	des.BackgroundTransparency = 0
 	des.TextWrapped = true
     des.TextYAlignment = Enum.TextYAlignment.Top
 	des.Visible = false
-	des.TextSize = 16
+	des.TextSize = 12
 	des.Text = description or ""
 	des.TextColor3 = Color3.new(1,1,1)
 	des.RichText = true
+	des.ZIndex = 3
 	des.Parent = txt
 	Corner(0,8,des)
+	Stroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
 	local bounds = TextService:GetTextSize(
     des.Text,
