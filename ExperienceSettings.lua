@@ -1,4 +1,4 @@
--- Ok 3.21
+-- Ok 3.22
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1078,22 +1078,39 @@ BFrame.BackgroundTransparency = 1; BFrame.Parent = settings
 local UIList = Instance.new("UIListLayout"); UIList.Padding = UDim.new(0.01,0); UIList.Parent = BFrame
 
 local function setHighPos(des, txt)
-	local absPos = txt.AbsolutePosition.Y
-	local screenY = workspace.CurrentCamera.ViewportSize.Y
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
 
-	local padding = 8
+	local viewport = camera.ViewportSize
 
-	if absPos > screenY * 0.55 then
-		-- แสดงด้านบน Toggle
+	local topPadding = 8
+	local bottomPadding = 8
+
+	local descHeight = des.AbsoluteSize.Y
+	local txtPos = txt.AbsolutePosition.Y
+	local txtHeight = txt.AbsoluteSize.Y
+
+	-- พื้นที่ด้านบน / ด้านล่างของ Toggle
+	local topSpace = txtPos
+	local bottomSpace = viewport.Y - (txtPos + txtHeight)
+
+	if topSpace >= descHeight + topPadding then
+		-- แสดงด้านบน
 		des.Position = UDim2.new(
-			0, -224,
-			1, -(des.AbsoluteSize.Y + padding)
+			0,
+			-230,
+			1,
+			-(descHeight + topPadding)
 		)
 	else
-		-- แสดงด้านล่าง Toggle
+		-- แสดงด้านล่าง
 		des.Position = UDim2.new(
-			0, -224,
-			0, padding
+			0,
+			-230,
+			0,
+			bottomPadding
 		)
 	end
 end
@@ -1138,7 +1155,7 @@ local function createToggle(parent, text, description, callback, defaultState)
 
 	local des = Instance.new("TextLabel")
 	des.Name = "Description"
-	des.Position = UDim2.new(0,-224,0,0)
+	des.Position = UDim2.new(0,-230,0,0)
 	des.BackgroundColor3 = Color3.new(0.1,0.1,0.1)
 	des.BackgroundTransparency = 0
 	des.TextWrapped = true
