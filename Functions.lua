@@ -1,4 +1,4 @@
--- So uhm just a script lol. 5.32
+-- So uhm just a script lol. 5.33
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1580,7 +1580,7 @@ end, true) -- default = ON
 -- ตัวแปรควบคุม loop
 local deathSoundLoopRunning = false
 
-createToggle(BFrame, "Death Sound", [[<b><u>Death Sound</u></b>
+createToggle(BFrame, "Disable Death Sound", [[<b><u>Death Sound</u></b>
 Play sound after character dead.]], function(state)
 	local Players = game:GetService("Players")
 	local player = Players.LocalPlayer
