@@ -1,4 +1,4 @@
--- Loader script 2.7
+-- Loader script 2.72
 
 ------------------------------------------------------------------------------------------
 
@@ -2665,7 +2665,7 @@ local BraBtn = Txt(
     nil,
     function(_, btn)
         CurrentLanguage = "PT-BR"
-        PrBr()
+        PtBr()
         RefreshLanguageButtons()
     end,
     nil,
