@@ -1,4 +1,8 @@
-local v_ver = [[Relax 0.0 Type]]
+local v_ver = [[Relax 1.0 Type]]
+--[[
+You know... all gui was made by me! but script made by chatgpt
+]]
+
 
 ------------------------------------------------------------------------------------------
 -- Services
@@ -165,13 +169,20 @@ end
 local Folder = "ExperienceSettings"
 local File = Folder .. "/save.json"
 
+local SetUpData = {
+    Idle = {"87288722220760","110198608646142","109515403119009","94534807296665","109515403119009","110198608646142","87288722220760","74090248828410","140157555930711","74090248828410"},
+    WhenClick = {"108536153230595","140719134461082","87784765293553","112472844275294","112472844275294","77710265074111","122515039486650","105333712802943","0","0","0","0","101674068212544","82332000482707","137967156256451","91386333466574","91386333466574","91386333466574","109086671336135","109086671336135","109086671336135","109086671336135","109086671336135","109086671336135"},
+    IdleFPS = 15,
+    WhenClickFPS = 5
+}
+
 local DefaultData = {
-	Relax = {
-		Idle = {},
-		WhenClick = {},
-		IdleFPS = 10,
-		WhenClickFPS = 10,
-	}
+    Relax = {
+        Idle = SetUpData.Idle,
+        WhenClick = SetUpData.WhenClick,
+        IdleFPS = SetUpData.IdleFPS,
+        WhenClickFPS = SetUpData.WhenClickFPS,
+    }
 }
 
 if not isfolder(Folder) then
@@ -478,6 +489,25 @@ Corner(0, 8, Addbtn2)
 -- Canvas
 ------------------------------------------------------------------------------------------
 
+local function RefreshLayout(Scroll)
+
+	local Index = 1
+
+	for _,Object in ipairs(Scroll:GetChildren()) do
+
+		if Object:IsA("TextBox") then
+
+			Object.LayoutOrder = Index
+			Object.Name = "Image_" .. Index
+
+			Index += 1
+
+		end
+
+	end
+
+end
+
 local function RefreshCanvas(scroll)
 	local layout = scroll:FindFirstChildOfClass("UIListLayout")
 	if not layout then
@@ -655,10 +685,12 @@ end
 
 Addbtn.MouseButton1Click:Connect(function()
 	AddImage(IdleScroll)
+  RefreshLayout(IdleScroll)
 end)
 
 Addbtn2.MouseButton1Click:Connect(function()
 	AddImage(WhenClickScroll)
+  RefreshLayout(WhenClickScroll)
 end)
 
 ------------------------------------------------------------------------------------------
@@ -773,6 +805,8 @@ end
 
 RefreshCanvas(IdleScroll)
 RefreshCanvas(WhenClickScroll)
+RefreshLayout(IdleScroll)
+RefreshLayout(WhenClickScroll)
 RefreshDisplay()
 
 ------------------------------------------------------------------------------------------
