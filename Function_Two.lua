@@ -1,4 +1,4 @@
--- So this another script lol 1.23
+-- So this another script lol 1.4
 
 
 -- =====>> Saved Functions <<=====
@@ -518,7 +518,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 --// =====================================================
---// TOGGLES (EXAMPLE)
+--// TOGGLES
 --// =====================================================
 
 createToggle(BFrame, "Show Physics",[[<b><u>Show Physics</u></b>
@@ -533,5 +533,31 @@ Same as Show Physics Toggle, but you're just seeing the physics of other players
     Physics.Enabled = on
     Physics.Global = on
 end, false)
+
+-- Relax Loadstring 
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/GifAnimationEditor.lua"))()
+local RelaxGui
+task.spawn(function()
+	local Hrsn = CoreGui:WaitForChild("ExperienceSettings")
+		:WaitForChild("Menu")
+		:WaitForChild("HolderScreen")
+
+	RelaxGui = Hrsn:WaitForChild("Relax")
+end)
+
+createToggle(
+	BFrame,
+	"Relax / Gif Animation Editor",
+	[[<b><u>Gif Animation Editor</u></b>
+Show or hide the Gif Animation Editor window.]],
+	function(State)
+
+		if RelaxGui then
+			RelaxGui.Visible = State
+		end
+
+	end,
+	false
+)
 
 --// ================= END =================
