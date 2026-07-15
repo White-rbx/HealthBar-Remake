@@ -1,8 +1,7 @@
-local v_ver = [[Relax 1.0 Type]]
+local v_ver = [[Relax 2.0 Type]]
 --[[
-You know... all gui was made by me! but script made by chatgpt
+	You know... all gui was made by me! but script made by chatgpt
 ]]
-
 
 ------------------------------------------------------------------------------------------
 -- Services
@@ -11,6 +10,7 @@ You know... all gui was made by me! but script made by chatgpt
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
+local TextService = game:GetService("TextService")
 
 ------------------------------------------------------------------------------------------
 -- Helpers
@@ -70,89 +70,6 @@ local function Stroke(parent, asm, r, g, b, ljm, tn, transy)
 	return stroke
 end
 
-local function Gradient(parent, rotation, offsetX, offsetY, ...)
-	local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
-	grad.Rotation = rotation or 0
-	grad.Offset = Vector2.new(offsetX or 0, offsetY or 0)
-
-	local colors = { ... }
-	local keypoints = {}
-
-	if #colors == 0 then
-		keypoints = {
-			ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-			ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
-		}
-	elseif #colors == 1 then
-		keypoints = {
-			ColorSequenceKeypoint.new(0, colors[1]),
-			ColorSequenceKeypoint.new(1, colors[1]),
-		}
-	else
-		for i, c in ipairs(colors) do
-			local t = (i - 1) / (#colors - 1)
-			table.insert(keypoints, ColorSequenceKeypoint.new(t, c))
-		end
-	end
-
-	grad.Color = ColorSequence.new(keypoints)
-	grad.Parent = parent
-	return grad
-end
-
-local function Padding(parent, bottom, left, right, top)
-	local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
-
-	local function toUDim(value)
-		if typeof(value) == "UDim" then
-			return value
-		elseif type(value) == "number" then
-			return UDim.new(0, value)
-		elseif type(value) == "table" and #value >= 2 then
-			return UDim.new(value[1] or 0, value[2] or 0)
-		else
-			return UDim.new(0, 0)
-		end
-	end
-
-	pad.PaddingBottom = toUDim(bottom)
-	pad.PaddingLeft = toUDim(left)
-	pad.PaddingRight = toUDim(right)
-	pad.PaddingTop = toUDim(top)
-	pad.Parent = parent
-	return pad
-end
-
-local Axis = Enum.DominantAxis
-local Type = Enum.AspectType
-
-local Width = Axis.Width
-local Height = Axis.Height
-
-local Fit = Type.FitWithinMaxSize
-local ScaleWithParent = Type.ScaleWithParentSize
-
-local function Aspect(parent, ratio, aspectType, dominantAxis)
-	if not parent then
-		return
-	end
-
-	local existing = parent:FindFirstChildOfClass("UIAspectRatioConstraint")
-	if existing then
-		existing.AspectRatio = ratio or existing.AspectRatio
-		existing.AspectType = aspectType or existing.AspectType
-		existing.DominantAxis = dominantAxis or existing.DominantAxis
-		return existing
-	end
-
-	local constraint = Instance.new("UIAspectRatioConstraint")
-	constraint.Parent = parent
-	constraint.AspectRatio = ratio or 1
-	constraint.AspectType = aspectType or Fit
-	constraint.DominantAxis = dominantAxis or Width
-	return constraint
-end
-
 local function NormalizeId(text)
 	text = tostring(text or "")
 	local id = text:gsub("%D", "")
@@ -160,6 +77,11 @@ local function NormalizeId(text)
 		return id
 	end
 	return text:gsub("%s+", "")
+end
+
+local function Trim(text)
+	text = tostring(text or "")
+	return text:match("^%s*(.-)%s*$") or ""
 end
 
 ------------------------------------------------------------------------------------------
@@ -170,10 +92,46 @@ local Folder = "ExperienceSettings"
 local File = Folder .. "/save.json"
 
 local SetUpData = {
-    Idle = {"87288722220760","110198608646142","109515403119009","94534807296665","109515403119009","110198608646142","87288722220760","74090248828410","140157555930711","74090248828410"},
-    WhenClick = {"108536153230595","140719134461082","87784765293553","112472844275294","112472844275294","77710265074111","122515039486650","105333712802943","0","0","0","0","101674068212544","82332000482707","137967156256451","91386333466574","91386333466574","91386333466574","109086671336135","109086671336135","109086671336135","109086671336135","109086671336135","109086671336135"},
-    IdleFPS = 15,
-    WhenClickFPS = 5
+	Idle = {
+		"87288722220760",
+		"110198608646142",
+		"109515403119009",
+		"94534807296665",
+		"109515403119009",
+		"110198608646142",
+		"87288722220760",
+		"74090248828410",
+		"140157555930711",
+		"74090248828410"
+	},
+	WhenClick = {
+		"108536153230595",
+		"140719134461082",
+		"87784765293553",
+		"112472844275294",
+		"112472844275294",
+		"77710265074111",
+		"122515039486650",
+		"105333712802943",
+		"0",
+		"0",
+		"0",
+		"0",
+		"101674068212544",
+		"82332000482707",
+		"137967156256451",
+		"91386333466574",
+		"91386333466574",
+		"91386333466574",
+		"109086671336135",
+		"109086671336135",
+		"109086671336135",
+		"109086671336135",
+		"109086671336135",
+		"109086671336135"
+	},
+	IdleFPS = 15,
+	WhenClickFPS = 5
 }
 
 local DefaultData = {
@@ -182,6 +140,9 @@ local DefaultData = {
         WhenClick = SetUpData.WhenClick,
         IdleFPS = SetUpData.IdleFPS,
         WhenClickFPS = SetUpData.WhenClickFPS,
+
+        GetCustomAsset = false,
+        GetCustomAssetPath = "",
     }
 }
 
@@ -204,23 +165,31 @@ local function LoadJson()
 		data.Relax.WhenClick = data.Relax.WhenClick or {}
 		data.Relax.IdleFPS = tonumber(data.Relax.IdleFPS) or 10
 		data.Relax.WhenClickFPS = tonumber(data.Relax.WhenClickFPS) or 10
+    data.Relax.GetCustomAsset = data.Relax.GetCustomAsset == true
+    data.Relax.GetCustomAssetPath = tostring(data.Relax.GetCustomAssetPath or "")
 		return data
 	end
 
 	local fallback = {
-		Relax = {
-			Idle = {},
-			WhenClick = {},
-			IdleFPS = 10,
-			WhenClickFPS = 10,
-		}
-	}
+    Relax = {
+        Idle = {},
+        WhenClick = {},
+        IdleFPS = 10,
+        WhenClickFPS = 10,
+
+        GetCustomAsset = false,
+        GetCustomAssetPath = "",
+    }
+}
 
 	writefile(File, HttpService:JSONEncode(fallback))
 	return fallback
 end
 
 local Data = LoadJson()
+
+local HasGetCustomAsset = typeof(getcustomasset) == "function"
+local UseCustomAsset = false
 
 ------------------------------------------------------------------------------------------
 -- UI Root
@@ -485,27 +454,79 @@ Addbtn2.Name = "AddWhenClick"
 Addbtn2.Parent = WhenClickScroll
 Corner(0, 8, Addbtn2)
 
+local GetFrame = Instance.new("Frame")
+GetFrame.Name = "GetcustomassetSwitch"
+GetFrame.Size = UDim2.new(0, 100, 0, 30)
+GetFrame.Position = UDim2.new(1, -154, 0, 0)
+GetFrame.Active = false
+GetFrame.BackgroundColor3 = Color3.fromRGB(87, 87, 87)
+GetFrame.Parent = Editor
+Corner(0, 8, GetFrame)
+
+local GetFrame_Stroke = Stroke(GetFrame, "ASMBorder", 255, 0, 0, "LJMRound", 1, 0)
+GetFrame_Stroke.Color = Color3.fromRGB(255, 0, 0)
+
+local GetPath = Instance.new("TextBox")
+GetPath.Name = "Getdevicepathinput"
+GetPath.Size = UDim2.new(0, 0, 1, 0)
+GetPath.Position = UDim2.new(0, 113, 0, 0)
+GetPath.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+GetPath.TextColor3 = Color3.new(1, 1, 1)
+GetPath.Text = Data.Relax.GetCustomAssetPath or ""
+GetPath.PlaceholderText = "Example: 'Folder/'"
+GetPath.ClearTextOnFocus = false
+GetPath.TextScaled = true
+GetPath.PlaceholderColor3 = Color3.new(0.7, 0.7, 0.7)
+GetPath.Visible = false
+GetPath.Parent = GetFrame
+Corner(0, 8, GetPath)
+Stroke(GetPath, "ASMBorder", 255, 255, 255, "LJMRound", 1, 0)
+
+UseCustomAsset = Data.Relax.GetCustomAsset == true
+
+local GetSwitch = Instance.new("TextButton")
+GetSwitch.Name = "GetSwitch"
+GetSwitch.Size = UDim2.new(0, 50, 1, 0)
+GetSwitch.Position = UDim2.new(0, 0, 0, 0)
+GetSwitch.Text = "Image"
+GetSwitch.TextColor3 = Color3.new(0, 0, 0)
+GetSwitch.TextStrokeTransparency = 0
+GetSwitch.TextStrokeColor3 = Color3.new(1, 1, 1)
+GetSwitch.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+GetSwitch.TextWrapped = true
+GetSwitch.Parent = GetFrame
+Corner(0, 8, GetSwitch)
+
 ------------------------------------------------------------------------------------------
--- Canvas
+-- Canvas / Data Helpers
 ------------------------------------------------------------------------------------------
 
-local function RefreshLayout(Scroll)
+local function GetTextBoxesSorted(scroll)
+	local boxes = {}
 
-	local Index = 1
-
-	for _,Object in ipairs(Scroll:GetChildren()) do
-
-		if Object:IsA("TextBox") then
-
-			Object.LayoutOrder = Index
-			Object.Name = "Image_" .. Index
-
-			Index += 1
-
+	for _, child in ipairs(scroll:GetChildren()) do
+		if child:IsA("TextBox") then
+			table.insert(boxes, child)
 		end
-
 	end
 
+	table.sort(boxes, function(a, b)
+		return a.LayoutOrder < b.LayoutOrder
+	end)
+
+	return boxes
+end
+
+local function RefreshLayout(scroll)
+	local index = 1
+
+	for _, object in ipairs(scroll:GetChildren()) do
+		if object:IsA("TextBox") then
+			object.LayoutOrder = index
+			object.Name = "Image_" .. index
+			index += 1
+		end
+	end
 end
 
 local function RefreshCanvas(scroll)
@@ -534,45 +555,67 @@ end
 BindCanvas(IdleScroll)
 BindCanvas(WhenClickScroll)
 
-------------------------------------------------------------------------------------------
--- Data helpers
-------------------------------------------------------------------------------------------
+local function ResolveFrameSource(text)
+	text = Trim(text)
 
-local function GetTextBoxesSorted(scroll)
-	local boxes = {}
-
-	for _, child in ipairs(scroll:GetChildren()) do
-		if child:IsA("TextBox") then
-			table.insert(boxes, child)
-		end
+	if text == "" or text == "0" then
+		return ""
 	end
 
-	table.sort(boxes, function(a, b)
-		return a.LayoutOrder < b.LayoutOrder
-	end)
+	if text:match("^rbxassetid://") then
+		return text
+	end
 
-	return boxes
+	if text:match("^%d+$") then
+		return "rbxassetid://" .. text
+	end
+
+	if HasGetCustomAsset then
+	local path = Trim(GetPath and GetPath.Text or "")
+
+	if path ~= "" then
+		local ok, asset = pcall(function()
+			return getcustomasset(path .. text)
+		end)
+
+		if ok and asset then
+    return asset
+end
+	end
 end
 
-local function GetImages(scroll)
+	return ""
+end
+
+local function GetFrameValues(scroll)
 	local result = {}
 
 	for _, textbox in ipairs(GetTextBoxesSorted(scroll)) do
-		local id = NormalizeId(textbox.Text)
-		if id ~= "" then
-			table.insert(result, id)
+		local text = Trim(textbox.Text)
+		if text == "" then
+			text = "0"
 		end
+		table.insert(result, text)
 	end
 
 	return result
 end
 
+local function RefreshAllPreviews(scroll)
+	for _, textbox in ipairs(GetTextBoxesSorted(scroll)) do
+		local preview = textbox:FindFirstChildOfClass("ImageLabel")
+		if preview then
+			preview.Image = ResolveFrameSource(textbox.Text)
+		end
+	end
+end
+
 local function RefreshDisplay()
 	local boxes = GetTextBoxesSorted(IdleScroll)
 	for _, textbox in ipairs(boxes) do
-		local id = NormalizeId(textbox.Text)
-		if id ~= "" then
-			Display.Image = "rbxassetid://" .. id
+		local src = ResolveFrameSource(textbox.Text)
+		if src ~= "" then
+			Display.Image = src
 			return
 		end
 	end
@@ -588,22 +631,22 @@ local function ClearScroll(scroll)
 	end
 end
 
-local function AddImage(parent, initialId)
+local function AddImage(parent, initialText)
 	local scroll = parent or IdleScroll
 
 	local Input = Instance.new("TextBox")
 	Input.PlaceholderColor3 = Color3.new(1, 1, 1)
 	Input.PlaceholderText = "Image ID"
-	Input.Text = ""
+	Input.Text = tostring(initialText or "")
 	Input.TextColor3 = Color3.new(1, 1, 1)
 	Input.BackgroundColor3 = Color3.new(1, 1, 1)
 	Input.BackgroundTransparency = 0.5
-	Input.ClearTextOnFocus = true
+	Input.ClearTextOnFocus = false
 	Input.Size = UDim2.new(0, 50, 0, 50)
 	Input.ZIndex = 2
 	Input.Name = "Image_" .. tostring(#GetTextBoxesSorted(scroll) + 1)
 	Input.LayoutOrder = #GetTextBoxesSorted(scroll) + 1
-  Input.TextWrapped = true
+	Input.TextWrapped = true
 	Input.Parent = scroll
 	Corner(0, 8, Input)
 
@@ -630,13 +673,11 @@ local function AddImage(parent, initialId)
 	Corner(0, 5, DelParent)
 
 	local function ApplyId(idText)
-		local id = NormalizeId(idText)
-		if id ~= "" then
-			Input.Text = id
-			Preview.Image = "rbxassetid://" .. id
-			if scroll == IdleScroll then
-				RefreshDisplay()
-			end
+		Input.Text = tostring(idText or "")
+		local src = ResolveFrameSource(Input.Text)
+		Preview.Image = src
+		if scroll == IdleScroll then
+			RefreshDisplay()
 		end
 	end
 
@@ -644,9 +685,12 @@ local function AddImage(parent, initialId)
 		if not enterPressed then
 			return
 		end
+
 		ApplyId(Input.Text)
 		task.defer(function()
+			RefreshLayout(scroll)
 			RefreshCanvas(scroll)
+			RefreshAllPreviews(scroll)
 		end)
 	end)
 
@@ -654,6 +698,7 @@ local function AddImage(parent, initialId)
 		Input:Destroy()
 
 		task.defer(function()
+			RefreshLayout(scroll)
 			RefreshCanvas(scroll)
 			if scroll == IdleScroll then
 				RefreshDisplay()
@@ -661,11 +706,12 @@ local function AddImage(parent, initialId)
 		end)
 	end)
 
-	if initialId then
-		ApplyId(initialId)
+	if initialText ~= nil then
+		ApplyId(initialText)
 	end
 
 	task.defer(function()
+		RefreshLayout(scroll)
 		RefreshCanvas(scroll)
 		if scroll == IdleScroll then
 			RefreshDisplay()
@@ -679,18 +725,125 @@ local function AddImage(parent, initialId)
 	}
 end
 
+local function SetCustomAssetState(state, instant)
+	if not HasGetCustomAsset then
+		UseCustomAsset = false
+		return
+	end
+
+	UseCustomAsset = state and true or false
+
+	local openFramePos = UDim2.new(0, 104, 0, 0)
+	local closeFramePos = UDim2.new(1, -154, 0, 0)
+
+	local openPathSize = UDim2.new(0, 200, 1, 0)
+	local closePathSize = UDim2.new(0, 0, 1, 0)
+
+	local openSwitchPos = UDim2.new(0, 50, 0, 0)
+	local closeSwitchPos = UDim2.new(0, 0, 0, 0)
+
+	if instant then
+		GetFrame.Position = UseCustomAsset and openFramePos or closeFramePos
+		GetPath.Size = UseCustomAsset and openPathSize or closePathSize
+		GetSwitch.Position = UseCustomAsset and openSwitchPos or closeSwitchPos
+		GetPath.Visible = UseCustomAsset
+	else
+		if UseCustomAsset then
+			GetPath.Visible = true
+
+			TweenService:Create(GetFrame, TweenInfo.new(.2), {
+				Position = openFramePos
+			}):Play()
+
+			TweenService:Create(GetPath, TweenInfo.new(.2), {
+				Size = openPathSize
+			}):Play()
+
+			TweenService:Create(GetSwitch, TweenInfo.new(.2), {
+				Position = openSwitchPos
+			}):Play()
+		else
+			TweenService:Create(GetFrame, TweenInfo.new(.2), {
+				Position = closeFramePos
+			}):Play()
+
+			TweenService:Create(GetPath, TweenInfo.new(.2), {
+				Size = closePathSize
+			}):Play()
+
+			TweenService:Create(GetSwitch, TweenInfo.new(.2), {
+				Position = closeSwitchPos
+			}):Play()
+
+			task.delay(.2, function()
+				GetPath.Visible = false
+			end)
+		end
+	end
+
+	if UseCustomAsset then
+		GetFrame_Stroke.Color = Color3.fromRGB(0, 255, 0)
+		GetSwitch.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+		GetSwitch.Text = "Getcustomasset"
+	else
+		GetFrame_Stroke.Color = Color3.fromRGB(255, 0, 0)
+		GetSwitch.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+		GetSwitch.Text = "Image"
+	end
+
+	RefreshAllPreviews(IdleScroll)
+	RefreshAllPreviews(WhenClickScroll)
+	RefreshDisplay()
+end
+
+------------------------------------------------------------------------------------------
+-- getcustomasset UI state
+------------------------------------------------------------------------------------------
+
+if not HasGetCustomAsset then
+	GetSwitch.Active = false
+	GetSwitch.AutoButtonColor = false
+
+	local OldText = GetSwitch.Text
+	GetSwitch.Text = "Executor not support getcustomasset()"
+
+	task.delay(3, function()
+		if GetSwitch then
+			GetSwitch.Text = OldText
+		end
+	end)
+else
+	SetCustomAssetState(false, true)
+end
+
+GetSwitch.MouseButton1Click:Connect(function()
+	if not HasGetCustomAsset then
+		return
+	end
+
+	SetCustomAssetState(not UseCustomAsset, false)
+end)
+
+GetPath.FocusLost:Connect(function()
+	RefreshAllPreviews(IdleScroll)
+	RefreshAllPreviews(WhenClickScroll)
+	RefreshDisplay()
+end)
+
 ------------------------------------------------------------------------------------------
 -- Bind buttons
 ------------------------------------------------------------------------------------------
 
 Addbtn.MouseButton1Click:Connect(function()
 	AddImage(IdleScroll)
-  RefreshLayout(IdleScroll)
+	RefreshLayout(IdleScroll)
+	RefreshCanvas(IdleScroll)
 end)
 
 Addbtn2.MouseButton1Click:Connect(function()
 	AddImage(WhenClickScroll)
-  RefreshLayout(WhenClickScroll)
+	RefreshLayout(WhenClickScroll)
+	RefreshCanvas(WhenClickScroll)
 end)
 
 ------------------------------------------------------------------------------------------
@@ -709,75 +862,57 @@ local function GetFPSDelay(fps)
 end
 
 task.spawn(function()
-
 	while true do
-
 		local Images
 		local Delay
 
 		if CurrentAnimation == "Idle" then
-			Images = GetImages(IdleScroll)
+			Images = GetFrameValues(IdleScroll)
 			Delay = GetFPSDelay(IdleInput.Text)
 		else
-			Images = GetImages(WhenClickScroll)
+			Images = GetFrameValues(WhenClickScroll)
 			Delay = GetFPSDelay(WhenClickInput.Text)
 		end
 
-		-- ไม่มีรูป
 		if #Images == 0 then
 			task.wait(0.05)
 			continue
 		end
 
-		-- ถ้าเฟรมเกินจำนวนรูป
 		if CurrentFrame > #Images then
-
 			if CurrentAnimation == "WhenClick" then
-
-				-- กลับไป Idle
 				CurrentAnimation = "Idle"
 				CurrentFrame = 1
 
-				local IdleImages = GetImages(IdleScroll)
-
+				local IdleImages = GetFrameValues(IdleScroll)
 				if #IdleImages > 0 then
-					Display.Image = "rbxassetid://" .. IdleImages[1]
+					Display.Image = ResolveFrameSource(IdleImages[1])
 				else
 					Display.Image = ""
 				end
 
 				task.wait(GetFPSDelay(IdleInput.Text))
 				continue
-
 			end
 
-			-- Idle Loop
 			CurrentFrame = 1
-
 		end
 
-		-- แสดงเฟรม
-		Display.Image = "rbxassetid://" .. Images[CurrentFrame]
-
+		Display.Image = ResolveFrameSource(Images[CurrentFrame])
 		CurrentFrame += 1
 
 		task.wait(Delay)
-
 	end
-
 end)
 
 Display.MouseButton1Click:Connect(function()
-
-	local ClickImages = GetImages(WhenClickScroll)
-
+	local ClickImages = GetFrameValues(WhenClickScroll)
 	if #ClickImages == 0 then
 		return
 	end
 
 	CurrentAnimation = "WhenClick"
 	CurrentFrame = 1
-
 end)
 
 ------------------------------------------------------------------------------------------
@@ -803,10 +938,12 @@ if #GetTextBoxesSorted(WhenClickScroll) == 0 then
 	AddImage(WhenClickScroll)
 end
 
-RefreshCanvas(IdleScroll)
-RefreshCanvas(WhenClickScroll)
 RefreshLayout(IdleScroll)
 RefreshLayout(WhenClickScroll)
+RefreshCanvas(IdleScroll)
+RefreshCanvas(WhenClickScroll)
+RefreshAllPreviews(IdleScroll)
+RefreshAllPreviews(WhenClickScroll)
 RefreshDisplay()
 
 ------------------------------------------------------------------------------------------
@@ -814,10 +951,15 @@ RefreshDisplay()
 ------------------------------------------------------------------------------------------
 
 Save.MouseButton1Click:Connect(function()
+	RefreshLayout(IdleScroll)
+	RefreshLayout(WhenClickScroll)
+
 	local Out = {
 		Relax = {
-			Idle = GetImages(IdleScroll),
-			WhenClick = GetImages(WhenClickScroll),
+			Idle = GetFrameValues(IdleScroll),
+      WhenClick = GetFrameValues(WhenClickScroll),
+      GetCustomAsset = UseCustomAsset,
+      GetCustomAssetPath = Trim(GetPath.Text),
 			IdleFPS = tonumber(IdleInput.Text) or 10,
 			WhenClickFPS = tonumber(WhenClickInput.Text) or 10,
 		}
