@@ -1,4 +1,4 @@
--- So uhm just a script lol. 5.33
+-- So uhm just a script lol. 5.34
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -342,7 +342,7 @@ imag.Name = "a1_Icon"
 imag.Active = false
 imag.Size = UDim2.new(0,100,0,100)
 imag.BackgroundTransparency = 0.3
-imag.Image = "rbxassetid://117799080288721" -- profile
+imag.Image = "rbxassetid://117245034968928" -- profile
 imag.Parent = in1
 Corner(0, 8, imag)
 
