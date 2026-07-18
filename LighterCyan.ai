@@ -1,6 +1,6 @@
 -- LighterCyan.ai - Ultra-Stable Production Build
 -- Enhanced with: full error handling, memory safety, connection tracking, nil-proof operations
--- Version: 2.0 Stabilized
+-- Version: 2.1 Stabilized
 
 --// Safety wrapper for external loader
 pcall(function()
@@ -196,42 +196,76 @@ end
 
 --// UIGradient creation with robust color handling
 local function Gradient(parent, rotation, offsetX, offsetY, ...)
-    if not parent or type(parent.FindFirstChildOfClass) ~= "function" then
+    if not parent or not parent.FindFirstChildOfClass then
         return nil
     end
-    
+
+    local colors = table.pack(...)
+
     local ok, grad = pcall(function()
+
         local existing = parent:FindFirstChildOfClass("UIGradient")
-        if existing then return existing end
-        
-        local new = Instance.new("UIGradient")
-        new.Rotation = tonumber(rotation) or 0
-        new.Offset = Vector2.new(tonumber(offsetX) or 0, tonumber(offsetY) or 0)
-
-        local colors = { ... }
-        local keypoints = {}
-
-        if #colors == 0 then
-            keypoints = {
-                ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-                ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
-            }
-        elseif #colors == 1 then
-            keypoints = {
-                ColorSequenceKeypoint.new(0, colors[1]),
-                ColorSequenceKeypoint.new(1, colors[1]),
-            }
-        else
-            for i, c in ipairs(colors) do
-                local t = (i - 1) / (#colors - 1)
-                table.insert(keypoints, ColorSequenceKeypoint.new(t, c))
-            end
+        if existing then
+            return existing
         end
 
-        new.Color = ColorSequence.new(keypoints)
-        new.Parent = parent
-        return new
+        local g = Instance.new("UIGradient")
+
+        g.Rotation = tonumber(rotation) or 0
+        g.Offset = Vector2.new(
+            tonumber(offsetX) or 0,
+            tonumber(offsetY) or 0
+        )
+
+        local keypoints = {}
+
+        if colors.n == 0 then
+
+            keypoints = {
+                ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+                ColorSequenceKeypoint.new(1, Color3.new(1,1,1))
+            }
+
+        elseif colors.n == 1 then
+
+            local c = typeof(colors[1]) == "Color3"
+                and colors[1]
+                or Color3.new(1,1,1)
+
+            keypoints = {
+                ColorSequenceKeypoint.new(0,c),
+                ColorSequenceKeypoint.new(1,c)
+            }
+
+        else
+
+            for i = 1, colors.n do
+
+                local c = colors[i]
+
+                if typeof(c) == "Color3" then
+
+                    table.insert(
+                        keypoints,
+                        ColorSequenceKeypoint.new(
+                            (i-1)/(colors.n-1),
+                            c
+                        )
+                    )
+
+                end
+
+            end
+
+        end
+
+        g.Color = ColorSequence.new(keypoints)
+        g.Parent = parent
+
+        return g
+
     end)
+
     return ok and grad or nil
 end
 
@@ -609,14 +643,32 @@ local function safe_attach_auto_resize(frame, label)
             local sc = find_scroll_frame()
             local scW = (sc and type(sc.AbsoluteSize) ~= "nil" and sc.AbsoluteSize.X) or 400
 
-            local ok, ts = pcall(function()
-                return TextService:GetTextSize(
-                    tostring(safeGet(label, "Text", "")),
-                    tonumber(safeGet(label, "TextSize", 16)) or 16,
-                    safeGet(label, "Font", Enum.Font.SourceSans),
-                    Vector2.new(math.max(10, scW * 0.88), math.huge)
-                )
-            end)
+            local font = safeGet(label, "Font", Enum.Font.SourceSans)
+
+-- fallback กัน Executor คืน Enum.Font.Unknown
+if typeof(font) ~= "EnumItem"
+	or not tostring(font):match("^Enum%.Font%.")
+	or tostring(font) == "Enum.Font.Unknown" then
+
+	font = Enum.Font.SourceSans
+end
+
+local ok, ts = pcall(function()
+	return TextService:GetTextSize(
+		tostring(safeGet(label, "Text", "")),
+		tonumber(safeGet(label, "TextSize", 16)) or 16,
+		font,
+		Vector2.new(math.max(10, scW * 0.88), math.huge)
+	)
+end)
+
+-- ถ้ายังพังอีก ใช้ fallback คำนวณเอง
+if not ok or not ts then
+	ts = Vector2.new(
+		0,
+		math.ceil(#tostring(safeGet(label, "Text", "")) * ((tonumber(safeGet(label, "TextSize", 16)) or 16) * 0.65))
+	)
+end
 
             local textHeight = (ok and ts and type(ts.Y) == "number") and ts.Y or ((tonumber(safeGet(label, "TextSize", 16)) or 16) * 1.2)
             local newH = math.clamp(math.ceil(textHeight) + 18, Config.MIN_HEIGHT, Config.MAX_HEIGHT)
