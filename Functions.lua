@@ -1,4 +1,4 @@
--- So uhm just a script lol. 5.35
+-- So uhm just a script lol. 5.4
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1420,6 +1420,18 @@ else
 end
 -- ==========
 
+local function SafeFont(font)
+	local ok = pcall(function()
+		local _ = font.Name
+	end)
+
+	if ok and font ~= Enum.Font.Unknown then
+		return font
+	end
+
+	return Enum.Font.SourceSans
+end
+
 -- Toggle builder
 local toggleCount = 0
 local function createToggle(parent, text, description, callback, defaultState)
@@ -1475,15 +1487,23 @@ local function createToggle(parent, text, description, callback, defaultState)
 	Corner(0,8,des)
 	Stroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
-	local bounds = TextService:GetTextSize(
-    des.Text,
-    des.TextSize,
-    des.Font,
-    Vector2.new(220, math.huge)
-)
+	local bounds
+
+local ok = pcall(function()
+	bounds = TextService:GetTextSize(
+		tostring(des.Text or ""),
+		tonumber(des.TextSize) or 12,
+		SafeFont(des.Font),
+		Vector2.new(220, math.huge)
+	)
+end)
+
+if not ok or not bounds then
+	bounds = Vector2.new(220, 24)
+end
 
 des.Size = UDim2.new(0,220,0,bounds.Y + 10)
-
+  
 	txt.MouseEnter:Connect(function()
     des.Visible = true
 end)
