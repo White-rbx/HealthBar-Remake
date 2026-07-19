@@ -1,4 +1,4 @@
--- Ok 3.4
+-- Ok 3.42
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -100,6 +100,7 @@ local function setupValueGui()
         layo.FillDirection = Enum.FillDirection.Horizontal
         layo.HorizontalAlignment = Enum.HorizontalAlignment.Right
         layo.Padding = UDim.new(0, 10)
+		layo.SortOrder = Enum.SortOrder.LayoutOrder
         layo.Parent = fm
     end
 
@@ -136,10 +137,10 @@ local function setupValueGui()
         return lbl
     end
 
-    createLabel("HealthLabel", UDim2.new(0.1, 0, 1, 0), Color3.fromRGB(0,255,0))
-    createLabel("SpeedLabel",  UDim2.new(0.1, 0, 1, 0), Color3.fromRGB(0,0,255))
-    createLabel("FPSLabel",    UDim2.new(0.1, 0, 1, 0), Color3.fromRGB(255,0,0))
 	createLabel("PingLabel",   UDim2.new(0.1, 0 ,1 ,0), Color3.fromRGB(255,255,0))
+    createLabel("FPSLabel",    UDim2.new(0.1, 0, 1, 0), Color3.fromRGB(255,0,0))
+	createLabel("HealthLabel", UDim2.new(0.1, 0, 1, 0), Color3.fromRGB(0,255,0))
+    createLabel("SpeedLabel",  UDim2.new(0.1, 0, 1, 0), Color3.fromRGB(0,0,255))
 end
 
 -- Gradient/Stroke Setup (guarded)
@@ -219,12 +220,6 @@ local function getPing()
     return 0
 end
 
-if pingLabel then
-    pcall(function()
-        pingLabel.Text = "PING " .. getPing() .. "ms"
-    end)
-end
-
 -- อัปเดตทุกเฟรม (RenderStepped)
 RunService.RenderStepped:Connect(function()
     local char = player and player.Character
@@ -276,6 +271,12 @@ RunService.RenderStepped:Connect(function()
     if fpsLabel then
         pcall(function() fpsLabel.Text = "FPS " .. tostring(calculateFPS()) end)
     end
+
+	if pingLabel then
+    pcall(function()
+        pingLabel.Text = "PING " .. getPing() .. "ms"
+    end)
+	end
 
     -- Update Fill Gradient safely
     if fillGradient then
