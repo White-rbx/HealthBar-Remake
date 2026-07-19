@@ -1,4 +1,4 @@
--- So uhm just a script lol. 5.4
+-- So uhm just a script lol. 6
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -1432,18 +1432,22 @@ local function SafeFont(font)
 	return Enum.Font.SourceSans
 end
 
+local ToggleConfig = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ToggleConfig.lua"
+))()
+
 -- Toggle builder
 local toggleCount = 0
-local function createToggle(parent, text, description, callback, defaultState)
+
+local function createToggle(parent, id, text, description, callback, defaultState)
     toggleCount += 1
 
     local f = Instance.new("Frame")
     f.Name = "Frame" .. toggleCount
     f.Size = UDim2.new(1,0,0.05,0)
-    f.BackgroundTransparency = 0
-	f.BackgroundColor3 = Color3.new(0,0,0)
+    f.BackgroundColor3 = Color3.new(0,0,0)
     f.Parent = parent
-    Corner(0.3, 0,f)
+    Corner(0.3,0,f)
 
     local bar = Instance.new("Frame")
     bar.Name = "Bar"
@@ -1465,86 +1469,121 @@ local function createToggle(parent, text, description, callback, defaultState)
     txt.BackgroundTransparency = 1
     txt.TextScaled = true
     txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.TextColor3 = Color3.new(1,1,1)
+    txt.RichText = true
     txt.Text = text or ""
-	txt.TextColor3 = Color3.new(1,1,1)
-	txt.RichText = true
     txt.Parent = f
 
-	local des = Instance.new("TextLabel")
-	des.Name = "Description"
-	des.Position = UDim2.new(0,-224,0,0)
-	des.BackgroundColor3 = Color3.new(0.1,0.1,0.1)
-	des.BackgroundTransparency = 0
-	des.TextWrapped = true
+    local des = Instance.new("TextLabel")
+    des.Name = "Description"
+    des.Position = UDim2.new(0,-224,0,0)
+    des.BackgroundColor3 = Color3.fromRGB(25,25,25)
+    des.TextWrapped = true
     des.TextYAlignment = Enum.TextYAlignment.Top
-	des.Visible = false
-	des.TextSize = 12
-	des.Text = description or ""
-	des.TextColor3 = Color3.new(1,1,1)
-	des.RichText = true
-	des.ZIndex = 3
-	des.Parent = txt
-	Corner(0,8,des)
-	Stroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
-
-	local bounds
-
-local ok = pcall(function()
-	bounds = TextService:GetTextSize(
-		tostring(des.Text or ""),
-		tonumber(des.TextSize) or 12,
-		SafeFont(des.Font),
-		Vector2.new(220, math.huge)
-	)
-end)
-
-if not ok or not bounds then
-	bounds = Vector2.new(220, 24)
-end
-
-des.Size = UDim2.new(0,220,0,bounds.Y + 10)
-  
-	txt.MouseEnter:Connect(function()
-    des.Visible = true
-end)
-
-txt.MouseLeave:Connect(function()
+    des.TextColor3 = Color3.new(1,1,1)
+    des.RichText = true
+    des.TextSize = 12
     des.Visible = false
-end)
+    des.ZIndex = 3
+    des.Text = description or ""
+    des.Parent = txt
 
+    Corner(0,8,des)
+    Stroke(des, ASMBorder,255,255,255,LJMRound,1,0)
+
+    local bounds
+
+    local ok = pcall(function()
+        bounds = TextService:GetTextSize(
+            tostring(des.Text or ""),
+            tonumber(des.TextSize) or 12,
+            SafeFont(des.Font),
+            Vector2.new(220, math.huge)
+        )
+    end)
+
+    if not ok or not bounds then
+        bounds = Vector2.new(220,24)
+    end
+
+    des.Size = UDim2.new(0,220,0,bounds.Y+10)
+
+    txt.MouseEnter:Connect(function()
+        des.Visible = true
+    end)
+
+    txt.MouseLeave:Connect(function()
+        des.Visible = false
+    end)
+
+    ---------------------------------------------------
     -- Toggle Logic
-    local toggle = defaultState or false
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    ---------------------------------------------------
+
+    local toggle = ToggleConfig:Get(
+        id,
+        defaultState or false
+    )
+
+    local tweenInfo = TweenInfo.new(
+        0.3,
+        Enum.EasingStyle.Quad,
+        Enum.EasingDirection.Out
+    )
 
     local function updateToggle(state, instant)
+
         toggle = state
+
+        ToggleConfig:Set(id,state)
+        ToggleConfig:Save()
+
         local props
+
         if toggle then
+
             props = {
                 Position = UDim2.new(0,0,0,0),
                 BackgroundColor3 = Color3.fromRGB(0,200,0)
             }
+
             but.Text = "ON"
+
         else
+
             props = {
                 Position = UDim2.new(0.5,0,0,0),
                 BackgroundColor3 = Color3.fromRGB(255,0,0)
             }
+
             but.Text = "OFF"
+
         end
+
         if instant then
+
             for k,v in pairs(props) do
-                pcall(function() but[k] = v end)
+                but[k] = v
             end
+
         else
-            pcall(function() TweenService:Create(but, tweenInfo, props):Play() end)
+
+            TweenService:Create(
+                but,
+                tweenInfo,
+                props
+            ):Play()
+
         end
+
         if callback then
-            pcall(callback, toggle)
+            pcall(callback,toggle)
         end
+
     end
 
-    updateToggle(toggle, true)
+    -- โหลดค่าจากไฟล์
+    updateToggle(toggle,true)
 
     but.MouseButton1Click:Connect(function()
         updateToggle(not toggle)
@@ -1567,7 +1606,7 @@ local gui = game:GetService("CoreGui")
 	:WaitForChild("LighterCyan.ai")
 
 -- ใช้ toggle เดิมของนาย
-createToggle(BFrame, "LighterCyan.ai (Discontinued)", [[<b><u>LighterCyan.ai</u></b>
+createToggle(BFrame, "LighterCyan", "LighterCyan.ai (Discontinued)", [[<b><u>LighterCyan.ai</u></b>
 It's discontinued bro.
 😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭]], function(state)
 	gui.Enabled = state  -- เปิด/ปิดตามสวิตช์
@@ -1584,7 +1623,7 @@ local hb = game:GetService("CoreGui")
 	:WaitForChild("HealthBar")
 
 -- 🟩 Toggle รวม HealthBar
-createToggle(BFrame, "HealthBar", [[<b><u>HealthBar</u></b>
+createToggle(BFrame, "HBar", "HealthBar", [[<b><u>HealthBar</u></b>
 Show HealthBar at the Top Right.]], function(state)
 	local fill = hb:FindFirstChild("Fill")
 	local outline = hb:FindFirstChild("Outline")
@@ -1600,7 +1639,7 @@ end, true) -- default = ON
 -- ตัวแปรควบคุม loop
 local deathSoundLoopRunning = false
 
-createToggle(BFrame, "Disable Death Sound", [[<b><u>Death Sound</u></b>
+createToggle(BFrame, "DDS", "Disable Death Sound", [[<b><u>Death Sound</u></b>
 Play sound after character dead.]], function(state)
 	local Players = game:GetService("Players")
 	local player = Players.LocalPlayer
@@ -1631,7 +1670,7 @@ end, false) -- default OFF
 -- ==============================
 -- ✅ ExperienceSettingsCamera (FreeCam Final - White Edition)
 -- รองรับ Mobile + Keyboard + Speed UI + Direction Fix
-createToggle(BFrame, "FreeCam (Mobile)", [[<b><u>FreeCam</u></b>
+createToggle(BFrame, "FC", "FreeCam (Mobile)", [[<b><u>FreeCam</u></b>
 	Explore around the world with FreeCam! (Mobile Only)]], function(state)
 	local Players = game:GetService("Players")
 	local RunService = game:GetService("RunService")
@@ -1875,7 +1914,7 @@ end, false)
 local SavedFallen = workspace.FallenPartsDestroyHeight  
 local FallenToggleState = false  -- default = OFF
 
-createToggle(BFrame, "Almost Endless Fallen (-50K)", [[<b><u>Almost Endless Fallen</u></b>
+createToggle(BFrame, "AEF", "Almost Endless Fallen (-50K)", [[<b><u>Almost Endless Fallen</u></b>
 Set FallenPartDestroyHeight at -50000.]], function(state)
 
     if state then
@@ -1908,7 +1947,7 @@ local Camera = workspace.CurrentCamera
 local flashlightPart = nil
 local flashlightConn = nil
 
-createToggle(BFrame, "Flashlight", [[<b><u>Flashlight</u></b>
+createToggle(BFrame, "FL", "Flashlight", [[<b><u>Flashlight</u></b>
 It will make you in the first person with light, and also recommend set graphic quality at 6+]], function(state)
     if state then
         --------------------------------------------------
@@ -2108,7 +2147,7 @@ end
 -- 🔘 TOGGLE BUTTON (พร้อมใช้งาน)
 --========================================================--
 
-createToggle(BFrame, "ESP Highlight Players & Non-Players", [[<b><u>ESP Highlight Players & Non-Players</u></b>
+createToggle(BFrame, "EHP&NP", "ESP Highlight Players & Non-Players", [[<b><u>ESP Highlight Players & Non-Players</u></b>
 It will highlight HumanoidRootPart. Players is <font color="rgb(0,255,0)">green</font> and Non-Players is <font color="rgb(255,10,10)">red</font>.]], function(state)
 	if state then
 		startESPLoop()   -- เปิด
@@ -2120,7 +2159,7 @@ end, false) -- default OFF
 -- ========== END ESP ==========
 
 -- ======== SHIFT LOCK =======
-createToggle(BFrame, "Shift Lock (Mobile)", [[<b><u>Shift Lock</u></b>
+createToggle(BFrame, "SL", "Shift Lock (Mobile)", [[<b><u>Shift Lock</u></b>
 Shift Lock for Mobile players. Also you can CUSTOMIZE CROSSHAIR by open <b>Settings - 2</b> in <b>Settings - Loader Rejoiner</b>!]], function(state)
     sh.Visible = state
 end, false)
@@ -2347,7 +2386,7 @@ end)
 -- TOGGLE (ใช้ของเดิม)
 --========================================
 
-createToggle(BFrame, "Hitbox Shower", [[<b><u>Hitbox Shower</u></b>
+createToggle(BFrame, "HBS", "Hitbox Shower", [[<b><u>Hitbox Shower</u></b>
 See all hitbox players 
 (Using ViewportFrame)]],function(on)
     HitboxView.Enabled = on
@@ -2470,7 +2509,7 @@ end)
 --// TOGGLE
 --// ================================
 
-createToggle(BFrame, "Last Death", [[<b><u>Last Death</u></b>
+createToggle(BFrame, "LD", "Last Death", [[<b><u>Last Death</u></b>
 It will show last position where you die at
 as a frozen ghost character...]], function(on)
     LastDeath.Enabled = on
@@ -2678,7 +2717,7 @@ end
 --// TOGGLE
 --// ========================
 
-createToggle(BFrame, "ServerPositionPredictor (By @zephyrr)", [[<b><u>ServerPositionPredictor</u></b>
+createToggle(BFrame, "SPP", "ServerPositionPredictor (By @zephyrr)", [[<b><u>ServerPositionPredictor</u></b>
 Showing between Server and Client.
 Server is a second character of you. (Displaying as like ping)
 Client is you.]], function(on)
