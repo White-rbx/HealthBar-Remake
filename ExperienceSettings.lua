@@ -1,4 +1,4 @@
--- Ok 4.42
+-- Ok 4.5
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1311,7 +1311,7 @@ local valueGuiOK, ValueGui = pcall(function()
     return CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp"):WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar"):WaitForChild("ValueFolder"):WaitForChild("ValueGui")
 end)
 
-createToggle(BFrame, "Enable ValueLabels", [[<b><u>ValueLabel</u></b>
+createToggle(BFrame, "EVS", "Enable ValueLabels", [[<b><u>ValueLabel</u></b>
 Show ValueLabel at the Top HealthBar.
 • FPS - Frame Per second
 • HP - Health ( How to read: 100.000 HP = 100 HP )
@@ -1345,7 +1345,7 @@ local function restoreLightingSettings()
 end
 
 -- Shaders toggle
-createToggle(BFrame, "Shaders - Sunset", [[<b><u>Shaders</u></b>
+createToggle(BFrame, "S-SS", "Shaders - Sunset", [[<b><u>Shaders</u></b>
 What a beautiful sunset!
 Graphic quality recommend 6+]], function(state)
     if state then
@@ -1540,20 +1540,20 @@ local function toggleForLocalPlayer(state, rainbow)
     end
 end
 
-createToggle(BFrame, "White Light", [[<b><u>White Light</u></b>
+createToggle(BFrame, "WL", "White Light", [[<b><u>White Light</u></b>
 Just a PointLight around the you.
 Useful in the dark.]], function(state)
     toggleForLocalPlayer(state, false) -- ปกติ ขาว
 end, false)
 
-createToggle(BFrame, "RGB Light", [[<b><u>RGB Light</u></b>
+createToggle(BFrame, "RGBL", "RGB Light", [[<b><u>RGB Light</u></b>
 Same as White Light, but RGB.]], function(state)
     toggleForLocalPlayer(state, true) -- RGB (เดิม rainbow)
 end, false)
 
 
 
-createToggle(BFrame, "ESP", [[<b><u>ESP</u></b>
+createToggle(BFrame, "ESP-S", "ESP", [[<b><u>ESP</u></b>
 See all players around the map.
 Also TextLabel will change color following team color.]], function(state)
     if state then
@@ -1875,7 +1875,7 @@ lder.Size = UDim2.new(0.65,0,1,0)
 local DamageOverlay = game:GetService("CoreGui"):WaitForChild("DamageOverlay")
 
 -- ใช้ฟังก์ชัน createToggle ที่คุณมีอยู่แล้ว
-createToggle(BFrame, "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>", [[<b><u>Damage Overlay</u></b>
+createToggle(BFrame, "DO",  "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>", [[<b><u>Damage Overlay</u></b>
 Displays visual damage effects when your character takes damage.
 
 <font color="#aaffaa">
@@ -1911,7 +1911,7 @@ task.spawn(function()
 
     createToggle(
         BFrame, -- Parent = ตัวแปรที่นายกำหนดไว้
-        "MoreToggles", [[<b><u>MoreToggles</u></b>
+        "MTS", "MoreToggles", [[<b><u>MoreToggles</u></b>
 Open second toggle menu.]],
         function(state)
             pcall(function()
