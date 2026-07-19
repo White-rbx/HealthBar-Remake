@@ -1,57 +1,50 @@
--- Value 1.1
+-- Value 2.0
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
-local fpsLabel
-local uiStroke
+local fpsLabel, fpsStroke
+local pingLabel, pingStroke
 
 local function refreshObjects()
+	local success, point = pcall(function()
+		return CoreGui
+			.TopBarApp
+			.TopBarApp
+			.UnibarLeftFrame
+			.HealthBar
+			.ValueFolder
+			.ValueGui
+			.point
+	end)
 
-	local success, label =
-		pcall(function()
-
-			return CoreGui
-				.TopBarApp
-				.TopBarApp
-				.UnibarLeftFrame
-				.HealthBar
-				.ValueFolder
-				.ValueGui
-				.point
-				.FPSLabel
-
-		end)
-
-	if success and label then
-
-		fpsLabel = label
-
-		uiStroke =
-			label:FindFirstChildOfClass(
-				"UIStroke"
-			)
-
+	if not success or not point then
+		return
 	end
 
+	fpsLabel = point:FindFirstChild("FPSLabel")
+	if fpsLabel then
+		fpsStroke = fpsLabel:FindFirstChildOfClass("UIStroke")
+	end
+
+	pingLabel = point:FindFirstChild("PingLabel")
+	if pingLabel then
+		pingStroke = pingLabel:FindFirstChildOfClass("UIStroke")
+	end
 end
 
 refreshObjects()
 
 CoreGui.DescendantAdded:Connect(function(obj)
-
-	if obj.Name == "FPSLabel"
-	and obj:IsA("TextLabel") then
-
-		fpsLabel = obj
-
-		uiStroke =
-			obj:WaitForChild(
-				"UIStroke"
-			)
-
+	if obj:IsA("TextLabel") then
+		if obj.Name == "FPSLabel" then
+			fpsLabel = obj
+			fpsStroke = obj:WaitForChild("UIStroke")
+		elseif obj.Name == "PingLabel" then
+			pingLabel = obj
+			pingStroke = obj:WaitForChild("UIStroke")
+		end
 	end
-
 end)
 
 -- Function to get color based on FPS
@@ -79,6 +72,30 @@ local function getFPSColor(fps: number)
     end
 end
 
+local function getPingColor(ping: number)
+	if ping <= 20 then
+		return Color3.fromRGB(0,255,255) -- Cyan (Excellent)
+	elseif ping <= 40 then
+		return Color3.fromRGB(0,255,170) -- Mint
+	elseif ping <= 60 then
+		return Color3.fromRGB(191,255,0) -- Lime
+	elseif ping <= 80 then
+		return Color3.fromRGB(255,255,0) -- Yellow
+	elseif ping <= 120 then
+		return Color3.fromRGB(255,179,71) -- Yellow Orange
+	elseif ping <= 180 then
+		return Color3.fromRGB(255,165,0) -- Orange
+	elseif ping <= 300 then
+		return Color3.fromRGB(255,69,0) -- Red Orange
+	elseif ping <= 500 then
+		return Color3.fromRGB(255,0,0) -- Red
+	elseif ping <= 1000 then
+		return Color3.fromRGB(139,0,0) -- Dark Red
+	else
+		return Color3.fromRGB(255,105,180) -- Pink (Of course connection is dying 💀)
+	end
+end
+
 -- Tween TextLabel stroke
 local function tweenTextStroke(label: TextLabel, color: Color3)
     local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -98,34 +115,46 @@ local lastTime = tick()
 
 RunService.RenderStepped:Connect(function()
 
-	if not fpsLabel
-	or not fpsLabel.Parent
-	or not uiStroke
-	or not uiStroke.Parent then
-
+	if not fpsLabel or not fpsStroke then
 		refreshObjects()
 		return
+	end
 
+	if not pingLabel or not pingStroke then
+		refreshObjects()
+		return
 	end
 
 	local currentTime = tick()
 
-	local fps =
-		1 / (currentTime - lastTime)
-
+	local fps = 1 / (currentTime - lastTime)
 	lastTime = currentTime
 
-	local color =
-		getFPSColor(fps)
+	-- FPS
+	local fpsColor = getFPSColor(fps)
 
 	tweenTextStroke(
 		fpsLabel,
-		color
+		fpsColor
 	)
 
 	tweenStrokeColor(
-		uiStroke,
-		color
+		fpsStroke,
+		fpsColor
+	)
+
+	-- Ping
+	local ping = game:GetService("Players").LocalPlayer:GetNetworkPing() * 1000
+	local pingColor = getPingColor(ping)
+
+	tweenTextStroke(
+		pingLabel,
+		pingColor
+	)
+
+	tweenStrokeColor(
+		pingStroke,
+		pingColor
 	)
 
 end)
