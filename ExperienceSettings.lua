@@ -1,4 +1,4 @@
--- Ok 3.23
+-- Ok 3.4
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -8,6 +8,7 @@ print("[ TweenHealth ] Successful loaded.")
 -- ใช้ใน LocalScript (client-side)
 -- ปรับปรุงการตรวจสอบ nil เพื่อหลีกเลี่ยง "attempt to index nil with 'FindFirstChild'"
 
+local Stats = game:GetService("Stats")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
@@ -138,6 +139,7 @@ local function setupValueGui()
     createLabel("HealthLabel", UDim2.new(0.1, 0, 1, 0), Color3.fromRGB(0,255,0))
     createLabel("SpeedLabel",  UDim2.new(0.1, 0, 1, 0), Color3.fromRGB(0,0,255))
     createLabel("FPSLabel",    UDim2.new(0.1, 0, 1, 0), Color3.fromRGB(255,0,0))
+	createLabel("PingLabel",   UDim2.new(0.1, 0 ,1 ,0), Color3.fromRGB(255,255,0))
 end
 
 -- Gradient/Stroke Setup (guarded)
@@ -205,6 +207,24 @@ local function calculateFPS()
     return fps
 end
 
+local function getPing()
+    local ok, ping = pcall(function()
+        return Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+    end)
+
+    if ok and ping then
+        return math.floor(ping + 0.5)
+    end
+
+    return 0
+end
+
+if pingLabel then
+    pcall(function()
+        pingLabel.Text = "PING " .. getPing() .. "ms"
+    end)
+end
+
 -- อัปเดตทุกเฟรม (RenderStepped)
 RunService.RenderStepped:Connect(function()
     local char = player and player.Character
@@ -229,6 +249,7 @@ RunService.RenderStepped:Connect(function()
     local healthLabel = fm:FindFirstChild("HealthLabel")
     local speedLabel = fm:FindFirstChild("SpeedLabel")
     local fpsLabel   = fm:FindFirstChild("FPSLabel")
+	local pingLabel = fm:FindFirstChild("PingLabel")
 
     local percent = 0
     if hum and hum.MaxHealth and hum.MaxHealth > 0 then
