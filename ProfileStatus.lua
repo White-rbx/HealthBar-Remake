@@ -1,4 +1,4 @@
--- Script ahh 1.8
+-- Script ahh 2
 
 -- =====>> Saved Functions <<=====
 
@@ -248,6 +248,7 @@ local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Wo
 	btn.BackgroundColor3 = Color3.fromRGB(R1 or 255, G1 or 255, B1 or 255)
     btn.TextScaled = true
 	btn.RichText = true
+	btn.TextColor3 = Color3.new(1,1,1)
     btn.Size = UDim2.new(0.99, 0, 0, 20)
 	btn.LayoutOrder = 3
     btn.Parent = parent
@@ -285,13 +286,14 @@ end
 local function space(parent, layoutorder, text)
 	local space = Instance.new("TextLabel")
 	space.Name = "Space"
-	space.Size = UDim2.new(0,0,0,5)
+	space.Size = UDim2.new(0.99,0,0,11)
 	space.BackgroundTransparency = 1
     space.LayoutOrder = layoutorder or 1
 	space.TextColor3 = Color3.new(1,1,1)
 	space.Text = tostring(text)
 	space.RichText = true
 	space.TextWrapped = true
+	space.TextSize = 10
 	space.TextXAlignment = Enum.TextXAlignment.Center
 	space.TextYAlignment = Enum.TextYAlignment.Center
     space.Parent = parent
