@@ -1,4 +1,4 @@
--- Ok 4.53
+-- Ok 4.55
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1158,11 +1158,20 @@ local function createToggle(parent, id, text, description, callback, defaultStat
 	createUICorner(des, 0, 8)
 	createUIStroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
+    local function StripRichText(text)
+	text = tostring(text or "")
+
+	-- ลบเฉพาะ Tag ที่ขึ้นต้นด้วยตัวอักษรหรือ /
+	text = text:gsub("</?[%a][^>]->", "")
+
+	return text
+end
+	
     local bounds
 
     local ok = pcall(function()
         bounds = TextService:GetTextSize(
-            tostring(des.Text or ""),
+            StripRichText(des.Text or ""),
             tonumber(des.TextSize) or 12,
             SafeFont(des.Font),
             Vector2.new(220, math.huge)
