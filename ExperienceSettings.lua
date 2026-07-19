@@ -1,4 +1,4 @@
--- Ok 4.5
+-- Ok 4.52
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1105,7 +1105,7 @@ local ToggleConfig = loadstring(game:HttpGet(
 
 -- Toggle builder
 local toggleCount = 0
-local function createToggle(parent, text, description, callback, defaultState, setHighPos)
+local function createToggle(parent, id, text, description, callback, defaultState, setHighPos)
     toggleCount += 1
 
     local f = Instance.new("Frame")
