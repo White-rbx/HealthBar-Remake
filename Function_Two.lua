@@ -1,4 +1,4 @@
--- So this another script lol 2.9
+-- So this another script lol 2.91
 
 
 -- =====>> Saved Functions <<=====
@@ -142,6 +142,18 @@ repeat
     task.wait()
 until BFrame.Parent
 
+local function SafeFont(font)
+	local ok = pcall(function()
+		local _ = font.Name
+	end)
+
+	if ok and font ~= Enum.Font.Unknown then
+		return font
+	end
+
+	return Enum.Font.SourceSans
+end
+
 local ToggleConfig = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ToggleConfig.lua"
 ))()
@@ -210,6 +222,15 @@ local function createToggle(parent, id, text, description, callback, defaultStat
 	return text
 end
 	
+    local function StripRichText(text)
+	text = tostring(text or "")
+
+	-- ลบเฉพาะ Tag ที่ขึ้นต้นด้วยตัวอักษรหรือ /
+	text = text:gsub("</?[%a][^>]->", "")
+
+	return text
+end
+	
     local bounds
 
     local ok = pcall(function()
@@ -226,6 +247,14 @@ end
     end
 
     des.Size = UDim2.new(0,220,0,bounds.Y+10)
+
+	txt.MouseEnter:Connect(function()
+    des.Visible = true
+end)
+
+txt.MouseLeave:Connect(function()
+    des.Visible = false
+end)
 
     txt.MouseEnter:Connect(function()
         des.Visible = true
