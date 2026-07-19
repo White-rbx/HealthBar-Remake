@@ -1,4 +1,4 @@
--- Value 2.0
+-- Value 2.3
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
@@ -142,10 +142,9 @@ RunService.RenderStepped:Connect(function()
 		fpsStroke,
 		fpsColor
 	)
-
 	-- Ping
-	local ping = game:GetService("Players").LocalPlayer:GetNetworkPing() * 1000
-	local pingColor = getPingColor(ping)
+	local ping = tonumber(pingLabel.Text:match("[%d%.]+")) or 0
+    local pingColor = getPingColor(ping)
 
 	tweenTextStroke(
 		pingLabel,
