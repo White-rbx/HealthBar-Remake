@@ -1,4 +1,4 @@
--- Ok 3.42
+-- Ok 4.42
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1099,6 +1099,10 @@ BFrame.BackgroundTransparency = 1; BFrame.Parent = settings
 
 local UIList = Instance.new("UIListLayout"); UIList.Padding = UDim.new(0.01,0); UIList.Parent = BFrame
 
+local ToggleConfig = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ToggleConfig.lua"
+))()
+
 -- Toggle builder
 local toggleCount = 0
 local function createToggle(parent, text, description, callback, defaultState, setHighPos)
@@ -1133,8 +1137,8 @@ local function createToggle(parent, text, description, callback, defaultState, s
     txt.TextScaled = true
     txt.TextXAlignment = Enum.TextXAlignment.Left
     txt.Text = text or ""
-	txt.TextColor3 = Color3.new(1,1,1)
-	txt.RichText = true
+  	txt.TextColor3 = Color3.new(1,1,1)
+    txt.RichText = true
     txt.Parent = f
 
 	local des = Instance.new("TextLabel")
@@ -1154,56 +1158,99 @@ local function createToggle(parent, text, description, callback, defaultState, s
 	createUICorner(des, 0, 8)
 	createUIStroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
-	local bounds = TextService:GetTextSize(
-    des.Text,
-    des.TextSize,
-    des.Font,
-    Vector2.new(220, math.huge)
-)
+    local bounds
 
-des.Size = UDim2.new(0,220,0,bounds.Y + 10)
+    local ok = pcall(function()
+        bounds = TextService:GetTextSize(
+            tostring(des.Text or ""),
+            tonumber(des.TextSize) or 12,
+            SafeFont(des.Font),
+            Vector2.new(220, math.huge)
+        )
+    end)
 
-	txt.MouseEnter:Connect(function()
-    des.Visible = true
-end)
+    if not ok or not bounds then
+        bounds = Vector2.new(220,24)
+    end
 
-txt.MouseLeave:Connect(function()
-    des.Visible = false
-end)
+    des.Size = UDim2.new(0,220,0,bounds.Y+10)
 
+    txt.MouseEnter:Connect(function()
+        des.Visible = true
+    end)
+
+    txt.MouseLeave:Connect(function()
+        des.Visible = false
+    end)
+
+    ---------------------------------------------------
     -- Toggle Logic
-    local toggle = defaultState or false
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    ---------------------------------------------------
+
+    local toggle = ToggleConfig:Get(
+        id,
+        defaultState or false
+    )
+
+    local tweenInfo = TweenInfo.new(
+        0.3,
+        Enum.EasingStyle.Quad,
+        Enum.EasingDirection.Out
+    )
 
     local function updateToggle(state, instant)
+
         toggle = state
+
+        ToggleConfig:Set(id,state)
+        ToggleConfig:Save()
+
         local props
+
         if toggle then
+
             props = {
                 Position = UDim2.new(0,0,0,0),
                 BackgroundColor3 = Color3.fromRGB(0,200,0)
             }
+
             but.Text = "ON"
+
         else
+
             props = {
                 Position = UDim2.new(0.5,0,0,0),
                 BackgroundColor3 = Color3.fromRGB(255,0,0)
             }
+
             but.Text = "OFF"
+
         end
+
         if instant then
+
             for k,v in pairs(props) do
-                pcall(function() but[k] = v end)
+                but[k] = v
             end
+
         else
-            pcall(function() TweenService:Create(but, tweenInfo, props):Play() end)
+
+            TweenService:Create(
+                but,
+                tweenInfo,
+                props
+            ):Play()
+
         end
+
         if callback then
-            pcall(callback, toggle)
+            pcall(callback,toggle)
         end
+
     end
 
-    updateToggle(toggle, true)
+    -- โหลดค่าจากไฟล์
+    updateToggle(toggle,true)
 
     but.MouseButton1Click:Connect(function()
         updateToggle(not toggle)
