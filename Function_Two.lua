@@ -1,4 +1,4 @@
--- So this another script lol 2.4
+-- So this another script lol 2.9
 
 
 -- =====>> Saved Functions <<=====
@@ -201,11 +201,20 @@ local function createToggle(parent, id, text, description, callback, defaultStat
     Corner(0,8,des)
     Stroke(des, ASMBorder,255,255,255,LJMRound,1,0)
 
+    local function StripRichText(text)
+	text = tostring(text or "")
+
+	-- ลบเฉพาะ Tag ที่ขึ้นต้นด้วยตัวอักษรหรือ /
+	text = text:gsub("</?[%a][^>]->", "")
+
+	return text
+end
+	
     local bounds
 
     local ok = pcall(function()
         bounds = TextService:GetTextSize(
-            tostring(des.Text or ""),
+            StripRichText(des.Text or ""),
             tonumber(des.TextSize) or 12,
             SafeFont(des.Font),
             Vector2.new(220, math.huge)
