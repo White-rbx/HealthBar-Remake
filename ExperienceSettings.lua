@@ -1,4 +1,4 @@
--- Ok 4.52
+-- Ok 4.53
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1001,7 +1001,7 @@ print("[ Script_1 ] HRP-Watcher loaded successfully.")
 local background = Instance.new("Frame")
 background.Name = "Background"
 background.Size = UDim2.new(0.35, 0, 0.9, 0)
-background.Position = UDim2.new(1, 0, 0.1, 0) -- offscreen
+background.Position = UDim2.new(1.6, 0, 0.1, 0) -- offscreen
 background.BackgroundColor3 = Color3.new(0, 0, 0)
 background.BackgroundTransparency = 0.5
 background.Active = true
@@ -2433,7 +2433,7 @@ wt.BackgroundTransparency = 1
 wt.Position = UDim2.new(0.02,0,0.25,0)
 wt.Size = UDim2.new(0.96,0,0.35,0)
 wt.Text = [[ 
-Something was wrong with AI-OpenSource.
+Something was wrong with AI-Thinking.
 please wait for next update!
 ]]
 wt.TextScaled = true
