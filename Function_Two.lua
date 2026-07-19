@@ -1,4 +1,4 @@
--- So this another script lol 1.4
+-- So this another script lol 2.4
 
 
 -- =====>> Saved Functions <<=====
@@ -142,18 +142,22 @@ repeat
     task.wait()
 until BFrame.Parent
 
+local ToggleConfig = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ToggleConfig.lua"
+))()
+
 -- Toggle builder
 local toggleCount = 0
-local function createToggle(parent, text, description, callback, defaultState)
+
+local function createToggle(parent, id, text, description, callback, defaultState)
     toggleCount += 1
 
     local f = Instance.new("Frame")
     f.Name = "Frame" .. toggleCount
     f.Size = UDim2.new(1,0,0.05,0)
-    f.BackgroundTransparency = 0
-	f.BackgroundColor3 = Color3.new(0,0,0)
+    f.BackgroundColor3 = Color3.new(0,0,0)
     f.Parent = parent
-    Corner(0.3, 0,f)
+    Corner(0.3,0,f)
 
     local bar = Instance.new("Frame")
     bar.Name = "Bar"
@@ -175,78 +179,121 @@ local function createToggle(parent, text, description, callback, defaultState)
     txt.BackgroundTransparency = 1
     txt.TextScaled = true
     txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.TextColor3 = Color3.new(1,1,1)
+    txt.RichText = true
     txt.Text = text or ""
-	txt.TextColor3 = Color3.new(1,1,1)
-	txt.RichText = true
     txt.Parent = f
 
-	local des = Instance.new("TextLabel")
-	des.Name = "Description"
-	des.Position = UDim2.new(0,-224,0,0)
-	des.BackgroundColor3 = Color3.new(0.1,0.1,0.1)
-	des.BackgroundTransparency = 0
-	des.TextWrapped = true
+    local des = Instance.new("TextLabel")
+    des.Name = "Description"
+    des.Position = UDim2.new(0,-224,0,0)
+    des.BackgroundColor3 = Color3.fromRGB(25,25,25)
+    des.TextWrapped = true
     des.TextYAlignment = Enum.TextYAlignment.Top
-	des.Visible = false
-	des.TextSize = 12
-	des.Text = description or ""
-	des.TextColor3 = Color3.new(1,1,1)
-	des.RichText = true
-	des.ZIndex = 3
-	des.Parent = txt
-	Corner(0,8,des)
-	Stroke(des, ASMBorder, 255,255,255, LJMRound, 1, 0)
-
-	local bounds = TextService:GetTextSize(
-    des.Text,
-    des.TextSize,
-    des.Font,
-    Vector2.new(220, math.huge)
-)
-
-des.Size = UDim2.new(0,220,0,bounds.Y + 10)
-
-	txt.MouseEnter:Connect(function()
-    des.Visible = true
-end)
-
-txt.MouseLeave:Connect(function()
+    des.TextColor3 = Color3.new(1,1,1)
+    des.RichText = true
+    des.TextSize = 12
     des.Visible = false
-end)
+    des.ZIndex = 3
+    des.Text = description or ""
+    des.Parent = txt
 
+    Corner(0,8,des)
+    Stroke(des, ASMBorder,255,255,255,LJMRound,1,0)
+
+    local bounds
+
+    local ok = pcall(function()
+        bounds = TextService:GetTextSize(
+            tostring(des.Text or ""),
+            tonumber(des.TextSize) or 12,
+            SafeFont(des.Font),
+            Vector2.new(220, math.huge)
+        )
+    end)
+
+    if not ok or not bounds then
+        bounds = Vector2.new(220,24)
+    end
+
+    des.Size = UDim2.new(0,220,0,bounds.Y+10)
+
+    txt.MouseEnter:Connect(function()
+        des.Visible = true
+    end)
+
+    txt.MouseLeave:Connect(function()
+        des.Visible = false
+    end)
+
+    ---------------------------------------------------
     -- Toggle Logic
-    local toggle = defaultState or false
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    ---------------------------------------------------
+
+    local toggle = ToggleConfig:Get(
+        id,
+        defaultState or false
+    )
+
+    local tweenInfo = TweenInfo.new(
+        0.3,
+        Enum.EasingStyle.Quad,
+        Enum.EasingDirection.Out
+    )
 
     local function updateToggle(state, instant)
+
         toggle = state
+
+        ToggleConfig:Set(id,state)
+        ToggleConfig:Save()
+
         local props
+
         if toggle then
+
             props = {
                 Position = UDim2.new(0,0,0,0),
                 BackgroundColor3 = Color3.fromRGB(0,200,0)
             }
+
             but.Text = "ON"
+
         else
+
             props = {
                 Position = UDim2.new(0.5,0,0,0),
                 BackgroundColor3 = Color3.fromRGB(255,0,0)
             }
+
             but.Text = "OFF"
+
         end
+
         if instant then
+
             for k,v in pairs(props) do
-                pcall(function() but[k] = v end)
+                but[k] = v
             end
+
         else
-            pcall(function() TweenService:Create(but, tweenInfo, props):Play() end)
+
+            TweenService:Create(
+                but,
+                tweenInfo,
+                props
+            ):Play()
+
         end
+
         if callback then
-            pcall(callback, toggle)
+            pcall(callback,toggle)
         end
+
     end
 
-    updateToggle(toggle, true)
+    -- โหลดค่าจากไฟล์
+    updateToggle(toggle,true)
 
     but.MouseButton1Click:Connect(function()
         updateToggle(not toggle)
@@ -521,14 +568,14 @@ end)
 --// TOGGLES
 --// =====================================================
 
-createToggle(BFrame, "Show Physics",[[<b><u>Show Physics</u></b>
+createToggle(BFrame, "SP", "Show Physics",[[<b><u>Show Physics</u></b>
 Displays colorful trajectory lines ("player speedometers") and landing prediction points showing where your character is expected to land.]],
 	function(on)
     Physics.Enabled = on
     Physics.Global = false
 end, false)
 
-createToggle(BFrame, "Global Physics", [[<b><u>Global Physics</u></b>
+createToggle(BFrame, "GP", "Global Physics", [[<b><u>Global Physics</u></b>
 Same as Show Physics Toggle, but you're just seeing the physics of other players and objects too.]], function(on)
     Physics.Enabled = on
     Physics.Global = on
@@ -547,6 +594,7 @@ end)
 
 createToggle(
 	BFrame,
+	"R/GAE",
 	"Relax / Gif Animation Editor",
 	[[<b><u>Gif Animation Editor</u></b>
 Show or hide the Gif Animation Editor window.]],
