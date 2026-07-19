@@ -1,4 +1,4 @@
--- Script ahh 1.32
+-- Script ahh 1.8
 
 -- =====>> Saved Functions <<=====
 
@@ -201,13 +201,16 @@ local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Work
     txt.Name = tostring(Name)
     txt.Text = tostring(TextContent)
     txt.Active = (Active ~= false)
-    txt.BackgroundTransparency = 1
+    txt.BackgroundTransparency = 0.8
+	txt.BackgroundColor3 = Color3.fromRGB(R1 or 255, G1 or 255, B1 or 255)
     txt.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     txt.TextScaled = true
-    txt.Size = UDim2.new(0.99, 0, 0, 30)
+	txt.RichText = true
+	txt.LayoutOrder = 1
+    txt.Size = UDim2.new(0.99, 0, 0, 20)
     txt.Parent = parent
 
-    Corner(0, 8, txt)
+    Corner(0, 5, txt)
     Stroke(txt, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
 
     -- Workin loop (สคริปต์หลัก)
@@ -241,13 +244,15 @@ local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Wo
     btn.Name = tostring(Name)
     btn.Text = tostring(TextContent)
     btn.Active = (Active ~= false)
-    btn.BackgroundTransparency = 1
-    btn.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+    btn.BackgroundTransparency = 0.8
+	btn.BackgroundColor3 = Color3.fromRGB(R1 or 255, G1 or 255, B1 or 255)
     btn.TextScaled = true
-    btn.Size = UDim2.new(0.99, 0, 0, 30)
+	btn.RichText = true
+    btn.Size = UDim2.new(0.99, 0, 0, 20)
+	btn.LayoutOrder = 3
     btn.Parent = parent
 
-    Corner(0, 8, btn)
+    Corner(0, 5, btn)
     Stroke(btn, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
 
     -- Callback (ไม่มี debug)
@@ -277,6 +282,24 @@ local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Wo
     return btn
 end
 
+local function space(parent, layoutorder, text)
+	local space = Instance.new("TextLabel")
+	space.Name = "Space"
+	space.Size = UDim2.new(0,0,0,5)
+	space.BackgroundTransparency = 1
+    space.LayoutOrder = layoutorder or 1
+	space.TextColor3 = Color3.new(1,1,1)
+	space.Text = tostring(text)
+	space.RichText = true
+	space.TextWrapped = true
+	space.TextXAlignment = Enum.TextXAlignment.Center
+	space.TextYAlignment = Enum.TextYAlignment.Center
+    space.Parent = parent
+end
+
+space(scr, 0, "-- <b>Texts</b> --")
+space(scr, 2, "-- <b>Buttons</b> --")
+						
 -- Load Avatar
 task.spawn(function()
     local lp = Players.LocalPlayer
@@ -293,7 +316,7 @@ task.spawn(function()
 end)
 
 
-Text(scr, "Beta", "It might have bug and it still in beta.", false, 255, 131, 131, 255, 0, 0)
+Text(scr, "Beta", "It might have a bug, and still in <b>beta</b>", false, 255, 131, 131, 255, 0, 0)
 --===================--
 
 --====================================================
