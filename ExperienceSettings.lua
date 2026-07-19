@@ -1,4 +1,4 @@
--- Ok 4.55
+-- Ok 4.57
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -1098,6 +1098,18 @@ BFrame.Name = "B_Frame"; BFrame.Position = UDim2.new(0.02,0,0.18,0); BFrame.Size
 BFrame.BackgroundTransparency = 1; BFrame.Parent = settings
 
 local UIList = Instance.new("UIListLayout"); UIList.Padding = UDim.new(0.01,0); UIList.Parent = BFrame
+
+local function SafeFont(font)
+	local ok = pcall(function()
+		local _ = font.Name
+	end)
+
+	if ok and font ~= Enum.Font.Unknown then
+		return font
+	end
+
+	return Enum.Font.SourceSans
+end
 
 local ToggleConfig = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ToggleConfig.lua"
