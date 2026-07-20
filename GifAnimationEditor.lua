@@ -1,4 +1,4 @@
-local v_ver = [[Relax 2.0 Type]]
+local v_ver = [[Relax 3.2 Type]]
 --[[
 	You know... all gui was made by me! but script made by chatgpt
 ]]
@@ -275,7 +275,7 @@ Settings.MouseButton1Click:Connect(function()
 		EditorOpened = false
 
 		local Close = TweenService:Create(Editor, OpenCloseTween, {
-			Size = UDim2.new(0, 0, 0, 300)
+			Size = UDim2.fromOffset(0, Editor.Size.Y.Offset)
 		})
 
 		Close:Play()
@@ -286,7 +286,7 @@ Settings.MouseButton1Click:Connect(function()
 		Editor.Visible = true
 
 		local Open = TweenService:Create(Editor, OpenCloseTween, {
-			Size = UDim2.new(0, 500, 0, 300)
+			Size = UDim2.fromOffset(500, Editor.Size.Y.Offset)
 		})
 
 		Open:Play()
@@ -346,6 +346,38 @@ TWhenClick.Size = UDim2.new(0, 100, 0, 30)
 TWhenClick.Name = "TextLabel-WhenClick"
 TWhenClick.TextXAlignment = Enum.TextXAlignment.Left
 TWhenClick.Parent = Editor
+
+local ClearIdle = Instance.new("TextButton")
+ClearIdle.Name = "ClearIdle"
+ClearIdle.Size = UDim2.new(0,60,0,20)
+ClearIdle.Position = UDim2.new(1,0,0,5)
+ClearIdle.Text = "Clear All Idle"
+ClearIdle.BackgroundColor3 = Color3.new(1,0,0)
+ClearIdle.TextColor3 = Color3.new(0,0,0)
+ClearIdle.TextStrokeTransparency = 0
+ClearIdle.TextStrokeColor3 = Color3.new(1,1,1)
+ClearIdle.TextSize = 5
+ClearIdle.TextWrapped = true
+ClearIdle.Parent = TIdle
+
+Corner(0,3,ClearIdle)
+Stroke(ClearIdle, ASMBorder, 100,0,0, LJMRound, 1, 0)
+
+local ClearWhenClick = Instance.new("TextButton")
+ClearWhenClick.Name = "ClearWhenClick"
+ClearWhenClick.Size = UDim2.new(0,60,0,20)
+ClearWhenClick.Position = UDim2.new(1,0,0,5)
+ClearWhenClick.Text = "Clear All When Click"
+ClearWhenClick.BackgroundColor3 = Color3.new(1,0,0)
+ClearWhenClick.TextColor3 = Color3.new(0,0,0)
+ClearWhenClick.TextStrokeTransparency = 0
+ClearWhenClick.TextStrokeColor3 = Color3.new(1,1,1)
+ClearWhenClick.TextSize = 5
+ClearWhenClick.TextWrapped = true
+ClearWhenClick.Parent = TWhenClick
+
+Corner(0,3,ClearWhenClick)
+Stroke(ClearWhenClick, ASMBorder, 100,0,0, LJMRound, 1, 0)
 
 local WhenClickScroll = Instance.new("ScrollingFrame")
 WhenClickScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -454,6 +486,26 @@ Addbtn2.Name = "AddWhenClick"
 Addbtn2.Parent = WhenClickScroll
 Corner(0, 8, Addbtn2)
 
+local function ClearScroll(scroll)
+	for _, v in ipairs(scroll:GetChildren()) do
+		if
+			not v:IsA("UIListLayout")
+			and not v:IsA("UIPadding")
+			and not v:IsA("TextButton")
+		then
+			v:Destroy()
+		end
+	end
+end
+
+ClearIdle.MouseButton1Click:Connect(function()  
+  ClearScroll(IdleScroll)  
+end)  
+  
+ClearWhenClick.MouseButton1Click:Connect(function()  
+  ClearScroll(WhenClickScroll)  
+end) 
+
 local GetFrame = Instance.new("Frame")
 GetFrame.Name = "GetcustomassetSwitch"
 GetFrame.Size = UDim2.new(0, 100, 0, 30)
@@ -496,6 +548,59 @@ GetSwitch.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 GetSwitch.TextWrapped = true
 GetSwitch.Parent = GetFrame
 Corner(0, 8, GetSwitch)
+
+local TCredit = Instance.new("TextLabel")
+TCredit.Name = "Textlabel-Credit"
+TCredit.Position = UDim2.new(1,-100,1,-10)
+TCredit.Size = UDim2.new(0,100,0,10)
+TCredit.BackgroundTransparency = 1
+TCredit.TextColor3 = Color3.new(1,1,1)
+TCredit.RichText = true
+TCredit.Text = "Relax / Gif Animation Editor by <font color='rgb(85,255,255)'>5teve3019D</font>"
+TCredit.TextXAlignment = Enum.TextXAlignment.Right
+TCredit.Parent = Editor
+
+
+local MoreMenu = Instance.new("TextButton")
+MoreMenu.Name = "MoreMenu"
+MoreMenu.Position = UDim2.new(1,-30,0,230)
+MoreMenu.Size = UDim2.new(0,30,0,30)
+MoreMenu.TextColor3 = Color3.new(1,1,1)
+MoreMenu.BackgroundColor3 = Color3.new(0.3,0.3,0.3)
+MoreMenu.Text = "• • •"
+MoreMenu.Parent = Editor
+
+Corner(0,8,MoreMenu)
+Stroke(MoreMenu, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+local EditorMore = false
+
+MoreMenu.MouseButton1Click:Connect(function()
+	if EditorMore then
+		EditorMore = false
+
+		local Close = TweenService:Create(Editor, OpenCloseTween, {
+			Size = UDim2.fromOffset(Editor.Size.X.Offset, 300),
+      Position = UDim2.fromOffset(Editor.Position.X.Offset, -11)
+		})
+
+    MoreMenu.Text = "• • •"
+
+		Close:Play()
+		Close.Completed:Wait()
+	else
+		EditorMore = true
+		
+		local Open = TweenService:Create(Editor, OpenCloseTween, {
+			Size = UDim2.fromOffset(Editor.Size.X.Offset, 500),
+      Position = UDim2.fromOffset(Editor.Position.X.Offset, -100)
+		})
+
+    MoreMenu.Text = "X"
+
+		Open:Play()
+	end
+end)
 
 ------------------------------------------------------------------------------------------
 -- Canvas / Data Helpers
