@@ -1,4 +1,4 @@
--- Script ahh 2
+-- Script ahh 2.1
 
 -- =====>> Saved Functions <<=====
 
@@ -144,6 +144,8 @@ local pchar = Instance.new("Frame")
 pchar.Name = "ProfileCharacter"
 pchar.Size = UDim2.new(0.5,0,1,0)
 pchar.BackgroundTransparency = 1
+pchar.BorderMode = Enum.BorderMode.Inset
+pchar.BorderSizePixel = 3
 pchar.Parent = prin
 
 local dg = Instance.new("Frame")
@@ -151,6 +153,8 @@ dg.Name = "Debugs"
 dg.Position = UDim2.new(0.5,0,0,0)
 dg.Size = UDim2.new(0.5,0,1,0)
 dg.BackgroundTransparency = 1
+dg.BorderMode = Enum.BorderMode.Inset
+dg.BorderSizePixel = 3
 dg.Parent = prin
 
 -- [ pro.pchar.pfhr ]
@@ -192,6 +196,8 @@ scr.ScrollBarThickness = 0
 scr.BackgroundTransparency = 1
 scr.Parent = pchar
 ListLayout(scr, 0, 5, HCenter, VTop, SLayout, FillV)
+Stroke(scr, ASMBorder, 255,255,255, LJMRound, 1, 0)
+Corner(0,3,scr)
 
 -- [ function Text ]
 local TextExtraFunction = {}
