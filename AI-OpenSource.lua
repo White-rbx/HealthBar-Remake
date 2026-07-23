@@ -1,4 +1,4 @@
-local ver = " UIs 6.624 "
+local ver = " UIs 6.65 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -58,6 +58,7 @@ local update = [[
 (:14/6/2026 | 1:21 pm: A) Added 5 new formatting✨
 (:15/6/2026 | 5:55 pm: A) Added new 3 commands and added new stroke formatting.
 (:20/6/2026 | 8:26 pm: F) Fixed prompt.
+(:23/7/2026 | 3:57 pm: A) Added gemini-3.6-flash and 3 OpenAI models.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1581,9 +1582,9 @@ txt(user.Nill, [[
 # OFFICIAL ANNOUNCEMENT 
 AI is **not** bug with broken text because of text limit, use **/geminiswitch** or **/gptswitch** to change text limit.]], 255,0,0)
 
-txt(user.Warn,[["**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
+txt(user.Warn,[[**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
 **With respect**.]], 255, 255, 0)
-txt(user.Warn,[[[size=28]1 command is [mark=rbg(0,255,0),tran=0]enabled[/mark][/size]
+txt(user.Warn,[[[size=28]1 command is **enabled** [/size]
 **/1AutoRememberInGame** ON - Make AI to remember anything while chatting [size=12](SAVE MEMORY (ONLY IN-GAME)[/size] ]], 255,255,0)
 txt(user.Nill, [[# If you don't know how to put API key
 [size=18]**1. Go to the website **[/size]
@@ -1714,31 +1715,35 @@ local DEEPSEEK_PRESETS = {
 --// =========================================
 
 local OPENAI_MODELS = {
-	["gpt-4o-mini"] = true,
-	["gpt-5-mini"] = true,
-	["gpt-5"] = true,
-	["o4-mini"] = true,
-	["gpt-5.5"] = true,
+	["gpt-4o-mini"] = "gpt-4o-mini",
+	["gpt-5-mini"] = "gpt-5-mini",
+	["gpt-5"] = "gpt-5",
+	["o4-mini"] = "o4-mini",
+	["gpt-5.5"] = "gpt-5.5",
+	["gpt-5.6-luna"] = "gpt-5.6-luna",
+	["gpt-5.6-terra"] = "gpt-5.6-terra",
+	["gpt-5.6-sol"] = "gpt-5.6-sol"],
 }
 
 local GEMINI_MODELS = {
-	["gemini-2.5-flash-lite"] = true,
-	["gemini-3.1-flash-lite"] = true,
-	["gemini-2.5-flash"] = true,
-	["gemini-2.5-pro"] = true,
-	["gemini-3.5-flash"] = true,
+	["gemini-2.5-flash-lite"] = "gemini-2.5-flash-lite",
+	["gemini-3.1-flash-lite"] = "gemini-3.1-flash-lite",
+	["gemini-2.5-flash"] = "gemini-2.5-flash",
+	["gemini-2.5-pro"] = "gemini-2.5-pro",
+	["gemini-3.5-flash"] = "gemini-3.5-flash",
+	["gemini-3.6-flash"] = "gemini-3.6-flash",
 }
 
 local CLAUDE_MODELS = {
-	["claude-haiku-4"] = true,
-	["claude-sonnet-4"] = true,
-	["claude-sonnet-4-5"] = true,
-	["claude-opus-4"] = true,
+	["claude-haiku-4"] = "claude-haiku-4",
+	["claude-sonnet-4"] = "claude-sonnet-4",
+	["claude-sonnet-4-5"] = "claude-sonnet-4-5",
+	["claude-opus-4"] = "claude-opus-4",
 }
 
 local DEEPSEEK_MODELS = {
-	["deepseek-v4-flash"] = true,
-	["deepseek-v4-pro"] = true,
+	["deepseek-v4-flash"] = "deepseek-v4-flash",
+	["deepseek-v4-pro"] = "deepseek-v4-pro",
 }
 
 -- ========== SERVICES & UTIL ==========
@@ -2519,6 +2524,8 @@ Always:
 - answer clearly
 - stay respectful
 - prioritize user safety
+- friendly
+- playful
 
 Role-playing is allowed,
 but do not overdo it.
@@ -2603,6 +2610,9 @@ Your limit:
     *• gpt-5*
     *• o4-mini*
     *• gpt-5.5*
+	*• gpt-5.6-luna*
+	*• gpt-5.6-terra*
+	*• gpt-5.6-sol*
 **/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
 **/GEMINIModel** - Change model
     *• gemini-2.5-flash-lite*
@@ -2610,6 +2620,7 @@ Your limit:
     *• gemini-2.5-flash*
     *• gemini-2.5-pro*
     *• gemini-3.5-flash*
+	*• gemini-3.6-flash*
 **/CLAUDESwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
 **/CLAUDEModel** - Change model
     *• claude-haiku-4*
@@ -4186,6 +4197,9 @@ local HELP_TEXT = [=[
     *• gpt-5*
     *• o4-mini*
     *• gpt-5.5*
+	*• gpt-5.6-luna*
+	*• gpt-5.6-terra*
+	*• gpt-5.6-sol*
 **/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
 **/GEMINIModel** - Change model
     *• gemini-2.5-flash-lite*
@@ -4193,6 +4207,7 @@ local HELP_TEXT = [=[
     *• gemini-2.5-flash*
     *• gemini-2.5-pro*
     *• gemini-3.5-flash*
+	*• gemini-3.6-flash*
 **/CLAUDESwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
 **/CLAUDEModel** - Change model
     *• claude-haiku-4*
