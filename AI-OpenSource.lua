@@ -1,4 +1,4 @@
-local ver = " UIs 6.65 "
+local ver = " UIs 6.651 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1722,7 +1722,7 @@ local OPENAI_MODELS = {
 	["gpt-5.5"] = "gpt-5.5",
 	["gpt-5.6-luna"] = "gpt-5.6-luna",
 	["gpt-5.6-terra"] = "gpt-5.6-terra",
-	["gpt-5.6-sol"] = "gpt-5.6-sol"],
+	["gpt-5.6-sol"] = "gpt-5.6-sol",
 }
 
 local GEMINI_MODELS = {
