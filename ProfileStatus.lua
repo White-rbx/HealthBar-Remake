@@ -1,4 +1,4 @@
--- Script ahh 2.1
+-- Script ahh 2.6
 
 -- =====>> Saved Functions <<=====
 
@@ -120,6 +120,9 @@ local Menu = game.CoreGui:WaitForChild("TopBarApp")
                  :WaitForChild("ExperienceSettings")
                  :WaitForChild("Menu")
 
+
+-- local Menu = game:GetService("CoreGui").ExperienceSettings.Menu
+
 -- =====>> Instance <<=====
 local pro = Instance.new("Frame")
 pro.Name = "ProfileStatus"
@@ -142,6 +145,7 @@ prin.Parent = pro
 -- [ pro.prin(Inside) ]
 local pchar = Instance.new("Frame")
 pchar.Name = "ProfileCharacter"
+pchar.Active = false
 pchar.Size = UDim2.new(0.5,0,1,0)
 pchar.BackgroundTransparency = 1
 pchar.BorderMode = Enum.BorderMode.Inset
@@ -150,12 +154,79 @@ pchar.Parent = prin
 
 local dg = Instance.new("Frame")
 dg.Name = "Debugs"
-dg.Position = UDim2.new(0.5,0,0,0)
-dg.Size = UDim2.new(0.5,0,1,0)
+dg.Active = false
+dg.Position = UDim2.new(0.5,0,0,34)
+dg.Size = UDim2.new(0.5,0,1,-34)
 dg.BackgroundTransparency = 1
 dg.BorderMode = Enum.BorderMode.Inset
 dg.BorderSizePixel = 3
 dg.Parent = prin
+
+local soon = Instance.new("TextLabel")
+soon.Name = "Sorry!"
+soon.Size = UDim2.new(1,0,1,0)
+soon.BackgroundTransparency = 1
+soon.TextColor3 = Color3.new(1,1,1)
+soon.RichText = true
+soon.Text = [[Debugs page is <b><u>not</u></b> done yet.
+Try to press the button at the top right.]]
+soon.TextSize = 10
+soon.TextWrapped = true
+soon.Parent = dg
+
+local mc = Instance.new("Frame")
+mc.Name = "MusicPlayer"
+mc.Active = false
+mc.Position = UDim2.new(0.5,0,0,34)
+mc.Size = UDim2.new(0.5,0,1,-34)
+mc.BackgroundTransparency = dg.BackgroundTransparency
+mc.BorderMode = dg.BorderMode
+mc.BorderSizePixel = dg.BorderSizePixel
+mc.Visible = false
+mc.Parent = prin
+
+local dis = Instance.new("Frame")
+dis.Name = "Display"
+dis.Size = UDim2.new(1,0,0,80)
+dis.BackgroundColor3 = Color3.new(0.3,0.3,0.3)
+dis.BorderMode = Enum.BorderMode.Inset
+dis.BorderSizePixel = 3
+dis.Parent = mc
+Corner(0,8,dis)
+
+local MN = Instance.new("TextLabel")
+MN.Name = "MusicName"
+MN.Size = UDim2.new(1,0,0,20)
+MN.TextColor3 = Color3.new(1,1,1)
+MN.TextWrapped = true
+MN.TextScaled = true
+MN.Text = "Untitled Song"
+MN.BackgroundTransparency = 1
+MN.Parent = dis
+
+local shbtn = Instance.new("TextButton")
+shbtn.Name = "SwitchButton"
+shbtn.Size = UDim2.new(0,30,0,30)
+shbtn.Position = UDim2.new(1,-30,0,0)
+shbtn.Text = "1"
+shbtn.BackgroundColor3 = Color3.new(0.2,0.2,0.2)
+shbtn.TextColor3 = Color3.new(1,1,1)
+shbtn.Parent = prin
+
+Corner(0,8,shbtn)
+Stroke(shbtn, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+shbtn.MouseButton1Click:Connect(function()
+  if dg.Visible == true then
+     dg.Visible = false
+     mc.Visible = true
+     shbtn.Text = "2"
+  else
+     dg.Visible = true
+     mc.Visible = false
+     shbtn.Text = "1"
+  end
+end)
 
 -- [ pro.pchar.pfhr ]
 local pfhr = Instance.new("Frame")
@@ -176,10 +247,11 @@ Corner(0,8,pf)
 -- [ pro.char.pfhr.user ]
 local user = Instance.new("TextLabel")
 user.Name = "Username"
-user.Size = UDim2.new(0.8,0,0.3,0)
+user.Size = UDim2.new(0.6,0,0.3,0)
 user.Position = UDim2.new(0,82,0,0)
 user.BackgroundTransparency = 1
 user.TextScaled = true
+user.RichText = true
 user.Text = "Getting API..."
 user.TextXAlignment = Enum.TextXAlignment.Left
 user.TextColor3 = Color3.fromRGB(255,255,255)
@@ -320,7 +392,7 @@ task.spawn(function()
     local lp = Players.LocalPlayer
     local display = lp.DisplayName or lp.Name
     local real = lp.Name or ""
-    user.Text = tostring(display) .. " (@" .. tostring(real) .. ")"
+    user.Text = "<b>" ..tostring(display).. "</b>" .. " (@" .. tostring(real) .. ")"
 end)
 
 
