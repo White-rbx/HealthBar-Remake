@@ -1,4 +1,4 @@
--- Script ahh 2.6
+-- Script ahh 2.7
 
 -- =====>> Saved Functions <<=====
 
@@ -190,9 +190,10 @@ dis.Name = "Display"
 dis.Size = UDim2.new(1,0,0,80)
 dis.BackgroundColor3 = Color3.new(0.3,0.3,0.3)
 dis.BorderMode = Enum.BorderMode.Inset
-dis.BorderSizePixel = 3
+dis.BorderSizePixel = 5
 dis.Parent = mc
 Corner(0,8,dis)
+Gradient(dis, -90, 0,0,Color3.fromRGB(0,0,0), Color3.fromRGB(255,255,255))
 
 local MN = Instance.new("TextLabel")
 MN.Name = "MusicName"
@@ -203,6 +204,26 @@ MN.TextScaled = true
 MN.Text = "Untitled Song"
 MN.BackgroundTransparency = 1
 MN.Parent = dis
+
+local Playbtn = Instance.new("TextButton")
+Playbtn.Name = "PlayButton"
+Playbtn.Size = UDim2.new(0,30,0,30)
+Playbtn.Position = UDim2.new(0,0,1,-30)
+Playbtn.BackgroundTransparency = 1
+Playbtn.TextColor3 = Color3.new(1,1,1)
+Playbtn.RichText = true
+Playbtn.TextScaled = true
+Playbtn.Text = "<b>".."┃┃".."</b>" -- ▶
+Playbtn.Parent = dis
+
+Playbtn.MouseButton1Click:Connect(function()
+  if Playbtn.Text == "<b>┃┃</b>" then
+    Playbtn.Text = "<b>▶</b>"
+  else
+    Playbtn.Text = "<b>┃┃</b>"
+  end
+end)
+
 
 local shbtn = Instance.new("TextButton")
 shbtn.Name = "SwitchButton"
