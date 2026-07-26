@@ -1,4 +1,4 @@
-local ver = " UIs 6.651 "
+local ver = " UIs 6.652 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -59,6 +59,7 @@ local update = [[
 (:15/6/2026 | 5:55 pm: A) Added new 3 commands and added new stroke formatting.
 (:20/6/2026 | 8:26 pm: F) Fixed prompt.
 (:23/7/2026 | 3:57 pm: A) Added gemini-3.6-flash and 3 OpenAI models.
+(:26/7/2026 | 12:37 pm: F) Fixed Copy button overlay text.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -1293,7 +1294,7 @@ local function txt(user, text, R, G, B)
 	cha.Active = false
 	cha.Size = UDim2.new(
 	0.97,
-	0,
+	-35,
 	0,
 	getCopySpace()
 )
@@ -1337,7 +1338,7 @@ local function txt(user, text, R, G, B)
 
 	local cp = Instance.new("ImageButton")
 	cp.Name = "CopyButton"
-	cp.Position = UDim2.new(1,-25,1,-25)
+	cp.Position = UDim2.new(1,10,1,-25)
 	cp.Size = UDim2.new(0,25,0,25)
 	cp.Image = "rbxassetid://85495702622937"
 	cp.BackgroundColor3 = cha.TextColor3
