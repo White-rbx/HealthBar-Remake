@@ -1,4 +1,4 @@
--- Loader script 2.78
+-- Loader script 2.83
 
 ------------------------------------------------------------------------------------------
 
@@ -2484,6 +2484,132 @@ entre em contato pelo nosso fórum no Discord, e vamos removê-lo imediatamente.
 
 end
 
+--======= PORTUGUÊS (PORTUGAL) ========--
+local function PtPt()
+
+	-- AIThinking
+	List.ai.Text.chat.PlaceholderText = "Escreve /Ajuda para ver todos os comandos ou diz algo..."
+	List.ai.Confirm_api.Text = "Confirmar API"
+	List.ai.Unsaved_API.Text = "API não guardada"
+	List.ai.api.PlaceholderText = "[ A tua API aqui (ChatGPT ou Gemini) ]"
+	List.ai.Status.Text = "Estado: Sem chave"
+	List.ai.Topic.Text = "<b><stroke color='rgb(85,255,255)' thickness='2'>IA-Pensando</stroke></b>"
+	List.ai.Unavailable.Text = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>FUNCIONALIDADES INDISPONÍVEIS (Antigas)</stroke></b>"
+	-- List.ai.ver.Text = "Versão:"
+
+	-- About_Background
+	List.ab.Scroll.About.Text = [[
+O ExperienceSettings é um conjunto de ferramentas de depuração que podes usar por tua conta. Existem muitas ferramentas!
+O HealthBar foi um remake mais suave e melhor, e o ValueLabels serve para mostrar valores.
+Se o teu ExperienceSettings estiver desativado, existem três motivos:
+ • O HumanoidRootPart foi removido há demasiado tempo.
+ • A experiência não suporta o ExperienceSettings.
+ • O script falhou ao carregar.
+Se gostares, podes apoiar-me no Discord!
+Obrigado por usares o ExperienceSettings! ♥️
+
+54% da interface foi feita manualmente
+10% do script foi feito manualmente
+36% do script foi feito por IA
+
+Criador: @5teve3019D (GUI, pequeno script)
+Ajudante: ChatGPT (script) <-- Ele recebeu muitas reclamações lol.
+Pequeno ajudante: Copilot da GitHub (script)
+Curiosidade: o antigo era mais feio do que o atual, eu juro 😂 Ah, ainda não viste :(
+
+========================
+➕ = Adicionar algo
+📢 = Anúncios
+🔨 = Em desenvolvimento
+🔷 = Planeado para futuras atualizações
+✅ = Concluído
+⚠️ = Com problemas
+🟠 = A atualizar em breve
+❌ = Bug
+⚫ = Não pode ser corrigido
+➖ = Desligado ou descontinuado
+-------
+📌 Atualizado: esta informação já não aparece; junta-te à nossa comunidade no Discord para acompanhares as novidades!
+-------
+🔁 Em progresso: funcionalidades que já não aparecem
+-------
+❌ Falhou: funcionalidades indisponíveis que já não aparecem
+-------
+
+✨ CRÉDITOS DO SCRIPT ✨
+[ Nome do Script ] por [ Criador ] [ Estado de Verificação ]
+
+Queremos dizer que o teu script é incrível e está a ser usado no nosso projeto para fins de depuração e educação.
+Obrigado pela tua contribuição :3 ❤️
+- Debugger
+
+-- Lista de créditos --
+'Ketamine' por @Cherry (✓ Verificado)
+'OG AFEM – Legacy' por @Imperial (✓ Verificado)
+'Chat' por utilizador desconhecido
+'UNC' por utilizador desconhecido
+'REM' por @evildotcom (X Não verificado)
+'GameProber' por @Imperial (✓ Verificado)
+'AudioPlayer' por utilizador desconhecido
+'EmoteSelect' por utilizador desconhecido
+'Universal Movement Predictor' por @zephyrr (X Não verificado)
+'Server Position Predictor' por @zephyrr (X Não verificado)
+'Open Source Universal Chat' por @neutral (X Não verificado)
+
+-- Aviso aos criadores de script --
+Se fores um criador de script listado acima e não quiseres que o teu script seja incluído,
+entra em contacto através do nosso fórum no Discord, e vamos removê-lo imediatamente.
+]]
+
+	List.ab.Hide.Text = "Ocultar"
+	List.ab.Help.Text = "Ah, se o ExperienceSettings estiver desativado, podes ocultar este texto clicando no botão."
+
+	-- Background
+	List.bg.Settings.Buttons.Leave.Text = "Sair"
+	List.bg.Settings.Buttons["Reset character"].Text = "Reiniciar personagem"
+	List.bg.Settings.Buttons.Resume.Text = "Continuar"
+	List.bg.Settings.Pmax.SeeAll.Text = "Abrir definições do Roblox"
+	List.bg.Settings.Pmax.Players.Text = "Jogador :"
+
+	List.bg.Settings.B_Frame.Frame1.Label.Text = "Ativar ValueLabels"
+	List.bg.Settings.B_Frame.Frame2.Label.Text = "Shaders - Recomendado: gráficos 5+"
+	List.bg.Settings.B_Frame.Frame3.Label.Text = "Luz branca"
+	List.bg.Settings.B_Frame.Frame4.Label.Text = "Luz RGB"
+	List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (Beta)"
+	List.bg.Settings.B_Frame.Frame6.Label.Text = "Sobreposição de dano <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ TOCA AQUI PARA LER A DESCRIÇÃO ⚠</b></font></stroke>"
+	List.bg.Settings.B_Frame.Frame7.Label.Text = "Mais Toggles"
+
+	List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (Descontinuado)"
+	List.bg.Inner_Background.Toggles.B_Frame:GetChildren()[13].Label.Text = "Mostrar física"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame10.Label.Text = "Última morte"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame11.Label.Text = "ServerPositionPredictor (Por @zephyrr)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame2.Label.Text = "Ativar HealthBar"
+	List.bg.Inner_Background.Toggles.B_Frame:GetChildren()[14].Label.Text = "Física global"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame3.Label.Text = "Desativar som de morte"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame4.Label.Text = "FreeCam (Telemóvel)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame5.Label.Text = "Queda quase infinita (-50K)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame6.Label.Text = "Lanterna (1.ª pessoa & GFX 6+)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame7.Label.Text = "ESP destaca jogadores e não jogadores"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame8.Label.Text = "Shift Lock (Telemóvel)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame9.Label.Text = "Chuva de hitboxes"
+
+	-- Load_Background
+	List.lb.Skip.Text = "Fechar a barra de carregamento irritante"
+	List.lb.Credit.Text = "Criado por @5teve3019D no ScriptBlox/HaxHell"
+	List.lb.Loading.Text = "A carregar"
+	List.lb.Wait.Text = "A iniciar o ExperienceSettings. Aguarda..."
+
+	-- ProfileStatus
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.Beta.Text = "Pode ter bugs e ainda está em beta."
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DeveloperConsole.Text = "Abrir consola de desenvolvedor"
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTool.Text = "Largar ferramenta"
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "Largar todas as ferramentas"
+
+	-- Search
+	List.sh.TopFrame.SearchBar.Searcher.PlaceholderText = "[ Seleciona primeiro ] Pesquisar"
+
+end
+
 --======= РУССКИЙ ========--
 local function Ru()
 
@@ -2610,10 +2736,136 @@ HealthBar — это ремейк, который работает плавне�
 
 end
 
+--======= 한국어 (대한민국) ========--
+local function KoKr()
+
+	-- AIThinking
+	List.ai.Text.chat.PlaceholderText = "모든 명령을 보려면 /Help 를 입력하거나 아무 말이나 해보세요..."
+	List.ai.Confirm_api.Text = "API 확인"
+	List.ai.Unsaved_API.Text = "저장되지 않은 API"
+	List.ai.api.PlaceholderText = "[ 여기에 API 입력 (ChatGPT 또는 Gemini) ]"
+	List.ai.Status.Text = "상태: 키 없음"
+	List.ai.Topic.Text = "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-생각중</stroke></b>"
+	List.ai.Unavailable.Text = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>사용할 수 없는 기능 (오래된 기능)</stroke></b>"
+	-- List.ai.ver.Text = "버전:"
+
+	-- About_Background
+	List.ab.Scroll.About.Text = [[
+ExperienceSettings는 혼자서 사용할 수 있는 디버그 도구 모음입니다. 정말 많은 기능이 있어요!
+HealthBar는 더 부드럽고 개선된 리메이크이며, ValueLabels는 값을 표시하는 데 사용됩니다.
+ExperienceSettings가 비활성화되는 이유는 세 가지입니다.
+ • HumanoidRootPart가 너무 오래 전에 제거됨.
+ • 해당 경험이 ExperienceSettings를 지원하지 않음.
+ • 스크립트 로딩에 실패함.
+마음에 드셨다면 Discord에서 응원해 주세요!
+ExperienceSettings를 사용해 주셔서 감사합니다! ♥️
+
+인터페이스 54%는 수작업으로 제작됨
+스크립트 10%는 수작업으로 제작됨
+스크립트 36%는 AI로 제작됨
+
+제작자: @5teve3019D (GUI, 작은 스크립트)
+도움: ChatGPT (스크립트) <-- 불만도 많이 받았어요 ㅋㅋ
+작은 도우미: GitHub Copilot (스크립트)
+재미있는 사실: 예전 버전은 지금보다 훨씬 못생겼어요, 진짜예요 😂 아직 안 보셨죠 :(
+
+========================
+➕ = 추가
+📢 = 공지
+🔨 = 개발 중
+🔷 = 향후 업데이트 예정
+✅ = 완료
+⚠️ = 문제 있음
+🟠 = 곧 업데이트
+❌ = 버그
+⚫ = 수정 불가
+➖ = 연결 끊김 또는 서비스 종료
+-------
+📌 업데이트됨: 이 정보의 업데이트는 더 이상 표시되지 않습니다. 최신 소식을 보려면 Discord 커뮤니티에 참여해 주세요!
+-------
+🔁 진행 중: 더 이상 표시되지 않는 기능
+-------
+❌ 실패: 사용할 수 없게 되어 더 이상 표시되지 않는 기능
+-------
+
+✨ 스크립트 크레딧 ✨
+[ 스크립트 이름 ] by [ 제작자 ] [ 검증 상태 ]
+
+당신의 스크립트는 정말 멋지고, 현재 우리 프로젝트에서 디버깅 및 교육용으로 사용되고 있습니다.
+기여해 주셔서 감사합니다 :3 ❤️
+- Debugger
+
+-- 크레딧 목록 --
+'Ketamine' by @Cherry (✓ 검증됨)
+'OG AFEM – Legacy' by @Imperial (✓ 검증됨)
+'Chat' by 알 수 없는 사용자
+'UNC' by 알 수 없는 사용자
+'REM' by @evildotcom (X 미검증)
+'GameProber' by @Imperial (✓ 검증됨)
+'AudioPlayer' by 알 수 없는 사용자
+'EmoteSelect' by 알 수 없는 사용자
+'Universal Movement Predictor' by @zephyrr (X 미검증)
+'Server Position Predictor' by @zephyrr (X 미검증)
+'Open Source Universal Chat' by @neutral (X 미검증)
+
+-- 스크립트 제작자 안내 --
+위 목록에 포함된 스크립트의 제작자 중 자신의 스크립트가 포함되기를 원하지 않는 분은,
+Discord 포럼으로 연락해 주세요. 즉시 제거하겠습니다.
+]]
+
+	List.ab.Hide.Text = "숨기기"
+	List.ab.Help.Text = "아, ExperienceSettings가 비활성화되어 있어도 이 버튼을 눌러 이 텍스트를 숨길 수 있습니다."
+
+	-- Background
+	List.bg.Settings.Buttons.Leave.Text = "나가기"
+	List.bg.Settings.Buttons["Reset character"].Text = "캐릭터 초기화"
+	List.bg.Settings.Buttons.Resume.Text = "계속하기"
+	List.bg.Settings.Pmax.SeeAll.Text = "Roblox 설정 열기"
+	List.bg.Settings.Pmax.Players.Text = "플레이어 :"
+
+	List.bg.Settings.B_Frame.Frame1.Label.Text = "ValueLabels 활성화"
+	List.bg.Settings.B_Frame.Frame2.Label.Text = "셰이더 - 권장 그래픽 5+"
+	List.bg.Settings.B_Frame.Frame3.Label.Text = "화이트 라이트"
+	List.bg.Settings.B_Frame.Frame4.Label.Text = "RGB 라이트"
+	List.bg.Settings.B_Frame.Frame5.Label.Text = "ESP (베타)"
+	List.bg.Settings.B_Frame.Frame6.Label.Text = "데미지 오버레이 <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ 여기를 눌러 설명을 읽어 주세요 ⚠</b></font></stroke>"
+	List.bg.Settings.B_Frame.Frame7.Label.Text = "더 많은 토글"
+
+	List.bg.Inner_Background.Toggles.B_Frame.Frame1.Label.Text = "LighterCyan.ai (지원 종료)"
+	List.bg.Inner_Background.Toggles.B_Frame:GetChildren()[13].Label.Text = "물리 표시"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame10.Label.Text = "마지막 죽음"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame11.Label.Text = "ServerPositionPredictor (@zephyrr 제작)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame2.Label.Text = "HealthBar 활성화"
+	List.bg.Inner_Background.Toggles.B_Frame:GetChildren()[14].Label.Text = "전역 물리"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame3.Label.Text = "죽음 소리 비활성화"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame4.Label.Text = "FreeCam (모바일)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame5.Label.Text = "거의 끝없는 바닥 (-50K)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame6.Label.Text = "손전등 (1인칭 & GFX 6+)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame7.Label.Text = "플레이어와 비플레이어 ESP 강조"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame8.Label.Text = "Shift Lock (모바일)"
+	List.bg.Inner_Background.Toggles.B_Frame.Frame9.Label.Text = "히트박스 샤워"
+
+	-- Load_Background
+	List.lb.Skip.Text = "짜증나는 로딩 바 닫기"
+	List.lb.Credit.Text = "ScriptBlox/HaxHell의 @5teve3019D 제작"
+	List.lb.Loading.Text = "로딩 중"
+	List.lb.Wait.Text = "ExperienceSettings를 시작하는 중입니다. 잠시만 기다려 주세요..."
+
+	-- ProfileStatus
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.Beta.Text = "버그가 있을 수 있으며 아직 베타 상태입니다."
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DeveloperConsole.Text = "개발자 콘솔 열기"
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTool.Text = "도구 버리기"
+	List.pfs.InsideProfileStatus.ProfileCharacter.Scroll.DropTools.Text = "모든 도구 버리기"
+
+	-- Search
+	List.sh.TopFrame.SearchBar.Searcher.PlaceholderText = "[ 먼저 선택 ] 검색"
+
+end
+
 local CurrentLanguage = "EN"
 
 local EngBtn = Txt(
-    "English",
+    "🇺🇸 English",
     255,255,255,
     false,nil,
     true,"Select",
@@ -2628,7 +2880,7 @@ local EngBtn = Txt(
 ).Button
 
 local SpaBtn = Txt(
-    "Español",
+    "🇪🇸 Español",
     255,255,255,
     false,nil,
     true,"Seleccionar",
@@ -2643,7 +2895,7 @@ local SpaBtn = Txt(
 ).Button
 
 local ThaBtn = Txt(
-    "ไทย",
+    "🇹🇭 ไทย",
     255,255,255,
     false,nil,
     true,"เลือก",
@@ -2658,7 +2910,7 @@ local ThaBtn = Txt(
 ).Button
 
 local BraBtn = Txt(
-    "Português",
+    "🇧🇷 Português (Brasil)",
     255,255,255,
     false,nil,
     true, "Selecionar",
@@ -2672,8 +2924,23 @@ local BraBtn = Txt(
     ins2
 ).Button
 
+local PorBtn = Txt(
+    "🇵🇹 Português (Portugal)",
+    255,255,255,
+    false,nil,
+    true, "Selecionar",
+    nil,
+    function(_, btn)
+        CurrentLanguage = "PT-PT"
+        PtPt()
+        RefreshLanguageButtons()
+    end,
+    nil,
+    ins2
+).Button
+
 local RusBtn = Txt(
-    "Русский",
+    "🇷🇺 Русский",
     255,255,255,
     false,nil,
     true, "Выбрать",
@@ -2687,9 +2954,24 @@ local RusBtn = Txt(
     ins2
 ).Button
 
+local KorBtn = Txt(
+    "🇰🇷 한국어 (대한민국)", 
+    255,255,255,
+    false,nil,
+    true, "선택",
+    nil,
+    function(_, btn)
+        CurrentLanguage = "KO"
+        KoKr()
+        RefreshLanguageButtons()
+    end,
+    nil,
+    ins2
+).Button
+
 local function RefreshLanguageButtons()
 
-    if not (EngBtn and SpaBtn and ThaBtn and BraBtn and RusBtn) then
+    if not (EngBtn and SpaBtn and ThaBtn and BraBtn and PorBtn and RusBtn and KorBtn) then
         return
 	end
 
@@ -2713,11 +2995,21 @@ local function RefreshLanguageButtons()
         and Color3.fromRGB(0,255,0)
         or Color3.fromRGB(255,255,255)
 
+	PorBtn.TextColor3 =
+	    CurrentLanguage == "PT-PT"
+	    and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,255,255)
+
 	RusBtn.TextColor3 =
         CurrentLanguage == "RU"
         and Color3.fromRGB(0,255,0)
         or Color3.fromRGB(255,255,255)
 
+	KorBtn.TextColor3 =
+        CurrentLanguage == "KO"
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,255,255)
+	
 end
 
 
