@@ -1,4 +1,4 @@
-local ver = " UIs 6.653 "
+local ver = " UIs 6.82 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -60,6 +60,7 @@ local update = [[
 (:20/6/2026 | 8:26 pm: F) Fixed prompt.
 (:23/7/2026 | 3:57 pm: A) Added gemini-3.6-flash and 3 OpenAI models.
 (:26/7/2026 | 12:37 pm: F) Fixed Copy button overlay text.
+(:28/7/2026 | 0:32 am: A) Added a new command call "/hook", "/Set", "/e", and "/Unhook".
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -3705,6 +3706,464 @@ local function buildVisionText()
 
 end
 
+-- =========================
+-- JIMMY AI CORE (PHASE 1)
+-- =========================
+
+local JimmyPlayers = game:GetService("Players")
+local JimmyPathfinding = game:GetService("PathfindingService")
+local JimmyRunService = game:GetService("RunService")
+local JimmyChat = game:GetService("Chat")
+
+local JimmyAI = {
+	HookedCharacter = nil,
+	HookedHumanoid = nil,
+	HookedRoot = nil,
+	HookedHead = nil,
+
+	HookActive = false,
+	ChatPermission = false,
+
+	BrainToken = 0,
+	State = "Idle",
+}
+
+local JimmyAllowedEmotes = {
+	dance = true,
+	dance1 = true,
+	dance2 = true,
+	dance3 = true,
+	wave = true,
+	point = true,
+	cheer = true,
+	laugh = true,
+}
+
+local JimmyChatPermissionPhrases = {
+	"chat in workspace",
+	"allow chat",
+	"please chat",
+	"say in chat",
+	"permission to chat",
+	"say something",
+}
+
+local function JimmyTrimLower(s)
+	return (tostring(s or ""):lower():match("^%s*(.-)%s*$")) or ""
+end
+
+local function JimmyIsPlayerCharacter(model)
+	if not model or not model:IsA("Model") then
+		return false
+	end
+
+	for _, plr in ipairs(JimmyPlayers:GetPlayers()) do
+		if plr.Character == model then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function JimmyGetRoot(model)
+	if not model then
+		return nil
+	end
+
+	return model:FindFirstChild("HumanoidRootPart")
+		or model.PrimaryPart
+		or model:FindFirstChild("Head")
+end
+
+local function JimmyGetHead(model)
+	if not model then
+		return nil
+	end
+
+	return model:FindFirstChild("Head") or JimmyGetRoot(model)
+end
+
+local function JimmyResolveHookTarget(path)
+	path = tostring(path or "")
+	path = path:gsub("%[%s*\"(.-)\"%s*%]", ".%1")
+	path = path:gsub("%[%s*'(.-)'%s*%]", ".%1")
+	path = path:match("^%s*(.-)%s*$") or path
+
+	if path == "" then
+		return nil
+	end
+
+	local parts = {}
+	for part in path:gmatch("[^%.]+") do
+		table.insert(parts, part)
+	end
+
+	if #parts < 1 or parts[1] ~= "workspace" then
+		return nil
+	end
+
+	local current = workspace
+	for i = 2, #parts do
+		current = current:FindFirstChild(parts[i])
+		if not current then
+			return nil
+		end
+	end
+
+	return current
+end
+
+local function JimmyHasLineOfSight(targetModel, targetPosition)
+	if not JimmyAI.HookedHead then
+		return false
+	end
+
+	local origin = JimmyAI.HookedHead.Position
+	local direction = targetPosition - origin
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { JimmyAI.HookedCharacter }
+	params.IgnoreWater = true
+
+	local result = workspace:Raycast(origin, direction, params)
+	if not result then
+		return true
+	end
+
+	return result.Instance and result.Instance:IsDescendantOf(targetModel)
+end
+
+local function JimmyFindVisibleTarget()
+	if not JimmyAI.HookedHead then
+		return nil, nil, nil
+	end
+
+	local bestModel = nil
+	local bestRoot = nil
+	local bestDist = math.huge
+
+	for _, inst in ipairs(workspace:GetDescendants()) do
+		if inst:IsA("Model")
+			and inst ~= JimmyAI.HookedCharacter
+			and not JimmyIsPlayerCharacter(inst)
+		then
+			local hum = inst:FindFirstChildOfClass("Humanoid")
+			local root = JimmyGetRoot(inst)
+
+			if hum and root and hum.Health > 0 then
+				local delta = root.Position - JimmyAI.HookedHead.Position
+				local dist = delta.Magnitude
+
+				if dist > 0 and dist <= 1000 then
+					local look = JimmyAI.HookedHead.CFrame.LookVector
+					local dir = delta.Unit
+					local dot = math.clamp(look:Dot(dir), -1, 1)
+					local angle = math.deg(math.acos(dot))
+
+					if angle <= 85 and JimmyHasLineOfSight(inst, root.Position) then
+						if dist < bestDist then
+							bestModel = inst
+							bestRoot = root
+							bestDist = dist
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return bestModel, bestRoot, bestDist
+end
+
+local function JimmyMoveTo(position, token)
+	local humanoid = JimmyAI.HookedHumanoid
+	local root = JimmyAI.HookedRoot
+
+	if not humanoid or not root then
+		return false
+	end
+
+	local path = JimmyPathfinding:CreatePath({
+		AgentRadius = 2,
+		AgentHeight = 5,
+		AgentCanJump = true,
+		WaypointSpacing = 4,
+	})
+
+	local ok = pcall(function()
+		path:ComputeAsync(root.Position, position)
+	end)
+
+	if (not ok) or path.Status ~= Enum.PathStatus.Success then
+		humanoid:MoveTo(position)
+		return true
+	end
+
+	for _, waypoint in ipairs(path:GetWaypoints()) do
+		if JimmyAI.BrainToken ~= token or not JimmyAI.HookActive or not JimmyAI.HookedCharacter then
+			return false
+		end
+
+		if waypoint.Action == Enum.PathWaypointAction.Jump then
+			humanoid.Jump = true
+		end
+
+		humanoid:MoveTo(waypoint.Position)
+
+		local reached = false
+		local conn
+		conn = humanoid.MoveToFinished:Connect(function()
+			reached = true
+		end)
+
+		local start = os.clock()
+		while JimmyAI.BrainToken == token
+			and JimmyAI.HookActive
+			and not reached
+			and (os.clock() - start) < 2.5
+		do
+			task.wait(0.03)
+		end
+
+		if conn then
+			conn:Disconnect()
+		end
+	end
+
+	return true
+end
+
+local function JimmyGetWanderPoint()
+	local root = JimmyAI.HookedRoot
+	if not root then
+		return nil
+	end
+
+	local look = root.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+
+	if flat.Magnitude < 0.1 then
+		flat = Vector3.new(1, 0, 0)
+	else
+		flat = flat.Unit
+	end
+
+	local offset = flat * math.random(8, 18) + Vector3.new(math.random(-6, 6), 0, math.random(-6, 6))
+	return root.Position + offset
+end
+
+local function JimmyStartBrain()
+	JimmyAI.BrainToken += 1
+	local token = JimmyAI.BrainToken
+	JimmyAI.HookActive = true
+
+	task.spawn(function()
+		while JimmyAI.HookActive
+			and JimmyAI.BrainToken == token
+			and JimmyAI.HookedCharacter
+			and JimmyAI.HookedHumanoid
+			and JimmyAI.HookedHumanoid.Health > 0
+		do
+			local _, targetRoot, dist = JimmyFindVisibleTarget()
+
+			if targetRoot then
+				JimmyAI.State = "Following"
+
+				if dist and dist > 8 then
+					JimmyMoveTo(targetRoot.Position, token)
+				else
+					local root = JimmyAI.HookedRoot
+					if root then
+						root.CFrame = CFrame.lookAt(
+							root.Position,
+							Vector3.new(targetRoot.Position.X, root.Position.Y, targetRoot.Position.Z)
+						)
+					end
+				end
+			else
+				JimmyAI.State = "Wandering"
+
+				local point = JimmyGetWanderPoint()
+				if point then
+					JimmyMoveTo(point, token)
+				end
+			end
+
+			task.wait(0.25)
+		end
+	end)
+end
+
+local function JimmyStopBrain()
+	JimmyAI.BrainToken += 1
+	JimmyAI.HookActive = false
+end
+
+local function JimmyClearHookState()
+	JimmyAI.HookedCharacter = nil
+	JimmyAI.HookedHumanoid = nil
+	JimmyAI.HookedRoot = nil
+	JimmyAI.HookedHead = nil
+	JimmyAI.ChatPermission = false
+	JimmyAI.State = "Idle"
+end
+
+function JimmyAI.Hook(target)
+	if ALLOW_CAM then
+		return false, "/AllowCam is active."
+	end
+
+	if JimmyAI.HookedCharacter then
+		return false, "Already hooked."
+	end
+
+	if type(target) == "string" then
+		target = JimmyResolveHookTarget(target)
+	end
+
+	if not target then
+		return false, "Target not found."
+	end
+
+	if target:IsA("Player") then
+		return false, "Players cannot be hooked."
+	end
+
+	if not target:IsA("Model") then
+		return false, "Target must be a Model."
+	end
+
+	if JimmyIsPlayerCharacter(target) then
+		return false, "Player characters cannot be hooked."
+	end
+
+	local humanoid = target:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return false, "Model has no Humanoid."
+	end
+
+	local root = JimmyGetRoot(target)
+	if not root then
+		return false, "Model has no usable root part."
+	end
+
+	JimmyAI.HookedCharacter = target
+	JimmyAI.HookedHumanoid = humanoid
+	JimmyAI.HookedRoot = root
+	JimmyAI.HookedHead = JimmyGetHead(target)
+	JimmyAI.ChatPermission = false
+
+	JimmyStartBrain()
+
+	return true, target
+end
+
+function JimmyAI.Unhook()
+	if not JimmyAI.HookedCharacter then
+		return false, "Jimmy is not hooked."
+	end
+
+	local old = JimmyAI.HookedCharacter
+
+	JimmyStopBrain()
+	JimmyClearHookState()
+
+	return true, old
+end
+
+function JimmyAI.SetProperty(prop, value)
+	if not JimmyAI.HookedHumanoid then
+		return false, "Jimmy is not hooked."
+	end
+
+	prop = JimmyTrimLower(prop)
+
+	if prop == "displayname" then
+		JimmyAI.HookedHumanoid.DisplayName = tostring(value or "")
+		return true
+
+	elseif prop == "health" then
+		local n = tonumber(value) or JimmyAI.HookedHumanoid.Health
+		n = math.max(1, n)
+
+		if JimmyAI.HookedHumanoid.MaxHealth and JimmyAI.HookedHumanoid.MaxHealth > 0 then
+			n = math.min(n, JimmyAI.HookedHumanoid.MaxHealth)
+		end
+
+		JimmyAI.HookedHumanoid.Health = n
+		return true
+
+	elseif prop == "sit" then
+		local v = JimmyTrimLower(value)
+		JimmyAI.HookedHumanoid.Sit = (v == "on" or v == "true" or v == "1" or v == "yes")
+		return true
+
+	elseif prop == "walkspeed" then
+		local n = math.clamp(tonumber(value) or JimmyAI.HookedHumanoid.WalkSpeed, 0, 100)
+		JimmyAI.HookedHumanoid.WalkSpeed = n
+		return true
+
+	elseif prop == "jumppower" or prop == "jump power" then
+		local n = math.clamp(tonumber(value) or JimmyAI.HookedHumanoid.JumpPower, 0, 150)
+		JimmyAI.HookedHumanoid.JumpPower = n
+		return true
+
+	elseif prop == "platformstand" then
+		local v = JimmyTrimLower(value)
+		JimmyAI.HookedHumanoid.PlatformStand = (v == "on" or v == "true" or v == "1" or v == "yes")
+		return true
+	end
+
+	return false, "Unknown property."
+end
+
+function JimmyAI.PlayEmote(emoteName)
+	if not JimmyAI.HookedHumanoid then
+		return false, "Jimmy is not hooked."
+	end
+
+	emoteName = JimmyTrimLower(emoteName)
+	if not JimmyAllowedEmotes[emoteName] then
+		return false, "Emote not allowed."
+	end
+
+	local ok = pcall(function()
+		JimmyAI.HookedHumanoid:PlayEmoteAsync(emoteName)
+	end)
+
+	if not ok then
+		return false, "Failed to play emote."
+	end
+
+	return true
+end
+
+function JimmyAI.TryEnableChatPermission(msg)
+	if not JimmyAI.HookedCharacter then
+		return false
+	end
+
+	local lower = JimmyTrimLower(msg)
+
+	for _, phrase in ipairs(JimmyChatPermissionPhrases) do
+		if lower:find(phrase, 1, true) then
+			JimmyAI.ChatPermission = true
+
+			if JimmyAI.HookedHead then
+				pcall(function()
+					JimmyChat:Chat(JimmyAI.HookedHead, "Alright.", Enum.ChatColor.White)
+				end)
+			end
+
+			return true
+		end
+	end
+
+	return false
+end
+
 ------------------------------
 
 -- executor http detection (function returning response-like table)
@@ -4251,6 +4710,10 @@ local HELP_TEXT = [=[
 **/TextCounts** *[ALL/USER/AI/SYSTEMONLY]* - Count messages in the chat.
 **/InstantScrollDown** - Instantly scroll to the bottom of the chat. Useful when you get lost in older messages.
 **/Chat** *TEXT* - Send a message through Roblox Chat.
+**/Hook** *workspace["PATH"]* - Hook a character to give the AI control over it.
+    - **/Set** *property* *value* - Change AI's humanoid propertie while hooking.
+    - **/e** *emote* - Make AI pose while hooking.
+**/Unhook** - Unhook character.
 ]=]
 
 local function clearChatLogs()
@@ -5274,6 +5737,11 @@ if lower:match("^/allowcam") then
 	local value =
 		lower:match("^/allowcam%s+(%S+)$")
 
+	if JimmyAI.HookedCharacter then
+	safeTxt(user.Warn, "/AllowCam cannot be used while /hook is active.", 255, 120, 120)
+	return true
+    end
+
 	if not value then
 
 		safeTxt(
@@ -5330,11 +5798,72 @@ if lower:match("^/allowcam") then
 		)
 
 	end
-
+	
 	return true
 
 end
 
+	-- hook
+if lower:match("^/hook%s+") then
+	if HookedCharacter then
+		safeTxt(user.Warn, "Jimmy is already hooked.", 255, 255, 0)
+		return true
+	end
+
+	local path = msg:match("^/hook%s+(.+)$") or ""
+	local ok, result = JimmyAI.Hook(path)
+
+	if not ok then
+		safeTxt(user.Warn, tostring(result), 255, 255, 0)
+		return true
+	end
+
+	safeTxt(user.Suc, "Hooked: " .. result:GetFullName(), 0, 255, 0)
+	return true
+end
+
+if lower:match("^/unhook%s*$") then
+	local ok, result = JimmyAI.Unhook()
+
+	if not ok then
+		safeTxt(user.Info, tostring(result), 255, 255, 0)
+		return true
+	end
+
+	safeTxt(user.Suc, "Unhooked: " .. result.Name, 0, 255, 0)
+	return true
+end
+
+if lower:match("^/set%s+") then
+	local prop, value = msg:match("^/set%s+(%S+)%s+(.+)$")
+	if not prop then
+		safeTxt(user.Error, "Usage: /set [property] [value]", 255, 80, 80)
+		return true
+	end
+
+	local ok, err = JimmyAI.SetProperty(prop, value)
+	if not ok then
+		safeTxt(user.Warn, tostring(err), 255, 255, 0)
+		return true
+	end
+
+	safeTxt(user.Suc, "Set " .. prop .. " = " .. value, 0, 255, 0)
+	return true
+end
+
+if lower:match("^/e%s+") then
+	local emote = msg:match("^/e%s+(.+)$") or ""
+	local ok, err = JimmyAI.PlayEmote(emote)
+
+	if not ok then
+		safeTxt(user.Warn, tostring(err), 255, 255, 0)
+		return true
+	end
+
+	safeTxt(user.Suc, "Emote: " .. emote, 0, 255, 0)
+	return true
+end
+	
 -- =========================================
 -- /AllowProperties [ON/OFF]
 -- =========================================
