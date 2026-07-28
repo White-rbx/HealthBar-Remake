@@ -1,4 +1,4 @@
-local ver = " UIs 6.953 "
+local ver = " UIs 6.96 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -905,6 +905,10 @@ local folderRbx = folderRbx or {
 
 local TextService = game:GetService("TextService")
 
+local IMAGE_EXTRA_SIZE = 4
+local IMAGE_X_OFFSET = 0
+local IMAGE_Y_OFFSET = -1
+
 local function clearInlineImages(parent)
 	for _, child in ipairs(parent:GetChildren()) do
 		if child.Name == "InlineImage" and child:IsA("ImageLabel") then
@@ -1041,25 +1045,59 @@ local function CreateInlineImage(parent, imageId, size)
 	return image
 end
 
+local function buildSpacer(px, textSize, font)
+	local candidates = {
+		" ",
+		" ",
+		" ",
+		" ",
+		" ",
+		" ",
+	}
+
+	local bestChar = " "
+	local bestCount = 1
+	local bestDiff = math.huge
+
+	for _, ch in ipairs(candidates) do
+		local w = TextService:GetTextSize(
+			ch,
+			textSize,
+			font,
+			Vector2.new(10000, 10000)
+		).X
+
+		if w > 0 then
+			local count = math.max(1, math.floor((px / w) + 0.5))
+			local diff = math.abs((w * count) - px)
+
+			if diff < bestDiff then
+				bestDiff = diff
+				bestChar = ch
+				bestCount = count
+			end
+		end
+	end
+
+	return string.rep(bestChar, bestCount)
+end
+
 local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 	clearInlineImages(cha)
 
 	local tokens = tokenizeInlineMessage(rawText)
 
-	local spaceW = math.max(
-		1,
-		TextService:GetTextSize(
-			" ",
-			textSize,
-			font,
-			Vector2.new(10000, 10000)
-		).X
+	local lineH = math.max(
+		textSize + 4,
+		TextService:GetTextSize("Ag", textSize, font, Vector2.new(10000, 10000)).Y
 	)
 
-	local lineH = textSize + 4
 	local x = 0
 	local y = 0
+
 	local displayParts = {}
+	local placeholderMap = {}
+	local placeholderId = 0
 
 	local function newLine()
 		table.insert(displayParts, "\n")
@@ -1128,102 +1166,32 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 		x += w
 	end
 
-	local NBSP = "\194\160"
+	local function addImagePiece(imageId, size, altText)
+		local imgSize = (size or textSize) + IMAGE_EXTRA_SIZE
 
-local function getLineHeight()
-	return TextService:GetTextSize(
-		"Ag",
-		textSize,
-		font,
-		Vector2.new(10000, 10000)
-	).Y
-end
+		if x > 0 and x + imgSize > maxWidth then
+			newLine()
+		end
 
-local function makeSpacer(px)
-	local nbspWidth = math.max(
-		1,
-		TextService:GetTextSize(
-			NBSP,
-			textSize,
-			font,
-			Vector2.new(10000, 10000)
-		).X
-	)
+		if imageId and imageId ~= "" then
+			placeholderId += 1
+			local token = "§IMGSPC" .. placeholderId .. "§"
 
-	local count = math.max(
-		1,
-		math.ceil(px / nbspWidth)
-	)
+			placeholderMap[token] = buildSpacer(imgSize, textSize, font)
+			addDisplay(token)
 
-	return string.rep(
-		NBSP,
-		count
-	)
-end
+			local img = CreateInlineImage(cha, imageId, imgSize)
+			img.Position = UDim2.fromOffset(
+				x + IMAGE_X_OFFSET,
+				y + math.max(0, math.floor((lineH - imgSize) / 2)) + IMAGE_Y_OFFSET
+			)
 
-local function addImagePiece(imageId, size, altText)
+			x += imgSize
 
-	local imgSize =
-		size or textSize
-
-	local baseLineH =
-		getLineHeight()
-
-	if x > 0
-		and x + imgSize > maxWidth
-	then
-		newLine()
+		elseif altText and altText ~= "" then
+			addTextPiece(altText)
+		end
 	end
-
-	if imageId
-		and imageId ~= ""
-	then
-
-		lineH =
-			math.max(
-				lineH,
-				baseLineH,
-				imgSize
-			)
-
-		local img =
-			CreateInlineImage(
-				cha,
-				imageId,
-				imgSize
-			)
-
-		img.Position =
-			UDim2.fromOffset(
-				x,
-				y +
-					math.max(
-						0,
-						math.floor(
-							(lineH - imgSize) / 2
-						)
-					)
-			)
-
-		x += imgSize
-
-		addDisplay(
-			makeSpacer(
-				imgSize
-			)
-		)
-
-	elseif altText
-		and altText ~= ""
-	then
-
-		addTextPiece(
-			altText
-		)
-
-	end
-
-end
 
 	for _, token in ipairs(tokens) do
 		if token.kind == "text" then
@@ -1237,7 +1205,17 @@ end
 		end
 	end
 
-	return table.concat(displayParts)
+	return table.concat(displayParts), placeholderMap
+end
+
+local function applyInlinePlaceholders(text, placeholderMap)
+	for token, spacer in pairs(placeholderMap) do
+		text = text:gsub(
+			token,
+			'<font transparency="1">' .. spacer .. '</font>'
+		)
+	end
+	return text
 end
 
 -- =========================================
@@ -1253,7 +1231,7 @@ local function txt(user, text, R, G, B)
 	cha.Size = UDim2.new(0.97, -35, 0, 0)
 	cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
 	cha.BackgroundTransparency = 0.85
-	cha.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+	cha.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	cha.TextSize = 16
 	cha.BorderSizePixel = 5
 	cha.BorderMode = Enum.BorderMode.Inset
@@ -1304,7 +1282,7 @@ local function txt(user, text, R, G, B)
 			)
 		)
 
-		local displayText = renderInlineOverlay(
+		local displayText, placeholderMap = renderInlineOverlay(
 			cha,
 			rawCombined,
 			16,
@@ -1312,7 +1290,11 @@ local function txt(user, text, R, G, B)
 			availableWidth
 		)
 
-		cha.Text = safeRichify(displayText)
+		cha.Text = applyInlinePlaceholders(
+			safeRichify(displayText),
+			placeholderMap
+		)
+
 		UpdateScroll()
 	end
 
