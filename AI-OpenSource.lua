@@ -1,4 +1,4 @@
-local ver = " UIs 6.973 "
+local ver = " UIs 6.974 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1067,135 +1067,206 @@ local function inlineHeightPad(px, textSize)
 		'">.</font></font>'
 end
 
-local function applyInlinePlaceholders(text, placeholderMap)
-	for token, spacer in pairs(placeholderMap) do
-		text = text:gsub(
-			token,
-			'<font transparency="1">' .. spacer .. '</font>'
-		)
-	end
-	return text
-end
-
 local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 	clearInlineImages(cha)
 
-	local tokens = tokenizeInlineMessage(rawText)
-	local parts = {}
-	local map = {}
+	local S = {
+		tokens = tokenizeInlineMessage(rawText),
+		parts = {},
+		map = {},
+		x = 0,
+		y = 0,
+		lineH = math.max(
+			textSize + 4,
+			TextService:GetTextSize(
+				"Ag",
+				textSize,
+				font,
+				Vector2.new(10000, 10000)
+			).Y
+		),
+		hasText = false,
+		hasImage = false,
+		maxImage = 0,
+		id = 0
+	}
 
-	local x = 0
-	local y = 0
-	local lineH = math.max(
-		textSize + 4,
-		TextService:GetTextSize(
-			"Ag",
-			textSize,
-			font,
-			Vector2.new(10000, 10000)
-		).Y
-	)
-
-	local hasText = false
-	local hasImage = false
-	local maxImg = 0
-	local id = 0
-
-	local function flushLine()
-		if hasImage and not hasText then
-			parts[#parts + 1] = inlineHeightPad(maxImg, textSize)
-		end
-	end
-
-	local function newLine()
-		flushLine()
-		parts[#parts + 1] = "\n"
-		x = 0
-		y += lineH
-		hasText = false
-		hasImage = false
-		maxImg = 0
-	end
-
-	local function addChunk(chunk)
-		if chunk == "" then
-			return
-		end
-
-		local w = TextService:GetTextSize(
-			chunk,
-			textSize,
-			font,
-			Vector2.new(10000, 10000)
-		).X
-
-		if x > 0 and x + w > maxWidth then
-			newLine()
-		end
-
-		parts[#parts + 1] = chunk
-		x += w
-		hasText = true
-	end
-
-	for i = 1, #tokens do
-		local t = tokens[i]
+	for _, t in ipairs(S.tokens) do
 
 		if t.kind == "text" then
-			local s = tostring(t.text)
+
+			local str = tostring(t.text)
 			local start = 1
 
 			while true do
-				local nl = s:find("\n", start, true)
-				local seg = nl and s:sub(start, nl - 1) or s:sub(start)
+				local nl = str:find("\n", start, true)
+				local segment = nl
+					and str:sub(start, nl - 1)
+					or str:sub(start)
 
-				if seg ~= "" then
-					for chunk in seg:gmatch("%S+%s*") do
-						addChunk(chunk)
+				for chunk in segment:gmatch("%S+%s*") do
+					local w = TextService:GetTextSize(
+						chunk,
+						textSize,
+						font,
+						Vector2.new(10000, 10000)
+					).X
+
+					if S.x > 0 and S.x + w > maxWidth then
+						if S.hasImage and not S.hasText then
+							S.parts[#S.parts + 1] =
+								'<font transparency="1"><font size="' ..
+								math.max(textSize, S.maxImage) ..
+								'">.</font></font>'
+						end
+
+						S.parts[#S.parts + 1] = "\n"
+
+						S.x = 0
+						S.y += S.lineH
+						S.hasText = false
+						S.hasImage = false
+						S.maxImage = 0
 					end
+
+					S.parts[#S.parts + 1] = chunk
+					S.x += w
+					S.hasText = true
 				end
 
 				if not nl then
 					break
 				end
 
-				newLine()
+				if S.hasImage and not S.hasText then
+					S.parts[#S.parts + 1] =
+						'<font transparency="1"><font size="' ..
+						math.max(textSize, S.maxImage) ..
+						'">.</font></font>'
+				end
+
+				S.parts[#S.parts + 1] = "\n"
+
+				S.x = 0
+				S.y += S.lineH
+				S.hasText = false
+				S.hasImage = false
+				S.maxImage = 0
+
 				start = nl + 1
 			end
 
 		elseif t.kind == "code" then
-			local s = "`" .. tostring(t.text) .. "`"
-			addChunk(s)
+
+			local str = "`" .. tostring(t.text) .. "`"
+
+			local w = TextService:GetTextSize(
+				str,
+				textSize,
+				font,
+				Vector2.new(10000, 10000)
+			).X
+
+			if S.x > 0 and S.x + w > maxWidth then
+				if S.hasImage and not S.hasText then
+					S.parts[#S.parts + 1] =
+						'<font transparency="1"><font size="' ..
+						math.max(textSize, S.maxImage) ..
+						'">.</font></font>'
+				end
+
+				S.parts[#S.parts + 1] = "\n"
+
+				S.x = 0
+				S.y += S.lineH
+				S.hasText = false
+				S.hasImage = false
+				S.maxImage = 0
+			end
+
+			S.parts[#S.parts + 1] = str
+			S.x += w
+			S.hasText = true
 
 		elseif t.kind == "image" then
-			local imgSize = (t.size or textSize) + 4
 
-			if x > 0 and x + imgSize > maxWidth then
-				newLine()
+			local imgSize = (t.size or textSize) + IMAGE_EXTRA_SIZE
+
+			if S.x > 0 and S.x + imgSize > maxWidth then
+				if S.hasImage and not S.hasText then
+					S.parts[#S.parts + 1] =
+						'<font transparency="1"><font size="' ..
+						math.max(textSize, S.maxImage) ..
+						'">.</font></font>'
+				end
+
+				S.parts[#S.parts + 1] = "\n"
+
+				S.x = 0
+				S.y += S.lineH
+				S.hasText = false
+				S.hasImage = false
+				S.maxImage = 0
 			end
 
-			hasImage = true
-			if imgSize > maxImg then
-				maxImg = imgSize
+			if t.image and t.image ~= "" then
+
+				S.hasImage = true
+				S.maxImage = math.max(S.maxImage, imgSize)
+
+				S.id += 1
+
+				local key = "§IMG" .. S.id .. "§"
+
+				S.map[key] = buildSpacer(
+					imgSize,
+					textSize,
+					font
+				)
+
+				S.parts[#S.parts + 1] = key
+
+				local img = CreateInlineImage(
+					cha,
+					t.image,
+					imgSize
+				)
+
+				img.Position = UDim2.fromOffset(
+					S.x + IMAGE_X_OFFSET,
+					S.y +
+						math.floor(
+							(S.lineH - imgSize) / 2
+						) +
+						IMAGE_Y_OFFSET
+				)
+
+				S.x += imgSize
+
+			elseif t.alt and t.alt ~= "" then
+
+				local w = TextService:GetTextSize(
+					t.alt,
+					textSize,
+					font,
+					Vector2.new(10000, 10000)
+				).X
+
+				S.parts[#S.parts + 1] = t.alt
+				S.x += w
+				S.hasText = true
 			end
-
-			id += 1
-			local token = "§IMGSPC" .. id .. "§"
-			map[token] = inlineSpacer(imgSize, textSize, font)
-			parts[#parts + 1] = token
-
-			local img = CreateInlineImage(cha, t.image, imgSize)
-			img.Position = UDim2.fromOffset(
-				x + IMAGE_X_OFFSET,
-				y + math.max(0, math.floor((lineH - imgSize) / 2)) + IMAGE_Y_OFFSET
-			)
-
-			x += imgSize
 		end
 	end
 
-	flushLine()
-	return table.concat(parts), map
+	if S.hasImage and not S.hasText then
+		S.parts[#S.parts + 1] =
+			'<font transparency="1"><font size="' ..
+			math.max(textSize, S.maxImage) ..
+			'">.</font></font>'
+	end
+
+	return table.concat(S.parts), S.map
 end
 
 -- =========================================
