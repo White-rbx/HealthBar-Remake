@@ -1,4 +1,4 @@
-local ver = " UIs 6.72 "
+local ver = " UIs 6.76 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -881,43 +881,49 @@ end
 -- =========================================
 
 local folderRbx = folderRbx or {
-	Test = "rbxassetid://12345678",
+	Pan = "rbxassetid://128569416336656",
+	Flower = "rbxassetid://87148671464908",
+	Smile = "rbxassetid://5577595111",
+	Coffee = "rbxassetid://13172615874",
+	["5teve3019D"] = "rbxassetid://85591071115544",
+	Copy = "rbxassetid://85495702622937",
+	Filter = "rbxassetid://134089160838664",
+	Search = "rbxassetid://133955276215666",
+	Add = "rbxassetid://127467828755500",
+	RobloxLogo = "rbxassetid://103716616779537",
+	RobloxEmote = "rbxassetid://70633192931522",
 }
 
-local function CreateInlineText(parent, richText, color, textSize, font, width)
-	local lbl = Instance.new("TextLabel")
-	lbl.Name = "InlineText"
-	lbl.BackgroundTransparency = 1
-	lbl.BorderSizePixel = 0
-	lbl.TextXAlignment = Enum.TextXAlignment.Left
-	lbl.TextYAlignment = Enum.TextYAlignment.Top
-	lbl.RichText = true
-	lbl.TextWrapped = false
-	lbl.TextTruncate = Enum.TextTruncate.None
-	lbl.Font = font
-	lbl.TextSize = textSize
-	lbl.TextColor3 = color
-	lbl.Text = richText
-	lbl.Size = UDim2.fromOffset(math.max(1, width), textSize + 4)
-	lbl.Parent = parent
-	return lbl
+local TextService = game:GetService("TextService")
+
+local function clearInlineImages(parent)
+	for _, child in ipairs(parent:GetChildren()) do
+		if child.Name == "InlineImage" and child:IsA("ImageLabel") then
+			child:Destroy()
+		end
+	end
 end
 
-local function CreateInlineImage(parent, imageId, size)
-	local image = Instance.new("ImageLabel")
-	image.Name = "InlineImage"
-	image.BackgroundTransparency = 1
-	image.BorderSizePixel = 0
-	image.Image = imageId
-	image.ScaleType = Enum.ScaleType.Fit
-	image.Size = UDim2.fromOffset(size, size)
-	image.Parent = parent
-	return image
+local function splitByNewlines(str)
+	local lines = {}
+	str = tostring(str)
+
+	local start = 1
+	while true do
+		local nl = str:find("\n", start, true)
+		if not nl then
+			table.insert(lines, str:sub(start))
+			break
+		end
+		table.insert(lines, str:sub(start, nl - 1))
+		start = nl + 1
+	end
+
+	return lines
 end
 
 local function parseInlineToken(code)
 	local raw = tostring(code)
-
 	local size
 	local alt
 
@@ -1013,76 +1019,47 @@ local function tokenizeInlineMessage(rawText)
 	return tokens
 end
 
-local function splitByNewlines(str)
-	local lines = {}
-	str = tostring(str)
-
-	local start = 1
-	while true do
-		local nl = str:find("\n", start, true)
-		if not nl then
-			table.insert(lines, str:sub(start))
-			break
-		end
-		table.insert(lines, str:sub(start, nl - 1))
-		start = nl + 1
-	end
-
-	return lines
+local function CreateInlineImage(parent, imageId, size)
+	local image = Instance.new("ImageLabel")
+	image.Name = "InlineImage"
+	image.BackgroundTransparency = 1
+	image.BorderSizePixel = 0
+	image.Image = imageId
+	image.ScaleType = Enum.ScaleType.Fit
+	image.Size = UDim2.fromOffset(size, size)
+	image.ZIndex = parent.ZIndex + 1
+	image.Parent = parent
+	return image
 end
 
-local function makeCodeRich(code)
-	return '<font face="Code"><font color="rgb(255,220,150)">' .. escapeRichText(code) .. '</font></font>'
-end
+local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
+	clearInlineImages(cha)
 
-local function clearChildrenExceptLayout(parent)
-	for _, child in ipairs(parent:GetChildren()) do
-		if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then
-			child:Destroy()
-		end
-	end
-end
+	local tokens = tokenizeInlineMessage(rawText)
 
-local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxWidth)
-	clearChildrenExceptLayout(body)
+	local spaceW = math.max(
+		1,
+		TextService:GetTextSize(
+			" ",
+			textSize,
+			font,
+			Vector2.new(10000, 10000)
+		).X
+	)
 
-	local totalHeight = 0
-
-	local lineFrame
-	local lineWidth = 0
-	local lineHeight = 0
-
-	local function finalizeLine()
-		if lineFrame then
-			lineFrame.Size = UDim2.new(1, 0, 0, math.max(lineHeight, textSize + 4))
-			totalHeight += math.max(lineHeight, textSize + 4)
-		end
-	end
+	local lineH = textSize + 4
+	local x = 0
+	local y = 0
+	local displayParts = {}
 
 	local function newLine()
-		finalizeLine()
-
-		lineFrame = Instance.new("Frame")
-		lineFrame.Name = "InlineLine"
-		lineFrame.BackgroundTransparency = 1
-		lineFrame.BorderSizePixel = 0
-		lineFrame.Size = UDim2.new(1, 0, 0, textSize + 4)
-		lineFrame.Parent = body
-
-		local lineLayout = Instance.new("UIListLayout")
-		lineLayout.FillDirection = Enum.FillDirection.Horizontal
-		lineLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		lineLayout.Padding = UDim.new(0, 0)
-		lineLayout.Parent = lineFrame
-
-		lineWidth = 0
-		lineHeight = textSize + 4
+		table.insert(displayParts, "\n")
+		x = 0
+		y += lineH
 	end
 
-	local function ensureLine()
-		if not lineFrame then
-			newLine()
-		end
+	local function addDisplay(s)
+		table.insert(displayParts, s)
 	end
 
 	local function addTextChunk(chunk)
@@ -1090,44 +1067,23 @@ local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxW
 			return
 		end
 
-		local measured = TextService:GetTextSize(
+		local w = TextService:GetTextSize(
 			chunk,
 			textSize,
 			font,
 			Vector2.new(10000, 10000)
-		)
+		).X
 
-		local w = math.max(1, measured.X)
-
-		if lineWidth > 0 and lineWidth + w > maxWidth then
+		if x > 0 and x + w > maxWidth then
 			newLine()
 		end
 
-		ensureLine()
-
-		local lbl = CreateInlineText(lineFrame, safeRichify(chunk), color, textSize, font, w)
-		lineWidth += w
-		lineHeight = math.max(lineHeight, textSize + 4, lbl.Size.Y.Offset)
-	end
-
-	local function addCodePiece(code)
-		local measured = TextService:GetTextSize(code, textSize, font, Vector2.new(10000, 10000))
-		local w = math.max(1, measured.X)
-
-		if lineWidth > 0 and lineWidth + w > maxWidth then
-			newLine()
-		end
-
-		ensureLine()
-
-		local rich = makeCodeRich(code)
-		local lbl = CreateInlineText(lineFrame, rich, color, textSize, font, w)
-
-		lineWidth += w
-		lineHeight = math.max(lineHeight, textSize + 4, lbl.Size.Y.Offset)
+		addDisplay(chunk)
+		x += w
 	end
 
 	local function addTextPiece(piece)
+		piece = tostring(piece)
 		if piece == "" then
 			return
 		end
@@ -1136,16 +1092,7 @@ local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxW
 
 		for idx, lineText in ipairs(lines) do
 			if lineText ~= "" then
-				local words = {}
 				for chunk in lineText:gmatch("%S+%s*") do
-					table.insert(words, chunk)
-				end
-
-				if #words == 0 then
-					table.insert(words, lineText)
-				end
-
-				for _, chunk in ipairs(words) do
 					addTextChunk(chunk)
 				end
 			end
@@ -1156,25 +1103,41 @@ local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxW
 		end
 	end
 
-	local function addImagePiece(imageId, size, altText)
-		local imgSize = size or textSize
+	local function addCodePiece(code)
+		local w = TextService:GetTextSize(
+			code,
+			textSize,
+			font,
+			Vector2.new(10000, 10000)
+		).X
 
-		if lineWidth > 0 and lineWidth + imgSize > maxWidth then
+		if x > 0 and x + w > maxWidth then
 			newLine()
 		end
 
-		ensureLine()
+		addDisplay("`" .. code .. "`")
+		x += w
+	end
+
+	local function addImagePiece(imageId, size, altText)
+		local imgSize = size or textSize
+
+		if x > 0 and x + imgSize > maxWidth then
+			newLine()
+		end
 
 		if imageId and imageId ~= "" then
-			CreateInlineImage(lineFrame, imageId, imgSize)
-			lineWidth += imgSize
-			lineHeight = math.max(lineHeight, imgSize)
+			local img = CreateInlineImage(cha, imageId, imgSize)
+			img.Position = UDim2.fromOffset(
+				x,
+				y + math.max(0, math.floor((lineH - imgSize) / 2))
+			)
+			x += imgSize
+			addDisplay(string.rep(" ", math.max(1, math.floor(imgSize / spaceW + 0.5))))
 		elseif altText and altText ~= "" then
 			addTextPiece(altText)
 		end
 	end
-
-	local tokens = tokenizeInlineMessage(rawMessage)
 
 	for _, token in ipairs(tokens) do
 		if token.kind == "text" then
@@ -1188,16 +1151,7 @@ local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxW
 		end
 	end
 
-	if not lineFrame then
-		newLine()
-	end
-
-	finalizeLine()
-
-	-- Make sure the body itself grows to fit the wrapped lines.
-	body.Size = UDim2.new(1, -12, 0, totalHeight)
-
-	return totalHeight
+	return table.concat(displayParts)
 end
 
 -- =========================================
@@ -1206,49 +1160,47 @@ end
 
 local function txt(user, text, R, G, B)
 	local shouldFollow = IsAtBottom()
-	local msgColor = Color3.fromRGB(R or 255, G or 255, B or 255)
 
-	local cha = Instance.new("Frame")
+	local cha = Instance.new("TextLabel")
 	cha.Name = "Text"
 	cha.Active = false
 	cha.Size = UDim2.new(0.97, -35, 0, 0)
-	cha.AutomaticSize = Enum.AutomaticSize.None
+	cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
 	cha.BackgroundTransparency = 0.85
-	cha.BackgroundColor3 = msgColor
+	cha.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	cha.TextSize = 16
 	cha.BorderSizePixel = 5
 	cha.BorderMode = Enum.BorderMode.Inset
-	cha.Visible = true
+	cha.RichText = true
+	cha.TextWrapped = true
+	cha.TextXAlignment = Enum.TextXAlignment.Left
+	cha.TextYAlignment = Enum.TextYAlignment.Top
+	cha.AutomaticSize = Enum.AutomaticSize.Y
 	cha.ClipsDescendants = false
+	cha.Text = "Responding..."
+	cha.Visible = true
 	cha.Parent = si
-
-	local body = Instance.new("Frame")
-	body.Name = "Body"
-	body.BackgroundTransparency = 1
-	body.BorderSizePixel = 0
-	body.Position = UDim2.new(0, 6, 0, 4)
-	body.Size = UDim2.new(1, -12, 0, 0)
-	body.AutomaticSize = Enum.AutomaticSize.None
-	body.ClipsDescendants = false
-	body.Parent = cha
-
-	local bodyLayout = Instance.new("UIListLayout")
-	bodyLayout.FillDirection = Enum.FillDirection.Vertical
-	bodyLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	bodyLayout.Padding = UDim.new(0, 0)
-	bodyLayout.Parent = body
 
 	local cp = Instance.new("ImageButton")
 	cp.Name = "CopyButton"
 	cp.Position = UDim2.new(1, 10, 1, -25)
 	cp.Size = UDim2.new(0, 25, 0, 25)
 	cp.Image = "rbxassetid://85495702622937"
-	cp.BackgroundColor3 = msgColor
+	cp.BackgroundColor3 = cha.TextColor3
 	cp.BackgroundTransparency = 0.3
 	cp.ZIndex = 2
 	cp.Parent = cha
 	Corner(0, 5, cp)
 
 	local prefix = escapeRichText(tostring(user))
+
+	local function safeRichify(str)
+		local ok, result = pcall(richify, tostring(str))
+		if ok then
+			return result
+		end
+		return escapeRichText(tostring(str))
+	end
 
 	local function UpdateScroll()
 		if shouldFollow then
@@ -1257,9 +1209,7 @@ local function txt(user, text, R, G, B)
 	end
 
 	local function RenderCurrent(currentText)
-		clearChildrenExceptLayout(body)
-
-		local combined = prefix .. tostring(currentText)
+		local rawCombined = prefix .. tostring(currentText)
 
 		local availableWidth = math.max(
 			50,
@@ -1268,34 +1218,24 @@ local function txt(user, text, R, G, B)
 			)
 		)
 
-		local totalHeight = RenderInlineMessage(
-			body,
-			combined,
-			msgColor,
+		local displayText = renderInlineOverlay(
+			cha,
+			rawCombined,
 			16,
 			Enum.Font.SourceSans,
 			availableWidth
 		)
 
-		cha.Size = UDim2.new(0.97, -35, 0, math.max(28, totalHeight + 10))
+		cha.Text = safeRichify(displayText)
 		UpdateScroll()
 	end
 
 	task.spawn(function()
-		-- =========================
-		-- INSTANT
-		-- =========================
-
 		if TEXT_STYLE == "INSTANT" then
 			RenderCurrent(text)
 
-		-- =========================
-		-- EACHTEXT
-		-- =========================
-
 		elseif TEXT_STYLE == "EACHTEXT" then
 			local chunks = {}
-
 			for chunk in tostring(text):gmatch("%S+%s*") do
 				table.insert(chunks, chunk)
 			end
@@ -1306,10 +1246,6 @@ local function txt(user, text, R, G, B)
 				RenderCurrent(current)
 				task.wait(0.03)
 			end
-
-		-- =========================
-		-- EACHLINE
-		-- =========================
 
 		elseif TEXT_STYLE == "EACHLINE" then
 			local current = ""
@@ -1335,10 +1271,6 @@ local function txt(user, text, R, G, B)
 					task.wait(0.05)
 				end
 			end
-
-		-- =========================
-		-- DEFAULT
-		-- =========================
 
 		else
 			RenderCurrent(text)
