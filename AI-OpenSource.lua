@@ -1,4 +1,4 @@
-local ver = " UIs 6.71 "
+local ver = " UIs 6.72 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -881,18 +881,7 @@ end
 -- =========================================
 
 local folderRbx = folderRbx or {
-	Pan = "rbxassetid://128569416336656",
-	Flower = "rbxassetid://87148671464908",
-	Smile = "rbxassetid://5577595111",
-	Coffee = "rbxassetid://13172615874",
-	["5teve3019D"] = "rbxassetid://85591071115544",
-	Copy = "rbxassetid://85495702622937",
-	Filter = "rbxassetid://134089160838664",
-	Search = "rbxassetid://133955276215666",
-	Add = "rbxassetid://127467828755500",
-	RobloxLogo = "rbxassetid://103716616779537",
-	RobloxEmote = "rbxassetid://70633192931522",
-	
+	Test = "rbxassetid://12345678",
 }
 
 local function CreateInlineText(parent, richText, color, textSize, font, width)
@@ -1057,12 +1046,9 @@ end
 local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxWidth)
 	clearChildrenExceptLayout(body)
 
-	local paddingX = 0
-	local paddingY = 0
 	local totalHeight = 0
 
 	local lineFrame
-	local lineLayout
 	local lineWidth = 0
 	local lineHeight = 0
 
@@ -1083,7 +1069,7 @@ local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxW
 		lineFrame.Size = UDim2.new(1, 0, 0, textSize + 4)
 		lineFrame.Parent = body
 
-		lineLayout = Instance.new("UIListLayout")
+		local lineLayout = Instance.new("UIListLayout")
 		lineLayout.FillDirection = Enum.FillDirection.Horizontal
 		lineLayout.SortOrder = Enum.SortOrder.LayoutOrder
 		lineLayout.Padding = UDim.new(0, 0)
@@ -1099,55 +1085,29 @@ local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxW
 		end
 	end
 
-	local function addTextPiece(piece, rawRich)
-		if piece == "" then
+	local function addTextChunk(chunk)
+		if chunk == "" then
 			return
 		end
 
-		local lines = splitByNewlines(piece)
-		for idx, lineText in ipairs(lines) do
-			if lineText ~= "" then
-				local words = {}
-				for chunk in lineText:gmatch("%S+%s*") do
-					table.insert(words, chunk)
-				end
+		local measured = TextService:GetTextSize(
+			chunk,
+			textSize,
+			font,
+			Vector2.new(10000, 10000)
+		)
 
-				if #words == 0 then
-					table.insert(words, lineText)
-				end
+		local w = math.max(1, measured.X)
 
-				for _, chunk in ipairs(words) do
-					local measured = TextService:GetTextSize(
-						chunk,
-						textSize,
-						font,
-						Vector2.new(10000, 10000)
-					)
-
-					local w = math.max(1, measured.X)
-
-					if lineWidth > 0 and lineWidth + w > maxWidth then
-						newLine()
-					end
-
-					ensureLine()
-
-					local lbl
-					if rawRich then
-						lbl = CreateInlineText(lineFrame, chunk, color, textSize, font, w)
-					else
-						lbl = CreateInlineText(lineFrame, safeRichify(chunk), color, textSize, font, w)
-					end
-
-					lineWidth += w
-					lineHeight = math.max(lineHeight, textSize + 4, lbl.Size.Y.Offset)
-				end
-			end
-
-			if idx < #lines then
-				newLine()
-			end
+		if lineWidth > 0 and lineWidth + w > maxWidth then
+			newLine()
 		end
+
+		ensureLine()
+
+		local lbl = CreateInlineText(lineFrame, safeRichify(chunk), color, textSize, font, w)
+		lineWidth += w
+		lineHeight = math.max(lineHeight, textSize + 4, lbl.Size.Y.Offset)
 	end
 
 	local function addCodePiece(code)
@@ -1167,6 +1127,35 @@ local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxW
 		lineHeight = math.max(lineHeight, textSize + 4, lbl.Size.Y.Offset)
 	end
 
+	local function addTextPiece(piece)
+		if piece == "" then
+			return
+		end
+
+		local lines = splitByNewlines(piece)
+
+		for idx, lineText in ipairs(lines) do
+			if lineText ~= "" then
+				local words = {}
+				for chunk in lineText:gmatch("%S+%s*") do
+					table.insert(words, chunk)
+				end
+
+				if #words == 0 then
+					table.insert(words, lineText)
+				end
+
+				for _, chunk in ipairs(words) do
+					addTextChunk(chunk)
+				end
+			end
+
+			if idx < #lines then
+				newLine()
+			end
+		end
+	end
+
 	local function addImagePiece(imageId, size, altText)
 		local imgSize = size or textSize
 
@@ -1181,7 +1170,7 @@ local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxW
 			lineWidth += imgSize
 			lineHeight = math.max(lineHeight, imgSize)
 		elseif altText and altText ~= "" then
-			addTextPiece(altText, false)
+			addTextPiece(altText)
 		end
 	end
 
@@ -1189,7 +1178,7 @@ local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxW
 
 	for _, token in ipairs(tokens) do
 		if token.kind == "text" then
-			addTextPiece(token.text, false)
+			addTextPiece(token.text)
 
 		elseif token.kind == "code" then
 			addCodePiece(token.text)
@@ -1204,6 +1193,9 @@ local function RenderInlineMessage(body, rawMessage, color, textSize, font, maxW
 	end
 
 	finalizeLine()
+
+	-- Make sure the body itself grows to fit the wrapped lines.
+	body.Size = UDim2.new(1, -12, 0, totalHeight)
 
 	return totalHeight
 end
@@ -1239,6 +1231,12 @@ local function txt(user, text, R, G, B)
 	body.ClipsDescendants = false
 	body.Parent = cha
 
+	local bodyLayout = Instance.new("UIListLayout")
+	bodyLayout.FillDirection = Enum.FillDirection.Vertical
+	bodyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	bodyLayout.Padding = UDim.new(0, 0)
+	bodyLayout.Parent = body
+
 	local cp = Instance.new("ImageButton")
 	cp.Name = "CopyButton"
 	cp.Position = UDim2.new(1, 10, 1, -25)
@@ -1252,14 +1250,6 @@ local function txt(user, text, R, G, B)
 
 	local prefix = escapeRichText(tostring(user))
 
-	local function safeRichify(str)
-		local ok, result = pcall(richify, tostring(str))
-		if ok then
-			return result
-		end
-		return escapeRichText(tostring(str))
-	end
-
 	local function UpdateScroll()
 		if shouldFollow then
 			ScrollToBottom()
@@ -1267,40 +1257,29 @@ local function txt(user, text, R, G, B)
 	end
 
 	local function RenderCurrent(currentText)
-	clearChildrenExceptLayout(body)
+		clearChildrenExceptLayout(body)
 
-	local combined = prefix .. tostring(currentText)
+		local combined = prefix .. tostring(currentText)
 
-	local availableWidth = math.max(
-		50,
-		math.floor(
-			(cha.AbsoluteSize.X > 0
-				and cha.AbsoluteSize.X
-				or si.AbsoluteSize.X * 0.97)
-			- 18
+		local availableWidth = math.max(
+			50,
+			math.floor(
+				(cha.AbsoluteSize.X > 0 and cha.AbsoluteSize.X or si.AbsoluteSize.X * 0.97) - 18
+			)
 		)
-	)
 
-	RenderInlineMessage(
-		body,
-		combined,
-		msgColor,
-		16,
-		Enum.Font.SourceSans,
-		availableWidth
-	)
+		local totalHeight = RenderInlineMessage(
+			body,
+			combined,
+			msgColor,
+			16,
+			Enum.Font.SourceSans,
+			availableWidth
+		)
 
-	cha.Size = UDim2.new(
-		0.97,
-		-35,
-		0,
-		0
-	)
-
-	cha.AutomaticSize = Enum.AutomaticSize.Y
-
-	UpdateScroll()
-end
+		cha.Size = UDim2.new(0.97, -35, 0, math.max(28, totalHeight + 10))
+		UpdateScroll()
+	end
 
 	task.spawn(function()
 		-- =========================
