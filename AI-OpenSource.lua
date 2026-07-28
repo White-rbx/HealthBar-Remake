@@ -1,4 +1,4 @@
-local ver = " UIs 6.952 "
+local ver = " UIs 6.953 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -882,17 +882,25 @@ end
 -- =========================================
 
 local folderRbx = folderRbx or {
-	Pan = "rbxassetid://128569416336656",
-	Flower = "rbxassetid://87148671464908",
-	Smile = "rbxassetid://5577595111",
-	Coffee = "rbxassetid://13172615874",
+	Pan = "rbxassetid://125475680586989",
+	Flower = "rbxassetid://115337423632858",
+	Smile = "rbxassetid://114645536340324",
+	Coffee = "rbxassetid://129340524570417",
 	["5teve3019D"] = "rbxassetid://85591071115544",
+	["5teve3019D-Happy"] = "rbxassetid://101439288090755",
 	Copy = "rbxassetid://85495702622937",
 	Filter = "rbxassetid://134089160838664",
 	Search = "rbxassetid://133955276215666",
 	Add = "rbxassetid://127467828755500",
 	RobloxLogo = "rbxassetid://103716616779537",
 	RobloxEmote = "rbxassetid://70633192931522",
+	Angry = "rbxassetid://71813422079325",
+	ExclamationMark = "rbxassetid://76818667867454",
+	LuaLogo = "rbxassetid://91555220907871",
+	Apple = "rbxassetid://73519352873388",
+	PinkPaw = "rbxassetid://74221424704557",
+	BlackPaw = "rbxassetid://95970558194219",
+	Jimmy = "rbxassetid://123105101896574",
 }
 
 local TextService = game:GetService("TextService")
@@ -2335,7 +2343,7 @@ Inline Image Formatting Rules
     • `file://customrbx("Flower")["rbxassetid://123456789"]`
    NAME is a human-readable name for the image.
    The asset ID must be a valid Roblox asset ID supplied by the user/system. Do NOT invent or guess asset IDs.
-  3. Image size
+  3. Image size (Not working, do not use.)
    An inline image can specify its size using:
     • [size=32]
    Example:
@@ -2388,12 +2396,20 @@ Inline Image Formatting Rules
      - "Smile"
      - "Coffee"
      - "5teve3019D"
+	 - "5teve3019D-Happy"
      - "Copy"
      - "Filter"
      - "Search"
      - "Add"
      - "RobloxLogo"
      - "RobloxEmote"
+	 - "Angry"
+	 - "ExclamationMark"
+	 - "LuaLogo"
+	 - "Apple"
+	 - "PinkPaw"
+	 - "BlackPaw"
+	 - "Jimmy"
   
      Only use image names from this list with "folder://rbx["NAME"]".
      Example:
