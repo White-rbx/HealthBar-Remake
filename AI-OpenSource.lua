@@ -1,4 +1,4 @@
-local ver = " UIs 6.975 "
+local ver = " UIs 6.976 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -463,7 +463,7 @@ local user = {
 }
 ]]
 
--- ========== user labels & safe text function ==========
+-- ========== user labels & safe text function (already exist in user code, but we keep fallback) ==========
 local user = {
 	plr  = "[ 👤 ]: ",
 	chat = "[ ✨ ]: ",
@@ -491,9 +491,8 @@ local function parsePercent(v)
 		return nil
 	end
 
-	v = tostring(v)
-	if v:find("%%") then
-		return tonumber(v:gsub("%%", "")) / 100
+	if tostring(v):find("%%") then
+		return tonumber(tostring(v):gsub("%%", "")) / 100
 	end
 
 	return tonumber(v)
@@ -508,19 +507,29 @@ local richId = 0
 
 local function protectRich(content)
 	richId += 1
+
 	local key = "§RICH" .. richId .. "§"
 	richProtected[key] = content
+
 	return key
 end
 
 local function richify(text)
 	text = tostring(text)
 
+	-- =========================================
+	-- PROTECT RICHTEXT TOKENS
+	-- =========================================
+
 	for key, value in pairs(richProtected) do
 		text = text:gsub(value, key)
 	end
 
 	text = escapeRichText(text)
+
+	-- =========================================
+	-- PROTECTED TOKENS
+	-- =========================================
 
 	local protected = {}
 	local tokenId = 0
@@ -532,13 +541,28 @@ local function richify(text)
 		return key
 	end
 
+	-- =========================================
+	-- ESCAPE
+	-- %...%
+	-- =========================================
+
 	text = text:gsub("%%([%s%S]-)%%", function(content)
 		return protect(content)
 	end)
 
+	-- =========================================
+	-- INTERNAL CHAT ESCAPE
+	-- ™...™
+	-- =========================================
+
 	text = text:gsub("™([%s%S]-)™", function(content)
 		return protect(content)
 	end)
+
+	-- =========================================
+	-- CODE BLOCK
+	-- ```...```
+	-- =========================================
 
 	text = text:gsub("```([%s%S]-)```", function(code)
 		code = code:gsub("^%s*\n", "")
@@ -553,6 +577,11 @@ local function richify(text)
 		)
 	end)
 
+	-- =========================================
+	-- INLINE CODE
+	-- `...`
+	-- =========================================
+
 	text = text:gsub("`([^`\n]-)`", function(code)
 		return protect(
 			'<font face="Code">' ..
@@ -563,22 +592,38 @@ local function richify(text)
 		)
 	end)
 
+	-- Link name
 	text = text:gsub("%[([^%]]+)%]%(%s*<?(https?://[^>%s]+)>?%s*%)", function(label, url)
 		return protect(
 			'<font color="rgb(80,170,255)">' ..
-			'<u>' .. label .. '</u>' ..
+			'<u>' ..
+			label ..
+			'</u>' ..
 			'</font>' ..
-			' <font color="rgb(120,120,120)">(' .. url .. ')</font>'
+			' <font color="rgb(120,120,120)">(' ..
+			url ..
+			')</font>'
 		)
 	end)
+
+	-- =========================================
+	-- LINKS
+	-- =========================================
 
 	text = text:gsub("(https?://[%w%-%._~:/%?#%[%]@!$&'%(%)%*%+,;=]+)", function(url)
 		return protect(
 			'<font color="rgb(80,170,255)">' ..
-			'<u>' .. url .. '</u>' ..
+			'<u>' ..
+			url ..
+			'</u>' ..
 			'</font>'
 		)
 	end)
+
+	-- =========================================
+	-- SMALL TEXT
+	-- -# TEXT
+	-- =========================================
 
 	text = text:gsub("(^%-# ([^\n]+))", function(_, content)
 		return '<font size="12">' .. content .. '</font>'
@@ -587,6 +632,10 @@ local function richify(text)
 	text = text:gsub("\n%-# ([^\n]+)", function(content)
 		return '\n<font size="12">' .. content .. '</font>'
 	end)
+
+	-- =========================================
+	-- HEADERS
+	-- =========================================
 
 	text = text:gsub("\n#### ([^\n]+)", '\n<font size="18"><b>%1</b></font>')
 	text = text:gsub("^#### ([^\n]+)", '<font size="18"><b>%1</b></font>')
@@ -600,30 +649,60 @@ local function richify(text)
 	text = text:gsub("\n# ([^\n]+)", '\n<font size="28"><b>%1</b></font>')
 	text = text:gsub("^# ([^\n]+)", '<font size="28"><b>%1</b></font>')
 
+	-- =========================================
+	-- BOLD + ITALIC
+	-- =========================================
+
 	text = text:gsub("%*%*%*([^\n]-)%*%*%*", function(content)
 		return protect("<b><i>" .. content .. "</i></b>")
 	end)
+
+	-- =========================================
+	-- BOLD
+	-- =========================================
 
 	text = text:gsub("%*%*([^\n]-)%*%*", function(content)
 		return protect("<b>" .. content .. "</b>")
 	end)
 
+	-- =========================================
+	-- ITALIC
+	-- =========================================
+
 	text = text:gsub("%*([^\n]-)%*", function(content)
 		return protect("<i>" .. content .. "</i>")
 	end)
+
+	-- =========================================
+	-- UNDERLINE
+	-- =========================================
 
 	text = text:gsub("_([^\n]-)_", function(content)
 		return protect("<u>" .. content .. "</u>")
 	end)
 
+	-- =========================================
+	-- STRIKE
+	-- =========================================
+
 	text = text:gsub("~([^\n]-)~", function(content)
 		return protect("<s>" .. content .. "</s>")
 	end)
+
+	-- =========================================
+	-- SIZE
+	-- [size=NUM]TEXT[/size]
+	-- =========================================
 
 	text = text:gsub("%[size=(%d+)%]([%s%S]-)%[/size%]", function(size, content)
 		content = richify(content)
 		return protect(string.format('<font size="%d">%s</font>', tonumber(size), content))
 	end)
+
+	-- =========================================
+	-- FACE
+	-- [face=FONT]TEXT[/face]
+	-- =========================================
 
 	text = text:gsub("%[face=([%w_%- ]+)%]([%s%S]-)%[/face%]", function(face, content)
 		content = richify(content)
@@ -715,6 +794,10 @@ local function richify(text)
 		return protect("<stroke " .. table.concat(attrs, " ") .. ">" .. content .. "</stroke>")
 	end)
 
+	-- =========================================
+	-- TEXT COLOR CHANGER
+	-- =========================================
+
 	text = text:gsub("%[color=(%d+),(%d+),(%d+)%]([%s%S]-)%[/color%]", function(r, g, b, content)
 		content = richify(content)
 
@@ -726,6 +809,10 @@ local function richify(text)
 			content
 		))
 	end)
+
+	-- =========================================
+	-- RESTORE TOKENS
+	-- =========================================
 
 	local changed = true
 	while changed do
@@ -740,6 +827,10 @@ local function richify(text)
 		end
 	end
 
+	-- =========================================
+	-- RESTORE RICHTEXT
+	-- =========================================
+
 	for key, value in pairs(richProtected) do
 		text = text:gsub(key, value)
 	end
@@ -747,8 +838,36 @@ local function richify(text)
 	return text
 end
 
+-- ChatLogs Line
+local function IsAtBottom()
+	local layout = si:FindFirstChildOfClass("UIListLayout")
+	if not layout then
+		return true
+	end
+
+	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
+	if maxY < 0 then
+		maxY = 0
+	end
+
+	return si.CanvasPosition.Y >= (maxY - 12)
+end
+
+local function ScrollToBottom()
+	local layout = si:FindFirstChildOfClass("UIListLayout")
+	if not layout then
+		return
+	end
+
+	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
+	if maxY < 0 then
+		maxY = 0
+	end
+
+	si.CanvasPosition = Vector2.new(0, maxY)
+end
+
 --[[
--- old copy-space toggle, left here only as reference
 local GiveSpaceToCopyButton = false
 
 local function getCopySpace()
@@ -811,7 +930,6 @@ local function splitByNewlines(str)
 			table.insert(lines, str:sub(start))
 			break
 		end
-
 		table.insert(lines, str:sub(start, nl - 1))
 		start = nl + 1
 	end
@@ -929,7 +1047,7 @@ local function CreateInlineImage(parent, imageId, size)
 	return image
 end
 
-local function buildSpacer(px, textSize, font)
+local function inlineSpacer(px, textSize, font)
 	local w = math.max(
 		1,
 		TextService:GetTextSize(
@@ -943,59 +1061,48 @@ local function buildSpacer(px, textSize, font)
 	return string.rep(" ", math.max(1, math.ceil(px / w)))
 end
 
---[[
-local function inlineSpacer(px, textSize, font)
-	return buildSpacer(px, textSize, font)
-end
-
 local function inlineHeightPad(px, textSize)
 	return '<font transparency="1"><font size="' ..
 		math.max(textSize, px) ..
 		'">.</font></font>'
 end
-]]
-
-local function resetInlineLine(S, textSize)
-	if S.hasImage and not S.hasText then
-		S.parts[#S.parts + 1] =
-			'<font transparency="1"><font size="' ..
-			math.max(textSize, S.maxImage) ..
-			'">.</font></font>'
-	end
-
-	S.parts[#S.parts + 1] = "\n"
-	S.x = 0
-	S.y += S.lineH
-	S.hasText = false
-	S.hasImage = false
-	S.maxImage = 0
-end
 
 local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 	clearInlineImages(cha)
 
-	local tokens = tokenizeInlineMessage(rawText)
-	local parts = {}
-	local map = {}
-	local x = 0
-	local y = 0
-	local lineH = math.max(
-		textSize + 4,
-		TextService:GetTextSize("Ag", textSize, font, Vector2.new(10000, 10000)).Y
-	)
-	local hasText = false
-	local hasImage = false
-	local maxImage = 0
-	local id = 0
+	local S = {
+		tokens = tokenizeInlineMessage(rawText),
+		parts = {},
+		map = {},
+		x = 0,
+		y = 0,
+		lineH = math.max(
+			textSize + 4,
+			TextService:GetTextSize(
+				"Ag",
+				textSize,
+				font,
+				Vector2.new(10000, 10000)
+			).Y
+		),
+		hasText = false,
+		hasImage = false,
+		maxImage = 0,
+		id = 0
+	}
 
-	for _, t in ipairs(tokens) do
+	for _, t in ipairs(S.tokens) do
+
 		if t.kind == "text" then
+
 			local str = tostring(t.text)
 			local start = 1
 
 			while true do
 				local nl = str:find("\n", start, true)
-				local segment = nl and str:sub(start, nl - 1) or str:sub(start)
+				local segment = nl
+					and str:sub(start, nl - 1)
+					or str:sub(start)
 
 				for chunk in segment:gmatch("%S+%s*") do
 					local w = TextService:GetTextSize(
@@ -1005,49 +1112,54 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 						Vector2.new(10000, 10000)
 					).X
 
-					if x > 0 and x + w > maxWidth then
-						if hasImage and not hasText then
-							parts[#parts + 1] =
+					if S.x > 0 and S.x + w > maxWidth then
+						if S.hasImage and not S.hasText then
+							S.parts[#S.parts + 1] =
 								'<font transparency="1"><font size="' ..
-								math.max(textSize, maxImage) ..
+								math.max(textSize, S.maxImage) ..
 								'">.</font></font>'
 						end
 
-						parts[#parts + 1] = "\n"
-						x = 0
-						y += lineH
-						hasText = false
-						hasImage = false
-						maxImage = 0
+						S.parts[#S.parts + 1] = "\n"
+
+						S.x = 0
+						S.y += S.lineH
+						S.hasText = false
+						S.hasImage = false
+						S.maxImage = 0
 					end
 
-					parts[#parts + 1] = chunk
-					x += w
-					hasText = true
+					S.parts[#S.parts + 1] = chunk
+					S.x += w
+					S.hasText = true
 				end
 
 				if not nl then
 					break
 				end
 
-				if hasImage and not hasText then
-					parts[#parts + 1] =
+				if S.hasImage and not S.hasText then
+					S.parts[#S.parts + 1] =
 						'<font transparency="1"><font size="' ..
-						math.max(textSize, maxImage) ..
+						math.max(textSize, S.maxImage) ..
 						'">.</font></font>'
 				end
 
-				parts[#parts + 1] = "\n"
-				x = 0
-				y += lineH
-				hasText = false
-				hasImage = false
-				maxImage = 0
+				S.parts[#S.parts + 1] = "\n"
+
+				S.x = 0
+				S.y += S.lineH
+				S.hasText = false
+				S.hasImage = false
+				S.maxImage = 0
+
 				start = nl + 1
 			end
 
 		elseif t.kind == "code" then
+
 			local str = "`" .. tostring(t.text) .. "`"
+
 			local w = TextService:GetTextSize(
 				str,
 				textSize,
@@ -1055,62 +1167,84 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 				Vector2.new(10000, 10000)
 			).X
 
-			if x > 0 and x + w > maxWidth then
-				if hasImage and not hasText then
-					parts[#parts + 1] =
+			if S.x > 0 and S.x + w > maxWidth then
+				if S.hasImage and not S.hasText then
+					S.parts[#S.parts + 1] =
 						'<font transparency="1"><font size="' ..
-						math.max(textSize, maxImage) ..
+						math.max(textSize, S.maxImage) ..
 						'">.</font></font>'
 				end
 
-				parts[#parts + 1] = "\n"
-				x = 0
-				y += lineH
-				hasText = false
-				hasImage = false
-				maxImage = 0
+				S.parts[#S.parts + 1] = "\n"
+
+				S.x = 0
+				S.y += S.lineH
+				S.hasText = false
+				S.hasImage = false
+				S.maxImage = 0
 			end
 
-			parts[#parts + 1] = str
-			x += w
-			hasText = true
+			S.parts[#S.parts + 1] = str
+			S.x += w
+			S.hasText = true
 
 		elseif t.kind == "image" then
+
 			local imgSize = (t.size or textSize) + IMAGE_EXTRA_SIZE
 
-			if x > 0 and x + imgSize > maxWidth then
-				if hasImage and not hasText then
-					parts[#parts + 1] =
+			if S.x > 0 and S.x + imgSize > maxWidth then
+				if S.hasImage and not S.hasText then
+					S.parts[#S.parts + 1] =
 						'<font transparency="1"><font size="' ..
-						math.max(textSize, maxImage) ..
+						math.max(textSize, S.maxImage) ..
 						'">.</font></font>'
 				end
 
-				parts[#parts + 1] = "\n"
-				x = 0
-				y += lineH
-				hasText = false
-				hasImage = false
-				maxImage = 0
+				S.parts[#S.parts + 1] = "\n"
+
+				S.x = 0
+				S.y += S.lineH
+				S.hasText = false
+				S.hasImage = false
+				S.maxImage = 0
 			end
 
 			if t.image and t.image ~= "" then
-				hasImage = true
-				maxImage = math.max(maxImage, imgSize)
-				id += 1
 
-				local key = "§IMG" .. id .. "§"
-				map[key] = buildSpacer(imgSize, textSize, font)
-				parts[#parts + 1] = key
+				S.hasImage = true
+				S.maxImage = math.max(S.maxImage, imgSize)
 
-				local img = CreateInlineImage(cha, t.image, imgSize)
-				img.Position = UDim2.fromOffset(
-					x + IMAGE_X_OFFSET,
-					y + math.floor((lineH - imgSize) / 2) + IMAGE_Y_OFFSET
+				S.id += 1
+
+				local key = "§IMG" .. S.id .. "§"
+
+				S.map[key] = buildSpacer(
+					imgSize,
+					textSize,
+					font
 				)
 
-				x += imgSize
+				S.parts[#S.parts + 1] = key
+
+				local img = CreateInlineImage(
+					cha,
+					t.image,
+					imgSize
+				)
+
+				img.Position = UDim2.fromOffset(
+					S.x + IMAGE_X_OFFSET,
+					S.y +
+						math.floor(
+							(S.lineH - imgSize) / 2
+						) +
+						IMAGE_Y_OFFSET
+				)
+
+				S.x += imgSize
+
 			elseif t.alt and t.alt ~= "" then
+
 				local w = TextService:GetTextSize(
 					t.alt,
 					textSize,
@@ -1118,28 +1252,28 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 					Vector2.new(10000, 10000)
 				).X
 
-				parts[#parts + 1] = t.alt
-				x += w
-				hasText = true
+				S.parts[#S.parts + 1] = t.alt
+				S.x += w
+				S.hasText = true
 			end
 		end
 	end
 
-	if hasImage and not hasText then
-		parts[#parts + 1] =
+	if S.hasImage and not S.hasText then
+		S.parts[#S.parts + 1] =
 			'<font transparency="1"><font size="' ..
-			math.max(textSize, maxImage) ..
+			math.max(textSize, S.maxImage) ..
 			'">.</font></font>'
 	end
 
-	return table.concat(parts), map
+	return table.concat(S.parts), S.map
 end
 
 -- =========================================
 -- CHAT LOG
 -- =========================================
 
-local function txt(userTag, text, R, G, B)
+local function txt(user, text, R, G, B)
 	local shouldFollow = IsAtBottom()
 
 	local cha = Instance.new("TextLabel")
@@ -1173,9 +1307,23 @@ local function txt(userTag, text, R, G, B)
 	cp.Parent = cha
 	Corner(0, 5, cp)
 
-	local prefix = escapeRichText(tostring(userTag))
+	local prefix = escapeRichText(tostring(user))
 
-	local function renderCurrent(currentText)
+	local function safeRichify(str)
+		local ok, result = pcall(richify, tostring(str))
+		if ok then
+			return result
+		end
+		return escapeRichText(tostring(str))
+	end
+
+	local function UpdateScroll()
+		if shouldFollow then
+			ScrollToBottom()
+		end
+	end
+
+	local function RenderCurrent(currentText)
 		local rawCombined = prefix .. tostring(currentText)
 
 		local availableWidth = math.max(
@@ -1193,27 +1341,28 @@ local function txt(userTag, text, R, G, B)
 			availableWidth
 		)
 
-		local ok, result = pcall(richify, tostring(displayText))
-		if not ok then
-			result = escapeRichText(tostring(displayText))
-		end
+		cha.Text = applyInlinePlaceholders(
+			safeRichify(displayText),
+			placeholderMap
+		)
 
-		cha.Text = applyInlinePlaceholders(result, placeholderMap)
-
-		if shouldFollow then
-			ScrollToBottom()
-		end
+		UpdateScroll()
 	end
 
 	task.spawn(function()
 		if TEXT_STYLE == "INSTANT" then
-			renderCurrent(text)
+			RenderCurrent(text)
 
 		elseif TEXT_STYLE == "EACHTEXT" then
-			local current = ""
+			local chunks = {}
 			for chunk in tostring(text):gmatch("%S+%s*") do
+				table.insert(chunks, chunk)
+			end
+
+			local current = ""
+			for _, chunk in ipairs(chunks) do
 				current ..= chunk
-				renderCurrent(current)
+				RenderCurrent(current)
 				task.wait(0.03)
 			end
 
@@ -1228,7 +1377,7 @@ local function txt(userTag, text, R, G, B)
 			end
 
 			if #lines == 0 then
-				renderCurrent(text)
+				RenderCurrent(text)
 			else
 				for _, line in ipairs(lines) do
 					if current == "" then
@@ -1237,13 +1386,13 @@ local function txt(userTag, text, R, G, B)
 						current ..= "\n" .. line
 					end
 
-					renderCurrent(current)
+					RenderCurrent(current)
 					task.wait(0.05)
 				end
 			end
 
 		else
-			renderCurrent(text)
+			RenderCurrent(text)
 		end
 	end)
 
