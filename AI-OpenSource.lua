@@ -1,4 +1,4 @@
-local ver = " UIs 6.7 "
+local ver = " UIs 6.71 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1267,23 +1267,40 @@ local function txt(user, text, R, G, B)
 	end
 
 	local function RenderCurrent(currentText)
-		clearChildrenExceptLayout(body)
+	clearChildrenExceptLayout(body)
 
-		local combined = prefix .. tostring(currentText)
-		local availableWidth = math.max(50, math.floor((cha.AbsoluteSize.X > 0 and cha.AbsoluteSize.X or si.AbsoluteSize.X * 0.97) - 18))
+	local combined = prefix .. tostring(currentText)
 
-		local totalHeight = RenderInlineMessage(
-			body,
-			combined,
-			msgColor,
-			16,
-			Enum.Font.SourceSans,
-			availableWidth
+	local availableWidth = math.max(
+		50,
+		math.floor(
+			(cha.AbsoluteSize.X > 0
+				and cha.AbsoluteSize.X
+				or si.AbsoluteSize.X * 0.97)
+			- 18
 		)
+	)
 
-		cha.Size = UDim2.new(0.97, -35, 0, math.max(28, totalHeight + 10))
-		UpdateScroll()
-	end
+	RenderInlineMessage(
+		body,
+		combined,
+		msgColor,
+		16,
+		Enum.Font.SourceSans,
+		availableWidth
+	)
+
+	cha.Size = UDim2.new(
+		0.97,
+		-35,
+		0,
+		0
+	)
+
+	cha.AutomaticSize = Enum.AutomaticSize.Y
+
+	UpdateScroll()
+end
 
 	task.spawn(function()
 		-- =========================
