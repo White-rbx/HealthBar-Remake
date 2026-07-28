@@ -1,4 +1,4 @@
-local ver = " UIs 6.95 "
+local ver = " UIs 6.952 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -3815,64 +3815,47 @@ end
 
 function Jimmy.ResolveTarget(path)
 
-	path = tostring(path or "")
+    path = tostring(path or "")
+    path = path:match("^%s*(.-)%s*$") or ""
 
-	path = path:gsub(
-		"%[%s*\"(.-)\"%s*%]",
-		".%1"
-	)
+    if path == "" then
+        return nil
+    end
 
-	path = path:gsub(
-		"%[%s*'(.-)'%s*%]",
-		".%1"
-	)
+    path = path:gsub(
+        "%[%s*\"(.-)\"%s*%]",
+        ".%1"
+    )
 
-	path = Jimmy.TrimLower(path)
+    path = path:gsub(
+        "%[%s*'(.-)'%s*%]",
+        ".%1"
+    )
 
-	-- Preserve original case for FindFirstChild.
-	-- The lower conversion above is NOT suitable for names.
-	-- Therefore reconstruct the path from the original input.
+    local parts = {}
 
-	path = tostring(path or "")
-	path = path:match("^%s*(.-)%s*$") or ""
+    for part in path:gmatch("[^%.]+") do
+        table.insert(parts, part)
+    end
 
-	if path == "" then
-		return nil
-	end
+    if parts[1] ~= "workspace" then
+        return nil
+    end
 
-	path = path:gsub(
-		"%[%s*\"(.-)\"%s*%]",
-		".%1"
-	)
+    local current = workspace
 
-	path = path:gsub(
-		"%[%s*'(.-)'%s*%]",
-		".%1"
-	)
+    for index = 2, #parts do
 
-	local parts = {}
+        current =
+            current:FindFirstChild(parts[index])
 
-	for part in path:gmatch("[^%.]+") do
-		table.insert(parts, part)
-	end
+        if not current then
+            return nil
+        end
 
-	if parts[1] ~= "workspace" then
-		return nil
-	end
+    end
 
-	local current = workspace
-
-	for index = 2, #parts do
-
-		current = current:FindFirstChild(parts[index])
-
-		if not current then
-			return nil
-		end
-
-	end
-
-	return current
+    return current
 end
 
 -- =========================================================
@@ -4678,163 +4661,210 @@ end
 
 Jimmy.Commands = {
 
-	Hook = function(message, user)
+    Hook = function(message, user)
 
-		if lower:match("^/hook%s+") then
+        local lower =
+            Jimmy.TrimLower(message)
 
-			local path =
-				message:match(
-					"^/hook%s+(.+)$"
-				) or ""
+        if not lower:match("^/hook%s+") then
+            return false
+        end
 
-			local success, result =
-				Jimmy.HookCharacter(path)
+        if ALLOW_CAM then
 
-			if not success then
+            safeTxt(
+                user.Warn,
+                "Cannot hook Jimmy while AI Camera Vision is enabled.",
+                255,255,0
+            )
 
-				safeTxt(
-					user.Warn,
-					tostring(result),
-					255,255,0
-				)
+            return true
+        end
 
-				return true
-			end
+        local path =
+            message:match(
+                "^/hook%s+(.+)$"
+            ) or ""
 
-			safeTxt(
-				user.Suc,
-				"Hooked: "
-					.. result:GetFullName(),
-				0,255,0
-			)
+        local success, result =
+            Jimmy.HookCharacter(path)
 
-			return true
-		end
+        if not success then
 
-		return false
-	end,
+            safeTxt(
+                user.Warn,
+                tostring(result),
+                255,255,0
+            )
 
-	Unhook = function(message, user)
+            return true
+        end
 
-		if lower:match(
-			"^/unhook%s*$"
-		) then
+        safeTxt(
+            user.Suc,
+            "Hooked: "
+                .. result:GetFullName(),
+            0,255,0
+        )
 
-			local success, result =
-				Jimmy.UnhookCharacter()
+        return true
+    end,
 
-			if not success then
 
-				safeTxt(
-					user.Info,
-					tostring(result),
-					255,255,0
-				)
+    Unhook = function(message, user)
 
-				return true
-			end
+        local lower =
+            Jimmy.TrimLower(message)
 
-			safeTxt(
-				user.Suc,
-				"Unhooked: "
-					.. result.Name,
-				0,255,0
-			)
+        if not lower:match("^/unhook%s*$") then
+            return false
+        end
 
-			return true
-		end
+        local success, result =
+            Jimmy.UnhookCharacter()
 
-		return false
-	end,
+        if not success then
 
-	Set = function(message, user)
+            safeTxt(
+                user.Info,
+                tostring(result),
+                255,255,0
+            )
 
-		if lower:match("^/set%s+") then
+            return true
+        end
 
-			local property, value =
-				message:match(
-					"^/set%s+(%S+)%s+(.+)$"
-				)
+        safeTxt(
+            user.Suc,
+            "Unhooked: "
+                .. result.Name,
+            0,255,0
+        )
 
-			if not property then
+        return true
+    end,
 
-				safeTxt(
-					user.Error,
-					"Usage: /set [property] [value]",
-					255,80,80
-				)
 
-				return true
-			end
+    Set = function(message, user)
 
-			local success, errorMessage =
-				Jimmy.SetProperty(
-					property,
-					value
-				)
+        local lower =
+            Jimmy.TrimLower(message)
 
-			if not success then
+        if not lower:match("^/set%s+") then
+            return false
+        end
 
-				safeTxt(
-					user.Warn,
-					tostring(errorMessage),
-					255,255,0
-				)
+        local property, value =
+            message:match(
+                "^/set%s+(%S+)%s+(.+)$"
+            )
 
-				return true
-			end
+        if not property or not value then
 
-			safeTxt(
-				user.Suc,
-				"Set "
-					.. property
-					.. " = "
-					.. value,
-				0,255,0
-			)
+            safeTxt(
+                user.Error,
+                "Usage: /set [property] [value]",
+                255,80,80
+            )
 
-			return true
-		end
+            return true
+        end
 
-		return false
-	end,
+        local success, errorMessage =
+            Jimmy.SetProperty(
+                property,
+                value
+            )
 
-	Emote = function(message, user)
+        if not success then
 
-		if lower:match("^/e%s+") then
+            safeTxt(
+                user.Warn,
+                tostring(errorMessage),
+                255,255,0
+            )
 
-			local emote =
-				message:match(
-					"^/e%s+(.+)$"
-				) or ""
+            return true
+        end
 
-			local success, errorMessage =
-				Jimmy.PlayEmote(emote)
+        safeTxt(
+            user.Suc,
+            "Set "
+                .. property
+                .. " = "
+                .. value,
+            0,255,0
+        )
 
-			if not success then
+        return true
+    end,
 
-				safeTxt(
-					user.Warn,
-					tostring(errorMessage),
-					255,255,0
-				)
 
-				return true
-			end
+    Emote = function(message, user)
 
-			safeTxt(
-				user.Suc,
-				"Emote: " .. emote,
-				0,255,0
-			)
+        local lower =
+            Jimmy.TrimLower(message)
 
-			return true
-		end
+        if not lower:match("^/e%s+") then
+            return false
+        end
 
-		return false
-	end,
+        local emote =
+            message:match(
+                "^/e%s+(.+)$"
+            ) or ""
+
+        if emote == "" then
+
+            safeTxt(
+                user.Error,
+                "Usage: /e [emote]",
+                255,80,80
+            )
+
+            return true
+        end
+
+        local success, errorMessage =
+            Jimmy.PlayEmote(emote)
+
+        if not success then
+
+            safeTxt(
+                user.Warn,
+                tostring(errorMessage),
+                255,255,0
+            )
+
+            return true
+        end
+
+        safeTxt(
+            user.Suc,
+            "Emote: " .. emote,
+            0,255,0
+        )
+
+        return true
+    end,
 
 }
+
+function Jimmy.ProcessCommand(message, user)
+
+    for _, commandFunction in pairs(Jimmy.Commands) do
+
+        local handled =
+            commandFunction(message, user)
+
+        if handled then
+            return true
+        end
+
+    end
+
+    return false
+end
 
 ------------------------------
 
