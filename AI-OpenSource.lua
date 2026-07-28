@@ -1,4 +1,4 @@
-local ver = " UIs 6.96 "
+local ver = " UIs 6.97 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -62,6 +62,7 @@ local update = [[
 (:26/7/2026 | 12:37 pm: F) Fixed Copy button overlay text.
 (:28/7/2026 | 7:46 pm: A) Added Image into chat.
 (:28/7/2026 | 10:23 pm: A) Added new 3 commands /hook /set and /e to hook NPC for an AIs.
+(:29/7/2026 | 1:10 am: F) Fixed image overlay.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -871,11 +872,11 @@ local GiveSpaceToCopyButton = false
 local function getCopySpace()
 	return GiveSpaceToCopyButton and 66 or 0
 end
-]]
 
 local function getCopySpace()
 	return 0
 end
+]]
 
 -- =========================================
 -- INLINE IMAGE SUPPORT
