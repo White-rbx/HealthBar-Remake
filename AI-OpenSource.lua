@@ -1,4 +1,4 @@
-local ver = " UIs 6.97 "
+local ver = " UIs 6.971 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -62,6 +62,7 @@ local update = [[
 (:26/7/2026 | 12:37 pm: F) Fixed Copy button overlay text.
 (:28/7/2026 | 7:46 pm: A) Added Image into chat.
 (:28/7/2026 | 10:23 pm: A) Added new 3 commands /hook /set and /e to hook NPC for an AIs.
+       • (1: 1:30 am: R) Removed 3 commands due to error out of local.
 (:29/7/2026 | 1:10 am: F) Fixed image overlay.
 ]]
 
@@ -1088,7 +1089,7 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 
 	local tokens = tokenizeInlineMessage(rawText)
 
-	local lineH = math.max(
+	local textLineH = math.max(
 		textSize + 4,
 		TextService:GetTextSize("Ag", textSize, font, Vector2.new(10000, 10000)).Y
 	)
@@ -1097,17 +1098,58 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 	local y = 0
 
 	local displayParts = {}
-	local placeholderMap = {}
-	local placeholderId = 0
+	local currentLine = {
+		parts = {},
+		hasText = false,
+		hasImage = false,
+		maxImageSize = 0,
+	}
 
-	local function newLine()
-		table.insert(displayParts, "\n")
-		x = 0
-		y += lineH
+	local function buildSpacer(px)
+		local spaceW = math.max(
+			1,
+			TextService:GetTextSize(" ", textSize, font, Vector2.new(10000, 10000)).X
+		)
+
+		local count = math.max(1, math.ceil(px / spaceW))
+		return string.rep(" ", count)
 	end
 
-	local function addDisplay(s)
-		table.insert(displayParts, s)
+	local function buildHeightPad(px)
+		local spacer = buildSpacer(px)
+		return '<font transparency="1"><font size="' .. math.max(textSize, px) .. '">' .. spacer .. '</font></font>'
+	end
+
+	local function addCurrentLineToOutput()
+		if #currentLine.parts == 0 then
+			return
+		end
+
+		local lineText = table.concat(currentLine.parts)
+
+		if currentLine.hasImage and not currentLine.hasText then
+			lineText = buildHeightPad(currentLine.maxImageSize) .. lineText
+		end
+
+		table.insert(displayParts, lineText)
+	end
+
+	local function newLine()
+		addCurrentLineToOutput()
+		table.insert(displayParts, "\n")
+
+		x = 0
+		y += textLineH
+		currentLine = {
+			parts = {},
+			hasText = false,
+			hasImage = false,
+			maxImageSize = 0,
+		}
+	end
+
+	local function addToLine(s)
+		table.insert(currentLine.parts, s)
 	end
 
 	local function addTextChunk(chunk)
@@ -1126,7 +1168,8 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 			newLine()
 		end
 
-		addDisplay(chunk)
+		currentLine.hasText = true
+		addToLine(chunk)
 		x += w
 	end
 
@@ -1163,28 +1206,36 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 			newLine()
 		end
 
-		addDisplay("`" .. code .. "`")
+		currentLine.hasText = true
+		addToLine("`" .. code .. "`")
 		x += w
 	end
 
+	local placeholderId = 0
+	local placeholderMap = {}
+
 	local function addImagePiece(imageId, size, altText)
-		local imgSize = (size or textSize) + IMAGE_EXTRA_SIZE
+		local imgSize = (size or textSize) + 4
 
 		if x > 0 and x + imgSize > maxWidth then
 			newLine()
 		end
 
 		if imageId and imageId ~= "" then
+			currentLine.hasImage = true
+			currentLine.maxImageSize = math.max(currentLine.maxImageSize, imgSize)
+
 			placeholderId += 1
 			local token = "§IMGSPC" .. placeholderId .. "§"
-
-			placeholderMap[token] = buildSpacer(imgSize, textSize, font)
-			addDisplay(token)
+			placeholderMap[token] = buildSpacer(imgSize)
+			addToLine(token)
 
 			local img = CreateInlineImage(cha, imageId, imgSize)
+
+			-- inline images affect X, but only count toward Y if the line is image-only
 			img.Position = UDim2.fromOffset(
 				x + IMAGE_X_OFFSET,
-				y + math.max(0, math.floor((lineH - imgSize) / 2)) + IMAGE_Y_OFFSET
+				y + math.floor((textLineH - imgSize) / 2) + IMAGE_Y_OFFSET
 			)
 
 			x += imgSize
@@ -1197,26 +1248,16 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 	for _, token in ipairs(tokens) do
 		if token.kind == "text" then
 			addTextPiece(token.text)
-
 		elseif token.kind == "code" then
 			addCodePiece(token.text)
-
 		elseif token.kind == "image" then
 			addImagePiece(token.image, token.size, token.alt)
 		end
 	end
 
-	return table.concat(displayParts), placeholderMap
-end
+	addCurrentLineToOutput()
 
-local function applyInlinePlaceholders(text, placeholderMap)
-	for token, spacer in pairs(placeholderMap) do
-		text = text:gsub(
-			token,
-			'<font transparency="1">' .. spacer .. '</font>'
-		)
-	end
-	return text
+	return table.concat(displayParts), placeholderMap
 end
 
 -- =========================================
@@ -1232,7 +1273,7 @@ local function txt(user, text, R, G, B)
 	cha.Size = UDim2.new(0.97, -35, 0, 0)
 	cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
 	cha.BackgroundTransparency = 0.85
-	cha.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	cha.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
 	cha.TextSize = 16
 	cha.BorderSizePixel = 5
 	cha.BorderMode = Enum.BorderMode.Inset
@@ -2577,10 +2618,10 @@ Your limit:
 **/TextCounts** *[ALL/USER/AI/SYSTEMONLY]* - Count messages in the chat.
 **/InstantScrollDown** - Instantly scroll to the bottom of the chat. Useful when you get lost in older messages.
 **/Chat** *TEXT* - Send a message through Roblox Chat.
-**/Hook** *workspace["PATH"]* - Hook a character to give the AI control over it.
-    - **/Set** *property* *value* - Change AI's humanoid propertie while hooking.
-    - **/e** *emote* - Make AI pose while hooking.
-**/Unhook** - Unhook character.
+[color=255,0,0](REMOVED)[/color] **/Hook** *workspace["PATH"]* - Hook a character to give the AI control over it.
+    - [color=255,0,0](REMOVED)[/color] **/Set** *property* *value* - Change AI's humanoid propertie while hooking.
+    - [color=255,0,0](REMOVED)[/color] **/e** *emote* - Make AI pose while hooking.
+[color=255,0,0](REMOVED)[/color] **/Unhook** - Unhook character.
 
 All commands that will be add soon (5 commands):
 - /ControlPlr [ON/OFF] - Allow an AI to control player. (/Allowcam must be enable)
@@ -3622,6 +3663,7 @@ local function buildVisionText()
 
 end
 
+--[[
 -- =========================
 -- JIMMY AI CORE (TABLE CORE)
 -- =========================
@@ -4864,7 +4906,7 @@ function Jimmy.ProcessCommand(message, user)
 
     return false
 end
-
+]]
 ------------------------------
 
 -- executor http detection (function returning response-like table)
@@ -5411,10 +5453,10 @@ local HELP_TEXT = [=[
 **/TextCounts** *[ALL/USER/AI/SYSTEMONLY]* - Count messages in the chat.
 **/InstantScrollDown** - Instantly scroll to the bottom of the chat. Useful when you get lost in older messages.
 **/Chat** *TEXT* - Send a message through Roblox Chat.
-**/Hook** *workspace["PATH"]* - Hook a character to give the AI control over it.
-    - **/Set** *property* *value* - Change AI's humanoid propertie while hooking.
-    - **/e** *emote* - Make AI pose while hooking.
-**/Unhook** - Unhook character.
+[color=255,0,0](REMOVED)[/color] **/Hook** *workspace["PATH"]* - Hook a character to give the AI control over it.
+    - [color=255,0,0](REMOVED)[/color] **/Set** *property* *value* - Change AI's humanoid propertie while hooking.
+    - [color=255,0,0](REMOVED)[/color] **/e** *emote* - Make AI pose while hooking.
+[color=255,0,0](REMOVED)[/color] **/Unhook** - Unhook character.
 ]=]
 
 local function clearChatLogs()
@@ -6429,7 +6471,7 @@ if lower:match("^/delallnote") then
 	return true
 
 end
--- =========================================
+--[[ =========================================
 -- JIMMY COMMAND HANDLER
 -- =========================================
 
@@ -6437,6 +6479,7 @@ function Jimmy.ProcessCommand(message, user)
 
 	local lower = Jimmy.TrimLower(message)
 
+		]]
 	-- =========================================
 	-- /AllowCam [ON/OFF]
 	-- =========================================
@@ -6457,7 +6500,7 @@ function Jimmy.ProcessCommand(message, user)
 			return true
 		end
 
-		-- =========================
+		--[[ =========================
 		-- ON
 		-- =========================
 
@@ -6474,6 +6517,7 @@ function Jimmy.ProcessCommand(message, user)
 
 				return true
 			end
+			]]
 
 			-- Already ON
 			if ALLOW_CAM then
@@ -6553,7 +6597,7 @@ function Jimmy.ProcessCommand(message, user)
 	end
 
 
-	-- =========================================
+	--[[ =========================================
 	-- /Hook [Character Model]
 	-- =========================================
 
@@ -6780,6 +6824,7 @@ function Jimmy.ProcessCommand(message, user)
 
 	return false
 end
+]]
 	
 -- =========================================
 -- /AllowProperties [ON/OFF]
