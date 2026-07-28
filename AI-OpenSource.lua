@@ -1,4 +1,4 @@
-local ver = " UIs 6.76 "
+local ver = " UIs 6.761 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1167,7 +1167,7 @@ local function txt(user, text, R, G, B)
 	cha.Size = UDim2.new(0.97, -35, 0, 0)
 	cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
 	cha.BackgroundTransparency = 0.85
-	cha.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	cha.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
 	cha.TextSize = 16
 	cha.BorderSizePixel = 5
 	cha.BorderMode = Enum.BorderMode.Inset
