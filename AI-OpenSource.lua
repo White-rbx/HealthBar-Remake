@@ -1,4 +1,4 @@
-local ver = " UIs 6.971 "
+local ver = " UIs 6.972 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -7213,9 +7213,6 @@ if lower:match("^/chat") then
 
 	return true
 
-end
-
-	return false
 end
 
 -- ========== UI HOOK & BIND (safe, replace old) ==========
