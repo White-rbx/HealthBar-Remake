@@ -1,4 +1,4 @@
-local ver = " UIs 6.761 "
+local ver = " UIs 6.765 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1120,24 +1120,29 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 	end
 
 	local function addImagePiece(imageId, size, altText)
-		local imgSize = size or textSize
+	local imgSize = size or textSize
 
-		if x > 0 and x + imgSize > maxWidth then
-			newLine()
-		end
-
-		if imageId and imageId ~= "" then
-			local img = CreateInlineImage(cha, imageId, imgSize)
-			img.Position = UDim2.fromOffset(
-				x,
-				y + math.max(0, math.floor((lineH - imgSize) / 2))
-			)
-			x += imgSize
-			addDisplay(string.rep(" ", math.max(1, math.floor(imgSize / spaceW + 0.5))))
-		elseif altText and altText ~= "" then
-			addTextPiece(altText)
-		end
+	if x > 0 and x + imgSize > maxWidth then
+		newLine()
 	end
+
+	if imageId and imageId ~= "" then
+		local img = CreateInlineImage(cha, imageId, imgSize)
+
+		img.Position = UDim2.fromOffset(
+			x,
+			y + math.max(
+				0,
+				math.floor((lineH - imgSize) / 2)
+			)
+		)
+
+		x += imgSize
+
+	elseif altText and altText ~= "" then
+		addTextPiece(altText)
+	end
+end
 
 	for _, token in ipairs(tokens) do
 		if token.kind == "text" then
