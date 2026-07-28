@@ -1,4 +1,4 @@
-local ver = " UIs 6.765 "
+local ver = " UIs 6.766 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1119,29 +1119,101 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 		x += w
 	end
 
-	local function addImagePiece(imageId, size, altText)
-	local imgSize = size or textSize
+	local NBSP = "\194\160"
 
-	if x > 0 and x + imgSize > maxWidth then
+local function getLineHeight()
+	return TextService:GetTextSize(
+		"Ag",
+		textSize,
+		font,
+		Vector2.new(10000, 10000)
+	).Y
+end
+
+local function makeSpacer(px)
+	local nbspWidth = math.max(
+		1,
+		TextService:GetTextSize(
+			NBSP,
+			textSize,
+			font,
+			Vector2.new(10000, 10000)
+		).X
+	)
+
+	local count = math.max(
+		1,
+		math.ceil(px / nbspWidth)
+	)
+
+	return string.rep(
+		NBSP,
+		count
+	)
+end
+
+local function addImagePiece(imageId, size, altText)
+
+	local imgSize =
+		size or textSize
+
+	local baseLineH =
+		getLineHeight()
+
+	if x > 0
+		and x + imgSize > maxWidth
+	then
 		newLine()
 	end
 
-	if imageId and imageId ~= "" then
-		local img = CreateInlineImage(cha, imageId, imgSize)
+	if imageId
+		and imageId ~= ""
+	then
 
-		img.Position = UDim2.fromOffset(
-			x,
-			y + math.max(
-				0,
-				math.floor((lineH - imgSize) / 2)
+		lineH =
+			math.max(
+				lineH,
+				baseLineH,
+				imgSize
 			)
-		)
+
+		local img =
+			CreateInlineImage(
+				cha,
+				imageId,
+				imgSize
+			)
+
+		img.Position =
+			UDim2.fromOffset(
+				x,
+				y +
+					math.max(
+						0,
+						math.floor(
+							(lineH - imgSize) / 2
+						)
+					)
+			)
 
 		x += imgSize
 
-	elseif altText and altText ~= "" then
-		addTextPiece(altText)
+		addDisplay(
+			makeSpacer(
+				imgSize
+			)
+		)
+
+	elseif altText
+		and altText ~= ""
+	then
+
+		addTextPiece(
+			altText
+		)
+
 	end
+
 end
 
 	for _, token in ipairs(tokens) do
