@@ -1,4 +1,4 @@
-local ver = " UIs 6.653 "
+local ver = " UIs 6.6531 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -5959,7 +5959,7 @@ end
     -- initial status
     if currentApiKey then setStatusText("Key present (unconfirmed)") else setStatusText("No key") end
 
-    safeTxt(user.Suc, "**Hello, World!**", 0,255,0)
+    safeTxt(user.Suc, "**Hello, World!** Please **scroll up** to see **all information** above.", 0,255,0)
     return true
 end
 
