@@ -1,4 +1,4 @@
-local ver = " UIs 6.972 "
+local ver = " UIs 6.973 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1047,112 +1047,77 @@ local function CreateInlineImage(parent, imageId, size)
 	return image
 end
 
-local function buildSpacer(px, textSize, font)
-	local candidates = {
-		" ",
-		" ",
-		" ",
-		" ",
-		" ",
-		" ",
-	}
-
-	local bestChar = " "
-	local bestCount = 1
-	local bestDiff = math.huge
-
-	for _, ch in ipairs(candidates) do
-		local w = TextService:GetTextSize(
-			ch,
+local function inlineSpacer(px, textSize, font)
+	local w = math.max(
+		1,
+		TextService:GetTextSize(
+			" ",
 			textSize,
 			font,
 			Vector2.new(10000, 10000)
 		).X
+	)
 
-		if w > 0 then
-			local count = math.max(1, math.floor((px / w) + 0.5))
-			local diff = math.abs((w * count) - px)
+	return string.rep(" ", math.max(1, math.ceil(px / w)))
+end
 
-			if diff < bestDiff then
-				bestDiff = diff
-				bestChar = ch
-				bestCount = count
-			end
-		end
+local function inlineHeightPad(px, textSize)
+	return '<font transparency="1"><font size="' ..
+		math.max(textSize, px) ..
+		'">.</font></font>'
+end
+
+local function applyInlinePlaceholders(text, placeholderMap)
+	for token, spacer in pairs(placeholderMap) do
+		text = text:gsub(
+			token,
+			'<font transparency="1">' .. spacer .. '</font>'
+		)
 	end
-
-	return string.rep(bestChar, bestCount)
+	return text
 end
 
 local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 	clearInlineImages(cha)
 
 	local tokens = tokenizeInlineMessage(rawText)
-
-	local textLineH = math.max(
-		textSize + 4,
-		TextService:GetTextSize("Ag", textSize, font, Vector2.new(10000, 10000)).Y
-	)
+	local parts = {}
+	local map = {}
 
 	local x = 0
 	local y = 0
+	local lineH = math.max(
+		textSize + 4,
+		TextService:GetTextSize(
+			"Ag",
+			textSize,
+			font,
+			Vector2.new(10000, 10000)
+		).Y
+	)
 
-	local displayParts = {}
-	local currentLine = {
-		parts = {},
-		hasText = false,
-		hasImage = false,
-		maxImageSize = 0,
-	}
+	local hasText = false
+	local hasImage = false
+	local maxImg = 0
+	local id = 0
 
-	local function buildSpacer(px)
-		local spaceW = math.max(
-			1,
-			TextService:GetTextSize(" ", textSize, font, Vector2.new(10000, 10000)).X
-		)
-
-		local count = math.max(1, math.ceil(px / spaceW))
-		return string.rep(" ", count)
-	end
-
-	local function buildHeightPad(px)
-		local spacer = buildSpacer(px)
-		return '<font transparency="1"><font size="' .. math.max(textSize, px) .. '">' .. spacer .. '</font></font>'
-	end
-
-	local function addCurrentLineToOutput()
-		if #currentLine.parts == 0 then
-			return
+	local function flushLine()
+		if hasImage and not hasText then
+			parts[#parts + 1] = inlineHeightPad(maxImg, textSize)
 		end
-
-		local lineText = table.concat(currentLine.parts)
-
-		if currentLine.hasImage and not currentLine.hasText then
-			lineText = buildHeightPad(currentLine.maxImageSize) .. lineText
-		end
-
-		table.insert(displayParts, lineText)
 	end
 
 	local function newLine()
-		addCurrentLineToOutput()
-		table.insert(displayParts, "\n")
-
+		flushLine()
+		parts[#parts + 1] = "\n"
 		x = 0
-		y += textLineH
-		currentLine = {
-			parts = {},
-			hasText = false,
-			hasImage = false,
-			maxImageSize = 0,
-		}
+		y += lineH
+		hasText = false
+		hasImage = false
+		maxImg = 0
 	end
 
-	local function addToLine(s)
-		table.insert(currentLine.parts, s)
-	end
-
-	local function addTextChunk(chunk)
+	local function addChunk(chunk)
 		if chunk == "" then
 			return
 		end
@@ -1168,96 +1133,69 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 			newLine()
 		end
 
-		currentLine.hasText = true
-		addToLine(chunk)
+		parts[#parts + 1] = chunk
 		x += w
+		hasText = true
 	end
 
-	local function addTextPiece(piece)
-		piece = tostring(piece)
-		if piece == "" then
-			return
-		end
+	for i = 1, #tokens do
+		local t = tokens[i]
 
-		local lines = splitByNewlines(piece)
+		if t.kind == "text" then
+			local s = tostring(t.text)
+			local start = 1
 
-		for idx, lineText in ipairs(lines) do
-			if lineText ~= "" then
-				for chunk in lineText:gmatch("%S+%s*") do
-					addTextChunk(chunk)
+			while true do
+				local nl = s:find("\n", start, true)
+				local seg = nl and s:sub(start, nl - 1) or s:sub(start)
+
+				if seg ~= "" then
+					for chunk in seg:gmatch("%S+%s*") do
+						addChunk(chunk)
+					end
 				end
+
+				if not nl then
+					break
+				end
+
+				newLine()
+				start = nl + 1
 			end
 
-			if idx < #lines then
+		elseif t.kind == "code" then
+			local s = "`" .. tostring(t.text) .. "`"
+			addChunk(s)
+
+		elseif t.kind == "image" then
+			local imgSize = (t.size or textSize) + 4
+
+			if x > 0 and x + imgSize > maxWidth then
 				newLine()
 			end
-		end
-	end
 
-	local function addCodePiece(code)
-		local w = TextService:GetTextSize(
-			code,
-			textSize,
-			font,
-			Vector2.new(10000, 10000)
-		).X
+			hasImage = true
+			if imgSize > maxImg then
+				maxImg = imgSize
+			end
 
-		if x > 0 and x + w > maxWidth then
-			newLine()
-		end
+			id += 1
+			local token = "§IMGSPC" .. id .. "§"
+			map[token] = inlineSpacer(imgSize, textSize, font)
+			parts[#parts + 1] = token
 
-		currentLine.hasText = true
-		addToLine("`" .. code .. "`")
-		x += w
-	end
-
-	local placeholderId = 0
-	local placeholderMap = {}
-
-	local function addImagePiece(imageId, size, altText)
-		local imgSize = (size or textSize) + 4
-
-		if x > 0 and x + imgSize > maxWidth then
-			newLine()
-		end
-
-		if imageId and imageId ~= "" then
-			currentLine.hasImage = true
-			currentLine.maxImageSize = math.max(currentLine.maxImageSize, imgSize)
-
-			placeholderId += 1
-			local token = "§IMGSPC" .. placeholderId .. "§"
-			placeholderMap[token] = buildSpacer(imgSize)
-			addToLine(token)
-
-			local img = CreateInlineImage(cha, imageId, imgSize)
-
-			-- inline images affect X, but only count toward Y if the line is image-only
+			local img = CreateInlineImage(cha, t.image, imgSize)
 			img.Position = UDim2.fromOffset(
 				x + IMAGE_X_OFFSET,
-				y + math.floor((textLineH - imgSize) / 2) + IMAGE_Y_OFFSET
+				y + math.max(0, math.floor((lineH - imgSize) / 2)) + IMAGE_Y_OFFSET
 			)
 
 			x += imgSize
-
-		elseif altText and altText ~= "" then
-			addTextPiece(altText)
 		end
 	end
 
-	for _, token in ipairs(tokens) do
-		if token.kind == "text" then
-			addTextPiece(token.text)
-		elseif token.kind == "code" then
-			addCodePiece(token.text)
-		elseif token.kind == "image" then
-			addImagePiece(token.image, token.size, token.alt)
-		end
-	end
-
-	addCurrentLineToOutput()
-
-	return table.concat(displayParts), placeholderMap
+	flushLine()
+	return table.concat(parts), map
 end
 
 -- =========================================
