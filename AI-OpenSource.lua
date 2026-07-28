@@ -1,4 +1,4 @@
-local ver = " UIs 6.977 - 1 "
+local ver = " UIs 6.953 - 1 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -62,8 +62,6 @@ local update = [[
 (:26/7/2026 | 12:37 pm: F) Fixed Copy button overlay text.
 (:28/7/2026 | 7:46 pm: A) Added Image into chat.
 (:28/7/2026 | 10:23 pm: A) Added new 3 commands /hook /set and /e to hook NPC for an AIs.
-       • (1: 1:30 am: R) Removed 3 commands due to error out of local.
-(:29/7/2026 | 1:10 am: F) Fixed image overlay.
 ]]
 
 -- =====>> Saved Functions <<=====
@@ -332,7 +330,7 @@ st.Name = "Status"
 st.Position = UDim2.new(0.77,0,0,0)
 st.Size = UDim2.new(0.23,0,0.1,0)
 st.BackgroundTransparency = 1
-st.Text = "Status: Unknown"
+st.Text = "Status: No key"
 st.TextColor3 = Color3.fromRGB(255,255,255)
 st.TextScaled = true
 st.Active = false
@@ -463,925 +461,925 @@ local user = {
 }
 ]]
 
--- ========== user labels & safe text function (already exist in user code, but we keep fallback) ==========  
-local user = {  
-	plr  = "[ 👤 ]: ",  
-	chat = "[ ✨ ]: ",  
-	Error = "[ ❌ ]: ",  
-	Suc   = "[ ✅ ]: ",  
-	Warn  = "[ ⚠️ ]: ",  
-	Info  = "[ ℹ️ ]: ",  
-	Nill = "",  
-	Sys = "[ 🖥️ ]: ",  
-	Nil = "",  
-}  
-  
-local function escapeRichText(text)  
-	text = tostring(text)  
-	text = text:gsub("&", "&amp;")  
-	text = text:gsub("<", "&lt;")  
-	text = text:gsub(">", "&gt;")  
-	text = text:gsub('"', "&quot;")  
-	text = text:gsub("'", "&apos;")  
-	return text  
-end  
-  
-local function parsePercent(v)  
-	if v == nil or v == "nil" then  
-		return nil  
-	end  
-  
-	if tostring(v):find("%%") then  
-		return tonumber(tostring(v):gsub("%%", "")) / 100  
-	end  
-  
-	return tonumber(v)  
-end  
-  
--- =========================================  
--- PROTECTED RICHTEXT  
--- =========================================  
-  
-local richProtected = {}  
-local richId = 0  
-  
-local function protectRich(content)  
-	richId += 1  
-  
-	local key = "§RICH" .. richId .. "§"  
-	richProtected[key] = content  
-  
-	return key  
-end  
-  
-local function richify(text)  
-	text = tostring(text)  
-  
-	-- =========================================  
-	-- PROTECT RICHTEXT TOKENS  
-	-- =========================================  
-  
-	for key, value in pairs(richProtected) do  
-		text = text:gsub(value, key)  
-	end  
-  
-	text = escapeRichText(text)  
-  
-	-- =========================================  
-	-- PROTECTED TOKENS  
-	-- =========================================  
-  
-	local protected = {}  
-	local tokenId = 0  
-  
-	local function protect(content)  
-		tokenId += 1  
-		local key = "§ESC" .. tokenId .. "§"  
-		protected[key] = content  
-		return key  
-	end  
-  
-	-- =========================================  
-	-- ESCAPE  
-	-- %...%  
-	-- =========================================  
-  
-	text = text:gsub("%%([%s%S]-)%%", function(content)  
-		return protect(content)  
-	end)  
-  
-	-- =========================================  
-	-- INTERNAL CHAT ESCAPE  
-	-- ™...™  
-	-- =========================================  
-  
-	text = text:gsub("™([%s%S]-)™", function(content)  
-		return protect(content)  
-	end)  
-  
-	-- =========================================  
-	-- CODE BLOCK  
-	-- ```...```  
-	-- =========================================  
-  
-	text = text:gsub("```([%s%S]-)```", function(code)  
-		code = code:gsub("^%s*\n", "")  
-		code = code:gsub("\n%s*$", "")  
-  
-		return protect(  
-			'<font face="Code">' ..  
-			'<font color="rgb(255,200,120)">' ..  
-			code ..  
-			'</font>' ..  
-			'</font>'  
-		)  
-	end)  
-  
-	-- =========================================  
-	-- INLINE CODE  
-	-- `...`  
-	-- =========================================  
-  
-	text = text:gsub("`([^`\n]-)`", function(code)  
-		return protect(  
-			'<font face="Code">' ..  
-			'<font color="rgb(255,220,150)">' ..  
-			code ..  
-			'</font>' ..  
-			'</font>'  
-		)  
-	end)  
-  
-	-- Link name  
-	text = text:gsub("%[([^%]]+)%]%(%s*<?(https?://[^>%s]+)>?%s*%)", function(label, url)  
-		return protect(  
-			'<font color="rgb(80,170,255)">' ..  
-			'<u>' ..  
-			label ..  
-			'</u>' ..  
-			'</font>' ..  
-			' <font color="rgb(120,120,120)">(' ..  
-			url ..  
-			')</font>'  
-		)  
-	end)  
-  
-	-- =========================================  
-	-- LINKS  
-	-- =========================================  
-  
-	text = text:gsub("(https?://[%w%-%._~:/%?#%[%]@!$&'%(%)%*%+,;=]+)", function(url)  
-		return protect(  
-			'<font color="rgb(80,170,255)">' ..  
-			'<u>' ..  
-			url ..  
-			'</u>' ..  
-			'</font>'  
-		)  
-	end)  
-  
-	-- =========================================  
-	-- SMALL TEXT  
-	-- -# TEXT  
-	-- =========================================  
-  
-	text = text:gsub("(^%-# ([^\n]+))", function(_, content)  
-		return '<font size="12">' .. content .. '</font>'  
-	end)  
-  
-	text = text:gsub("\n%-# ([^\n]+)", function(content)  
-		return '\n<font size="12">' .. content .. '</font>'  
-	end)  
-  
-	-- =========================================  
-	-- HEADERS  
-	-- =========================================  
-  
-	text = text:gsub("\n#### ([^\n]+)", '\n<font size="18"><b>%1</b></font>')  
-	text = text:gsub("^#### ([^\n]+)", '<font size="18"><b>%1</b></font>')  
-  
-	text = text:gsub("\n### ([^\n]+)", '\n<font size="20"><b>%1</b></font>')  
-	text = text:gsub("^### ([^\n]+)", '<font size="20"><b>%1</b></font>')  
-  
-	text = text:gsub("\n## ([^\n]+)", '\n<font size="24"><b>%1</b></font>')  
-	text = text:gsub("^## ([^\n]+)", '<font size="24"><b>%1</b></font>')  
-  
-	text = text:gsub("\n# ([^\n]+)", '\n<font size="28"><b>%1</b></font>')  
-	text = text:gsub("^# ([^\n]+)", '<font size="28"><b>%1</b></font>')  
-  
-	-- =========================================  
-	-- BOLD + ITALIC  
-	-- =========================================  
-  
-	text = text:gsub("%*%*%*([^\n]-)%*%*%*", function(content)  
-		return protect("<b><i>" .. content .. "</i></b>")  
-	end)  
-  
-	-- =========================================  
-	-- BOLD  
-	-- =========================================  
-  
-	text = text:gsub("%*%*([^\n]-)%*%*", function(content)  
-		return protect("<b>" .. content .. "</b>")  
-	end)  
-  
-	-- =========================================  
-	-- ITALIC  
-	-- =========================================  
-  
-	text = text:gsub("%*([^\n]-)%*", function(content)  
-		return protect("<i>" .. content .. "</i>")  
-	end)  
-  
-	-- =========================================  
-	-- UNDERLINE  
-	-- =========================================  
-  
-	text = text:gsub("_([^\n]-)_", function(content)  
-		return protect("<u>" .. content .. "</u>")  
-	end)  
-  
-	-- =========================================  
-	-- STRIKE  
-	-- =========================================  
-  
-	text = text:gsub("~([^\n]-)~", function(content)  
-		return protect("<s>" .. content .. "</s>")  
-	end)  
-  
-	-- =========================================  
-	-- SIZE  
-	-- [size=NUM]TEXT[/size]  
-	-- =========================================  
-  
-	text = text:gsub("%[size=(%d+)%]([%s%S]-)%[/size%]", function(size, content)  
-		content = richify(content)  
-		return protect(string.format('<font size="%d">%s</font>', tonumber(size), content))  
-	end)  
-  
-	-- =========================================  
-	-- FACE  
-	-- [face=FONT]TEXT[/face]  
-	-- =========================================  
-  
-	text = text:gsub("%[face=([%w_%- ]+)%]([%s%S]-)%[/face%]", function(face, content)  
-		content = richify(content)  
-		return protect(string.format('<font face="%s">%s</font>', face, content))  
-	end)  
-  
-	text = text:gsub("%[tran=([^%]]+)%]([%s%S]-)%[/tran%]", function(tran, content)  
-		local transparency  
-  
-		if tran:find("%%") then  
-			transparency = tonumber(tran:gsub("%%", "")) / 100  
-		else  
-			transparency = tonumber(tran)  
-		end  
-  
-		transparency = math.clamp(transparency or 0, 0, 1)  
-		content = richify(content)  
-  
-		return protect(string.format('<font transparency="%s">%s</font>', transparency, content))  
-	end)  
-  
-	text = text:gsub("%[smallcaps%]([%s%S]-)%[/smallcaps%]", function(content)  
-		content = richify(content)  
-		return protect("<smallcaps>" .. content .. "</smallcaps>")  
-	end)  
-  
-	text = text:gsub("%[mark=rgb%((.-)%),tran=(.-)%]([%s%S]-)%[/mark%]", function(color, tran, content)  
-		content = richify(content)  
-  
-		local transparency  
-		if tran ~= "nil" then  
-			if tran:find("%%") then  
-				transparency = tonumber(tran:gsub("%%", "")) / 100  
-			else  
-				transparency = tonumber(tran)  
-			end  
-		end  
-  
-		local attrs = {}  
-  
-		if color ~= "default" then  
-			local r, g, b = color:match("(%d+),(%d+),(%d+)")  
-			if r then  
-				table.insert(attrs, string.format('color="rgb(%d,%d,%d)"', r, g, b))  
-			end  
-		end  
-  
-		if transparency then  
-			table.insert(attrs, string.format('transparency="%s"', transparency))  
-		end  
-  
-		return protect("<mark " .. table.concat(attrs, " ") .. ">" .. content .. "</mark>")  
-	end)  
-  
-	text = text:gsub("%[stroke=(.-)%]([%s%S]-)%[/stroke%]", function(options, content)  
-		content = richify(content)  
-  
-		local attrs = {}  
-  
-		local rgb = options:match("rgb%((.-)%)")  
-		if rgb and rgb ~= "default" then  
-			local r, g, b = rgb:match("(%d+),(%d+),(%d+)")  
-			if r then  
-				table.insert(attrs, string.format('color="rgb(%d,%d,%d)"', r, g, b))  
-			end  
-		end  
-  
-		local th = options:match("th=([^,%]]+)")  
-		if th and th ~= "nil" then  
-			table.insert(attrs, string.format('thickness="%s"', th))  
-		end  
-  
-		local tran = options:match("tran=([^,%]]+)")  
-		tran = parsePercent(tran)  
-		if tran then  
-			table.insert(attrs, string.format('transparency="%s"', tran))  
-		end  
-  
-		local joins = options:match("joins=([^,%]]+)")  
-		if joins and joins ~= "nil" then  
-			table.insert(attrs, string.format('joins="%s"', joins:lower()))  
-		end  
-  
-		local scaling = options:match("sizeing=([^,%]]+)")  
-		if scaling and scaling ~= "nil" then  
-			table.insert(attrs, string.format('scaling="%s"', scaling:lower()))  
-		end  
-  
-		return protect("<stroke " .. table.concat(attrs, " ") .. ">" .. content .. "</stroke>")  
-	end)  
-  
-	-- =========================================  
-	-- TEXT COLOR CHANGER  
-	-- =========================================  
-  
-	text = text:gsub("%[color=(%d+),(%d+),(%d+)%]([%s%S]-)%[/color%]", function(r, g, b, content)  
-		content = richify(content)  
-  
-		return protect(string.format(  
-			'<font color="rgb(%d,%d,%d)">%s</font>',  
-			tonumber(r),  
-			tonumber(g),  
-			tonumber(b),  
-			content  
-		))  
-	end)  
-  
-	-- =========================================  
-	-- RESTORE TOKENS  
-	-- =========================================  
-  
-	local changed = true  
-	while changed do  
-		changed = false  
-  
-		for key, value in pairs(protected) do  
-			local newText = text:gsub(key, value)  
-			if newText ~= text then  
-				changed = true  
-				text = newText  
-			end  
-		end  
-	end  
-  
-	-- =========================================  
-	-- RESTORE RICHTEXT  
-	-- =========================================  
-  
-	for key, value in pairs(richProtected) do  
-		text = text:gsub(key, value)  
-	end  
-  
-	return text  
-end  
-  
--- ChatLogs Line  
-local function IsAtBottom()  
-	local layout = si:FindFirstChildOfClass("UIListLayout")  
-	if not layout then  
-		return true  
-	end  
-  
-	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y  
-	if maxY < 0 then  
-		maxY = 0  
-	end  
-  
-	return si.CanvasPosition.Y >= (maxY - 12)  
-end  
-  
-local function ScrollToBottom()  
-	local layout = si:FindFirstChildOfClass("UIListLayout")  
-	if not layout then  
-		return  
-	end  
-  
-	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y  
-	if maxY < 0 then  
-		maxY = 0  
-	end  
-  
-	si.CanvasPosition = Vector2.new(0, maxY)  
-end  
-  
---[[  
-local GiveSpaceToCopyButton = false  
-  
-local function getCopySpace()  
-	return GiveSpaceToCopyButton and 66 or 0  
-end  
-  
-local function getCopySpace()  
-	return 0  
-end  
+-- ========== user labels & safe text function (already exist in user code, but we keep fallback) ==========
+local user = {
+	plr  = "[ 👤 ]: ",
+	chat = "[ ✨ ]: ",
+	Error = "[ ❌ ]: ",
+	Suc   = "[ ✅ ]: ",
+	Warn  = "[ ⚠️ ]: ",
+	Info  = "[ ℹ️ ]: ",
+	Nill = "",
+	Sys = "[ 🖥️ ]: ",
+	Nil = "",
+}
+
+local function escapeRichText(text)
+	text = tostring(text)
+	text = text:gsub("&", "&amp;")
+	text = text:gsub("<", "&lt;")
+	text = text:gsub(">", "&gt;")
+	text = text:gsub('"', "&quot;")
+	text = text:gsub("'", "&apos;")
+	return text
+end
+
+local function parsePercent(v)
+	if v == nil or v == "nil" then
+		return nil
+	end
+
+	if tostring(v):find("%%") then
+		return tonumber(tostring(v):gsub("%%", "")) / 100
+	end
+
+	return tonumber(v)
+end
+
+-- =========================================
+-- PROTECTED RICHTEXT
+-- =========================================
+
+local richProtected = {}
+local richId = 0
+
+local function protectRich(content)
+	richId += 1
+
+	local key = "§RICH" .. richId .. "§"
+	richProtected[key] = content
+
+	return key
+end
+
+local function richify(text)
+	text = tostring(text)
+
+	-- =========================================
+	-- PROTECT RICHTEXT TOKENS
+	-- =========================================
+
+	for key, value in pairs(richProtected) do
+		text = text:gsub(value, key)
+	end
+
+	text = escapeRichText(text)
+
+	-- =========================================
+	-- PROTECTED TOKENS
+	-- =========================================
+
+	local protected = {}
+	local tokenId = 0
+
+	local function protect(content)
+		tokenId += 1
+		local key = "§ESC" .. tokenId .. "§"
+		protected[key] = content
+		return key
+	end
+
+	-- =========================================
+	-- ESCAPE
+	-- %...%
+	-- =========================================
+
+	text = text:gsub("%%([%s%S]-)%%", function(content)
+		return protect(content)
+	end)
+
+	-- =========================================
+	-- INTERNAL CHAT ESCAPE
+	-- ™...™
+	-- =========================================
+
+	text = text:gsub("™([%s%S]-)™", function(content)
+		return protect(content)
+	end)
+
+	-- =========================================
+	-- CODE BLOCK
+	-- ```...```
+	-- =========================================
+
+	text = text:gsub("```([%s%S]-)```", function(code)
+		code = code:gsub("^%s*\n", "")
+		code = code:gsub("\n%s*$", "")
+
+		return protect(
+			'<font face="Code">' ..
+			'<font color="rgb(255,200,120)">' ..
+			code ..
+			'</font>' ..
+			'</font>'
+		)
+	end)
+
+	-- =========================================
+	-- INLINE CODE
+	-- `...`
+	-- =========================================
+
+	text = text:gsub("`([^`\n]-)`", function(code)
+		return protect(
+			'<font face="Code">' ..
+			'<font color="rgb(255,220,150)">' ..
+			code ..
+			'</font>' ..
+			'</font>'
+		)
+	end)
+
+	-- Link name
+	text = text:gsub("%[([^%]]+)%]%(%s*<?(https?://[^>%s]+)>?%s*%)", function(label, url)
+		return protect(
+			'<font color="rgb(80,170,255)">' ..
+			'<u>' ..
+			label ..
+			'</u>' ..
+			'</font>' ..
+			' <font color="rgb(120,120,120)">(' ..
+			url ..
+			')</font>'
+		)
+	end)
+
+	-- =========================================
+	-- LINKS
+	-- =========================================
+
+	text = text:gsub("(https?://[%w%-%._~:/%?#%[%]@!$&'%(%)%*%+,;=]+)", function(url)
+		return protect(
+			'<font color="rgb(80,170,255)">' ..
+			'<u>' ..
+			url ..
+			'</u>' ..
+			'</font>'
+		)
+	end)
+
+	-- =========================================
+	-- SMALL TEXT
+	-- -# TEXT
+	-- =========================================
+
+	text = text:gsub("(^%-# ([^\n]+))", function(_, content)
+		return '<font size="12">' .. content .. '</font>'
+	end)
+
+	text = text:gsub("\n%-# ([^\n]+)", function(content)
+		return '\n<font size="12">' .. content .. '</font>'
+	end)
+
+	-- =========================================
+	-- HEADERS
+	-- =========================================
+
+	text = text:gsub("\n#### ([^\n]+)", '\n<font size="18"><b>%1</b></font>')
+	text = text:gsub("^#### ([^\n]+)", '<font size="18"><b>%1</b></font>')
+
+	text = text:gsub("\n### ([^\n]+)", '\n<font size="20"><b>%1</b></font>')
+	text = text:gsub("^### ([^\n]+)", '<font size="20"><b>%1</b></font>')
+
+	text = text:gsub("\n## ([^\n]+)", '\n<font size="24"><b>%1</b></font>')
+	text = text:gsub("^## ([^\n]+)", '<font size="24"><b>%1</b></font>')
+
+	text = text:gsub("\n# ([^\n]+)", '\n<font size="28"><b>%1</b></font>')
+	text = text:gsub("^# ([^\n]+)", '<font size="28"><b>%1</b></font>')
+
+	-- =========================================
+	-- BOLD + ITALIC
+	-- =========================================
+
+	text = text:gsub("%*%*%*([^\n]-)%*%*%*", function(content)
+		return protect("<b><i>" .. content .. "</i></b>")
+	end)
+
+	-- =========================================
+	-- BOLD
+	-- =========================================
+
+	text = text:gsub("%*%*([^\n]-)%*%*", function(content)
+		return protect("<b>" .. content .. "</b>")
+	end)
+
+	-- =========================================
+	-- ITALIC
+	-- =========================================
+
+	text = text:gsub("%*([^\n]-)%*", function(content)
+		return protect("<i>" .. content .. "</i>")
+	end)
+
+	-- =========================================
+	-- UNDERLINE
+	-- =========================================
+
+	text = text:gsub("_([^\n]-)_", function(content)
+		return protect("<u>" .. content .. "</u>")
+	end)
+
+	-- =========================================
+	-- STRIKE
+	-- =========================================
+
+	text = text:gsub("~([^\n]-)~", function(content)
+		return protect("<s>" .. content .. "</s>")
+	end)
+
+	-- =========================================
+	-- SIZE
+	-- [size=NUM]TEXT[/size]
+	-- =========================================
+
+	text = text:gsub("%[size=(%d+)%]([%s%S]-)%[/size%]", function(size, content)
+		content = richify(content)
+		return protect(string.format('<font size="%d">%s</font>', tonumber(size), content))
+	end)
+
+	-- =========================================
+	-- FACE
+	-- [face=FONT]TEXT[/face]
+	-- =========================================
+
+	text = text:gsub("%[face=([%w_%- ]+)%]([%s%S]-)%[/face%]", function(face, content)
+		content = richify(content)
+		return protect(string.format('<font face="%s">%s</font>', face, content))
+	end)
+
+	text = text:gsub("%[tran=([^%]]+)%]([%s%S]-)%[/tran%]", function(tran, content)
+		local transparency
+
+		if tran:find("%%") then
+			transparency = tonumber(tran:gsub("%%", "")) / 100
+		else
+			transparency = tonumber(tran)
+		end
+
+		transparency = math.clamp(transparency or 0, 0, 1)
+		content = richify(content)
+
+		return protect(string.format('<font transparency="%s">%s</font>', transparency, content))
+	end)
+
+	text = text:gsub("%[smallcaps%]([%s%S]-)%[/smallcaps%]", function(content)
+		content = richify(content)
+		return protect("<smallcaps>" .. content .. "</smallcaps>")
+	end)
+
+	text = text:gsub("%[mark=rgb%((.-)%),tran=(.-)%]([%s%S]-)%[/mark%]", function(color, tran, content)
+		content = richify(content)
+
+		local transparency
+		if tran ~= "nil" then
+			if tran:find("%%") then
+				transparency = tonumber(tran:gsub("%%", "")) / 100
+			else
+				transparency = tonumber(tran)
+			end
+		end
+
+		local attrs = {}
+
+		if color ~= "default" then
+			local r, g, b = color:match("(%d+),(%d+),(%d+)")
+			if r then
+				table.insert(attrs, string.format('color="rgb(%d,%d,%d)"', r, g, b))
+			end
+		end
+
+		if transparency then
+			table.insert(attrs, string.format('transparency="%s"', transparency))
+		end
+
+		return protect("<mark " .. table.concat(attrs, " ") .. ">" .. content .. "</mark>")
+	end)
+
+	text = text:gsub("%[stroke=(.-)%]([%s%S]-)%[/stroke%]", function(options, content)
+		content = richify(content)
+
+		local attrs = {}
+
+		local rgb = options:match("rgb%((.-)%)")
+		if rgb and rgb ~= "default" then
+			local r, g, b = rgb:match("(%d+),(%d+),(%d+)")
+			if r then
+				table.insert(attrs, string.format('color="rgb(%d,%d,%d)"', r, g, b))
+			end
+		end
+
+		local th = options:match("th=([^,%]]+)")
+		if th and th ~= "nil" then
+			table.insert(attrs, string.format('thickness="%s"', th))
+		end
+
+		local tran = options:match("tran=([^,%]]+)")
+		tran = parsePercent(tran)
+		if tran then
+			table.insert(attrs, string.format('transparency="%s"', tran))
+		end
+
+		local joins = options:match("joins=([^,%]]+)")
+		if joins and joins ~= "nil" then
+			table.insert(attrs, string.format('joins="%s"', joins:lower()))
+		end
+
+		local scaling = options:match("sizeing=([^,%]]+)")
+		if scaling and scaling ~= "nil" then
+			table.insert(attrs, string.format('scaling="%s"', scaling:lower()))
+		end
+
+		return protect("<stroke " .. table.concat(attrs, " ") .. ">" .. content .. "</stroke>")
+	end)
+
+	-- =========================================
+	-- TEXT COLOR CHANGER
+	-- =========================================
+
+	text = text:gsub("%[color=(%d+),(%d+),(%d+)%]([%s%S]-)%[/color%]", function(r, g, b, content)
+		content = richify(content)
+
+		return protect(string.format(
+			'<font color="rgb(%d,%d,%d)">%s</font>',
+			tonumber(r),
+			tonumber(g),
+			tonumber(b),
+			content
+		))
+	end)
+
+	-- =========================================
+	-- RESTORE TOKENS
+	-- =========================================
+
+	local changed = true
+	while changed do
+		changed = false
+
+		for key, value in pairs(protected) do
+			local newText = text:gsub(key, value)
+			if newText ~= text then
+				changed = true
+				text = newText
+			end
+		end
+	end
+
+	-- =========================================
+	-- RESTORE RICHTEXT
+	-- =========================================
+
+	for key, value in pairs(richProtected) do
+		text = text:gsub(key, value)
+	end
+
+	return text
+end
+
+-- ChatLogs Line
+local function IsAtBottom()
+	local layout = si:FindFirstChildOfClass("UIListLayout")
+	if not layout then
+		return true
+	end
+
+	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
+	if maxY < 0 then
+		maxY = 0
+	end
+
+	return si.CanvasPosition.Y >= (maxY - 12)
+end
+
+local function ScrollToBottom()
+	local layout = si:FindFirstChildOfClass("UIListLayout")
+	if not layout then
+		return
+	end
+
+	local maxY = layout.AbsoluteContentSize.Y - si.AbsoluteWindowSize.Y
+	if maxY < 0 then
+		maxY = 0
+	end
+
+	si.CanvasPosition = Vector2.new(0, maxY)
+end
+
+--[[
+local GiveSpaceToCopyButton = false
+
+local function getCopySpace()
+	return GiveSpaceToCopyButton and 66 or 0
+end
 ]]
-  
--- =========================================  
--- INLINE IMAGE SUPPORT  
--- =========================================  
-  
-local folderRbx = folderRbx or {  
-	Pan = "rbxassetid://125475680586989",  
-	Flower = "rbxassetid://115337423632858",  
-	Smile = "rbxassetid://114645536340324",  
-	Coffee = "rbxassetid://129340524570417",  
-	["5teve3019D"] = "rbxassetid://85591071115544",  
-	["5teve3019D-Happy"] = "rbxassetid://101439288090755",  
-	Copy = "rbxassetid://85495702622937",  
-	Filter = "rbxassetid://134089160838664",  
-	Search = "rbxassetid://133955276215666",  
-	Add = "rbxassetid://127467828755500",  
-	RobloxLogo = "rbxassetid://103716616779537",  
-	RobloxEmote = "rbxassetid://70633192931522",  
-	Angry = "rbxassetid://71813422079325",  
-	ExclamationMark = "rbxassetid://76818667867454",  
-	LuaLogo = "rbxassetid://91555220907871",  
-	Apple = "rbxassetid://73519352873388",  
-	PinkPaw = "rbxassetid://74221424704557",  
-	BlackPaw = "rbxassetid://95970558194219",  
-	Jimmy = "rbxassetid://123105101896574",  
-}  
-  
-local TextService = game:GetService("TextService")  
-  
-local function clearInlineImages(parent)  
-	for _, child in ipairs(parent:GetChildren()) do  
-		if child.Name == "InlineImage" and child:IsA("ImageLabel") then  
-			child:Destroy()  
-		end  
-	end  
-end  
-  
-local function splitByNewlines(str)  
-	local lines = {}  
-	str = tostring(str)  
-  
-	local start = 1  
-	while true do  
-		local nl = str:find("\n", start, true)  
-		if not nl then  
-			table.insert(lines, str:sub(start))  
-			break  
-		end  
-		table.insert(lines, str:sub(start, nl - 1))  
-		start = nl + 1  
-	end  
-  
-	return lines  
-end  
-  
-local function parseInlineToken(code)  
-	local raw = tostring(code)  
-	local size  
-	local alt  
-  
-	while true do  
-		local newRaw, n = raw:match("^(.-)%s*%[size=(%d+)%]%s*$")  
-		if newRaw then  
-			raw = newRaw  
-			size = tonumber(n)  
-			continue  
-		end  
-  
-		local newRaw2, a = raw:match('^(.-)%s*if;Alt%(%s*"(.-)"%s*%)%s*$')  
-		if newRaw2 then  
-			raw = newRaw2  
-			alt = a  
-			continue  
-		end  
-  
-		break  
-	end  
-  
-	local folderName = raw:match('^folder://rbx%["(.-)"%]$')  
-	if folderName then  
-		local imageId = folderRbx and folderRbx[folderName]  
-		if imageId and imageId ~= "" then  
-			return {  
-				kind = "image",  
-				image = imageId,  
-				size = size,  
-				alt = alt,  
-			}  
-		end  
-  
-		return {  
-			kind = "text",  
-			text = alt or folderName,  
-		}  
-	end  
-  
-	local customName, assetId = raw:match('^file://customrbx%("(.+)"%)%["(.-)"%]$')  
-	if customName then  
-		if assetId and assetId ~= "" then  
-			return {  
-				kind = "image",  
-				image = assetId,  
-				size = size,  
-				alt = alt,  
-			}  
-		end  
-  
-		return {  
-			kind = "text",  
-			text = alt or customName,  
-		}  
-	end  
-  
-	return {  
-		kind = "code",  
-		text = code,  
-	}  
-end  
-  
-local function tokenizeInlineMessage(rawText)  
-	local tokens = {}  
-	local s = tostring(rawText)  
-	local i = 1  
-  
-	while i <= #s do  
-		local openStart, openEnd = s:find("`", i, true)  
-		if not openStart then  
-			local tail = s:sub(i)  
-			if tail ~= "" then  
-				table.insert(tokens, { kind = "text", text = tail })  
-			end  
-			break  
-		end  
-  
-		if openStart > i then  
-			table.insert(tokens, { kind = "text", text = s:sub(i, openStart - 1) })  
-		end  
-  
-		local close = s:find("`", openEnd + 1, true)  
-		if not close then  
-			table.insert(tokens, { kind = "text", text = s:sub(openStart) })  
-			break  
-		end  
-  
-		local code = s:sub(openEnd + 1, close - 1)  
-		table.insert(tokens, parseInlineToken(code))  
-		i = close + 1  
-	end  
-  
-	return tokens  
-end  
-  
-local function CreateInlineImage(parent, imageId, size)  
-	local image = Instance.new("ImageLabel")  
-	image.Name = "InlineImage"  
-	image.BackgroundTransparency = 1  
-	image.BorderSizePixel = 0  
-	image.Image = imageId  
-	image.ScaleType = Enum.ScaleType.Fit  
-	image.Size = UDim2.fromOffset(size, size)  
-	image.ZIndex = parent.ZIndex + 1  
-	image.Parent = parent  
-	return image  
-end  
-  
-local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)  
-	clearInlineImages(cha)  
-  
-	local tokens = tokenizeInlineMessage(rawText)  
-  
-	local spaceW = math.max(  
-		1,  
-		TextService:GetTextSize(  
-			" ",  
-			textSize,  
-			font,  
-			Vector2.new(10000, 10000)  
-		).X  
-	)  
-  
-	local lineH = textSize + 4  
-	local x = 0  
-	local y = 0  
-	local displayParts = {}  
-  
-	local function newLine()  
-		table.insert(displayParts, "\n")  
-		x = 0  
-		y += lineH  
-	end  
-  
-	local function addDisplay(s)  
-		table.insert(displayParts, s)  
-	end  
-  
-	local function addTextChunk(chunk)  
-		if chunk == "" then  
-			return  
-		end  
-  
-		local w = TextService:GetTextSize(  
-			chunk,  
-			textSize,  
-			font,  
-			Vector2.new(10000, 10000)  
-		).X  
-  
-		if x > 0 and x + w > maxWidth then  
-			newLine()  
-		end  
-  
-		addDisplay(chunk)  
-		x += w  
-	end  
-  
-	local function addTextPiece(piece)  
-		piece = tostring(piece)  
-		if piece == "" then  
-			return  
-		end  
-  
-		local lines = splitByNewlines(piece)  
-  
-		for idx, lineText in ipairs(lines) do  
-			if lineText ~= "" then  
-				for chunk in lineText:gmatch("%S+%s*") do  
-					addTextChunk(chunk)  
-				end  
-			end  
-  
-			if idx < #lines then  
-				newLine()  
-			end  
-		end  
-	end  
-  
-	local function addCodePiece(code)  
-		local w = TextService:GetTextSize(  
-			code,  
-			textSize,  
-			font,  
-			Vector2.new(10000, 10000)  
-		).X  
-  
-		if x > 0 and x + w > maxWidth then  
-			newLine()  
-		end  
-  
-		addDisplay("`" .. code .. "`")  
-		x += w  
-	end  
-  
-	local NBSP = "\194\160"  
-  
-local function getLineHeight()  
-	return TextService:GetTextSize(  
-		"Ag",  
-		textSize,  
-		font,  
-		Vector2.new(10000, 10000)  
-	).Y  
-end  
-  
-local function makeSpacer(px)  
-	local nbspWidth = math.max(  
-		1,  
-		TextService:GetTextSize(  
-			NBSP,  
-			textSize,  
-			font,  
-			Vector2.new(10000, 10000)  
-		).X  
-	)  
-  
-	local count = math.max(  
-		1,  
-		math.ceil(px / nbspWidth)  
-	)  
-  
-	return string.rep(  
-		NBSP,  
-		count  
-	)  
-end  
-  
-local function addImagePiece(imageId, size, altText)  
-  
-	local imgSize =  
-		size or textSize  
-  
-	local baseLineH =  
-		getLineHeight()  
-  
-	if x > 0  
-		and x + imgSize > maxWidth  
-	then  
-		newLine()  
-	end  
-  
-	if imageId  
-		and imageId ~= ""  
-	then  
-  
-		lineH =  
-			math.max(  
-				lineH,  
-				baseLineH,  
-				imgSize  
-			)  
-  
-		local img =  
-			CreateInlineImage(  
-				cha,  
-				imageId,  
-				imgSize  
-			)  
-  
-		img.Position =  
-			UDim2.fromOffset(  
-				x,  
-				y +  
-					math.max(  
-						0,  
-						math.floor(  
-							(lineH - imgSize) / 2  
-						)  
-					)  
-			)  
-  
-		x += imgSize  
-  
-		addDisplay(  
-			makeSpacer(  
-				imgSize  
-			)  
-		)  
-  
-	elseif altText  
-		and altText ~= ""  
-	then  
-  
-		addTextPiece(  
-			altText  
-		)  
-  
-	end  
-  
-end  
-  
-	for _, token in ipairs(tokens) do  
-		if token.kind == "text" then  
-			addTextPiece(token.text)  
-  
-		elseif token.kind == "code" then  
-			addCodePiece(token.text)  
-  
-		elseif token.kind == "image" then  
-			addImagePiece(token.image, token.size, token.alt)  
-		end  
-	end  
-  
-	return table.concat(displayParts)  
-end  
-  
--- =========================================  
--- CHAT LOG  
--- =========================================  
-  
-local function txt(user, text, R, G, B)  
-	local shouldFollow = IsAtBottom()  
-  
-	local cha = Instance.new("TextLabel")  
-	cha.Name = "Text"  
-	cha.Active = false  
-	cha.Size = UDim2.new(0.97, -35, 0, 0)  
-	cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)  
-	cha.BackgroundTransparency = 0.85  
-	cha.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)  
-	cha.TextSize = 16  
-	cha.BorderSizePixel = 5  
-	cha.BorderMode = Enum.BorderMode.Inset  
-	cha.RichText = true  
-	cha.TextWrapped = true  
-	cha.TextXAlignment = Enum.TextXAlignment.Left  
-	cha.TextYAlignment = Enum.TextYAlignment.Top  
-	cha.AutomaticSize = Enum.AutomaticSize.Y  
-	cha.ClipsDescendants = false  
-	cha.Text = "Responding..."  
-	cha.Visible = true  
-	cha.Parent = si  
-  
-	local cp = Instance.new("ImageButton")  
-	cp.Name = "CopyButton"  
-	cp.Position = UDim2.new(1, 10, 1, -25)  
-	cp.Size = UDim2.new(0, 25, 0, 25)  
-	cp.Image = "rbxassetid://85495702622937"  
-	cp.BackgroundColor3 = cha.TextColor3  
-	cp.BackgroundTransparency = 0.3  
-	cp.ZIndex = 2  
-	cp.Parent = cha  
-	Corner(0, 5, cp)  
-  
-	local prefix = escapeRichText(tostring(user))  
-  
-	local function safeRichify(str)  
-		local ok, result = pcall(richify, tostring(str))  
-		if ok then  
-			return result  
-		end  
-		return escapeRichText(tostring(str))  
-	end  
-  
-	local function UpdateScroll()  
-		if shouldFollow then  
-			ScrollToBottom()  
-		end  
-	end  
-  
-	local function RenderCurrent(currentText)  
-		local rawCombined = prefix .. tostring(currentText)  
-  
-		local availableWidth = math.max(  
-			50,  
-			math.floor(  
-				(cha.AbsoluteSize.X > 0 and cha.AbsoluteSize.X or si.AbsoluteSize.X * 0.97) - 18  
-			)  
-		)  
-  
-		local displayText = renderInlineOverlay(  
-			cha,  
-			rawCombined,  
-			16,  
-			Enum.Font.SourceSans,  
-			availableWidth  
-		)  
-  
-		cha.Text = safeRichify(displayText)  
-		UpdateScroll()  
-	end  
-  
-	task.spawn(function()  
-		if TEXT_STYLE == "INSTANT" then  
-			RenderCurrent(text)  
-  
-		elseif TEXT_STYLE == "EACHTEXT" then  
-			local chunks = {}  
-			for chunk in tostring(text):gmatch("%S+%s*") do  
-				table.insert(chunks, chunk)  
-			end  
-  
-			local current = ""  
-			for _, chunk in ipairs(chunks) do  
-				current ..= chunk  
-				RenderCurrent(current)  
-				task.wait(0.03)  
-			end  
-  
-		elseif TEXT_STYLE == "EACHLINE" then  
-			local current = ""  
-			local lines = {}  
-  
-			for line in tostring(text):gmatch("([^\n]*)\n?") do  
-				if line ~= "" then  
-					table.insert(lines, line)  
-				end  
-			end  
-  
-			if #lines == 0 then  
-				RenderCurrent(text)  
-			else  
-				for _, line in ipairs(lines) do  
-					if current == "" then  
-						current = line  
-					else  
-						current ..= "\n" .. line  
-					end  
-  
-					RenderCurrent(current)  
-					task.wait(0.05)  
-				end  
-			end  
-  
-		else  
-			RenderCurrent(text)  
-		end  
-	end)  
-  
-	cp.MouseButton1Click:Connect(function()  
-		local raw = tostring(text)  
-  
-		if setclipboard then  
-			setclipboard(raw)  
-		end  
-  
-		cp.ImageColor3 = Color3.fromRGB(0, 255, 0)  
-  
-		task.delay(1, function()  
-			cp.ImageColor3 = Color3.new(1, 1, 1)  
-		end)  
-	end)  
-  
-	Corner(0, 5, cha)  
-	return cha  
-end  
+
+local function getCopySpace()
+	return 0
+end
+
+-- =========================================
+-- INLINE IMAGE SUPPORT
+-- =========================================
+
+local folderRbx = folderRbx or {
+	Pan = "rbxassetid://125475680586989",
+	Flower = "rbxassetid://115337423632858",
+	Smile = "rbxassetid://114645536340324",
+	Coffee = "rbxassetid://129340524570417",
+	["5teve3019D"] = "rbxassetid://85591071115544",
+	["5teve3019D-Happy"] = "rbxassetid://101439288090755",
+	Copy = "rbxassetid://85495702622937",
+	Filter = "rbxassetid://134089160838664",
+	Search = "rbxassetid://133955276215666",
+	Add = "rbxassetid://127467828755500",
+	RobloxLogo = "rbxassetid://103716616779537",
+	RobloxEmote = "rbxassetid://70633192931522",
+	Angry = "rbxassetid://71813422079325",
+	ExclamationMark = "rbxassetid://76818667867454",
+	LuaLogo = "rbxassetid://91555220907871",
+	Apple = "rbxassetid://73519352873388",
+	PinkPaw = "rbxassetid://74221424704557",
+	BlackPaw = "rbxassetid://95970558194219",
+	Jimmy = "rbxassetid://123105101896574",
+}
+
+local TextService = game:GetService("TextService")
+
+local function clearInlineImages(parent)
+	for _, child in ipairs(parent:GetChildren()) do
+		if child.Name == "InlineImage" and child:IsA("ImageLabel") then
+			child:Destroy()
+		end
+	end
+end
+
+local function splitByNewlines(str)
+	local lines = {}
+	str = tostring(str)
+
+	local start = 1
+	while true do
+		local nl = str:find("\n", start, true)
+		if not nl then
+			table.insert(lines, str:sub(start))
+			break
+		end
+		table.insert(lines, str:sub(start, nl - 1))
+		start = nl + 1
+	end
+
+	return lines
+end
+
+local function parseInlineToken(code)
+	local raw = tostring(code)
+	local size
+	local alt
+
+	while true do
+		local newRaw, n = raw:match("^(.-)%s*%[size=(%d+)%]%s*$")
+		if newRaw then
+			raw = newRaw
+			size = tonumber(n)
+			continue
+		end
+
+		local newRaw2, a = raw:match('^(.-)%s*if;Alt%(%s*"(.-)"%s*%)%s*$')
+		if newRaw2 then
+			raw = newRaw2
+			alt = a
+			continue
+		end
+
+		break
+	end
+
+	local folderName = raw:match('^folder://rbx%["(.-)"%]$')
+	if folderName then
+		local imageId = folderRbx and folderRbx[folderName]
+		if imageId and imageId ~= "" then
+			return {
+				kind = "image",
+				image = imageId,
+				size = size,
+				alt = alt,
+			}
+		end
+
+		return {
+			kind = "text",
+			text = alt or folderName,
+		}
+	end
+
+	local customName, assetId = raw:match('^file://customrbx%("(.+)"%)%["(.-)"%]$')
+	if customName then
+		if assetId and assetId ~= "" then
+			return {
+				kind = "image",
+				image = assetId,
+				size = size,
+				alt = alt,
+			}
+		end
+
+		return {
+			kind = "text",
+			text = alt or customName,
+		}
+	end
+
+	return {
+		kind = "code",
+		text = code,
+	}
+end
+
+local function tokenizeInlineMessage(rawText)
+	local tokens = {}
+	local s = tostring(rawText)
+	local i = 1
+
+	while i <= #s do
+		local openStart, openEnd = s:find("`", i, true)
+		if not openStart then
+			local tail = s:sub(i)
+			if tail ~= "" then
+				table.insert(tokens, { kind = "text", text = tail })
+			end
+			break
+		end
+
+		if openStart > i then
+			table.insert(tokens, { kind = "text", text = s:sub(i, openStart - 1) })
+		end
+
+		local close = s:find("`", openEnd + 1, true)
+		if not close then
+			table.insert(tokens, { kind = "text", text = s:sub(openStart) })
+			break
+		end
+
+		local code = s:sub(openEnd + 1, close - 1)
+		table.insert(tokens, parseInlineToken(code))
+		i = close + 1
+	end
+
+	return tokens
+end
+
+local function CreateInlineImage(parent, imageId, size)
+	local image = Instance.new("ImageLabel")
+	image.Name = "InlineImage"
+	image.BackgroundTransparency = 1
+	image.BorderSizePixel = 0
+	image.Image = imageId
+	image.ScaleType = Enum.ScaleType.Fit
+	image.Size = UDim2.fromOffset(size, size)
+	image.ZIndex = parent.ZIndex + 1
+	image.Parent = parent
+	return image
+end
+
+local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
+	clearInlineImages(cha)
+
+	local tokens = tokenizeInlineMessage(rawText)
+
+	local spaceW = math.max(
+		1,
+		TextService:GetTextSize(
+			" ",
+			textSize,
+			font,
+			Vector2.new(10000, 10000)
+		).X
+	)
+
+	local lineH = textSize + 4
+	local x = 0
+	local y = 0
+	local displayParts = {}
+
+	local function newLine()
+		table.insert(displayParts, "\n")
+		x = 0
+		y += lineH
+	end
+
+	local function addDisplay(s)
+		table.insert(displayParts, s)
+	end
+
+	local function addTextChunk(chunk)
+		if chunk == "" then
+			return
+		end
+
+		local w = TextService:GetTextSize(
+			chunk,
+			textSize,
+			font,
+			Vector2.new(10000, 10000)
+		).X
+
+		if x > 0 and x + w > maxWidth then
+			newLine()
+		end
+
+		addDisplay(chunk)
+		x += w
+	end
+
+	local function addTextPiece(piece)
+		piece = tostring(piece)
+		if piece == "" then
+			return
+		end
+
+		local lines = splitByNewlines(piece)
+
+		for idx, lineText in ipairs(lines) do
+			if lineText ~= "" then
+				for chunk in lineText:gmatch("%S+%s*") do
+					addTextChunk(chunk)
+				end
+			end
+
+			if idx < #lines then
+				newLine()
+			end
+		end
+	end
+
+	local function addCodePiece(code)
+		local w = TextService:GetTextSize(
+			code,
+			textSize,
+			font,
+			Vector2.new(10000, 10000)
+		).X
+
+		if x > 0 and x + w > maxWidth then
+			newLine()
+		end
+
+		addDisplay("`" .. code .. "`")
+		x += w
+	end
+
+	local NBSP = "\194\160"
+
+local function getLineHeight()
+	return TextService:GetTextSize(
+		"Ag",
+		textSize,
+		font,
+		Vector2.new(10000, 10000)
+	).Y
+end
+
+local function makeSpacer(px)
+	local nbspWidth = math.max(
+		1,
+		TextService:GetTextSize(
+			NBSP,
+			textSize,
+			font,
+			Vector2.new(10000, 10000)
+		).X
+	)
+
+	local count = math.max(
+		1,
+		math.ceil(px / nbspWidth)
+	)
+
+	return string.rep(
+		NBSP,
+		count
+	)
+end
+
+local function addImagePiece(imageId, size, altText)
+
+	local imgSize =
+		size or textSize
+
+	local baseLineH =
+		getLineHeight()
+
+	if x > 0
+		and x + imgSize > maxWidth
+	then
+		newLine()
+	end
+
+	if imageId
+		and imageId ~= ""
+	then
+
+		lineH =
+			math.max(
+				lineH,
+				baseLineH,
+				imgSize
+			)
+
+		local img =
+			CreateInlineImage(
+				cha,
+				imageId,
+				imgSize
+			)
+
+		img.Position =
+			UDim2.fromOffset(
+				x,
+				y +
+					math.max(
+						0,
+						math.floor(
+							(lineH - imgSize) / 2
+						)
+					)
+			)
+
+		x += imgSize
+
+		addDisplay(
+			makeSpacer(
+				imgSize
+			)
+		)
+
+	elseif altText
+		and altText ~= ""
+	then
+
+		addTextPiece(
+			altText
+		)
+
+	end
+
+end
+
+	for _, token in ipairs(tokens) do
+		if token.kind == "text" then
+			addTextPiece(token.text)
+
+		elseif token.kind == "code" then
+			addCodePiece(token.text)
+
+		elseif token.kind == "image" then
+			addImagePiece(token.image, token.size, token.alt)
+		end
+	end
+
+	return table.concat(displayParts)
+end
+
+-- =========================================
+-- CHAT LOG
+-- =========================================
+
+local function txt(user, text, R, G, B)
+	local shouldFollow = IsAtBottom()
+
+	local cha = Instance.new("TextLabel")
+	cha.Name = "Text"
+	cha.Active = false
+	cha.Size = UDim2.new(0.97, -35, 0, 0)
+	cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+	cha.BackgroundTransparency = 0.85
+	cha.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+	cha.TextSize = 16
+	cha.BorderSizePixel = 5
+	cha.BorderMode = Enum.BorderMode.Inset
+	cha.RichText = true
+	cha.TextWrapped = true
+	cha.TextXAlignment = Enum.TextXAlignment.Left
+	cha.TextYAlignment = Enum.TextYAlignment.Top
+	cha.AutomaticSize = Enum.AutomaticSize.Y
+	cha.ClipsDescendants = false
+	cha.Text = "Responding..."
+	cha.Visible = true
+	cha.Parent = si
+
+	local cp = Instance.new("ImageButton")
+	cp.Name = "CopyButton"
+	cp.Position = UDim2.new(1, 10, 1, -25)
+	cp.Size = UDim2.new(0, 25, 0, 25)
+	cp.Image = "rbxassetid://85495702622937"
+	cp.BackgroundColor3 = cha.TextColor3
+	cp.BackgroundTransparency = 0.3
+	cp.ZIndex = 2
+	cp.Parent = cha
+	Corner(0, 5, cp)
+
+	local prefix = escapeRichText(tostring(user))
+
+	local function safeRichify(str)
+		local ok, result = pcall(richify, tostring(str))
+		if ok then
+			return result
+		end
+		return escapeRichText(tostring(str))
+	end
+
+	local function UpdateScroll()
+		if shouldFollow then
+			ScrollToBottom()
+		end
+	end
+
+	local function RenderCurrent(currentText)
+		local rawCombined = prefix .. tostring(currentText)
+
+		local availableWidth = math.max(
+			50,
+			math.floor(
+				(cha.AbsoluteSize.X > 0 and cha.AbsoluteSize.X or si.AbsoluteSize.X * 0.97) - 18
+			)
+		)
+
+		local displayText = renderInlineOverlay(
+			cha,
+			rawCombined,
+			16,
+			Enum.Font.SourceSans,
+			availableWidth
+		)
+
+		cha.Text = safeRichify(displayText)
+		UpdateScroll()
+	end
+
+	task.spawn(function()
+		if TEXT_STYLE == "INSTANT" then
+			RenderCurrent(text)
+
+		elseif TEXT_STYLE == "EACHTEXT" then
+			local chunks = {}
+			for chunk in tostring(text):gmatch("%S+%s*") do
+				table.insert(chunks, chunk)
+			end
+
+			local current = ""
+			for _, chunk in ipairs(chunks) do
+				current ..= chunk
+				RenderCurrent(current)
+				task.wait(0.03)
+			end
+
+		elseif TEXT_STYLE == "EACHLINE" then
+			local current = ""
+			local lines = {}
+
+			for line in tostring(text):gmatch("([^\n]*)\n?") do
+				if line ~= "" then
+					table.insert(lines, line)
+				end
+			end
+
+			if #lines == 0 then
+				RenderCurrent(text)
+			else
+				for _, line in ipairs(lines) do
+					if current == "" then
+						current = line
+					else
+						current ..= "\n" .. line
+					end
+
+					RenderCurrent(current)
+					task.wait(0.05)
+				end
+			end
+
+		else
+			RenderCurrent(text)
+		end
+	end)
+
+	cp.MouseButton1Click:Connect(function()
+		local raw = tostring(text)
+
+		if setclipboard then
+			setclipboard(raw)
+		end
+
+		cp.ImageColor3 = Color3.fromRGB(0, 255, 0)
+
+		task.delay(1, function()
+			cp.ImageColor3 = Color3.new(1, 1, 1)
+		end)
+	end)
+
+	Corner(0, 5, cha)
+	return cha
+end
 
 --[[
 local vpf = Instance.new("ViewportFrame")
@@ -3641,8 +3639,7 @@ local function buildVisionText()
 
 end
 
---[[
--- =========================
+--[[ =========================
 -- JIMMY AI CORE (TABLE CORE)
 -- =========================
 
@@ -4883,8 +4880,8 @@ function Jimmy.ProcessCommand(message, user)
     end
 
     return false
-end
-]]
+end]]
+
 ------------------------------
 
 -- executor http detection (function returning response-like table)
@@ -5944,7 +5941,7 @@ end
         if st and st:IsA("TextLabel") then pcall(function() st.Text = "No key" end) end
         return true
     end
-    --[[ if lower:match("^/openwebsiteinexperience") or lower:match("^/owine") then
+    --[[if lower:match("^/openwebsiteinexperience") or lower:match("^/owine") then
         local url = msg:match("^/%S+%s+(.+)$") or ""
         url = url:gsub("^%s+",""):gsub("%s+$","")
         if url == "" then safeTxt(user.Error, "Usage: /OpenWebsiteInExperience [URL]",255,0,0) return true end
@@ -5976,12 +5973,12 @@ end
         end
         return true
     end
-    if lower:match("^/debug%s+(on|off)") then
+    --[[if lower:match("^/debug%s+(on|off)") then
         local flag = msg:match("^/debug%s+(on|off)")
         DEBUG_MODE = (flag == "on")
         safeTxt(user.Suc, "Debug mode: "..tostring(DEBUG_MODE),0,255,0)
         return true
-    end
+    end]]
     if lower:match("^/checkhttp") then
         safeTxt(user.Info, "Executor HTTP available: "..tostring(httpRequestFunc ~= nil), 0,170,255)
         return true
@@ -6222,12 +6219,12 @@ end
 	)
 	return true
 end
-    --[[if lower:match("^/spychat") then
+    if lower:match("^/spychat") then
         local t = msg:match("^/spychat%s*(%S*)") or ""
         SPY_CHAT_ON = (t:upper() == "ON")
         safeTxt(user.Suc, "SpyChat: "..tostring(SPY_CHAT_ON),0,255,0)
         return true
-    end]]
+    end
 -- =========================================
 -- FORCE REMEMBER
 -- =========================================
@@ -6361,7 +6358,7 @@ if lower:match("^/showmemories") then
 
 	safeTxt(
 		user.Info,
-		"===== SESSION =====",
+		"# ===== SESSION =====",
 		255,255,0
 	)
 
@@ -6377,7 +6374,7 @@ if lower:match("^/showmemories") then
 
 	safeTxt(
 		user.Info,
-		"===== GLOBAL =====",
+		"# ===== GLOBAL =====",
 		0,255,255
 	)
 
@@ -6449,121 +6446,16 @@ if lower:match("^/delallnote") then
 	return true
 
 end
---[[ =========================================
--- JIMMY COMMAND HANDLER
+-- =========================================
+-- /AllowCam [ON/OFF]
 -- =========================================
 
-function Jimmy.ProcessCommand(message, user)
+if lower:match("^/allowcam") then
 
-	local lower = Jimmy.TrimLower(message)
+	local value =
+		lower:match("^/allowcam%s+(%S+)$")
 
-		]]
-	-- =========================================
-	-- /AllowCam [ON/OFF]
-	-- =========================================
-
-	if lower:match("^/allowcam%s*") then
-
-		local value =
-			lower:match("^/allowcam%s+(%S+)$")
-
-		if not value then
-
-			safeTxt(
-				user.Warn,
-				"Usage: /AllowCam [ON/OFF]",
-				255,200,0
-			)
-
-			return true
-		end
-
-		--[[ =========================
-		-- ON
-		-- =========================
-
-		if value == "on" then
-
-			-- Conflict: Jimmy Hook
-			if Jimmy.HookedCharacter then
-
-				safeTxt(
-					user.Warn,
-					"Cannot enable AI Camera Vision while Jimmy is hooked.",
-					255,255,0
-				)
-
-				return true
-			end
-			]]
-
-			-- Already ON
-			if ALLOW_CAM then
-
-				safeTxt(
-					user.Info,
-					"AI Camera Vision is already enabled.",
-					255,255,0
-				)
-
-				return true
-			end
-
-			ALLOW_CAM = true
-
-			safeTxt(
-				user.Suc,
-				"AI Camera Vision Enabled",
-				0,255,0
-			)
-
-			return true
-		end
-
-		-- =========================
-		-- OFF
-		-- =========================
-
-		if value == "off" then
-
-			if not ALLOW_CAM then
-
-				safeTxt(
-					user.Info,
-					"AI Camera Vision is already disabled.",
-					255,255,0
-				)
-
-				return true
-			end
-
-			ALLOW_CAM = false
-
-			destroyViewport()
-
-			safeTxt(
-				user.Info,
-				"AI Camera Vision Disabled",
-				255,170,0
-			)
-
-			-- Auto disable children mode
-			if ALLOW_SEE_CHILDREN then
-
-				ALLOW_SEE_CHILDREN = false
-
-				safeTxt(
-					user.Warn,
-					"AllowSeeChildren Disabled Automatically by AllowCam.",
-					255,255,0
-				)
-
-			end
-
-			return true
-		end
-
-		-- Invalid argument
+	if not value then
 
 		safeTxt(
 			user.Warn,
@@ -6572,237 +6464,59 @@ function Jimmy.ProcessCommand(message, user)
 		)
 
 		return true
+
 	end
 
+	if value == "on" then
 
-	--[[ =========================================
-	-- /Hook [Character Model]
-	-- =========================================
-
-	if lower:match("^/hook%s+") then
-
-		-- Conflict: AllowCam
-		if ALLOW_CAM then
-
-			safeTxt(
-				user.Warn,
-				"Cannot hook Jimmy while AI Camera Vision is enabled.",
-				255,255,0
-			)
-
-			return true
-		end
-
-		local path =
-			message:match(
-				"^/hook%s+(.+)$"
-			) or ""
-
-		if path == "" then
-
-			safeTxt(
-				user.Error,
-				"Usage: /Hook workspace[\"Character\"]",
-				255,80,80
-			)
-
-			return true
-		end
-
-		local success, result =
-			Jimmy.HookCharacter(path)
-
-		if not success then
-
-			safeTxt(
-				user.Warn,
-				tostring(result),
-				255,255,0
-			)
-
-			return true
-		end
+		ALLOW_CAM = true
 
 		safeTxt(
 			user.Suc,
-			"Hooked: "
-				.. result:GetFullName(),
+			"AI Camera Vision Enabled",
 			0,255,0
 		)
 
-		return true
-	end
+	elseif value == "off" then
 
+		ALLOW_CAM = false
 
-	-- =========================================
-	-- /Unhook
-	-- =========================================
-
-	if lower:match("^/unhook%s*$") then
-
-		if not Jimmy.HookedCharacter then
-
-			safeTxt(
-				user.Info,
-				"Jimmy is not hooked.",
-				255,255,0
-			)
-
-			return true
-		end
-
-		local success, result =
-			Jimmy.UnhookCharacter()
-
-		if not success then
-
-			safeTxt(
-				user.Warn,
-				tostring(result),
-				255,255,0
-			)
-
-			return true
-		end
+		destroyViewport()
 
 		safeTxt(
-			user.Suc,
-			"Unhooked: "
-				.. result.Name,
-			0,255,0
+			user.Info,
+			"AI Camera Vision Disabled",
+			255,170,0
 		)
 
-		return true
-	end
+		-- auto disable children mode
+		if ALLOW_SEE_CHILDREN and ALLOW_PROPERTIES then
 
-
-	-- =========================================
-	-- /Set [Property] [Value]
-	-- =========================================
-
-	if lower:match("^/set%s+") then
-
-		if not Jimmy.HookedCharacter then
+			ALLOW_SEE_CHILDREN = false
+			ALLOW_PROPERTIES = false
 
 			safeTxt(
 				user.Warn,
-				"Jimmy is not hooked.",
+				"AllowSeeChildren Disabled Automatically by AllowCam.",
 				255,255,0
 			)
 
-			return true
 		end
 
-		local property, value =
-			message:match(
-				"^/set%s+(%S+)%s+(.+)$"
-			)
-
-		if not property or not value then
-
-			safeTxt(
-				user.Error,
-				"Usage: /set [property] [value]",
-				255,80,80
-			)
-
-			return true
-		end
-
-		local success, errorMessage =
-			Jimmy.SetProperty(
-				property,
-				value
-			)
-
-		if not success then
-
-			safeTxt(
-				user.Warn,
-				tostring(errorMessage),
-				255,255,0
-			)
-
-			return true
-		end
+	else
 
 		safeTxt(
-			user.Suc,
-			"Set "
-				.. property
-				.. " = "
-				.. value,
-			0,255,0
+			user.Warn,
+			"Usage: /AllowCam [ON/OFF]",
+			255,200,0
 		)
 
-		return true
 	end
 
+	return true
 
-	-- =========================================
-	-- /e [Emote]
-	-- =========================================
-
-	if lower:match("^/e%s+") then
-
-		if not Jimmy.HookedCharacter then
-
-			safeTxt(
-				user.Warn,
-				"Jimmy is not hooked.",
-				255,255,0
-			)
-
-			return true
-		end
-
-		local emote =
-			message:match(
-				"^/e%s+(.+)$"
-			) or ""
-
-		if emote == "" then
-
-			safeTxt(
-				user.Error,
-				"Usage: /e [emote]",
-				255,80,80
-			)
-
-			return true
-		end
-
-		local success, errorMessage =
-			Jimmy.PlayEmote(emote)
-
-		if not success then
-
-			safeTxt(
-				user.Warn,
-				tostring(errorMessage),
-				255,255,0
-			)
-
-			return true
-		end
-
-		safeTxt(
-			user.Suc,
-			"Emote: " .. emote,
-			0,255,0
-		)
-
-		return true
-	end
-
-
-	-- =========================================
-	-- Unknown command
-	-- =========================================
-
-	return false
 end
-]]
+
 	
 -- =========================================
 -- /AllowProperties [ON/OFF]
@@ -7191,6 +6905,9 @@ if lower:match("^/chat") then
 
 	return true
 
+end
+
+	return false
 end
 
 -- ========== UI HOOK & BIND (safe, replace old) ==========
