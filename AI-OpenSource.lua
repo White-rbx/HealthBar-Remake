@@ -1,4 +1,4 @@
-local ver = " UIs 6.956 - ( DEBUG - 1 )"
+local ver = " UIs 6.956.1 - ( PREVIEW )"
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1197,16 +1197,6 @@ local function addImagePiece(imageId, size, altText)
 				imgSize
 			)
 
-		print(
-	"[InlineImage]",
-	"Image =", imageId,
-	"Size =", imgSize,
-	"X =", x,
-	"Y =", y,
-	"LineH =", lineH,
-	"MaxWidth =", maxWidth
-			)
-
 		img.Position =
 			UDim2.fromOffset(
 				x,
@@ -1220,12 +1210,6 @@ local function addImagePiece(imageId, size, altText)
 			)
 
 		x += imgSize
-
-		print(
-	"[InlineImage AFTER]",
-	"X =", x,
-	"Y =", y
-			)
 
 		addDisplay(
 			makeSpacer(
@@ -1331,21 +1315,6 @@ local function txt(user, text, R, G, B)
 		)
 
 		cha.Text = safeRichify(displayText)
-		print(
-	"[Inline DEBUG]",
-	"TextSize =", cha.TextSize,
-	"AbsoluteSize =", cha.AbsoluteSize,
-	"TextBounds =", cha.TextBounds,
-	"CanvasPos =", si.CanvasPosition
-		)
-
-	print(
-	"[InlineImage POS]",
-	imageId,
-	"Position =", img.Position,
-	"AbsolutePosition =", img.AbsolutePosition
-		)
-		
 		UpdateScroll()
 	end
 
@@ -2360,7 +2329,7 @@ Output → **Hello**
 %# Title%
 Output → # Title
 
-Inline Image Formatting Rules
+Inline Image Formatting Rules ( UNDER TEST DON'T USE )
  - You can insert custom Roblox images into messages using the following syntax.
   1. Folder image
    Use:
