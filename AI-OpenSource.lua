@@ -1,4 +1,4 @@
-local ver = " UIs 6.955 - 2 "
+local ver = " UIs 6.956 - 2 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1254,7 +1254,7 @@ local function txt(user, text, R, G, B)
 	local cha = Instance.new("TextLabel")
 	cha.Name = "Text"
 	cha.Active = false
-	cha.Size = si.AbsoluteSize.X * 0.97 - 35 -- UDim2.new(0.97, -35, 0, 0)
+	cha.Size = UDim2.new(0.97, -35, 0, 0)
 	cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
 	cha.BackgroundTransparency = 0.85
 	cha.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
@@ -1302,11 +1302,9 @@ local function txt(user, text, R, G, B)
 		local rawCombined = prefix .. tostring(currentText)
 
 		local availableWidth = math.max(
-			50,
-			math.floor(
-				(cha.AbsoluteSize.X > 0 and cha.AbsoluteSize.X or si.AbsoluteSize.X * 0.97) - 18
-			)
-		)
+    50,
+    math.floor(si.AbsoluteSize.X * 0.97 - 35 - 18)
+)
 
 		local displayText = renderInlineOverlay(
 			cha,
