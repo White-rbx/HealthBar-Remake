@@ -1,4 +1,4 @@
-local ver = " UIs 6.953 - 1 "
+local ver = " UIs 6.954 - 2 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -330,7 +330,7 @@ st.Name = "Status"
 st.Position = UDim2.new(0.77,0,0,0)
 st.Size = UDim2.new(0.23,0,0.1,0)
 st.BackgroundTransparency = 1
-st.Text = "Status: No key"
+st.Text = "Status: Unknown"
 st.TextColor3 = Color3.fromRGB(255,255,255)
 st.TextScaled = true
 st.Active = false
@@ -898,9 +898,13 @@ local folderRbx = folderRbx or {
 	ExclamationMark = "rbxassetid://76818667867454",
 	LuaLogo = "rbxassetid://91555220907871",
 	Apple = "rbxassetid://73519352873388",
+	Orange = "rbxassetid://137783338520524",
 	PinkPaw = "rbxassetid://74221424704557",
 	BlackPaw = "rbxassetid://95970558194219",
 	Jimmy = "rbxassetid://123105101896574",
+	User = "rbxassetid://90907296753231",
+	GroupOfUsers = "rbxassetid://107327630971617",
+	UserSafety = "rbxassetid://129140815302979",
 }
 
 local TextService = game:GetService("TextService")
@@ -2407,9 +2411,13 @@ Inline Image Formatting Rules
 	 - "ExclamationMark"
 	 - "LuaLogo"
 	 - "Apple"
+	 - "Orange"
 	 - "PinkPaw"
 	 - "BlackPaw"
 	 - "Jimmy"
+	 - "User"
+	 - "GroupOfUsers"
+	 - "UserSafety"
   
      Only use image names from this list with "folder://rbx["NAME"]".
      Example:
