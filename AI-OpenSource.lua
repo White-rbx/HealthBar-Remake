@@ -1,4 +1,4 @@
-local ver = " UIs 6.956 - ( DEBUG )"
+local ver = " UIs 6.956 - ( DEBUG - 1 )"
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1331,6 +1331,21 @@ local function txt(user, text, R, G, B)
 		)
 
 		cha.Text = safeRichify(displayText)
+		print(
+	"[Inline DEBUG]",
+	"TextSize =", cha.TextSize,
+	"AbsoluteSize =", cha.AbsoluteSize,
+	"TextBounds =", cha.TextBounds,
+	"CanvasPos =", si.CanvasPosition
+		)
+
+	print(
+	"[InlineImage POS]",
+	imageId,
+	"Position =", img.Position,
+	"AbsolutePosition =", img.AbsolutePosition
+		)
+		
 		UpdateScroll()
 	end
 
