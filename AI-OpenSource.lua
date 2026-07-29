@@ -1,4 +1,4 @@
-local ver = " UIs 6.954 - 2 "
+local ver = " UIs 6.955 - 2 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1254,7 +1254,7 @@ local function txt(user, text, R, G, B)
 	local cha = Instance.new("TextLabel")
 	cha.Name = "Text"
 	cha.Active = false
-	cha.Size = UDim2.new(0.97, -35, 0, 0)
+	cha.Size = si.AbsoluteSize.X * 0.97 - 35 -- UDim2.new(0.97, -35, 0, 0)
 	cha.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
 	cha.BackgroundTransparency = 0.85
 	cha.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
@@ -1262,7 +1262,7 @@ local function txt(user, text, R, G, B)
 	cha.BorderSizePixel = 5
 	cha.BorderMode = Enum.BorderMode.Inset
 	cha.RichText = true
-	cha.TextWrapped = true
+	cha.TextWrapped = false
 	cha.TextXAlignment = Enum.TextXAlignment.Left
 	cha.TextYAlignment = Enum.TextYAlignment.Top
 	cha.AutomaticSize = Enum.AutomaticSize.Y
