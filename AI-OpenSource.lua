@@ -1,4 +1,4 @@
-local ver = " UIs 6.956 - 2 "
+local ver = " UIs 6.956 - ( DEBUG )"
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -871,11 +871,11 @@ local GiveSpaceToCopyButton = false
 local function getCopySpace()
 	return GiveSpaceToCopyButton and 66 or 0
 end
-]]
 
 local function getCopySpace()
 	return 0
 end
+]]
 
 -- =========================================
 -- INLINE IMAGE SUPPORT
@@ -1039,7 +1039,7 @@ local function CreateInlineImage(parent, imageId, size)
 	image.BorderSizePixel = 0
 	image.Image = imageId
 	image.ScaleType = Enum.ScaleType.Fit
-	image.Size = UDim2.fromOffset(size, size)
+	image.Size = UDim2.fromOffset(size + 5, size + 5)
 	image.ZIndex = parent.ZIndex + 1
 	image.Parent = parent
 	return image
@@ -1197,6 +1197,16 @@ local function addImagePiece(imageId, size, altText)
 				imgSize
 			)
 
+		print(
+	"[InlineImage]",
+	"Image =", imageId,
+	"Size =", imgSize,
+	"X =", x,
+	"Y =", y,
+	"LineH =", lineH,
+	"MaxWidth =", maxWidth
+			)
+
 		img.Position =
 			UDim2.fromOffset(
 				x,
@@ -1210,6 +1220,12 @@ local function addImagePiece(imageId, size, altText)
 			)
 
 		x += imgSize
+
+		print(
+	"[InlineImage AFTER]",
+	"X =", x,
+	"Y =", y
+			)
 
 		addDisplay(
 			makeSpacer(
@@ -1262,7 +1278,7 @@ local function txt(user, text, R, G, B)
 	cha.BorderSizePixel = 5
 	cha.BorderMode = Enum.BorderMode.Inset
 	cha.RichText = true
-	cha.TextWrapped = false
+	cha.TextWrapped = true
 	cha.TextXAlignment = Enum.TextXAlignment.Left
 	cha.TextYAlignment = Enum.TextYAlignment.Top
 	cha.AutomaticSize = Enum.AutomaticSize.Y
