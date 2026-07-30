@@ -1,4 +1,4 @@
-local ver = " UIs 6.956.2 - ( PREVIEW )"
+local ver = " UIs 6.956.3 - ( PREVIEW )"
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1034,17 +1034,17 @@ local function tokenizeInlineMessage(rawText)
 	return tokens
 end
 
+-- Replace the existing renderInlineOverlay / CreateInlineImage related helpers with this block
+
 local function CreateInlineImage(parent, imageId, size)
 	local image = Instance.new("ImageLabel")
 	image.Name = "InlineImage"
 	image.BackgroundTransparency = 1
 	image.BorderSizePixel = 0
 	image.Image = imageId
-	-- Use Fit and set proper AnchorPoint so Position uses top-left corner reliably
 	image.ScaleType = Enum.ScaleType.Fit
 	image.Size = UDim2.fromOffset(size or 16, size or 16)
 	image.AnchorPoint = Vector2.new(0, 0)
-	-- ensure it's above text but not on top of UI controls
 	image.ZIndex = (parent and parent.ZIndex or 1) + 2
 	image.Parent = parent
 	return image
@@ -1055,177 +1055,157 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 
 	local tokens = tokenizeInlineMessage(rawText)
 
-	local spaceW = math.max(
-		1,
-		TextService:GetTextSize(
-			" ",
-			textSize,
-			font,
-			Vector2.new(10000, 10000)
-		).X
-	)
-
-	local lineH = textSize + 4
-	local x = 0
-	local y = 0
+	-- measure string: only visible characters used for width measurement
+	local measureStr = ""
+	-- display parts: the final string to put into cha.Text (contains NBSP spacers etc)
 	local displayParts = {}
 
-	local function newLine()
+	-- helpers to measure width
+	local function measureWidth(s)
+		if s == "" then return 0 end
+		local size = TextService:GetTextSize(tostring(s), textSize, font, Vector2.new(10000, 10000))
+		return size.X
+	end
+
+	local function addDisplayPart(part)
+		table.insert(displayParts, part)
+		-- update measure string with equivalent characters (NBSP is fine for measurement)
+		measureStr = measureStr .. part
+	end
+
+	-- split-by-newline helper
+	local function addNewLine()
 		table.insert(displayParts, "\n")
-		x = 0
-		y = y + lineH
+		measureStr = measureStr .. "\n"
 	end
 
-	local function addDisplay(s)
-		table.insert(displayParts, s)
+	-- current vertical offset (pixels) and current line height
+	local lineH = math.max(textSize + 4, measureWidth("Ag"))
+	local currentY = 0
+
+	-- get width of a run of text (used to decide wrap)
+	local function textWidth(s)
+		return measureWidth(s)
 	end
 
-	local function addTextChunk(chunk)
-		if chunk == "" then
-			return
-		end
-
-		local w = TextService:GetTextSize(
-			chunk,
-			textSize,
-			font,
-			Vector2.new(10000, 10000)
-		).X
-
-		if x > 0 and x + w > maxWidth then
-			newLine()
-		end
-
-		addDisplay(chunk)
-		x = x + w
-	end
-
-	local function addTextPiece(piece)
-		piece = tostring(piece)
-		if piece == "" then
-			return
-		end
-
-		local lines = splitByNewlines(piece)
-
-		for idx, lineText in ipairs(lines) do
-			if lineText ~= "" then
-				for chunk in lineText:gmatch("%S+%s*") do
-					addTextChunk(chunk)
-				end
-			end
-
-			if idx < #lines then
-				newLine()
-			end
-		end
-	end
-
-	local function addCodePiece(code)
-		local w = TextService:GetTextSize(
-			code,
-			textSize,
-			font,
-			Vector2.new(10000, 10000)
-		).X
-
-		if x > 0 and x + w > maxWidth then
-			newLine()
-		end
-
-		addDisplay("`" .. code .. "`")
-		x = x + w
-	end
-
+	-- create NBSP spacer matching px width px
 	local NBSP = "\194\160"
-
-	local function getLineHeight()
-		return TextService:GetTextSize(
-			"Ag",
-			textSize,
-			font,
-			Vector2.new(10000, 10000)
-		).Y
-	end
-
 	local function makeSpacer(px)
-		local nbspWidth = math.max(
-			1,
-			TextService:GetTextSize(
-				NBSP,
-				textSize,
-				font,
-				Vector2.new(10000, 10000)
-			).X
-		)
-
-		local count = math.max(
-			1,
-			math.ceil(px / nbspWidth)
-		)
-
+		local nbspWidth = math.max(1, TextService:GetTextSize(NBSP, textSize, font, Vector2.new(10000, 10000)).X)
+		local count = math.max(1, math.ceil(px / nbspWidth))
 		return string.rep(NBSP, count)
 	end
 
-	local function addImagePiece(imageId, size, altText)
-		local imgSize = size or textSize
-		local baseLineH = getLineHeight()
-
-		-- if image would overflow current line, break line first
-		if x > 0 and x + imgSize > maxWidth then
-			newLine()
-		end
-
-		-- enlarge line height so image fits
-		lineH = math.max(lineH, baseLineH, imgSize)
-
-		if imageId and imageId ~= "" then
-			-- reserve space in the text with NBSPs sized to image width
-			addDisplay(makeSpacer(imgSize))
-			-- create image and position it relative to cha after we set cha.Text (we'll set parent now)
-			local img = CreateInlineImage(cha, imageId, imgSize)
-
-			-- compute vertical offset: center image wrt current line baseline
-			local vertOffset = math.max(0, math.floor((lineH - imgSize) / 2))
-
-			-- position image now; cha's top-left is (0,0) within its local coords
-			-- X position is current x (converted to offset), Y is current y + vertOffset
-			img.Position = UDim2.fromOffset(math.floor(x), math.floor(y + vertOffset))
-
-			-- increment x by image width
-			x = x + imgSize
-
-			-- small safety: if cha's AbsoluteSize/Canvas size may change with text, defer a second pass to adjust
-			task.delay(0.01, function()
-				-- recompute just in case layout changed: ensure image still aligns to reserved space
-				local recomputeX = 0
-				-- compute display string up to this point to measure widths could be expensive; as a light correction, read img.Position.XOffset again and re-center vertically
-				if img and img.Parent then
-					-- recenter vertical if lineH changed slightly
-					local newLineH = getLineHeight()
-					local newVert = math.max(0, math.floor((math.max(newLineH, imgSize) - imgSize) / 2))
-					img.Position = UDim2.fromOffset(img.Position.X.Offset, math.floor(y + newVert))
-				end
-			end)
-		elseif altText and altText ~= "" then
-			-- fallback: insert alt text instead of image
-			addTextPiece(altText)
-		end
-	end
-
+	-- Process tokens while maintaining measureStr to compute exact X before each image
 	for _, token in ipairs(tokens) do
 		if token.kind == "text" then
-			addTextPiece(token.text)
+			-- break text by lines and words to respect maxWidth
+			local text = tostring(token.text)
+			local lines = splitByNewlines(text)
+			for li, line in ipairs(lines) do
+				local pos = 1
+				while pos <= #line do
+					-- grab next word+spaces chunk (preserve spaces)
+					local s, e = line:find("%S+%s*", pos)
+					if not s then
+						-- leftover spaces or empty => add remaining
+						local tail = line:sub(pos)
+						if tail ~= "" then
+							local w = textWidth(tail)
+							local curW = measureWidth(measureStr:match("[^\n]*$") or "")
+							if curW + w > maxWidth then
+								addNewLine()
+								currentY = currentY + lineH
+								-- reset line height for new line (approx)
+								lineH = math.max(lineH, textSize + 4)
+							end
+							addDisplayPart(tail)
+						end
+						break
+					end
+					local chunk = line:sub(s, e)
+					local chunkW = textWidth(chunk)
+					local curLineSegment = (measureStr:match("[^\n]*$") or "")
+					local curW = measureWidth(curLineSegment)
+					if curW + chunkW > maxWidth then
+						-- wrap to next line
+						addNewLine()
+						currentY = currentY + lineH
+						-- reset line height approximation for new line
+						lineH = math.max(textSize + 4, measureWidth("Ag"))
+					end
+					addDisplayPart(chunk)
+					pos = e + 1
+				end
+				-- if not last input line, insert newline
+				if li < #lines then
+					addNewLine()
+					currentY = currentY + lineH
+					lineH = math.max(textSize + 4, measureWidth("Ag"))
+				end
+			end
 
 		elseif token.kind == "code" then
-			addCodePiece(token.text)
+			-- treat inline code as text with backticks
+			local codeText = "`" .. tostring(token.text) .. "`"
+			local codeW = textWidth(codeText)
+			local curLineSegment = (measureStr:match("[^\n]*$") or "")
+			local curW = measureWidth(curLineSegment)
+			if curW + codeW > maxWidth then
+				addNewLine()
+				currentY = currentY + lineH
+				lineH = math.max(textSize + 4, measureWidth("Ag"))
+			end
+			addDisplayPart(codeText)
 
 		elseif token.kind == "image" then
-			addImagePiece(token.image, token.size, token.alt)
+			local imgSize = token.size or textSize
+			-- measure current line pixel width BEFORE reserving space
+			local curLineSegment = (measureStr:match("[^\n]*$") or "")
+			local curX = measureWidth(curLineSegment)
+
+			-- if image overflows line, break first
+			if curX + imgSize > maxWidth then
+				addNewLine()
+				currentY = currentY + lineH
+				curX = 0
+				lineH = math.max(textSize + 4, measureWidth("Ag"))
+			end
+
+			-- reserve spacer in display (so subsequent text has correct offsets)
+			local spacer = makeSpacer(imgSize)
+			addDisplayPart(spacer)
+
+			-- update lineH to fit image if needed
+			lineH = math.max(lineH, imgSize, measureWidth("Ag"))
+
+			-- create image now and position with precise X (curX) and centered vertically in the line
+			local img = CreateInlineImage(cha, token.image, imgSize)
+			local vertOffset = math.max(0, math.floor((lineH - imgSize) / 2))
+			-- Position is relative to cha top-left; use measured curX and currentY
+			img.Position = UDim2.fromOffset(math.floor(curX), math.floor(currentY + vertOffset))
+
+			-- small deferred adjustment to re-center vertically if layout metrics change
+			task.delay(0.01, function()
+				if not img.Parent then return end
+				local newLineH = lineH
+				local newVert = math.max(0, math.floor((newLineH - imgSize) / 2))
+				img.Position = UDim2.fromOffset(math.floor(img.Position.X.Offset), math.floor(currentY + newVert))
+			end)
 		end
 	end
 
-	return table.concat(displayParts)
+	-- final text
+	local finalText = table.concat(displayParts)
+	-- safe richify as before (use your safeRichify wrapper if present)
+	local ok, out = pcall(richify, tostring(finalText))
+	if ok and out then
+		cha.Text = out
+	else
+		cha.Text = escapeRichText(finalText)
+	end
+
+	return finalText
 end
 
 -- =========================================
