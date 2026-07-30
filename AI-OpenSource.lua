@@ -1,4 +1,4 @@
-local ver = " UIs 6.956.1 - ( PREVIEW )"
+local ver = " UIs 6.956.2 - ( PREVIEW )"
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -935,6 +935,8 @@ local function splitByNewlines(str)
 	return lines
 end
 
+-- (Replace the inline-image functions / helpers with the following)
+
 local function parseInlineToken(code)
 	local raw = tostring(code)
 	local size
@@ -1038,9 +1040,12 @@ local function CreateInlineImage(parent, imageId, size)
 	image.BackgroundTransparency = 1
 	image.BorderSizePixel = 0
 	image.Image = imageId
+	-- Use Fit and set proper AnchorPoint so Position uses top-left corner reliably
 	image.ScaleType = Enum.ScaleType.Fit
-	image.Size = UDim2.fromOffset(size + 5, size + 5)
-	image.ZIndex = parent.ZIndex + 1
+	image.Size = UDim2.fromOffset(size or 16, size or 16)
+	image.AnchorPoint = Vector2.new(0, 0)
+	-- ensure it's above text but not on top of UI controls
+	image.ZIndex = (parent and parent.ZIndex or 1) + 2
 	image.Parent = parent
 	return image
 end
@@ -1068,7 +1073,7 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 	local function newLine()
 		table.insert(displayParts, "\n")
 		x = 0
-		y += lineH
+		y = y + lineH
 	end
 
 	local function addDisplay(s)
@@ -1092,7 +1097,7 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 		end
 
 		addDisplay(chunk)
-		x += w
+		x = x + w
 	end
 
 	local function addTextPiece(piece)
@@ -1129,105 +1134,84 @@ local function renderInlineOverlay(cha, rawText, textSize, font, maxWidth)
 		end
 
 		addDisplay("`" .. code .. "`")
-		x += w
+		x = x + w
 	end
 
 	local NBSP = "\194\160"
 
-local function getLineHeight()
-	return TextService:GetTextSize(
-		"Ag",
-		textSize,
-		font,
-		Vector2.new(10000, 10000)
-	).Y
-end
-
-local function makeSpacer(px)
-	local nbspWidth = math.max(
-		1,
-		TextService:GetTextSize(
-			NBSP,
+	local function getLineHeight()
+		return TextService:GetTextSize(
+			"Ag",
 			textSize,
 			font,
 			Vector2.new(10000, 10000)
-		).X
-	)
-
-	local count = math.max(
-		1,
-		math.ceil(px / nbspWidth)
-	)
-
-	return string.rep(
-		NBSP,
-		count
-	)
-end
-
-local function addImagePiece(imageId, size, altText)
-
-	local imgSize =
-		size or textSize
-
-	local baseLineH =
-		getLineHeight()
-
-	if x > 0
-		and x + imgSize > maxWidth
-	then
-		newLine()
+		).Y
 	end
 
-	if imageId
-		and imageId ~= ""
-	then
-
-		lineH =
-			math.max(
-				lineH,
-				baseLineH,
-				imgSize
-			)
-
-		local img =
-			CreateInlineImage(
-				cha,
-				imageId,
-				imgSize
-			)
-
-		img.Position =
-			UDim2.fromOffset(
-				x,
-				y +
-					math.max(
-						0,
-						math.floor(
-							(lineH - imgSize) / 2
-						)
-					)
-			)
-
-		x += imgSize
-
-		addDisplay(
-			makeSpacer(
-				imgSize
-			)
+	local function makeSpacer(px)
+		local nbspWidth = math.max(
+			1,
+			TextService:GetTextSize(
+				NBSP,
+				textSize,
+				font,
+				Vector2.new(10000, 10000)
+			).X
 		)
 
-	elseif altText
-		and altText ~= ""
-	then
-
-		addTextPiece(
-			altText
+		local count = math.max(
+			1,
+			math.ceil(px / nbspWidth)
 		)
 
+		return string.rep(NBSP, count)
 	end
 
-end
+	local function addImagePiece(imageId, size, altText)
+		local imgSize = size or textSize
+		local baseLineH = getLineHeight()
+
+		-- if image would overflow current line, break line first
+		if x > 0 and x + imgSize > maxWidth then
+			newLine()
+		end
+
+		-- enlarge line height so image fits
+		lineH = math.max(lineH, baseLineH, imgSize)
+
+		if imageId and imageId ~= "" then
+			-- reserve space in the text with NBSPs sized to image width
+			addDisplay(makeSpacer(imgSize))
+			-- create image and position it relative to cha after we set cha.Text (we'll set parent now)
+			local img = CreateInlineImage(cha, imageId, imgSize)
+
+			-- compute vertical offset: center image wrt current line baseline
+			local vertOffset = math.max(0, math.floor((lineH - imgSize) / 2))
+
+			-- position image now; cha's top-left is (0,0) within its local coords
+			-- X position is current x (converted to offset), Y is current y + vertOffset
+			img.Position = UDim2.fromOffset(math.floor(x), math.floor(y + vertOffset))
+
+			-- increment x by image width
+			x = x + imgSize
+
+			-- small safety: if cha's AbsoluteSize/Canvas size may change with text, defer a second pass to adjust
+			task.delay(0.01, function()
+				-- recompute just in case layout changed: ensure image still aligns to reserved space
+				local recomputeX = 0
+				-- compute display string up to this point to measure widths could be expensive; as a light correction, read img.Position.XOffset again and re-center vertically
+				if img and img.Parent then
+					-- recenter vertical if lineH changed slightly
+					local newLineH = getLineHeight()
+					local newVert = math.max(0, math.floor((math.max(newLineH, imgSize) - imgSize) / 2))
+					img.Position = UDim2.fromOffset(img.Position.X.Offset, math.floor(y + newVert))
+				end
+			end)
+		elseif altText and altText ~= "" then
+			-- fallback: insert alt text instead of image
+			addTextPiece(altText)
+		end
+	end
 
 	for _, token in ipairs(tokens) do
 		if token.kind == "text" then
