@@ -1,4 +1,4 @@
--- Script ahh 2.8
+-- Script ahh 2.83
 
 -- =====>> Saved Functions <<=====
 
@@ -417,7 +417,7 @@ task.spawn(function()
 end)
 
 
-Text(scr, "Beta", "It might have a bug, and still in <b>beta</b>", false, 255, 131, 131, 255, 0, 0)
+-- Text(scr, "Beta", "It might have a bug, and still in <b>beta</b>", false, 255, 131, 131, 255, 0, 0)
 --===================--
 
 --====================================================
@@ -960,78 +960,56 @@ local function getHumanoid()
 	return c and c:FindFirstChildOfClass("Humanoid")
 end
 
+local function getRoot()
+	local c = getCharacter()
+	return c and c:FindFirstChild("HumanoidRootPart")
+end
+
 local function getEquippedTool()
 	local c = getCharacter()
-	if not c then return nil end
+	if not c then
+		return nil
+	end
 	return c:FindFirstChildOfClass("Tool")
 end
-
-local function warnStroke(ui, color)
-	local stroke = ui:FindFirstChildOfClass("UIStroke")
-	if not stroke then return end
-
-	local old = stroke.Color
-	stroke.Color = color
-	task.delay(1, function()
-		if stroke then
-			stroke.Color = old
-		end
-	end)
-end
-
-local function DropTool(tool)
-    if not tool then return false end
-    if not tool:IsA("Tool") then return false end
-    if not tool.CanBeDropped then return false end
-
-    local hum = getHumanoid()
-    local root = getCharacter() and getCharacter():FindFirstChild("HumanoidRootPart")
-
-    if hum then
-        hum:UnequipTools()
-    end
-
-    tool.Parent = workspace
-
-    local handle = tool:FindFirstChild("Handle")
-    if handle and root then
-        handle.CFrame = root.CFrame * CFrame.new(0,0,-2)
-    end
-
-    return true
-						end
 
 Button(
 	scr,
 	"DropTool",
 	"Drop Tool",
 	true,
-	255,255,0,          -- Yellow text
-	255,220,120,        -- Yellow stroke
-	nil,                -- Workin (ไม่ต้อง loop)
-	function(btn)       -- Callback
-		local tool = getEquippedTool()
-		local char = getCharacter()
+	255,255,0,
+	255,220,120,
+	nil,
+	function(btn)
 
-		if not tool or not char then
-			-- ❌ ไม่มี tool
+		local tool = getEquippedTool()
+		local hum = getHumanoid()
+		local root = getRoot()
+
+		if not tool or not hum or not root then
 			warnStroke(btn, Color3.fromRGB(255,0,0))
 			return
 		end
 
 		if tool.CanBeDropped == false then
-			-- ❌ Tool drop ไม่ได้
 			warnStroke(btn, Color3.fromRGB(255,0,0))
 			return
 		end
 
-		-- ✅ Drop
-		local ok = DropTool(tool)
+		hum:UnequipTools()
 
-if not ok then
-    warnStroke(btn, Color3.fromRGB(255,0,0))
-    return
-end
+		task.wait()
+
+		tool.Parent = workspace
+
+		local handle = tool:FindFirstChild("Handle")
+
+		if handle then
+			handle.CFrame =
+				root.CFrame * CFrame.new(0,0,-5)
+		end
+
 	end
 )
 
@@ -1040,50 +1018,68 @@ Button(
 	"DropTools",
 	"Drop all tools",
 	true,
-	255,120,150,        -- Pink-red text
-	255,80,80,          -- Red-pink stroke
+	255,120,150,
+	255,80,80,
 	nil,
 	function(btn)
+
 		local char = getCharacter()
+		local hum = getHumanoid()
+		local root = getRoot()
 		local backpack = lp:FindFirstChild("Backpack")
 
-		if not char or not backpack then
-			warnStroke(btn, Color3.fromRGB(200,0,0))
+		if not char or not hum or not root or not backpack then
+			warnStroke(btn, Color3.fromRGB(255,0,0))
 			return
 		end
 
-		local droppedAny = false
+		hum:UnequipTools()
+
+		task.wait()
+
 		local failed = false
 
-		-- 🔹 Tool ที่ถืออยู่
-		local equipped = char:FindFirstChildOfClass("Tool")
-		if equipped then
-			if equipped.CanBeDropped then
-				equipped.Parent = workspace
-				droppedAny = true
-			else
+		local function drop(tool)
+
+			if not tool:IsA("Tool") then
+				return
+			end
+
+			if tool.CanBeDropped == false then
 				failed = true
+				return
 			end
+
+			tool.Parent = workspace
+
+			local handle =
+				tool:FindFirstChild("Handle")
+
+			if handle then
+
+				handle.CFrame =
+					root.CFrame
+					* CFrame.new(
+						math.random(-2,2),
+						0,
+						-5 + math.random(-2,2)
+					)
+
+			end
+
 		end
 
-		-- 🔹 Tool ใน Backpack
+		for _,tool in ipairs(char:GetChildren()) do
+			drop(tool)
+		end
+
 		for _,tool in ipairs(backpack:GetChildren()) do
-			if tool:IsA("Tool") then
-				if tool.CanBeDropped then
-					if DropTool(tool) then
-    droppedAny = true
-else
-    failed = true
-end
-				else
-					failed = true
-				end
-			end
+			drop(tool)
 		end
 
-		-- ❌ มีอย่างน้อย 1 อัน drop ไม่ได้
 		if failed then
-			warnStroke(btn, Color3.fromRGB(150,0,0)) -- really red
+			warnStroke(btn, Color3.fromRGB(150,0,0))
 		end
+
 	end
-)
+						)						
