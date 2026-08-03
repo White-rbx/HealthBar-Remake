@@ -1,4 +1,4 @@
--- Script ahh 2.7
+-- Script ahh 2.8
 
 -- =====>> Saved Functions <<=====
 
@@ -725,7 +725,7 @@ local function bindDeaths()
 end
 
 lp.CharacterAdded:Connect(function()
-	task.wait(1)
+	task.wait()
 	bindDeaths()
 end)
 if Humanoid then bindDeaths() end
@@ -831,7 +831,7 @@ local posButton = Button(
 		if HRP and HRP.Parent then
 			local p = HRP.Position
 			local text = string.format(
-				"X: %.2f | Y: %.2f | Z: %.2f",
+				"%.2f %.2f %.2f",
 				p.X, p.Y, p.Z
 			)
 
@@ -979,6 +979,28 @@ local function warnStroke(ui, color)
 	end)
 end
 
+local function DropTool(tool)
+    if not tool then return false end
+    if not tool:IsA("Tool") then return false end
+    if not tool.CanBeDropped then return false end
+
+    local hum = getHumanoid()
+    local root = getCharacter() and getCharacter():FindFirstChild("HumanoidRootPart")
+
+    if hum then
+        hum:UnequipTools()
+    end
+
+    tool.Parent = workspace
+
+    local handle = tool:FindFirstChild("Handle")
+    if handle and root then
+        handle.CFrame = root.CFrame * CFrame.new(0,0,-2)
+    end
+
+    return true
+						end
+
 Button(
 	scr,
 	"DropTool",
@@ -1004,7 +1026,12 @@ Button(
 		end
 
 		-- ✅ Drop
-		tool.Parent = workspace
+		local ok = DropTool(tool)
+
+if not ok then
+    warnStroke(btn, Color3.fromRGB(255,0,0))
+    return
+end
 	end
 )
 
@@ -1043,8 +1070,11 @@ Button(
 		for _,tool in ipairs(backpack:GetChildren()) do
 			if tool:IsA("Tool") then
 				if tool.CanBeDropped then
-					tool.Parent = workspace
-					droppedAny = true
+					if DropTool(tool) then
+    droppedAny = true
+else
+    failed = true
+end
 				else
 					failed = true
 				end
