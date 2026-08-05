@@ -1,8 +1,9 @@
--- Script ahh 2.83
+local v_ver = [[Script ahh 2.84 Beta]]
+
+------------------------------------------------------------------------------------------
 
 -- =====>> Saved Functions <<=====
-
--- ====FUNCTION CORNER=====
+-- ====FUNCTION CORNER===== Example: Corner(Scale, Offset, Parent)
 local function Corner(Scale, Offset, Parent)
   local Corner = Instance.new("UICorner")
   Corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
@@ -11,44 +12,48 @@ local function Corner(Scale, Offset, Parent)
 end
 -- =====END FUNCTION CORNER====
 
--- =====FUNCTION UILISTLAYOUT=====
-local HCenter = Enum.HorizontalAlignment.Center
-local VCenter = Enum.VerticalAlignment.Center
-local HLeft = Enum.HorizontalAlignment.Left
-local VTop = Enum.VerticalAlignment.Top
-local HRight = Enum.HorizontalAlignment.Right
-local VBottom = Enum.VerticalAlignment.Bottom
-local FillH = Enum.FillDirection.Horizontal
-local FillV = Enum.FillDirection.Vertical
-local SCustom = Enum.SortOrder.Custom
-local SLayout = Enum.SortOrder.LayoutOrder
-local SName = Enum.SortOrder.Name
+-- =====FUNCTION UILISTLAYOUT===== Example: ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+local ListUI = {
+ HCenter = Enum.HorizontalAlignment.Center,
+ VCenter = Enum.VerticalAlignment.Center,
+ HLeft = Enum.HorizontalAlignment.Left,
+ VTop = Enum.VerticalAlignment.Top,
+ HRight = Enum.HorizontalAlignment.Right,
+ VBottom = Enum.VerticalAlignment.Bottom,
+ FillH = Enum.FillDirection.Horizontal,
+ FillV = Enum.FillDirection.Vertical,
+ SCustom = Enum.SortOrder.Custom,
+ SLayout = Enum.SortOrder.LayoutOrder,
+ SName = Enum.SortOrder.Name
+}
 
 local function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
-    list.FillDirection = FILL or FillH
-    list.HorizontalAlignment = HZ or HCenter
-    list.VerticalAlignment = VT or VCenter
-    list.SortOrder = SO or SName
+    list.FillDirection = ListUI[FILL] or ListUI.FillH
+    list.HorizontalAlignment = ListUI[HZ] or ListUI.HCenter
+    list.VerticalAlignment = ListUI[VT] or ListUI.VCenter
+    list.SortOrder = ListUI[SO] or ListUI.SName
     list.Parent = parent
     return list
 end
 -- =====END FUNCTION UILISTLAYOUT=====
 
--- ====FUNCTION UISTROKE=====
-local ASMBorder = Enum.ApplyStrokeMode.Border
-local ASMContextual = Enum.ApplyStrokeMode.Contextual
+-- ====FUNCTION UISTROKE===== Example: Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+local StrokeUI = {
+ ASMBorder = Enum.ApplyStrokeMode.Border,
+ ASMContextual = Enum.ApplyStrokeMode.Contextual,
 
-local LJMBevel = Enum.LineJoinMode.Bevel
-local LJMMiter = Enum.LineJoinMode.Miter
-local LJMRound = Enum.LineJoinMode.Round
+ LJMBevel = Enum.LineJoinMode.Bevel,
+ LJMMiter = Enum.LineJoinMode.Miter,
+ LJMRound = Enum.LineJoinMode.Round
+}
 
 local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
     local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
-    stroke.ApplyStrokeMode = ASM or ASMBorder
+    stroke.ApplyStrokeMode = StrokeUI[ASM] or StrokeUI.ASMBorder
     stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
-    stroke.LineJoinMode = LJM or LJMRound
+    stroke.LineJoinMode = StrokeUI[LJM] or StrokeUI.LJMRound
     stroke.Thickness = Tn or 1
     stroke.Transparency = Transy or 0
     stroke.Parent = parent
@@ -56,33 +61,67 @@ local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
 end
 -- =====END FUNCTION UISTROKE=====
 
--- ====FUNCTION UIGRADIENT=====
-local function Gradient(parent, rotation, offsetX, offsetY, ...)
+-- ====FUNCTION UIGRADIENT===== Example: Gradient(parent, rotation, offsetX, offsetY, {...}, {...})
+local function Gradient(parent, rotation, offsetX, offsetY, colors, transparencies)
     local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+
     grad.Rotation = rotation or 0
     grad.Offset = Vector2.new(offsetX or 0, offsetY or 0)
 
-    local colors = {...}
-    local keypoints = {}
+    -- Color
+    local colorKeypoints = {}
 
-    if #colors == 0 then
-        keypoints = { ColorSequenceKeypoint.new(0, Color3.new(1,1,1)), ColorSequenceKeypoint.new(1, Color3.new(1,1,1)) }
+    if not colors or #colors == 0 then
+        colorKeypoints = {
+            ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+            ColorSequenceKeypoint.new(1, Color3.new(1,1,1))
+        }
     elseif #colors == 1 then
-        keypoints = { ColorSequenceKeypoint.new(0, colors[1]), ColorSequenceKeypoint.new(1, colors[1]) }
+        colorKeypoints = {
+            ColorSequenceKeypoint.new(0, colors[1]),
+            ColorSequenceKeypoint.new(1, colors[1])
+        }
     else
         for i, c in ipairs(colors) do
             local t = (i-1) / (#colors-1)
-            table.insert(keypoints, ColorSequenceKeypoint.new(t, c))
+            table.insert(colorKeypoints, ColorSequenceKeypoint.new(t, c))
         end
     end
 
-    grad.Color = ColorSequence.new(keypoints)
+    grad.Color = ColorSequence.new(colorKeypoints)
+
+
+    -- Transparency
+    local transparencyKeypoints = {}
+
+    if not transparencies or #transparencies == 0 then
+        transparencyKeypoints = {
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(1, 0)
+        }
+    elseif #transparencies == 1 then
+        transparencyKeypoints = {
+            NumberSequenceKeypoint.new(0, transparencies[1]),
+            NumberSequenceKeypoint.new(1, transparencies[1])
+        }
+    else
+        for i, tValue in ipairs(transparencies) do
+            local t = (i-1) / (#transparencies-1)
+            table.insert(
+                transparencyKeypoints,
+                NumberSequenceKeypoint.new(t, tValue)
+            )
+        end
+    end
+
+    grad.Transparency = NumberSequence.new(transparencyKeypoints)
+
     grad.Parent = parent
     return grad
 end
 -- =====END FUNCTION UIGRADIENT=====
 
--- ====FUNCTION UIPADDING (ตามลำดับ Roblox)=====
+-- ====FUNCTION UIPADDING ===== Example: Padding(parent, {X, Y}, {X, Y}, {X, Y}, {X, Y})
 local function Padding(parent, bottom, left, right, top)
     local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
     local function toUDim(value)
@@ -105,12 +144,90 @@ local function Padding(parent, bottom, left, right, top)
     pad.Parent = parent
     return pad
 end
--- =====END FUNCTION UIPADDING======
 
--- <<===== Position of Services =====>>
+-- =====FUNCTION UIASPECTRATIONCONSTRAINT==== Example: Aspect(parent, ratio, aspectType, dominantAxis)
+local function Aspect(parent, AspectRatio, AspectType, DominantAxis)
+end
+--// ENUM SHORTCUTS
+local AspectUI = {
+ Axis = Enum.DominantAxis,
+ Type = Enum.AspectType,
+
+-- optional ultra-short aliases
+ Width = Axis.Width,
+ Height = Axis.Height,
+
+ Fit = Type.FitWithinMaxSize,
+ Scale = Type.ScaleWithParentSize
+}
+
+
+--// ASPECT FUNCTION
+function Aspect(parent, ratio, aspectType, dominantAxis)
+	if not parent then return end
+	
+	-- prevent duplicates
+	local existing = parent:FindFirstChildOfClass("UIAspectRatioConstraint")
+	if existing then
+		-- update instead
+		existing.AspectRatio = AspectUI[ratio] or existing.AspectRatio
+		existing.AspectType = AspectUI[aspectType] or existing.AspectType
+		existing.DominantAxis = AspectUI[dominantAxis] or existing.DominantAxis
+		return existing
+	end
+	
+	-- create new
+	local constraint = Instance.new("UIAspectRatioConstraint")
+	constraint.Parent = parent
+	
+	constraint.AspectRatio = AspectUI[ratio] or 1
+	constraint.AspectType = AspectUI[aspectType] or AspectUI.Fit
+	constraint.DominantAxis = AspectUI[dominantAxis] or AspectUI.Width
+	
+	return constraint
+end
+
+-- =====END FUNCTION UIASPECTRATIONCONSTRAINT=====
+
+--====== CLIENT SERVICES ======--
+
+-- UI / Player Interface
 local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
+
+-- 3D/2D Destroy
+local Debris = game:GetService("Debris")
+
+-- 3D Wprkspace
+local Workspace = game:GetService("Workspace")
+local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
+local Camera = Workspace.CurrentCamera
+
+-- Third Party
+local HttpService = game:GetService("HttpService")
+
+-- Audio / Feedback
+local SoundService = game:GetService("SoundService")
+
+-- Commerce / Monetization
+local MarketplaceService = game:GetService("MarketplaceService")
+
+-- Runtime / Frame Updates
+local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
+
+-- Animation / Transitions
+local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
+
+-- Input (Desktop / Mobile)
+local UserInputService = game:GetService("UserInputService")
+local TouchInputService = game:GetService("TouchInputService")
+
+---------------------------------------------------------------------------------------
 
 -- <<===== Position =====>>
 local Menu = game.CoreGui:WaitForChild("TopBarApp")
@@ -185,15 +302,21 @@ mc.BorderSizePixel = dg.BorderSizePixel
 mc.Visible = false
 mc.Parent = prin
 
+local soon1 = soon:Clone()
+soon1.Text = [[Music Player page is <b><u>not</u></b> done yet.
+Try to press the button at the top right. Yeah bro, you're not in the loop stop pressing the button.]]
+
 local dis = Instance.new("Frame")
 dis.Name = "Display"
 dis.Size = UDim2.new(1,0,0,80)
-dis.BackgroundColor3 = Color3.new(0.3,0.3,0.3)
+dis.BackgroundColor3 = Color3.new(1,1,1)
+dis.BackgroundTransparency = 0.7
 dis.BorderMode = Enum.BorderMode.Inset
 dis.BorderSizePixel = 5
 dis.Parent = mc
 Corner(0,8,dis)
-Gradient(dis, -90, 0,0,Color3.fromRGB(0,0,0), Color3.fromRGB(255,255,255))
+local disS = Stroke(dis, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
+Gradient(disS, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
 
 local MN = Instance.new("TextLabel")
 MN.Name = "MusicName"
@@ -213,14 +336,14 @@ Playbtn.BackgroundTransparency = 1
 Playbtn.TextColor3 = Color3.new(1,1,1)
 Playbtn.RichText = true
 Playbtn.TextScaled = true
-Playbtn.Text = "<b>".."┃┃".."</b>" -- ▶
+Playbtn.Text = "<b>".."▶".."</b>" -- ┃┃
 Playbtn.Parent = dis
 
 Playbtn.MouseButton1Click:Connect(function()
-  if Playbtn.Text == "<b>┃┃</b>" then
-    Playbtn.Text = "<b>▶</b>"
-  else
+  if Playbtn.Text == "<b>▶</b>" then
     Playbtn.Text = "<b>┃┃</b>"
+  else
+    Playbtn.Text = "<b>▶</b>"
   end
 end)
 
@@ -419,15 +542,6 @@ end)
 
 -- Text(scr, "Beta", "It might have a bug, and still in <b>beta</b>", false, 255, 131, 131, 255, 0, 0)
 --===================--
-
---====================================================
--- SERVICES
---====================================================
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local MarketplaceService = game:GetService("MarketplaceService")
-
 local lp = Players.LocalPlayer
 --====================================================
 -- CHARACTER BIND (ULTRA SAFE / MOBILE)
@@ -573,8 +687,6 @@ Button(scr,"CreatorID","CreatorID: ...",true,255,255,255,255,200,200,
 ------------------------------------------------
 -- AFK CORE (WITH LAST AFK)
 ------------------------------------------------
-local UserInputService = game:GetService("UserInputService")
-
 local AFK = {}
 AFK.LastActivity = tick()
 AFK.LastAFKDuration = 0
@@ -733,9 +845,6 @@ if Humanoid then bindDeaths() end
 --====================================================
 -- INVENTORY (RESPAWN SAFE)
 --====================================================
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
-
 local invText = Text(scr,"Inventory","Tools: 0",false,255,255,255,255,255,255)
 
 local backpackConnAdd
@@ -894,8 +1003,6 @@ end)
 ------------------------------------------------
 -- Time Of Day
 ------------------------------------------------
-local Lighting = game:GetService("Lighting")
-
 local timeText = Button(
 	scr,
 	"TimeOfDay",
@@ -928,8 +1035,6 @@ end)
 ------------------------------------------------
 -- Developer Console Button (FIXED)
 ------------------------------------------------
-local StarterGui = game:GetService("StarterGui")
-
 Button(
 	scr,
 	"DeveloperConsole",
@@ -948,9 +1053,6 @@ Button(
 ------------------------------------------------
 -- Drop tool and Drop all tools
 ------------------------------------------------
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
-
 local function getCharacter()
 	return lp.Character
 end
