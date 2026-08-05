@@ -1,4 +1,4 @@
-local ver = " UIs 6.90.2 - ( Reduce local )"
+local ver = " UIs 6.901.2 - ( Reduce local )"
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -7241,43 +7241,47 @@ task.spawn(function()
     end
 end)
 
-local ON_IMAGE = "rbxassetid://92243936349090" -- เปิด
+do
+    local ON_IMAGE = "rbxassetid://92243936349090"
+    local unread = 0
+    local lastCount = 0
 
-local unread = 0
-local lastCount = 0
+    local function countAll()
+        if not si then return 0 end
+        local count = 0
+        for _, v in ipairs(si:GetChildren()) do
+            if not v:IsA("UIListLayout")
+            and not v:IsA("UIPadding")
+            and not v:IsA("UICorner")
+            and not v:IsA("UIStroke") then
+                count += 1
+            end
+        end
+        return count
+    end
 
-local function countAll()
-	local count = 0
-	for _, v in ipairs(si:GetChildren()) do
-		if not v:IsA("UIListLayout")
-		and not v:IsA("UIPadding")
-		and not v:IsA("UICorner")
-		and not v:IsA("UIStroke") then
-			count += 1
-		end
-	end
-	return count
+    lastCount = countAll()
+
+    game:GetService("RunService").RenderStepped:Connect(function()
+        local current = countAll()
+
+        if vAI and vAI.Image ~= ON_IMAGE then
+            if current > lastCount then
+                unread += (current - lastCount)
+                if newmg then
+                    newmg.Visible = true
+                    newmg.Text = (unread > 9999) and "9999+" or tostring(unread)
+                end
+            end
+        else
+            unread = 0
+            if newmg then
+                newmg.Text = "0"
+                newmg.Visible = false
+            end
+        end
+
+        lastCount = current
+    end)
 end
-
-lastCount = countAll()
-
-game:GetService("RunService").RenderStepped:Connect(function()
-	local current = countAll()
-
-		if vAI.Image ~= ON_IMAGE then
-		if current > lastCount then
-		unread += (current - lastCount)
-
-			newmg.Visible = true
-			newmg.Text = (unread > 9999) and "9999+" or tostring(unread)
-		end
-	else
-		unread = 0
-		newmg.Text = "0"
-		newmg.Visible = false
-	end
-
-	lastCount = current
-end)
-
 -- End of script
