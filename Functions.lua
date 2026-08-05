@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.22
+-- So uhm just a script lol. 6.23
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -229,7 +229,7 @@ BFrame.BackgroundTransparency = 1
 BFrame.Position = UDim2.new(0.02,0,0.02,0)
 BFrame.Size = UDim2.new(0.96,0,0.96,0)
 BFrame.Parent = Toggle
-ListLayout(BFrame, 0.005, 0, HCenter, VTop, SName, FillV)
+createUIListLayout(BFrame, 0.005, 0, HCenter, VTop, SName, FillV)
 
 --
 
