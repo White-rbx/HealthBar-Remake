@@ -1,4 +1,4 @@
--- Well 2.361
+-- Well 2.363
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -310,6 +310,7 @@ local function tryReload()
 	local ok2, res = pcall(f)
 	if not ok2 then
 		warn("Runtime error after loading:", res)
+		warn(debug.traceback())
 	else
 		print("[Monitor] loadstring executed successfully.")
 	end
