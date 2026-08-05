@@ -1,4 +1,4 @@
-local ver = " UIs 6.957.1 - ( Preview )"
+local ver = " UIs 6.958.1 - ( Reduce local )"
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1001,8 +1001,6 @@ local folderRbx = folderRbx or {
 	UserSafety = "rbxassetid://129140815302979",
 }
 
-local TextService = game:GetService("TextService")
-
 local function clearInlineImages(parent)
 	for _, child in ipairs(parent:GetChildren()) do
 		if child.Name == "InlineImage" and child:IsA("ImageLabel") then
@@ -1690,7 +1688,6 @@ local DEEPSEEK_MODELS = {
 -- local StarterGui = game:GetService("StarterGui")
 -- local Players = game:GetService("Players")
 -- local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
 -- local UserInputService = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 
@@ -1774,9 +1771,6 @@ end)
 --// =========================================
 --// AI STORAGE + MEMORY SYSTEM
 --// =========================================
-
-local HttpService =
-	game:GetService("HttpService")
 
 -- existing folder
 local ESFolder = "ExperienceSettings/"
@@ -2882,19 +2876,8 @@ local STREAM_DELAY = 0.08
 -- =========================================
 -- SERVICES
 -- =========================================
-
-local Players =
-	game:GetService("Players")
-
-local RunService =
-	game:GetService("RunService")
-
 local LocalPlayer =
 	Players.LocalPlayer
-
-local Camera =
-	workspace.CurrentCamera
-
 -- =========================================
 -- VIEWPORT
 -- =========================================
