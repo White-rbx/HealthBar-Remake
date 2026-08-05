@@ -1,4 +1,4 @@
-local ver = " UIs 6.958.1 - ( Reduce local )"
+local ver = " UIs 6.959.1 - ( Reduce local )"
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -6999,6 +6999,7 @@ local function hookUI(timeoutSeconds)
     local start = tick()
     local found = nil
     while tick() - start < timeoutSeconds do
+      do
         local menu = CoreGui:FindFirstChild("ExperienceSettings")
         if menu and menu:FindFirstChild("Menu") then
             local ao = menu.Menu:FindFirstChild("AIOpenSource") or menu.Menu:FindFirstChild("AI-OpenSource") or menu.Menu:FindFirstChild("AIOpen") or menu.Menu:FindFirstChild("ChatGPT")
@@ -7028,6 +7029,7 @@ local function hookUI(timeoutSeconds)
                 end
             end
         end
+     end
         -- fallback: search top-level ScreenGuis that look like Chat GPT
         for _,sg in ipairs(CoreGui:GetChildren()) do
             if sg:IsA("ScreenGui") then
