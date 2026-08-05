@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.21
+-- So uhm just a script lol. 6.22
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -58,7 +58,7 @@ local ListUI = {
  SName = Enum.SortOrder.Name
 }
 
-local function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+local function createUIListLayout(parent, scale, offset, HZ, VT, SO, FILL)
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
     list.FillDirection = ListUI[FILL] or ListUI.FillH
@@ -229,7 +229,7 @@ BFrame.BackgroundTransparency = 1
 BFrame.Position = UDim2.new(0.02,0,0.02,0)
 BFrame.Size = UDim2.new(0.96,0,0.96,0)
 BFrame.Parent = Toggle
-createUIListLayout(BFrame, 0.005, 0, HCenter, VTop, SName, FillV)
+ListLayout(BFrame, 0.005, 0, HCenter, VTop, SName, FillV)
 
 --
 
