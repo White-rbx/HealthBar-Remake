@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.84 Beta]]
+local v_ver = [[Script ahh 2.85 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -146,19 +146,19 @@ local function Padding(parent, bottom, left, right, top)
 end
 
 -- =====FUNCTION UIASPECTRATIONCONSTRAINT==== Example: Aspect(parent, ratio, aspectType, dominantAxis)
-local function Aspect(parent, AspectRatio, AspectType, DominantAxis)
-end
 --// ENUM SHORTCUTS
+local Axis = Enum.DominantAxis
+local Type = Enum.AspectType
+
 local AspectUI = {
- Axis = Enum.DominantAxis,
- Type = Enum.AspectType,
+    Axis = Axis,
+    Type = Type,
 
--- optional ultra-short aliases
- Width = Axis.Width,
- Height = Axis.Height,
+    Width = Axis.Width,
+    Height = Axis.Height,
 
- Fit = Type.FitWithinMaxSize,
- Scale = Type.ScaleWithParentSize
+    Fit = Type.FitWithinMaxSize,
+    Scale = Type.ScaleWithParentSize
 }
 
 
