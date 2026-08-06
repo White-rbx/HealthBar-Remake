@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.85 Beta]]
+local v_ver = [[Script ahh 2.86 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -250,7 +250,7 @@ pro.BackgroundTransparency = 0.3
 pro.Parent = Menu
 Corner(0,8,pro)
 Stroke(pro, ASMBorder, 255,255,255, LSMRound, 1, 0)
-ListLayout(pro, 0, 0, HCenter, VCenter, SName, FillV)
+ListLayout(pro, 0, 0, "HCenter", "VCenter", "SName", "FillV")
 
 -- [ pro.prin ]
 local prin = Instance.new("Frame")
@@ -317,6 +317,7 @@ dis.Parent = mc
 Corner(0,8,dis)
 local disS = Stroke(dis, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
 Gradient(disS, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
+Gradient(dis, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
 
 local MN = Instance.new("TextLabel")
 MN.Name = "MusicName"
@@ -411,7 +412,7 @@ scr.ScrollingDirection = Enum.ScrollingDirection.Y
 scr.ScrollBarThickness = 0
 scr.BackgroundTransparency = 1
 scr.Parent = pchar
-ListLayout(scr, 0, 5, HCenter, VTop, SLayout, FillV)
+ListLayout(scr, 0, 5, "HCenter", "VTop", "SLayout", "FillV")
 Stroke(scr, ASMBorder, 255,255,255, LJMRound, 1, 0)
 Corner(0,3,scr)
 
