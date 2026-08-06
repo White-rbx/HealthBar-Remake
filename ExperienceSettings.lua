@@ -1,4 +1,4 @@
--- Ok 4.59
+-- Ok 4.6
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -598,6 +598,8 @@ tb.ScrollBarThickness = 4
 tb.CanvasSize = UDim2.new(0, 0, 0, 0)
 tb.ScrollingDirection = Enum.ScrollingDirection.XY
 tb.Visible = false
+tb.BorderMode = Enum.BorderMode.Inset
+tb.BorderSizePixel = 5
 tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
 
@@ -1964,7 +1966,8 @@ local function createImageButton(name, r, g, b, bt, imageId, visible, parentFram
         end
     end
     im.Parent = parentFrame
-    createUICorner(im, 1, 0)
+    createUICorner(im, 0, 10)
+	createUIStroke(im, ASMBorder, 255,255,255, LJMRound, 1, 0)
     return im
 end
 
@@ -2079,7 +2082,7 @@ loadstring(game:HttpGet('https://raw.githubusercontent.com/Emerson2-creator/Scri
 end
 
 -- CTB12
-local ctb12 = createImageButton("b3_ExperienceSettings_Executor", 64, 255, 74, 0.2, "116278455133074", false)
+local ctb12 = createImageButton("b3_ExperienceSettings_Executor", 50,50,50, 0.2, "116278455133074", false)
 if ctb12 then
 	ctb12.MouseButton1Click:Connect(function()
 			pcall(function()
@@ -2105,7 +2108,8 @@ local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg
     txtb.Font = Enum.Font.Legacy
     txtb.TextScaled = (scaled ~= false)
     txtb.Parent = parentFrame
-    createUICorner(txtb, 1, 0)
+    createUICorner(txtb, 0, 10)
+	createUIStroke(txtb, ASMBorder, 255,255,255, LJMRound, 1, 0)
     return txtb
 end
 -- ========
