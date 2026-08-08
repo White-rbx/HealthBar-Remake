@@ -1,4 +1,4 @@
-local ver = " UIs 6.902.2 - ( Reduce local )"
+local ver = " UIs 6.903.2 - ( Reduce local )"
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -208,16 +208,18 @@ end
 
 -- =====FUNCTION UIASPECTRATIONCONSTRAINT==== Example: Aspect(parent, ratio, aspectType, dominantAxis)
 --// ENUM SHORTCUTS
+local Axis = Enum.DominantAxis
+local Type = Enum.AspectType
+
 local AspectUI = {
- Axis = Enum.DominantAxis,
- Type = Enum.AspectType,
+    Axis = Axis,
+    Type = Type,
 
--- optional ultra-short aliases
- Width = Axis.Width,
- Height = Axis.Height,
+    Width = Axis.Width,
+    Height = Axis.Height,
 
- Fit = Type.FitWithinMaxSize,
- Scale = Type.ScaleWithParentSize
+    Fit = Type.FitWithinMaxSize,
+    Scale = Type.ScaleWithParentSize
 }
 
 
@@ -294,7 +296,7 @@ local UserInputService = game:GetService("UserInputService")
 local Menu = CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
 local vHolder = Menu:WaitForChild("HolderScreen")
-local gpt = Menu.ChatGPT
+local gpt = Menu:WaitForChild("ChatGPT")
 
 gpt.Line:Destroy()
 gpt.Disconnected:Destroy()
