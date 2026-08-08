@@ -1,4 +1,4 @@
-local ver = " UIs 6.905.2 "
+local ver = " UIs 6.906.2 ( Last version ) "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -511,7 +511,7 @@ si.ScrollingDirection = Enum.ScrollingDirection.Y
 si.AutomaticCanvasSize = Enum.AutomaticSize.Y
 si.CanvasSize = UDim2.new(0,0,0,0)
 si.Parent = ins
-ListLayout(si, 0, 5, HLeft, VTop, SLayout, FillV)
+ListLayout(si, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
 Corner(0, 8, si)
 Stroke(si, ASMBorder, 255,255,255, LJMRound, 1, 0)
 
@@ -1517,11 +1517,6 @@ txt(user.Nill,
 ]], 180, 180, 180)
 	
 -- txt(user.Nill, "Welcome back Tester", 0, 255, 0)
-
-txt(user.Nill, [[
-# OFFICIAL ANNOUNCEMENT 
-AI-Thinking is **no longer** update due to**Out of Local**.]], 255,0,0)
-
 txt(user.Warn,[[**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
 **With respect**.]], 255, 255, 0)
 txt(user.Warn,[[[size=28]1 command is **enabled** [/size]
@@ -1591,6 +1586,11 @@ Examples:
   please check your provider billing status.
 	
 ★ Scroll up to see all steps.]], 255,150,0)
+
+txt(user.Nill, [[
+# OFFICIAL ANNOUNCEMENT 
+AI-Thinking is **no longer** update due to**Out of Local**.]], 255,0,0)
+
 txt(user.Nill, "### [====== Chat ======]", 180, 180, 180)
 
 -- ===========================
