@@ -1,4 +1,4 @@
-local ver = " UIs 6.904.2 - ( Reduce local )"
+local ver = " UIs 6.905.2 "
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -62,6 +62,7 @@ local update = [[
 (:26/7/2026 | 12:37 pm: F) Fixed Copy button overlay text.
 (:28/7/2026 | 7:46 pm: A) Added Image into chat.
 (:28/7/2026 | 10:23 pm: A) Added new 3 commands /hook /set and /e to hook NPC for an AIs.
+(:8/7/2026 | 3:09 pm: A) AI-Thinking is no longer to continue updating due to Out of Local, Thanks you guys :3 ❤️ (From White the creator (5teve3019D))
 ]]
 ------------------------------------------------------------------------------------------
 -- ====FUNCTION CORNER===== Example: Corner(Scale, Offset, Parent)
@@ -1519,7 +1520,7 @@ txt(user.Nill,
 
 txt(user.Nill, [[
 # OFFICIAL ANNOUNCEMENT 
-AI is **not** bug with broken text because of text limit, use **/geminiswitch** or **/gptswitch** to change text limit.]], 255,0,0)
+AI-Thinking is **no longer** update due to**Out of Local**.]], 255,0,0)
 
 txt(user.Warn,[[**Stop!** For your **safety**, please do **NOT** share your API and avoid being stared at by **people around you**. Due to safety and privacy concerns, you confirm that you will use your API to continue using our **AI-Thinking** or not? 
 **With respect**.]], 255, 255, 0)
