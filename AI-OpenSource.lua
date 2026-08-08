@@ -1,4 +1,4 @@
-local ver = " UIs 6.903.2 - ( Reduce local )"
+local ver = " UIs 6.904.2 - ( Reduce local )"
 local update = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1686,10 +1686,8 @@ local DEEPSEEK_MODELS = {
 }
 
 -- ========== SERVICES & UTIL ==========
-local lp = Players.LocalPlayer
-
-local USERNAME = lp.Name
-local USERID = lp.UserId
+local USERNAME = Players.LocalPlayer.Name
+local USERID = Players.LocalPlayer.UserId
 
 local CURRENT_DATE =
 	os.date("%A, %B %d, %Y")
