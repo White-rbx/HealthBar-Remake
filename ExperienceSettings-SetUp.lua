@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 1 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 1.1 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -225,8 +225,6 @@ Logo.BackgroundTransparency = 1
 Logo.ImageTransparency = 1
 Logo.Position = UDim2.new(0, 186, 0, 356)
 Logo.Size = UDim2.new(0, 50, 0, 50)
-Logo.AttributesSerialize = ""
-Logo.DefinesCapabilities = false
 Logo.Parent = Image
 
 local Team = Instance.new("TextLabel")
