@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 0.81 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 1 Alpha]]
 
 ------------------------------------------------------------------------------------------
 
@@ -217,6 +217,31 @@ Image.BackgroundTransparency = 1
 Image.ImageTransparency = 1
 Image.Parent = Frame
 
+local Logo = Instance.new("ImageLabel")
+Logo.Name = "Logo"
+Logo.Image = "rbxassetid://120500539322715"
+Logo.Active = true
+Logo.BackgroundTransparency = 1
+Logo.ImageTransparency = 1
+Logo.Position = UDim2.new(0, 186, 0, 356)
+Logo.Size = UDim2.new(0, 50, 0, 50)
+Logo.AttributesSerialize = ""
+Logo.DefinesCapabilities = false
+Logo.Parent = Image
+
+local Team = Instance.new("TextLabel")
+Team.Name = "Brand"
+Team.RichText = true
+Team.Text = "<b><font color=\"rgb(0,255,255)\">Arc</font></b><b><font color=\"rgb(255,255,0)\">Script</font></b> Dev"
+Team.TextColor3 = Color3.new(1, 1, 1)
+Team.TextSize = 16
+Team.Active = true
+Team.BackgroundTransparency = 1
+Team.TextTransparency = 1
+Team.Position = UDim2.new(0, 50, 0, 0)
+Team.Size = UDim2.new(0, 200, 0, 50)
+Team.Parent = Logo
+
 local Canvas = Instance.new("CanvasGroup")
 Canvas.Visible = false
 Canvas.GroupTransparency = 1
@@ -371,6 +396,14 @@ TweenService:Create(twarn, TweenInfo.new(0.5), {
 	TextTransparency = 0
 }):Play()
 
+TweenService:Create(Logo, TweenInfo.new(0.5), {
+	ImageTransparency = 0
+}):Play()
+
+TweenService:Create(Team, TweenInfo.new(0.5), {
+	TextTransparency = 0
+}):Play()
+
 TweenService:Create(CanBar, TweenInfo.new(0.5), {
 	BackgroundTransparency = 1
 }):Play()
@@ -473,6 +506,14 @@ Error: <font size="10" face="Code">]] .. msg .. [[</font>]]
 		TweenService:Create(twarn, TweenInfo.new(0.5), {
 			TextTransparency = 1
 		}):Play()
+
+		TweenService:Create(Logo, TweenInfo.new(0.5), {
+	        ImageTransparency = 1
+        }):Play()
+
+        TweenService:Create(Team, TweenInfo.new(0.5), {
+          	TextTransparency = 1
+        }):Play()
 
 		TweenService:Create(CanBar, TweenInfo.new(0.5), {
 			BackgroundTransparency = 1
