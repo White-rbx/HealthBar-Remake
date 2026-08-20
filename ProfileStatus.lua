@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.86 Beta]]
+local v_ver = [[Script ahh 2.89 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -305,6 +305,7 @@ mc.Parent = prin
 local soon1 = soon:Clone()
 soon1.Text = [[Music Player page is <b><u>not</u></b> done yet.
 Try to press the button at the top right. Yeah bro, you're not in the loop stop pressing the button.]]
+soon1.Parent = mc
 
 local dis = Instance.new("Frame")
 dis.Name = "Display"
@@ -326,26 +327,93 @@ MN.TextColor3 = Color3.new(1,1,1)
 MN.TextWrapped = true
 MN.TextScaled = true
 MN.Text = "Untitled Song"
-MN.BackgroundTransparency = 1
+MN.BackgroundTransparency = 0
+MN.TextXAlignment = Enum.TextXAlignment.Center
 MN.Parent = dis
+
+Gradient(MN, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
 
 local Playbtn = Instance.new("TextButton")
 Playbtn.Name = "PlayButton"
 Playbtn.Size = UDim2.new(0,30,0,30)
 Playbtn.Position = UDim2.new(0,0,1,-30)
-Playbtn.BackgroundTransparency = 1
+Playbtn.BackgroundTransparency = 0
 Playbtn.TextColor3 = Color3.new(1,1,1)
 Playbtn.RichText = true
 Playbtn.TextScaled = true
 Playbtn.Text = "<b>".."▶".."</b>" -- ┃┃
 Playbtn.Parent = dis
 
-Playbtn.MouseButton1Click:Connect(function()
-  if Playbtn.Text == "<b>▶</b>" then
-    Playbtn.Text = "<b>┃┃</b>"
-  else
-    Playbtn.Text = "<b>▶</b>"
-  end
+Gradient(PlayBtn, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
+
+local normalSize = UDim2.new(0, 30, 0, 30)
+local clickBigSize = UDim2.new(0, 60, 0, 60)
+local clickSmallSize = UDim2.new(0, 15, 0, 15)
+local holdSize = UDim2.new(0, 40, 0, 40)
+
+local holding = false
+local holdTriggered = false
+
+local function tweenSize(size, time)
+	local tween = TweenService:Create(
+		Playbtn,
+		TweenInfo.new(
+			time,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+		{Size = size}
+	)
+
+	tween:Play()
+	return tween
+end
+
+local function togglePlay()
+	if Playbtn.Text == "<b>▶</b>" then
+		Playbtn.Text = "<b>┃┃</b>"
+	else
+		Playbtn.Text = "<b>▶</b>"
+	end
+end
+
+Playbtn.MouseButton1Down:Connect(function()
+	holding = true
+	holdTriggered = false
+
+	task.delay(1.5, function()
+		if holding then
+			holdTriggered = true
+
+			-- Hold: 30 → 40
+			tweenSize(holdSize, 1)
+		end
+	end)
+end)
+
+Playbtn.MouseButton1Up:Connect(function()
+	if not holding then
+		return
+	end
+
+	holding = false
+
+	if holdTriggered then
+		-- Release หลัง Hold
+		tweenSize(normalSize, 0.6)
+	else
+		-- Click / Tap:
+		-- 30 → 60
+		tweenSize(clickBigSize, 0.2).Completed:Wait()
+
+		-- 60 → 15
+		tweenSize(clickSmallSize, 0.05).Completed:Wait()
+
+		-- 15 → 30
+		tweenSize(normalSize, 0.3)
+
+		togglePlay()
+	end
 end)
 
 
