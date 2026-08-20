@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.89 Beta]]
+local v_ver = [[Script ahh 2.892 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -331,8 +331,6 @@ MN.BackgroundTransparency = 0
 MN.TextXAlignment = Enum.TextXAlignment.Center
 MN.Parent = dis
 
-Gradient(MN, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
-
 local Playbtn = Instance.new("TextButton")
 Playbtn.Name = "PlayButton"
 Playbtn.Size = UDim2.new(0,30,0,30)
@@ -344,7 +342,8 @@ Playbtn.TextScaled = true
 Playbtn.Text = "<b>".."▶".."</b>" -- ┃┃
 Playbtn.Parent = dis
 
-Gradient(PlayBtn, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
+Gradient(Playbtn, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
+Corner(0,7,Playbtn)
 
 local normalSize = UDim2.new(0, 30, 0, 30)
 local clickBigSize = UDim2.new(0, 60, 0, 60)
