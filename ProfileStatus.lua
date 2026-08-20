@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.892 Beta]]
+local v_ver = [[Script ahh 2.893 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -327,7 +327,7 @@ MN.TextColor3 = Color3.new(1,1,1)
 MN.TextWrapped = true
 MN.TextScaled = true
 MN.Text = "Untitled Song"
-MN.BackgroundTransparency = 0
+MN.BackgroundTransparency = 1
 MN.TextXAlignment = Enum.TextXAlignment.Center
 MN.Parent = dis
 
@@ -346,8 +346,8 @@ Gradient(Playbtn, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255
 Corner(0,7,Playbtn)
 
 local normalSize = UDim2.new(0, 30, 0, 30)
-local clickBigSize = UDim2.new(0, 60, 0, 60)
-local clickSmallSize = UDim2.new(0, 15, 0, 15)
+local clickBigSize = UDim2.new(0, 10, 0, 10)
+local clickSmallSize = UDim2.new(0, 50, 0, 50)
 local holdSize = UDim2.new(0, 40, 0, 40)
 
 local holding = false
