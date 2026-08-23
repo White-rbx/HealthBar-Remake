@@ -1,5 +1,6 @@
-local ver = " UIs 6.907.2 "
-local update = [[
+local ver = {
+	sion = " UIs 6.91.2 ",
+	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
 (:8/1/2026 | 6:00 pm: R) Raw reset GitHub bug.
@@ -64,7 +65,9 @@ local update = [[
 (:28/7/2026 | 10:23 pm: A) Added new 3 commands /hook /set and /e to hook NPC for an AIs.
 (:8/7/2026 | 3:09 pm: A) AI-Thinking is no longer to continue updating due to Out of Local, Thanks you guys :3 ❤️ (From White the creator (5teve3019D))
 (:17/8/2026 | 4:19 pm: A) Added gemini-3.7-flash, don't be surprised if I still continue updates; add new features or anything will be discontinued unless can be continuing updates if it NOT due to out of local.
-]]
+(:23/7/2026 | 4:49 pm: F) Fixed Here chat I guess.
+]],
+}
 ------------------------------------------------------------------------------------------
 -- ====FUNCTION CORNER===== Example: Corner(Scale, Offset, Parent)
 local function Corner(Scale, Offset, Parent)
@@ -2512,10 +2515,10 @@ Current real time:
 ]] .. CURRENT_TIME .. [[
 
 AI Version: 
-]] .. ver .. [[
+]] .. ver.sion .. [[
 
 Update logs about AI:
-]] .. update .. [[
+]] .. ver.logs .. [[
 
 ------------------------------------------------------------
 
@@ -4320,7 +4323,7 @@ local function createInstanceTool(argsStr)
     if not ok then safeTxt(user.Error, "InstanceTool error: "..tostring(err), 255,0,0) end
 end
 
--- local SPY_CHAT_ON = false
+local SPY_CHAT_ON = false
 --[[local CHAT_COLOR_MODE = "RANDOM"]]
 
 --// =====================================================
@@ -4895,7 +4898,8 @@ end
     *• gemini-3.1-flash-lite*
     *• gemini-2.5-flash*
     *• gemini-2.5-pro*
-    *• gemini-3.5-flash*]],
+    *• gemini-3.5-flash*
+    *• gemini-3.7-flash*]],
 			255,0,0
 		)
 		end
@@ -5052,13 +5056,13 @@ end
 	)
 	return true
 end
-    --[[ if lower:match("^/spychat") then
+     if lower:match("^/spychat") then
         local t = msg:match("^/spychat%s*(%S*)") or ""
         SPY_CHAT_ON = (t:upper() == "ON")
         safeTxt(user.Suc, "SpyChat: "..tostring(SPY_CHAT_ON),0,255,0)
         return true
     end
-	]]
+	
 -- =========================================
 -- FORCE REMEMBER
 -- =========================================
