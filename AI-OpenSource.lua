@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.911.2 ",
+	sion = " UIs 6.912.2 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -353,7 +353,7 @@ tl2.Size = UDim2.new(0.2,0,0.03,0)
 tl2.BackgroundTransparency = 1
 tl2.Active = false
 tl2.RichText = true
-tl2.Text = "Version:<b>"..ver.."</b>"
+tl2.Text = "Version:<b>"..ver.sion.."</b>"
 tl2.TextXAlignment = Enum.TextXAlignment.Left
 tl2.TextColor3 = Color3.fromRGB(255,255,255)
 tl2.TextScaled = true
