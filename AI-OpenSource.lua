@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.91.2 ",
+	sion = " UIs 6.911.2 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1503,8 +1503,8 @@ wModel.Parent = vpf
 ]]
 
 txt(user.Nill, "# Working fine!", 180,180,180)
-txt(user.Nill, "**Version**:" .. ver .. "| © Copyright *LighterCyan*", 180, 180, 180)
-txt(user.Info, update, 0, 170, 255)
+txt(user.Nill, "**Version**:" .. ver.sion .. "| © Copyright *LighterCyan*", 180, 180, 180)
+txt(user.Info, ver.logs, 0, 170, 255)
 txt(user.Info, "Use **/help** for more *information* or commands. Add api is **/addapi**", 0,170,255) 
 txt(user.Nill, 
 [[ # What is AI-Thinking?
@@ -1593,7 +1593,7 @@ Examples:
 
 txt(user.Nill, [[
 # OFFICIAL ANNOUNCEMENT 
-AI-Thinking is **no longer** update due to**Out of Local**.]], 255,0,0)
+AI-Thinking is **no longer** update due to **Out of Local**.]], 255,0,0)
 
 txt(user.Nill, "### [====== Chat ======]", 180, 180, 180)
 
