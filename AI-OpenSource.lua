@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.912.2 ",
+	sion = " UIs 6.922.2 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -4546,9 +4546,14 @@ local function hookGlobalChat()
 
 	pcall(function()
 
+		print("🔥 Trying to hook Global Chat...")
+
 		GLOBAL_CONN_NEW =
 			TextChatService.MessageReceived:Connect(function(msg)
 
+			print("🔥 GLOBAL EVENT FIRED:", msg.Text)
+		    print("🔥 TextSource:", msg.TextSource)
+					
 			if not GLOBAL_CHAT_ON then
 				return
 			end
@@ -4588,6 +4593,8 @@ local function hookGlobalChat()
 			)
 
 		end)
+
+		print("🔥 Global Chat hook created!")
 
 	end)
 
