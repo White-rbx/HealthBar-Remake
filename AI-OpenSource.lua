@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.923.2 ",
+	sion = " UIs 6.924.2 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -287,6 +287,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 -- Runtime / Frame Updates
 local RunService = game:GetService("RunService")
 local TextService = game:GetService("TextService")
+local TextChatService = game:GetService("TextChatService")
 
 -- Animation / Transitions
 local TweenService = game:GetService("TweenService")
@@ -4544,15 +4545,9 @@ local function hookGlobalChat()
 	-- NEW CHAT SYSTEM
 	-- =========================================
 
-	local ok, err = pcall(function()
-
-		print("🔥 Trying to hook Global Chat...")
-
+	pcall(function()
 		GLOBAL_CONN_NEW =
 			TextChatService.MessageReceived:Connect(function(msg)
-
-				print("🔥 GLOBAL EVENT FIRED:", msg.Text)
-				print("🔥 TextSource:", msg.TextSource)
 					
 			if not GLOBAL_CHAT_ON then
 				return
@@ -4594,13 +4589,7 @@ local function hookGlobalChat()
 
 		end)
 
-		print("🔥 Global Chat hook created!")
-
 	end)
-
-	if not ok then
-		warn("❌ GLOBAL CHAT HOOK ERROR:", err)
-	end
 
 	-- =========================================
 	-- OLD CHAT SYSTEM
