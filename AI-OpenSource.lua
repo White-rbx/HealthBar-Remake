@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.922.2 ",
+	sion = " UIs 6.923.2 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -4323,7 +4323,7 @@ local function createInstanceTool(argsStr)
     if not ok then safeTxt(user.Error, "InstanceTool error: "..tostring(err), 255,0,0) end
 end
 
-local SPY_CHAT_ON = false
+-- local SPY_CHAT_ON = false
 --[[local CHAT_COLOR_MODE = "RANDOM"]]
 
 --// =====================================================
@@ -4544,15 +4544,15 @@ local function hookGlobalChat()
 	-- NEW CHAT SYSTEM
 	-- =========================================
 
-	pcall(function()
+	local ok, err = pcall(function()
 
 		print("🔥 Trying to hook Global Chat...")
 
 		GLOBAL_CONN_NEW =
 			TextChatService.MessageReceived:Connect(function(msg)
 
-			print("🔥 GLOBAL EVENT FIRED:", msg.Text)
-		    print("🔥 TextSource:", msg.TextSource)
+				print("🔥 GLOBAL EVENT FIRED:", msg.Text)
+				print("🔥 TextSource:", msg.TextSource)
 					
 			if not GLOBAL_CHAT_ON then
 				return
@@ -4597,6 +4597,10 @@ local function hookGlobalChat()
 		print("🔥 Global Chat hook created!")
 
 	end)
+
+	if not ok then
+		warn("❌ GLOBAL CHAT HOOK ERROR:", err)
+	end
 
 	-- =========================================
 	-- OLD CHAT SYSTEM
@@ -5063,13 +5067,13 @@ end
 	)
 	return true
 end
-     if lower:match("^/spychat") then
+     --[[if lower:match("^/spychat") then
         local t = msg:match("^/spychat%s*(%S*)") or ""
         SPY_CHAT_ON = (t:upper() == "ON")
         safeTxt(user.Suc, "SpyChat: "..tostring(SPY_CHAT_ON),0,255,0)
         return true
     end
-	
+	]]
 -- =========================================
 -- FORCE REMEMBER
 -- =========================================
