@@ -1,4 +1,4 @@
--- searcher... yes. 2.88
+-- searcher... yes. 2.89
 
 -- =====>> Saved Functions <<=====
 
@@ -170,5 +170,35 @@ dear.RichText = true
 dear.Active = false
 dear.Size = UDim2.new(1,0,1,0)
 dear.TextSize = 23
+dear.TextColor3 = Color3.new(1,1,1)
 dear.Text = '<font size="30" color="rgb(255,0,0)">Sorry!</font> \n and we are making the UI better than before!'
-dear.Parent = menu
+dear.Parent = sea
+
+-- asset ids  
+local IMG_CLOSE = "rbxassetid://115316941207686"  
+local IMG_OPEN  = "rbxassetid://108649442107108"  
+  
+local tweenInfo = TweenInfo.new(  
+    0.35, -- time  
+    Enum.EasingStyle.Quad,  
+    Enum.EasingDirection.Out  
+)  
+  
+local function tweenSea(pos)  
+    TweenService:Create(  
+        sea,  
+        tweenInfo,  
+        { Position = pos }  
+    ):Play()  
+end  
+  
+local function updateState()  
+    if searchBtn.Image == IMG_CLOSE then  
+        tweenSea(UDim2.new(0,0,1,0)) -- CLOSE  
+    elseif searchBtn.Image == IMG_OPEN then  
+        tweenSea(UDim2.new(0,0,0.1,0)) -- OPEN  
+    end  
+  end  
+  
+searchBtn:GetPropertyChangedSignal("Image"):Connect(updateState)  
+updateState()  
