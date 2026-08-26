@@ -1,4 +1,4 @@
--- searcher... yes. 2.89
+-- searcher... yes. 2.9
 
 -- =====>> Saved Functions <<=====
 
@@ -173,6 +173,12 @@ dear.TextSize = 23
 dear.TextColor3 = Color3.new(1,1,1)
 dear.Text = '<font size="30" color="rgb(255,0,0)">Sorry!</font> \n and we are making the UI better than before!'
 dear.Parent = sea
+
+local menu = CoreGui:WaitForChild("ExperienceSettings")  
+    :WaitForChild("Menu")  
+  
+local searchBtn =  
+    menu.TopBar.Holder:WaitForChild("a4_Search")
 
 -- asset ids  
 local IMG_CLOSE = "rbxassetid://115316941207686"  
