@@ -1,4 +1,4 @@
--- searcher... yes. 2.9
+-- searcher... yes. 2.91
 
 -- =====>> Saved Functions <<=====
 
@@ -171,7 +171,7 @@ dear.Active = false
 dear.Size = UDim2.new(1,0,1,0)
 dear.TextSize = 23
 dear.TextColor3 = Color3.new(1,1,1)
-dear.Text = '<font size="30" color="rgb(255,0,0)">Sorry!</font> \n and we are making the UI better than before!'
+dear.Text = '<font size="50" color="rgb(255,0,0)">Sorry!</font> \n We are making the UI better than before and mobile friendly! \n <font size="10">From White the creator</font>'
 dear.Parent = sea
 
 local menu = CoreGui:WaitForChild("ExperienceSettings")  
