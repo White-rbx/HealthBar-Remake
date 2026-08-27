@@ -1,4 +1,4 @@
--- searcher... yes. 2.91
+-- searcher... yes. 2.98
 
 -- =====>> Saved Functions <<=====
 
@@ -156,18 +156,25 @@ if not menu then return end
 -- =========================  
 local sea = Instance.new("Frame")  
 sea.Name = "Search"  
-sea.Size = UDim2.new(1, 0, 0.9, 0)  
+sea.Size = UDim2.new(0.8, 0, 0.8, 0)  
 sea.Position = UDim2.new(0, 0, 1, 0)  
 sea.BackgroundColor3 = Color3.fromRGB(18, 18, 21)  
 sea.BackgroundTransparency = 0.3  
-sea.Active = false  
+sea.BorderSizePixel = 8
+sea.BorderMode = Enum.BorderMode.Inset
+sea.Active = false 
 sea.Parent = menu  
+Corner(0, 8, sea)
+Stroke(sea, ASMBorder, 255,255,255, LJMRound, 1, 0)
+ListLayout(sea, 0, 5, HLeft, VCenter, SLayout, FillH)
   
 local dear = Instance.new("TextLabel")
 dear.Name = "Sorry!"
 dear.BackgroundTransparency = 1
 dear.RichText = true
 dear.Active = false
+dear.Visible = false
+dear.TextWrapped = true
 dear.Size = UDim2.new(1,0,1,0)
 dear.TextSize = 23
 dear.TextColor3 = Color3.new(1,1,1)
@@ -200,11 +207,79 @@ end
   
 local function updateState()  
     if searchBtn.Image == IMG_CLOSE then  
-        tweenSea(UDim2.new(0,0,1,0)) -- CLOSE  
+        tweenSea(UDim2.new(0.1,0,1,0)) -- CLOSE  
     elseif searchBtn.Image == IMG_OPEN then  
-        tweenSea(UDim2.new(0,0,0.1,0)) -- OPEN  
+        tweenSea(UDim2.new(0.1,0,0.15,0)) -- OPEN  
     end  
   end  
   
 searchBtn:GetPropertyChangedSignal("Image"):Connect(updateState)  
 updateState()  
+
+local List = Instance.new("Frame")
+List.Name = "List"
+List.Size = UDim2.new(1,0,1,0)
+List.BackgroundTransparency = 1
+List.Active = false
+List.Parent = sea
+
+local Page = List:Clone()
+Page.Name = "Page"
+Page.Size = UDim2.new(0,-5,1,0)
+Page.BorderMode = Enum.BorderMode.Inset
+Page.BorderSizePixel = 5
+Page.Parent = sea
+
+local tb = Instance.new("TextBox")
+tb.Name = "SearchInput"
+tb.Size = UDim2.new(1,0,0,45)
+tb.BackgroundColor3 = Color3.fromRGB(0,170,255)
+tb.BackgroundTransparency = 0.3
+tb.BorderMode = Enum.BorderMode.Inset
+tb.BorderSizePixel = 6
+tb.TextSize = 16
+tb.Text = ""
+tb.PlaceholderText = "Search here!"
+tb.PlaceholderColor3 = Color3.new(0,0,0)
+tb.TextColor3 = Color3.new(1,1,1)
+tb.TextXAlignment = Enum.TextXAlignment.Left
+tb.Parent = List
+Corner(0,8,tb)
+
+local tb_str = Stroke(tb,ASMBorder, 255,255,255, LJMRound, 2, 0)
+Gradient(tb_str, 90, 0,0, Color3.fromRGB(255,255,255), Color3.fromRGB(0,255,255))
+
+local scr = Instance.new("ScrollingFrame")
+scr.Name = "Scrips"
+scr.Position = UDim2.new(0,0,0,50)
+scr.Size = UDim2.new(1,0,0.878,0)
+scr.BackgroundColor3 = Color3.new(255,255,255)
+scr.BackgroundTransparency = 0.7
+scr.ScrollBarThickness = 2
+scr.CanvasSize = UDim2.new(0,0,0,0)
+scr.Parent = List
+Corner(0,8,scr)
+Gradient(scr, 0,0,0, Color3.fromRGB(0,0,172), Color3.fromRGB(0,255,255))
+
+dear.Parent = scr
+dear.Visible = true
+
+local back = Instance.new("TextButton")
+back.Name = "Back"
+back.Size = UDim2.new(0,200,0,50)
+back.Position = UDim2.new(0.5,-100,0.8,0)
+back.BackgroundColor3 = Color3.new(1,0,0)
+back.TextSize = 16
+back.RichText = true
+back.TextWrapped = true
+back.TextColor3 = Color3.new(1,1,1)
+back.Text = "Switch to <b>Old UI</b>?"
+back.Parent = scr
+Corner(0,8,back)
+Stroke(back, ASMBorder, 100,0,0, LJMRound, 3, 0)
+
+back.MouseButton1Click:Connect(function()
+    sea:Destroy()
+    wait(0.5) 
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/397db6d363933259c69d4683830484f67e13b28b/Search.lua"))()
+end)
