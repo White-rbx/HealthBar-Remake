@@ -1,4 +1,4 @@
--- searcher... yes. 2.99
+-- searcher... yes. 3
 
 -- =====>> Saved Functions <<=====
 
@@ -299,7 +299,6 @@ Corner(0,8,pre)
 Stroke(pre, ASMBorder, 0,170,0, LJMRound, 3, 0)
 
 pre.MouseButton1Click:Connect(function()
-    sea:Destroy()
     wait(0.5)
     loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search-Preview.lua"))()
 end)
