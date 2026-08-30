@@ -1,4 +1,4 @@
--- searcher... yes. 4.2
+-- searcher... yes. 4.2 (1)
 
 -- =====>> Saved Functions <<=====
 
@@ -404,7 +404,7 @@ tb.BackgroundTransparency = 0.3
 tb.BorderMode = Enum.BorderMode.Inset
 tb.BorderSizePixel = 6
 tb.TextSize = 16
-tb.RichText
+tb.RichText = true
 tb.Text = "<b><font color='rgb(255,0,0)' size='10'>YOU JUST ENTER PREVIEW VERSION! TO USE OLD VERSION PLEASE SCOLL DOWN THEN CLICK SWITCH.</font></b>"
 tb.PlaceholderText = "Search here!"
 tb.PlaceholderColor3 = Color3.new(0,0,0)
