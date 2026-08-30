@@ -1,4 +1,4 @@
--- searcher... yes. 2.98
+-- searcher... yes. 2.99
 
 -- =====>> Saved Functions <<=====
 
@@ -267,7 +267,7 @@ dear.Visible = true
 local back = Instance.new("TextButton")
 back.Name = "Back"
 back.Size = UDim2.new(0,200,0,50)
-back.Position = UDim2.new(0.5,-100,0.8,0)
+back.Position = UDim2.new(0.5,10,0.8,0)
 back.BackgroundColor3 = Color3.new(1,0,0)
 back.TextSize = 16
 back.RichText = true
@@ -282,4 +282,24 @@ back.MouseButton1Click:Connect(function()
     sea:Destroy()
     wait(0.5) 
     loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/397db6d363933259c69d4683830484f67e13b28b/Search.lua"))()
+end)
+
+local pre = Instance.new("TextButton")
+pre.Name = "Preview"
+pre.Size = UDim2.new(0,200,0,50)
+pre.Position = UDim2.new(0.5,-210,0.8,0)
+pre.BackgroundColor3 = Color3.new(0,1,0)
+pre.TextSize = 16
+pre.RichText = true
+pre.TextWrapped = true
+pre.TextColor3 = Color3.new(0,0,0)
+pre.Text = "Switch to <b>Preview version</b>?"
+pre.Parent = scr
+Corner(0,8,pre)
+Stroke(pre, ASMBorder, 0,170,0, LJMRound, 3, 0)
+
+pre.MouseButton1Click:Connect(function()
+    sea:Destroy()
+    wait(0.5)
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search-Preview.lua"))()
 end)
