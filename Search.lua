@@ -1,4 +1,4 @@
--- searcher... yes. 7.4
+-- searcher... yes. 7.6
 
 -- =====>> Saved Functions <<=====
 
@@ -1724,27 +1724,18 @@ exe.MouseButton1Click:Connect(function()
   tweenSize(exe, UDim2.new(1,0,0,20),nil,nil, 0.1)
 
   local source = codebox.Text or ""
-  local url
 
-  url = source:match(
-        'loadstring%s*%(%s*game:HttpGet%s*%(%s*["\'](.-)["\']%s*%)%s*%)%s*%(%s*%)'
-    )
-
-  if not url then
-        url = source:match("^%s*(https?://[%w%p]+)%s*$")
-    end
-
-  if url and url ~= "" then
+  if source and source ~= "" then
 
         if loadstring then
-            loadstring(game:HttpGet(url))()
+            loadstring((source))()
             exe.Text = "<b>Executed</b>"
         else
             exe.Text = "<b>Failed to execute</b>"
         end
 
     else
-        exe.Text = "<b>No loadstring Found</b>"
+        exe.Text = "<b>No Source Found</b>"
     end
     
   wait(1)
