@@ -1,4 +1,4 @@
--- searcher... yes. 4.2 (1)
+-- searcher... yes. 4.2
 
 -- =====>> Saved Functions <<=====
 
@@ -376,8 +376,46 @@ codebox.TextSize = 11
 codebox.TextWrapped = true
 codebox.TextXAlignment = Enum.TextXAlignment.Left
 codebox.TextYAlignment = Enum.TextYAlignment.Top
+codebox.TextEditable = false
 codebox.Parent = codescroll
 
+local exe = Instance.new("TextButton")
+exe.Name = "Execute"
+exe.Size = UDim2.new(1,0,0,20)
+exe.Position = UDim2.new(0,0,0,340)
+exe.BackgroundColor3 = Color3.fromRGB(255,0,128)
+exe.TextColor3 = Color3.new(1,1,1)
+exe.TextScaled = true
+exe.RichText = true
+exe.BorderMode = Enum.BorderMode.Inset
+exe.BorderSizePixel = 2
+exe.Text = "<b>Execute</b>"
+exe.Parent = vp
+Corner(0,3,exe)
+
+local cy = Instance.new("TextButton")
+cy.Name = "Copy"
+cy.Size = UDim2.new(1,0,0,20)
+cy.Position = UDim2.new(0,0,0,365)
+cy.BackgroundColor3 = Color3.fromRGB(145,0,255)
+cy.TextColor3 = Color3.new(1,1,1)
+cy.TextScaled = true
+cy.RichText = true
+cy.BorderMode = Enum.BorderMode.Inset
+cy.BorderSizePixel = 2
+cy.Text = "<b>Copy To Clipboard</b>"
+cy.Parent = vp
+Corner(0,3,cy)
+
+exe.MouseButton1Click:Connect(function()
+  tweenSize(exe, UDim2.new(1,0,0,10), 0.1).Completed:Wait(0.1)
+  tweenSize(exe, UDim2.new(1,0,0,20), 0.1)
+end)
+
+cy.MouseButton1Click:Connect(function()
+  tweenSize(cy, UDim2.new(1,0,0,10), 0.1).Completed:Wait(0.1)
+  tweenSize(cy, UDim2.new(1,0,0,20), 0.1)
+end)
 
 local backs = Instance.new("TextButton")
 backs.Name = "ClosePage"
