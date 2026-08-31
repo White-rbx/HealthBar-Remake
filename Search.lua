@@ -1,4 +1,4 @@
--- searcher... yes. 6.8
+-- searcher... yes. 7
 
 -- =====>> Saved Functions <<=====
 
@@ -58,7 +58,7 @@ end
 
 -- ====FUNCTION UIGRADIENT=====
 local function Gradient(parent, rotation, offsetX, offsetY, ...)
-    local grad = parent:FindFirstChildOfClass("UIGradient") or just Instance.new("UIGradient")
+    local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
     grad.Rotation = rotation or 0
     grad.Offset = Vector2.new(offsetX or 0, offsetY or 0)
 
