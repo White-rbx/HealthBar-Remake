@@ -1,4 +1,4 @@
--- searcher... yes. 4.2
+-- searcher... yes. 5.9
 
 -- =====>> Saved Functions <<=====
 
@@ -147,7 +147,7 @@ More Source: https://docs.scriptblox.com/scripts/fetch
 
 ]]
 
-local function tweenSize(obj, size, time)
+local function tweenSize(obj, size, pos, backcol, time)
     local tween = TweenService:Create(
         obj,
         TweenInfo.new(
@@ -155,12 +155,21 @@ local function tweenSize(obj, size, time)
             Enum.EasingStyle.Quad,
             Enum.EasingDirection.Out
         ),
-        {Size = size}
+        {Size = size,
+        Position = pos,
+        BackgroundColor3 = backcol,
+        }
     )
 
     tween:Play()
     return tween
 end
+
+local SCRIPTBLOX_API =
+    "https://scriptblox.com/api/script/fetch"
+
+local SCRIPTBLOX_INDIVIDUAL_API =
+    "https://scriptblox.com/api/script/"
 
 local ROOT = "ExperienceSettings"
 local IMAGE_FOLDER = ROOT .. "/DownloadedImage"
@@ -306,7 +315,7 @@ types.Parent = vp
 local cre = types:Clone()
 cre.Name = "Creator"
 cre.Position += UDim2.new(0,0,0,13)
-cre.Text = "@Username"
+cre.Text = "By @Username"
 cre.Parent = vp
 
 local like = Instance.new("TextLabel")
@@ -369,7 +378,7 @@ codebox.BackgroundTransparency = 1
 codebox.TextColor3 = Color3.new(0,1,0)
 codebox.Font = Enum.Font.Code
 codebox.ClearTextOnFocus = false
-codebox.PlaceholderText = "Hmm... Looks like there no script in here. Please make sure you select the script or the owner didn't put a script yet."
+codebox.PlaceholderText = "Hmm... Looks like there's no source code in here. Please make sure you select the script or the owner didn't put a source code yet."
 codebox.PlaceholderColor3 = Color3.new(1,1,1)
 codebox.Text = ""
 codebox.TextSize = 11
@@ -407,16 +416,6 @@ cy.Text = "<b>Copy To Clipboard</b>"
 cy.Parent = vp
 Corner(0,3,cy)
 
-exe.MouseButton1Click:Connect(function()
-  tweenSize(exe, UDim2.new(1,0,0,10), 0.1).Completed:Wait(0.1)
-  tweenSize(exe, UDim2.new(1,0,0,20), 0.1)
-end)
-
-cy.MouseButton1Click:Connect(function()
-  tweenSize(cy, UDim2.new(1,0,0,10), 0.1).Completed:Wait(0.1)
-  tweenSize(cy, UDim2.new(1,0,0,20), 0.1)
-end)
-
 local backs = Instance.new("TextButton")
 backs.Name = "ClosePage"
 backs.Size = UDim2.new(1,0,0,20)
@@ -441,9 +440,8 @@ tb.BackgroundColor3 = Color3.fromRGB(0,170,255)
 tb.BackgroundTransparency = 0.3
 tb.BorderMode = Enum.BorderMode.Inset
 tb.BorderSizePixel = 6
-tb.TextSize = 16
-tb.RichText = true
-tb.Text = "<b><font color='rgb(255,0,0)' size='10'>YOU JUST ENTER PREVIEW VERSION! TO USE OLD VERSION PLEASE SCOLL DOWN THEN CLICK SWITCH.</font></b>"
+tb.TextScaled = true
+tb.Text = "<b><font color='rgb(255,0,0'>YOU JUST ENTER PREVIEW VERSION! TO USE OLD VERSION PLEASE SCROLL DOWN THEN CLICK SWITCH.</font></b>"
 tb.PlaceholderText = "Search here!"
 tb.PlaceholderColor3 = Color3.new(0,0,0)
 tb.TextColor3 = Color3.new(1,1,1)
@@ -467,6 +465,176 @@ Gradient(filter, -45 ,0,0, Color3.fromRGB(85,255,0), Color3.fromRGB(255,255,0))
 local tb_str = Stroke(tb,ASMBorder, 255,255,255, LJMRound, 2, 0)
 Gradient(tb_str, 90, 0,0, Color3.fromRGB(255,255,255), Color3.fromRGB(0,255,255))
 
+local filter_body = Instance.new("Frame")
+filter_body.Name = "FilterBody"
+filter_body.Size = UDim2.new(0,350,0,200)
+filter_body.Position = UDim2.new(0,-305,1,5)
+filter_body.BackgroundColor3 = Color3.fromRGB(0,85,0)
+filter_body.BorderMode = Enum.BorderMode.Inset
+filter_body.BorderSizePixel = 5
+filter_body.ZIndex = 2
+filter_body.Visible = false
+filter_body.Parent = filter
+Corner(0,8,filter_body)
+ListLayout(filter_body, 0,2, HCenter, VTop, SLayout, FillV)
+
+-- =========================================
+-- Filter System
+-- =========================================
+
+local switches = {}
+
+local filterType = {
+    ScriptType = "Default",
+    IsUniversal = "Default",
+    Verified = "Default",
+    Patched = "Default",
+    Key = "Default"
+}
+
+-- =========================================
+-- Filter Colors
+-- =========================================
+
+local FILTER_COLORS = {
+    Default = Color3.fromRGB(128,128,128),
+    With = Color3.fromRGB(0,255,0),
+    Without = Color3.fromRGB(255,0,0),
+
+    Free = Color3.fromRGB(0,255,0),
+    Paid = Color3.fromRGB(170,85,0)
+}
+
+-- =========================================
+-- Create Filter
+-- =========================================
+
+local function type_(type, key)
+
+    -- =====================================
+    -- Body
+    -- =====================================
+
+    local body = Instance.new("TextLabel")
+    body.Name = "Body"
+    body.Size = UDim2.new(1,0,0,30)
+    body.BackgroundColor3 = Color3.fromRGB(0,163,0)
+    body.TextXAlignment = Enum.TextXAlignment.Left
+    body.TextColor3 = Color3.new(1,1,1)
+    body.Text = "<b>" .. tostring(type) .. "</b>"
+    body.RichText = true
+    body.BorderMode = Enum.BorderMode.Inset
+    body.BorderSizePixel = 5
+    body.ZIndex = 2
+    body.Parent = filter_body
+
+    Corner(0,5,body)
+
+    -- =====================================
+    -- Switch
+    -- =====================================
+
+    local switch = Instance.new("TextButton")
+    switch.Name = "Switch"
+
+    -- 20 × 20 Offset
+    switch.Size = UDim2.new(0,20,0,20)
+    switch.Position = UDim2.new(1,-20,0,0)
+
+    switch.BackgroundColor3 =
+        FILTER_COLORS.Default
+
+    switch.ZIndex = 2
+
+    -- No text
+    switch.Text = ""
+
+    switch.Parent = body
+
+    Corner(0,3,switch)
+
+    switches[key] = switch
+
+    -- =====================================
+    -- States
+    -- =====================================
+
+    local states
+
+    if key == "ScriptType" then
+
+        states = {
+            "Default",
+            "Free",
+            "Paid"
+        }
+
+    else
+
+        states = {
+            "Default",
+            "With",
+            "Without"
+        }
+
+    end
+
+    local stateIndex = 1
+
+    -- =====================================
+    -- Switch Click
+    -- =====================================
+
+    switch.MouseButton1Click:Connect(function()
+
+        stateIndex += 1
+
+        if stateIndex > #states then
+            stateIndex = 1
+        end
+
+        local state =
+            states[stateIndex]
+
+        filterType[key] =
+            state
+
+        -- Change color only
+        tweenSize(
+            switch,
+            nil,
+            nil,
+            FILTER_COLORS[state],
+            0.1
+        )
+
+    end)
+end
+
+-- =========================================
+-- Create Filters
+-- =========================================
+
+type_("Script Type", "ScriptType")
+type_("Universal", "IsUniversal")
+type_("Verified", "Verified")
+type_("Patched", "Patched")
+type_("Key", "Key")
+
+local fil_sw = false  
+  
+filter.MouseButton1Click:Connect(function()  
+    if not fil_sw then  
+      fil_sw = true  
+      filter_body.Visible = true  
+      tweenSize(filter_body, UDim2.new(0,350,0,200),nil,nil,0.3).Completed:Wait()
+    else  
+      fil_sw = false  
+      tweenSize(filter_body, UDim2.new(0,0,0,200),nil,nil,0.3).Completed:Wait()
+      filter_body.Visible = false  
+    end  
+end)
+  
 local scr = Instance.new("ScrollingFrame")
 scr.Name = "Scrips"
 scr.Position = UDim2.new(0,0,0,50)
@@ -479,6 +647,26 @@ scr.Parent = List
 Corner(0,8,scr)
 Gradient(scr, 0,0,0, Color3.fromRGB(0,0,172), Color3.fromRGB(0,255,255))
 ListLayout(scr, 0, 4, HLeft, VTop, SLayout, FillV)
+
+
+local function updateCanvas()
+    local layout = scr:FindFirstChildOfClass("UIListLayout")
+
+    if layout then
+        scr.CanvasSize = UDim2.new(
+            0,
+            0,
+            0,
+            layout.AbsoluteContentSize.Y + 5
+        )
+    end
+end
+
+local scrLayout = scr:FindFirstChildOfClass("UIListLayout")
+
+if scrLayout then
+    scrLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
+end
 
 dear.Parent = scr
 dear.Visible = false
@@ -505,171 +693,1056 @@ back.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/397db6d363933259c69d4683830484f67e13b28b/Search.lua"))()
 end)
 
-back.Visible = true
+back.Visible = false -- FALSE FOR FULLY VERSION
 
 -----
 
-local function sipt()
-  local body = Instance.new("Frame")
-  body.Name = "Body"
-  body.Size = UDim2.new(0.98,0,0,130)
-  body.BorderMode = Enum.BorderMode.Inset
-  body.BackgroundColor3 = Color3.new(1,1,1)
-  body.BorderSizePixel = 7
-  body.Parent = scr
-  Corner(0,8,body)
-  local bd_str = Stroke(body, ASMBorder, 255,255,255, LJMRound, 3, 0)
-  bd_str.BorderStrokePosition = Enum.BorderStrokePosition.Inner
-  Gradient(body, 0, 0, 0, Color3.fromRGB(0,255,255), Color3.fromRGB(170,0,255))
+-- =========================================
+-- Preview Image
+-- =========================================
 
-  local state = Instance.new("Frame")
-  state.Name = "State"
-  state.Position = UDim2.new(0,0,0,90)
-  state.Size = UDim2.new(1,0,0,25)
-  state.BackgroundTransparency = 1
-  state.Parent = body
-  ListLayout(state, 0, 3, HLeft, VCenter, SLayout, FillH)
+local FALLBACK_IMAGE =
+    "rbxassetid://136962703149104"
 
-  local Verified = Instance.new("TextLabel")
-  Verified.Name = "Verified"
-  Verified.Size = UDim2.new(0,100,1,0)
-  Verified.BackgroundTransparency = 0.3
-  Verified.BackgroundColor3 = Color3.fromRGB(0,85,255)
-  Verified.TextColor3 = Color3.fromRGB(0,255,255)
-  Verified.TextSize = 13
-  Verified.RichText = true
-  Verified.Text = "<b>Verified</b>"
-  Verified.Visible = false
-  Verified.Active = false
-  Verified.Parent = state
-  Corner(0,8,Verified)
- 
-  local Key = Instance.new("TextLabel")
-  Key.Name = "Key"
-  Key.Size = UDim2.new(0,60,1,0)
-  Key.BackgroundTransparency = 0.3
-  Key.BackgroundColor3 = Color3.fromRGB(255,170,0)
-  Key.TextColor3 = Color3.fromRGB(255,255,0)
-  Key.TextSize = 13
-  Key.RichText = true
-  Key.Text = "<b>Key</b>"
-  Key.Visible = false
-  Key.Active = false
-  Key.Parent = state
-  Corner(0,8,Key)
-  
-  local Patched = Instance.new("TextLabel")
-  Patched.Name = "Patched"
-  Patched.Size = UDim2.new(0,100,1,0)
-  Patched.BackgroundTransparency = 0.3
-  Patched.BackgroundColor3 = Color3.fromRGB(170,0,0)
-  Patched.TextColor3 = Color3.fromRGB(255,0,0)
-  Patched.TextSize = 13
-  Patched.RichText = true
-  Patched.Text = "<b>Patched</b>"
-  Patched.Visible = false
-  Patched.Active = false
-  Patched.Parent = state
-  Corner(0,8,Patched)
-  
-  local Free = Instance.new("TextLabel")
-  Free.Name = "Free"
-  Free.Size = UDim2.new(0,70,1,0)
-  Free.BackgroundTransparency = 0.3
-  Free.BackgroundColor3 = Color3.fromRGB(0,170,0)
-  Free.TextColor3 = Color3.fromRGB(0,255,0)
-  Free.TextSize = 13
-  Free.RichText = true
-  Free.Text = "<b>Free</b>"
-  Free.Visible = false
-  Free.Active = false
-  Free.Parent = state
-  Corner(0,8,Free)
-  
-  local Paid = Instance.new("TextLabel")
-  Paid.Name = "Paid"
-  Paid.Size = UDim2.new(0,70,1,0)
-  Paid.BackgroundTransparency = 0.3
-  Paid.BackgroundColor3 = Color3.fromRGB(170,85,0)
-  Paid.TextColor3 = Color3.fromRGB(255,85,0)
-  Paid.TextSize = 13
-  Paid.RichText = true
-  Paid.Text = "<b>Paid</b>"
-  Paid.Visible = false
-  Paid.Active = false
-  Paid.Parent = state
-  Corner(0,8,Paid)
-  
-  local Img = Instance.new("ImageLabel")
-  Img.Name = "Preview"
-  Img.Size = UDim2.new(0,160,0,85)
-  Img.BackgroundColor3 = Color3.new(1,1,1)
-  Img.Image = "rbxassetid://136962703149104"
-  Img.Parent = body
-  Corner(0,3,Img)
+local function getPreviewImage(data)
 
-  local de = Instance.new("TextLabel")
-  de.Name = "Details"
-  de.BackgroundTransparency = 1
-  de.Position = UDim2.new(0,165,0,0)
-  de.Size = UDim2.new(1,-270,0,30)
-  de.TextXAlignment = Enum.TextXAlignment.Left
-  de.TextYAlignment = Enum.TextYAlignment.Top
-  de.RichText = true
-  de.TextColor3 = Color3.new(0,0,0)
-  de.Text = "<font size='12'><b>Script Title</b></font> \n📌 Universal Script \nBy @Username \nClick 'View' for more details."
-  de.Parent = body
+    if data
+        and data.game
+        and type(data.game) == "table"
+        and data.game.gameId then
 
-  local view = Instance.new("TextButton")
-  view.Name = "ViewButton"
-  view.Position = UDim2.new(1,-100,0,0)
-  view.Size = UDim2.new(0,100,0,35)
-  view.BackgroundColor3 = Color3.new(1,1,1)
-  view.TextColor3 = Color3.new(0,0,0)
-  view.TextSize = 16
-  view.RichText = true
-  view.Text = "<b><i>View</i></b>"
-  view.Parent = body
-  Corner(0,3,view)
-  Gradient(view, -45,0,0, Color3.fromRGB(0,255,85), Color3.fromRGB(255,255,0))
-  Stroke(view, ASMBorder, 255,255,255, LJMRound, 2 ,0)
-  
-  view.MouseButton1Click:Connect(function()
-    tweenSize(view, UDim2.new(0,80,0,15), 0.1).Completed:Wait()
-    tweenSize(view, UDim2.new(0,100,0,35), 0.1)
-    Page.Visible = true
-    tweenSize(Page, UDim2.new(0.35,-5,1,0), 0.4)
-    tweenSize(List, UDim2.new(0.65,0,1,0), 0.4)
-  end)
+        return "rbxthumb://type=GameIcon&id="
+            .. tostring(data.game.gameId)
+            .. "&w=420&h=420"
+    end
+
+    return FALLBACK_IMAGE
 end
 
+
+-- =========================================
+-- ScriptBlox Individual
+-- =========================================
+
+local function fetchIndividual(scriptId)
+
+    if not scriptId then
+        return nil
+    end
+
+    local success, response = pcall(function()
+
+        return game:HttpGet(
+            SCRIPTBLOX_INDIVIDUAL_API
+            .. tostring(scriptId)
+        )
+
+    end)
+
+    if not success then
+        return nil
+    end
+
+
+    local jsonSuccess, result = pcall(function()
+
+        return HttpService:JSONDecode(
+            response
+        )
+
+    end)
+
+    if not jsonSuccess then
+        return nil
+    end
+
+
+    if not result
+        or not result.script then
+
+        return nil
+    end
+
+
+    return result.script
+end
+
+
+-- =========================================
+-- Script Card
+-- =========================================
+
+local function sipt(data)
+
+    -- =====================================
+    -- Body
+    -- =====================================
+
+    local body = Instance.new("Frame")
+
+    body.Name = "Body"
+    body.Size = UDim2.new(0.98,0,0,130)
+    body.BorderMode = Enum.BorderMode.Inset
+    body.BackgroundColor3 = Color3.new(1,1,1)
+    body.BorderSizePixel = 7
+    body.Parent = scr
+
+    Corner(0,8,body)
+
+
+    local bd_str = Stroke(
+        body,
+        ASMBorder,
+        255,255,255,
+        LJMRound,
+        3,
+        0
+    )
+
+    bd_str.BorderStrokePosition =
+        Enum.BorderStrokePosition.Inner
+
+
+    Gradient(
+        body,
+        0,
+        0,
+        0,
+        Color3.fromRGB(0,255,255),
+        Color3.fromRGB(170,0,255)
+    )
+
+
+    -- =====================================
+    -- State
+    -- =====================================
+
+    local state = Instance.new("Frame")
+
+    state.Name = "State"
+    state.Position = UDim2.new(0,0,0,90)
+    state.Size = UDim2.new(1,0,0,25)
+    state.BackgroundTransparency = 1
+    state.Parent = body
+
+    ListLayout(
+        state,
+        0,
+        3,
+        HLeft,
+        VCenter,
+        SLayout,
+        FillH
+    )
+
+
+    -- =====================================
+    -- Verified
+    -- =====================================
+
+    local Verified = Instance.new("TextLabel")
+
+    Verified.Name = "Verified"
+    Verified.Size = UDim2.new(0,100,1,0)
+    Verified.BackgroundTransparency = 0.3
+    Verified.BackgroundColor3 =
+        Color3.fromRGB(0,85,255)
+
+    Verified.TextColor3 =
+        Color3.fromRGB(0,255,255)
+
+    Verified.TextSize = 13
+    Verified.RichText = true
+    Verified.Text = "<b>Verified</b>"
+
+    Verified.Visible =
+        data.verified == true
+
+    Verified.Active = false
+    Verified.Parent = state
+
+    Corner(0,8,Verified)
+
+
+    -- =====================================
+    -- Key
+    -- =====================================
+
+    local Key = Instance.new("TextLabel")
+
+    Key.Name = "Key"
+    Key.Size = UDim2.new(0,60,1,0)
+    Key.BackgroundTransparency = 0.3
+    Key.BackgroundColor3 =
+        Color3.fromRGB(255,170,0)
+
+    Key.TextColor3 =
+        Color3.fromRGB(255,255,0)
+
+    Key.TextSize = 13
+    Key.RichText = true
+    Key.Text = "<b>Key</b>"
+
+    Key.Visible =
+        data.key == true
+
+    Key.Active = false
+    Key.Parent = state
+
+    Corner(0,8,Key)
+
+
+    -- =====================================
+    -- Patched
+    -- =====================================
+
+    local Patched = Instance.new("TextLabel")
+
+    Patched.Name = "Patched"
+    Patched.Size = UDim2.new(0,100,1,0)
+    Patched.BackgroundTransparency = 0.3
+    Patched.BackgroundColor3 =
+        Color3.fromRGB(170,0,0)
+
+    Patched.TextColor3 =
+        Color3.fromRGB(255,0,0)
+
+    Patched.TextSize = 13
+    Patched.RichText = true
+    Patched.Text = "<b>Patched</b>"
+
+    Patched.Visible =
+        data.isPatched == true
+
+    Patched.Active = false
+    Patched.Parent = state
+
+    Corner(0,8,Patched)
+
+
+    -- =====================================
+    -- Free
+    -- =====================================
+
+    local Free = Instance.new("TextLabel")
+
+    Free.Name = "Free"
+    Free.Size = UDim2.new(0,70,1,0)
+    Free.BackgroundTransparency = 0.3
+    Free.BackgroundColor3 =
+        Color3.fromRGB(0,170,0)
+
+    Free.TextColor3 =
+        Color3.fromRGB(0,255,0)
+
+    Free.TextSize = 13
+    Free.RichText = true
+    Free.Text = "<b>Free</b>"
+
+    Free.Visible =
+        data.scriptType == "free"
+
+    Free.Active = false
+    Free.Parent = state
+
+    Corner(0,8,Free)
+
+
+    -- =====================================
+    -- Paid
+    -- =====================================
+
+    local Paid = Instance.new("TextLabel")
+
+    Paid.Name = "Paid"
+    Paid.Size = UDim2.new(0,70,1,0)
+    Paid.BackgroundTransparency = 0.3
+    Paid.BackgroundColor3 =
+        Color3.fromRGB(170,85,0)
+
+    Paid.TextColor3 =
+        Color3.fromRGB(255,85,0)
+
+    Paid.TextSize = 13
+    Paid.RichText = true
+    Paid.Text = "<b>Paid</b>"
+
+    Paid.Visible =
+        data.scriptType == "paid"
+
+    Paid.Active = false
+    Paid.Parent = state
+
+    Corner(0,8,Paid)
+
+
+    -- =====================================
+    -- Preview
+    -- =====================================
+
+    local Img = Instance.new("ImageLabel")
+
+    Img.Name = "Preview"
+    Img.Size = UDim2.new(0,153,0,85)
+
+    Img.BackgroundColor3 =
+        Color3.new(1,1,1)
+
+    Img.ScaleType =
+        Enum.ScaleType.Fit
+
+    Img.Image =
+        getPreviewImage(data)
+
+    Img.Parent = body
+
+    Corner(0,3,Img)
+
+
+    -- =====================================
+    -- Game Name
+    -- =====================================
+
+    local gameName =
+        "Universal Script"
+
+    if data.game
+        and type(data.game) == "table"
+        and data.game.name
+        and tostring(data.game.name) ~= "" then
+
+        gameName =
+            tostring(data.game.name)
+    end
+
+
+    -- =====================================
+    -- Details
+    -- =====================================
+
+    local de = Instance.new("TextLabel")
+
+    de.Name = "Details"
+    de.BackgroundTransparency = 1
+    de.Position = UDim2.new(0,155,0,0)
+    de.Size = UDim2.new(1,-270,0,30)
+
+    de.TextXAlignment =
+        Enum.TextXAlignment.Left
+
+    de.TextYAlignment =
+        Enum.TextYAlignment.Top
+
+    de.RichText = true
+
+    de.TextColor3 =
+        Color3.new(0,0,0)
+
+
+    local title =
+        tostring(
+            data.title
+            or "Untitled Script"
+        )
+
+
+    local owner = "Unknown"
+
+    if data.owner
+        and type(data.owner) == "table"
+        and data.owner.username then
+
+        owner =
+            tostring(
+                data.owner.username
+            )
+
+    elseif data.owner
+        and tostring(data.owner) ~= "" then
+
+        owner =
+            tostring(data.owner)
+    end
+
+
+    de.Text =
+        "<font size='12'><b>"
+        .. title
+        .. "</b></font>\n"
+        .. "📌 "
+        .. gameName
+        .. "\n"
+        .. "By @"
+        .. owner
+        .. "\n"
+        .. "Click 'View' for more details."
+
+    de.Parent = body
+
+
+    -- =====================================
+    -- View Button
+    -- =====================================
+
+    local view =
+        Instance.new("TextButton")
+
+    view.Name =
+        "ViewButton"
+
+    view.Position =
+        UDim2.new(1,-100,0,0)
+
+    view.Size =
+        UDim2.new(0,100,0,35)
+
+    view.BackgroundColor3 =
+        Color3.new(1,1,1)
+
+    view.TextColor3 =
+        Color3.new(0,0,0)
+
+    view.TextSize = 16
+    view.RichText = true
+
+    view.Text =
+        "<b><i>View</i></b>"
+
+    view.Parent = body
+
+    Corner(0,3,view)
+
+
+    Gradient(
+        view,
+        -45,
+        0,
+        0,
+        Color3.fromRGB(0,255,85),
+        Color3.fromRGB(255,255,0)
+    )
+
+
+    Stroke(
+        view,
+        ASMBorder,
+        255,255,255,
+        LJMRound,
+        2,
+        0
+    )
+
+
+    view:SetAttribute(
+        "ScriptTitle",
+        title
+    )
+
+
+    -- =====================================
+    -- View Click
+    -- =====================================
+
+    view.MouseButton1Click:Connect(function()
+
+        -- ---------------------------------
+        -- Button animation
+        -- ---------------------------------
+
+        tweenSize(
+            view,
+            UDim2.new(0,80,0,15),
+            nil,
+            nil,
+            0.1
+        ).Completed:Wait()
+
+
+        tweenSize(
+            view,
+            UDim2.new(0,100,0,35),
+            nil,
+            nil,
+            0.1
+        )
+
+
+        -- ---------------------------------
+        -- Open Page
+        -- ---------------------------------
+
+        Page.Visible = true
+
+
+        tweenSize(
+            Page,
+            UDim2.new(0.35,-5,1,0),
+            nil,
+            nil,
+            0.4
+        )
+
+
+        tweenSize(
+            List,
+            UDim2.new(0.65,0,1,0),
+            nil,
+            nil,
+            0.4
+        )
+
+
+        -- ---------------------------------
+        -- Fetch Individual
+        -- ---------------------------------
+
+        local detail =
+            fetchIndividual(data._id)
+
+
+        -- ---------------------------------
+        -- Fallback
+        -- ---------------------------------
+
+        if not detail then
+            detail = data
+        end
+
+
+        -- ---------------------------------
+        -- Title
+        -- ---------------------------------
+
+        local detailTitle =
+            tostring(
+                detail.title
+                or data.title
+                or "Untitled Script"
+            )
+
+
+        -- ---------------------------------
+        -- Owner
+        -- ---------------------------------
+
+        local detailOwner =
+            "Unknown"
+
+
+        if detail.owner
+            and type(detail.owner) == "table"
+            and detail.owner.username then
+
+            detailOwner =
+                tostring(
+                    detail.owner.username
+                )
+
+        elseif detail.owner
+            and tostring(detail.owner) ~= "" then
+
+            detailOwner =
+                tostring(detail.owner)
+        end
+
+
+        -- ---------------------------------
+        -- Game Name
+        -- ---------------------------------
+
+        local detailGameName =
+            "Universal Script"
+
+
+        if detail.game
+            and type(detail.game) == "table"
+            and detail.game.name
+            and tostring(detail.game.name) ~= "" then
+
+            detailGameName =
+                tostring(detail.game.name)
+        end
+
+
+        -- ---------------------------------
+        -- Image
+        -- ---------------------------------
+
+        imgview.Image =
+            getPreviewImage(detail)
+
+
+        -- ---------------------------------
+        -- Title
+        -- ---------------------------------
+
+        names.Text =
+            "<b>"
+            .. detailTitle
+            .. "</b>"
+
+
+        -- ---------------------------------
+        -- Game
+        -- ---------------------------------
+
+        types.Text =
+            "📌 "
+            .. detailGameName
+
+
+        -- ---------------------------------
+        -- Creator
+        -- ---------------------------------
+
+        cre.Text =
+            "By @"
+            .. detailOwner
+
+
+        -- ---------------------------------
+        -- Likes
+        -- ---------------------------------
+
+        like.Text =
+            "<b>Like: "
+            .. tostring(
+                detail.likeCount
+                or 0
+            )
+            .. "</b>"
+
+
+        -- ---------------------------------
+        -- Dislikes
+        -- ---------------------------------
+
+        dislike.Text =
+            "<b>Dislike: "
+            .. tostring(
+                detail.dislikeCount
+                or 0
+            )
+            .. "</b>"
+
+
+        -- ---------------------------------
+        -- Views
+        -- ---------------------------------
+
+        visit.Text =
+            "<b>Visit: "
+            .. tostring(
+                detail.views
+                or 0
+            )
+            .. "</b>"
+
+
+        -- ---------------------------------
+        -- Source
+        -- ---------------------------------
+
+        codebox.Text =
+            tostring(
+                detail.script
+                or ""
+            )
+
+    end)
+
+end
+
+
+-- =========================================
+-- ScriptBlox Fetch
+-- =========================================
+
+local SCRIPTBLOX_API =
+    "https://scriptblox.com/api/script/fetch"
+
+local HttpService =
+    game:GetService("HttpService")
+
+local currentPage = 1
+local loading = false
+local loadMoreButton = nil
+local fetchScripts
+
+
+-- =========================================
+-- Load More Button
+-- =========================================
+
+local function load()
+
+    if loadMoreButton then
+        loadMoreButton:Destroy()
+        loadMoreButton = nil
+    end
+
+    local lm = Instance.new("TextButton")
+    lm.Name = "LoadMore"
+    lm.Size = UDim2.new(0.98,0,0,50)
+    lm.Position = UDim2.new(0.5,-100,0.8,0)
+    lm.BackgroundColor3 = Color3.new(0.5,0.5,0.5)
+    lm.TextSize = 16
+    lm.RichText = true
+    lm.TextWrapped = true
+    lm.LayoutOrder = 2
+    lm.TextColor3 = Color3.new(1,1,1)
+    lm.Text = "Load More"
+    lm.Parent = scr
+
+    Corner(0,8,lm)
+
+    local lm_str = Stroke(
+        lm,
+        ASMBorder,
+        60,60,60,
+        LJMRound,
+        3,
+        0
+    )
+
+    lm_str.BorderStrokePosition =
+        Enum.BorderStrokePosition.Inner
+
+    loadMoreButton = lm
+
+    lm.MouseButton1Click:Connect(function()
+
+        if loading then
+            return
+        end
+
+        lm.Text = "Loading..."
+
+        local nextPage = currentPage + 1
+
+        local success = fetchScripts(nextPage)
+
+        if success then
+            currentPage = nextPage
+        else
+            lm.Text = "Load More"
+        end
+    end)
+end
+
+
+-- =========================================
+-- Fetch Function
+-- =========================================
+
+function fetchScripts(page)
+
+    if loading then
+        return false
+    end
+
+    loading = true
+
+    if loadMoreButton then
+        loadMoreButton:Destroy()
+        loadMoreButton = nil
+    end
+
+    local url =
+        SCRIPTBLOX_API
+        .. "?page="
+        .. tostring(page)
+        .. "&max=20"
+
+    local success, response = pcall(function()
+        return game:HttpGet(url)
+    end)
+
+    if not success then
+        loading = false
+        return false
+    end
+
+    local jsonSuccess, data =
+        pcall(function()
+            return HttpService:JSONDecode(response)
+        end)
+
+    if not jsonSuccess then
+        loading = false
+        return false
+    end
+
+    if data.message then
+        loading = false
+        return false
+    end
+
+    if not data.result
+        or not data.result.scripts then
+
+        loading = false
+        return false
+    end
+
+    local scripts =
+        data.result.scripts
+
+    for _, scriptData in ipairs(scripts) do
+        sipt(scriptData)
+    end
+
+    loading = false
+
+    if data.result.nextPage
+        and #scripts > 0 then
+
+        load()
+
+    elseif #scripts >= 20 then
+
+        load()
+    end
+
+    return true
+end
+
+
+-- =========================================
+-- Initial Fetch
+-- =========================================
+
+currentPage = 1
+fetchScripts(currentPage)
+
 backs.MouseButton1Click:Connect(function()
-  tweenSize(Page, UDim2.new(0,0,1,0), 0.4)
-  tweenSize(List, UDim2.new(1,0,1,0), 0.4).Completed:Wait()
+  tweenSize(Page, UDim2.new(0,0,1,0),nil,nil, 0.4)
+  tweenSize(List, UDim2.new(1,0,1,0),nil,nil, 0.4).Completed:Wait()
   Page.Visible = false
 end)
 
 -----
 
-local function load()
-local lm = Instance.new("TextButton")
-lm.Name = "LoadMore"
-lm.Size = UDim2.new(0.98,0,0,50)
-lm.Position = UDim2.new(0.5,-100,0.8,0)
-lm.BackgroundColor3 = Color3.new(0.5,0.5,0.5)
-lm.TextSize = 16
-lm.RichText = true
-lm.TextWrapped = true
-lm.LayoutOrder = 2
-lm.TextColor3 = Color3.new(1,1,1)
-lm.Text = "Load More"
-lm.Parent = scr
-Corner(0,8,lm)
-local lm_str = Stroke(lm, ASMBorder, 60,60,60, LJMRound, 3, 0)
-lm_str.BorderStrokePosition = Enum.BorderStrokePosition.Inner
+exe.MouseButton1Click:Connect(function()
+  exe.Text = "<b>Executed</b>"
+  tweenSize(exe, UDim2.new(1,0,0,10),nil,nil, 0.1).Completed:Wait()
+  tweenSize(exe, UDim2.new(1,0,0,20),nil,nil, 0.1)
+  wait(1)
+  exe.Text = "<b>Execute</b>"
+end)
+
+cy.MouseButton1Click:Connect(function()
+
+    local source = codebox.Text
+
+    if source == "" then
+        cy.Text = "<b>No Code</b>"
+    else
+        if setclipboard then
+            setclipboard(source)
+            cy.Text = "<b>Copied</b>"
+        else
+            cy.Text = "<b>Clipboard Unsupported</b>"
+        end
+    end
+
+    tweenSize(
+        cy,
+        UDim2.new(1,0,0,10),
+        nil,nil,
+        0.1
+    ).Completed:Wait()
+
+    tweenSize(
+        cy,
+        UDim2.new(1,0,0,20),
+        nil,nil,
+        0.1
+    )
+
+    task.wait(1)
+
+    cy.Text = "<b>Copy To Clipboard</b>"
+end)
+
+local exeVerifying = false
+local exeConfirming = false
+local exeToken = 0
+
+-- =========================================
+-- Execute Verification
+-- =========================================
+
+local exeVerifying = false
+local exeConfirming = false
+local exeToken = 0
+
+local function executeApprovedSource(source)
+    -- Execution backend ของโปรเจกต์นายอยู่ตรงนี้
+    -- ตอนนี้ใช้สำหรับทดสอบ verification flow
+    print("Execute confirmed")
+    print("Source length:", #tostring(source or ""))
+
+    return true
 end
 
-sipt()
-sipt()
-sipt()
-load()
+exe.MouseButton1Click:Connect(function()
+
+    if exeVerifying or exeConfirming then
+        return
+    end
+
+    exeVerifying = true
+    exeToken += 1
+
+    local token = exeToken
+
+    -- =========================================
+    -- Step 1
+    -- =========================================
+
+    exe.Text =
+        '<b>Execute <i><font color="rgb(0,255,255)">(2 step verification)</font></i></b>'
+
+    tweenSize(
+        exe,
+        UDim2.new(1,0,0,10),
+        nil,nil,
+        0.1
+    ).Completed:Wait()
+
+    tweenSize(
+        exe,
+        UDim2.new(1,0,0,20),
+        nil,nil,
+        0.1
+    )
+
+    task.wait(0.5)
+
+    if token ~= exeToken then
+        exeVerifying = false
+        return
+    end
+
+    -- =========================================
+    -- Step 2A
+    -- =========================================
+
+    exeConfirming = true
+
+    for i = 3, 1, -1 do
+
+        if token ~= exeToken then
+            exeVerifying = false
+            exeConfirming = false
+            return
+        end
+
+        exe.Text =
+            '<b><font color="rgb(255,255,0)">Are you sure?</font> ('
+            .. i
+            .. ' seconds left)</b>'
+
+        task.wait(1)
+    end
+
+    if token ~= exeToken then
+        exeVerifying = false
+        exeConfirming = false
+        return
+    end
+
+    -- =========================================
+    -- Step 2B
+    -- =========================================
+
+    local confirmed = false
+
+    exe.Text =
+        '<b>Click if you agree (5 seconds left)</b>'
+
+    local connection
+
+    connection = exe.MouseButton1Click:Connect(function()
+        confirmed = true
+    end)
+
+    for i = 5, 1, -1 do
+
+        if token ~= exeToken then
+            connection:Disconnect()
+            exeVerifying = false
+            exeConfirming = false
+            return
+        end
+
+        if confirmed then
+            break
+        end
+
+        exe.Text =
+            '<b>Click if you agree ('
+            .. i
+            .. ' seconds left)</b>'
+
+        task.wait(1)
+    end
+
+    connection:Disconnect()
+
+    exeConfirming = false
+
+    if token ~= exeToken then
+        exeVerifying = false
+        return
+    end
+
+    -- =========================================
+    -- Step 3
+    -- =========================================
+
+    if confirmed then
+
+        local source = codebox.Text or ""
+
+        local success, result = pcall(function()
+            return executeApprovedSource(source)
+        end)
+
+        if success and result ~= false then
+            exe.Text = "<b>Executed</b>"
+        else
+            exe.Text = "<b>Execution Failed</b>"
+
+            if result ~= nil then
+                warn(result)
+            end
+        end
+
+        tweenSize(
+            exe,
+            UDim2.new(1,0,0,10),
+            nil,nil,
+            0.1
+        ).Completed:Wait()
+
+        tweenSize(
+            exe,
+            UDim2.new(1,0,0,20),
+            nil,nil,
+            0.1
+        )
+
+        task.wait(1)
+    end
+
+    -- =========================================
+    -- Reset
+    -- =========================================
+
+    exeVerifying = false
+    exeConfirming = false
+    exe.Text = "<b>Execute</b>"
+
+end)
