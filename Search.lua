@@ -1,4 +1,4 @@
--- searcher... yes. 6.5
+-- searcher... yes. 6.8
 
 -- =====>> Saved Functions <<=====
 
@@ -58,7 +58,7 @@ end
 
 -- ====FUNCTION UIGRADIENT=====
 local function Gradient(parent, rotation, offsetX, offsetY, ...)
-    local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+    local grad = parent:FindFirstChildOfClass("UIGradient") or just Instance.new("UIGradient")
     grad.Rotation = rotation or 0
     grad.Offset = Vector2.new(offsetX or 0, offsetY or 0)
 
@@ -188,9 +188,9 @@ end
 local menu = CoreGui:WaitForChild("ExperienceSettings", 10):FindFirstChild("Menu")  
 if not menu then return end  
 
-if menu.Search then
+--[[if menu.Search then
    menu.Search:Destroy()
-end
+end]]
 
 -- =========================  
 -- Main Frame  
@@ -441,6 +441,7 @@ tb.BackgroundTransparency = 0.3
 tb.BorderMode = Enum.BorderMode.Inset
 tb.BorderSizePixel = 6
 tb.TextSize = 16
+tb.TextWrapped = true
 tb.Text = ""
 tb.PlaceholderText = "Search here!"
 tb.PlaceholderColor3 = Color3.new(0,0,0)
@@ -465,9 +466,22 @@ Gradient(filter, -45 ,0,0, Color3.fromRGB(85,255,0), Color3.fromRGB(255,255,0))
 local tb_str = Stroke(tb,ASMBorder, 255,255,255, LJMRound, 2, 0)
 Gradient(tb_str, 90, 0,0, Color3.fromRGB(255,255,255), Color3.fromRGB(0,255,255))
 
+local refresh = Instance.new("ImageButton")
+refresh.Name = "Refresh"
+refresh.Position = UDim2.new(1,-75,0,0)
+refresh.Size = UDim2.new(0,35,0,35)
+refresh.BackgroundColor3 = Color3.new(1,1,1)
+refresh.BackgroundTransparency = 0.3
+refresh.Image = "rbxassetid://133018773942204"
+refresh.Parent = tb
+
+Corner(0,3,refresh)
+Stroke(refresh, ASMBorder, 255, 255, 255, LJMRound, 1 ,0)
+Gradient(refresh, -45 ,0,0, Color3.fromRGB(255,85,0), Color3.fromRGB(255,255,0))
+
 local filter_body = Instance.new("Frame")
 filter_body.Name = "FilterBody"
-filter_body.Size = UDim2.new(0,350,0,200)
+filter_body.Size = UDim2.new(0,350,0,160)
 filter_body.Position = UDim2.new(0,-305,1,5)
 filter_body.BackgroundColor3 = Color3.fromRGB(0,85,0)
 filter_body.BorderMode = Enum.BorderMode.Inset
@@ -1678,6 +1692,10 @@ tb.FocusLost:Connect(function(enterPressed)
 
     refreshSearch()
 
+end)
+
+refresh.MouseButton1Click:Connect(function()
+    refreshSearch()
 end)
 -----
 
