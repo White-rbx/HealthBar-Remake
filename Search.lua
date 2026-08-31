@@ -1,4 +1,4 @@
--- searcher... yes. 7.6
+-- searcher... yes. 7.65
 
 -- =====>> Saved Functions <<=====
 
@@ -1090,7 +1090,7 @@ local function sipt(data)
     de.Text =
         "<font size='12'><b>"
         .. title
-        .. "</b></font>\n "
+        .. "</b></font>\n"
         .. gameName
         .. "\n"
         .. "By @"
@@ -1332,7 +1332,6 @@ end
         -- ---------------------------------
 
         types.Text =
-            "📌 "
             .. detailGameName
 
 
