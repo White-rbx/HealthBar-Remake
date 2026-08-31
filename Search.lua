@@ -1,4 +1,4 @@
--- searcher... yes. 7
+-- searcher... yes. 7.4
 
 -- =====>> Saved Functions <<=====
 
@@ -164,6 +164,12 @@ local function tweenSize(obj, size, pos, backcol, time)
     tween:Play()
     return tween
 end
+
+-- =========================================
+-- ScriptBlox Fetch
+-- =========================================
+local HttpService =
+    game:GetService("HttpService")
 
 local SCRIPTBLOX_API =
     "https://scriptblox.com/api/script/fetch"
@@ -481,7 +487,7 @@ Gradient(refresh, -45 ,0,0, Color3.fromRGB(255,85,0), Color3.fromRGB(255,255,0))
 
 local filter_body = Instance.new("Frame")
 filter_body.Name = "FilterBody"
-filter_body.Size = UDim2.new(0,350,0,160)
+filter_body.Size = UDim2.new(0,350,0,150)
 filter_body.Position = UDim2.new(0,-305,1,5)
 filter_body.BackgroundColor3 = Color3.fromRGB(0,85,0)
 filter_body.BorderMode = Enum.BorderMode.Inset
@@ -717,6 +723,7 @@ back.Visible = false -- FALSE FOR FULLY VERSION
 
 local FALLBACK_IMAGE =
     "rbxassetid://136962703149104"
+
 
 local function getPreviewImage(data)
 
@@ -1083,8 +1090,7 @@ local function sipt(data)
     de.Text =
         "<font size='12'><b>"
         .. title
-        .. "</b></font>\n"
-        .. "📌 "
+        .. "</b></font>\n "
         .. gameName
         .. "\n"
         .. "By @"
@@ -1182,29 +1188,53 @@ local function sipt(data)
         )
 
 
-        -- ---------------------------------
-        -- Open Page
-        -- ---------------------------------
+-- =================================
+-- Open Page
+-- =================================
 
-        Page.Visible = true
+Page.Visible = true
 
+tweenSize(
+    Page,
+    UDim2.new(0.35,-5,1,0),
+    nil,
+    nil,
+    0.4
+)
 
-        tweenSize(
-            Page,
-            UDim2.new(0.35,-5,1,0),
-            nil,
-            nil,
-            0.4
-        )
+tweenSize(
+    List,
+    UDim2.new(0.65,0,1,0),
+    nil,
+    nil,
+    0.4
+)
 
+-- =================================
+-- Loading State
+-- =================================
 
-        tweenSize(
-            List,
-            UDim2.new(0.65,0,1,0),
-            nil,
-            nil,
-            0.4
-        )
+names.Text = "<b>Loading Data...</b>"
+types.Text = "Loading Data..."
+cre.Text = "Loading Data..."
+
+like.Text = "<b>Like: Loading Data...</b>"
+dislike.Text = "<b>Dislike: Loading Data...</b>"
+visit.Text = "<b>Visit: Loading Data...</b>"
+
+codebox.Text = "Loading Data..."
+
+imgview.Image = FALLBACK_IMAGE
+
+-- =================================
+-- Fetch Individual
+-- =================================
+
+local detail = fetchIndividual(data._id)
+
+if not detail then
+    detail = data
+end
 
 
         -- ---------------------------------
@@ -1367,17 +1397,6 @@ local function sipt(data)
     end)
 
 end
-
-
--- =========================================
--- ScriptBlox Fetch
--- =========================================
-
-local SCRIPTBLOX_API =
-    "https://scriptblox.com/api/script/fetch"
-
-local HttpService =
-    game:GetService("HttpService")
 
 local currentPage = 1
 local loading = false
