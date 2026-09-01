@@ -1,4 +1,4 @@
--- searcher... yes. 7.67
+-- searcher... yes. 8.5
 
 -- =====>> Saved Functions <<=====
 
@@ -487,7 +487,7 @@ Gradient(refresh, -45 ,0,0, Color3.fromRGB(255,85,0), Color3.fromRGB(255,255,0))
 
 local filter_body = Instance.new("Frame")
 filter_body.Name = "FilterBody"
-filter_body.Size = UDim2.new(0,350,0,150)
+filter_body.Size = UDim2.new(0,0,0,150)
 filter_body.Position = UDim2.new(0,-305,1,5)
 filter_body.BackgroundColor3 = Color3.fromRGB(0,85,0)
 filter_body.BorderMode = Enum.BorderMode.Inset
@@ -513,6 +513,29 @@ local filterType = {
 }
 
 -- =========================================
+-- Sort System
+-- =========================================
+
+local sortType = "Default"
+local sortOrder = "Default"
+
+local sortByStates = {
+    "Default",
+    "Views",
+    "Likes",
+    "Dislikes"
+}
+
+local sortOrderStates = {
+    "Default",
+    "Ascending",
+    "Descending"
+}
+
+local sortByIndex = 1
+local sortOrderIndex = 1
+
+-- =========================================
 -- Filter Colors
 -- =========================================
 
@@ -536,16 +559,33 @@ local function type_(type, key)
     -- =====================================
 
     local body = Instance.new("TextLabel")
+
     body.Name = "Body"
     body.Size = UDim2.new(1,0,0,30)
-    body.BackgroundColor3 = Color3.fromRGB(0,163,0)
-    body.TextXAlignment = Enum.TextXAlignment.Left
-    body.TextColor3 = Color3.new(1,1,1)
-    body.Text = "<b>" .. tostring(type) .. "</b>"
+
+    body.BackgroundColor3 =
+        Color3.fromRGB(0,163,0)
+
+    body.TextXAlignment =
+        Enum.TextXAlignment.Left
+
+    body.TextColor3 =
+        Color3.new(1,1,1)
+
+    body.Text =
+        "<b>" .. tostring(type) .. "</b>"
+
     body.RichText = true
-    body.BorderMode = Enum.BorderMode.Inset
+
+    body.TextScaled = true
+
+    body.BorderMode =
+        Enum.BorderMode.Inset
+
     body.BorderSizePixel = 5
+
     body.ZIndex = 2
+
     body.Parent = filter_body
 
     Corner(0,5,body)
@@ -555,18 +595,22 @@ local function type_(type, key)
     -- =====================================
 
     local switch = Instance.new("TextButton")
+
     switch.Name = "Switch"
 
     -- 20 × 20 Offset
-    switch.Size = UDim2.new(0,20,0,20)
-    switch.Position = UDim2.new(1,-20,0,0)
+    switch.Size =
+        UDim2.new(0,20,0,20)
+
+    switch.Position =
+        UDim2.new(1,-20,0,0)
 
     switch.BackgroundColor3 =
         FILTER_COLORS.Default
 
     switch.ZIndex = 2
 
-    -- No text
+    -- No Text
     switch.Text = ""
 
     switch.Parent = body
@@ -629,6 +673,7 @@ local function type_(type, key)
         )
 
     end)
+
 end
 
 -- =========================================
@@ -640,6 +685,145 @@ type_("Universal", "IsUniversal")
 type_("Verified", "Verified")
 type_("Patched", "Patched")
 type_("Key", "Key")
+
+
+-- =========================================
+-- Sort UI
+-- =========================================
+
+local sortContainer = Instance.new("Frame")
+
+sortContainer.Name = "SortContainer"
+
+sortContainer.Size =
+    UDim2.new(1,0,0,35)
+
+sortContainer.BackgroundTransparency = 1
+
+sortContainer.ZIndex = 2
+
+sortContainer.Parent = filter_body
+
+
+-- =========================================
+-- Sort By Button
+-- =========================================
+
+local sortBy = Instance.new("TextButton")
+
+sortBy.Name = "SortBy"
+
+sortBy.Size =
+    UDim2.new(0.5,-3,0,30)
+
+sortBy.Position =
+    UDim2.new(0,0,0,0)
+
+sortBy.BackgroundColor3 =
+    Color3.fromRGB(255,255,0)
+
+sortBy.TextColor3 =
+    Color3.new(0,0,0)
+
+sortBy.RichText = true
+
+sortBy.TextScaled = true
+
+sortBy.Text =
+    "<b>Sort by: Default</b>"
+
+sortBy.BorderMode =
+    Enum.BorderMode.Inset
+
+sortBy.BorderSizePixel = 3
+
+sortBy.ZIndex = 2
+
+sortBy.Parent = sortContainer
+
+Corner(0,5,sortBy)
+
+-- =========================================
+-- Sort Order Button
+-- =========================================
+
+local sortOrderButton = Instance.new("TextButton")
+
+sortOrderButton.Name = "SortOrder"
+
+sortOrderButton.Size =
+    UDim2.new(0.5,-3,0,30)
+
+sortOrderButton.Position =
+    UDim2.new(0.5,3,0,0)
+
+sortOrderButton.BackgroundColor3 =
+    Color3.fromRGB(0,255,255)
+
+sortOrderButton.TextColor3 =
+    Color3.new(0,0,0)
+
+sortOrderButton.RichText = true
+sortOrderButton.TextScaled = true
+
+sortOrderButton.Text =
+    "<b>Sort order: Default</b>"
+
+sortOrderButton.BorderMode =
+    Enum.BorderMode.Inset
+
+sortOrderButton.BorderSizePixel = 3
+
+sortOrderButton.ZIndex = 2
+
+sortOrderButton.Parent = sortContainer
+
+Corner(0,5,sortOrderButton)
+
+-- =========================================
+-- Sort By Click
+-- =========================================
+
+sortBy.MouseButton1Click:Connect(function()
+
+    sortByIndex += 1
+
+    if sortByIndex > #sortByStates then
+        sortByIndex = 1
+    end
+
+    sortType =
+        sortByStates[sortByIndex]
+
+    sortBy.Text =
+        "<b>Sort by: "
+        .. sortType
+        .. "</b>"
+
+end)
+
+
+-- =========================================
+-- Sort Order Click
+-- =========================================
+
+sortOrderButton.MouseButton1Click:Connect(function()
+
+    sortOrderIndex += 1
+
+    if sortOrderIndex > #sortOrderStates then
+        sortOrderIndex = 1
+    end
+
+    sortOrder =
+        sortOrderStates[sortOrderIndex]
+
+    sortOrderButton.Text =
+        "<b>Sort order: "
+        .. sortOrder
+        .. "</b>"
+
+end)
 
 local fil_sw = false  
   
@@ -1568,6 +1752,23 @@ local function buildSearchURL(page)
             "key=0"
         )
     end
+
+if sortType == "Views" then
+    table.insert(params, "sortBy=views")
+
+elseif sortType == "Likes" then
+    table.insert(params, "sortBy=likeCount")
+
+elseif sortType == "Dislikes" then
+    table.insert(params, "sortBy=dislikeCount")
+end
+
+if sortOrder == "Ascending" then
+    table.insert(params, "order=asc")
+
+elseif sortOrder == "Descending" then
+    table.insert(params, "order=desc")
+end
 
     local endpoint
 
