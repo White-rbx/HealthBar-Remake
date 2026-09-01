@@ -1,4 +1,4 @@
--- searcher... yes. 7.66
+-- searcher... yes. 7.67
 
 -- =====>> Saved Functions <<=====
 
@@ -1332,6 +1332,7 @@ end
         -- ---------------------------------
 
         types.Text =
+            ""..
             detailGameName
 
 
