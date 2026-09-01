@@ -1,4 +1,4 @@
--- searcher... yes. 8.5
+-- searcher... yes. 8.7
 
 -- =====>> Saved Functions <<=====
 
@@ -449,7 +449,7 @@ tb.BorderSizePixel = 6
 tb.TextSize = 16
 tb.TextWrapped = true
 tb.Text = ""
-tb.PlaceholderText = "Search here!"
+tb.PlaceholderText = "Search here! (ScriptBlox)"
 tb.PlaceholderColor3 = Color3.new(0,0,0)
 tb.TextColor3 = Color3.new(1,1,1)
 tb.TextXAlignment = Enum.TextXAlignment.Left
@@ -523,7 +523,10 @@ local sortByStates = {
     "Default",
     "Views",
     "Likes",
-    "Dislikes"
+    "Dislikes",
+    "Creation Date",
+    "Update Date",
+    "Match Accuracy"
 }
 
 local sortOrderStates = {
@@ -1761,6 +1764,15 @@ elseif sortType == "Likes" then
 
 elseif sortType == "Dislikes" then
     table.insert(params, "sortBy=dislikeCount")
+
+elseif sortType == "Creation Date" then
+    table.insert(params, "sortBy=createdAt")
+
+elseif sortType == "Update Date" then
+    table.insert(params, "sortBy=updatedAt")
+
+elseif sortType == "Match Accuracy" then
+    table.insert(params, "sortBy=accuracy")
 end
 
 if sortOrder == "Ascending" then
