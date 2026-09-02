@@ -1,4 +1,4 @@
--- searcher... yes. 9.8
+-- searcher... yes. 10.0
 
 -- =====>> Saved Functions <<=====
 
@@ -1087,20 +1087,25 @@ end
 -- =========================================
 
 local function getFetchPreviewImage(data)
-    if data and data.isUniversal == true then
-        return FALLBACK_IMAGE
-    end
 
     local game = data and data.game
 
-    if type(game) ~= "table" then
-        return FALLBACK_IMAGE
+    local gameId = tonumber(
+        game and (game.placeId or game.gameId)
+    )
+
+    if gameId then
+        return string.format(
+            "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
+            gameId
+        )
     end
 
-    if type(game.imageUrl) == "string"
-        and game.imageUrl ~= "" then
+    if type(data.image) == "string"
+        and data.image ~= ""
+        and data.image:sub(1, 1) == "/" then
 
-        return game.imageUrl
+        return "https://scriptblox.com" .. data.image
     end
 
     return FALLBACK_IMAGE
