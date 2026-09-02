@@ -1,4 +1,4 @@
--- searcher... yes. 8.7
+-- searcher... yes. 9.8
 
 -- =====>> Saved Functions <<=====
 
@@ -132,6 +132,7 @@ local TweenService = game:GetService("TweenService")
 -- Input (Desktop / Mobile)
 local UserInputService = game:GetService("UserInputService")
 local TouchInputService = game:GetService("TouchInputService")
+local TextService = game:GetService("TextService")
 
 --[[
 Before we starting create guis or any script
@@ -277,6 +278,15 @@ Page.BorderSizePixel = 5
 Page.Visible = false
 Page.Parent = sea
 
+local InPage = Instance.new("ScrollingFrame")
+InPage.Name = "InPage"
+InPage.Size = UDim2.new(1,0,1,0)
+InPage.BackgroundTransparency = 1
+InPage.ScrollBarThickness = 0
+InPage.ScrollingDirection = Enum.ScrollingDirection.Y
+InPage.CanvasSize = UDim2.new(0,0,0,628)
+InPage.Parent = Page
+
 local vp = Instance.new("CanvasGroup")
 vp.Name = "ViewPage"
 vp.Size = UDim2.new(1,0,1,0)
@@ -284,7 +294,7 @@ vp.BackgroundColor3 = Color3.new(1,1,1)
 vp.BorderMode = Enum.BorderMode.Inset
 vp.BorderSizePixel = 5
 vp.Active = false
-vp.Parent = Page
+vp.Parent = InPage
 Corner(0,8,vp)
 Gradient(vp, -90,0,0, Color3.fromRGB(170,0,255), Color3.fromRGB(255,85,255))
 
@@ -324,9 +334,15 @@ cre.Position += UDim2.new(0,0,0,13)
 cre.Text = "By @Username"
 cre.Parent = vp
 
+local credate = types:Clone()
+credate.Name = "CreationDate"
+credate.Position += UDim2.new(0,0,0,26)
+credate.Text = "Creation Date: DD/MM/YYYY"
+credate.Parent = vp
+
 local like = Instance.new("TextLabel")
 like.Name = "Likes"
-like.Position = UDim2.new(0,0,0,175)
+like.Position = UDim2.new(0,0,0,188)
 like.Size = UDim2.new(0.5,0,0,20)
 like.BackgroundColor3 = Color3.fromRGB(0,170,255)
 like.TextColor3 = Color3.new(1,1,1)
@@ -340,7 +356,7 @@ Corner(0,3,like)
 
 local dislike = Instance.new("TextLabel")
 dislike.Name = "Dislikes"
-dislike.Position = UDim2.new(1,0,0,175)
+dislike.Position = UDim2.new(1,0,0,188)
 dislike.Size = UDim2.new(-0.5,0,0,20)
 dislike.BackgroundColor3 = Color3.fromRGB(255,0,0)
 dislike.TextColor3 = Color3.new(1,1,1)
@@ -354,7 +370,7 @@ Corner(0,3,dislike)
 
 local visit = Instance.new("TextLabel")
 visit.Name = "Visits"
-visit.Position = UDim2.new(0,0,0,200)
+visit.Position = UDim2.new(0,0,0,210)
 visit.Size = UDim2.new(1,0,0,20)
 visit.BackgroundColor3 = Color3.fromRGB(255,85,0)
 visit.TextColor3 = Color3.new(1,1,1)
@@ -366,15 +382,144 @@ visit.BorderSizePixel = 2
 visit.Parent = vp
 Corner(0,3,visit)
 
+local fea = names:Clone()
+fea.Name = "Features"
+fea.Position = UDim2.new(0,0,0,233)
+fea.Text = "<b>Description</b>"
+fea.Parent = vp
+
+local feascroll = Instance.new("ScrollingFrame")
+feascroll.Name = "FeaturesScroll"
+feascroll.Position = UDim2.new(0,0,0,258)
+feascroll.Size = UDim2.new(1,0,0,100)
+feascroll.BackgroundColor3 = Color3.new(0,0,0)
+feascroll.ScrollBarThickness = 10
+feascroll.BackgroundTransparency = 0.8
+feascroll.ScrollingDirection = Enum.ScrollingDirection.Y
+feascroll.BorderMode = Enum.BorderMode.Inset
+feascroll.BorderSizePixel = 5
+feascroll.CanvasSize = UDim2.new(0,0,30,0)
+feascroll.Parent = vp
+Corner(0,3,feascroll)
+
+local feabox = Instance.new("TextBox")
+feabox.Name = "FeaturesBox"
+feabox.Position = UDim2.new(0,0,0,0)
+feabox.Size = UDim2.new(1,-11,1,0)
+feabox.BackgroundTransparency = 1
+feabox.TextColor3 = Color3.new(1,1,1)
+feabox.ClearTextOnFocus = false
+feabox.PlaceholderText = "No description yet."
+feabox.PlaceholderColor3 = Color3.new(1,1,1)
+feabox.Text = ""
+feabox.TextSize = 8
+feabox.TextWrapped = true
+feabox.TextXAlignment = Enum.TextXAlignment.Left
+feabox.TextYAlignment = Enum.TextYAlignment.Top
+feabox.TextEditable = false
+feabox.Parent = feascroll
+
+local tags = names:Clone()
+tags.Name = "Tags"
+tags.Position = UDim2.new(0,0,0,363)
+tags.Text = "<b>Tag</b>"
+tags.Parent = vp
+
+local tagscroll = Instance.new("ScrollingFrame")
+tagscroll.Name = "TagScroll"
+tagscroll.Position = UDim2.new(0,0,0,386)
+tagscroll.Size = UDim2.new(1,0,0,30)
+tagscroll.BackgroundColor3 = Color3.new(0,0,0)
+tagscroll.ScrollBarThickness = 2
+tagscroll.BackgroundTransparency = 0.8
+tagscroll.ScrollingDirection = Enum.ScrollingDirection.X
+tagscroll.BorderMode = Enum.BorderMode.Inset
+tagscroll.BorderSizePixel = 5
+tagscroll.CanvasSize = UDim2.new(0,0,0,0)
+tagscroll.Parent = vp
+Corner(0,3,tagscroll)
+ListLayout(tagscroll, 0, 3, HLeft, VTop, SLayout, FillH)
+
+local tagLayout = tagscroll:FindFirstChildOfClass("UIListLayout")
+
+local function updateTagCanvas()
+    if not tagLayout or not tagLayout.Parent then
+        return
+    end
+
+    local content = tagLayout.AbsoluteContentSize
+
+    tagscroll.CanvasSize = UDim2.new(
+        0,
+        math.ceil(content.X),
+        0,
+        math.ceil(content.Y)
+    )
+end
+
+local function tagss(string)
+    local text = tostring(string)
+
+    local tag = Instance.new("TextLabel")
+    tag.Name = "TagString"
+
+    tag.Text = text
+    tag.TextSize = 12
+    tag.Font = Enum.Font.SourceSans
+
+    tag.TextXAlignment = Enum.TextXAlignment.Center
+    tag.TextYAlignment = Enum.TextYAlignment.Center
+
+    local bounds = TextService:GetTextSize(
+        text,
+        tag.TextSize,
+        tag.Font,
+        Vector2.new(math.huge, math.huge)
+    )
+
+    local padding = 10
+
+    tag.Size = UDim2.new(
+        0,
+        math.ceil(bounds.X) + padding,
+        1,
+        -2
+    )
+
+    tag.BackgroundColor3 = Color3.fromRGB(170,255,255)
+    tag.BorderMode = Enum.BorderMode.Inset
+    tag.BorderSizePixel = 5
+    tag.Active = false
+    tag.Parent = tagscroll
+
+    Corner(0,3,tag)
+
+    task.defer(updateTagCanvas)
+end
+
+tagLayout:GetPropertyChangedSignal("AbsoluteContentSize")
+    :Connect(updateTagCanvas)
+
+task.defer(updateTagCanvas)
+
+local rs = names:Clone()
+rs.Name = "RawScript"
+rs.Position = UDim2.new(0,0,1,-198)
+rs.Text = "<b>Raw Script</b>"
+rs.Parent = vp
+
 local codescroll = Instance.new("ScrollingFrame")
 codescroll.Name = "CodeScroll"
-codescroll.Position = UDim2.new(0,0,0,230)
+codescroll.Position = UDim2.new(0,0,1,-175)
 codescroll.Size = UDim2.new(1,0,0,100)
 codescroll.BackgroundColor3 = Color3.new(0,0,0)
 codescroll.ScrollBarThickness = 10
 codescroll.ScrollingDirection = Enum.ScrollingDirection.Y
-codescroll.CanvasSize = UDim2.new(0,0,10000,0)
+codescroll.BorderMode = Enum.BorderMode.Inset
+codescroll.BorderSizePixel = 5
+codescroll.CanvasSize = UDim2.new(0,0,30,0)
 codescroll.Parent = vp
+Corner(0,3,codescroll)
 
 local codebox = Instance.new("TextBox")
 codebox.Name = "CodeBox"
@@ -397,7 +542,7 @@ codebox.Parent = codescroll
 local exe = Instance.new("TextButton")
 exe.Name = "Execute"
 exe.Size = UDim2.new(1,0,0,20)
-exe.Position = UDim2.new(0,0,0,340)
+exe.Position = UDim2.new(0,0,1,-70)
 exe.BackgroundColor3 = Color3.fromRGB(255,0,128)
 exe.TextColor3 = Color3.new(1,1,1)
 exe.TextScaled = true
@@ -411,7 +556,7 @@ Corner(0,3,exe)
 local cy = Instance.new("TextButton")
 cy.Name = "Copy"
 cy.Size = UDim2.new(1,0,0,20)
-cy.Position = UDim2.new(0,0,0,365)
+cy.Position = UDim2.new(0,0,1,-46)
 cy.BackgroundColor3 = Color3.fromRGB(145,0,255)
 cy.TextColor3 = Color3.new(1,1,1)
 cy.TextScaled = true
@@ -449,7 +594,7 @@ tb.BorderSizePixel = 6
 tb.TextSize = 16
 tb.TextWrapped = true
 tb.Text = ""
-tb.PlaceholderText = "Search here! (ScriptBlox)"
+tb.PlaceholderText = "Search here!"
 tb.PlaceholderColor3 = Color3.new(0,0,0)
 tb.TextColor3 = Color3.new(1,1,1)
 tb.TextXAlignment = Enum.TextXAlignment.Left
@@ -683,7 +828,7 @@ end
 -- Create Filters
 -- =========================================
 
-type_("Script Type", "ScriptType")
+type_("Script Type (Default/Free/Paid)", "ScriptType")
 type_("Universal", "IsUniversal")
 type_("Verified", "Verified")
 type_("Patched", "Patched")
@@ -911,22 +1056,55 @@ back.Visible = false -- FALSE FOR FULLY VERSION
 local FALLBACK_IMAGE =
     "rbxassetid://136962703149104"
 
+-- =========================================
+-- Preview Image - Search
+-- =========================================
 
-local function getPreviewImage(data)
+local function getSearchPreviewImage(data)
+    if data and data.isUniversal == true then
+        return FALLBACK_IMAGE
+    end
 
-    if data
-        and data.game
-        and type(data.game) == "table"
-        and data.game.gameId then
+    local game = data and data.game
 
-        return "rbxthumb://type=GameIcon&id="
-            .. tostring(data.game.gameId)
-            .. "&w=420&h=420"
+    if type(game) ~= "table" then
+        return FALLBACK_IMAGE
+    end
+
+    local gameId = game.gameId or game.placeId
+
+    if gameId then
+        return "rbxthumb://type=GameThumbnail&id="
+            .. tostring(gameId)
+            .. "&w=480&h=270"
     end
 
     return FALLBACK_IMAGE
 end
 
+-- =========================================
+-- Preview Image - Fetch
+-- =========================================
+
+local function getFetchPreviewImage(data)
+    if data and data.isUniversal == true then
+        return FALLBACK_IMAGE
+    end
+
+    local game = data and data.game
+
+    if type(game) ~= "table" then
+        return FALLBACK_IMAGE
+    end
+
+    if type(game.imageUrl) == "string"
+        and game.imageUrl ~= "" then
+
+        return game.imageUrl
+    end
+
+    return FALLBACK_IMAGE
+end
 
 -- =========================================
 -- ScriptBlox Individual
@@ -1200,7 +1378,7 @@ local function sipt(data)
         Enum.ScaleType.Fit
 
     Img.Image =
-        getPreviewImage(data)
+        getFetchPreviewImage(data)
 
     Img.Parent = body
 
@@ -1404,14 +1582,29 @@ tweenSize(
 names.Text = "<b>Loading Data...</b>"
 types.Text = "Loading Data..."
 cre.Text = "Loading Data..."
+credate.Text = "Loading Data..."
 
 like.Text = "<b>Like: Loading Data...</b>"
 dislike.Text = "<b>Dislike: Loading Data...</b>"
 visit.Text = "<b>Visit: Loading Data...</b>"
 
+feabox.Text = "Loading Data..."
 codebox.Text = "Loading Data..."
 
 imgview.Image = FALLBACK_IMAGE
+
+-- =================================
+-- Clear Old Tags
+-- =================================
+
+for _, child in ipairs(tagscroll:GetChildren()) do
+    if child.Name == "TagString" then
+        child:Destroy()
+    end
+end
+
+tagscroll.CanvasSize =
+    UDim2.new(0,0,0,0)
 
 -- =================================
 -- Fetch Individual
@@ -1422,15 +1615,6 @@ local detail = fetchIndividual(data._id)
 if not detail then
     detail = data
 end
-
-
-        -- ---------------------------------
-        -- Fetch Individual
-        -- ---------------------------------
-
-        local detail =
-            fetchIndividual(data._id)
-
 
         -- ---------------------------------
         -- Fallback
@@ -1501,7 +1685,7 @@ end
         -- ---------------------------------
 
         imgview.Image =
-            getPreviewImage(detail)
+            getSearchPreviewImage(detail)
 
 
         -- ---------------------------------
@@ -1571,6 +1755,62 @@ end
             .. "</b>"
 
 
+
+        -- ---------------------------------
+        -- Creation Date
+        -- ---------------------------------
+
+        local creationDate = "Unknown"
+
+        if detail.createdAt then
+            local timestamp = tostring(detail.createdAt)
+
+            -- ตรงนี้ค่อยแปลง timestamp เป็น DD/MM/YYYY
+            creationDate = timestamp
+        end
+
+        credate.Text =
+            "Creation Date: "
+            .. creationDate
+
+
+        -- ---------------------------------
+        -- Features / Description
+        -- ---------------------------------
+
+        local features =
+            tostring(
+                detail.features
+                or ""
+            )
+
+        if features == "" then
+            feabox.Text = ""
+            feabox.PlaceholderText =
+                "No description yet."
+        else
+            feabox.Text = features
+        end
+
+
+        -- ---------------------------------
+        -- Tags
+        -- ---------------------------------
+
+        for _, child in ipairs(tagscroll:GetChildren()) do
+            if child:IsA("TextLabel")
+                and child.Name == "TagString" then
+
+                child:Destroy()
+            end
+        end
+
+        if type(detail.tags) == "table" then
+            for _, tagName in ipairs(detail.tags) do
+                tagss(tagName)
+            end
+        end
+      
         -- ---------------------------------
         -- Source
         -- ---------------------------------
