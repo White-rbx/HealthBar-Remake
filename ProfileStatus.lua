@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.893 Beta]]
+local v_ver = [[Script ahh 2.895 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -677,6 +677,21 @@ Button(scr,"PlayerID","PlayerID: ...",true,255,255,255,180,180,255,
 	end
 )
 
+Text(
+    scr,
+    "FriendCount",
+    "Friend in the server: 0",
+    false,
+    255, 255, 255,
+    30, 30, 30,
+    function(txtLabel)
+        local players = game:GetService("Players"):GetPlayers()
+        local count = #players - 1
+        txtLabel.Text = "Friend in the server: " .. tostring(count) .. " Friends"
+    end,
+    nil
+						)
+
 -- PlayerAge
 Button(scr,"PlayerAge","PlayerAge: ...",true,255,255,255,200,200,255,
 	function(btn)
@@ -840,6 +855,25 @@ task.spawn(function()
 	end
 end)
 
+-- สร้าง TextLabel แสดงเวลาปัจจุบันตามโลกจริง
+Text(
+    scr,                           
+    "RealTimeClock",               
+	"00:00:00",                     
+	false,                           
+    255, 255, 255,                   
+    30, 30, 30,                   
+    function(txtLabel)             
+        -- ดึงเวลาปัจจุบันตามโลกจริง
+        local timeData = os.date("*t")
+        local formattedTime = string.format("%02d:%02d:%02d", timeData.hour, timeData.min, timeData.sec)
+        
+        -- อัปเดตข้อความบน TextLabel
+        txtLabel.Text = "Earth Clock (IRL): " .. formattedTime
+    end,
+    nil                         
+						)
+						
 --====================================================
 -- WALKSPEED / JUMPPOWER (REALTIME)
 --====================================================
@@ -1130,11 +1164,6 @@ local function getHumanoid()
 	return c and c:FindFirstChildOfClass("Humanoid")
 end
 
-local function getRoot()
-	local c = getCharacter()
-	return c and c:FindFirstChild("HumanoidRootPart")
-end
-
 local function getEquippedTool()
 	local c = getCharacter()
 	if not c then
@@ -1152,34 +1181,16 @@ Button(
 	255,220,120,
 	nil,
 	function(btn)
-
 		local tool = getEquippedTool()
-		local hum = getHumanoid()
-		local root = getRoot()
 
-		if not tool or not hum or not root then
+		-- ตรวจสอบว่ามีไอเทม และไอเทมนั้นอนุญาตให้ทิ้งได้ไหม (CanBeDropped)
+		if not tool or tool.CanBeDropped == false then
 			warnStroke(btn, Color3.fromRGB(255,0,0))
 			return
 		end
 
-		if tool.CanBeDropped == false then
-			warnStroke(btn, Color3.fromRGB(255,0,0))
-			return
-		end
-
-		hum:UnequipTools()
-
-		task.wait()
-
+		-- การทิ้งแบบ Backspace บนคอม: ย้าย Parent ไปไว้ใน workspace ทันทีขณะถือ
 		tool.Parent = workspace
-
-		local handle = tool:FindFirstChild("Handle")
-
-		if handle then
-			handle.CFrame =
-				root.CFrame * CFrame.new(0,0,-5)
-		end
-
 	end
 )
 
@@ -1192,25 +1203,18 @@ Button(
 	255,80,80,
 	nil,
 	function(btn)
-
 		local char = getCharacter()
 		local hum = getHumanoid()
-		local root = getRoot()
 		local backpack = lp:FindFirstChild("Backpack")
 
-		if not char or not hum or not root or not backpack then
+		if not char or not hum or not backpack then
 			warnStroke(btn, Color3.fromRGB(255,0,0))
 			return
 		end
 
-		hum:UnequipTools()
-
-		task.wait()
-
 		local failed = false
 
 		local function drop(tool)
-
 			if not tool:IsA("Tool") then
 				return
 			end
@@ -1220,36 +1224,28 @@ Button(
 				return
 			end
 
+			-- ย้ายไป workspace โดยตรง
 			tool.Parent = workspace
+		end
 
-			local handle =
-				tool:FindFirstChild("Handle")
+		-- ทิ้งชิ้นที่ถืออยู่ออกก่อน
+		for _, tool in ipairs(char:GetChildren()) do
+			drop(tool)
+		end
 
-			if handle then
-
-				handle.CFrame =
-					root.CFrame
-					* CFrame.new(
-						math.random(-2,2),
-						0,
-						-5 + math.random(-2,2)
-					)
-
+		-- สำหรับชิ้นในเป้ ต้องถือขึ้นมาก่อน แล้วค่อยทิ้งเหมือนกด Backspace
+		for _, tool in ipairs(backpack:GetChildren()) do
+			if tool:IsA("Tool") and tool.CanBeDropped ~= false then
+				hum:EquipTool(tool)
+				task.wait() -- รอให้ตัวละครถือของเสร็จเล็กน้อย
+				drop(tool)
+			elseif tool:IsA("Tool") and tool.CanBeDropped == false then
+				failed = true
 			end
-
-		end
-
-		for _,tool in ipairs(char:GetChildren()) do
-			drop(tool)
-		end
-
-		for _,tool in ipairs(backpack:GetChildren()) do
-			drop(tool)
 		end
 
 		if failed then
 			warnStroke(btn, Color3.fromRGB(150,0,0))
 		end
-
 	end
-						)						
+)
