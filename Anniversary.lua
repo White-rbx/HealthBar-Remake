@@ -1,4 +1,4 @@
-local v_ver = [[Anniversary 1.0 yay]]
+local v_ver = [[Anniversary 1.5 yay]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -306,7 +306,7 @@ img.Size = UDim2.new(1,0,0,125)
 img.ScaleType = Enum.ScaleType.Fit
 img.BackgroundColor3 = Color3.new(0,0,0)
 img.BackgroundTransparency = 0.3
-img.Image = "rbxassetid://135517402094731"
+img.Image = "rbxassetid://78424498612293"
 img.BorderSizePixel = 0
 img.ZIndex = 0
 img.Parent = main
