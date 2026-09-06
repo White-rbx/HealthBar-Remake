@@ -1,4 +1,4 @@
--- Ok 4.95
+-- Ok 4.96
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -604,7 +604,7 @@ tb.BorderSizePixel = 5
 tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
 local tb_ly = createUIListLayout(tb, 0, 5, HLeft, VTop, FillV)
-tb_ly.Wraps = true
+tb_ly.Wraps = false
 tb_ly.SortOrder = Enum.SortOrder.LayoutOrder
 
 local function updateButtonsVisibility()
