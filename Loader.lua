@@ -1,4 +1,4 @@
--- Well 3.15
+-- Well 3.25
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -467,6 +467,9 @@ local sata = CoreGui:WaitForChild("TopBarApp", 10)
     :WaitForChild("Menu", 10)
 sata:Destroy()
 
+
+-- Hamburger Menu Remake
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/RecommendedScript.lua"))()
 
 -- AI-OpenSource
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/AI-OpenSource.lua"))()
