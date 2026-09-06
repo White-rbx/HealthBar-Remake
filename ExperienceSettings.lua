@@ -1,4 +1,4 @@
--- Ok 4.7
+-- Ok 4.8
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -597,7 +597,7 @@ tb.BackgroundTransparency = 0.08
 tb.ScrollBarThickness = 4
 tb.CanvasSize = UDim2.new(0, 0, 0, 0)
 tb.ScrollingDirection = Enum.ScrollingDirection.Y
-tb.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
+tb.AutomaticCanvasSize = Enum.AutomaticSize.Y
 tb.Visible = false
 tb.BorderMode = Enum.BorderMode.Inset
 tb.BorderSizePixel = 5
