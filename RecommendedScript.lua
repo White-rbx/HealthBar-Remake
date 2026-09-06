@@ -1,4 +1,4 @@
-local v_ver = [[Recommanded Script 0.0 Remakes]]
+local v_ver = [[Recommanded Script 1.0 Remakes]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -396,4 +396,8 @@ Copy.MouseButton1Click:Connect(function()
 end)
 end
 
-add("Test Script", "Hello", "print('ArcScript is here!')")
+add("Infinite yield (@edge.egg | discord)", "The most powerful admin commands.", "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source")
+add("Delta Keyboard (@sakura)", "A keyboard for mobile. Crack by Ata", "https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt")
+add("Dex++ (@mcdaggitt)", "Not my script but Ill actively update it with new features. Includes optimization + rspy plugin!", "https://raw.githubusercontent.com/jodta/my-scripts/refs/heads/main/Dex%2B%2B/Decompiler%20Fix.lua")
+add("RoChip (@Allskill)", "Universal script allows you to tp to players, also lets you fling them and many more.", "https://rawscripts.net/raw/Universal-Script-rochips-universal-18294")
+add("ConsoleCopyButton (@Lordi_scripts)", "lets you copy everything right in the native console interface (/console OR F9)", "https://rawscripts.net/raw/Universal-Script-ConsoleCopyButton-60768")
