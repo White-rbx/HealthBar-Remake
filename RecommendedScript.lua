@@ -1,4 +1,4 @@
-local v_ver = [[Recommanded Script 1.0 Remakes]]
+local v_ver = [[Recommanded Script 1.3 Remakes]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -366,7 +366,7 @@ Corner(0,5,Copy)
 Exe.MouseButton1Click:Connect(function()
   if Raw and Raw ~= "" then
     if loadstring then
-        loadstring(Raw)()
+        loadstring(game:HttpGet(Raw))()
         Exe.Text = "Executed"
     else
         Exe.Text = "Failed to executed"
