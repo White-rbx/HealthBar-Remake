@@ -1,4 +1,4 @@
--- Ok 4.9
+-- Ok 4.95
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -616,6 +616,8 @@ local function updateButtonsVisibility()
         tb.Visible = true
     end
 end
+
+tb:GetPropertyChangedSignal("Size"):Connect(updateButtonsVisibility)
 
 -- Settings button (on hr)
 local Set = Instance.new("ImageButton")
