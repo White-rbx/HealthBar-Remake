@@ -1,4 +1,4 @@
-local v_ver = [[Recommanded Script 1.3 Remakes]]
+local v_ver = [[Recommanded Script 1.8 Remakes]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -303,7 +303,7 @@ Body.Size = UDim2.new(1, 0, 0, 75)
 Body.Name = "Script"
 Body.Parent = tb
 Corner(0,5,Body)
-
+	
 local Des = Instance.new("TextLabel")
 Des.Active = false
 Des.Text = des or "This is the script's description, if you see like this I didn't put description yet lol."
@@ -396,8 +396,12 @@ Copy.MouseButton1Click:Connect(function()
 end)
 end
 
-add("Infinite yield (@edge.egg | discord)", "The most powerful admin commands.", "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source")
+add("Infinite yield (@edge.egg | discord)", "The most powerful admin commands.", "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source", 150, 50, 50)
 add("Delta Keyboard (@sakura)", "A keyboard for mobile. Crack by Ata", "https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt")
-add("Dex++ (@mcdaggitt)", "Not my script but Ill actively update it with new features. Includes optimization + rspy plugin!", "https://raw.githubusercontent.com/jodta/my-scripts/refs/heads/main/Dex%2B%2B/Decompiler%20Fix.lua")
-add("RoChip (@Allskill)", "Universal script allows you to tp to players, also lets you fling them and many more.", "https://rawscripts.net/raw/Universal-Script-rochips-universal-18294")
-add("ConsoleCopyButton (@Lordi_scripts)", "lets you copy everything right in the native console interface (/console OR F9)", "https://rawscripts.net/raw/Universal-Script-ConsoleCopyButton-60768")
+add("Dex++ (@mcdaggitt)", "Not my script but Ill actively update it with new features. Includes optimization + rspy plugin!", "https://raw.githubusercontent.com/jodta/my-scripts/refs/heads/main/Dex%2B%2B/Decompiler%20Fix.lua"0,150,0)
+add("RoChip (@Allskill)", "Universal script allows you to tp to players, also lets you fling them and many more.", "https://rawscripts.net/raw/Universal-Script-rochips-universal-18294",155,155,0)
+add("ConsoleCopyButton (@Lordi_scripts)", "lets you copy everything right in the native console interface (/console OR F9)", "https://rawscripts.net/raw/Universal-Script-ConsoleCopyButton-60768",150,0,150)
+add("YouTube Music Player V8 (@Turmux404)", "Take your Roblox experience to the next level by listening to your favorite  music or watching YouTube videos while you play.", "https://raw.githubusercontent.com/Dan41/Roblox-Scripts/refs/heads/main/Youtube%20Music%20Player/YoutubeMusicPlayer.lua",220,0,0)
+add("YARHM - MM2, FTF, Forsaken, CNA Sim, etc. (@Imperial)" ,"yet another random hub menu.", "https://rawscripts.net/raw/Universal-Script-YARHM-12403",200,0,200)
+add("AFEM MAX - 40K EMOTES SCRIPT BEST (@Imperial)", "Introducing AFEM Max, the powerful AFEM you know and love and now EVEN MORE supercharged!", "https://rawscripts.net/raw/Universal-Script-AFEM-Max-Open-Alpha-50210",0,150,200)
+
