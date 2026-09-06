@@ -1,4 +1,4 @@
--- Ok 4.6
+-- Ok 4.7
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -596,44 +596,19 @@ tb.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 tb.BackgroundTransparency = 0.08
 tb.ScrollBarThickness = 4
 tb.CanvasSize = UDim2.new(0, 0, 0, 0)
-tb.ScrollingDirection = Enum.ScrollingDirection.XY
+tb.ScrollingDirection = Enum.ScrollingDirection.Y
+tb.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
 tb.Visible = false
 tb.BorderMode = Enum.BorderMode.Inset
 tb.BorderSizePixel = 5
 tb.Parent = mtb
 createUICorner(tb, 0.02, 0)
+local tb_ly = createUIListLayout(tb, 0, 5, HLeft, VTop, FillV)
+tb_ly.Warps = true
+tb_ly.SortOrder = Enum.SortOrder.LayoutOrder
 
--- AFTER TB
-local grid = Instance.new("UIGridLayout")
-grid.CellSize = UDim2.new(0, 70, 0, 70)   -- ขนาดแต่ละ cell (70x70 px)
-grid.CellPadding = UDim2.new(0, 5, 0, 5)  -- ระยะห่างระหว่าง cell
-grid.FillDirection = Enum.FillDirection.Horizontal
-grid.SortOrder = Enum.SortOrder.Name
-grid.Parent = tb
--- update visibility function for tb and its children
 local function updateButtonsVisibility()
-    local scale = tb.Size.X.Scale or 0
-
-grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    tb.CanvasSize = UDim2.new(0, grid.AbsoluteContentSize.X, 0, grid.AbsoluteContentSize.Y)
-end)
--- END TB
-
-    -- ซ่อนปุ่มลูกถ้า scale เล็กกว่า 0.364
-    if scale <= 0.364 then
-        for _, child in ipairs(tb:GetChildren()) do
-            if child:IsA("ImageButton") or child:IsA("TextButton") then
-                child.Visible = false
-            end
-        end
-    else
-        for _, child in ipairs(tb:GetChildren()) do
-            if child:IsA("ImageButton") or child:IsA("TextButton") then
-                child.Visible = true
-            end
-        end
-    end
-
+	local scale = tb.Size.X.Scale or 0
     -- ซ่อน tb ทั้งกล่องเมื่อ scale == 0
     if scale <= 0 then
         tb.Visible = false
@@ -641,8 +616,6 @@ end)
         tb.Visible = true
     end
 end
-
-tb:GetPropertyChangedSignal("Size"):Connect(updateButtonsVisibility)
 
 -- Settings button (on hr)
 local Set = Instance.new("ImageButton")
@@ -1066,7 +1039,7 @@ seeAll.Size = UDim2.new(0.96,0,0.05,0)
 seeAll.Position = UDim2.new(0.02,0,0.08,0)
 seeAll.BackgroundTransparency = 0.2
 seeAll.TextScaled = true
-seeAll.Text = "Open Roblox Settings"
+seeAll.Text = "A button that doesn't do NOTHING"
 seeAll.Parent = pmax
 createUICorner(seeAll,0.3,0)
 
@@ -1901,10 +1874,6 @@ local DamageOverlay = game:GetService("CoreGui"):WaitForChild("DamageOverlay")
 createToggle(BFrame, "DO",  "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>", [[<b><u>Damage Overlay</u></b>
 Displays visual damage effects when your character takes damage.
 
-<font color="#aaffaa">
-✔ Improves damage feedback.
-</font>
-
 <stroke color="rgb(255,0,0)" thickness="1">
 <font color="#ff5555">
 <b>⚠ Photosensitive Epilepsy Warning</b>
@@ -1918,7 +1887,7 @@ If you experience dizziness, eye strain, or discomfort,
 please turn this feature <b>OFF</b> immediately.
 </font></stroke>]], function(state)
 	DamageOverlay.Enabled = state
-end, false, -350) -- true = เปิดเริ่มต้น
+end, false, -330) -- true = เปิดเริ่มต้น
 
 -- ===== END DAMAGEOVERLAY =====
 
@@ -1946,195 +1915,6 @@ Open second toggle menu.]],
 end)
 
 -- ===== END MORETOGGLES =====
-
--- ============== IMAGE BUTTONS ==============
--- helper: ImageButton creation (parented to tb by default)
-local function createImageButton(name, r, g, b, bt, imageId, visible, parentFrame)
-    parentFrame = parentFrame or tb
-    local im = Instance.new("ImageButton")
-    im.Name = tostring(name)
-    im.Size = UDim2.new(0, 70, 0, 70)
-    im.BackgroundTransparency = bt or 1
-    im.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
-    im.Visible = (visible ~= false)
-    if imageId then
-        local idstr = tostring(imageId)
-        if idstr:match("^rbxassetid://") then
-            im.Image = idstr
-        else
-            im.Image = "rbxassetid://" .. idstr
-        end
-    end
-    im.Parent = parentFrame
-    createUICorner(im, 0, 10)
-	createUIStroke(im, ASMBorder, 255,255,255, LJMRound, 1, 0)
-    return im
-end
-
--- CTB1
-local ctb1 = createImageButton("a1_INF YIELD", 50, 50, 50, 0.2, "139665085719816", false)
-if ctb1 then
-    ctb1.MouseButton1Click:Connect(function()
-        pcall(function()
-            loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
-        end)
-    end)
-end
-
--- CTB2
-local ctb2 = createImageButton("a2_Dex", 50, 50, 50, 0.2, "112062985804784", false)
-if ctb2 then
-    ctb2.MouseButton1Click:Connect(function()
-        pcall(function()
-            loadstring(game:HttpGet("https://github.com/AZYsGithub/DexPlusPlus/releases/latest/download/out.lua"))()
-        end)
-    end)
-end
-
--- CTB3
-local ctb3 = createImageButton("a3_Keyboard", 50, 50, 50, 0.2, "76210662677344", false)
-if ctb3 then
-    ctb3.MouseButton1Click:Connect(function()
-        pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt", true))()
-        end)
-    end)
-end
-
--- CTB4
-local ctb4 = createImageButton("a4_Rochips", 50, 50, 50, 0.2, "111409127543607", false)
-if ctb4 then
-    ctb4.MouseButton1Click:Connect(function()
-        pcall(function()
-            loadstring(game:HttpGet("https://glot.io/snippets/gzrux646yj/raw/main.ts"))()
-        end)
-    end)
-end
-
--- CTB5
-local ctb5 = createImageButton("a5_Ketamine", 50, 50, 50, 0.2, "73739594473443", false)
-if ctb5 then
-    ctb5.MouseButton1Click:Connect(function()
-        pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/InfernusScripts/Ketamine/refs/heads/main/Ketamine.lua"))()
-        end)
-    end)
-end
-
--- CTB6
-local ctb6 = createImageButton("a6_AFEM", 50, 50, 50, 0.2, "70633192931522", false)
-if ctb6 then
-    ctb6.MouseButton1Click:Connect(function()
-        pcall(function()
-            loadstring(game:HttpGet("https://yarhm.mhi.im/scr?channel=afem", true))()
-        end)
-    end)
-end
-
--- CTB7
-local ctb7 = createImageButton("a7_Chat", 50, 50, 50, 0.2, "78687742773593", false)
-if ctb7 then
-    ctb7.MouseButton1Click:Connect(function()
-        pcall(function()
-loadstring(game:HttpGet("https://raw.githubusercontent.com/ThacG/Xyros/refs/heads/main/test"))()
-        end)
-    end)
-end
-
--- CTB8
-local ctb8 = createImageButton("a8_ExeTest", 50, 50, 50, 0.2, "7128117167", false)
-if ctb8 then
-    ctb8.MouseButton1Click:Connect(function()
-        pcall(function()
-loadstring(game:HttpGet("https://raw.githubusercontent.com/InfernusScripts/Executor-Tests/main/Identity/Test.lua"))()
-        end)
-    end)
-end
-
--- CTB9
-local ctb9 = createImageButton("a9_REM", 50, 50, 50, 0.2, "91782079102380", false)
-if ctb9 then
-    ctb9.MouseButton1Click:Connect(function()
-        pcall(function()
-    loadstring(game:HttpGet("https://e-vil.com/anbu/rem.lua"))()
-        end)
-    end)
-end
-
--- CTB10
-local ctb10 = createImageButton("b1_GameProber", 50, 50, 50, 0.2, "14944375078", false)
-if ctb10 then
-    ctb10.MouseButton1Click:Connect(function()
-        pcall(function()
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Joystickplays/gameprober-lua/main/gp.lua"))()
-        end)
-    end)
-end
-
--- CTB11
-local ctb11 = createImageButton("b2_AudioPlayer", 50, 50, 50, 0.2, "93917898537008", false)
-if ctb11 then
-	ctb11.MouseButton1Click:Connect(function()
-			pcall(function()
-loadstring(game:HttpGet('https://raw.githubusercontent.com/Emerson2-creator/Scripts-Roblox/refs/heads/main/audioPlayer.lua'))()
-		end)
-	end)
-end
-
--- CTB12
-local ctb12 = createImageButton("b3_ExperienceSettings_Executor", 50,50,50, 0.2, "116278455133074", false)
-if ctb12 then
-	ctb12.MouseButton1Click:Connect(function()
-			pcall(function()
-loadstring(game:HttpGet("https://bit.ly/4tJ4Jbn"))()
-		end)
-	end)
-end
-
--- ===== TEXT BUTTONS =======
--- helper: TextButton creation (parented to tb by default)
-local function createTextButton(name, r, g, b, bt, text, scaled, visible, tr, tg, tb2, parentFrame)
-    parentFrame = parentFrame or tb
-    local txtb = Instance.new("TextButton")
-    txtb.Name = tostring(name)
-    -- fixed size: width 34 px (avoid stretching), full height fraction
-    txtb.Size = UDim2.new(0, 70, 0, 70)
-    txtb.BackgroundTransparency = bt or 1
-    txtb.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
-    txtb.Visible = (visible ~= false)
-    txtb.Text = tostring(text or "")
-    -- text color separate (defaults to white)
-    txtb.TextColor3 = Color3.fromRGB(tr or 255, tg or 255, tb2 or 255)
-    txtb.Font = Enum.Font.Legacy
-    txtb.TextScaled = (scaled ~= false)
-    txtb.Parent = parentFrame
-    createUICorner(txtb, 0, 10)
-	createUIStroke(txtb, ASMBorder, 255,255,255, LJMRound, 1, 0)
-    return txtb
-end
--- ========
-
--- CTL1
-local ctl1 = createTextButton("b3_EmoteSelect", 50, 50, 50, 0.2, "Emote Select", true, false)
-if ctl1 then
-	ctl1.MouseButton1Click:Connect(function()
-			pcall(function()
-loadstring(game:HttpGet("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/Branch/GUIS/Emotes.lua"))()
-		end)
-	end)
-end
-
--- CTL2
-local ctl2 = createTextButton("b4_UniversalChat", 50, 50, 50, 0.2, "Universal Chat", true, false)
-if ctl2 then
-	ctl2.MouseButton1Click:Connect(function()
-			pcall(function()
-loadstring(game:HttpGet("https://raw.githubusercontent.com/theneutral0ne/UniversalChat/main/installer.lua"))()
-		end)
-	end)
-end
-
-
 
 -- ========
 task.wait(0.1)
