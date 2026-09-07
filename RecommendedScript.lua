@@ -1,4 +1,4 @@
-local v_ver = [[Recommanded Script 2 Remakes]]
+local v_ver = [[Recommanded Script 2.2 Remakes]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -366,12 +366,15 @@ Corner(0,5,Copy)
 
 Exe.MouseButton1Click:Connect(function()
  Exe.Text = "Executing"
+ Exe.BackgroundColor3 = Color3.fromRGB(255,255,0)
   if Raw and Raw ~= "" then
     if loadstring then
         loadstring(game:HttpGet(Raw))()
         Exe.Text = "Executed"
+		Exe.BackgroundColor3 = Color3.fromRGB(0,255,255)
     else
         Exe.Text = "Failed to executed"
+		Exe.BackgroundColor3 = Color3.fromRGB(255,0,0)
     end
   else
       Exe.Text = "Raw is empty"
@@ -379,6 +382,7 @@ Exe.MouseButton1Click:Connect(function()
   wait(1)
 
   Exe.Text = "Execute"
+  Exe.BackgroundColor3 = Color3.fromRGB(0,255,0)
 end)
 
 Copy.MouseButton1Click:Connect(function()
@@ -386,8 +390,10 @@ Copy.MouseButton1Click:Connect(function()
     if setclipboard then
         setclipboard(Raw)
         Copy.Text = "Copied"
+		Cooy.BackgroundColor3 = Color3.fromRGB(0,255,0)
     else
         Copy.Text = "Clipboard unsupported"
+		Copy.BackgroundColor3 = Color3.fromRGB(255,0,0)
     end
   else
       Copy.Text = "Raw is empty"
@@ -395,6 +401,7 @@ Copy.MouseButton1Click:Connect(function()
   wait(1)
 
   Copy.Text = "Copy"
+  Copy.BackgroundColor3 = Color3.new(0.7477386593818665, 0.7477386593818665, 0.7477386593818665)
 end)
 end
 
@@ -406,4 +413,14 @@ add("ConsoleCopyButton (@Lordi_scripts)", "lets you copy everything right in the
 add("YouTube Music Player V8 (@Turmux404)", "Take your Roblox experience to the next level by listening to your favorite  music or watching YouTube videos while you play.", "https://raw.githubusercontent.com/Dan41/Roblox-Scripts/refs/heads/main/Youtube%20Music%20Player/YoutubeMusicPlayer.lua",220,0,0)
 add("YARHM - MM2, FTF, Forsaken, CNA Sim, etc. (@Imperial)" ,"yet another random hub menu.", "https://rawscripts.net/raw/Universal-Script-YARHM-12403",200,0,200)
 add("AFEM MAX - 40K EMOTES SCRIPT BEST (@Imperial)", "Introducing AFEM Max, the powerful AFEM you know and love and now EVEN MORE supercharged!", "https://rawscripts.net/raw/Universal-Script-AFEM-Max-Open-Alpha-50210",0,150,200)
-
+add("Ketamine (@Kawi)", "The best Remote Spy (and not only) in Roblox's history after being developed for.", "https://raw.githubusercontent.com/InfernusScripts/Ketamine/refs/heads/main/Ketamine.lua",30,30,30)
+add("UNC Test (@vxsty)", "The Updated UNC Test, Since the old UNC test checks for getfenv(0) and not getgenv()", "https://rawscripts.net/raw/Universal-Script-UNC-Test-13114")
+add("MoreUNC (@vxsty)", "Credits to @yourfriendfromschool1 for the script idea.", "https://rawscripts.net/raw/Universal-Script-MoreUNC-13110",100,100,100)
+add("MoreUNC V2 (@vxsty)", 'An improvised version of MoreUNC! Gets around 52 to 53% UNC on Roblox Studio (Roblox studio has 0%)', "https://rawscripts.net/raw/Universal-Script-MoreUNC-V2-15902", 130,130,130)
+add("MoreUNC V3 (@vxsty)", "MoreUNC v3, the newest version of moreunc, with less functions, but more complex functions.", "https://rawscripts.net/raw/Universal-Script-MoreUNC-V3-27493",160,160,160)
+add("Universal avatar changer free (@byted)", "HAVE BUGS FOR NOW; added random avatars; Apply with username-ids, and u can add to favorites.", "https://raw.githubusercontent.com/darkdexv2/universalavatarchanger/main/avatarchanger", 100,100,50)
+add("FREE BUNDLES and EMOTES l FE (@Bac0nH1ckOff)", "New FE Script for Free  Animation Bundles in Roblox. As you may know, Roblox recently introduced custom UGC  animation bundles", "https://raw.githubusercontent.com/Bac0nHck/Scripts/refs/heads/main/BundleAnimations.lua")
+add("universal movement predictor (@koboldpaws)", "cyan dot = predicted pos; yellow line = trajectory; green line = velocity; red = landing spot", "https://rawscripts.net/raw/Universal-Script-universal-movement-predictor-86298", 180,0,180)
+add("physics based tail animator (@koboldpaws)", 'works with any ugc with the name "tail" in it', "https://rawscripts.net/raw/Universal-Script-physics-based-tail-animator-86591",255,0,255)
+add("Anti GamePlay Paused (@sillzchibi)", "Removes gameplay puased", "https://rawscripts.net/raw/Universal-Script-Anti-GamePlay-Paused-43496",0,200,0)
+add("Nameless admin REWORKED (@Screatkin)", "Admin commands; More than 280+ admin commands; This is a reworked version no bugs found; Better than old nameless admin and inf yeild.", "https://rawscripts.net/raw/Universal-Script-Nameless-admin-REWORKED-43502",15,15,15)
