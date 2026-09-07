@@ -1,4 +1,4 @@
-local v_ver = [[Recommanded Script 1.9 Remakes]]
+local v_ver = [[Recommanded Script 2 Remakes]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -299,7 +299,7 @@ Body.Active = false
 Body.BackgroundColor3 = Color3.fromRGB(r or 95, g or 94, b or 96)
 Body.BorderSizePixel = 5
 Body.BorderMode = Enum.BorderMode.Inset
-Body.Size = UDim2.new(1, 0, 0, 75)
+Body.Size = UDim2.new(1, -4, 0, 75)
 Body.Name = "Script"
 Body.Parent = tb
 Corner(0,5,Body)
@@ -324,7 +324,8 @@ Corner(0,3,Des)
 
 local Title = Instance.new("TextLabel")
 Title.Active = false
-Title.Text = title or "Script Title"
+Title.Text = "<b>" .. title .. "</b>" or "<b>Script Title</b>"
+Title.RichText = true
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.TextScaled = true
 Title.TextWrapped = true
@@ -364,6 +365,7 @@ Copy.Parent = Body
 Corner(0,5,Copy)
 
 Exe.MouseButton1Click:Connect(function()
+ Exe.Text = "Executing"
   if Raw and Raw ~= "" then
     if loadstring then
         loadstring(game:HttpGet(Raw))()
