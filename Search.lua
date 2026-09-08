@@ -1,4 +1,4 @@
--- searcher... yes. 10.07
+-- searcher... yes. 10.08
 
 -- =====>> Saved Functions <<=====
 
@@ -973,6 +973,13 @@ sortOrderButton.MouseButton1Click:Connect(function()
         .. "</b>"
 
 end)
+
+local line1 = Instance.new("Frame")
+line1.Name = "Line"
+line1.Size = UDim2.new(0.8,0,0,3)
+line1.BackgroundColor3 = Color3.new(1,1,1)
+line1.ZIndex = 2
+line1.Parent = filter_body
 
 local back = Instance.new("TextButton")
 back.Name = "Back"
