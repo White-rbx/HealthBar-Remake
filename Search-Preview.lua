@@ -1,4 +1,4 @@
--- searcher... yes. 10.43
+-- searcher... yes. 10.44
 
 -- =====>> Saved Functions <<=====
 
@@ -690,6 +690,9 @@ local FILTER_COLORS = {
 -- Create Filter
 -- =========================================
 
+local switches = {}
+local resetSwitches = {}
+
 local function type_(type, key)
 
     -- =====================================
@@ -845,6 +848,54 @@ ver.LayoutOrder = 2
 pat.LayoutOrder = 3
 ky.LayoutOrder = 4
 
+local APIType = {
+    "ScriptBlox",
+    "WeAreDevs",
+    "HaxHell",
+    "RScripts"
+}
+
+local currentAPI = "ScriptBlox"
+
+local APISortCapabilities = {
+
+    ScriptBlox = {
+        Views = true,
+        Likes = true,
+        Dislikes = true,
+        ["Creation Date"] = true,
+        ["Update Date"] = true,
+        ["Match Accuracy"] = true
+    },
+
+    WeAreDevs = {
+        Views = false,
+        Likes = false,
+        Dislikes = false,
+        ["Creation Date"] = false,
+        ["Update Date"] = false,
+        ["Match Accuracy"] = false
+    },
+
+    HaxHell = {
+        Views = true,
+        Likes = false,
+        Dislikes = false,
+        ["Creation Date"] = true,
+        ["Update Date"] = true,
+        ["Match Accuracy"] = false
+    },
+
+    RScripts = {
+        Views = true,
+        Likes = true,
+        Dislikes = false,
+        ["Creation Date"] = true,
+        ["Update Date"] = false,
+        ["Match Accuracy"] = false
+    }
+}
+  
 local function getNextSupportedSort()
 
     local states = {
@@ -1016,13 +1067,6 @@ sortOrderButton.MouseButton1Click:Connect(function()
         .. "</b>"
 
 end)
-
-local APIType = {
-    "ScriptBlox",
-    "WeAreDevs",
-    "HaxHell",
-    "RScripts"
-}
 
 local currentAPI = "ScriptBlox"
 
@@ -1296,58 +1340,6 @@ local APICapabilities = {
 }
 
 -- =========================================
--- API Sort Capabilities
--- =========================================
-
-local APISortCapabilities = {
-
-    ScriptBlox = {
-
-        Views = true,
-        Likes = true,
-        Dislikes = true,
-        ["Creation Date"] = true,
-        ["Update Date"] = true,
-        ["Match Accuracy"] = true
-
-    },
-
-    WeAreDevs = {
-
-        Views = false,
-        Likes = false,
-        Dislikes = false,
-        ["Creation Date"] = false,
-        ["Update Date"] = false,
-        ["Match Accuracy"] = false
-
-    },
-
-    HaxHell = {
-
-        Views = true,
-        Likes = false,
-        Dislikes = false,
-        ["Creation Date"] = true,
-        ["Update Date"] = true,
-        ["Match Accuracy"] = false
-
-    },
-
-    RScripts = {
-
-        Views = true,
-        Likes = true,
-        Dislikes = false,
-        ["Creation Date"] = true,
-        ["Update Date"] = false,
-        ["Match Accuracy"] = false
-
-    }
-
-}
-
--- =========================================
 -- API Normalize
 -- =========================================
 
@@ -1388,6 +1380,10 @@ local function normalizeScript(api, item)
 			patched = item.isPatched == true,
 			universal = item.isUniversal == true,
 			paid = item.isPaid == true,
+      scriptType =
+            item.isPaid == true
+            and "paid"
+            or "free",
 			key = item.keySystem == true,
 
 			createdAt = item.createdAt,
@@ -1483,6 +1479,15 @@ local function normalizeScript(api, item)
 
 			paid = flags
 				and flags.isPaid == true,
+
+      scriptType =
+    flags == nil
+    and nil
+    or (
+        flags.isPaid == true
+        and "paid"
+        or "free"
+    ),
 
 			key = flags
 				and flags.keySystem == true,
