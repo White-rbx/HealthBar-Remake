@@ -1,4 +1,4 @@
--- searcher... yes. 10.05
+-- searcher... yes. 10.07
 
 -- =====>> Saved Functions <<=====
 
@@ -985,7 +985,7 @@ back.LayoutOrder = 3
 back.ZIndex = 2
 back.TextColor3 = Color3.new(1,1,1)
 back.Text = "Switch back to the <b>Current version</b>"
-back.Parent = scr
+back.Parent = filter_body
 Corner(0,8,back)
 local bk_str = Stroke(back, ASMBorder, 100,0,0, LJMRound, 3, 0)
 bk_str.BorderStrokePosition = Enum.BorderStrokePosition.Inner
@@ -1009,7 +1009,7 @@ pre.LayoutOrder = 3
 pre.ZIndex = 2
 pre.TextColor3 = Color3.new(0,0,0)
 pre.Text = "Switch to the <b>Preview version</b>"
-pre.Parent = scr
+pre.Parent = filter_body
 Corner(0,8,pre)
 local pre_str = Stroke(pre, ASMBorder, 0,170,255, LJMRound, 3, 0)
 pre_str.BorderStrokePosition = Enum.BorderStrokePosition.Inner
