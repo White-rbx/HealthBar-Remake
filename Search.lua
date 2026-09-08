@@ -1,4 +1,4 @@
--- searcher... yes. 10.0
+-- searcher... yes. 10.05
 
 -- =====>> Saved Functions <<=====
 
@@ -638,6 +638,7 @@ filter_body.BackgroundColor3 = Color3.fromRGB(0,85,0)
 filter_body.BorderMode = Enum.BorderMode.Inset
 filter_body.BorderSizePixel = 5
 filter_body.ZIndex = 2
+filter_body.AutomaticSize = Enum.AutomaticSize.Y
 filter_body.Visible = false
 filter_body.Parent = filter
 Corner(0,8,filter_body)
@@ -973,6 +974,54 @@ sortOrderButton.MouseButton1Click:Connect(function()
 
 end)
 
+local back = Instance.new("TextButton")
+back.Name = "Back"
+back.Size = UDim2.new(1,0,0,30)
+back.BackgroundColor3 = Color3.new(1,0,0)
+back.TextSize = 14
+back.RichText = true
+back.TextWrapped = true
+back.LayoutOrder = 3
+back.ZIndex = 2
+back.TextColor3 = Color3.new(1,1,1)
+back.Text = "Switch back to the <b>Current version</b>"
+back.Parent = scr
+Corner(0,8,back)
+local bk_str = Stroke(back, ASMBorder, 100,0,0, LJMRound, 3, 0)
+bk_str.BorderStrokePosition = Enum.BorderStrokePosition.Inner
+
+back.MouseButton1Click:Connect(function()
+    sea:Destroy()
+    wait(0.5) 
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search.lua"))()
+end)
+
+back.Visible = false
+
+local pre = Instance.new("TextButton")
+pre.Name = "Back"
+pre.Size = UDim2.new(1,0,0,30)
+pre.BackgroundColor3 = Color3.new(0,1,1)
+pre.TextSize = 16
+pre.RichText = true
+pre.TextWrapped = true
+pre.LayoutOrder = 3
+pre.ZIndex = 2
+pre.TextColor3 = Color3.new(0,0,0)
+pre.Text = "Switch to the <b>Preview version</b>"
+pre.Parent = scr
+Corner(0,8,pre)
+local pre_str = Stroke(pre, ASMBorder, 0,170,255, LJMRound, 3, 0)
+pre_str.BorderStrokePosition = Enum.BorderStrokePosition.Inner
+
+pre.MouseButton1Click:Connect(function()
+    sea:Destroy()
+    wait(0.5) 
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search-Preview.lua"))()
+end)
+
+pre.Visible = true -- FALSE FOR FULLY VERSION
+
 local fil_sw = false  
   
 filter.MouseButton1Click:Connect(function()  
@@ -1022,30 +1071,6 @@ end
 
 dear.Parent = scr
 dear.Visible = false
-
-local back = Instance.new("TextButton")
-back.Name = "Back"
-back.Size = UDim2.new(0.98,0,0,50)
-back.Position = UDim2.new(0.5,-100,0.8,0)
-back.BackgroundColor3 = Color3.new(1,0,0)
-back.TextSize = 16
-back.RichText = true
-back.TextWrapped = true
-back.LayoutOrder = 3
-back.TextColor3 = Color3.new(1,1,1)
-back.Text = "Switch back to the <b>Old UI</b>?"
-back.Parent = scr
-Corner(0,8,back)
-local bk_str = Stroke(back, ASMBorder, 100,0,0, LJMRound, 3, 0)
-bk_str.BorderStrokePosition = Enum.BorderStrokePosition.Inner
-
-back.MouseButton1Click:Connect(function()
-    sea:Destroy()
-    wait(0.5) 
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/397db6d363933259c69d4683830484f67e13b28b/Search.lua"))()
-end)
-
-back.Visible = false -- FALSE FOR FULLY VERSION
 
 -----
 
