@@ -1,4 +1,4 @@
--- searcher... yes. 10.05
+-- searcher... yes. 10.4
 
 -- =====>> Saved Functions <<=====
 
@@ -845,7 +845,7 @@ local sortContainer = Instance.new("Frame")
 sortContainer.Name = "SortContainer"
 
 sortContainer.Size =
-    UDim2.new(1,0,0,35)
+    UDim2.new(1,0,0,30)
 
 sortContainer.BackgroundTransparency = 1
 
@@ -974,6 +974,56 @@ sortOrderButton.MouseButton1Click:Connect(function()
 
 end)
 
+local owninput = Instance.new("TextBox")
+owninput.Name = "CreatorInput"
+owninput.Size = UDim2.new(1,0,0,30)
+owninput.BackgroundColor3 = Color3.fromRGB(255,85,0)
+owninput.PlaceholderText = "Input: Creator..."
+owninput.PlaceholderColor3 = Color3.new(1,1,1)
+owninput.TextColor3 = Color3.new(0,0,0)
+owninput.Text = ""
+owninput.BorderMode = Enum.BorderMode.Inset
+owninput.BorderSizePixel = 3
+owninput.ZIndex = 2
+owninput.Parent = filter_body
+Corner(0,5,owninput)
+
+local gameinput = Instance.new("TextBox")
+gameinput.Name = "GameInput"
+gameinput.Size = UDim2.new(1,0,0,30)
+gameinput.BackgroundColor3 = Color3.fromRGB(255,85,0)
+gameinput.PlaceholderText = "Input: GameName or Game ID"
+gameinput.PlaceholderColor3 = Color3.new(1,1,1)
+gameinput.TextColor3 = Color3.new(0,0,0)
+gameinput.Text = ""
+gameinput.BorderMode = Enum.BorderMode.Inset
+gameinput.BorderSizePixel = 3
+gameinput.ZIndex = 2
+gameinput.Parent = filter_body
+Corner(0,5,gameinput)
+
+local apitype = Instance.new("TextLabel")
+apitype.Name = "TypeOfAnAPI"
+apitype.Size = UDim2.new(1,0,0,30)
+apitype.BackgroundColor3 = Color3.fromRGB(85, 255, 127)
+apitype.PlaceholderColor3 = Color3.new(1,1,1)
+apitype.TextColor3 = Color3.new(0,0,0)
+apitype.RichText = true
+apitype.LayoutOrder = -1
+apitype.Text = "<b>Search API: ScriptBlox</b>"
+apitype.BorderMode = Enum.BorderMode.Inset
+apitype.BorderSizePixel = 3
+apitype.ZIndex = 2
+apitype.Parent = filter_body
+Corner(0,5,apitype)
+
+local line1 = Instance.new("Frame")
+line1.Name = "Line"
+line1.Size = UDim2.new(0.8,0,0,3)
+line1.BackgroundColor3 = Color3.new(1,1,1)
+like.ZIndex = 2
+line1.Parent = filter_body
+
 local back = Instance.new("TextButton")
 back.Name = "Back"
 back.Size = UDim2.new(1,0,0,30)
@@ -996,7 +1046,7 @@ back.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search.lua"))()
 end)
 
-back.Visible = false
+back.Visible = true
 
 local pre = Instance.new("TextButton")
 pre.Name = "Back"
@@ -1020,7 +1070,7 @@ pre.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search-Preview.lua"))()
 end)
 
-pre.Visible = true -- FALSE FOR FULLY VERSION
+pre.Visible = false -- FALSE FOR FULLY VERSION
 
 local fil_sw = false  
   
