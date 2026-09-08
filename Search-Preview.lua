@@ -1,4 +1,4 @@
--- searcher... yes. 5.9
+-- searcher... yes. 10.05
 
 -- =====>> Saved Functions <<=====
 
@@ -132,6 +132,7 @@ local TweenService = game:GetService("TweenService")
 -- Input (Desktop / Mobile)
 local UserInputService = game:GetService("UserInputService")
 local TouchInputService = game:GetService("TouchInputService")
+local TextService = game:GetService("TextService")
 
 --[[
 Before we starting create guis or any script
@@ -165,6 +166,12 @@ local function tweenSize(obj, size, pos, backcol, time)
     return tween
 end
 
+-- =========================================
+-- ScriptBlox Fetch
+-- =========================================
+local HttpService =
+    game:GetService("HttpService")
+
 local SCRIPTBLOX_API =
     "https://scriptblox.com/api/script/fetch"
 
@@ -188,9 +195,9 @@ end
 local menu = CoreGui:WaitForChild("ExperienceSettings", 10):FindFirstChild("Menu")  
 if not menu then return end  
 
-if menu.Search then
+--[[if menu.Search then
    menu.Search:Destroy()
-end
+end]]
 
 -- =========================  
 -- Main Frame  
@@ -271,6 +278,15 @@ Page.BorderSizePixel = 5
 Page.Visible = false
 Page.Parent = sea
 
+local InPage = Instance.new("ScrollingFrame")
+InPage.Name = "InPage"
+InPage.Size = UDim2.new(1,0,1,0)
+InPage.BackgroundTransparency = 1
+InPage.ScrollBarThickness = 0
+InPage.ScrollingDirection = Enum.ScrollingDirection.Y
+InPage.CanvasSize = UDim2.new(0,0,0,628)
+InPage.Parent = Page
+
 local vp = Instance.new("CanvasGroup")
 vp.Name = "ViewPage"
 vp.Size = UDim2.new(1,0,1,0)
@@ -278,7 +294,7 @@ vp.BackgroundColor3 = Color3.new(1,1,1)
 vp.BorderMode = Enum.BorderMode.Inset
 vp.BorderSizePixel = 5
 vp.Active = false
-vp.Parent = Page
+vp.Parent = InPage
 Corner(0,8,vp)
 Gradient(vp, -90,0,0, Color3.fromRGB(170,0,255), Color3.fromRGB(255,85,255))
 
@@ -318,9 +334,15 @@ cre.Position += UDim2.new(0,0,0,13)
 cre.Text = "By @Username"
 cre.Parent = vp
 
+local credate = types:Clone()
+credate.Name = "CreationDate"
+credate.Position += UDim2.new(0,0,0,26)
+credate.Text = "Creation Date: DD/MM/YYYY"
+credate.Parent = vp
+
 local like = Instance.new("TextLabel")
 like.Name = "Likes"
-like.Position = UDim2.new(0,0,0,175)
+like.Position = UDim2.new(0,0,0,188)
 like.Size = UDim2.new(0.5,0,0,20)
 like.BackgroundColor3 = Color3.fromRGB(0,170,255)
 like.TextColor3 = Color3.new(1,1,1)
@@ -334,7 +356,7 @@ Corner(0,3,like)
 
 local dislike = Instance.new("TextLabel")
 dislike.Name = "Dislikes"
-dislike.Position = UDim2.new(1,0,0,175)
+dislike.Position = UDim2.new(1,0,0,188)
 dislike.Size = UDim2.new(-0.5,0,0,20)
 dislike.BackgroundColor3 = Color3.fromRGB(255,0,0)
 dislike.TextColor3 = Color3.new(1,1,1)
@@ -348,7 +370,7 @@ Corner(0,3,dislike)
 
 local visit = Instance.new("TextLabel")
 visit.Name = "Visits"
-visit.Position = UDim2.new(0,0,0,200)
+visit.Position = UDim2.new(0,0,0,210)
 visit.Size = UDim2.new(1,0,0,20)
 visit.BackgroundColor3 = Color3.fromRGB(255,85,0)
 visit.TextColor3 = Color3.new(1,1,1)
@@ -360,15 +382,144 @@ visit.BorderSizePixel = 2
 visit.Parent = vp
 Corner(0,3,visit)
 
+local fea = names:Clone()
+fea.Name = "Features"
+fea.Position = UDim2.new(0,0,0,233)
+fea.Text = "<b>Description</b>"
+fea.Parent = vp
+
+local feascroll = Instance.new("ScrollingFrame")
+feascroll.Name = "FeaturesScroll"
+feascroll.Position = UDim2.new(0,0,0,258)
+feascroll.Size = UDim2.new(1,0,0,100)
+feascroll.BackgroundColor3 = Color3.new(0,0,0)
+feascroll.ScrollBarThickness = 10
+feascroll.BackgroundTransparency = 0.8
+feascroll.ScrollingDirection = Enum.ScrollingDirection.Y
+feascroll.BorderMode = Enum.BorderMode.Inset
+feascroll.BorderSizePixel = 5
+feascroll.CanvasSize = UDim2.new(0,0,30,0)
+feascroll.Parent = vp
+Corner(0,3,feascroll)
+
+local feabox = Instance.new("TextBox")
+feabox.Name = "FeaturesBox"
+feabox.Position = UDim2.new(0,0,0,0)
+feabox.Size = UDim2.new(1,-11,1,0)
+feabox.BackgroundTransparency = 1
+feabox.TextColor3 = Color3.new(1,1,1)
+feabox.ClearTextOnFocus = false
+feabox.PlaceholderText = "No description yet."
+feabox.PlaceholderColor3 = Color3.new(1,1,1)
+feabox.Text = ""
+feabox.TextSize = 8
+feabox.TextWrapped = true
+feabox.TextXAlignment = Enum.TextXAlignment.Left
+feabox.TextYAlignment = Enum.TextYAlignment.Top
+feabox.TextEditable = false
+feabox.Parent = feascroll
+
+local tags = names:Clone()
+tags.Name = "Tags"
+tags.Position = UDim2.new(0,0,0,363)
+tags.Text = "<b>Tag</b>"
+tags.Parent = vp
+
+local tagscroll = Instance.new("ScrollingFrame")
+tagscroll.Name = "TagScroll"
+tagscroll.Position = UDim2.new(0,0,0,386)
+tagscroll.Size = UDim2.new(1,0,0,30)
+tagscroll.BackgroundColor3 = Color3.new(0,0,0)
+tagscroll.ScrollBarThickness = 2
+tagscroll.BackgroundTransparency = 0.8
+tagscroll.ScrollingDirection = Enum.ScrollingDirection.X
+tagscroll.BorderMode = Enum.BorderMode.Inset
+tagscroll.BorderSizePixel = 5
+tagscroll.CanvasSize = UDim2.new(0,0,0,0)
+tagscroll.Parent = vp
+Corner(0,3,tagscroll)
+ListLayout(tagscroll, 0, 3, HLeft, VTop, SLayout, FillH)
+
+local tagLayout = tagscroll:FindFirstChildOfClass("UIListLayout")
+
+local function updateTagCanvas()
+    if not tagLayout or not tagLayout.Parent then
+        return
+    end
+
+    local content = tagLayout.AbsoluteContentSize
+
+    tagscroll.CanvasSize = UDim2.new(
+        0,
+        math.ceil(content.X),
+        0,
+        math.ceil(content.Y)
+    )
+end
+
+local function tagss(string)
+    local text = tostring(string)
+
+    local tag = Instance.new("TextLabel")
+    tag.Name = "TagString"
+
+    tag.Text = text
+    tag.TextSize = 12
+    tag.Font = Enum.Font.SourceSans
+
+    tag.TextXAlignment = Enum.TextXAlignment.Center
+    tag.TextYAlignment = Enum.TextYAlignment.Center
+
+    local bounds = TextService:GetTextSize(
+        text,
+        tag.TextSize,
+        tag.Font,
+        Vector2.new(math.huge, math.huge)
+    )
+
+    local padding = 10
+
+    tag.Size = UDim2.new(
+        0,
+        math.ceil(bounds.X) + padding,
+        1,
+        -2
+    )
+
+    tag.BackgroundColor3 = Color3.fromRGB(170,255,255)
+    tag.BorderMode = Enum.BorderMode.Inset
+    tag.BorderSizePixel = 5
+    tag.Active = false
+    tag.Parent = tagscroll
+
+    Corner(0,3,tag)
+
+    task.defer(updateTagCanvas)
+end
+
+tagLayout:GetPropertyChangedSignal("AbsoluteContentSize")
+    :Connect(updateTagCanvas)
+
+task.defer(updateTagCanvas)
+
+local rs = names:Clone()
+rs.Name = "RawScript"
+rs.Position = UDim2.new(0,0,1,-198)
+rs.Text = "<b>Raw Script</b>"
+rs.Parent = vp
+
 local codescroll = Instance.new("ScrollingFrame")
 codescroll.Name = "CodeScroll"
-codescroll.Position = UDim2.new(0,0,0,230)
+codescroll.Position = UDim2.new(0,0,1,-175)
 codescroll.Size = UDim2.new(1,0,0,100)
 codescroll.BackgroundColor3 = Color3.new(0,0,0)
 codescroll.ScrollBarThickness = 10
 codescroll.ScrollingDirection = Enum.ScrollingDirection.Y
-codescroll.CanvasSize = UDim2.new(0,0,10000,0)
+codescroll.BorderMode = Enum.BorderMode.Inset
+codescroll.BorderSizePixel = 5
+codescroll.CanvasSize = UDim2.new(0,0,30,0)
 codescroll.Parent = vp
+Corner(0,3,codescroll)
 
 local codebox = Instance.new("TextBox")
 codebox.Name = "CodeBox"
@@ -391,7 +542,7 @@ codebox.Parent = codescroll
 local exe = Instance.new("TextButton")
 exe.Name = "Execute"
 exe.Size = UDim2.new(1,0,0,20)
-exe.Position = UDim2.new(0,0,0,340)
+exe.Position = UDim2.new(0,0,1,-70)
 exe.BackgroundColor3 = Color3.fromRGB(255,0,128)
 exe.TextColor3 = Color3.new(1,1,1)
 exe.TextScaled = true
@@ -405,7 +556,7 @@ Corner(0,3,exe)
 local cy = Instance.new("TextButton")
 cy.Name = "Copy"
 cy.Size = UDim2.new(1,0,0,20)
-cy.Position = UDim2.new(0,0,0,365)
+cy.Position = UDim2.new(0,0,1,-46)
 cy.BackgroundColor3 = Color3.fromRGB(145,0,255)
 cy.TextColor3 = Color3.new(1,1,1)
 cy.TextScaled = true
@@ -440,8 +591,9 @@ tb.BackgroundColor3 = Color3.fromRGB(0,170,255)
 tb.BackgroundTransparency = 0.3
 tb.BorderMode = Enum.BorderMode.Inset
 tb.BorderSizePixel = 6
-tb.TextScaled = true
-tb.Text = "<b><font color='rgb(255,0,0'>YOU JUST ENTER PREVIEW VERSION! TO USE OLD VERSION PLEASE SCROLL DOWN THEN CLICK SWITCH.</font></b>"
+tb.TextSize = 16
+tb.TextWrapped = true
+tb.Text = ""
 tb.PlaceholderText = "Search here!"
 tb.PlaceholderColor3 = Color3.new(0,0,0)
 tb.TextColor3 = Color3.new(1,1,1)
@@ -465,14 +617,28 @@ Gradient(filter, -45 ,0,0, Color3.fromRGB(85,255,0), Color3.fromRGB(255,255,0))
 local tb_str = Stroke(tb,ASMBorder, 255,255,255, LJMRound, 2, 0)
 Gradient(tb_str, 90, 0,0, Color3.fromRGB(255,255,255), Color3.fromRGB(0,255,255))
 
+local refresh = Instance.new("ImageButton")
+refresh.Name = "Refresh"
+refresh.Position = UDim2.new(1,-75,0,0)
+refresh.Size = UDim2.new(0,35,0,35)
+refresh.BackgroundColor3 = Color3.new(1,1,1)
+refresh.BackgroundTransparency = 0.3
+refresh.Image = "rbxassetid://133018773942204"
+refresh.Parent = tb
+
+Corner(0,3,refresh)
+Stroke(refresh, ASMBorder, 255, 255, 255, LJMRound, 1 ,0)
+Gradient(refresh, -45 ,0,0, Color3.fromRGB(255,85,0), Color3.fromRGB(255,255,0))
+
 local filter_body = Instance.new("Frame")
 filter_body.Name = "FilterBody"
-filter_body.Size = UDim2.new(0,350,0,200)
+filter_body.Size = UDim2.new(0,0,0,150)
 filter_body.Position = UDim2.new(0,-305,1,5)
 filter_body.BackgroundColor3 = Color3.fromRGB(0,85,0)
 filter_body.BorderMode = Enum.BorderMode.Inset
 filter_body.BorderSizePixel = 5
 filter_body.ZIndex = 2
+filter_body.AutomaticSize = Enum.AutomaticSize.Y
 filter_body.Visible = false
 filter_body.Parent = filter
 Corner(0,8,filter_body)
@@ -491,6 +657,32 @@ local filterType = {
     Patched = "Default",
     Key = "Default"
 }
+
+-- =========================================
+-- Sort System
+-- =========================================
+
+local sortType = "Default"
+local sortOrder = "Default"
+
+local sortByStates = {
+    "Default",
+    "Views",
+    "Likes",
+    "Dislikes",
+    "Creation Date",
+    "Update Date",
+    "Match Accuracy"
+}
+
+local sortOrderStates = {
+    "Default",
+    "Ascending",
+    "Descending"
+}
+
+local sortByIndex = 1
+local sortOrderIndex = 1
 
 -- =========================================
 -- Filter Colors
@@ -516,16 +708,33 @@ local function type_(type, key)
     -- =====================================
 
     local body = Instance.new("TextLabel")
+
     body.Name = "Body"
     body.Size = UDim2.new(1,0,0,30)
-    body.BackgroundColor3 = Color3.fromRGB(0,163,0)
-    body.TextXAlignment = Enum.TextXAlignment.Left
-    body.TextColor3 = Color3.new(1,1,1)
-    body.Text = "<b>" .. tostring(type) .. "</b>"
+
+    body.BackgroundColor3 =
+        Color3.fromRGB(0,163,0)
+
+    body.TextXAlignment =
+        Enum.TextXAlignment.Left
+
+    body.TextColor3 =
+        Color3.new(1,1,1)
+
+    body.Text =
+        "<b>" .. tostring(type) .. "</b>"
+
     body.RichText = true
-    body.BorderMode = Enum.BorderMode.Inset
+
+    body.TextScaled = true
+
+    body.BorderMode =
+        Enum.BorderMode.Inset
+
     body.BorderSizePixel = 5
+
     body.ZIndex = 2
+
     body.Parent = filter_body
 
     Corner(0,5,body)
@@ -535,18 +744,22 @@ local function type_(type, key)
     -- =====================================
 
     local switch = Instance.new("TextButton")
+
     switch.Name = "Switch"
 
     -- 20 × 20 Offset
-    switch.Size = UDim2.new(0,20,0,20)
-    switch.Position = UDim2.new(1,-20,0,0)
+    switch.Size =
+        UDim2.new(0,20,0,20)
+
+    switch.Position =
+        UDim2.new(1,-20,0,0)
 
     switch.BackgroundColor3 =
         FILTER_COLORS.Default
 
     switch.ZIndex = 2
 
-    -- No text
+    -- No Text
     switch.Text = ""
 
     switch.Parent = body
@@ -609,17 +822,205 @@ local function type_(type, key)
         )
 
     end)
+
 end
 
 -- =========================================
 -- Create Filters
 -- =========================================
 
-type_("Script Type", "ScriptType")
+type_("Script Type (Default/Free/Paid)", "ScriptType")
 type_("Universal", "IsUniversal")
 type_("Verified", "Verified")
 type_("Patched", "Patched")
 type_("Key", "Key")
+
+
+-- =========================================
+-- Sort UI
+-- =========================================
+
+local sortContainer = Instance.new("Frame")
+
+sortContainer.Name = "SortContainer"
+
+sortContainer.Size =
+    UDim2.new(1,0,0,35)
+
+sortContainer.BackgroundTransparency = 1
+
+sortContainer.ZIndex = 2
+
+sortContainer.Parent = filter_body
+
+
+-- =========================================
+-- Sort By Button
+-- =========================================
+
+local sortBy = Instance.new("TextButton")
+
+sortBy.Name = "SortBy"
+
+sortBy.Size =
+    UDim2.new(0.5,-3,0,30)
+
+sortBy.Position =
+    UDim2.new(0,0,0,0)
+
+sortBy.BackgroundColor3 =
+    Color3.fromRGB(255,255,0)
+
+sortBy.TextColor3 =
+    Color3.new(0,0,0)
+
+sortBy.RichText = true
+
+sortBy.TextScaled = true
+
+sortBy.Text =
+    "<b>Sort by: Default</b>"
+
+sortBy.BorderMode =
+    Enum.BorderMode.Inset
+
+sortBy.BorderSizePixel = 3
+
+sortBy.ZIndex = 2
+
+sortBy.Parent = sortContainer
+
+Corner(0,5,sortBy)
+
+-- =========================================
+-- Sort Order Button
+-- =========================================
+
+local sortOrderButton = Instance.new("TextButton")
+
+sortOrderButton.Name = "SortOrder"
+
+sortOrderButton.Size =
+    UDim2.new(0.5,-3,0,30)
+
+sortOrderButton.Position =
+    UDim2.new(0.5,3,0,0)
+
+sortOrderButton.BackgroundColor3 =
+    Color3.fromRGB(0,255,255)
+
+sortOrderButton.TextColor3 =
+    Color3.new(0,0,0)
+
+sortOrderButton.RichText = true
+sortOrderButton.TextScaled = true
+
+sortOrderButton.Text =
+    "<b>Sort order: Default</b>"
+
+sortOrderButton.BorderMode =
+    Enum.BorderMode.Inset
+
+sortOrderButton.BorderSizePixel = 3
+
+sortOrderButton.ZIndex = 2
+
+sortOrderButton.Parent = sortContainer
+
+Corner(0,5,sortOrderButton)
+
+-- =========================================
+-- Sort By Click
+-- =========================================
+
+sortBy.MouseButton1Click:Connect(function()
+
+    sortByIndex += 1
+
+    if sortByIndex > #sortByStates then
+        sortByIndex = 1
+    end
+
+    sortType =
+        sortByStates[sortByIndex]
+
+    sortBy.Text =
+        "<b>Sort by: "
+        .. sortType
+        .. "</b>"
+
+end)
+
+
+-- =========================================
+-- Sort Order Click
+-- =========================================
+
+sortOrderButton.MouseButton1Click:Connect(function()
+
+    sortOrderIndex += 1
+
+    if sortOrderIndex > #sortOrderStates then
+        sortOrderIndex = 1
+    end
+
+    sortOrder =
+        sortOrderStates[sortOrderIndex]
+
+    sortOrderButton.Text =
+        "<b>Sort order: "
+        .. sortOrder
+        .. "</b>"
+
+end)
+
+local back = Instance.new("TextButton")
+back.Name = "Back"
+back.Size = UDim2.new(1,0,0,30)
+back.BackgroundColor3 = Color3.new(1,0,0)
+back.TextSize = 14
+back.RichText = true
+back.TextWrapped = true
+back.LayoutOrder = 3
+back.ZIndex = 2
+back.TextColor3 = Color3.new(1,1,1)
+back.Text = "Switch back to the <b>Current version</b>"
+back.Parent = scr
+Corner(0,8,back)
+local bk_str = Stroke(back, ASMBorder, 100,0,0, LJMRound, 3, 0)
+bk_str.BorderStrokePosition = Enum.BorderStrokePosition.Inner
+
+back.MouseButton1Click:Connect(function()
+    sea:Destroy()
+    wait(0.5) 
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search.lua"))()
+end)
+
+back.Visible = false
+
+local pre = Instance.new("TextButton")
+pre.Name = "Back"
+pre.Size = UDim2.new(1,0,0,30)
+pre.BackgroundColor3 = Color3.new(0,1,1)
+pre.TextSize = 16
+pre.RichText = true
+pre.TextWrapped = true
+pre.LayoutOrder = 3
+pre.ZIndex = 2
+pre.TextColor3 = Color3.new(0,0,0)
+pre.Text = "Switch to the <b>Preview version</b>"
+pre.Parent = scr
+Corner(0,8,pre)
+local pre_str = Stroke(pre, ASMBorder, 0,170,255, LJMRound, 3, 0)
+pre_str.BorderStrokePosition = Enum.BorderStrokePosition.Inner
+
+pre.MouseButton1Click:Connect(function()
+    sea:Destroy()
+    wait(0.5) 
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search-Preview.lua"))()
+end)
+
+pre.Visible = true -- FALSE FOR FULLY VERSION
 
 local fil_sw = false  
   
@@ -671,30 +1072,6 @@ end
 dear.Parent = scr
 dear.Visible = false
 
-local back = Instance.new("TextButton")
-back.Name = "Back"
-back.Size = UDim2.new(0.98,0,0,50)
-back.Position = UDim2.new(0.5,-100,0.8,0)
-back.BackgroundColor3 = Color3.new(1,0,0)
-back.TextSize = 16
-back.RichText = true
-back.TextWrapped = true
-back.LayoutOrder = 3
-back.TextColor3 = Color3.new(1,1,1)
-back.Text = "Switch back to the <b>Old UI</b>?"
-back.Parent = scr
-Corner(0,8,back)
-local bk_str = Stroke(back, ASMBorder, 100,0,0, LJMRound, 3, 0)
-bk_str.BorderStrokePosition = Enum.BorderStrokePosition.Inner
-
-back.MouseButton1Click:Connect(function()
-    sea:Destroy()
-    wait(0.5) 
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/397db6d363933259c69d4683830484f67e13b28b/Search.lua"))()
-end)
-
-back.Visible = false -- FALSE FOR FULLY VERSION
-
 -----
 
 -- =========================================
@@ -704,21 +1081,60 @@ back.Visible = false -- FALSE FOR FULLY VERSION
 local FALLBACK_IMAGE =
     "rbxassetid://136962703149104"
 
-local function getPreviewImage(data)
+-- =========================================
+-- Preview Image - Search
+-- =========================================
 
-    if data
-        and data.game
-        and type(data.game) == "table"
-        and data.game.gameId then
+local function getSearchPreviewImage(data)
+    if data and data.isUniversal == true then
+        return FALLBACK_IMAGE
+    end
 
-        return "rbxthumb://type=GameIcon&id="
-            .. tostring(data.game.gameId)
-            .. "&w=420&h=420"
+    local game = data and data.game
+
+    if type(game) ~= "table" then
+        return FALLBACK_IMAGE
+    end
+
+    local gameId = game.gameId or game.placeId
+
+    if gameId then
+        return "rbxthumb://type=GameThumbnail&id="
+            .. tostring(gameId)
+            .. "&w=480&h=270"
     end
 
     return FALLBACK_IMAGE
 end
 
+-- =========================================
+-- Preview Image - Fetch
+-- =========================================
+
+local function getFetchPreviewImage(data)
+
+    local game = data and data.game
+
+    local gameId = tonumber(
+        game and (game.placeId or game.gameId)
+    )
+
+    if gameId then
+        return string.format(
+            "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid=%d&fmt=png&wd=420&ht=420",
+            gameId
+        )
+    end
+
+    if type(data.image) == "string"
+        and data.image ~= ""
+        and data.image:sub(1, 1) == "/" then
+
+        return "https://scriptblox.com" .. data.image
+    end
+
+    return FALLBACK_IMAGE
+end
 
 -- =========================================
 -- ScriptBlox Individual
@@ -992,7 +1408,7 @@ local function sipt(data)
         Enum.ScaleType.Fit
 
     Img.Image =
-        getPreviewImage(data)
+        getFetchPreviewImage(data)
 
     Img.Parent = body
 
@@ -1034,6 +1450,7 @@ local function sipt(data)
         Enum.TextYAlignment.Top
 
     de.RichText = true
+    de.TextWrapped = true
 
     de.TextColor3 =
         Color3.new(0,0,0)
@@ -1069,7 +1486,6 @@ local function sipt(data)
         "<font size='12'><b>"
         .. title
         .. "</b></font>\n"
-        .. "📌 "
         .. gameName
         .. "\n"
         .. "By @"
@@ -1167,38 +1583,68 @@ local function sipt(data)
         )
 
 
-        -- ---------------------------------
-        -- Open Page
-        -- ---------------------------------
+-- =================================
+-- Open Page
+-- =================================
 
-        Page.Visible = true
+Page.Visible = true
 
+tweenSize(
+    Page,
+    UDim2.new(0.35,-5,1,0),
+    nil,
+    nil,
+    0.4
+)
 
-        tweenSize(
-            Page,
-            UDim2.new(0.35,-5,1,0),
-            nil,
-            nil,
-            0.4
-        )
+tweenSize(
+    List,
+    UDim2.new(0.65,0,1,0),
+    nil,
+    nil,
+    0.4
+)
 
+-- =================================
+-- Loading State
+-- =================================
 
-        tweenSize(
-            List,
-            UDim2.new(0.65,0,1,0),
-            nil,
-            nil,
-            0.4
-        )
+names.Text = "<b>Loading Data...</b>"
+types.Text = "Loading Data..."
+cre.Text = "Loading Data..."
+credate.Text = "Loading Data..."
 
+like.Text = "<b>Like: Loading Data...</b>"
+dislike.Text = "<b>Dislike: Loading Data...</b>"
+visit.Text = "<b>Visit: Loading Data...</b>"
 
-        -- ---------------------------------
-        -- Fetch Individual
-        -- ---------------------------------
+feabox.Text = "Loading Data..."
+codebox.Text = "Loading Data..."
 
-        local detail =
-            fetchIndividual(data._id)
+imgview.Image = FALLBACK_IMAGE
 
+-- =================================
+-- Clear Old Tags
+-- =================================
+
+for _, child in ipairs(tagscroll:GetChildren()) do
+    if child.Name == "TagString" then
+        child:Destroy()
+    end
+end
+
+tagscroll.CanvasSize =
+    UDim2.new(0,0,0,0)
+
+-- =================================
+-- Fetch Individual
+-- =================================
+
+local detail = fetchIndividual(data._id)
+
+if not detail then
+    detail = data
+end
 
         -- ---------------------------------
         -- Fallback
@@ -1269,7 +1715,7 @@ local function sipt(data)
         -- ---------------------------------
 
         imgview.Image =
-            getPreviewImage(detail)
+            getSearchPreviewImage(detail)
 
 
         -- ---------------------------------
@@ -1287,8 +1733,8 @@ local function sipt(data)
         -- ---------------------------------
 
         types.Text =
-            "📌 "
-            .. detailGameName
+            ""..
+            detailGameName
 
 
         -- ---------------------------------
@@ -1339,6 +1785,62 @@ local function sipt(data)
             .. "</b>"
 
 
+
+        -- ---------------------------------
+        -- Creation Date
+        -- ---------------------------------
+
+        local creationDate = "Unknown"
+
+        if detail.createdAt then
+            local timestamp = tostring(detail.createdAt)
+
+            -- ตรงนี้ค่อยแปลง timestamp เป็น DD/MM/YYYY
+            creationDate = timestamp
+        end
+
+        credate.Text =
+            "Creation Date: "
+            .. creationDate
+
+
+        -- ---------------------------------
+        -- Features / Description
+        -- ---------------------------------
+
+        local features =
+            tostring(
+                detail.features
+                or ""
+            )
+
+        if features == "" then
+            feabox.Text = ""
+            feabox.PlaceholderText =
+                "No description yet."
+        else
+            feabox.Text = features
+        end
+
+
+        -- ---------------------------------
+        -- Tags
+        -- ---------------------------------
+
+        for _, child in ipairs(tagscroll:GetChildren()) do
+            if child:IsA("TextLabel")
+                and child.Name == "TagString" then
+
+                child:Destroy()
+            end
+        end
+
+        if type(detail.tags) == "table" then
+            for _, tagName in ipairs(detail.tags) do
+                tagss(tagName)
+            end
+        end
+      
         -- ---------------------------------
         -- Source
         -- ---------------------------------
@@ -1352,17 +1854,6 @@ local function sipt(data)
     end)
 
 end
-
-
--- =========================================
--- ScriptBlox Fetch
--- =========================================
-
-local SCRIPTBLOX_API =
-    "https://scriptblox.com/api/script/fetch"
-
-local HttpService =
-    game:GetService("HttpService")
 
 local currentPage = 1
 local loading = false
@@ -1430,6 +1921,149 @@ local function load()
     end)
 end
 
+local function buildSearchURL(page)
+
+    local query = tb.Text or ""
+    query = query:gsub("^%s+", ""):gsub("%s+$", "")
+
+    local params = {}
+
+    table.insert(
+        params,
+        "page=" .. tostring(page)
+    )
+
+    table.insert(
+        params,
+        "max=20"
+    )
+
+    -- Search
+    if query ~= "" then
+        table.insert(
+            params,
+            "q=" .. HttpService:UrlEncode(query)
+        )
+    end
+
+    -- ScriptType
+    if filterType.ScriptType == "Free" then
+
+        table.insert(
+            params,
+            "mode=free"
+        )
+
+    elseif filterType.ScriptType == "Paid" then
+
+        table.insert(
+            params,
+            "mode=paid"
+        )
+    end
+
+    -- Universal
+    if filterType.IsUniversal == "With" then
+
+        table.insert(
+            params,
+            "universal=1"
+        )
+
+    elseif filterType.IsUniversal == "Without" then
+
+        table.insert(
+            params,
+            "universal=0"
+        )
+    end
+
+    -- Verified
+    if filterType.Verified == "With" then
+
+        table.insert(
+            params,
+            "verified=1"
+        )
+
+    elseif filterType.Verified == "Without" then
+
+        table.insert(
+            params,
+            "verified=0"
+        )
+    end
+
+    -- Patched
+    if filterType.Patched == "With" then
+
+        table.insert(
+            params,
+            "patched=1"
+        )
+
+    elseif filterType.Patched == "Without" then
+
+        table.insert(
+            params,
+            "patched=0"
+        )
+    end
+
+    -- Key
+    if filterType.Key == "With" then
+
+        table.insert(
+            params,
+            "key=1"
+        )
+
+    elseif filterType.Key == "Without" then
+
+        table.insert(
+            params,
+            "key=0"
+        )
+    end
+
+if sortType == "Views" then
+    table.insert(params, "sortBy=views")
+
+elseif sortType == "Likes" then
+    table.insert(params, "sortBy=likeCount")
+
+elseif sortType == "Dislikes" then
+    table.insert(params, "sortBy=dislikeCount")
+
+elseif sortType == "Creation Date" then
+    table.insert(params, "sortBy=createdAt")
+
+elseif sortType == "Update Date" then
+    table.insert(params, "sortBy=updatedAt")
+
+elseif sortType == "Match Accuracy" then
+    table.insert(params, "sortBy=accuracy")
+end
+
+if sortOrder == "Ascending" then
+    table.insert(params, "order=asc")
+
+elseif sortOrder == "Descending" then
+    table.insert(params, "order=desc")
+end
+
+    local endpoint
+
+    if query ~= "" then
+        endpoint =
+            "https://scriptblox.com/api/script/search?"
+    else
+        endpoint =
+            "https://scriptblox.com/api/script/fetch?"
+    end
+
+    return endpoint .. table.concat(params, "&")
+end
 
 -- =========================================
 -- Fetch Function
@@ -1448,11 +2082,7 @@ function fetchScripts(page)
         loadMoreButton = nil
     end
 
-    local url =
-        SCRIPTBLOX_API
-        .. "?page="
-        .. tostring(page)
-        .. "&max=20"
+    local url = buildSearchURL(page)
 
     local success, response = pcall(function()
         return game:HttpGet(url)
@@ -1460,6 +2090,7 @@ function fetchScripts(page)
 
     if not success then
         loading = false
+        warn("Fetch Error:", response)
         return false
     end
 
@@ -1470,11 +2101,13 @@ function fetchScripts(page)
 
     if not jsonSuccess then
         loading = false
+        warn("JSON Error:", data)
         return false
     end
 
     if data.message then
         loading = false
+        warn("API Error:", data.message)
         return false
     end
 
@@ -1482,6 +2115,7 @@ function fetchScripts(page)
         or not data.result.scripts then
 
         loading = false
+        warn("No scripts returned")
         return false
     end
 
@@ -1521,19 +2155,80 @@ backs.MouseButton1Click:Connect(function()
   Page.Visible = false
 end)
 
+local function clearCards()
+
+    if loadMoreButton then
+        loadMoreButton:Destroy()
+        loadMoreButton = nil
+    end
+
+    for _, child in ipairs(scr:GetChildren()) do
+
+        if child:IsA("Frame")
+            and child.Name == "Body" then
+
+            child:Destroy()
+
+        end
+    end
+end
+
+local function refreshSearch()
+
+    if loading then
+        return
+    end
+
+    clearCards()
+
+    currentPage = 1
+
+    fetchScripts(currentPage)
+end
+
+tb.FocusLost:Connect(function(enterPressed)
+
+    if not enterPressed then
+        return
+    end
+
+    refreshSearch()
+
+end)
+
+refresh.MouseButton1Click:Connect(function()
+    refreshSearch()
+end)
 -----
 
 exe.MouseButton1Click:Connect(function()
   exe.Text = "<b>Executed</b>"
   tweenSize(exe, UDim2.new(1,0,0,10),nil,nil, 0.1).Completed:Wait()
   tweenSize(exe, UDim2.new(1,0,0,20),nil,nil, 0.1)
+
+  local source = codebox.Text or ""
+
+  if source and source ~= "" then
+
+        if loadstring then
+            loadstring((source))()
+            exe.Text = "<b>Executed</b>"
+        else
+            exe.Text = "<b>Failed to execute</b>"
+        end
+
+    else
+        exe.Text = "<b>No Source Found</b>"
+    end
+    
   wait(1)
+
   exe.Text = "<b>Execute</b>"
 end)
 
 cy.MouseButton1Click:Connect(function()
 
-    local source = codebox.Text
+    local source = codebox.Text or ""
 
     if source == "" then
         cy.Text = "<b>No Code</b>"
@@ -1563,186 +2258,4 @@ cy.MouseButton1Click:Connect(function()
     task.wait(1)
 
     cy.Text = "<b>Copy To Clipboard</b>"
-end)
-
-local exeVerifying = false
-local exeConfirming = false
-local exeToken = 0
-
--- =========================================
--- Execute Verification
--- =========================================
-
-local exeVerifying = false
-local exeConfirming = false
-local exeToken = 0
-
-local function executeApprovedSource(source)
-    -- Execution backend ของโปรเจกต์นายอยู่ตรงนี้
-    -- ตอนนี้ใช้สำหรับทดสอบ verification flow
-    print("Execute confirmed")
-    print("Source length:", #tostring(source or ""))
-
-    return true
-end
-
-exe.MouseButton1Click:Connect(function()
-
-    if exeVerifying or exeConfirming then
-        return
-    end
-
-    exeVerifying = true
-    exeToken += 1
-
-    local token = exeToken
-
-    -- =========================================
-    -- Step 1
-    -- =========================================
-
-    exe.Text =
-        '<b>Execute <i><font color="rgb(0,255,255)">(2 step verification)</font></i></b>'
-
-    tweenSize(
-        exe,
-        UDim2.new(1,0,0,10),
-        nil,nil,
-        0.1
-    ).Completed:Wait()
-
-    tweenSize(
-        exe,
-        UDim2.new(1,0,0,20),
-        nil,nil,
-        0.1
-    )
-
-    task.wait(0.5)
-
-    if token ~= exeToken then
-        exeVerifying = false
-        return
-    end
-
-    -- =========================================
-    -- Step 2A
-    -- =========================================
-
-    exeConfirming = true
-
-    for i = 3, 1, -1 do
-
-        if token ~= exeToken then
-            exeVerifying = false
-            exeConfirming = false
-            return
-        end
-
-        exe.Text =
-            '<b><font color="rgb(255,255,0)">Are you sure?</font> ('
-            .. i
-            .. ' seconds left)</b>'
-
-        task.wait(1)
-    end
-
-    if token ~= exeToken then
-        exeVerifying = false
-        exeConfirming = false
-        return
-    end
-
-    -- =========================================
-    -- Step 2B
-    -- =========================================
-
-    local confirmed = false
-
-    exe.Text =
-        '<b>Click if you agree (5 seconds left)</b>'
-
-    local connection
-
-    connection = exe.MouseButton1Click:Connect(function()
-        confirmed = true
-    end)
-
-    for i = 5, 1, -1 do
-
-        if token ~= exeToken then
-            connection:Disconnect()
-            exeVerifying = false
-            exeConfirming = false
-            return
-        end
-
-        if confirmed then
-            break
-        end
-
-        exe.Text =
-            '<b>Click if you agree ('
-            .. i
-            .. ' seconds left)</b>'
-
-        task.wait(1)
-    end
-
-    connection:Disconnect()
-
-    exeConfirming = false
-
-    if token ~= exeToken then
-        exeVerifying = false
-        return
-    end
-
-    -- =========================================
-    -- Step 3
-    -- =========================================
-
-    if confirmed then
-
-        local source = codebox.Text or ""
-
-        local success, result = pcall(function()
-            return executeApprovedSource(source)
-        end)
-
-        if success and result ~= false then
-            exe.Text = "<b>Executed</b>"
-        else
-            exe.Text = "<b>Execution Failed</b>"
-
-            if result ~= nil then
-                warn(result)
-            end
-        end
-
-        tweenSize(
-            exe,
-            UDim2.new(1,0,0,10),
-            nil,nil,
-            0.1
-        ).Completed:Wait()
-
-        tweenSize(
-            exe,
-            UDim2.new(1,0,0,20),
-            nil,nil,
-            0.1
-        )
-
-        task.wait(1)
-    end
-
-    -- =========================================
-    -- Reset
-    -- =========================================
-
-    exeVerifying = false
-    exeConfirming = false
-    exe.Text = "<b>Execute</b>"
-
 end)
