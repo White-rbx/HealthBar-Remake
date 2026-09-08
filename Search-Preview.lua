@@ -1,4 +1,4 @@
--- searcher... yes. 10.42
+-- searcher... yes. 10.43
 
 -- =====>> Saved Functions <<=====
 
@@ -981,6 +981,7 @@ owninput.BackgroundColor3 = Color3.fromRGB(255,85,0)
 owninput.PlaceholderText = "Input: Creator..."
 owninput.PlaceholderColor3 = Color3.new(1,1,1)
 owninput.TextColor3 = Color3.new(0,0,0)
+owninput.TextScaled = true
 owninput.Text = ""
 owninput.BorderMode = Enum.BorderMode.Inset
 owninput.BorderSizePixel = 3
@@ -995,6 +996,7 @@ gameinput.BackgroundColor3 = Color3.fromRGB(255,85,0)
 gameinput.PlaceholderText = "Input: GameName or Game ID"
 gameinput.PlaceholderColor3 = Color3.new(1,1,1)
 gameinput.TextColor3 = Color3.new(0,0,0)
+gameinput.TextScaled = true
 gameinput.Text = ""
 gameinput.BorderMode = Enum.BorderMode.Inset
 gameinput.BorderSizePixel = 3
@@ -1002,7 +1004,7 @@ gameinput.ZIndex = 2
 gameinput.Parent = filter_body
 Corner(0,5,gameinput)
 
-local apitype = Instance.new("TextLabel")
+local apitype = Instance.new("TextButton")
 apitype.Name = "TypeOfAnAPI"
 apitype.Size = UDim2.new(1,0,0,30)
 apitype.BackgroundColor3 = Color3.fromRGB(85, 255, 127)
@@ -1010,6 +1012,7 @@ apitype.TextColor3 = Color3.new(0,0,0)
 apitype.RichText = true
 apitype.LayoutOrder = -1
 apitype.Text = "<b>Search API: ScriptBlox</b>"
+apitype.TextSize = 12
 apitype.BorderMode = Enum.BorderMode.Inset
 apitype.BorderSizePixel = 3
 apitype.ZIndex = 2
