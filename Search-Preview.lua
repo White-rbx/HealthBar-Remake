@@ -1,4 +1,4 @@
--- searcher... yes. 10.41
+-- searcher... yes. 10.42
 
 -- =====>> Saved Functions <<=====
 
@@ -1006,7 +1006,6 @@ local apitype = Instance.new("TextLabel")
 apitype.Name = "TypeOfAnAPI"
 apitype.Size = UDim2.new(1,0,0,30)
 apitype.BackgroundColor3 = Color3.fromRGB(85, 255, 127)
-apitype.PlaceholderColor3 = Color3.new(1,1,1)
 apitype.TextColor3 = Color3.new(0,0,0)
 apitype.RichText = true
 apitype.LayoutOrder = -1
