@@ -1,4 +1,4 @@
--- searcher... yes. 10.44
+-- searcher... yes. 10.45
 
 -- =====>> Saved Functions <<=====
 
@@ -639,6 +639,24 @@ Corner(0,3,refresh)
 Stroke(refresh, ASMBorder, 255, 255, 255, LJMRound, 1 ,0)
 Gradient(refresh, -45 ,0,0, Color3.fromRGB(255,85,0), Color3.fromRGB(255,255,0))
 
+-- =========================================
+-- Filter Body
+-- =========================================
+
+local filter_body = Instance.new("Frame")
+filter_body.Name = "FilterBody"
+filter_body.Size = UDim2.new(0,0,0,150)
+filter_body.Position = UDim2.new(0,-305,1,5)
+filter_body.BackgroundColor3 = Color3.fromRGB(0,85,0)
+filter_body.BorderMode = Enum.BorderMode.Inset
+filter_body.BorderSizePixel = 5
+filter_body.ZIndex = 2
+filter_body.AutomaticSize = Enum.AutomaticSize.Y
+filter_body.Visible = false
+filter_body.Parent = filter
+Corner(0,8,filter_body)
+ListLayout(filter_body, 0,2, HCenter, VTop, SLayout, FillV)
+
 local filterType = {
     ScriptType = "Default",
     IsUniversal = "Default",
@@ -693,7 +711,7 @@ local FILTER_COLORS = {
 local switches = {}
 local resetSwitches = {}
 
-local function type_(type, key)
+local function type_(lay, type, key)
 
     -- =====================================
     -- Body
@@ -724,6 +742,8 @@ local function type_(type, key)
         Enum.BorderMode.Inset
 
     body.BorderSizePixel = 5
+
+    body.LayoutOrder = tonumber(lay)
 
     body.ZIndex = 2
 
@@ -836,17 +856,11 @@ end
 -- Create Filters
 -- =========================================
 
-local scrtype = type_("Script Type (Default/Free/Paid)", "ScriptType")
-local uni = type_("Universal", "IsUniversal")
-local ver = type_("Verified", "Verified")
-local pat = type_("Patched", "Patched")
-local ky = type_("Key", "Key")
-
-scrtype.LayoutOrder = 0
-uni.LayoutOrder = 1
-ver.LayoutOrder = 2
-pat.LayoutOrder = 3
-ky.LayoutOrder = 4
+local scrtype = type_(0, "Script Type (Default/Free/Paid)", "ScriptType")
+local uni = type_(1, "Universal", "IsUniversal")
+local ver = type_(2, "Verified", "Verified")
+local pat = type_(3, "Patched", "Patched")
+local ky = type_(5, "Key", "Key")
 
 local APIType = {
     "ScriptBlox",
@@ -1721,6 +1735,21 @@ local function getScriptImage(scriptData)
 end
 
 -- =========================================
+-- Preview Image Helpers
+-- =========================================
+-- Keep card/detail image selection in one place.
+-- Both helpers intentionally use the normalized data so every API
+-- gets the same API-thumbnail -> Roblox game thumbnail -> fallback flow.
+
+local function getFetchPreviewImage(data)
+    return getScriptImage(data)
+end
+
+local function getSearchPreviewImage(data)
+    return getScriptImage(data)
+end
+
+-- =========================================
 -- API Display Helper
 -- =========================================
 
@@ -2503,13 +2532,17 @@ end
 
     buildSearchURL = function(page)
 
-      if currentAPI == "ScriptBlox" then
+    if currentAPI == "ScriptBlox" then
+        return buildScriptBloxURL(page)
+    elseif currentAPI == "WeAreDevs" then
+        return buildWeAreDevsURL(page)
+    elseif currentAPI == "HaxHell" then
+        return buildHaxHellURL(page)
+    elseif currentAPI == "RScripts" then
+        return buildRScriptsURL(page)
+    end
 
-          return buildScriptBloxURL(page)
-
-      end
-
-      return nil
+    return nil
 
 end
 
