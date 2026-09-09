@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.924.2 ",
+	sion = " UIs 6.925.2 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -524,11 +524,11 @@ local newmg = Instance.new("TextLabel")
 newmg.Name = "NewMessage"
 newmg.Position = UDim2.new(0.5,0,0.6,0)
 newmg.Size = UDim2.new(0,20,0,20)
-newmg.BackgroundColor3 = Color3.new(1,1,1)
+newmg.BackgroundColor3 = Color3.fromRGB(0,85,255)
 newmg.Active = false
 newmg.Text = "-"
 newmg.TextScaled = true
-newmg.TextColor3 = Color3.new(0,0,0)
+newmg.TextColor3 = Color3.new(1,1,1)
 newmg.Visible = false
 newmg.ZIndex = 2147483647
 newmg.Parent = vAI
