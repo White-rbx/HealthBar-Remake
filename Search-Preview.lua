@@ -1,4 +1,4 @@
--- searcher... yes. 11.2
+-- searcher... yes. 11.21
 
 -- =====>> Saved Functions <<=====
 
@@ -1114,7 +1114,7 @@ local gameinput = Instance.new("TextBox")
 gameinput.Name = "GameInput"
 gameinput.Size = UDim2.new(1,0,0,30)
 gameinput.BackgroundColor3 = Color3.fromRGB(255,85,0)
-gameinput.PlaceholderText = "Input: GameName or Game ID"
+gameinput.PlaceholderText = "Input: Game ID"
 gameinput.PlaceholderColor3 = Color3.new(1,1,1)
 gameinput.TextColor3 = Color3.new(0,0,0)
 gameinput.TextScaled = true
@@ -2852,16 +2852,18 @@ buildScriptBloxURL = function(page)
 
     if gameInputText ~= "" then
 
-        local gameId =
-            tonumber(gameInputText)
+        local gameId = tonumber(gameInputText)
 
         if gameId then
 
-            table.insert(
-                params,
-                "placeId="
-                .. tostring(math.floor(gameId))
-            )
+            gameId = math.floor(gameId)
+
+            if gameId > 0 then
+                table.insert(
+                    params,
+                    "placeId=" .. tostring(gameId)
+                )
+            end
 
         end
 
@@ -3576,52 +3578,50 @@ end
 
 local function getAPIHasMore(api, data)
 
-	if type(data) ~= "table" then
-		return false
-	end
+    if type(data) ~= "table" then
+        return false
+    end
 
-	--------------------------------------------------
-	-- ScriptBlox
-	--------------------------------------------------
+    if api == "ScriptBlox" then
 
-	if api == "ScriptBlox" then
+        local result = data.result
 
-		return data.result
-			and data.result.nextPage == true
+        if type(result) ~= "table" then
+            return false
+        end
 
-	--------------------------------------------------
-	-- WeAreDevs
-	--------------------------------------------------
+        -- ScriptBlox returns `nextPage` as a page number.
+        -- `totalPages` is also available on fetch responses.
+        local nextPage = tonumber(result.nextPage)
+        local totalPages = tonumber(result.totalPages)
 
-	elseif api == "WeAreDevs" then
+        if nextPage and nextPage > 0 then
+            return not totalPages or nextPage <= totalPages
+        end
 
-		-- WeAreDevs uses `after` as its
-		-- pagination cursor.
-		return data.more == true
-            and data.after ~= nil
+        return false
 
-	--------------------------------------------------
-	-- HaxHell
-	--------------------------------------------------
+    elseif api == "WeAreDevs" then
 
-	elseif api == "HaxHell" then
+        -- WeAreDevs pagination is cursor based. A non-empty
+        -- `after` cursor means another page can be requested.
+        local after = data.after
 
-		return data.pagination
-			and data.pagination.hasMore == true
+        return after ~= nil and tostring(after) ~= ""
 
-	--------------------------------------------------
-	-- RScripts
-	--------------------------------------------------
+    elseif api == "HaxHell" then
 
-	elseif api == "RScripts" then
+        return data.pagination
+            and data.pagination.hasMore == true
 
-		-- /v1/scripts exposes hasNextPage directly under meta.
-		return data.meta
-			and data.meta.hasNextPage == true
+    elseif api == "RScripts" then
 
-	end
+        return data.meta
+            and data.meta.hasNextPage == true
 
-	return false
+    end
+
+    return false
 
 end
 
@@ -3812,6 +3812,17 @@ refreshSearch = function()
 end
 
 tb.FocusLost:Connect(function(enterPressed)
+
+    if not enterPressed then
+        return
+    end
+
+    refreshSearch()
+
+end)
+
+-- GameInput must also trigger a refresh.
+gameinput.FocusLost:Connect(function(enterPressed)
 
     if not enterPressed then
         return
