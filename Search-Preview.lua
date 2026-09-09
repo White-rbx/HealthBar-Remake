@@ -1,4 +1,4 @@
--- searcher... yes. 10.45
+-- searcher... yes. 11.2
 
 -- =====>> Saved Functions <<=====
 
@@ -128,6 +128,7 @@ local RunService = game:GetService("RunService")
 
 -- Animation / Transitions
 local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
 
 -- Input (Desktop / Mobile)
 local UserInputService = game:GetService("UserInputService")
@@ -186,6 +187,11 @@ local HAXHELL_API =
 
 local RSCRIPTS_API =
     "https://api.rscripts.net"
+
+-- RScripts v1 requires an API key. Leave empty only if you
+-- intentionally want the script to report the missing-key state.
+-- You can also define RSCRIPTS_API_KEY before loading this file.
+local RSCRIPTS_API_KEY = "rsc_live_ZyltSCHGpsfvgHudK24bqOYwIK-fyKDM"
 
 local ROOT = "ExperienceSettings"
 local IMAGE_FOLDER = ROOT .. "/DownloadedImage"
@@ -850,6 +856,9 @@ end
 
     end)
 
+    -- Return the actual UI object so the API capability
+    -- system can toggle Visible correctly.
+    return body
 end
 
 -- =========================================
@@ -1082,10 +1091,8 @@ sortOrderButton.MouseButton1Click:Connect(function()
 
 end)
 
-local currentAPI = "ScriptBlox"
-
 -- Used whenever a script has no usable thumbnail.
-local FALLBACK_IMAGE = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+local FALLBACK_IMAGE = "rbxassetid://97342316412122"
 
 local owninput = Instance.new("TextBox")
 owninput.Name = "CreatorInput"
@@ -1204,6 +1211,8 @@ local loadMoreButton = nil
 local apiCursor = nil
 
 local fetchScripts
+local fetchIndividual
+local requestAPI
 local clearCards
 local refreshSearch
 local buildSearchURL
@@ -1375,7 +1384,7 @@ local function normalizeScript(api, item)
 			creator = item.owner
 				and item.owner.username,
 
-			description = item.description,
+			description = item.description or item.features,
 
 			gameName = item.game
 				and item.game.name,
@@ -1405,7 +1414,9 @@ local function normalizeScript(api, item)
 
 			raw = item.script,
 
-			image = nil
+			tags = item.tags,
+
+			image = item.image
 		}
 
 	--------------------------------------------------
@@ -1443,7 +1454,9 @@ local function normalizeScript(api, item)
 
 			raw = item.raw,
 
-			image = nil
+			tags = item.tags,
+
+			image = item.image
 		}
 
 	--------------------------------------------------
@@ -1472,8 +1485,8 @@ local function normalizeScript(api, item)
 
 			gameId = game
 				and (
-					game.universeId
-					or game.placeId
+					game.placeId
+					or game.universeId
 				),
 
 			views = stats
@@ -1511,6 +1524,8 @@ local function normalizeScript(api, item)
 
 			raw = links
 				and links.raw,
+
+			tags = item.tags,
 
 			image = media
 				and media.thumbnailUrl
@@ -1557,6 +1572,8 @@ local function normalizeScript(api, item)
 			raw = item.rawScript
 				or item.script,
 
+			tags = item.tags,
+
 			image = game
 				and game.thumbnailUrl
 		}
@@ -1601,8 +1618,10 @@ local function updateAPIFilters()
 
     for feature, object in pairs(APIFilters) do
 
-        object.Visible =
-            capabilities[feature] == true
+        if object then
+            -- Unsupported API features are completely hidden.
+            object.Visible = capabilities[feature] == true
+        end
 
     end
 
@@ -1689,64 +1708,223 @@ dear.Visible = false
 
 -----
 
-local function getScriptImage(scriptData)
+local function normalizeAssetImage(value)
+	if value == nil then
+		return nil
+	end
 
+	local image = tostring(value)
+	if image == "" then
+		return nil
+	end
+
+	-- Already a Roblox content id.
+	if image:match("^rbxassetid://")
+		or image:match("^rbxthumb://")
+		or image:match("^rbxasset://") then
+		return image
+	end
+
+	return image
+end
+
+local function getImageExtension(url)
+	local clean = tostring(url):lower():match("^[^%?]+") or tostring(url):lower()
+	local ext = clean:match("%.(png)$")
+		or clean:match("%.(jpg)$")
+		or clean:match("%.(jpeg)$")
+		or clean:match("%.(webp)$")
+
+	return ext or "png"
+end
+
+local function sanitizeFileName(value)
+	local text = tostring(value or "image")
+	text = text:gsub("[^%w%-_]", "_")
+	text = text:gsub("_+", "_")
+	return text:sub(1, 80)
+end
+
+local function getCachedRemoteImage(imageUrl, cacheKey)
+	imageUrl = normalizeAssetImage(imageUrl)
+	if not imageUrl
+		or not imageUrl:match("^https?://") then
+		return nil
+	end
+
+	if type(isfile) ~= "function"
+		or type(getcustomasset) ~= "function" then
+		return nil
+	end
+
+	local extension = getImageExtension(imageUrl)
+	local fileName = IMAGE_FOLDER .. "/"
+		.. sanitizeFileName(cacheKey or "image")
+		.. "."
+		.. extension
+
+	if not isfile(fileName) then
+		return nil
+	end
+
+	local ok, asset = pcall(function()
+		return getcustomasset(fileName)
+	end)
+
+	if ok and asset and tostring(asset) ~= "" then
+		return tostring(asset)
+	end
+
+	return nil
+end
+
+local function cacheRemoteImage(imageUrl, cacheKey)
+	imageUrl = normalizeAssetImage(imageUrl)
+	if not imageUrl
+		or not imageUrl:match("^https?://") then
+		return imageUrl
+	end
+
+	if type(writefile) ~= "function"
+		or type(isfile) ~= "function"
+		or type(getcustomasset) ~= "function" then
+		return nil
+	end
+
+	local cached = getCachedRemoteImage(imageUrl, cacheKey)
+	if cached then
+		return cached
+	end
+
+	local extension = getImageExtension(imageUrl)
+	local fileName = IMAGE_FOLDER .. "/"
+		.. sanitizeFileName(cacheKey or "image")
+		.. "."
+		.. extension
+
+	local ok, body = pcall(function()
+		return game:HttpGet(imageUrl)
+	end)
+
+	if not ok or type(body) ~= "string" or body == "" then
+		return nil
+	end
+
+	local wrote = pcall(function()
+		writefile(fileName, body)
+	end)
+
+	if not wrote then
+		return nil
+	end
+
+	return getCachedRemoteImage(imageUrl, cacheKey)
+end
+
+local function getGameThumbnail(gameId, cacheKey)
+	gameId = tonumber(gameId)
+	if not gameId then
+		return nil
+	end
+
+	-- rbxthumb is the primary Roblox-native fallback.
+	return "rbxthumb://type=GameThumbnail&id="
+		.. tostring(math.floor(gameId))
+		.. "&w=480&h=270"
+end
+
+local function getScriptImage(scriptData)
 	if type(scriptData) ~= "table" then
 		return FALLBACK_IMAGE
 	end
 
 	--------------------------------------------------
-	-- 1. API thumbnail
+	-- 1. Roblox Game Thumbnail (PRIMARY)
+	-- Roblox's GameThumbnail expects a PlaceId.
+	-- This intentionally overrides API/custom images
+	-- whenever a valid game id is available.
 	--------------------------------------------------
-
-	if scriptData.image
-		and tostring(scriptData.image) ~= "" then
-
-		return tostring(scriptData.image)
-
+	local thumbnail = getGameThumbnail(scriptData.gameId)
+	if thumbnail then
+		return thumbnail
 	end
 
 	--------------------------------------------------
-	-- 2. Roblox Game Thumbnail
+	-- 2. API custom image (fallback only)
 	--------------------------------------------------
-
-	local gameId = scriptData.gameId
-
-	if gameId then
-
-		gameId = tonumber(gameId)
-
-		if gameId then
-
-			return "rbxthumb://type=GameThumbnail&id="
-				.. tostring(gameId)
-				.. "&w=480&h=270"
-
+	local apiImage = normalizeAssetImage(scriptData.image)
+	if apiImage then
+		if not apiImage:match("^https?://") then
+			return apiImage
 		end
 
+		local cacheKey = tostring(scriptData.id or scriptData.gameId or "image")
+		local cached = getCachedRemoteImage(
+			apiImage,
+			currentAPI .. "_" .. cacheKey
+		)
+
+		if cached then
+			return cached
+		end
 	end
 
 	--------------------------------------------------
 	-- 3. Fallback
 	--------------------------------------------------
-
 	return FALLBACK_IMAGE
+end
 
+local function loadRemoteImageAsync(scriptData, imageObject)
+	if type(scriptData) ~= "table"
+		or not imageObject
+		or not imageObject:IsA("ImageLabel") then
+		return
+	end
+
+	-- Do not replace a valid game thumbnail with an API/custom image.
+	if getGameThumbnail(scriptData.gameId) then
+		return
+	end
+
+	local apiImage = normalizeAssetImage(scriptData.image)
+	if not apiImage
+		or not apiImage:match("^https?://") then
+		return
+	end
+
+	local cacheKey = tostring(scriptData.id or scriptData.gameId or "image")
+	local cached = cacheRemoteImage(
+		apiImage,
+		currentAPI .. "_" .. cacheKey
+	)
+
+	if cached
+		and imageObject.Parent then
+		imageObject.Image = cached
+		preloadImage(imageObject)
+	end
 end
 
 -- =========================================
 -- Preview Image Helpers
 -- =========================================
--- Keep card/detail image selection in one place.
--- Both helpers intentionally use the normalized data so every API
--- gets the same API-thumbnail -> Roblox game thumbnail -> fallback flow.
-
 local function getFetchPreviewImage(data)
-    return getScriptImage(data)
+	return getScriptImage(data)
 end
 
 local function getSearchPreviewImage(data)
-    return getScriptImage(data)
+	return getScriptImage(data)
+end
+
+local function preloadImage(imageObject)
+	if not imageObject or not imageObject:IsA("ImageLabel") then
+		return
+	end
+
+	pcall(function()
+		ContentProvider:PreloadAsync({imageObject})
+	end)
 end
 
 -- =========================================
@@ -1776,6 +1954,50 @@ local function boolText(value)
     return "No"
 end
 
+
+-- =========================================
+-- Individual / Detail Fetch
+-- =========================================
+fetchIndividual = function(scriptId, fallbackData)
+	if not scriptId then
+		return fallbackData
+	end
+
+	-- ScriptBlox provides a dedicated individual endpoint.
+	if currentAPI ~= "ScriptBlox" then
+		return fallbackData
+	end
+
+	local url = SCRIPTBLOX_INDIVIDUAL_API
+		.. HttpService:UrlEncode(tostring(scriptId))
+
+	local success, response = requestAPI(url)
+	if not success then
+		warn("❌ ScriptBlox detail request failed:", response)
+		return fallbackData
+	end
+
+	local decodeSuccess, payload = pcall(function()
+		return HttpService:JSONDecode(response)
+	end)
+
+	if not decodeSuccess or type(payload) ~= "table" then
+		warn("❌ ScriptBlox detail JSON decode failed:", payload)
+		return fallbackData
+	end
+
+	local item = payload.script
+	if type(item) ~= "table" then
+		item = payload
+	end
+
+	local normalized = normalizeScript(currentAPI, item)
+	if not normalized then
+		return fallbackData
+	end
+
+	return normalized
+end
 
 -- =========================================
 -- Script Card
@@ -2014,6 +2236,8 @@ local function sipt(data)
         getFetchPreviewImage(data)
 
     Img.Parent = body
+    task.defer(preloadImage, Img)
+    task.spawn(loadRemoteImageAsync, data, Img)
 
     Corner(0,3,Img)
 
@@ -2269,10 +2493,11 @@ local function sipt(data)
 
         local detail =
             fetchIndividual(
-                data.id
+                data.id,
+                data
             )
 
-        if not detail then
+        if type(detail) ~= "table" then
             detail = data
         end
 
@@ -2325,7 +2550,10 @@ local function sipt(data)
         -- =================================
 
         imgview.Image =
-            getSearchPreviewImage(detail)
+            getFetchPreviewImage(detail)
+
+        preloadImage(imgview)
+        task.spawn(loadRemoteImageAsync, detail, imgview)
 
 
         -- =================================
@@ -2460,7 +2688,7 @@ local function sipt(data)
         -- =================================
 
         codebox.Text =
-            apiText(detail.script)
+            apiText(detail.raw)
 
     end)
 
@@ -3293,7 +3521,7 @@ local function getAPIResults(api, data)
 	return {}
 end
 
-local function requestAPI(url, headers)
+requestAPI = function(url, headers)
 
 	-- API ที่ไม่ต้องใช้ headers
 	if not headers or next(headers) == nil then
@@ -3329,6 +3557,13 @@ local function requestAPI(url, headers)
 
 		if not result then
 			return false, "No response"
+		end
+
+		local statusCode = tonumber(result.StatusCode)
+		if statusCode and (statusCode < 200 or statusCode >= 300) then
+			return false,
+				"HTTP " .. tostring(statusCode)
+				.. ": " .. tostring(result.StatusMessage or result.Body or "Request failed")
 		end
 
 		return true, result.Body
@@ -3380,10 +3615,9 @@ local function getAPIHasMore(api, data)
 
 	elseif api == "RScripts" then
 
+		-- /v1/scripts exposes hasNextPage directly under meta.
 		return data.meta
-			and data.meta.pagination
-			and data.meta.pagination.scripts
-			and data.meta.pagination.scripts.hasNextPage == true
+			and data.meta.hasNextPage == true
 
 	end
 
@@ -3423,14 +3657,17 @@ fetchScripts = function(page)
 
 	if currentAPI == "RScripts" then
 
-		-- ใส่ API key ของระบบของคุณตรงนี้
-		if RSCRIPTS_API_KEY
-			and RSCRIPTS_API_KEY ~= "" then
+		if not RSCRIPTS_API_KEY
+			or RSCRIPTS_API_KEY == "" then
 
-			headers["Authorization"] =
-				"Bearer " .. RSCRIPTS_API_KEY
+			loading = false
+			warn("❌ RScripts requires an API key. Set RSCRIPTS_API_KEY before loading SearchPreview.lua.")
+			return false
 
 		end
+
+		headers["Authorization"] =
+			"Bearer " .. RSCRIPTS_API_KEY
 
 	end
 
