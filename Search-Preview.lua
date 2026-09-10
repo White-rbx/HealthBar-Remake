@@ -1,4 +1,4 @@
--- searcher... yes. 11.21
+-- searcher... yes. 11.27
 
 -- =====>> Saved Functions <<=====
 
@@ -285,12 +285,14 @@ List.Parent = sea
 
 -----
 
-local Page = List:Clone()
+local Page = Instance.new("CanvasGroup")
 Page.Name = "Page"
 Page.Size = UDim2.new(0,0,1,0)
 Page.BorderMode = Enum.BorderMode.Inset
 Page.BorderSizePixel = 5
+Page.BackgroundTransparency = 1
 Page.Visible = false
+Page.Active = false
 Page.Parent = sea
 
 local InPage = Instance.new("ScrollingFrame")
@@ -302,6 +304,24 @@ InPage.ScrollingDirection = Enum.ScrollingDirection.Y
 InPage.CanvasSize = UDim2.new(0,0,0,628)
 InPage.Parent = Page
 
+local Book = Instance.new("Frame")
+Book.Name = "Bookmark"
+Book.Size = UDim2.new(1,0,1,0)
+Book.BackgroundTransparency = 1
+Book.Visible = false
+Book.Parent = Page
+
+local vb = Instance.new("CanvasGroup")
+vb.Name = "ViewBookmark"
+vb.Size = UDim2.new(1,0,1,0)
+vb.BackgroundColor3 = Color3.new(1,1,1)
+vb.BorderMode = Enum.BorderMode.Inset
+vb.BorderSizePixel = 5
+vb.Active = false
+vb.Parent = Book
+Corner(0,8,vb)
+Gradient(vb, -90,0,0, Color3.fromRGB(255,170,0), Color3.fromRGB(255,0,0))
+
 local vp = Instance.new("CanvasGroup")
 vp.Name = "ViewPage"
 vp.Size = UDim2.new(1,0,1,0)
@@ -311,7 +331,7 @@ vp.BorderSizePixel = 5
 vp.Active = false
 vp.Parent = InPage
 Corner(0,8,vp)
-Gradient(vp, -90,0,0, Color3.fromRGB(170,0,255), Color3.fromRGB(255,85,255))
+Gradient(vp, 90,0,0, Color3.fromRGB(170,0,255), Color3.fromRGB(255,85,255))
 
 local imgview = Instance.new("ImageLabel")
 imgview.Name = "ImageView"
@@ -1199,6 +1219,93 @@ end)
 
 pre.Visible = false -- FALSE FOR FULLY VERSION
 
+local openb = Instance.new("ImageButton")
+openb.Name = "Open"
+openb.Position = UDim2.new(1,-115,0,0)
+openb.Size = UDim2.new(0,35,0,35)
+openb.BackgroundColor3 = Color3.new(1,1,1)
+openb.BackgroundTransparency = 0.3
+openb.Image = "rbxassetid://71272710123832"
+openb.Parent = tb
+
+Corner(0,3,openb)
+Stroke(openb, ASMBorder, 255, 255, 255, LJMRound, 1 ,0)
+Gradient(openb, -45 ,0,0, Color3.fromRGB(170,0,255), Color3.fromRGB(255,170,255))
+
+openb.MouseButton1Click:Connect(function()
+    if isswitch == false then
+      isswitch = true
+      openb.Image = "rbxassetid://133955276215666"
+      tweenSize(InPage, nil, UDim2.new(1,0,0,0), nil, 0.3)
+      tweenSize(Book, nil, UDim2.new(0,0,0,0), nil, 0.3)
+      Book.Visible = true
+      task.wait(0.3)
+      InPage.Visible = false
+    else
+      isswitch = false
+      openb.Image = "rbxassetid://71272710123832"
+      tweenSize(InPage, nil, UDim2.new(0,0,0,0), nil, 0.3)
+      tweenSize(Book, nil, UDim2.new(1,0,0,0), nil, 0.3)
+      InPage.Visible = true
+      task.wait(0.3)
+      Book.Visible = false
+    end
+end)
+
+local backs1 = Instance.new("TextButton")
+backs1.Name = "CloseBookmark"
+backs1.Size = UDim2.new(1,0,0,20)
+backs1.Position = UDim2.new(0,0,1,-20)
+backs1.BackgroundColor3 = Color3.new(1,0,0)
+backs1.TextColor3 = Color3.new(1,1,1)
+backs1.TextXAlignment = Enum.TextXAlignment.Right
+backs1.BorderMode = Enum.BorderMode.Inset
+backs1.BorderSizePixel = 4
+backs1.RichText = true
+backs1.TextScaled = true
+backs1.Text = "<b>Back »</b>"
+backs1.Parent = vb
+Corner(0,8,backs1)
+
+backs1.MouseButton1Click:Connect(function()
+  tweenSize(Page, UDim2.new(0,0,1,0),nil,nil, 0.4)
+  tweenSize(List, UDim2.new(1,0,1,0),nil,nil, 0.4).Completed:Wait()
+  Page.Visible = false
+end)
+
+openb.ImageColor3 = Color3.new(0,0,0)
+filter.ImageColor3 = Color3.new(0,0,0)
+refresh.ImageColor3 = Color3.new(0,0,0)
+
+local btopic = Instance.new("TextLabel")
+btopic.Name = "BookmarkTopic"
+btopic.Size = UDim2.new(1,0,0,25)
+btopic.RichText = true
+btopic.BackgroundTransparency = 1
+btopic.Active = false
+btopic.TextXAlignment = Enum.TextXAlignment.Left
+btopic.TextColor3 = Color3.new(1,1,1)
+btopic.Text = "<b>Bookmark page</b>"
+btopic.TextScaled = true
+btopic.BorderMode = Enum.BorderMode.Inset
+btopic.BorderSizePixel = 3
+btopic.Parent = vb
+
+local bscroll = Instance.new("ScrollingFrame")
+bscroll.Name = "BookmarList"
+bscroll.Size = UDim2.new(1,0,0.88,0)
+bscroll.Position = UDim2.new(0,0,1,-415)
+bscroll.ScrollBarThickness = 5
+bscroll.ScrollingDirection = Enum.ScrollingDirection.Y
+bscroll.CanvasSize = UDim2.new(0,0,0,0)
+bscroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+bscroll.BackgroundTransparency = 1
+bscroll.BorderMode = Enum.BorderMode.Inset
+bscroll.BorderSizePixel = 5
+bscroll.BorderColor3 = Color3.new(1,0,0)
+bscroll.Parent = vb
+ListLayout(bscroll, 0, 3, HCenter, VTop, SLayout, FillV)
+
 -- =========================================
 -- Shared State / Forward Declarations
 -- =========================================
@@ -1221,6 +1328,7 @@ local buildWeAreDevsURL
 local buildHaxHellURL
 local buildRScriptsURL
 
+local isswitch = false
 local fil_sw = false  
   
 filter.MouseButton1Click:Connect(function()  
@@ -2380,7 +2488,121 @@ local function sipt(data)
         title
     )
 
+    -- =====================================
+    -- Bookmark Button
+    -- =====================================
 
+    local bookm =
+        Instance.new("TextButton")
+
+    bookm.Name =
+        "BookmarkButton"
+
+    bookm.Position =
+        UDim2.new(1,-100,0,40)
+
+    bookm.Size =
+        UDim2.new(0,100,0,35)
+
+    bookm.BackgroundColor3 =
+        Color3.new(1,1,1)
+
+    bookm.TextColor3 =
+        Color3.new(0,0,0)
+
+    bookm.TextSize = 13
+    bookm.RichText = true
+
+    bookm.Text =
+        "<b><i>Bookmark</i></b>"
+
+    bookm.Parent = body
+
+    Corner(0,3,bookm)
+
+
+    Gradient(
+        bookm,
+        -45,
+        0,
+        0,
+        Color3.fromRGB(255,0,0),
+        Color3.fromRGB(255,255,0)
+    )
+
+
+    Stroke(
+        bookm,
+        ASMBorder,
+        255,255,255,
+        LJMRound,
+        2,
+        0
+  )
+
+
+    -- =====================================
+    -- Bookmark Click
+    -- =====================================
+
+    bookm.MouseButton1Click:Connect(function()
+
+        -- ---------------------------------
+        -- Button animation
+        -- ---------------------------------
+
+        tweenSize(
+            bookm,
+            UDim2.new(0,80,0,15),
+            nil,
+            nil,
+            0.1
+        ).Completed:Wait()
+
+
+        tweenSize(
+            bookm,
+            UDim2.new(0,100,0,35),
+            nil,
+            nil,
+            0.1
+        )
+
+
+        -- =================================
+        -- Open Page
+        -- =================================
+
+        Page.Visible = true
+
+        tweenSize(
+            Page,
+            UDim2.new(0.35,-5,1,0),
+            nil,
+            nil,
+            0.4
+        )
+
+        tweenSize(
+            List,
+            UDim2.new(0.65,0,1,0),
+            nil,
+            nil,
+            0.4
+      )
+
+      if isswitch == false then
+      isswitch = true
+      openb.Image = "rbxassetid://133955276215666"
+      tweenSize(InPage, nil, UDim2.new(1,0,0,0), nil, 0.3)
+      tweenSize(Book, nil, UDim2.new(0,0,0,0), nil, 0.3)
+      Book.Visible = true
+      task.wait(0.3)
+      InPage.Visible = false
+      end
+    end)
+
+  
     -- =====================================
     -- View Click
     -- =====================================
@@ -2430,6 +2652,16 @@ local function sipt(data)
             nil,
             0.4
         )
+
+      if isswitch == true then
+      isswitch = false
+      openb.Image = "rbxassetid://71272710123832"
+      tweenSize(InPage, nil, UDim2.new(0,0,0,0), nil, 0.3)
+      tweenSize(Book, nil, UDim2.new(1,0,0,0), nil, 0.3)
+      InPage.Visible = true
+      task.wait(0.3)
+      Book.Visible = false
+      end
 
 
         -- =================================
@@ -3895,3 +4127,47 @@ cy.MouseButton1Click:Connect(function()
 
     cy.Text = "<b>Copy To Clipboard</b>"
 end)
+
+local function marked(tit, sour)
+  local body = Instance.new("Frame")
+  body.Name = "Body"
+  body.BackgroundColor3 = Color3.new(1,1,1)
+  body.Size = UDim2.new(1,0,0,100)
+  body.BorderMode = Enum.BorderMode.Inset
+  body.BorderSizePixel = 5
+  body.Parent = bscroll
+  Corner(0,5,body)
+  Gradient(body, -45,0,0,
+  Color3.fromRGB(255,255,0),Color3.fromRGB(255,85,255))
+
+  local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1,0,0,25)
+    title.BackgroundTransparency = 1
+    title.BorderMode = Enum.BorderMode.Inset
+    title.BorderSizePixel = 3
+    title.RichText = true
+    title.TextScaled = true
+    title.TextColor3 = Color3.new(0,0,0)
+    title.Text = "<b>" .. tostring(tit) .. "</b>" or "Untitled"
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.TextYAlignment = Enum.TextYAlignment.Top
+    title.Parent = body
+
+  local sou = Instance.new("TextLabel")
+    sou.Name = "Title"
+    sou.Size = UDim2.new(1,0,0,20)
+    sou.Position += UDim2.new(0,0,0,25)
+    sou.BackgroundTransparency = 1
+    sou.BorderMode = Enum.BorderMode.Inset
+    sou.BorderSizePixel = 3
+    sou.TextScaled = true
+    sou.TextColor3 = Color3.new(0,0,0)
+    sou.Text = "From: " .. tostring(sour) or "From: Unknown"
+    sou.TextXAlignment = Enum.TextXAlignment.Left
+    sou.TextYAlignment = Enum.TextYAlignment.Top
+    sou.Parent = body
+  
+end
+
+marked()
