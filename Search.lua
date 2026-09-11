@@ -1,4 +1,4 @@
--- searcher... yes. 11.49
+-- searcher... yes. 11.5
 
 -- =====>> Saved Functions <<=====
 
@@ -149,6 +149,8 @@ More Source: https://docs.scriptblox.com/scripts/fetch
 
 ]]
 
+local ROOT = "ExperienceSettings"
+
 local function tweenSize(obj, size, pos, backcol, time)
     local tween = TweenService:Create(
         obj,
@@ -176,7 +178,7 @@ local HttpService =
 -- =========================================
 -- Bookmark JSON Storage
 -- =========================================
-local BOOKMARK_FILE = "SearchBookmark.json"
+local BOOKMARK_FILE = ROOT .. "/SearchBookmark.json"
 local bookmarks = {}
 
 local function bookmarkKey(source, scriptId, title)
@@ -308,7 +310,6 @@ local RSCRIPTS_API =
 -- You can also define RSCRIPTS_API_KEY before loading this file.
 local RSCRIPTS_API_KEY = "rsc_live_ZyltSCHGpsfvgHudK24bqOYwIK-fyKDM"
 
-local ROOT = "ExperienceSettings"
 local IMAGE_FOLDER = ROOT .. "/DownloadedImage"
 
 -- ExperienceSettings
