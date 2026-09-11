@@ -1,4 +1,4 @@
--- searcher... yes. 11.47
+-- searcher... yes. 11.49
 
 -- =====>> Saved Functions <<=====
 
@@ -429,6 +429,7 @@ Book.Parent = Page
 local vb = Instance.new("CanvasGroup")
 vb.Name = "ViewBookmark"
 vb.Size = UDim2.new(1,0,1,0)
+vb.Position = UDim2.new(1,0,0,0)
 vb.BackgroundColor3 = Color3.new(1,1,1)
 vb.BorderMode = Enum.BorderMode.Inset
 vb.BorderSizePixel = 5
@@ -786,7 +787,7 @@ Gradient(refresh, -45 ,0,0, Color3.fromRGB(255,85,0), Color3.fromRGB(255,255,0))
 
 local filter_body = Instance.new("Frame")
 filter_body.Name = "FilterBody"
-filter_body.Size = UDim2.new(0,0,0,150)
+filter_body.Size = UDim2.new(0,0,0,0)
 filter_body.Position = UDim2.new(0,-305,1,5)
 filter_body.BackgroundColor3 = Color3.fromRGB(0,85,0)
 filter_body.BorderMode = Enum.BorderMode.Inset
@@ -1269,7 +1270,7 @@ apitype.TextColor3 = Color3.new(0,0,0)
 apitype.RichText = true
 apitype.LayoutOrder = -1
 apitype.Text = "<b>Search API: ScriptBlox</b>"
-apitype.TextSize = 12
+apitype.TextScaled = true
 apitype.BorderMode = Enum.BorderMode.Inset
 apitype.BorderSizePixel = 3
 apitype.ZIndex = 2
@@ -1451,10 +1452,10 @@ filter.MouseButton1Click:Connect(function()
     if not fil_sw then  
       fil_sw = true  
       filter_body.Visible = true  
-      tweenSize(filter_body, UDim2.new(0,350,0,200),nil,nil,0.3).Completed:Wait()
+      tweenSize(filter_body, UDim2.new(0,350,0,0),nil,nil,0.3).Completed:Wait()
     else  
       fil_sw = false  
-      tweenSize(filter_body, UDim2.new(0,0,0,200),nil,nil,0.3).Completed:Wait()
+      tweenSize(filter_body, UDim2.new(0,0,0,0),nil,nil,0.3).Completed:Wait()
       filter_body.Visible = false  
     end  
 end)
