@@ -1,4 +1,4 @@
--- searcher... yes. 11.27
+-- searcher... yes. 11.49
 
 -- =====>> Saved Functions <<=====
 
@@ -173,6 +173,121 @@ end
 local HttpService =
     game:GetService("HttpService")
 
+-- =========================================
+-- Bookmark JSON Storage
+-- =========================================
+local BOOKMARK_FILE = "SearchBookmark.json"
+local bookmarks = {}
+
+local function bookmarkKey(source, scriptId, title)
+    return tostring(source or "") .. "|" .. tostring(scriptId or "") .. "|" .. tostring(title or "")
+end
+
+local function saveBookmarks()
+    if type(writefile) ~= "function" then
+        return false
+    end
+
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode(bookmarks)
+    end)
+
+    if not ok then
+        warn("❌ Bookmark JSON encode failed:", encoded)
+        return false
+    end
+
+    local wrote, err = pcall(function()
+        writefile(BOOKMARK_FILE, encoded)
+    end)
+
+    if not wrote then
+        warn("❌ Bookmark JSON write failed:", err)
+        return false
+    end
+
+    return true
+end
+
+local function loadBookmarkFile()
+    bookmarks = {}
+
+    if type(isfile) ~= "function" or type(readfile) ~= "function" then
+        return
+    end
+
+    if not isfile(BOOKMARK_FILE) then
+        return
+    end
+
+    local ok, content = pcall(function()
+        return readfile(BOOKMARK_FILE)
+    end)
+
+    if not ok or type(content) ~= "string" or content == "" then
+        warn("❌ Bookmark JSON read failed")
+        return
+    end
+
+    local decodedOk, decoded = pcall(function()
+        return HttpService:JSONDecode(content)
+    end)
+
+    if not decodedOk or type(decoded) ~= "table" then
+        warn("❌ Bookmark JSON decode failed")
+        return
+    end
+
+    for _, item in ipairs(decoded) do
+        if type(item) == "table" then
+            local title = tostring(item.title or "")
+            local source = tostring(item.source or "")
+            local id = item.id
+
+            if title ~= "" and source ~= "" then
+                table.insert(bookmarks, {
+                    title = title,
+                    source = source,
+                    id = id
+                })
+            end
+        end
+    end
+end
+
+local function addBookmarkData(title, source, scriptId)
+    local key = bookmarkKey(source, scriptId, title)
+
+    for _, item in ipairs(bookmarks) do
+        if bookmarkKey(item.source, item.id, item.title) == key then
+            return false
+        end
+    end
+
+    table.insert(bookmarks, {
+        title = tostring(title or ""),
+        source = tostring(source or ""),
+        id = scriptId
+    })
+
+    saveBookmarks()
+    return true
+end
+
+local function removeBookmarkData(title, source, scriptId)
+    local key = bookmarkKey(source, scriptId, title)
+
+    for i = #bookmarks, 1, -1 do
+        local item = bookmarks[i]
+        if bookmarkKey(item.source, item.id, item.title) == key then
+            table.remove(bookmarks, i)
+            break
+        end
+    end
+
+    saveBookmarks()
+end
+
 local SCRIPTBLOX_API =
     "https://scriptblox.com/api/script/fetch"
 
@@ -314,6 +429,7 @@ Book.Parent = Page
 local vb = Instance.new("CanvasGroup")
 vb.Name = "ViewBookmark"
 vb.Size = UDim2.new(1,0,1,0)
+vb.Position = UDim2.new(1,0,0,0)
 vb.BackgroundColor3 = Color3.new(1,1,1)
 vb.BorderMode = Enum.BorderMode.Inset
 vb.BorderSizePixel = 5
@@ -671,7 +787,7 @@ Gradient(refresh, -45 ,0,0, Color3.fromRGB(255,85,0), Color3.fromRGB(255,255,0))
 
 local filter_body = Instance.new("Frame")
 filter_body.Name = "FilterBody"
-filter_body.Size = UDim2.new(0,0,0,150)
+filter_body.Size = UDim2.new(0,0,0,0)
 filter_body.Position = UDim2.new(0,-305,1,5)
 filter_body.BackgroundColor3 = Color3.fromRGB(0,85,0)
 filter_body.BorderMode = Enum.BorderMode.Inset
@@ -1154,7 +1270,7 @@ apitype.TextColor3 = Color3.new(0,0,0)
 apitype.RichText = true
 apitype.LayoutOrder = -1
 apitype.Text = "<b>Search API: ScriptBlox</b>"
-apitype.TextSize = 12
+apitype.TextScaled = true
 apitype.BorderMode = Enum.BorderMode.Inset
 apitype.BorderSizePixel = 3
 apitype.ZIndex = 2
@@ -1304,7 +1420,7 @@ bscroll.BorderMode = Enum.BorderMode.Inset
 bscroll.BorderSizePixel = 5
 bscroll.BorderColor3 = Color3.new(1,0,0)
 bscroll.Parent = vb
-ListLayout(bscroll, 0, 3, HCenter, VTop, SLayout, FillV)
+ListLayout(bscroll, 0, 3, HLeft, VTop, SLayout, FillV)
 
 -- =========================================
 -- Shared State / Forward Declarations
@@ -1335,10 +1451,10 @@ filter.MouseButton1Click:Connect(function()
     if not fil_sw then  
       fil_sw = true  
       filter_body.Visible = true  
-      tweenSize(filter_body, UDim2.new(0,350,0,200),nil,nil,0.3).Completed:Wait()
+      tweenSize(filter_body, UDim2.new(0,350,0,0),nil,nil,0.3).Completed:Wait()
     else  
       fil_sw = false  
-      tweenSize(filter_body, UDim2.new(0,0,0,200),nil,nil,0.3).Completed:Wait()
+      tweenSize(filter_body, UDim2.new(0,0,0,0),nil,nil,0.3).Completed:Wait()
       filter_body.Visible = false  
     end  
 end)
@@ -2111,6 +2227,336 @@ end
 -- Script Card
 -- =========================================
 
+local marked
+
+-- =========================================
+-- Bookmark API Switch
+-- =========================================
+
+local function switchBookmarkAPI(source)
+
+    if type(source) ~= "string" or source == "" then
+        return
+    end
+
+    currentAPI = source
+
+    for i, apiName in ipairs(APIType) do
+        if apiName == source then
+            apiIndex = i
+            break
+        end
+    end
+
+    apiCursor = nil
+    updateAPIFilters()
+
+    apitype.Text =
+        "<b>Search API: "
+        .. currentAPI
+        .. "</b>"
+end
+
+-- =========================================
+-- View Page Loader
+-- =========================================
+
+local function loadViewData(data, preloadedDetail)
+
+    Page.Visible = true
+
+    tweenSize(
+        Page,
+        UDim2.new(0.35,-5,1,0),
+        nil,
+        nil,
+        0.4
+    )
+
+    tweenSize(
+        List,
+        UDim2.new(0.65,0,1,0),
+        nil,
+        nil,
+        0.4
+    )
+
+  -- Always return to the normal View page.
+  -- This must also run when View is opened for the 2nd+ time.
+  isswitch = false
+  openb.Image = "rbxassetid://71272710123832"
+  InPage.Visible = true
+  Book.Visible = false
+
+  tweenSize(InPage, nil, UDim2.new(0,0,0,0), nil, 0.3)
+  tweenSize(Book, nil, UDim2.new(1,0,0,0), nil, 0.3)
+
+
+    -- =================================
+    -- Loading State
+    -- =================================
+
+    names.Text =
+        "<b>Loading Data...</b>"
+
+    types.Text =
+        "Loading Data..."
+
+    cre.Text =
+        "Loading Data..."
+
+    credate.Text =
+        "Loading Data..."
+
+    like.Text =
+        "<b>Like: Loading Data...</b>"
+
+    dislike.Text =
+        "<b>Dislike: Loading Data...</b>"
+
+    visit.Text =
+        "<b>Visit: Loading Data...</b>"
+
+    feabox.Text =
+        "Loading Data..."
+
+    codebox.Text =
+        "Loading Data..."
+
+    imgview.Image =
+        FALLBACK_IMAGE
+
+
+    -- =================================
+    -- Clear Old Tags
+    -- =================================
+
+    for _, child in ipairs(
+        tagscroll:GetChildren()
+    ) do
+
+        if child.Name ==
+            "TagString" then
+
+            child:Destroy()
+
+        end
+    end
+
+    tagscroll.CanvasSize =
+        UDim2.new(0,0,0,0)
+
+
+    -- =================================
+    -- Detail Data
+    -- =================================
+
+    local detail =
+        preloadedDetail
+
+    if type(detail) ~= "table" then
+        detail = fetchIndividual(
+            data.id,
+            data
+        )
+    end
+
+    if type(detail) ~= "table" then
+        detail = data
+    end
+
+
+    -- =================================
+    -- Title
+    -- =================================
+
+    local detailTitle =
+        apiText(detail.name)
+
+    if detailTitle == ""
+        or detailTitle ==
+            "API Not supported" then
+
+        detailTitle =
+            "Untitled Script"
+
+    end
+
+
+    -- =================================
+    -- Creator
+    -- =================================
+
+    local detailOwner =
+        apiText(detail.creator)
+
+    if detailOwner == "" then
+        detailOwner =
+            "API Not supported"
+    end
+
+
+    -- =================================
+    -- Game Name
+    -- =================================
+
+    local detailGameName =
+        apiText(detail.gameName)
+
+    if detailGameName == "" then
+        detailGameName =
+            "API Not supported"
+    end
+
+
+    -- =================================
+    -- Image
+    -- =================================
+
+    imgview.Image =
+        getFetchPreviewImage(detail)
+
+    preloadImage(imgview)
+    task.spawn(loadRemoteImageAsync, detail, imgview)
+
+
+    -- =================================
+    -- Title
+    -- =================================
+
+    names.Text =
+        "<b>"
+        .. detailTitle
+        .. "</b>"
+
+
+    -- =================================
+    -- Game
+    -- =================================
+
+    types.Text =
+        detailGameName
+
+
+    -- =================================
+    -- Creator
+    -- =================================
+
+    cre.Text =
+        "By @"
+        .. detailOwner
+
+
+    -- =================================
+    -- Likes
+    -- =================================
+
+    like.Text =
+        "<b>Like: "
+        .. apiText(detail.likes)
+        .. "</b>"
+
+
+    -- =================================
+    -- Dislikes
+    -- =================================
+
+    dislike.Text =
+        "<b>Dislike: "
+        .. apiText(detail.dislikes)
+        .. "</b>"
+
+
+    -- =================================
+    -- Views
+    -- =================================
+
+    visit.Text =
+        "<b>Visit: "
+        .. apiText(detail.views)
+        .. "</b>"
+
+
+    -- =================================
+    -- Creation Date
+    -- =================================
+
+    credate.Text =
+        "Creation Date: "
+        .. apiText(detail.createdAt)
+
+
+    -- =================================
+    -- Features / Description
+    -- =================================
+
+    local features =
+        apiText(detail.description)
+
+    if features ==
+        "API Not supported" then
+
+        feabox.Text = ""
+        feabox.PlaceholderText =
+            "API Not supported"
+
+    elseif features == "" then
+
+        feabox.Text = ""
+        feabox.PlaceholderText =
+            "No description yet."
+
+    else
+
+        feabox.Text =
+            features
+
+    end
+
+
+    -- =================================
+    -- Tags
+    -- =================================
+
+    for _, child in ipairs(
+        tagscroll:GetChildren()
+    ) do
+
+        if child:IsA("TextLabel")
+            and child.Name ==
+                "TagString" then
+
+            child:Destroy()
+
+        end
+
+    end
+
+
+    if type(detail.tags) ==
+        "table" then
+
+        for _, tagName in ipairs(
+            detail.tags
+        ) do
+
+            tagss(tagName)
+
+        end
+
+    end
+
+
+    -- =================================
+    -- Source
+    -- =================================
+
+    codebox.Text =
+        apiText(detail.raw)
+
+
+end
+
 local function sipt(data)
 
     -- =====================================
@@ -2570,6 +3016,26 @@ local function sipt(data)
 
 
         -- =================================
+        -- =================================
+        -- Add Bookmark
+        -- =================================
+
+        if marked then
+            local added = addBookmarkData(
+                data.name,
+                currentAPI,
+                data.id
+            )
+
+            if added then
+                marked(
+                    data.name,
+                    currentAPI,
+                    data.id
+                )
+            end
+        end
+
         -- Open Page
         -- =================================
 
@@ -2635,292 +3101,11 @@ local function sipt(data)
         -- Open Page
         -- =================================
 
-        Page.Visible = true
-
-        tweenSize(
-            Page,
-            UDim2.new(0.35,-5,1,0),
-            nil,
-            nil,
-            0.4
-        )
-
-        tweenSize(
-            List,
-            UDim2.new(0.65,0,1,0),
-            nil,
-            nil,
-            0.4
-        )
-
-      if isswitch == true then
-      isswitch = false
-      openb.Image = "rbxassetid://71272710123832"
-      tweenSize(InPage, nil, UDim2.new(0,0,0,0), nil, 0.3)
-      tweenSize(Book, nil, UDim2.new(1,0,0,0), nil, 0.3)
-      InPage.Visible = true
-      task.wait(0.3)
-      Book.Visible = false
-      end
-
-
         -- =================================
-        -- Loading State
+        -- Load View Data
         -- =================================
 
-        names.Text =
-            "<b>Loading Data...</b>"
-
-        types.Text =
-            "Loading Data..."
-
-        cre.Text =
-            "Loading Data..."
-
-        credate.Text =
-            "Loading Data..."
-
-        like.Text =
-            "<b>Like: Loading Data...</b>"
-
-        dislike.Text =
-            "<b>Dislike: Loading Data...</b>"
-
-        visit.Text =
-            "<b>Visit: Loading Data...</b>"
-
-        feabox.Text =
-            "Loading Data..."
-
-        codebox.Text =
-            "Loading Data..."
-
-        imgview.Image =
-            FALLBACK_IMAGE
-
-
-        -- =================================
-        -- Clear Old Tags
-        -- =================================
-
-        for _, child in ipairs(
-            tagscroll:GetChildren()
-        ) do
-
-            if child.Name ==
-                "TagString" then
-
-                child:Destroy()
-
-            end
-        end
-
-        tagscroll.CanvasSize =
-            UDim2.new(0,0,0,0)
-
-
-        -- =================================
-        -- Detail Data
-        -- =================================
-
-        local detail =
-            fetchIndividual(
-                data.id,
-                data
-            )
-
-        if type(detail) ~= "table" then
-            detail = data
-        end
-
-
-        -- =================================
-        -- Title
-        -- =================================
-
-        local detailTitle =
-            apiText(detail.name)
-
-        if detailTitle == ""
-            or detailTitle ==
-                "API Not supported" then
-
-            detailTitle =
-                "Untitled Script"
-
-        end
-
-
-        -- =================================
-        -- Creator
-        -- =================================
-
-        local detailOwner =
-            apiText(detail.creator)
-
-        if detailOwner == "" then
-            detailOwner =
-                "API Not supported"
-        end
-
-
-        -- =================================
-        -- Game Name
-        -- =================================
-
-        local detailGameName =
-            apiText(detail.gameName)
-
-        if detailGameName == "" then
-            detailGameName =
-                "API Not supported"
-        end
-
-
-        -- =================================
-        -- Image
-        -- =================================
-
-        imgview.Image =
-            getFetchPreviewImage(detail)
-
-        preloadImage(imgview)
-        task.spawn(loadRemoteImageAsync, detail, imgview)
-
-
-        -- =================================
-        -- Title
-        -- =================================
-
-        names.Text =
-            "<b>"
-            .. detailTitle
-            .. "</b>"
-
-
-        -- =================================
-        -- Game
-        -- =================================
-
-        types.Text =
-            detailGameName
-
-
-        -- =================================
-        -- Creator
-        -- =================================
-
-        cre.Text =
-            "By @"
-            .. detailOwner
-
-
-        -- =================================
-        -- Likes
-        -- =================================
-
-        like.Text =
-            "<b>Like: "
-            .. apiText(detail.likes)
-            .. "</b>"
-
-
-        -- =================================
-        -- Dislikes
-        -- =================================
-
-        dislike.Text =
-            "<b>Dislike: "
-            .. apiText(detail.dislikes)
-            .. "</b>"
-
-
-        -- =================================
-        -- Views
-        -- =================================
-
-        visit.Text =
-            "<b>Visit: "
-            .. apiText(detail.views)
-            .. "</b>"
-
-
-        -- =================================
-        -- Creation Date
-        -- =================================
-
-        credate.Text =
-            "Creation Date: "
-            .. apiText(detail.createdAt)
-
-
-        -- =================================
-        -- Features / Description
-        -- =================================
-
-        local features =
-            apiText(detail.description)
-
-        if features ==
-            "API Not supported" then
-
-            feabox.Text = ""
-            feabox.PlaceholderText =
-                "API Not supported"
-
-        elseif features == "" then
-
-            feabox.Text = ""
-            feabox.PlaceholderText =
-                "No description yet."
-
-        else
-
-            feabox.Text =
-                features
-
-        end
-
-
-        -- =================================
-        -- Tags
-        -- =================================
-
-        for _, child in ipairs(
-            tagscroll:GetChildren()
-        ) do
-
-            if child:IsA("TextLabel")
-                and child.Name ==
-                    "TagString" then
-
-                child:Destroy()
-
-            end
-
-        end
-
-
-        if type(detail.tags) ==
-            "table" then
-
-            for _, tagName in ipairs(
-                detail.tags
-            ) do
-
-                tagss(tagName)
-
-            end
-
-        end
-
-
-        -- =================================
-        -- Source
-        -- =================================
-
-        codebox.Text =
-            apiText(detail.raw)
+        loadViewData(data)
 
     end)
 
@@ -4128,19 +4313,27 @@ cy.MouseButton1Click:Connect(function()
     cy.Text = "<b>Copy To Clipboard</b>"
 end)
 
-local function marked(tit, sour)
-  local body = Instance.new("Frame")
-  body.Name = "Body"
-  body.BackgroundColor3 = Color3.new(1,1,1)
-  body.Size = UDim2.new(1,0,0,100)
-  body.BorderMode = Enum.BorderMode.Inset
-  body.BorderSizePixel = 5
-  body.Parent = bscroll
-  Corner(0,5,body)
-  Gradient(body, -45,0,0,
-  Color3.fromRGB(255,255,0),Color3.fromRGB(255,85,255))
+marked = function(tit, sour, scriptId)
 
-  local title = Instance.new("TextLabel")
+    local body = Instance.new("Frame")
+    body.Name = "Body"
+    body.BackgroundColor3 = Color3.new(1,1,1)
+    body.Size = UDim2.new(1,-5,0,120)
+    body.BorderMode = Enum.BorderMode.Inset
+    body.BorderSizePixel = 5
+    body.Parent = bscroll
+    Corner(0,5,body)
+    Gradient(
+        body,
+        -45,0,0,
+        Color3.fromRGB(255,255,0),
+        Color3.fromRGB(255,85,255)
+    )
+
+    body:SetAttribute("ScriptId", tostring(scriptId or ""))
+    body:SetAttribute("ScriptSource", tostring(sour or ""))
+
+    local title = Instance.new("TextLabel")
     title.Name = "Title"
     title.Size = UDim2.new(1,0,0,25)
     title.BackgroundTransparency = 1
@@ -4149,13 +4342,19 @@ local function marked(tit, sour)
     title.RichText = true
     title.TextScaled = true
     title.TextColor3 = Color3.new(0,0,0)
-    title.Text = "<b>" .. tostring(tit) .. "</b>" or "Untitled"
+
+    local titleText = tostring(tit or "")
+    if titleText == "" or titleText == "nil" then
+        titleText = "Untitled"
+    end
+
+    title.Text = "<b>" .. titleText .. "</b>"
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.TextYAlignment = Enum.TextYAlignment.Top
     title.Parent = body
 
-  local sou = Instance.new("TextLabel")
-    sou.Name = "Title"
+    local sou = Instance.new("TextLabel")
+    sou.Name = "Source"
     sou.Size = UDim2.new(1,0,0,20)
     sou.Position += UDim2.new(0,0,0,25)
     sou.BackgroundTransparency = 1
@@ -4163,11 +4362,210 @@ local function marked(tit, sour)
     sou.BorderSizePixel = 3
     sou.TextScaled = true
     sou.TextColor3 = Color3.new(0,0,0)
-    sou.Text = "From: " .. tostring(sour) or "From: Unknown"
+
+    local sourceText = tostring(sour or "")
+    if sourceText == "" or sourceText == "nil" then
+        sourceText = "Unknown"
+    end
+
+    sou.Text = "From: " .. sourceText
     sou.TextXAlignment = Enum.TextXAlignment.Left
     sou.TextYAlignment = Enum.TextYAlignment.Top
     sou.Parent = body
-  
+
+    local exe = Instance.new("TextButton")
+    exe.Name = "Execute"
+    exe.Size = UDim2.new(0.5,-5,0,20)
+    exe.Position = UDim2.new(0,0,1,-20)
+    exe.BackgroundColor3 = Color3.new(0,1,0)
+    exe.TextSize = 10
+    exe.RichText = true
+    exe.TextColor3 = Color3.new(0,0,0)
+    exe.Text = "<b>Execute</b>"
+    exe.Parent = body
+    Corner(0,5,exe)
+
+    local cy = exe:Clone()
+    cy.Name = "Copy"
+    cy.Position = UDim2.new(0.5,0,1,-20)
+    cy.BackgroundColor3 = Color3.fromRGB(153,153,153)
+    cy.TextColor3 = Color3.new(1,1,1)
+    cy.Text = "<b>Copy</b>"
+    cy.Parent = body
+
+    local view = Instance.new("TextButton")
+    view.Name = "View"
+    view.Size = UDim2.new(1,-5,0,20)
+    view.Position = UDim2.new(0,0,1,-42)
+    view.BackgroundColor3 = Color3.new(1,1,0)
+    view.TextSize = 10
+    view.RichText = true
+    view.TextColor3 = Color3.new(0,0,0)
+    view.Text = "<b>View</b>"
+    view.Parent = body
+    Corner(0,5,view)
+
+    local rem = Instance.new("TextButton")
+    rem.Name = "Remove"
+    rem.Size = UDim2.new(1,-5,0,20)
+    rem.Position = UDim2.new(0,0,1,-64)
+    rem.BackgroundColor3 = Color3.new(1,0,0)
+    rem.TextSize = 8
+    rem.RichText = true
+    rem.TextColor3 = Color3.new(1,1,1)
+    rem.Text = "<b>Remove from the bookmark page</b>"
+    rem.Parent = body
+    Corner(0,5,rem)
+
+    local function getBookmarkData(button)
+        button.Text = "<b>Getting data...</b>"
+
+        local oldAPI = currentAPI
+        switchBookmarkAPI(sourceText)
+
+        local fallback = {
+            id = scriptId,
+            name = titleText
+        }
+
+        local detail = fetchIndividual(
+            scriptId,
+            fallback
+        )
+
+        return detail
+    end
+
+    -- =================================
+    -- View
+    -- =================================
+
+    view.MouseButton1Click:Connect(function()
+
+        if not scriptId or tostring(scriptId) == "" then
+            view.Text = "<b>Data unavailable</b>"
+            task.wait(1)
+            view.Text = "<b>View</b>"
+            return
+        end
+
+        local detail = getBookmarkData(view)
+
+        if type(detail) ~= "table" then
+            view.Text = "<b>Failed to get data</b>"
+            task.wait(1)
+            view.Text = "<b>View</b>"
+            return
+        end
+
+        loadViewData(
+            {
+                id = scriptId,
+                name = titleText
+            },
+            detail
+        )
+
+        task.wait(1)
+        view.Text = "<b>View</b>"
+    end)
+
+    -- =================================
+    -- Execute
+    -- =================================
+
+    exe.MouseButton1Click:Connect(function()
+
+        if not scriptId or tostring(scriptId) == "" then
+            exe.Text = "<b>Data unavailable</b>"
+            task.wait(1)
+            exe.Text = "<b>Execute</b>"
+            return
+        end
+
+        local detail = getBookmarkData(exe)
+        local raw = nil
+
+        if type(detail) == "table" then
+            raw = detail.raw
+        end
+
+        if raw and tostring(raw) ~= "" then
+            if loadstring then
+                loadstring(tostring(raw))()
+                exe.Text = "<b>Executed</b>"
+            else
+                exe.Text = "<b>Execution unsupported</b>"
+            end
+        else
+            exe.Text = "<b>No Source Found</b>"
+        end
+
+        task.wait(1)
+        exe.Text = "<b>Execute</b>"
+    end)
+
+    -- =================================
+    -- Copy
+    -- =================================
+
+    cy.MouseButton1Click:Connect(function()
+
+        if not scriptId or tostring(scriptId) == "" then
+            cy.Text = "<b>Data unavailable</b>"
+            task.wait(1)
+            cy.Text = "<b>Copy</b>"
+            return
+        end
+
+        local detail = getBookmarkData(cy)
+        local raw = nil
+
+        if type(detail) == "table" then
+            raw = detail.raw
+        end
+
+        if raw and tostring(raw) ~= "" then
+            if setclipboard then
+                setclipboard(tostring(raw))
+                cy.Text = "<b>Copied</b>"
+            else
+                cy.Text = "<b>Clipboard Unsupported</b>"
+            end
+        else
+            cy.Text = "<b>No Code</b>"
+        end
+
+        task.wait(1)
+        cy.Text = "<b>Copy</b>"
+    end)
+
+    -- =================================
+    -- Remove
+    -- =================================
+
+    rem.MouseButton1Click:Connect(function()
+        removeBookmarkData(
+            titleText,
+            sourceText,
+            scriptId
+        )
+
+        body:Destroy()
+    end)
+
 end
 
-marked()
+
+-- =========================================
+-- Load saved bookmarks
+-- =========================================
+loadBookmarkFile()
+
+for _, item in ipairs(bookmarks) do
+    marked(
+        item.title,
+        item.source,
+        item.id
+    )
+end
