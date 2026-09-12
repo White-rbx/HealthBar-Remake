@@ -1,4 +1,4 @@
--- Loader script 3.4
+-- Loader script 3.7
 
 ------------------------------------------------------------------------------------------
 
@@ -1992,6 +1992,7 @@ local CoreGui = game:GetService("CoreGui")
 local ExperienceSettings
 
 local CurrentLanguage = "EN"
+local SelectedLanguage = "EN"
 local latestClick = "EN"
 local TranslationBusy = false
 local TranslationCooldown = 2
@@ -2000,22 +2001,10 @@ local LastApiRequest = 0
 local TranslationCacheFile =
     "ExperienceSettings/translation_cache.json"
 
--- Translation providers
--- LibreTranslate is optional. When it is not configured, the engine
--- falls back to Google Translate's public web translation endpoint.
-local LIBRETRANSLATE_URL = nil
-local LIBRETRANSLATE_API_KEY = nil
-local GOOGLE_TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single"
+-- Local-only translation mode.
+-- No external translation provider is used.
 local REMOTE_CACHE_URL = nil
 
-local LibreTranslateTarget = {
-    ES = "es",
-    TH = "th",
-    ["PT-BR"] = "pt",
-    ["PT-PT"] = "pt",
-    RU = "ru",
-    KO = "ko"
-}
 
 local HTTP_REQUEST =
     request
@@ -2323,7 +2312,7 @@ local TranslationDB = {
     },
 }
 
--- Import the old translations into the new text-key cache.
+-- Import the static TranslationDB.
 for language, entries in pairs(TranslationDB) do
     for sourceText, translatedText in pairs(entries) do
         TranslationCache[language][sourceText] = translatedText
@@ -2466,243 +2455,28 @@ local function RestoreSelectedText(text, protected)
     return result
 end
 
-local function WaitForApiSlot()
-    local remaining =
-        TranslationCooldown
-        - (os.clock() - LastApiRequest)
-
-    if remaining > 0 then
-        task.wait(remaining)
-    end
-end
-
-local function UrlEncode(value)
-    local ok, result = pcall(function()
-        return HttpService:UrlEncode(tostring(value or ""))
-    end)
-
-    if ok and result then
-        return result
-    end
-
-    return tostring(value or "")
-        :gsub("([^%w%-_%.~])", function(char)
-            return string.format("%%%02X", string.byte(char))
-        end)
-end
-
-local function RequestHttp(options)
-    if HTTP_REQUEST then
-        local ok, response = pcall(function()
-            return HTTP_REQUEST(options)
-        end)
-
-        if ok and type(response) == "table" then
-            return response
-        end
-    end
-
-    if options.Method == "GET" and game and game.HttpGet and options.Url then
-        local ok, body = pcall(function()
-            return game:HttpGet(options.Url)
-        end)
-
-        if ok and type(body) == "string" then
-            return {
-                StatusCode = 200,
-                Body = body,
-            }
-        end
-    end
-
-    return nil
-end
-
-local function ParseGoogleTranslation(body)
-    local ok, decoded = pcall(function()
-        return HttpService:JSONDecode(body)
-    end)
-
-    if not ok or type(decoded) ~= "table" or type(decoded[1]) ~= "table" then
-        return nil
-    end
-
-    local output = {}
-
-    for _, part in ipairs(decoded[1]) do
-        if type(part) == "table"
-            and type(part[1]) == "string" then
-            output[#output + 1] = part[1]
-        end
-    end
-
-    local result = table.concat(output)
-    if result == "" then
-        return nil
-    end
-
-    return result
-end
-
-local function RequestGoogleTranslation(template, language)
-    local target = LibreTranslateTarget[language] or language
-    local encoded = UrlEncode(template)
-
-    local url = GOOGLE_TRANSLATE_URL
-        .. "?client=gtx&sl=en&tl="
-        .. UrlEncode(target)
-        .. "&dt=t&q="
-        .. encoded
-
-    local response = RequestHttp({
-        Url = url,
-        Method = "GET",
-        Headers = {
-            ["Accept"] = "application/json"
-        }
-    })
-
-    if type(response) ~= "table" then
-        return nil
-    end
-
-    local body = response.Body or response.body
-    if type(body) ~= "string" then
-        return nil
-    end
-
-    return ParseGoogleTranslation(body)
-end
-
-local function RequestTranslation(template, language)
-    if not template or template == "" then
-        return nil
-    end
-
-    WaitForApiSlot()
-    LastApiRequest = os.clock()
-
-    -- 1) LibreTranslate if explicitly configured.
-    if HTTP_REQUEST and LIBRETRANSLATE_URL then
-        local payload = {
-            q = template,
-            source = "en",
-            target = LibreTranslateTarget[language] or language,
-            format = "text"
-        }
-
-        if LIBRETRANSLATE_API_KEY then
-            payload.api_key = LIBRETRANSLATE_API_KEY
-        end
-
-        local ok, response = pcall(function()
-            return HTTP_REQUEST({
-                Url = LIBRETRANSLATE_URL,
-                Method = "POST",
-                Headers = {
-                    ["Content-Type"] = "application/json"
-                },
-                Body = HttpService:JSONEncode(payload)
-            })
-        end)
-
-        if ok and type(response) == "table" then
-            local responseBody = response.Body or response.body
-
-            if type(responseBody) == "string" then
-                local decodeOk, decoded = pcall(function()
-                    return HttpService:JSONDecode(responseBody)
-                end)
-
-                if decodeOk
-                    and type(decoded) == "table"
-                    and type(decoded.translatedText) == "string"
-                    and decoded.translatedText ~= "" then
-                    return decoded.translatedText
+-- Normalize static DB entries so runtime dynamic values can match the same template.
+for language, entries in pairs(TranslationDB) do
+    for sourceText, translatedText in pairs(entries) do
+        local template, protected = SelectTextToTranslateOnly(sourceText)
+        if template ~= sourceText and not TranslationCache[language][template] then
+            local translatedTemplate = translatedText
+            for index = #protected, 1, -1 do
+                local value = tostring(protected[index] or "")
+                if value ~= "" then
+                    local escaped = value:gsub("([%%%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
+                    translatedTemplate = translatedTemplate:gsub(
+                        escaped,
+                        string.format("__DYNAMIC_%d__", index),
+                        1
+                    )
                 end
             end
-        end
-    end
-
-    -- 2) Public fallback so missing TranslationDB entries can still translate.
-    return RequestGoogleTranslation(template, language)
-end
-
-local function MergeRemoteCache(decoded)
-    if type(decoded) ~= "table" then
-        return
-    end
-
-    local languages = decoded.Languages or decoded
-
-    if type(languages) ~= "table" then
-        return
-    end
-
-    for language, entries in pairs(languages) do
-        if TranslationCache[language]
-            and type(entries) == "table" then
-
-            for sourceText, translatedText in pairs(entries) do
-                if type(sourceText) == "string"
-                    and type(translatedText) == "string" then
-
-                    TranslationCache[language][sourceText] =
-                        translatedText
-                end
-            end
+            TranslationCache[language][template] = translatedTemplate
         end
     end
 end
 
-local function PullRemoteCache()
-    if not HTTP_REQUEST or not REMOTE_CACHE_URL then
-        return
-    end
-
-    pcall(function()
-        local response = HTTP_REQUEST({
-            Url = REMOTE_CACHE_URL,
-            Method = "GET"
-        })
-
-        local body = response and
-            (response.Body or response.body)
-
-        if type(body) ~= "string" then
-            return
-        end
-
-        local ok, decoded =
-            pcall(function()
-                return HttpService:JSONDecode(body)
-            end)
-
-        if ok then
-            MergeRemoteCache(decoded)
-        end
-    end)
-end
-
-local function PushRemoteCache()
-    if not HTTP_REQUEST or not REMOTE_CACHE_URL then
-        return
-    end
-
-    pcall(function()
-        HTTP_REQUEST({
-            Url = REMOTE_CACHE_URL,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = HttpService:JSONEncode({
-                Version = 1,
-                Languages = TranslationCache
-            })
-        })
-    end)
-end
 
 local function GetCachedTranslation(sourceText, language)
     if language == "EN" then
@@ -2758,29 +2532,30 @@ local function MatchDynamicTemplate(template, text)
 
         if not startPos then
             local tail = template:sub(cursor)
-
             if tail ~= "" then
-                patternParts[#patternParts + 1] =
+                table.insert(
+                    patternParts,
                     EscapeLuaPattern(tail)
+                )
             end
-
             break
         end
 
         local permanent = template:sub(cursor, startPos - 1)
 
         if permanent ~= "" then
-            patternParts[#patternParts + 1] =
+            table.insert(
+                patternParts,
                 EscapeLuaPattern(permanent)
+            )
         end
 
-        patternParts[#patternParts + 1] = "(.-)"
+        table.insert(patternParts, "(.-)")
         dynamicOrder[#dynamicOrder + 1] = tonumber(index)
-
         cursor = endPos + 1
     end
 
-    patternParts[#patternParts + 1] = "$"
+    table.insert(patternParts, "$")
 
     local captures = {
         string.match(
@@ -2790,7 +2565,8 @@ local function MatchDynamicTemplate(template, text)
     }
 
     if #dynamicOrder == 0 then
-        return nil
+        return text == template and {}
+            or nil
     end
 
     if #captures ~= #dynamicOrder then
@@ -2799,8 +2575,8 @@ local function MatchDynamicTemplate(template, text)
 
     local values = {}
 
-    for i = 1, #dynamicOrder do
-        values[dynamicOrder[i]] = captures[i]
+    for i, index in ipairs(dynamicOrder) do
+        values[index] = captures[i]
     end
 
     return values
@@ -3112,27 +2888,14 @@ local function BindProperty(obj, property)
                     return
                 end
 
-                local apiTranslation =
-                    RequestTranslation(
-                        template,
-                        language
-                    )
-
-                if not apiTranslation then
-                    return
-                end
-
-                TranslationCache[language][template] =
-                    apiTranslation
-
+                -- Local-only mode: do not request a translation provider here.
+                -- If a translation is added to TranslationCache later, the next
+                -- ApplyCachedLanguage() pass will render it.
                 ApplyStateToObject(
                     obj,
                     property,
                     language
                 )
-
-                SaveTranslationCache()
-                PushRemoteCache()
             end)
         end)
 end
@@ -3197,9 +2960,19 @@ local function ScanInstance(obj)
         end
     end
 
-    -- Recursive traversal through ALL child instances.
-    for _, child in ipairs(obj:GetChildren()) do
-        ScanInstance(child)
+    -- Full descendant scan: every child under this parent is visited.
+    for _, child in ipairs(obj:GetDescendants()) do
+        if not IsTranslationSkipped(child) then
+            if child:IsA("TextLabel") or child:IsA("TextButton") then
+                BindProperty(child, "Text")
+            elseif child:IsA("TextBox") then
+                BindProperty(child, "PlaceholderText")
+                BindTextBoxEditable(child)
+                if not child.TextEditable then
+                    BindProperty(child, "Text")
+                end
+            end
+        end
     end
 end
 
@@ -3280,12 +3053,14 @@ local function ChangeLanguage(language)
     end
 
     latestClick = language
+    SelectedLanguage = language
+    RefreshLanguageButtons()
     TranslationBusy = true
 
     SetLanguageButtonsLocked(true)
 
     task.spawn(function()
-        PullRemoteCache()
+        -- Local-only mode: use TranslationDB + local cache only.
 
         -- Re-scan in case the game created new GUI elements.
         ScanInstance(ExperienceSettings)
@@ -3295,6 +3070,7 @@ local function ChangeLanguage(language)
 
             TranslationBusy = false
             SetLanguageButtonsLocked(false)
+            SelectedLanguage = CurrentLanguage
             RefreshLanguageButtons()
             return
         end
@@ -3302,65 +3078,14 @@ local function ChangeLanguage(language)
         -- Instant local/remote cache pass first.
         ApplyCachedLanguage(language)
 
-        -- Find unique uncached permanent templates.
-        local pending = {}
-        local pendingSeen = {}
-
-        for obj, properties in pairs(TranslationState) do
-            if obj
-                and obj.Parent
-                and not IsTranslationSkipped(obj) then
-
-                for property, state in pairs(properties) do
-                    if property == "Text"
-                        and obj:IsA("TextBox")
-                        and obj.TextEditable then
-                        continue
-                    end
-
-                    local template =
-                        state.SourceTemplate
-
-                    if template
-                        and template ~= ""
-                        and not (
-                            TranslationCache[language]
-                            and TranslationCache[language][template]
-                        )
-                        and not pendingSeen[template] then
-
-                        pendingSeen[template] =
-                            true
-
-                        pending[#pending + 1] =
-                            template
-                    end
-                end
-            end
-        end
-
-        -- API calls are serialized and rate-limited.
-        for _, template in ipairs(pending) do
-            local apiTranslation =
-                RequestTranslation(
-                    template,
-                    language
-                )
-
-            if apiTranslation then
-                TranslationCache[language][template] =
-                    apiTranslation
-            end
-        end
-
+        -- v5 does not contact a translation provider.
+        -- Only existing TranslationDB/local-cache entries are applied.
         SaveTranslationCache()
-        PushRemoteCache()
-
-        -- Apply anything added by the API pass.
         ApplyCachedLanguage(language)
 
         TranslationBusy = false
         SetLanguageButtonsLocked(false)
+        SelectedLanguage = CurrentLanguage
         RefreshLanguageButtons()
     end)
 end
@@ -3518,37 +3243,37 @@ RefreshLanguageButtons = function()
     end
 
     EngBtn.TextColor3 =
-        CurrentLanguage == "EN"
+        SelectedLanguage == "EN"
         and Color3.fromRGB(0,255,0)
         or Color3.fromRGB(255,255,255)
 
     SpaBtn.TextColor3 =
-        CurrentLanguage == "ES"
+        SelectedLanguage == "ES"
         and Color3.fromRGB(0,255,0)
         or Color3.fromRGB(255,255,255)
 
     ThaBtn.TextColor3 =
-        CurrentLanguage == "TH"
+        SelectedLanguage == "TH"
         and Color3.fromRGB(0,255,0)
         or Color3.fromRGB(255,255,255)
 
     BraBtn.TextColor3 =
-        CurrentLanguage == "PT-BR"
+        SelectedLanguage == "PT-BR"
         and Color3.fromRGB(0,255,0)
         or Color3.fromRGB(255,255,255)
 
     PorBtn.TextColor3 =
-        CurrentLanguage == "PT-PT"
+        SelectedLanguage == "PT-PT"
         and Color3.fromRGB(0,255,0)
         or Color3.fromRGB(255,255,255)
 
     RusBtn.TextColor3 =
-        CurrentLanguage == "RU"
+        SelectedLanguage == "RU"
         and Color3.fromRGB(0,255,0)
         or Color3.fromRGB(255,255,255)
 
     KorBtn.TextColor3 =
-        CurrentLanguage == "KO"
+        SelectedLanguage == "KO"
         and Color3.fromRGB(0,255,0)
         or Color3.fromRGB(255,255,255)
 end
