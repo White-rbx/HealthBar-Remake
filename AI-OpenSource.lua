@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.925.2 ",
+	sion = " UIs 6.927.2 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -66,6 +66,7 @@ local ver = {
 (:8/7/2026 | 3:09 pm: A) AI-Thinking is no longer to continue updating due to Out of Local, Thanks you guys :3 ❤️ (From White the creator (5teve3019D))
 (:17/8/2026 | 4:19 pm: A) Added gemini-3.7-flash, don't be surprised if I still continue updates; add new features or anything will be discontinued unless can be continuing updates if it NOT due to out of local.
 (:23/7/2026 | 4:49 pm: F) Fixed Here chat I guess.
+(:12/9/2026 | 4:04 pm: A) Added Gemini 3.8 flash, added more modelswitch add adjust ScrollingFrame.
 ]],
 }
 ------------------------------------------------------------------------------------------
@@ -514,6 +515,8 @@ si.BackgroundTransparency = 0.5
 si.BackgroundColor3 = Color3.new(0,0,0)
 si.ScrollingDirection = Enum.ScrollingDirection.Y
 si.AutomaticCanvasSize = Enum.AutomaticSize.Y
+si.BorderMode = Enum.BorderMode.Inset
+si.BorderSizePixel = 5
 si.CanvasSize = UDim2.new(0,0,0,0)
 si.Parent = ins
 ListLayout(si, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
@@ -1621,17 +1624,39 @@ local GPT_PRESETS = {
 	SUPERLONG = {mt = 4096, t = 1},
 	CREATIVE = {mt = 12288, t = 1},
 	SUPERCREATIVE = {mt = 36864, t = 2},
+	-- adjust text  
+	TEXTVERYFEW = {mt = 64, t = 1},  
+	TEXTFEW = {mt = 256, t = 1},  
+	TEXTLOW = {mt = 512, t = 1},  
+	TEXTLITTLE = {mt = 1024, t = 1},  
+	TEXTMEDIUM = {mt = 2048, t = 1},  
+	TEXTLONG = {mt = 4096, t = 1},  
+	TEXTVERYLONG = {mt = 12288, t = 1},  
+	TEXTEXTRALONG = {mt = 36864, t = 1},  
+	TEXTULTRALONG = {mt = 73728, t = 1},
+	
 }
-local GEMINI_PRESETS = {
-    FREE  = {mt = 64,  t = 0.4},
-    PRO   = {mt = 256, t = 0.7},
-    PLUS  = {mt = 512, t = 0.75},
-    THINKING = {mt = 1024, t = 0.8},
-	MASTER = {mt = 2048, t = 0.9},
-	SUPERLONG = {mt = 4096, t = 1},
-	CREATIVE = {mt = 12288, t = 1},
-	SUPERCREATIVE = {mt = 36864, t = 2},
-}
+
+local GEMINI_PRESETS = {  
+    FREE  = {mt = 64,  t = 0.4},  
+    PRO   = {mt = 256, t = 0.7},  
+    PLUS  = {mt = 512, t = 0.75},  
+    THINKING = {mt = 1024, t = 0.8},  
+	MASTER = {mt = 2048, t = 0.9},  
+	SUPERLONG = {mt = 4096, t = 1},  
+	CREATIVE = {mt = 12288, t = 1},  
+	SUPERCREATIVE = {mt = 36864, t = 2},  
+	-- adjust text  
+	TEXTVERYFEW = {mt = 64, t = 1},  
+	TEXTFEW = {mt = 256, t = 1},  
+	TEXTLOW = {mt = 512, t = 1},  
+	TEXTLITTLE = {mt = 1024, t = 1},  
+	TEXTMEDIUM = {mt = 2048, t = 1},  
+	TEXTLONG = {mt = 4096, t = 1},  
+	TEXTVERYLONG = {mt = 12288, t = 1},  
+	TEXTEXTRALONG = {mt = 36864, t = 1},  
+	TEXTULTRALONG = {mt = 65536, t = 1},
+}  
 
 local CLAUDE_PRESETS = {
     FREE  = {mt = 64,  t = 0.4},
@@ -1642,6 +1667,16 @@ local CLAUDE_PRESETS = {
 	SUPERLONG = {mt = 4096, t = 1},
 	CREATIVE = {mt = 12288, t = 1},
 	SUPERCREATIVE = {mt = 36864, t = 1},
+	-- adjust text  
+	TEXTVERYFEW = {mt = 64, t = 1},  
+	TEXTFEW = {mt = 256, t = 1},  
+	TEXTLOW = {mt = 512, t = 1},  
+	TEXTLITTLE = {mt = 1024, t = 1},  
+	TEXTMEDIUM = {mt = 2048, t = 1},  
+	TEXTLONG = {mt = 4096, t = 1},  
+	TEXTVERYLONG = {mt = 12288, t = 1},  
+	TEXTEXTRALONG = {mt = 36864, t = 1},  
+	TEXTULTRALONG = {mt = 73728, t = 1},
 }
 
 local DEEPSEEK_PRESETS = {
@@ -1653,6 +1688,16 @@ local DEEPSEEK_PRESETS = {
 	SUPERLONG = {mt = 4096, t = 1},
 	CREATIVE = {mt = 12288, t = 1},
 	SUPERCREATIVE = {mt = 36864, t = 1.2},
+	-- adjust text  
+	TEXTVERYFEW = {mt = 64, t = 1},  
+	TEXTFEW = {mt = 256, t = 1},  
+	TEXTLOW = {mt = 512, t = 1},  
+	TEXTLITTLE = {mt = 1024, t = 1},  
+	TEXTMEDIUM = {mt = 2048, t = 1},  
+	TEXTLONG = {mt = 4096, t = 1},  
+	TEXTVERYLONG = {mt = 12288, t = 1},  
+	TEXTEXTRALONG = {mt = 36864, t = 1},  
+	TEXTULTRALONG = {mt = 73728, t = 1},
 }
 
 --// =========================================
@@ -1678,6 +1723,7 @@ local GEMINI_MODELS = {
 	["gemini-3.5-flash"] = "gemini-3.5-flash",
 	["gemini-3.6-flash"] = "gemini-3.6-flash",
 	["gemini-3.7-flash"] = "gemini-3.7-flash",
+	["gemini-3.8-flash"] = "gemini-3.8-flash",
 }
 
 local CLAUDE_MODELS = {
@@ -2624,7 +2670,7 @@ Your limit:
 - In-Game Memory saver had no limit request
 - Global Memory saver had limit at 1000 request
 
-# All Command (42 commands) that all user can control the chat.
+# All Command (37 commands) that all user can control the chat.
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
@@ -2638,7 +2684,25 @@ Your limit:
 **/CheckURLStatus** *URL* - HEAD request to URL
 **/CheckSYN** - check syn.request availability
 [color=255,0,0](REMOVED)[/color] **/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
-**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit
+**/GPTSwitch** - Change Text limit
+	 *• FREE*
+ 	 *• PRO*
+ 	 *• PLUS*
+	 *• THINKING*
+     *• MASTER*
+     *• SUPERLONG*
+     *• CREATIVE*
+     *• SUPERCREATIVE*
+     * -- adjust text*
+     *• TEXTVERYFEW*
+     *• TEXTFEW*
+     *• TEXTLOW*
+     *• TEXTLITTLE*
+	 *• TEXTMEDIUM*
+     *• TEXTLONG*
+     *• TEXTVERYLONG*
+     *• TEXTEXTRALONG*
+     *• TEXTULTRALONG*
 **/GPTModel** - Change model
     *• gpt-4o-mini* - Default
     *• gpt-5-mini*
@@ -2648,7 +2712,25 @@ Your limit:
 	*• gpt-5.6-luna*
 	*• gpt-5.6-terra*
 	*• gpt-5.6-sol*
-**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
+**/GEMINISwitch** - Change Text limit 
+	 *• FREE*
+ 	 *• PRO*
+ 	 *• PLUS*
+	 *• THINKING*
+     *• MASTER*
+     *• SUPERLONG*
+     *• CREATIVE*
+     *• SUPERCREATIVE*
+     * -- adjust text*
+     *• TEXTVERYFEW*
+     *• TEXTFEW*
+     *• TEXTLOW*
+     *• TEXTLITTLE*
+	 *• TEXTMEDIUM*
+     *• TEXTLONG*
+     *• TEXTVERYLONG*
+     *• TEXTEXTRALONG*
+     *• TEXTULTRALONG*
 **/GEMINIModel** - Change model
     *• gemini-2.5-flash-lite*
     *• gemini-3.1-flash-lite* - Default
@@ -2657,13 +2739,49 @@ Your limit:
     *• gemini-3.5-flash*
 	*• gemini-3.6-flash*
 	*• gemini-3.7-flash*
-**/CLAUDESwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
+**/CLAUDESwitch** - Change Text limit 
+	 *• FREE*
+ 	 *• PRO*
+ 	 *• PLUS*
+	 *• THINKING*
+     *• MASTER*
+     *• SUPERLONG*
+     *• CREATIVE*
+     *• SUPERCREATIVE*
+     * -- adjust text*
+     *• TEXTVERYFEW*
+     *• TEXTFEW*
+     *• TEXTLOW*
+     *• TEXTLITTLE*
+	 *• TEXTMEDIUM*
+     *• TEXTLONG*
+     *• TEXTVERYLONG*
+     *• TEXTEXTRALONG*
+     *• TEXTULTRALONG*
 **/CLAUDEModel** - Change model
     *• claude-haiku-4*
     *• claude-sonnet-4*
     *• claude-sonnet-4-5* - Default
     *• claude-opus-4
-**/DEEPSEEKSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit
+**/DEEPSEEKSwitch** - Change Text limit
+	 *• FREE*
+ 	 *• PRO*
+ 	 *• PLUS*
+	 *• THINKING*
+     *• MASTER*
+     *• SUPERLONG*
+     *• CREATIVE*
+     *• SUPERCREATIVE*
+     * -- adjust text*
+     *• TEXTVERYFEW*
+     *• TEXTFEW*
+     *• TEXTLOW*
+     *• TEXTLITTLE*
+	 *• TEXTMEDIUM*
+     *• TEXTLONG*
+     *• TEXTVERYLONG*
+     *• TEXTEXTRALONG*
+     *• TEXTULTRALONG*
 **/DEEPSEEKModel** - Change model
     *• deepseek-v4-flash* - Default
     *• deepseek-v4-pro*
@@ -4205,7 +4323,7 @@ end
 
 -- ========== COMMANDS ==========
 local HELP_TEXT = [=[
-# All Command (42 commands)
+# All Command (37 commands)
 **/Help** - show commands
 **/Cal** | **/Calculate** *math* - simple math
 **/ClearText** - clear chat logs
@@ -4219,7 +4337,25 @@ local HELP_TEXT = [=[
 **/CheckURLStatus** *URL* - HEAD request to URL
 **/CheckSYN** - check syn.request availability
 [color=255,0,0](REMOVED)[/color] **/EnableUSLD** - enable unknown-language debug printing (NOT WORKING)
-**/GPTSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit
+**/GPTSwitch** - Change Text limit
+	 *• FREE*
+ 	 *• PRO*
+ 	 *• PLUS*
+	 *• THINKING*
+     *• MASTER*
+     *• SUPERLONG*
+     *• CREATIVE*
+     *• SUPERCREATIVE*
+     * -- adjust text*
+     *• TEXTVERYFEW*
+     *• TEXTFEW*
+     *• TEXTLOW*
+     *• TEXTLITTLE*
+	 *• TEXTMEDIUM*
+     *• TEXTLONG*
+     *• TEXTVERYLONG*
+     *• TEXTEXTRALONG*
+     *• TEXTULTRALONG*
 **/GPTModel** - Change model
     *• gpt-4o-mini* - Default
     *• gpt-5-mini*
@@ -4229,7 +4365,25 @@ local HELP_TEXT = [=[
 	*• gpt-5.6-luna*
 	*• gpt-5.6-terra*
 	*• gpt-5.6-sol*
-**/GEMINISwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
+**/GEMINISwitch** - Change Text limit 
+	 *• FREE*
+ 	 *• PRO*
+ 	 *• PLUS*
+	 *• THINKING*
+     *• MASTER*
+     *• SUPERLONG*
+     *• CREATIVE*
+     *• SUPERCREATIVE*
+     * -- adjust text*
+     *• TEXTVERYFEW*
+     *• TEXTFEW*
+     *• TEXTLOW*
+     *• TEXTLITTLE*
+	 *• TEXTMEDIUM*
+     *• TEXTLONG*
+     *• TEXTVERYLONG*
+     *• TEXTEXTRALONG*
+     *• TEXTULTRALONG*
 **/GEMINIModel** - Change model
     *• gemini-2.5-flash-lite*
     *• gemini-3.1-flash-lite* - Default
@@ -4237,14 +4391,50 @@ local HELP_TEXT = [=[
     *• gemini-2.5-pro*
     *• gemini-3.5-flash*
 	*• gemini-3.6-flash*
-    *• gemini-3.7-flash*
-**/CLAUDESwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit 
+	*• gemini-3.7-flash*
+**/CLAUDESwitch** - Change Text limit 
+	 *• FREE*
+ 	 *• PRO*
+ 	 *• PLUS*
+	 *• THINKING*
+     *• MASTER*
+     *• SUPERLONG*
+     *• CREATIVE*
+     *• SUPERCREATIVE*
+     * -- adjust text*
+     *• TEXTVERYFEW*
+     *• TEXTFEW*
+     *• TEXTLOW*
+     *• TEXTLITTLE*
+	 *• TEXTMEDIUM*
+     *• TEXTLONG*
+     *• TEXTVERYLONG*
+     *• TEXTEXTRALONG*
+     *• TEXTULTRALONG*
 **/CLAUDEModel** - Change model
     *• claude-haiku-4*
     *• claude-sonnet-4*
     *• claude-sonnet-4-5* - Default
     *• claude-opus-4
-**/DEEPSEEKSwitch** *[FREE/PRO/PLUS/THINKING/MASTER/SUPERLONG/CREATIVE/SUPERCREATIVE]* - Change Text limit
+**/DEEPSEEKSwitch** - Change Text limit
+	 *• FREE*
+ 	 *• PRO*
+ 	 *• PLUS*
+	 *• THINKING*
+     *• MASTER*
+     *• SUPERLONG*
+     *• CREATIVE*
+     *• SUPERCREATIVE*
+     * -- adjust text*
+     *• TEXTVERYFEW*
+     *• TEXTFEW*
+     *• TEXTLOW*
+     *• TEXTLITTLE*
+	 *• TEXTMEDIUM*
+     *• TEXTLONG*
+     *• TEXTVERYLONG*
+     *• TEXTEXTRALONG*
+     *• TEXTULTRALONG*
 **/DEEPSEEKModel** - Change model
     *• deepseek-v4-flash* - Default
     *• deepseek-v4-pro*
