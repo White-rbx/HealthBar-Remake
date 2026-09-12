@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.895 Beta]]
+local v_ver = [[Script ahh 2.897 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -683,7 +683,7 @@ Text(
     "Friend in the server: 0",
     false,
     255, 255, 255,
-    30, 30, 30,
+    0, 255, 0,
     function(txtLabel)
         local players = game:GetService("Players"):GetPlayers()
         local count = #players - 1
@@ -862,14 +862,14 @@ Text(
 	"00:00:00",                     
 	false,                           
     255, 255, 255,                   
-    30, 30, 30,                   
+    0, 255, 255,                   
     function(txtLabel)             
         -- ดึงเวลาปัจจุบันตามโลกจริง
         local timeData = os.date("*t")
         local formattedTime = string.format("%02d:%02d:%02d", timeData.hour, timeData.min, timeData.sec)
         
         -- อัปเดตข้อความบน TextLabel
-        txtLabel.Text = "Earth Clock (IRL): " .. formattedTime
+        txtLabel.Text = "Real Time Clock: " .. formattedTime
     end,
     nil                         
 						)
