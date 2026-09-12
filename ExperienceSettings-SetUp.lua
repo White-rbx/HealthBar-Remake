@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 1.1 Alpha]]
+local v_ver = [[ExperienceSettings-SetUp 1.2 Oof]]
 
 ------------------------------------------------------------------------------------------
 
@@ -335,11 +335,12 @@ ban(
 	"You are the CEO you cannot using our script."
 ) -- Crazy LMAO
 
+ban("makiro5556", "Bad Behavior", "Appeal to John in discord | Last seen: 'Nothingness'; Game ID: 6252985844")
+
 --[[]]
 
 local banData = isBanned()
 local isBannedUser = banData ~= nil
-
 local anim = {
 	0,85215834651365,113081160999318,110302272078310,74005522254669,74901110508812,
 	100677834962357,119529343123060,102721895347323,112327619673337,73610060099140,
