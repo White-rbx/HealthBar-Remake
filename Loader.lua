@@ -1,4 +1,4 @@
--- Loader script 2.9
+-- Loader script 2.91
 
 ------------------------------------------------------------------------------------------
 
@@ -1989,8 +1989,7 @@ end)
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 
-local ExperienceSettings =
-    CoreGui:WaitForChild("ExperienceSettings")
+local ExperienceSettings
 
 local CurrentLanguage = "EN"
 local latestClick = "EN"
@@ -2840,6 +2839,10 @@ local function SetLanguageButtonsLocked(locked)
 end
 
 local function ChangeLanguage(language)
+    if not ExperienceSettings then
+        return
+    end
+
     if TranslationBusy then
         return
     end
@@ -2936,23 +2939,29 @@ end
 -- Never translate the language selector itself.
 ins2:SetAttribute("SkipAutoTranslate", true)
 
--- Initial scan. No Paths are used.
-ScanInstance(ExperienceSettings)
+-- ExperienceSettings may be created/moved into CoreGui later.
+-- Wait for it in a separate thread so the rest of Loader.lua keeps running.
+task.spawn(function()
+    ExperienceSettings = CoreGui:WaitForChild("ExperienceSettings")
 
--- New GUI objects are picked up automatically.
-ExperienceSettings.DescendantAdded:Connect(function(obj)
-    task.defer(function()
-        if not obj
-            or not obj.Parent
-            or IsTranslationSkipped(obj) then
-            return
-        end
+    -- Initial scan. No Paths are used.
+    ScanInstance(ExperienceSettings)
 
-        ScanInstance(obj)
+    -- New GUI objects are picked up automatically.
+    ExperienceSettings.DescendantAdded:Connect(function(obj)
+        task.defer(function()
+            if not obj
+                or not obj.Parent
+                or IsTranslationSkipped(obj) then
+                return
+            end
 
-        if CurrentLanguage ~= "EN" then
-            ApplyCachedLanguage(CurrentLanguage)
-        end
+            ScanInstance(obj)
+
+            if CurrentLanguage ~= "EN" then
+                ApplyCachedLanguage(CurrentLanguage)
+            end
+        end)
     end)
 end)
 
