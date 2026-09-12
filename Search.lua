@@ -1,4 +1,4 @@
--- searcher... yes. 11.51
+-- searcher... yes. 11.52
 
 -- =====>> Saved Functions <<=====
 
@@ -423,7 +423,6 @@ InPage.Parent = Page
 local Book = Instance.new("Frame")
 Book.Name = "Bookmark"
 Book.Size = UDim2.new(1,0,1,0)
-Book.Position = UDim2.new(1,0,0,0)
 Book.BackgroundTransparency = 1
 Book.Visible = false
 Book.Parent = Page
@@ -431,6 +430,7 @@ Book.Parent = Page
 local vb = Instance.new("CanvasGroup")
 vb.Name = "ViewBookmark"
 vb.Size = UDim2.new(1,0,1,0)
+vb.Position = UDim2.new(1,0,0,0)
 vb.BackgroundColor3 = Color3.new(1,1,1)
 vb.BorderMode = Enum.BorderMode.Inset
 vb.BorderSizePixel = 5
@@ -1310,7 +1310,7 @@ back.MouseButton1Click:Connect(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search.lua"))()
 end)
 
-back.Visible = false
+back.Visible =false
 
 local pre = Instance.new("TextButton")
 pre.Name = "Preview"
@@ -1412,7 +1412,7 @@ btopic.Parent = vb
 local bscroll = Instance.new("ScrollingFrame")
 bscroll.Name = "BookmarList"
 bscroll.Size = UDim2.new(1,0,0.88,0)
-bscroll.Position = UDim2.new(0,0,1,-415)
+bscroll.Position = UDim2.new(0,0,0,25)
 bscroll.ScrollBarThickness = 5
 bscroll.ScrollingDirection = Enum.ScrollingDirection.Y
 bscroll.CanvasSize = UDim2.new(0,0,0,0)
