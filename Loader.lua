@@ -1,4 +1,4 @@
--- Loader script 3.3
+-- Loader script 3.4
 
 ------------------------------------------------------------------------------------------
 
@@ -2758,30 +2758,29 @@ local function MatchDynamicTemplate(template, text)
 
         if not startPos then
             local tail = template:sub(cursor)
+
             if tail ~= "" then
-                table.insert(
-                    patternParts,
+                patternParts[#patternParts + 1] =
                     EscapeLuaPattern(tail)
-                )
             end
+
             break
         end
 
         local permanent = template:sub(cursor, startPos - 1)
 
         if permanent ~= "" then
-            table.insert(
-                patternParts,
+            patternParts[#patternParts + 1] =
                 EscapeLuaPattern(permanent)
-            )
         end
 
-        table.insert(patternParts, "(.-)")
-        table.insert(dynamicOrder, tonumber(index))
+        patternParts[#patternParts + 1] = "(.-)"
+        dynamicOrder[#dynamicOrder + 1] = tonumber(index)
+
         cursor = endPos + 1
     end
 
-    table.insert(patternParts, "$")
+    patternParts[#patternParts + 1] = "$"
 
     local captures = {
         string.match(
@@ -2791,8 +2790,7 @@ local function MatchDynamicTemplate(template, text)
     }
 
     if #dynamicOrder == 0 then
-        return text == template and {}
-            or nil
+        return nil
     end
 
     if #captures ~= #dynamicOrder then
@@ -2801,8 +2799,8 @@ local function MatchDynamicTemplate(template, text)
 
     local values = {}
 
-    for i, index in ipairs(dynamicOrder) do
-        values[index] = captures[i]
+    for i = 1, #dynamicOrder do
+        values[dynamicOrder[i]] = captures[i]
     end
 
     return values
