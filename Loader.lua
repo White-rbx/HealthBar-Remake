@@ -1,4 +1,4 @@
--- Loader script 2.91
+-- Loader script 3
 
 ------------------------------------------------------------------------------------------
 
@@ -2629,6 +2629,234 @@ local function GetCachedTranslation(sourceText, language)
     return nil, template, protected
 end
 
+local TranslationState =
+    setmetatable({}, {__mode = "k"})
+
+local function EscapeLuaPattern(value)
+    return tostring(value or ""):gsub("([%%%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
+end
+
+-- Match the current text against a permanent/dynamic template.
+-- Example:
+--   "Health: __DYNAMIC_1__"
+--   "Health: 100"
+-- -> { [1] = "100" }
+local function MatchDynamicTemplate(template, text)
+    template = tostring(template or "")
+    text = tostring(text or "")
+
+    local patternParts = {"^"}
+    local dynamicOrder = {}
+    local cursor = 1
+
+    while true do
+        local startPos, endPos, index =
+            template:find("__DYNAMIC_(%d+)__", cursor)
+
+        if not startPos then
+            local tail = template:sub(cursor)
+            if tail ~= "" then
+                table.insert(
+                    patternParts,
+                    EscapeLuaPattern(tail)
+                )
+            end
+            break
+        end
+
+        local permanent = template:sub(cursor, startPos - 1)
+
+        if permanent ~= "" then
+            table.insert(
+                patternParts,
+                EscapeLuaPattern(permanent)
+            )
+        end
+
+        table.insert(patternParts, "(.-)")
+        table.insert(dynamicOrder, tonumber(index))
+        cursor = endPos + 1
+    end
+
+    table.insert(patternParts, "$")
+
+    local captures = {
+        string.match(
+            text,
+            table.concat(patternParts)
+        )
+    }
+
+    if #dynamicOrder == 0 then
+        return text == template and {}
+            or nil
+    end
+
+    if #captures ~= #dynamicOrder then
+        return nil
+    end
+
+    local values = {}
+
+    for i, index in ipairs(dynamicOrder) do
+        values[index] = captures[i]
+    end
+
+    return values
+end
+
+local function GetState(obj, property)
+    TranslationState[obj] =
+        TranslationState[obj] or {}
+
+    TranslationState[obj][property] =
+        TranslationState[obj][property] or {}
+
+    return TranslationState[obj][property]
+end
+
+local function BuildSourceState(obj, property, sourceText)
+    local state =
+        GetState(obj, property)
+
+    local template, protected =
+        SelectTextToTranslateOnly(sourceText)
+
+    state.SourceTemplate = template
+    state.DynamicValues = protected
+    state.SourceText =
+        RestoreSelectedText(
+            template,
+            protected
+        )
+
+    return state
+end
+
+local function GetStateTranslation(state, language)
+    if not state
+        or not state.SourceTemplate
+        or state.SourceTemplate == "" then
+        return nil
+    end
+
+    if language == "EN" then
+        return RestoreSelectedText(
+            state.SourceTemplate,
+            state.DynamicValues or {}
+        )
+    end
+
+    local translatedTemplate =
+        TranslationCache[language]
+        and TranslationCache[language][state.SourceTemplate]
+
+    if not translatedTemplate then
+        return nil
+    end
+
+    return RestoreSelectedText(
+        translatedTemplate,
+        state.DynamicValues or {}
+    )
+end
+
+local function ApplyStateToObject(obj, property, language)
+    if not obj
+        or not obj.Parent
+        or IsTranslationSkipped(obj) then
+        return false
+    end
+
+    local state =
+        TranslationState[obj]
+        and TranslationState[obj][property]
+
+    if not state then
+        return false
+    end
+
+    local rendered =
+        GetStateTranslation(
+            state,
+            language
+        )
+
+    if rendered == nil then
+        return false
+    end
+
+    if property == "Text"
+        and obj:IsA("TextBox")
+        and obj.TextEditable then
+        return false
+    end
+
+    TranslationApplied[obj] =
+        TranslationApplied[obj] or {}
+
+    TranslationApplied[obj][property] =
+        rendered
+
+    obj[property] = rendered
+    return true
+end
+
+local function UpdateDynamicState(obj, property, currentValue)
+    local state =
+        TranslationState[obj]
+        and TranslationState[obj][property]
+
+    if not state then
+        return false
+    end
+
+    -- 1. The GUI changed only its dynamic part while
+    --    already translated. Match against the translated template.
+    if CurrentLanguage ~= "EN" then
+        local translatedTemplate =
+            TranslationCache[CurrentLanguage]
+            and TranslationCache[CurrentLanguage][state.SourceTemplate]
+
+        if translatedTemplate then
+            local translatedDynamic =
+                MatchDynamicTemplate(
+                    translatedTemplate,
+                    currentValue
+                )
+
+            if translatedDynamic then
+                state.DynamicValues =
+                    translatedDynamic
+
+                return true
+            end
+        end
+    end
+
+    -- 2. The GUI may have restored/changed the English text.
+    local sourceDynamic =
+        MatchDynamicTemplate(
+            state.SourceTemplate,
+            currentValue
+        )
+
+    if sourceDynamic then
+        state.DynamicValues =
+            sourceDynamic
+
+        state.SourceText =
+            RestoreSelectedText(
+                state.SourceTemplate,
+                sourceDynamic
+            )
+
+        return true
+    end
+
+    return false
+end
+
 local function BindProperty(obj, property)
     if not obj
         or not obj.Parent
@@ -2655,15 +2883,33 @@ local function BindProperty(obj, property)
         return
     end
 
+    local currentValue =
+        tostring(obj[property] or "")
+
+    local state =
+        BuildSourceState(
+            obj,
+            property,
+            currentValue
+        )
+
     TranslationSource[obj][property] =
-        obj[property]
+        state.SourceText
+
+    TranslationApplied[obj][property] =
+        currentValue
 
     TranslationConnections[obj][property] =
         obj:GetPropertyChangedSignal(property):Connect(function()
-            local currentValue = obj[property]
+            local changedValue =
+                tostring(obj[property] or "")
 
-            if TranslationApplied[obj]
-                and TranslationApplied[obj][property] == currentValue then
+            local applied =
+                TranslationApplied[obj]
+                and TranslationApplied[obj][property]
+
+            -- Ignore our own translated write.
+            if applied == changedValue then
                 return
             end
 
@@ -2673,14 +2919,64 @@ local function BindProperty(obj, property)
                 return
             end
 
-            TranslationSource[obj][property] =
-                currentValue
-
+            -- English is always the canonical source.
             if CurrentLanguage == "EN" then
+                local newState =
+                    BuildSourceState(
+                        obj,
+                        property,
+                        changedValue
+                    )
+
+                TranslationSource[obj][property] =
+                    newState.SourceText
+
                 TranslationApplied[obj][property] =
-                    currentValue
+                    changedValue
+
                 return
             end
+
+            -- Most changes are only dynamic values.
+            -- Keep the already-translated permanent text.
+            if UpdateDynamicState(
+                obj,
+                property,
+                changedValue
+            ) then
+                local rendered =
+                    GetStateTranslation(
+                        TranslationState[obj][property],
+                        CurrentLanguage
+                    )
+
+                if rendered then
+                    TranslationApplied[obj][property] =
+                        rendered
+
+                    if rendered ~= changedValue then
+                        obj[property] = rendered
+                    end
+                end
+
+                return
+            end
+
+            -- A genuinely new permanent string appeared.
+            -- Rebuild the source template instead of treating
+            -- the previously translated text as English.
+            local newState =
+                BuildSourceState(
+                    obj,
+                    property,
+                    changedValue
+                )
+
+            TranslationSource[obj][property] =
+                newState.SourceText
+
+            TranslationApplied[obj][property] =
+                changedValue
 
             task.defer(function()
                 if not obj.Parent
@@ -2688,48 +2984,54 @@ local function BindProperty(obj, property)
                     return
                 end
 
-                local translated, template, protected =
-                    GetCachedTranslation(
-                        currentValue,
-                        CurrentLanguage
-                    )
+                local language =
+                    CurrentLanguage
 
-                if translated then
-                    TranslationApplied[obj][property] =
-                        translated
-
-                    obj[property] = translated
+                if language == "EN" then
                     return
                 end
 
-                if not template then
+                local template =
+                    newState.SourceTemplate
+
+                if template == "" then
+                    return
+                end
+
+                local cached =
+                    TranslationCache[language]
+                    and TranslationCache[language][template]
+
+                if cached then
+                    ApplyStateToObject(
+                        obj,
+                        property,
+                        language
+                    )
                     return
                 end
 
                 local apiTranslation =
                     RequestTranslation(
                         template,
-                        CurrentLanguage
+                        language
                     )
 
-                if apiTranslation then
-                    TranslationCache[CurrentLanguage][template] =
-                        apiTranslation
-
-                    local restored =
-                        RestoreSelectedText(
-                            apiTranslation,
-                            protected
-                        )
-
-                    TranslationApplied[obj][property] =
-                        restored
-
-                    obj[property] = restored
-
-                    SaveTranslationCache()
-                    PushRemoteCache()
+                if not apiTranslation then
+                    return
                 end
+
+                TranslationCache[language][template] =
+                    apiTranslation
+
+                ApplyStateToObject(
+                    obj,
+                    property,
+                    language
+                )
+
+                SaveTranslationCache()
+                PushRemoteCache()
             end)
         end)
 end
@@ -2758,6 +3060,10 @@ local function BindTextBoxEditable(obj)
                     TranslationApplied[obj].Text = nil
                 end
 
+                if TranslationState[obj] then
+                    TranslationState[obj].Text = nil
+                end
+
                 return
             end
 
@@ -2778,7 +3084,11 @@ local function ScanInstance(obj)
 
     elseif obj:IsA("TextBox") then
 
-        BindProperty(obj, "PlaceholderText")
+        BindProperty(
+            obj,
+            "PlaceholderText"
+        )
+
         BindTextBoxEditable(obj)
 
         if not obj.TextEditable then
@@ -2795,38 +3105,161 @@ end
 local function ApplyCachedLanguage(language)
     CurrentLanguage = language
 
-    for obj, properties in pairs(TranslationSource) do
+    for obj, properties in pairs(TranslationState) do
         if obj
             and obj.Parent
             and not IsTranslationSkipped(obj) then
 
-            for property, sourceText in pairs(properties) do
+            for property, state in pairs(properties) do
                 if property == "Text"
                     and obj:IsA("TextBox")
                     and obj.TextEditable then
                     continue
                 end
 
-                local translated =
-                    GetCachedTranslation(
-                        sourceText,
+                local rendered =
+                    GetStateTranslation(
+                        state,
                         language
                     )
 
-                if translated then
-                    TranslationApplied[obj][property] =
-                        translated
+                if rendered then
+                    TranslationApplied[obj] =
+                        TranslationApplied[obj] or {}
 
-                    obj[property] = translated
-                elseif language == "EN" then
                     TranslationApplied[obj][property] =
-                        sourceText
+                        rendered
 
-                    obj[property] = sourceText
+                    obj[property] = rendered
+
+                    TranslationSource[obj] =
+                        TranslationSource[obj] or {}
+
+                    TranslationSource[obj][property] =
+                        state.SourceText
                 end
             end
         end
     end
+end
+
+local function SetPermanentTranslationSource(
+    obj,
+    property,
+    sourceText
+)
+    local state =
+        BuildSourceState(
+            obj,
+            property,
+            sourceText
+        )
+
+    TranslationSource[obj] =
+        TranslationSource[obj] or {}
+
+    TranslationSource[obj][property] =
+        state.SourceText
+end
+
+local function ChangeLanguage(language)
+    if not ExperienceSettings then
+        return
+    end
+
+    if TranslationBusy then
+        return
+    end
+
+    -- Same language = zero work, zero API calls.
+    if latestClick == language then
+        return
+    end
+
+    latestClick = language
+    TranslationBusy = true
+
+    SetLanguageButtonsLocked(true)
+
+    task.spawn(function()
+        PullRemoteCache()
+
+        -- Re-scan in case the game created new GUI elements.
+        ScanInstance(ExperienceSettings)
+
+        if language == "EN" then
+            ApplyCachedLanguage("EN")
+
+            TranslationBusy = false
+            SetLanguageButtonsLocked(false)
+            RefreshLanguageButtons()
+            return
+        end
+
+        -- Instant local/remote cache pass first.
+        ApplyCachedLanguage(language)
+
+        -- Find unique uncached permanent templates.
+        local pending = {}
+        local pendingSeen = {}
+
+        for obj, properties in pairs(TranslationState) do
+            if obj
+                and obj.Parent
+                and not IsTranslationSkipped(obj) then
+
+                for property, state in pairs(properties) do
+                    if property == "Text"
+                        and obj:IsA("TextBox")
+                        and obj.TextEditable then
+                        continue
+                    end
+
+                    local template =
+                        state.SourceTemplate
+
+                    if template
+                        and template ~= ""
+                        and not (
+                            TranslationCache[language]
+                            and TranslationCache[language][template]
+                        )
+                        and not pendingSeen[template] then
+
+                        pendingSeen[template] =
+                            true
+
+                        pending[#pending + 1] =
+                            template
+                    end
+                end
+            end
+        end
+
+        -- API calls are serialized and rate-limited.
+        for _, template in ipairs(pending) do
+            local apiTranslation =
+                RequestTranslation(
+                    template,
+                    language
+                )
+
+            if apiTranslation then
+                TranslationCache[language][template] =
+                    apiTranslation
+            end
+        end
+
+        SaveTranslationCache()
+        PushRemoteCache()
+
+        -- Apply anything added by the API pass.
+        ApplyCachedLanguage(language)
+
+        TranslationBusy = false
+        SetLanguageButtonsLocked(false)
+        RefreshLanguageButtons()
+    end)
 end
 
 local function SetLanguageButtonsLocked(locked)
