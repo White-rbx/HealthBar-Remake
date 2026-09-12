@@ -1,4 +1,4 @@
--- searcher... yes. 11.52
+-- searcher... yes. 11.53
 
 -- =====>> Saved Functions <<=====
 
@@ -423,6 +423,7 @@ InPage.Parent = Page
 local Book = Instance.new("Frame")
 Book.Name = "Bookmark"
 Book.Size = UDim2.new(1,0,1,0)
+Book.Position = UDim2.new(1,0,0,0)
 Book.BackgroundTransparency = 1
 Book.Visible = false
 Book.Parent = Page
@@ -430,7 +431,6 @@ Book.Parent = Page
 local vb = Instance.new("CanvasGroup")
 vb.Name = "ViewBookmark"
 vb.Size = UDim2.new(1,0,1,0)
-vb.Position = UDim2.new(1,0,0,0)
 vb.BackgroundColor3 = Color3.new(1,1,1)
 vb.BorderMode = Enum.BorderMode.Inset
 vb.BorderSizePixel = 5
