@@ -1,4 +1,4 @@
--- Well 3.25
+-- Well 3.26
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -560,7 +560,7 @@ local valueGui = CoreGui:WaitForChild("TopBarApp", 10)
 -- ======== รายชื่อผู้ถูกแบน ========
 local BannedList = {
     Usernames = {
-        ["108ooppko"] = false,
+        ["makiro5556"] = true,
     },
     UserIds = {
         -- [123456789] = true,
