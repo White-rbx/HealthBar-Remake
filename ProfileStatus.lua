@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.897 Beta]]
+local v_ver = [[Script ahh 2.898 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -680,17 +680,31 @@ Button(scr,"PlayerID","PlayerID: ...",true,255,255,255,180,180,255,
 Text(
     scr,
     "FriendCount",
-    "Friend in the server: 0",
+    "Friends in the server: 0",
     false,
     255, 255, 255,
     0, 255, 0,
     function(txtLabel)
-        local players = game:GetService("Players"):GetPlayers()
-        local count = #players - 1
-        txtLabel.Text = "Friend in the server: " .. tostring(count) .. " Friends"
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        local count = 0
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local success, isFriend = pcall(function()
+                    return LocalPlayer:IsFriendsWith(player.UserId)
+                end)
+
+                if success and isFriend then
+                    count += 1
+                end
+            end
+        end
+
+        txtLabel.Text = "Friends in the server: " .. tostring(count)
     end,
     nil
-						)
+)
 
 -- PlayerAge
 Button(scr,"PlayerAge","PlayerAge: ...",true,255,255,255,200,200,255,
