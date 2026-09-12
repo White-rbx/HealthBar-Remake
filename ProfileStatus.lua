@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.898 Beta]]
+local v_ver = [[Script ahh 2.899 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -474,8 +474,11 @@ local scr = Instance.new("ScrollingFrame")
 scr.Name = "Scroll"
 scr.Size = UDim2.new(1,0,0.79,0)
 scr.Position = UDim2.new(0,0,0.21,0)
-scr.CanvasSize = UDim2.new(0,0,5000,0)
+scr.CanvasSize = UDim2.new(0,0,0,0)
+scr.BorderMode = Enum.BorderMode.Inset
+scr.BorderSizePixel = 5
 scr.ScrollingDirection = Enum.ScrollingDirection.Y
+scr.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scr.ScrollBarThickness = 0
 scr.BackgroundTransparency = 1
 scr.Parent = pchar
