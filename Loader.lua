@@ -1,4 +1,4 @@
--- Loader script 3.7
+-- Loader script 4
 
 ------------------------------------------------------------------------------------------
 
@@ -1982,12 +1982,13 @@ end)
 
 --======= ENGLISH ========--
 --// =====================================================
---// TEXT-DETECTION LOCALIZATION ENGINE v1
+--// TEXT-DETECTION LOCALIZATION ENGINE v2
 --// No Path-based translation.
 --// =====================================================
 
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
+local LocalizationService = game:GetService("LocalizationService")
 
 local ExperienceSettings
 
@@ -2001,8 +2002,8 @@ local LastApiRequest = 0
 local TranslationCacheFile =
     "ExperienceSettings/translation_cache.json"
 
--- Local-only translation mode.
--- No external translation provider is used.
+-- Roblox LocalizationService is the primary translation provider.
+-- Local TranslationDB/cache remains as a fallback.
 local REMOTE_CACHE_URL = nil
 
 
@@ -2022,6 +2023,19 @@ local TranslationApplied =
 
 local TranslationConnections =
     setmetatable({}, {__mode = "k"})
+
+local LocaleMap = {
+    ["EN"] = "en-us",
+    ["ES"] = "es",
+    ["TH"] = "th",
+    ["PT-BR"] = "pt-br",
+    ["PT-PT"] = "pt-pt",
+    ["RU"] = "ru",
+    ["KO"] = "ko",
+}
+
+local LocalizationTranslators = {}
+local LocalizationReady = {}
 
 local TranslationCache = {
     ["EN"] = {},
@@ -2312,10 +2326,344 @@ local TranslationDB = {
     },
 }
 
+local function StripRichText(text)
+    return tostring(text or ""):gsub("<[^>]->", "")
+end
+
+local function PlainCacheKey(text)
+    return "__PLAIN_RICHTEXT__" .. StripRichText(text)
+end
+
+local LocalizationSourceCandidates = {
+    "Type /Help to show all commands or Say something...",
+    "Confirm API",
+    "Unsaved API",
+    "[ Your API here (ChatGPT or Gemini) ]",
+    "Status: Unknown",
+    "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>",
+    "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>",
+    "Version:<b> VER </b>",
+    "[ User on ScriptBlox/HaxHell ]",
+    "“Creator of the ExperiencSettings.”",
+    "The ExperienceSettings is debug tools you can use on your own, there are a lot of tools! For HealthBar was a remake of better and smoother and ValueLabels for show values. If your ExperienceSettings was Disabled there are three reasons,  • HumanoidRootPart was removed too long.  • The Experience doesn't support the ExperienceSettings.  • Script failed to load. If you enjoy it, you can support me on discord! Thank you for using ExperienceSettings! ♥️  54% Gui is made by hand 10% Script is made by hand 36% Script is made by ai  Creator: @5teve3019D (Gui, Little Script) Helper: ChatGPT (Script) <-- He got a lot of complaints lol. Little Helper: Copilot of GitHub (Script) Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(  ======================== ➕ = Add something 📢 = Announcements 🔨 = In-develop 🔷 = Plan ahead for updates ✅ = Done ⚠️ = Have issues 🟠 = Updating soon ❌ = Bug ⚫ = Cannot fix ➖ = Disconnected or discontinued ------- 📌 Updated: Update in this information is no longer appear now, please join our discord community to following update! ------- 🔁 In progress: No longer appear features ------- ❌ Failed: No longer appear unavailable features -------  ✨ SCRIPT CREDITS ✨ [ Script Name ] by [ Creator ] [ Verification Status ]  We want to say that your script is awesome, and it is used in our project for debugging and educational purposes. Thank you for your contribution :3 ❤️ - Debugger  -- Credits List -- 'Ketamine' by @Cherry (✓ Verified) 'OG AFEM – Legacy' by @Imperial (✓ Verified) 'Chat' by Unknown user 'UNC' by Unknown user 'REM' by @evildotcom (X Not verified) 'GameProber' by @Imperial (✓ Verified) 'AudioPlayer' by Unknown user 'EmoteSelect' by Unknown user 'Universal Movement Predictor' by @zephyrr (X Not verified) 'Server Position Predictor' by @zephyrr (X Not verified) 'Open Source Universal Chat' by @neutral (X Not verified)  -- Notice to Script Creators -- If you are a script creator listed above and do not want your script to be included, please contact us via our Discord forum, and we will remove it immediately. ",
+    "Hide",
+    "Oh, if the ExperienceSettings was disabled. You can hide the text by click the button.",
+    "Leave The Experience",
+    "Reset character",
+    "Resume",
+    "A button that doesn't do NOTHING",
+    "Player :",
+    "ON",
+    "OFF",
+    "Enable ValueLabels",
+    "<b><u>ValueLabel</u></b> Show ValueLabel at the Top HealthBar. • FPS - Frame Per second • HP - Health ( How to read: 100.000 HP = 100 HP ) • WS/s - Walkspeed per studs ( How to read: 16.000 WS/s = 16 WS/s )",
+    "Shaders - Sunset",
+    "<b><u>Shaders</u></b> What a beautiful sunset! Graphic quality recommend 6+",
+    "White Light",
+    "<b><u>White Light</u></b> Just a PointLight around the you. Useful in the dark.",
+    "RGB Light",
+    "<b><u>RGB Light</u></b> Same as White Light, but RGB.",
+    "ESP",
+    "<b><u>ESP</u></b> See all players around the map. Also TextLabel will change color following team color.",
+    "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>",
+    "<b><u>Damage Overlay</u></b> Displays visual damage effects when your character takes damage.  <stroke color=\"rgb(255,0,0)\" thickness=\"1\"> <font color=\"#ff5555\"> <b>⚠ Photosensitive Epilepsy Warning</b>  This effect may contain: • Flashing lights • Rapid brightness changes • Screen color pulses  If you experience dizziness, eye strain, or discomfort, please turn this feature <b>OFF</b> immediately. </font></stroke>",
+    "MoreToggles",
+    "<b><u>MoreToggles</u></b> Open second toggle menu.",
+    "Show Physics",
+    "<b><u>Show Physics</u></b> Displays colorful trajectory lines (\"player speedometers\") and landing prediction points showing where your character is expected to land.",
+    "LighterCyan.ai (Discontinued)",
+    "<b><u>LighterCyan.ai</u></b> It's discontinued bro. 😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭",
+    "Last Death",
+    "<b><u>Last Death</u></b> It will show last position where you die at as a frozen ghost character...",
+    "ServerPositionPredictor (By @zephyrr)",
+    "<b><u>ServerPositionPredictor</u></b> Showing between Server and Client. Server is a second character of you. (Displaying as like ping) Client is you.",
+    "HealthBar",
+    "<b><u>HealthBar</u></b> Show HealthBar at the Top Right.",
+    "Global Physics",
+    "<b><u>Global Physics</u></b> Same as Show Physics Toggle, but you're just seeing the physics of other players and objects too.",
+    "Disable Death Sound",
+    "<b><u>Death Sound</u></b> Play sound after character dead.",
+    "Relax / Gif Animation Predictor",
+    "<b><u>Gif Animation Editor</u></b> Show or hide the Gif Animation Editor window.",
+    "FreeCam (Mobile)",
+    "<b><u>FreeCam</u></b> \tExplore around the world with FreeCam! (Mobile Only)",
+    "Almost Endless Fallen (-50K)",
+    "<b><u>Almost Endless Fallen</u></b> Set FallenPartDestroyHeight at -50000.",
+    "Flashlight",
+    "<b><u>Flashlight</u></b> It will make you in the first person with light, and also recommend set graphic quality at 6+",
+    "ESP Highlight Players & Non-Players",
+    "<b><u>ESP Highlight Players & Non-Players</u></b> It will highlight HumanoidRootPart. Players is <font color=\"rgb(0,255,0)\">green</font> and Non-Players is <font color=\"rgb(255,10,10)\">red</font>.",
+    "Shift Lock (Mobile)",
+    "<b><u>Shift Lock</u></b> Shift Lock for Mobile players. Also you can CUSTOMIZE CROSSHAIR by open <b>Settings - 2</b> in <b>Settings - Loader Rejoiner</b>!",
+    "Hitbox Shower",
+    "<b><u>Hitbox Shower</u></b> See all hitbox players  (Using ViewportFrame)",
+    "Settings",
+    "Drag",
+    "Image",
+    "Example: 'Folder/'",
+    "Idle's FPS",
+    "Save",
+    "When Click's FPS",
+    "Frame Rate",
+    "Idle Frame Rate",
+    "When Click",
+    "When Click Frame Rate",
+    "<u><b>Editor</b></u>",
+    "Idle",
+    "Relax / Gif Animation Editor by <font color='rgb(85,255,255)'>5teve3019D</font>",
+    "Debugs page is <b><u>not</u></b> done yet. Try to press the button at the top right.",
+    "Untitled Song",
+    "CreatorID: ID ",
+    "Creator: NAME",
+    "Open Developer console",
+    "Drop Tool",
+    "Drop all tools",
+    "PlaceID: ID",
+    "PlayerAge: COUNT",
+    "PlayerBirth: DATE",
+    "Position: ASIX",
+    "TimeOfDay: DATE",
+    "AFK: TIME | LastAFK: TIME",
+    "CameraMode: ENUM",
+    "CharacterType: RIGTYPE",
+    "BestDamage: COUNT | LastDamage: COUNT",
+    "Deaths: COUNT",
+    "Friends in the server: COUNT",
+    "BestHeal: COUNT | LastHeal: COUNT",
+    "HoldingTool: ITEM",
+    "Tools: AMOUNT",
+    "JumpPower: NUM",
+    "MaxHealth: NUM",
+    "PlayingTime: TIME",
+    "Real Time Clock: TIME",
+    "-- <b>Buttons</b> --",
+    "-- <b>Texts</b> --",
+    "StandingOn: MATERIAL",
+    "WalkSpeed: NUM",
+    "<b>Free</b>",
+    "<b>Key</b>",
+    "<b>Paid</b>",
+    "<b>Patched</b>",
+    "<b>Verified</b>",
+    "<b><i>Bookmark</i></b>",
+    "<b><i>View</i></b>",
+    "<font size='12'><b>Zero Point Instant Steal & more</b></font> Steal An Egg By @API Not supported Click 'View' for more details.",
+    "<b>Copy</b>",
+    "<b>Execute</b>",
+    "<b>Remove from the bookmark page</b>",
+    "<b>View</b>",
+    "From: API",
+    "<b>Back »</b>",
+    "<b>Bookmark page</b>",
+    "Creation Date: DATE",
+    "By @USER",
+    "<b>Dislike: COUNT</b>",
+    "<b>Description</b>",
+    "<b>Like: COUNT</b>",
+    "<b>Raw Script</b>",
+    "<b>Tag</b>",
+    "Universal Script 📌",
+    "<b>Visit: COUNT</b>",
+    "The ExperienceSettings has been deactivated for some reason.",
+    "Copy",
+    "Execute",
+    "<b>Don't show this again</b>",
+    "<b>Remind Me Later</b>",
+    "<b><font size=\"12\">Happy 1st Anniversary of The ExperienceSettings!</font></b> We want to let you know for those who using our script; we want to say <b>thank you for using our script!</b>    To close this <b>GUI</b> you can simply click <b><font size=\"9\">\"Remind me later.\"</font></b> or <b><font size=\"9\">\"Dont show this again.\"</font></b> button to continue use The ExperienceSettings.",
+    "re-chat",
+    "Ask anything..."
+}
+
+local SimilarSourceCache =
+    setmetatable({}, {__mode = "k"})
+
+local function NormalizeSimilarityText(text)
+    local value = tostring(text or "")
+
+    -- Newline / tab differences should not prevent a Localization Table match.
+    value = value:gsub("\r\n", " ")
+    value = value:gsub("[\r\n\t]", " ")
+    value = value:gsub("%s+", " ")
+    value = value:gsub("^%s+", "")
+    value = value:gsub("%s+$", "")
+
+    -- Common typography differences.
+    value = value:gsub("“", '"')
+    value = value:gsub("”", '"')
+    value = value:gsub("‘", "'")
+    value = value:gsub("’", "'")
+
+    return value:lower()
+end
+
+local function SimilarityTextWithoutRichText(text)
+    return NormalizeSimilarityText(
+        StripRichText(text)
+    )
+end
+
+local function CommonPrefixRatio(a, b)
+    local length = math.min(#a, #b)
+    if length == 0 then
+        return 1
+    end
+
+    local same = 0
+    for i = 1, length do
+        if a:sub(i, i) ~= b:sub(i, i) then
+            break
+        end
+        same += 1
+    end
+
+    return same / math.max(#a, #b)
+end
+
+local function TokenSimilarity(a, b)
+    local function makeTokens(value)
+        local tokens = {}
+        for token in value:gmatch("[%w@#%%_%-]+") do
+            tokens[#tokens + 1] = token
+        end
+        return tokens
+    end
+
+    local ta = makeTokens(a)
+    local tb = makeTokens(b)
+
+    if #ta <= 1 or #tb <= 1 then
+        return 0
+    end
+
+    local lookup = {}
+    for _, token in ipairs(ta) do
+        lookup[token] = true
+    end
+
+    local common = 0
+    local used = {}
+
+    for _, token in ipairs(tb) do
+        if lookup[token] and not used[token] then
+            used[token] = true
+            common += 1
+        end
+    end
+
+    return (2 * common) / (#ta + #tb)
+end
+
+local function FindSimilarLocalizationSource(sourceText)
+    local source = tostring(sourceText or "")
+    if source == "" then
+        return nil
+    end
+
+    SimilarSourceCache[source] =
+        SimilarSourceCache[source] or {}
+
+    local cached = SimilarSourceCache[source].Resolved
+    if cached then
+        return cached
+    end
+
+    local normalized = NormalizeSimilarityText(source)
+    local plainNormalized =
+        SimilarityTextWithoutRichText(source)
+
+    -- First pass: exact normalized match.
+    for _, candidate in ipairs(LocalizationSourceCandidates) do
+        if NormalizeSimilarityText(candidate) == normalized then
+            SimilarSourceCache[source].Resolved = candidate
+            return candidate
+        end
+    end
+
+    -- Second pass: the canonical source may be in TranslationDB but not in List.
+    for _, entries in pairs(TranslationDB) do
+        for candidate in pairs(entries) do
+            if NormalizeSimilarityText(candidate) == normalized then
+                SimilarSourceCache[source].Resolved = candidate
+                return candidate
+            end
+        end
+    end
+
+    -- Third pass: high-confidence fuzzy match.
+    local bestCandidate = nil
+    local bestScore = 0
+
+    local function testCandidate(candidate)
+        if candidate == source then
+            return
+        end
+
+        local candidateNormalized =
+            NormalizeSimilarityText(candidate)
+
+        local candidatePlain =
+            SimilarityTextWithoutRichText(candidate)
+
+        local lengthRatio =
+            math.min(#normalized, #candidateNormalized)
+            / math.max(1, math.max(#normalized, #candidateNormalized))
+
+        if lengthRatio < 0.72 then
+            return
+        end
+
+        local scoreA =
+            TokenSimilarity(normalized, candidateNormalized)
+
+        local scoreB =
+            TokenSimilarity(plainNormalized, candidatePlain)
+
+        local scoreC =
+            CommonPrefixRatio(
+                normalized,
+                candidateNormalized
+            )
+
+        local score =
+            math.max(scoreA, scoreB) * 0.75
+            + scoreC * 0.25
+
+        if score > bestScore then
+            bestScore = score
+            bestCandidate = candidate
+        end
+    end
+
+    for _, candidate in ipairs(LocalizationSourceCandidates) do
+        testCandidate(candidate)
+    end
+
+    for _, entries in pairs(TranslationDB) do
+        for candidate in pairs(entries) do
+            testCandidate(candidate)
+        end
+    end
+
+    if bestCandidate and bestScore >= 0.92 then
+        SimilarSourceCache[source].Resolved =
+            bestCandidate
+        SimilarSourceCache[source].Score =
+            bestScore
+        return bestCandidate
+    end
+
+    return nil
+end
+
 -- Import the static TranslationDB.
 for language, entries in pairs(TranslationDB) do
     for sourceText, translatedText in pairs(entries) do
         TranslationCache[language][sourceText] = translatedText
+
+        local plainKey = PlainCacheKey(sourceText)
+        if plainKey ~= PlainCacheKey("") then
+            TranslationCache[language][plainKey] = translatedText
+        end
     end
 end
 
@@ -2413,9 +2761,8 @@ local function SelectTextToTranslateOnly(text)
         return string.format("__DYNAMIC_%d__", counter)
     end
 
-    source = source:gsub("<[^>]->", function(tag)
-        return protect(tag)
-    end)
+    -- RichText tags are permanent syntax, not dynamic values.
+    -- Keeping them literal prevents adjacent-tag matching failures.
 
     source = source:gsub("https?://%S+", function(value)
         return protect(value)
@@ -2473,34 +2820,145 @@ for language, entries in pairs(TranslationDB) do
                 end
             end
             TranslationCache[language][template] = translatedTemplate
+            TranslationCache[language][PlainCacheKey(template)] = translatedTemplate
         end
     end
 end
 
+
+local function GetLocalizationTranslator(language)
+    if language == "EN" then
+        return nil
+    end
+
+    local existing = LocalizationTranslators[language]
+    if existing then
+        return existing
+    end
+
+    local localeId = LocaleMap[language]
+    if not localeId then
+        return nil
+    end
+
+    local ok, translator = pcall(function()
+        return LocalizationService:GetTranslatorForLocaleAsync(localeId)
+    end)
+
+    if ok and translator then
+        LocalizationTranslators[language] = translator
+        LocalizationReady[language] = true
+        return translator
+    end
+
+    LocalizationReady[language] = false
+    return nil
+end
+
+local function TranslateFromLocalization(obj, sourceText, language)
+    if language == "EN" or not obj or sourceText == "" then
+        return nil
+    end
+
+    local translator = GetLocalizationTranslator(language)
+    if not translator then
+        return nil
+    end
+
+    local tried = {}
+    local function trySource(candidate)
+        candidate = tostring(candidate or "")
+        if candidate == "" or tried[candidate] then
+            return nil
+        end
+
+        tried[candidate] = true
+
+        local ok, translated = pcall(function()
+            return translator:Translate(obj, candidate)
+        end)
+
+        if not ok or type(translated) ~= "string" then
+            return nil
+        end
+
+        -- Roblox returns the source text when no translated entry is available.
+        if translated == candidate then
+            return nil
+        end
+
+        return translated
+    end
+
+    -- 1. Exact source.
+    local translated = trySource(sourceText)
+    if translated then
+        return translated
+    end
+
+    -- 2. Equivalent whitespace source.
+    -- This fixes real newlines, literal "\\n", tabs, and repeated spaces.
+    local normalizedCandidate =
+        sourceText
+            :gsub("\\r\\n", " ")
+            :gsub("[\\r\\n\\t]", " ")
+            :gsub("\\\\n", " ")
+            :gsub("%s+", " ")
+            :gsub("^%s+", "")
+            :gsub("%s+$", "")
+
+    if normalizedCandidate ~= sourceText then
+        translated = trySource(normalizedCandidate)
+        if translated then
+            return translated
+        end
+    end
+
+    -- 3. Find the closest known canonical source.
+    local similarSource =
+        FindSimilarLocalizationSource(sourceText)
+
+    if similarSource and similarSource ~= sourceText then
+        translated = trySource(similarSource)
+        if translated then
+            return translated
+        end
+    end
+
+    return nil
+end
 
 local function GetCachedTranslation(sourceText, language)
     if language == "EN" then
         return sourceText
     end
 
-    local exact =
-        TranslationCache[language][sourceText]
+    local cache = TranslationCache[language]
+    if not cache then
+        return nil
+    end
 
+    local exact = cache[sourceText]
     if exact then
         return exact
+    end
+
+    local plain = cache[PlainCacheKey(sourceText)]
+    if plain then
+        return plain
     end
 
     local template, protected =
         SelectTextToTranslateOnly(sourceText)
 
-    local cachedTemplate =
-        TranslationCache[language][template]
-
+    local cachedTemplate = cache[template]
     if cachedTemplate then
-        return RestoreSelectedText(
-            cachedTemplate,
-            protected
-        )
+        return RestoreSelectedText(cachedTemplate, protected)
+    end
+
+    local cachedPlainTemplate = cache[PlainCacheKey(template)]
+    if cachedPlainTemplate then
+        return RestoreSelectedText(cachedPlainTemplate, protected)
     end
 
     return nil, template, protected
@@ -2533,10 +2991,7 @@ local function MatchDynamicTemplate(template, text)
         if not startPos then
             local tail = template:sub(cursor)
             if tail ~= "" then
-                table.insert(
-                    patternParts,
-                    EscapeLuaPattern(tail)
-                )
+                patternParts[#patternParts + 1] = EscapeLuaPattern(tail)
             end
             break
         end
@@ -2544,18 +2999,15 @@ local function MatchDynamicTemplate(template, text)
         local permanent = template:sub(cursor, startPos - 1)
 
         if permanent ~= "" then
-            table.insert(
-                patternParts,
-                EscapeLuaPattern(permanent)
-            )
+            patternParts[#patternParts + 1] = EscapeLuaPattern(permanent)
         end
 
-        table.insert(patternParts, "(.-)")
+        patternParts[#patternParts + 1] = "(.-)"
         dynamicOrder[#dynamicOrder + 1] = tonumber(index)
         cursor = endPos + 1
     end
 
-    table.insert(patternParts, "$")
+    patternParts[#patternParts + 1] = "$"
 
     local captures = {
         string.match(
@@ -2610,32 +3062,61 @@ local function BuildSourceState(obj, property, sourceText)
     return state
 end
 
-local function GetStateTranslation(state, language)
+local function GetStateTranslation(obj, state, property, language)
     if not state
         or not state.SourceTemplate
         or state.SourceTemplate == "" then
         return nil
     end
 
+    local sourceRendered = RestoreSelectedText(
+        state.SourceTemplate,
+        state.DynamicValues or {}
+    )
+
     if language == "EN" then
+        return sourceRendered
+    end
+
+    local cache = TranslationCache[language]
+
+    -- 1. Exact cached translation.
+    local translated = cache and cache[sourceRendered]
+    if translated then
+        return translated
+    end
+
+    -- 2. Roblox LocalizationService / Localization Table.
+    translated = TranslateFromLocalization(
+        obj,
+        sourceRendered,
+        language
+    )
+
+    if translated then
+        TranslationCache[language][sourceRendered] = translated
+        TranslationCache[language][PlainCacheKey(sourceRendered)] = translated
+        return translated
+    end
+
+    -- 3. Existing local TranslationDB/cache template fallback.
+    translated = GetCachedTranslation(sourceRendered, language)
+    if translated then
+        return translated
+    end
+
+    local translatedTemplate = cache
+        and (cache[state.SourceTemplate]
+            or cache[PlainCacheKey(state.SourceTemplate)])
+
+    if translatedTemplate then
         return RestoreSelectedText(
-            state.SourceTemplate,
+            translatedTemplate,
             state.DynamicValues or {}
         )
     end
 
-    local translatedTemplate =
-        TranslationCache[language]
-        and TranslationCache[language][state.SourceTemplate]
-
-    if not translatedTemplate then
-        return nil
-    end
-
-    return RestoreSelectedText(
-        translatedTemplate,
-        state.DynamicValues or {}
-    )
+    return nil
 end
 
 local function ApplyStateToObject(obj, property, language)
@@ -2655,7 +3136,9 @@ local function ApplyStateToObject(obj, property, language)
 
     local rendered =
         GetStateTranslation(
+            obj,
             state,
+            property,
             language
         )
 
@@ -2823,7 +3306,9 @@ local function BindProperty(obj, property)
             ) then
                 local rendered =
                     GetStateTranslation(
+                        obj,
                         TranslationState[obj][property],
+                        property,
                         CurrentLanguage
                     )
 
@@ -2993,7 +3478,9 @@ local function ApplyCachedLanguage(language)
 
                 local rendered =
                     GetStateTranslation(
+                        obj,
                         state,
+                        property,
                         language
                     )
 
@@ -3060,7 +3547,11 @@ local function ChangeLanguage(language)
     SetLanguageButtonsLocked(true)
 
     task.spawn(function()
-        -- Local-only mode: use TranslationDB + local cache only.
+        -- Load the Roblox LocalizationService translator for the selected locale.
+        -- No external translation provider is used.
+        if language ~= "EN" then
+            GetLocalizationTranslator(language)
+        end
 
         -- Re-scan in case the game created new GUI elements.
         ScanInstance(ExperienceSettings)
@@ -3078,8 +3569,8 @@ local function ChangeLanguage(language)
         -- Instant local/remote cache pass first.
         ApplyCachedLanguage(language)
 
-        -- v5 does not contact a translation provider.
-        -- Only existing TranslationDB/local-cache entries are applied.
+        -- LocalizationService + local TranslationDB/cache are used.
+        -- No external HTTP translation provider is contacted.
         SaveTranslationCache()
         ApplyCachedLanguage(language)
 
@@ -3126,6 +3617,25 @@ task.spawn(function()
             end
         end)
     end)
+end)
+
+-- Full translation pass every 5 seconds for the currently selected language.
+task.spawn(function()
+    while task.wait(5) do
+        if ExperienceSettings and ExperienceSettings.Parent then
+            ScanInstance(ExperienceSettings)
+
+            if CurrentLanguage ~= "EN" then
+                GetLocalizationTranslator(CurrentLanguage)
+            end
+
+            if CurrentLanguage ~= "EN" and not TranslationBusy then
+                ApplyCachedLanguage(CurrentLanguage)
+            end
+
+            RefreshLanguageButtons()
+        end
+    end
 end)
 
 local EngBtn = Txt(
@@ -3230,52 +3740,15 @@ LanguageButtons = {
 }
 
 RefreshLanguageButtons = function()
-    if not (
-        EngBtn
-        and SpaBtn
-        and ThaBtn
-        and BraBtn
-        and PorBtn
-        and RusBtn
-        and KorBtn
-    ) then
-        return
+    for language, button in pairs(LanguageButtons) do
+        if button and button.Parent then
+            local selected = (SelectedLanguage == language)
+            button.TextColor3 = selected
+                and Color3.fromRGB(0,255,0)
+                or Color3.fromRGB(255,255,255)
+            button.BackgroundTransparency = selected and 0.15 or 1
+        end
     end
-
-    EngBtn.TextColor3 =
-        SelectedLanguage == "EN"
-        and Color3.fromRGB(0,255,0)
-        or Color3.fromRGB(255,255,255)
-
-    SpaBtn.TextColor3 =
-        SelectedLanguage == "ES"
-        and Color3.fromRGB(0,255,0)
-        or Color3.fromRGB(255,255,255)
-
-    ThaBtn.TextColor3 =
-        SelectedLanguage == "TH"
-        and Color3.fromRGB(0,255,0)
-        or Color3.fromRGB(255,255,255)
-
-    BraBtn.TextColor3 =
-        SelectedLanguage == "PT-BR"
-        and Color3.fromRGB(0,255,0)
-        or Color3.fromRGB(255,255,255)
-
-    PorBtn.TextColor3 =
-        SelectedLanguage == "PT-PT"
-        and Color3.fromRGB(0,255,0)
-        or Color3.fromRGB(255,255,255)
-
-    RusBtn.TextColor3 =
-        SelectedLanguage == "RU"
-        and Color3.fromRGB(0,255,0)
-        or Color3.fromRGB(255,255,255)
-
-    KorBtn.TextColor3 =
-        SelectedLanguage == "KO"
-        and Color3.fromRGB(0,255,0)
-        or Color3.fromRGB(255,255,255)
 end
 
 RefreshLanguageButtons()
