@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.927.2 ",
+	sion = " UIs 6.928.2 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -516,7 +516,7 @@ si.BackgroundColor3 = Color3.new(0,0,0)
 si.ScrollingDirection = Enum.ScrollingDirection.Y
 si.AutomaticCanvasSize = Enum.AutomaticSize.Y
 si.BorderMode = Enum.BorderMode.Inset
-si.BorderSizePixel = 5
+si.BorderSizePixel = 10
 si.CanvasSize = UDim2.new(0,0,0,0)
 si.Parent = ins
 ListLayout(si, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
