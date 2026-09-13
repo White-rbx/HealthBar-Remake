@@ -4214,6 +4214,10 @@ local function IsLocalizationDirectOnlyProperty(obj, property, state)
 end
 
 local function GetStateTranslation(obj, state, property, language)
+    if not obj or not property or not state then
+        return nil
+    end
+
     if IsLocalizationExcluded(obj, property) then
         return nil
     end
@@ -4228,10 +4232,20 @@ local function GetStateTranslation(obj, state, property, language)
         return nil
     end
 
-    local sourceRendered = RestoreSelectedText(
+    local okRestore, sourceRendered = pcall(
+        RestoreSelectedText,
         state.SourceTemplate,
         state.DynamicValues or {}
     )
+
+    if not okRestore or type(sourceRendered) ~= "string" then
+        warn(
+            "[Translation][SOURCE RENDER ERROR]",
+            state.Path or obj:GetFullName(),
+            tostring(sourceRendered)
+        )
+        return nil
+    end
 
     if language == "EN" then
         return sourceRendered
@@ -4240,13 +4254,24 @@ local function GetStateTranslation(obj, state, property, language)
     -- Static UI is Directly-only now. This includes TextLabel,
     -- non-editable TextBox.Text, TextBox.PlaceholderText, and static TextButton.
     if IsLocalizationDirectOnlyProperty(obj, property, state) then
-        local direct, directSource = Directly(
+        local okDirect, direct, directSource = pcall(
+            Directly,
             sourceRendered,
             language,
             state.PathSource
         )
 
-        if direct then
+        if not okDirect then
+            warn(
+                "[Translation][DIRECT ERROR]",
+                state.Path or obj:GetFullName(),
+                property,
+                tostring(direct)
+            )
+            return nil
+        end
+
+        if type(direct) == "string" and direct ~= "" then
             if directSource
                 and state.PathSource
                 and directSource == state.PathSource then
@@ -4796,7 +4821,7 @@ local function ApplyCachedLanguage(language, onComplete)
                             property,
                             tostring(rendered)
                         )
-                    elseif rendered and rendered ~= "" and rendered ~= before then
+                    elseif type(rendered) == "string" and rendered ~= "" and rendered ~= before then
                         local appliedOK, appliedErr = pcall(function()
                             L.Applied[obj] = L.Applied[obj] or {}
                             L.Applied[obj][property] = rendered
@@ -4835,10 +4860,16 @@ local function ApplyCachedLanguage(language, onComplete)
                             )
                         end
                     else
+                        local reason = rendered == nil and "TRANSLATION_NIL"
+                            or rendered == before and "UNCHANGED_SOURCE"
+                            or type(rendered) ~= "string" and ("INVALID_TYPE:" .. type(rendered))
+                            or "EMPTY_RESULT"
+
                         warn(
                             "[Translation][NO RESULT]",
                             state.Path or obj:GetFullName(),
                             property,
+                            reason,
                             "source=" .. tostring(state.SourceText)
                         )
                     end
