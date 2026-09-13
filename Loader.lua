@@ -1,4 +1,4 @@
--- Loader script 4.3
+-- Loader script 4.32
 
 ------------------------------------------------------------------------------------------
 
@@ -2036,6 +2036,297 @@ local LocaleMap = {
 
 local LocalizationTranslators = {}
 local LocalizationReady = {}
+
+local TranslationCache = {
+    ["EN"] = {},
+    ["ES"] = {},
+    ["TH"] = {},
+    ["PT-BR"] = {},
+    ["PT-PT"] = {},
+    ["RU"] = {},
+    ["KO"] = {},
+}
+
+local TranslationDB = {
+    ["ES"] = {
+        ["Type /Help to show all commands or Say something..."] = "Escribe /Help para mostrar todos los comandos o di algo...",
+        ["Confirm API"] = "Confirmar API",
+        ["Unsaved API"] = "API no guardada",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ Tu API aquí (ChatGPT o Gemini) ]",
+        ["Status: No key"] = "Estado: Sin clave",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>Pensamiento IA</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>FUNCIONES NO DISPONIBLES (Antiguas)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nExperienceSettings es una herramienta de depuración que puedes usar por tu cuenta; ¡tiene muchas herramientas!\nHealthBar fue un remake más fluido y mejor, y ValueLabels sirve para mostrar valores.\nSi tu ExperienceSettings está deshabilitado, hay tres razones:\n • El HumanoidRootPart fue eliminado hace demasiado tiempo.\n • El Experience no admite ExperienceSettings.\n • El script no pudo cargarse.\nSi te gusta, ¡puedes apoyarme en Discord!\n¡Gracias por usar ExperienceSettings! ♥️\n\n54% de la GUI está hecha a mano\n10% del script está hecho a mano\n36% del script está hecho con IA\n\nCreador: @5teve3019D (GUI, pequeño script)\nAyudante: ChatGPT (Script) <-- Sí, recibió muchas quejas jaja.\nPequeño ayudante: Copilot de GitHub (Script)\nDato curioso: lo antiguo es más feo que lo de ahora jajaja, te lo juro 😂 Ah, no has visto lo de antes :(\n\n========================\n➕ = Añadir algo\n📢 = Anuncios\n🔨 = En desarrollo\n🔷 = Plan para futuras actualizaciones\n✅ = Hecho\n⚠️ = Tiene problemas\n🟠 = Pronto se actualizará\n❌ = Error\n⚫ = No se puede arreglar\n➖ = Desconectado o descontinuado\n-------\n📌 Actualizado: esta información ya no aparece en las actualizaciones; ¡por favor únete a nuestra comunidad de Discord para seguirlas!\n-------\n🔁 En progreso: funciones que ya no aparecen\n-------\n❌ Fallado: funciones no disponibles que ya no aparecen\n-------\n\n✨ CRÉDITOS DEL SCRIPT ✨\n[ Nombre del script ] por [ Creador ] [ Estado de verificación ]\n\nQueremos decir que tu script es increíble y se usa en nuestro proyecto para depuración y fines educativos.\nGracias por tu contribución :3 ❤️\n- Debugger\n\n-- Lista de créditos --\n'Ketamine' por @Cherry (✓ Verificado)\n'OG AFEM – Legacy' por @Imperial (✓ Verificado)\n'Chat' por usuario desconocido\n'UNC' por usuario desconocido\n'REM' por @evildotcom (X No verificado)\n'GameProber' por @Imperial (✓ Verificado)\n'AudioPlayer' por usuario desconocido\n'EmoteSelect' por usuario desconocido\n'Universal Movement Predictor' por @zephyrr (X No verificado)\n'Server Position Predictor' por @zephyrr (X No verificado)\n'Open Source Universal Chat' por @neutral (X No verificado)\n\n-- Aviso para creadores de scripts --\nSi eres creador de uno de los scripts mencionados arriba y no quieres que tu script esté incluido,\npor favor contáctanos a través de nuestro foro de Discord y lo eliminaremos de inmediato.\n",
+        ["Hide"] = "Ocultar",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "Oh, si ExperienceSettings está deshabilitado, puedes ocultar el texto pulsando el botón.",
+        ["Leave"] = "Salir",
+        ["Reset character"] = "Reiniciar personaje",
+        ["Resume"] = "Continuar",
+        ["Open Roblox Settings"] = "Abrir configuración de Roblox",
+        ["Player :"] = "Jugador :",
+        ["Enable ValueLabels"] = "Activar ValueLabels",
+        ["Shaders - Recommend graphics 5+"] = "Shaders - Se recomiendan gráficos 5+",
+        ["White Light"] = "Luz blanca",
+        ["RGB Light"] = "Luz RGB",
+        ["ESP (Beta)"] = "ESP (Beta)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "Superposición de daño <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ PRESIONA AQUÍ PARA LEER LA DESCRIPCIÓN ⚠</b></font></stroke>",
+        ["MoreToggles"] = "Más toggles",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (Descontinuado)",
+        ["Show Physics"] = "Mostrar física",
+        ["Last Death"] = "Última muerte",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (Por @zephyrr)",
+        ["Enable HealthBar"] = "Activar HealthBar",
+        ["Global Physics"] = "Física global",
+        ["Disable Death Sound"] = "Desactivar sonido de muerte",
+        ["FreeCam (Mobile)"] = "FreeCam (Móvil)",
+        ["Almost Endless Fallen (-50K)"] = "Caída casi interminable (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "Linterna (Primera persona y GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "ESP resalta jugadores y no jugadores",
+        ["Shift Lock (Mobile)"] = "Shift Lock (Móvil)",
+        ["Hitbox Shower"] = "Lluvia de hitboxes",
+        ["Close fuc#king annoying load bar"] = "Cerrar barra de carga molesta",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Creador por @5teve3019D en ScriptBlox/HaxHell",
+        ["Loading"] = "Cargando",
+        ["Starting ExperienceSettings. Please wait..."] = "Iniciando ExperienceSettings. Por favor espera...",
+        ["It might have bug and it still in beta."] = "Podría tener errores y todavía está en beta.",
+        ["Open Developer console"] = "Abrir consola de desarrollador",
+        ["Drop Tool"] = "Soltar herramienta",
+        ["Drop all tools"] = "Soltar todas las herramientas",
+        ["[ Select first ] Searcher"] = "[ Selecciona primero ] Buscador",
+    },
+    ["TH"] = {
+        ["Type /Help to show all commands or Say something..."] = "พิมพ์ /Help เพื่อดูคำสั่งทั้งหมด หรือพิมพ์อะไรสักอย่าง...",
+        ["Confirm API"] = "ยืนยัน API",
+        ["Unsaved API"] = "API ยังไม่บันทึก",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ ใส่ API ของคุณที่นี่ (ChatGPT หรือ Gemini) ]",
+        ["Status: No key"] = "สถานะ: ไม่มีคีย์",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>ฟีเจอร์ที่ใช้งานไม่ได้ (ของเก่า)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nExperienceSettings เป็นเครื่องมือดีบักที่คุณสามารถใช้ได้เอง มีเครื่องมือเยอะมาก!\nสำหรับ HealthBar นั้นเป็นเวอร์ชันรีเมคที่ลื่นกว่าและดีกว่า และ ValueLabels ใช้สำหรับแสดงค่า\nถ้า ExperienceSettings ของคุณถูกปิดใช้งาน มีอยู่ 3 สาเหตุ:\n • HumanoidRootPart ถูกลบไปนานเกินไป\n • Experience นี้ไม่รองรับ ExperienceSettings\n • สคริปต์โหลดไม่สำเร็จ\nถ้าคุณชอบมัน คุณสามารถสนับสนุนฉันได้ทาง Discord!\nขอบคุณที่ใช้ ExperienceSettings! ♥️\n\n54% ของ GUI ทำด้วยมือ\n10% ของสคริปต์ทำด้วยมือ\n36% ของสคริปต์ทำโดย AI\n\nผู้สร้าง: @5teve3019D (GUI, สคริปต์ส่วนเล็ก)\nผู้ช่วย: ChatGPT (สคริปต์) <-- เขาโดนบ่นเยอะมากเลย ฮ่าๆ\nผู้ช่วยตัวเล็ก: Copilot ของ GitHub (สคริปต์)\nเกร็ดน่าสนใจ: ของเก่าขี้เหร่กว่าตอนนี้เยอะเลย ฉันสาบาน 😂 โอ้ คุณยังไม่เคยเห็นมันสินะ :(\n\n========================\n➕ = เพิ่มอะไรบางอย่าง\n📢 = ประกาศ\n🔨 = กำลังพัฒนา\n🔷 = แผนสำหรับอัปเดตในอนาคต\n✅ = เสร็จแล้ว\n⚠️ = มีปัญหา\n🟠 = จะอัปเดตเร็ว ๆ นี้\n❌ = บั๊ก\n⚫ = ไม่สามารถแก้ได้\n➖ = ตัดการเชื่อมต่อหรือยกเลิกการพัฒนา\n-------\n📌 อัปเดต: ข้อมูลในส่วนนี้จะไม่แสดงในอัปเดตอีกต่อไป กรุณาเข้าร่วมชุมชน Discord ของเราเพื่อรับข่าวสารต่อไป!\n-------\n🔁 อยู่ระหว่างดำเนินการ: ฟีเจอร์ที่ไม่แสดงอีกแล้ว\n-------\n❌ ล้มเหลว: ฟีเจอร์ที่ไม่พร้อมใช้งานซึ่งไม่แสดงอีกแล้ว\n-------\n\n✨ เครดิตสคริปต์ ✨\n[ ชื่อสคริปต์ ] โดย [ ผู้สร้าง ] [ สถานะการยืนยัน ]\n\nเราขอบอกว่าสคริปต์ของคุณยอดเยี่ยมมาก และถูกใช้ในโปรเจกต์ของเราเพื่อการดีบักและเพื่อการศึกษา\nขอบคุณสำหรับผลงานของคุณ :3 ❤️\n- Debugger\n\n-- รายชื่อเครดิต --\n'Ketamine' โดย @Cherry (✓ ยืนยันแล้ว)\n'OG AFEM – Legacy' โดย @Imperial (✓ ยืนยันแล้ว)\n'Chat' โดยผู้ใช้ไม่ทราบชื่อ\n'UNC' โดยผู้ใช้ไม่ทราบชื่อ\n'REM' โดย @evildotcom (X ยังไม่ยืนยัน)\n'GameProber' โดย @Imperial (✓ ยืนยันแล้ว)\n'AudioPlayer' โดยผู้ใช้ไม่ทราบชื่อ\n'EmoteSelect' โดยผู้ใช้ไม่ทราบชื่อ\n'Universal Movement Predictor' โดย @zephyrr (X ยังไม่ยืนยัน)\n'Server Position Predictor' โดย @zephyrr (X ยังไม่ยืนยัน)\n'Open Source Universal Chat' โดย @neutral (X ยังไม่ยืนยัน)\n\n-- แจ้งเตือนสำหรับผู้สร้างสคริปต์ --\nหากคุณเป็นผู้สร้างสคริปต์ที่ระบุไว้ข้างต้น และไม่ต้องการให้สคริปต์ของคุณถูกรวมไว้\nกรุณาติดต่อเราผ่านฟอรัม Discord ของเรา และเราจะลบออกให้ทันที\n",
+        ["Hide"] = "ซ่อน",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "อ้อ ถ้า ExperienceSettings ถูกปิดใช้งาน คุณสามารถซ่อนข้อความได้โดยกดปุ่มนี้",
+        ["Leave"] = "ออก",
+        ["Reset character"] = "รีเซ็ตตัวละคร",
+        ["Resume"] = "กลับเข้าเกม",
+        ["Open Roblox Settings"] = "เปิดการตั้งค่า Roblox",
+        ["Player :"] = "ผู้เล่น :",
+        ["Enable ValueLabels"] = "เปิด ValueLabels",
+        ["Shaders - Recommend graphics 5+"] = "Shaders - แนะนำกราฟิก 5+",
+        ["White Light"] = "แสงสีขาว",
+        ["RGB Light"] = "แสง RGB",
+        ["ESP (Beta)"] = "ESP (เบต้า)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "โอเวอร์เลย์ความเสียหาย <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ แตะที่นี่เพื่ออ่านคำอธิบาย ⚠</b></font></stroke>",
+        ["MoreToggles"] = "ตัวเลือกเพิ่มเติม",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (เลิกพัฒนาแล้ว)",
+        ["Show Physics"] = "แสดงฟิสิกส์",
+        ["Last Death"] = "การตายครั้งล่าสุด",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (โดย @zephyrr)",
+        ["Enable HealthBar"] = "เปิด HealthBar",
+        ["Global Physics"] = "ฟิสิกส์แบบรวม",
+        ["Disable Death Sound"] = "ปิดเสียงตาย",
+        ["FreeCam (Mobile)"] = "FreeCam (มือถือ)",
+        ["Almost Endless Fallen (-50K)"] = "Almost Endless Fallen (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "ไฟฉาย (บุคคลที่หนึ่ง & GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "ESP ไฮไลต์ผู้เล่นและสิ่งที่ไม่ใช่ผู้เล่น",
+        ["Shift Lock (Mobile)"] = "Shift Lock (มือถือ)",
+        ["Hitbox Shower"] = "Hitbox Shower",
+        ["Close fuc#king annoying load bar"] = "ปิดแถบโหลดน่ารำคาญ",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "ผู้สร้างโดย @5teve3019D บน ScriptBlox/HaxHell",
+        ["Loading"] = "กำลังโหลด",
+        ["Starting ExperienceSettings. Please wait..."] = "กำลังเริ่ม ExperienceSettings กรุณารอสักครู่...",
+        ["It might have bug and it still in beta."] = "อาจมีบั๊ก และยังอยู่ในช่วงเบต้า",
+        ["Open Developer console"] = "เปิดคอนโซลนักพัฒนา",
+        ["Drop Tool"] = "ทิ้งเครื่องมือ",
+        ["Drop all tools"] = "ทิ้งเครื่องมือทั้งหมด",
+        ["[ Select first ] Searcher"] = "[ เลือกก่อน ] ตัวค้นหา",
+    },
+    ["PT-BR"] = {
+        ["Type /Help to show all commands or Say something..."] = "Digite /Ajuda para ver todos os comandos ou diga algo...",
+        ["Confirm API"] = "Confirmar API",
+        ["Unsaved API"] = "API não salva",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ Sua API aqui (ChatGPT ou Gemini) ]",
+        ["Status: No key"] = "Status: Sem chave",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>IA-Pensando</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>RECURSOS INDISPONÍVEIS (Antigos)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nO ExperienceSettings é um conjunto de ferramentas de debug que você pode usar por conta própria. Existem muitas ferramentas!\nO HealthBar foi um remake mais suave e melhor, e o ValueLabels serve para mostrar valores.\nSe o seu ExperienceSettings estiver desativado, existem três motivos:\n • O HumanoidRootPart foi removido por muito tempo.\n • A experiência não suporta o ExperienceSettings.\n • O script falhou ao carregar.\nSe você gostar, pode me apoiar no Discord!\nObrigado por usar o ExperienceSettings! ♥️\n\n54% da interface foi feita manualmente\n10% do script foi feito manualmente\n36% do script foi feito por IA\n\nCriador: @5teve3019D (GUI, pequeno script)\nAjudante: ChatGPT (script) <-- Ele recebeu muitas reclamações kkk.\nPequeno ajudante: Copilot da GitHub (script)\nCuriosidade: o antigo era mais feio que o atual, eu juro 😂 Ah, você ainda não viu :(\n\n========================\n➕ = Adicionar algo\n📢 = Anúncios\n🔨 = Em desenvolvimento\n🔷 = Planejado para futuras atualizações\n✅ = Concluído\n⚠️ = Com problemas\n🟠 = Atualizando em breve\n❌ = Bug\n⚫ = Não pode ser corrigido\n➖ = Desconectado ou descontinuado\n-------\n📌 Atualizado: a atualização desta informação não aparece mais; entre na nossa comunidade no Discord para acompanhar as novidades!\n-------\n🔁 Em progresso: recursos que não aparecem mais\n-------\n❌ Falhou: recursos indisponíveis que não aparecem mais\n-------\n\n✨ CRÉDITOS DO SCRIPT ✨\n[ Nome do Script ] por [ Criador ] [ Status de Verificação ]\n\nQueremos dizer que o seu script é incrível e está sendo usado no nosso projeto para fins de debug e educação.\nObrigado pela sua contribuição :3 ❤️\n- Debugger\n\n-- Lista de créditos --\n'Ketamine' por @Cherry (✓ Verificado)\n'OG AFEM – Legacy' por @Imperial (✓ Verificado)\n'Chat' por usuário desconhecido\n'UNC' por usuário desconhecido\n'REM' por @evildotcom (X Não verificado)\n'GameProber' por @Imperial (✓ Verificado)\n'AudioPlayer' por usuário desconhecido\n'EmoteSelect' por usuário desconhecido\n'Universal Movement Predictor' por @zephyrr (X Não verificado)\n'Server Position Predictor' por @zephyrr (X Não verificado)\n'Open Source Universal Chat' por @neutral (X Não verificado)\n\n-- Aviso aos criadores de script --\nSe você for um criador de script listado acima e não quiser que o seu script seja incluído,\nentre em contato pelo nosso fórum no Discord, e vamos removê-lo imediatamente.\n",
+        ["Hide"] = "Ocultar",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "Ah, se o ExperienceSettings estiver desativado, você pode ocultar este texto clicando no botão.",
+        ["Leave"] = "Sair",
+        ["Reset character"] = "Resetar personagem",
+        ["Resume"] = "Continuar",
+        ["Open Roblox Settings"] = "Abrir configurações do Roblox",
+        ["Player :"] = "Jogador :",
+        ["Enable ValueLabels"] = "Ativar ValueLabels",
+        ["Shaders - Recommend graphics 5+"] = "Shaders - Recomendado: gráficos 5+",
+        ["White Light"] = "Luz branca",
+        ["RGB Light"] = "Luz RGB",
+        ["ESP (Beta)"] = "ESP (Beta)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "Sobreposição de dano <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ TOQUE AQUI PARA LER A DESCRIÇÃO ⚠</b></font></stroke>",
+        ["MoreToggles"] = "Mais Toggles",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (Descontinuado)",
+        ["Show Physics"] = "Mostrar física",
+        ["Last Death"] = "Última morte",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (Por @zephyrr)",
+        ["Enable HealthBar"] = "Ativar HealthBar",
+        ["Global Physics"] = "Física global",
+        ["Disable Death Sound"] = "Desativar som de morte",
+        ["FreeCam (Mobile)"] = "FreeCam (Mobile)",
+        ["Almost Endless Fallen (-50K)"] = "Queda quase infinita (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "Lanterna (Primeira pessoa & GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "ESP destaca jogadores e não jogadores",
+        ["Shift Lock (Mobile)"] = "Shift Lock (Mobile)",
+        ["Hitbox Shower"] = "Chuva de hitboxes",
+        ["Close fuc#king annoying load bar"] = "Fechar a barra de carregamento irritante",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Criado por @5teve3019D no ScriptBlox/HaxHell",
+        ["Loading"] = "Carregando",
+        ["Starting ExperienceSettings. Please wait..."] = "Iniciando o ExperienceSettings. Aguarde...",
+        ["It might have bug and it still in beta."] = "Pode ter bugs e ainda está em beta.",
+        ["Open Developer console"] = "Abrir console de desenvolvedor",
+        ["Drop Tool"] = "Dropar ferramenta",
+        ["Drop all tools"] = "Dropar todas as ferramentas",
+        ["[ Select first ] Searcher"] = "[ Selecione primeiro ] Pesquisar",
+    },
+    ["PT-PT"] = {
+        ["Type /Help to show all commands or Say something..."] = "Escreve /Ajuda para ver todos os comandos ou diz algo...",
+        ["Confirm API"] = "Confirmar API",
+        ["Unsaved API"] = "API não guardada",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ A tua API aqui (ChatGPT ou Gemini) ]",
+        ["Status: No key"] = "Estado: Sem chave",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>IA-Pensando</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>FUNCIONALIDADES INDISPONÍVEIS (Antigas)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nO ExperienceSettings é um conjunto de ferramentas de depuração que podes usar por tua conta. Existem muitas ferramentas!\nO HealthBar foi um remake mais suave e melhor, e o ValueLabels serve para mostrar valores.\nSe o teu ExperienceSettings estiver desativado, existem três motivos:\n • O HumanoidRootPart foi removido há demasiado tempo.\n • A experiência não suporta o ExperienceSettings.\n • O script falhou ao carregar.\nSe gostares, podes apoiar-me no Discord!\nObrigado por usares o ExperienceSettings! ♥️\n\n54% da interface foi feita manualmente\n10% do script foi feito manualmente\n36% do script foi feito por IA\n\nCriador: @5teve3019D (GUI, pequeno script)\nAjudante: ChatGPT (script) <-- Ele recebeu muitas reclamações lol.\nPequeno ajudante: Copilot da GitHub (script)\nCuriosidade: o antigo era mais feio do que o atual, eu juro 😂 Ah, ainda não viste :(\n\n========================\n➕ = Adicionar algo\n📢 = Anúncios\n🔨 = Em desenvolvimento\n🔷 = Planeado para futuras atualizações\n✅ = Concluído\n⚠️ = Com problemas\n🟠 = A atualizar em breve\n❌ = Bug\n⚫ = Não pode ser corrigido\n➖ = Desligado ou descontinuado\n-------\n📌 Atualizado: esta informação já não aparece; junta-te à nossa comunidade no Discord para acompanhares as novidades!\n-------\n🔁 Em progresso: funcionalidades que já não aparecem\n-------\n❌ Falhou: funcionalidades indisponíveis que já não aparecem\n-------\n\n✨ CRÉDITOS DO SCRIPT ✨\n[ Nome do Script ] por [ Criador ] [ Estado de Verificação ]\n\nQueremos dizer que o teu script é incrível e está a ser usado no nosso projeto para fins de depuração e educação.\nObrigado pela tua contribuição :3 ❤️\n- Debugger\n\n-- Lista de créditos --\n'Ketamine' por @Cherry (✓ Verificado)\n'OG AFEM – Legacy' por @Imperial (✓ Verificado)\n'Chat' por utilizador desconhecido\n'UNC' por utilizador desconhecido\n'REM' por @evildotcom (X Não verificado)\n'GameProber' por @Imperial (✓ Verificado)\n'AudioPlayer' por utilizador desconhecido\n'EmoteSelect' por utilizador desconhecido\n'Universal Movement Predictor' por @zephyrr (X Não verificado)\n'Server Position Predictor' por @zephyrr (X Não verificado)\n'Open Source Universal Chat' por @neutral (X Não verificado)\n\n-- Aviso aos criadores de script --\nSe fores um criador de script listado acima e não quiseres que o teu script seja incluído,\nentra em contacto através do nosso fórum no Discord, e vamos removê-lo imediatamente.\n",
+        ["Hide"] = "Ocultar",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "Ah, se o ExperienceSettings estiver desativado, podes ocultar este texto clicando no botão.",
+        ["Leave"] = "Sair",
+        ["Reset character"] = "Reiniciar personagem",
+        ["Resume"] = "Continuar",
+        ["Open Roblox Settings"] = "Abrir definições do Roblox",
+        ["Player :"] = "Jogador :",
+        ["Enable ValueLabels"] = "Ativar ValueLabels",
+        ["Shaders - Recommend graphics 5+"] = "Shaders - Recomendado: gráficos 5+",
+        ["White Light"] = "Luz branca",
+        ["RGB Light"] = "Luz RGB",
+        ["ESP (Beta)"] = "ESP (Beta)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "Sobreposição de dano <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ TOCA AQUI PARA LER A DESCRIÇÃO ⚠</b></font></stroke>",
+        ["MoreToggles"] = "Mais Toggles",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (Descontinuado)",
+        ["Show Physics"] = "Mostrar física",
+        ["Last Death"] = "Última morte",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (Por @zephyrr)",
+        ["Enable HealthBar"] = "Ativar HealthBar",
+        ["Global Physics"] = "Física global",
+        ["Disable Death Sound"] = "Desativar som de morte",
+        ["FreeCam (Mobile)"] = "FreeCam (Telemóvel)",
+        ["Almost Endless Fallen (-50K)"] = "Queda quase infinita (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "Lanterna (1.ª pessoa & GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "ESP destaca jogadores e não jogadores",
+        ["Shift Lock (Mobile)"] = "Shift Lock (Telemóvel)",
+        ["Hitbox Shower"] = "Chuva de hitboxes",
+        ["Close fuc#king annoying load bar"] = "Fechar a barra de carregamento irritante",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Criado por @5teve3019D no ScriptBlox/HaxHell",
+        ["Loading"] = "A carregar",
+        ["Starting ExperienceSettings. Please wait..."] = "A iniciar o ExperienceSettings. Aguarda...",
+        ["It might have bug and it still in beta."] = "Pode ter bugs e ainda está em beta.",
+        ["Open Developer console"] = "Abrir consola de desenvolvedor",
+        ["Drop Tool"] = "Largar ferramenta",
+        ["Drop all tools"] = "Largar todas as ferramentas",
+        ["[ Select first ] Searcher"] = "[ Seleciona primeiro ] Pesquisar",
+    },
+    ["RU"] = {
+        ["Type /Help to show all commands or Say something..."] = "Введите /Help, чтобы показать все команды, или напишите что-нибудь...",
+        ["Confirm API"] = "Подтвердить API",
+        ["Unsaved API"] = "API не сохранён",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ Ваш API здесь (ChatGPT или Gemini) ]",
+        ["Status: No key"] = "Статус: нет ключа",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>ИИ-Мышление</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>НЕДОСТУПНЫЕ ФУНКЦИИ (Старые)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nExperienceSettings — это набор отладочных инструментов, которыми ты можешь пользоваться сам. Тут много разных инструментов!\nHealthBar — это ремейк, который работает плавнее и лучше, а ValueLabels показывают значения.\nЕсли ExperienceSettings отключён, есть три причины:\n • HumanoidRootPart был удалён слишком давно.\n • Эта Experience не поддерживает ExperienceSettings.\n • Скрипт не смог загрузиться.\nЕсли тебе нравится этот проект, ты можешь поддержать меня в Discord!\nСпасибо за использование ExperienceSettings! ♥️\n\n54% интерфейса сделано вручную\n10% скрипта сделано вручную\n36% скрипта сделано ИИ\n\nСоздатель: @5teve3019D (GUI, небольшой скрипт)\nПомощник: ChatGPT (скрипт) <-- На него было много жалоб лол.\nМаленький помощник: Copilot от GitHub (скрипт)\nИнтересный факт: старый вариант был намного хуже, чем сейчас, клянусь 😂 О, ты его ещё не видел :(\n\n========================\n➕ = Добавить что-то\n📢 = Объявления\n🔨 = В разработке\n🔷 = Планируется в будущем обновлении\n✅ = Готово\n⚠️ = Есть проблемы\n🟠 = Скоро обновится\n❌ = Баг\n⚫ = Невозможно исправить\n➖ = Отключено или устарело\n-------\n📌 Обновлено: обновления этой информации больше не показываются, пожалуйста, присоединяйся к нашему Discord-сообществу, чтобы следить за новостями!\n-------\n🔁 В процессе: функции, которые больше не отображаются\n-------\n❌ Не удалось: недоступные функции, которые больше не отображаются\n-------\n\n✨ КРЕДИТЫ СКРИПТА ✨\n[ Название скрипта ] от [ Создатель ] [ Статус проверки ]\n\nМы хотим сказать, что твой скрипт потрясающий, и он используется в нашем проекте для отладки и обучения.\nСпасибо за твой вклад :3 ❤️\n- Debugger\n\n-- Список кредитов --\n'Ketamine' от @Cherry (✓ Проверено)\n'OG AFEM – Legacy' от @Imperial (✓ Проверено)\n'Chat' от неизвестного пользователя\n'UNC' от неизвестного пользователя\n'REM' от @evildotcom (X Не проверено)\n'GameProber' от @Imperial (✓ Проверено)\n'AudioPlayer' от неизвестного пользователя\n'EmoteSelect' от неизвестного пользователя\n'Universal Movement Predictor' от @zephyrr (X Не проверено)\n'Server Position Predictor' от @zephyrr (X Не проверено)\n'Open Source Universal Chat' от @neutral (X Не проверено)\n\n-- Примечание для авторов скриптов --\nЕсли ты автор скрипта, указанного выше, и не хочешь, чтобы он был включён,\nсвяжись с нами через наш Discord-форум, и мы удалим его сразу же.\n",
+        ["Hide"] = "Скрыть",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "Ах, если ExperienceSettings отключён, ты можешь скрыть этот текст, нажав кнопку.",
+        ["Leave"] = "Выйти",
+        ["Reset character"] = "Сбросить персонажа",
+        ["Resume"] = "Продолжить",
+        ["Open Roblox Settings"] = "Открыть настройки Roblox",
+        ["Player :"] = "Игрок :",
+        ["Enable ValueLabels"] = "Включить ValueLabels",
+        ["Shaders - Recommend graphics 5+"] = "Шейдеры - рекомендуется графика 5+",
+        ["White Light"] = "Белый свет",
+        ["RGB Light"] = "RGB-свет",
+        ["ESP (Beta)"] = "ESP (бета)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "Наложение урона <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ НАЖМИТЕ ЗДЕСЬ, ЧТОБЫ ПРОЧИТАТЬ ОПИСАНИЕ ⚠</b></font></stroke>",
+        ["MoreToggles"] = "Ещё тумблеры",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (Устарело)",
+        ["Show Physics"] = "Показать физику",
+        ["Last Death"] = "Последняя смерть",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (От @zephyrr)",
+        ["Enable HealthBar"] = "Включить HealthBar",
+        ["Global Physics"] = "Глобальная физика",
+        ["Disable Death Sound"] = "Отключить звук смерти",
+        ["FreeCam (Mobile)"] = "FreeCam (Mobile)",
+        ["Almost Endless Fallen (-50K)"] = "Почти бесконечное падение (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "Фонарик (Первое лицо & GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "ESP выделяет игроков и неигроков",
+        ["Shift Lock (Mobile)"] = "Shift Lock (Mobile)",
+        ["Hitbox Shower"] = "Дождь хитбоксов",
+        ["Close fuc#king annoying load bar"] = "Закрыть бесящую полосу загрузки",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Создатель: @5teve3019D на ScriptBlox/HaxHell",
+        ["Loading"] = "Загрузка",
+        ["Starting ExperienceSettings. Please wait..."] = "Запуск ExperienceSettings. Пожалуйста, подожди...",
+        ["It might have bug and it still in beta."] = "Возможны баги, и это всё ещё beta.",
+        ["Open Developer console"] = "Открыть консоль разработчика",
+        ["Drop Tool"] = "Выбросить предмет",
+        ["Drop all tools"] = "Выбросить все предметы",
+        ["[ Select first ] Searcher"] = "[ Сначала выбери ] Поиск",
+    },
+    ["KO"] = {
+        ["Type /Help to show all commands or Say something..."] = "모든 명령을 보려면 /Help 를 입력하거나 아무 말이나 해보세요...",
+        ["Confirm API"] = "API 확인",
+        ["Unsaved API"] = "저장되지 않은 API",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ 여기에 API 입력 (ChatGPT 또는 Gemini) ]",
+        ["Status: No key"] = "상태: 키 없음",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-생각중</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>사용할 수 없는 기능 (오래된 기능)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nExperienceSettings는 혼자서 사용할 수 있는 디버그 도구 모음입니다. 정말 많은 기능이 있어요!\nHealthBar는 더 부드럽고 개선된 리메이크이며, ValueLabels는 값을 표시하는 데 사용됩니다.\nExperienceSettings가 비활성화되는 이유는 세 가지입니다.\n • HumanoidRootPart가 너무 오래 전에 제거됨.\n • 해당 경험이 ExperienceSettings를 지원하지 않음.\n • 스크립트 로딩에 실패함.\n마음에 드셨다면 Discord에서 응원해 주세요!\nExperienceSettings를 사용해 주셔서 감사합니다! ♥️\n\n인터페이스 54%는 수작업으로 제작됨\n스크립트 10%는 수작업으로 제작됨\n스크립트 36%는 AI로 제작됨\n\n제작자: @5teve3019D (GUI, 작은 스크립트)\n도움: ChatGPT (스크립트) <-- 불만도 많이 받았어요 ㅋㅋ\n작은 도우미: GitHub Copilot (스크립트)\n재미있는 사실: 예전 버전은 지금보다 훨씬 못생겼어요, 진짜예요 😂 아직 안 보셨죠 :(\n\n========================\n➕ = 추가\n📢 = 공지\n🔨 = 개발 중\n🔷 = 향후 업데이트 예정\n✅ = 완료\n⚠️ = 문제 있음\n🟠 = 곧 업데이트\n❌ = 버그\n⚫ = 수정 불가\n➖ = 연결 끊김 또는 서비스 종료\n-------\n📌 업데이트됨: 이 정보의 업데이트는 더 이상 표시되지 않습니다. 최신 소식을 보려면 Discord 커뮤니티에 참여해 주세요!\n-------\n🔁 진행 중: 더 이상 표시되지 않는 기능\n-------\n❌ 실패: 사용할 수 없게 되어 더 이상 표시되지 않는 기능\n-------\n\n✨ 스크립트 크레딧 ✨\n[ 스크립트 이름 ] by [ 제작자 ] [ 검증 상태 ]\n\n당신의 스크립트는 정말 멋지고, 현재 우리 프로젝트에서 디버깅 및 교육용으로 사용되고 있습니다.\n기여해 주셔서 감사합니다 :3 ❤️\n- Debugger\n\n-- 크레딧 목록 --\n'Ketamine' by @Cherry (✓ 검증됨)\n'OG AFEM – Legacy' by @Imperial (✓ 검증됨)\n'Chat' by 알 수 없는 사용자\n'UNC' by 알 수 없는 사용자\n'REM' by @evildotcom (X 미검증)\n'GameProber' by @Imperial (✓ 검증됨)\n'AudioPlayer' by 알 수 없는 사용자\n'EmoteSelect' by 알 수 없는 사용자\n'Universal Movement Predictor' by @zephyrr (X 미검증)\n'Server Position Predictor' by @zephyrr (X 미검증)\n'Open Source Universal Chat' by @neutral (X 미검증)\n\n-- 스크립트 제작자 안내 --\n위 목록에 포함된 스크립트의 제작자 중 자신의 스크립트가 포함되기를 원하지 않는 분은,\nDiscord 포럼으로 연락해 주세요. 즉시 제거하겠습니다.\n",
+        ["Hide"] = "숨기기",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "아, ExperienceSettings가 비활성화되어 있어도 이 버튼을 눌러 이 텍스트를 숨길 수 있습니다.",
+        ["Leave"] = "나가기",
+        ["Reset character"] = "캐릭터 초기화",
+        ["Resume"] = "계속하기",
+        ["Open Roblox Settings"] = "Roblox 설정 열기",
+        ["Player :"] = "플레이어 :",
+        ["Enable ValueLabels"] = "ValueLabels 활성화",
+        ["Shaders - Recommend graphics 5+"] = "셰이더 - 권장 그래픽 5+",
+        ["White Light"] = "화이트 라이트",
+        ["RGB Light"] = "RGB 라이트",
+        ["ESP (Beta)"] = "ESP (베타)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "데미지 오버레이 <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ 여기를 눌러 설명을 읽어 주세요 ⚠</b></font></stroke>",
+        ["MoreToggles"] = "더 많은 토글",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (지원 종료)",
+        ["Show Physics"] = "물리 표시",
+        ["Last Death"] = "마지막 죽음",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (@zephyrr 제작)",
+        ["Enable HealthBar"] = "HealthBar 활성화",
+        ["Global Physics"] = "전역 물리",
+        ["Disable Death Sound"] = "죽음 소리 비활성화",
+        ["FreeCam (Mobile)"] = "FreeCam (모바일)",
+        ["Almost Endless Fallen (-50K)"] = "거의 끝없는 바닥 (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "손전등 (1인칭 & GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "플레이어와 비플레이어 ESP 강조",
+        ["Shift Lock (Mobile)"] = "Shift Lock (모바일)",
+        ["Hitbox Shower"] = "히트박스 샤워",
+        ["Close fuc#king annoying load bar"] = "짜증나는 로딩 바 닫기",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "ScriptBlox/HaxHell의 @5teve3019D 제작",
+        ["Loading"] = "로딩 중",
+        ["Starting ExperienceSettings. Please wait..."] = "ExperienceSettings를 시작하는 중입니다. 잠시만 기다려 주세요...",
+        ["It might have bug and it still in beta."] = "버그가 있을 수 있으며 아직 베타 상태입니다.",
+        ["Open Developer console"] = "개발자 콘솔 열기",
+        ["Drop Tool"] = "도구 버리기",
+        ["Drop all tools"] = "모든 도구 버리기",
+        ["[ Select first ] Searcher"] = "[ 먼저 선택 ] 검색",
+    },
+}
+
+
 local LocalizationLookupCache = {}
 local SimilarSourceCache = {}
 local SimilarCandidateIndex = {}
@@ -2181,6 +2472,14 @@ local LocalizationSourceCandidates = {
     "Ask anything..."
 }
 
+local function StripRichText(text)
+    return tostring(text or ""):gsub("<[^>]->", "")
+end
+
+local function PlainCacheKey(text)
+    return "__PLAIN_RICHTEXT__" .. StripRichText(text)
+end
+
 local function NormalizeSimilarityText(text)
     text = tostring(text or "")
     text = text:gsub("\r\n", "\n")
@@ -2245,6 +2544,57 @@ local function BuildSimilarityCandidateIndex()
 end
 
 BuildSimilarityCandidateIndex()
+
+local function CommonPrefixRatio(a, b)
+    local length = math.min(#a, #b)
+    if length == 0 then
+        return 1
+    end
+
+    local same = 0
+    for i = 1, length do
+        if a:sub(i, i) ~= b:sub(i, i) then
+            break
+        end
+        same += 1
+    end
+
+    return same / math.max(#a, #b)
+end
+
+local function TokenSimilarity(a, b)
+    local function makeTokens(value)
+        local tokens = {}
+        for token in value:gmatch("[%w@#%%_%-]+") do
+            tokens[#tokens + 1] = token
+        end
+        return tokens
+    end
+
+    local ta = makeTokens(a)
+    local tb = makeTokens(b)
+
+    if #ta <= 1 or #tb <= 1 then
+        return 0
+    end
+
+    local lookup = {}
+    for _, token in ipairs(ta) do
+        lookup[token] = true
+    end
+
+    local common = 0
+    local used = {}
+
+    for _, token in ipairs(tb) do
+        if lookup[token] and not used[token] then
+            used[token] = true
+            common += 1
+        end
+    end
+
+    return (2 * common) / (#ta + #tb)
+end
 
 local function FindSimilarLocalizationSource(sourceText)
     local source = tostring(sourceText or "")
