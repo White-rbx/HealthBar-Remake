@@ -1,4 +1,4 @@
--- Loader script 6.2
+-- Loader script 6.4
 
 ------------------------------------------------------------------------------------------
 
@@ -3887,6 +3887,15 @@ L.LocalizationExcluded = {
     ] = true,
     [
         'game:GetService("CoreGui").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Visits|Text'
+    ] = true,
+    [
+        'game:GetService("CoreGui").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.SortContainer.SortBy|Text'
+    ] = true,
+    [
+        'game:GetService("CoreGui").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.SortContainer.SortOrder|Text'
+    ] = true,
+    [
+        'game:GetService("CoreGui").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.TypeOfAnAPI|Text'
     ] = true,
 }
 
