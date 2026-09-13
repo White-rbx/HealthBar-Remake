@@ -1,0 +1,4416 @@
+-- Loader script 5.3
+
+------------------------------------------------------------------------------------------
+
+-- =====>> Saved Functions <<=====
+-- ====FUNCTION CORNER=====
+local function Corner(Scale, Offset, Parent)
+  local Corner = Instance.new("UICorner")
+  Corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
+  Corner.Parent = Parent
+  return Corner
+end
+-- =====END FUNCTION CORNER====
+
+-- =====FUNCTION UILISTLAYOUT=====
+local HCenter = Enum.HorizontalAlignment.Center
+local VCenter = Enum.VerticalAlignment.Center
+local HLeft = Enum.HorizontalAlignment.Left
+local VTop = Enum.VerticalAlignment.Top
+local HRight = Enum.HorizontalAlignment.Right
+local VBottom = Enum.VerticalAlignment.Bottom
+local FillH = Enum.FillDirection.Horizontal
+local FillV = Enum.FillDirection.Vertical
+local SCustom = Enum.SortOrder.Custom
+local SLayout = Enum.SortOrder.LayoutOrder
+local SName = Enum.SortOrder.Name
+
+local function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(scale or 0, offset or 0)
+    list.FillDirection = FILL or FillH
+    list.HorizontalAlignment = HZ or HCenter
+    list.VerticalAlignment = VT or VCenter
+    list.SortOrder = SO or SName
+    list.Parent = parent
+    return list
+end
+-- =====END FUNCTION UILISTLAYOUT=====
+
+-- ====FUNCTION UISTROKE=====
+local ASMBorder = Enum.ApplyStrokeMode.Border
+local ASMContextual = Enum.ApplyStrokeMode.Contextual
+
+local LJMBevel = Enum.LineJoinMode.Bevel
+local LJMMiter = Enum.LineJoinMode.Miter
+local LJMRound = Enum.LineJoinMode.Round
+
+local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+    local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
+    stroke.ApplyStrokeMode = ASM or ASMBorder
+    stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
+    stroke.LineJoinMode = LJM or LJMRound
+    stroke.Thickness = Tn or 1
+    stroke.Transparency = Transy or 0
+    stroke.Parent = parent
+    return stroke
+end
+-- =====END FUNCTION UISTROKE=====
+
+-- ====FUNCTION UIGRADIENT=====
+local function Gradient(parent, rotation, offsetX, offsetY, ...)
+    local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+    grad.Rotation = rotation or 0
+    grad.Offset = Vector2.new(offsetX or 0, offsetY or 0)
+
+    local colors = {...}
+    local keypoints = {}
+
+    if #colors == 0 then
+        keypoints = { ColorSequenceKeypoint.new(0, Color3.new(1,1,1)), ColorSequenceKeypoint.new(1, Color3.new(1,1,1)) }
+    elseif #colors == 1 then
+        keypoints = { ColorSequenceKeypoint.new(0, colors[1]), ColorSequenceKeypoint.new(1, colors[1]) }
+    else
+        for i, c in ipairs(colors) do
+            local t = (i-1) / (#colors-1)
+            table.insert(keypoints, ColorSequenceKeypoint.new(t, c))
+        end
+    end
+
+    grad.Color = ColorSequence.new(keypoints)
+    grad.Parent = parent
+    return grad
+end
+-- =====END FUNCTION UIGRADIENT=====
+
+-- ====FUNCTION UIPADDING (ตามลำดับ Roblox)=====
+local function Padding(parent, bottom, left, right, top)
+    local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
+    local function toUDim(value)
+        if typeof(value) == "UDim" then
+            return value
+        elseif type(value) == "number" then
+            return UDim.new(0, value)
+        elseif type(value) == "table" and #value >= 2 then
+            return UDim.new(value[1] or 0, value[2] or 0)
+        else
+            return UDim.new(0, 0)
+        end
+    end
+
+    pad.PaddingBottom = toUDim(bottom)
+    pad.PaddingLeft   = toUDim(left)
+    pad.PaddingRight  = toUDim(right)
+    pad.PaddingTop    = toUDim(top)
+
+    pad.Parent = parent
+    return pad
+end
+-- =====END FUNCTION UIPADDING======
+
+--====== CLIENT SERVICES ======--
+
+-- UI / Player Interface
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
+
+-- Audio / Feedback
+local SoundService = game:GetService("SoundService")
+
+-- Commerce / Monetization
+local MarketplaceService = game:GetService("MarketplaceService")
+
+-- Runtime / Frame Updates
+local RunService = game:GetService("RunService")
+
+-- Animation / Transitions
+local TweenService = game:GetService("TweenService")
+
+-- Input (Desktop / Mobile)
+local UserInputService = game:GetService("UserInputService")
+local TouchInputService = game:GetService("TouchInputService")
+
+------------------------------------------------------------------------------------------
+
+-- ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "LoaderSettings"
+gui.DisplayOrder = 2147483646
+gui.Parent = CoreGui
+
+-- Frame
+local hr = Instance.new("Frame")
+hr.Name = "Holder"
+hr.Size = UDim2.new(0.3,0,1,0)
+hr.Position = UDim2.new(-0.3,0,0,0)
+hr.BackgroundTransparency = 0.3
+hr.BorderSizePixel = 0
+hr.BackgroundColor3 = Color3.fromRGB(18,18,21)
+hr.Active = false
+hr.Parent = gui
+
+-- Button
+local oc = Instance.new("TextButton")
+oc.Name = "OPEN/CLOSE"
+oc.Size = UDim2.new(0.1,0,0.1,0)
+oc.Position = UDim2.new(1,0,0,0)
+oc.BackgroundTransparency = 0.3
+oc.BorderSizePixel = 0
+oc.BackgroundColor3 = Color3.fromRGB(18,18,21)
+oc.TextColor3 = Color3.fromRGB(255,255,255)
+oc.TextSize = 18
+oc.Text = "‹›"
+oc.Parent = hr
+
+-- Frame
+local ins = Instance.new("Frame")
+ins.Name = "Inside"
+ins.Size = UDim2.new(0.92,0,0.96,0)
+ins.Position = UDim2.new(0.04,0,0.02,0)
+ins.BackgroundTransparency = 1
+ins.Active = false
+ins.Parent = hr
+ListLayout(ins, 0, 5, HCenter, VTop, SLayout, FillV)
+
+-- Holder
+local top = Instance.new("TextLabel")
+top.Name = "Topic"
+top.Size = UDim2.new(1,0,0.05,0)
+top.BackgroundTransparency = 1
+top.TextScaled = true
+top.Text = "Settings - Loader Rejoiner"
+top.TextColor3 = Color3.fromRGB(255,255,255)
+top.Parent = ins
+Corner(0, 8, top)
+Stroke(top, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+-- Holder 2
+local hr2 = Instance.new("Frame")
+hr2.Name = "Holder"
+hr2.Size = UDim2.new(1,0,1,0)
+hr2.Position = UDim2.new(-1,0,0,0)
+hr2.BackgroundTransparency = 0.3
+hr2.BorderSizePixel = 0
+hr2.BackgroundColor3 = Color3.fromRGB(18,18,21)
+hr2.Active = false
+hr2.Parent = hr -- original frame 
+
+-- Inside 2
+local ins2 = Instance.new("Frame")
+ins2.Name = "Inside"
+ins2.Size = UDim2.new(0.92,0,0.96,0)
+ins2.Position = UDim2.new(0.04,0,0.02,0)
+ins2.BackgroundTransparency = 1
+ins2.Active = false
+ins2.Parent = hr2
+ListLayout(ins2, 0, 5, HCenter, VTop, SLayout, FillV)
+
+-- Holder
+local top2 = Instance.new("TextLabel")
+top2.Name = "Topic"
+top2.Size = UDim2.new(1,0,0.05,0)
+top2.BackgroundTransparency = 1
+top2.TextScaled = true
+top2.Text = "Settings - 2"
+top2.TextColor3 = Color3.fromRGB(255,255,255)
+top2.Parent = ins2
+Corner(0, 8, top2)
+Stroke(top2, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+
+-- Toggle for holder
+-- ตัวแปรที่มีอยู่แล้ว
+-- hr : Frame
+-- oc : TextButton
+
+local POSITIONS = {
+    -0.3, -- OFF
+    0,    -- OPEN 1
+    0.3   -- OPEN 2
+}
+
+local state = 1 -- เริ่มที่ OFF
+
+local tweenInfo = TweenInfo.new(
+    0.25,
+    Enum.EasingStyle.Quad,
+    Enum.EasingDirection.Out
+)
+
+local function tweenHR(xScale)
+    local goal = {
+        Position = UDim2.new(
+            xScale,
+            0,
+            hr.Position.Y.Scale,
+            hr.Position.Y.Offset
+        )
+    }
+
+    TweenService:Create(hr, tweenInfo, goal):Play()
+end
+
+oc.MouseButton1Click:Connect(function()
+    -- เปลี่ยนสถานะ
+    state += 1
+    if state > #POSITIONS then
+        state = 1
+    end
+
+    tweenHR(POSITIONS[state])
+end)
+
+--// =====================================================
+--// SERVICES
+--// =====================================================
+
+local HttpService = game:GetService("HttpService")
+
+--// =====================================================
+--// SAVE PATH
+--// =====================================================
+
+local ROOT_FOLDER = "ExperienceSettings"
+local SAVE_FILE   = ROOT_FOLDER .. "/config.json"
+
+--// =====================================================
+--// FILE UTILS (EXECUTOR ONLY)
+--// =====================================================
+
+local function ensureFolder()
+    if not isfolder(ROOT_FOLDER) then
+        makefolder(ROOT_FOLDER)
+    end
+end
+
+--// =====================================================
+--// DEFAULT DATA
+--// =====================================================
+
+local DEFAULT_DATA = {
+    Version = 1,
+
+    Loader = {
+        AlwaysLoad = false
+    },
+
+    UI = {
+        BackgroundRGB = { 18, 18, 21 },
+        HideMenu = false,
+        SettingsTransparency = 0.3,
+        UIScale = 1,
+        DraggableUI = false,
+        CrosshairID = "rbxassetid://118624373632520",
+        ToolCrosshairID = "rbxassetid://73868291781876"
+    }
+}
+
+--// =====================================================
+--// DEEP MERGE (เติมค่า default ที่หายไป)
+--// =====================================================
+
+local function deepMerge(data, defaults)
+    for k, v in pairs(defaults) do
+        if type(v) == "table" then
+            data[k] = type(data[k]) == "table" and data[k] or {}
+            deepMerge(data[k], v)
+        elseif data[k] == nil then
+            data[k] = v
+        end
+    end
+end
+
+--// =====================================================
+--// SAVE DATA  <<<<<< สำคัญ (ตัวนี้ที่เคย NIL)
+--// =====================================================
+
+local function saveData(data)
+    ensureFolder()
+
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode(data)
+    end)
+
+    if ok then
+        writefile(SAVE_FILE, encoded)
+        return true
+    end
+
+    return false
+end
+
+--// =====================================================
+--// LOAD DATA
+--// =====================================================
+
+local function loadData()
+    ensureFolder()
+
+    local data = {}
+
+    if isfile(SAVE_FILE) then
+        local ok, decoded = pcall(function()
+            return HttpService:JSONDecode(readfile(SAVE_FILE))
+        end)
+
+        if ok and type(decoded) == "table" then
+            data = decoded
+        end
+    end
+
+    -- เติม default ที่ขาด
+    deepMerge(data, DEFAULT_DATA)
+
+    -- save กลับทันที (กัน key หาย)
+    saveData(data)
+
+    return data
+end
+
+--// =====================================================
+
+--// =====================================================
+--// UI HELPER
+--// =====================================================
+
+local function updateToggle(btn, status)
+    btn.Text = status and "ON" or "OFF"
+    btn.TextColor3 = status
+        and Color3.fromRGB(0,255,0)
+        or Color3.fromRGB(255,0,0)
+end
+
+--// =====================================================
+--// TXT FUNCTION (FIXED)
+--// =====================================================
+
+local function Txt(
+    txt, R, G, B,
+    hasBox, ptxt,
+    hasButton, btxt,
+    work, callback, status,
+    parent
+)
+    -- Frame
+    local b = Instance.new("Frame")
+    b.Name = "Handle"
+    b.Size = UDim2.new(1, 0, 0.05, 0)
+    b.BackgroundTransparency = 1
+    b.Parent = parent or ins
+
+    -- Label
+    local a = Instance.new("TextLabel")
+    a.BackgroundTransparency = 1
+    a.Text = tostring(txt)
+    a.TextScaled = true
+    a.TextColor3 = Color3.fromRGB(R, G, B)
+    a.TextXAlignment = Enum.TextXAlignment.Left
+    a.Size = UDim2.new(1,0,1,0)
+    a.Parent = b
+
+    if hasBox and hasButton then
+        a.Size = UDim2.new(1/3,0,1,0)
+    elseif hasBox then
+        a.Size = UDim2.new(0.4,0,1,0)
+    elseif hasButton then
+        a.Size = UDim2.new(0.58,0,1,0)
+    end
+
+    -- TextBox
+    local box
+    if hasBox then
+        box = Instance.new("TextBox")
+        box.BackgroundTransparency = 1
+        box.PlaceholderText = tostring(ptxt or "")
+        box.Text = ""
+        box.TextScaled = true
+        box.TextColor3 = Color3.fromRGB(0,255,0)
+        box.Parent = b
+
+        box.Size = UDim2.new(0.49,0,1,0)
+        box.Position = UDim2.new(0.41,0,0,0)
+
+        if hasButton then
+            box.Size = UDim2.new(1/3,0,1,0)
+            box.Position = UDim2.new(0.343,0,0,0)
+        end
+
+        -- ✅ LIVE PREVIEW
+        if work then
+            box:GetPropertyChangedSignal("Text"):Connect(function()
+                work(box)
+            end)
+        end
+    end
+
+    -- Button
+    local btn
+    if hasButton then
+        btn = Instance.new("TextButton")
+        btn.BackgroundTransparency = 0.5
+        btn.TextScaled = true
+        btn.Size = UDim2.new(0.44,0,1,0)
+        btn.Position = UDim2.new(0.59,0,0,0)
+        btn.Parent = b
+        Corner(0,8,btn)
+        Stroke(btn, ASMBorder, 255,255,255, LJMRound, 1, 0)
+
+        if hasBox then
+            btn.Size = UDim2.new(1/3,0,1,0)
+            btn.Position = UDim2.new(0.696,0,0,0)
+        end
+
+        -- INIT
+        if status ~= nil then
+            updateToggle(btn, status)
+        else
+            btn.Text = tostring(btxt or "OK")
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+        end
+
+        btn.MouseButton1Click:Connect(function()
+    task.spawn(function()
+        if status ~= nil then
+            status = not status
+            updateToggle(btn, status)
+            if work then work(status) end
+            if callback then callback(status) end
+        else
+            if callback then
+                callback(box, btn)
+            end
+        end
+    end)
+end)
+    end
+
+    return {
+        Frame = b,
+        Label = a,
+        Box = box,
+        Button = btn
+    }
+end
+
+--// =====================================================
+--// USAGE
+--// =====================================================
+
+-- =====================================================
+-- LOAD DATA
+-- =====================================================
+local Data = loadData()
+
+local CoreGui = game:GetService("CoreGui")
+
+local MENU_INSTANCE = nil
+local HIDE_MENU_STATUS = Data.UI.HideMenu -- อ่านจาก json ครั้งเดียว
+
+local function applyHideMenu()
+    if MENU_INSTANCE then
+        MENU_INSTANCE.Enabled = not HIDE_MENU_STATUS
+    end
+end
+
+-- 🔎 หา Menu (ใช้ชื่อ + parent เท่านั้น)
+local function isTargetMenu(inst)
+    return inst:IsA("ScreenGui")
+        and inst.Name == "Menu"
+        and inst.Parent
+        and inst.Parent.Name == "ExperienceSettings"
+end
+
+-- 1️⃣ เช็คของที่มีอยู่แล้ว
+for _, inst in ipairs(CoreGui:GetDescendants()) do
+    if isTargetMenu(inst) then
+        MENU_INSTANCE = inst
+        applyHideMenu() -- ✅ apply ตาม json ทันที
+        break
+    end
+end
+
+-- 2️⃣ รอของที่โผล่มาทีหลัง
+CoreGui.DescendantAdded:Connect(function(inst)
+    if MENU_INSTANCE then return end
+
+    if isTargetMenu(inst) then
+        MENU_INSTANCE = inst
+        applyHideMenu() -- ✅ apply ตาม json ทันที
+    end
+end)
+
+local CONTINUE_LOCK = true
+
+-- Always Load → skip lock
+if Data.Loader.AlwaysLoad == true then
+    CONTINUE_LOCK = false
+end
+------------------------------------------------------------
+
+-- Continue (ONE TIME)
+local continueUI = Txt(
+    "Continue loadstring main ExperienceSettings",
+    255,255,255,
+    false, nil,
+    true, "Get Load",
+    nil,
+    function(box, btn)
+
+        -- safety check
+        local player = game.Players.LocalPlayer
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+        local healthEnabled = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+
+        if not hrp or not healthEnabled then
+            -- temporary warning
+            local oldText = btn.Text
+            local oldColor = btn.TextColor3
+
+            btn.Text = "Cannot Load"
+            btn.TextColor3 = Color3.fromRGB(255,255,0)
+
+            task.delay(1, function()
+                if btn and btn.Parent and CONTINUE_LOCK then
+                    btn.Text = oldText
+                    btn.TextColor3 = oldColor
+                end
+            end)
+
+            return
+        end
+
+        -- passed check → load
+        CONTINUE_LOCK = false
+        btn.Text = "Loaded"
+    end
+)
+
+local btn = continueUI.Button
+
+-- sync text if already unlocked (Always Load case)
+if not CONTINUE_LOCK then
+    btn.Text = "Loaded"
+end
+
+-- color loop watcher
+task.spawn(function()
+    local toggle = false
+
+    while btn and btn.Parent do
+        if not CONTINUE_LOCK then
+            toggle = not toggle
+
+            local color = toggle
+                and Color3.fromRGB(0,255,0)
+                or Color3.fromRGB(255,255,255)
+
+            local tween = TweenService:Create(
+                btn,
+                TweenInfo.new(0.3, Enum.EasingStyle.Linear),
+                { TextColor3 = color }
+            )
+            tween:Play()
+
+            task.wait(0.35)
+        else
+            task.wait(0.2)
+        end
+    end
+end)
+
+-- Always Load (SAVE) ------------------------------
+local alwaysUI = Txt(  
+    "Always Load main ExperienceSettings",  
+    255,255,255,  
+    false, nil,  
+    true, nil,  
+    function(newStatus)  
+        Data.Loader.AlwaysLoad = newStatus  
+        saveData(Data)  
+    end,  
+    nil,  
+    Data.Loader.AlwaysLoad  
+) 
+
+local continueBtn = continueUI.Button
+local alwaysBtn = alwaysUI.Button
+
+-- function ตรวจสถานะโหลดได้หรือไม่
+local function canLoad()
+    local player = game.Players.LocalPlayer
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+    local healthOn = false
+    pcall(function()
+        healthOn = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+    end)
+
+    return hrp and healthOn
+end
+
+-- bypass warning watcher
+task.spawn(function()
+    while continueBtn and continueBtn.Parent do
+        local alwaysOn = alwaysBtn.Text == "ON"
+        local ok = canLoad()
+
+        if alwaysOn and not ok then
+            -- show warning
+            continueBtn.Text = "Bypass detected: Toggle is ON"
+            continueBtn.TextColor3 = Color3.fromRGB(255,255,0)
+
+            CONTINUE_LOCK = true
+        else
+            -- revert to normal state
+            if not CONTINUE_LOCK then
+                continueBtn.Text = "Loaded"
+                continueBtn.TextColor3 = Color3.fromRGB(255,255,255)
+            else
+                continueBtn.Text = "Okay"
+                continueBtn.TextColor3 = Color3.fromRGB(255,255,255)
+            end
+        end
+
+        task.wait(0.3)
+    end
+end)
+
+--// =====================================================
+--// BACKGROUND APPLY SYSTEM (WAIT UNTIL READY)
+--// =====================================================
+
+local CoreGui = game:GetService("CoreGui")
+
+-- Path ที่ต้องครบทุกอันก่อน
+local BG_PATHS = {
+    "ExperienceSettings.Menu.AIOpenSource",
+    "ExperienceSettings.Menu.About_Background",
+    "ExperienceSettings.Menu.Background",
+    "ExperienceSettings.Menu.Load_Background",
+    "ExperienceSettings.Menu.MiddleScreen",
+    "ExperienceSettings.Menu.ProfileStatus",
+    "ExperienceSettings.Menu.Search",
+    "ExperienceSettings.Menu.TopBar.Holder",
+    "ExperienceSettings.Menu.TopBar.TopButtons",
+    "ExperienceSettings.Menu.Background.Inner_Background",
+    "ExperienceSettings.Menu.Background.Inner2_Background",
+    "ExperienceSettings.Menu.HolderScreen.Shift_Lock"
+}
+
+-- ================================
+-- หา Instance จาก path
+-- ================================
+local function findByPath(root, path)
+    local current = root
+    for part in string.gmatch(path, "[^%.]+") do
+        current = current:FindFirstChild(part)
+        if not current then
+            return nil
+        end
+    end
+    return current
+end
+
+-- ================================
+-- ตรวจว่าครบทุก BG_PATHS ไหม
+-- ================================
+local function getAllBGInstances()
+    local result = {}
+
+    for _, path in ipairs(BG_PATHS) do
+        local inst = findByPath(CoreGui, path)
+        if not inst or not inst:IsA("GuiObject") then
+            return nil -- ❌ ยังไม่ครบ
+        end
+        table.insert(result, inst)
+    end
+
+    return result -- ✅ ครบแล้ว
+end
+
+-- ================================
+-- STATE
+-- ================================
+local READY = false
+local CACHED_BGS = {}
+local CURRENT_BG_COLOR = nil
+
+-- ================================
+-- WAIT SYSTEM (3 STAGES)
+-- ================================
+task.spawn(function()
+    while not READY do
+        -- Stage 1
+        if not CoreGui:FindFirstChild("ExperienceSettings", true) then
+            task.wait(0.2)
+            continue
+        end
+
+        -- Stage 2
+        local list = getAllBGInstances()
+        if not list then
+            task.wait(0.2)
+            continue
+        end
+
+        -- Stage 3
+        CACHED_BGS = list
+        READY = true
+
+        -- apply ถ้ามีสีรออยู่
+        if CURRENT_BG_COLOR then
+            for _, inst in ipairs(CACHED_BGS) do
+                inst.BackgroundColor3 = CURRENT_BG_COLOR
+            end
+        end
+    end
+end)
+
+-- ================================
+-- API สำหรับเปลี่ยนสี
+-- ================================
+local function applyBackgroundColor(color)
+    if not color then return end
+
+    CURRENT_BG_COLOR = color
+
+    -- ถ้า READY แล้ว → apply ทันที
+    if READY then
+        for _, inst in ipairs(CACHED_BGS) do
+            inst.BackgroundColor3 = color
+        end
+    end
+    -- ถ้ายังไม่ READY → เก็บค่าไว้เฉย ๆ
+end
+
+--// =====================================================
+--// RGB PARSER
+--// =====================================================
+
+local function parseRGB(text)
+    if not text then return nil end
+
+    local r, g, b = text:match("(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
+    r, g, b = tonumber(r), tonumber(g), tonumber(b)
+
+    if r and g and b then
+        r = math.clamp(r, 0, 255)
+        g = math.clamp(g, 0, 255)
+        b = math.clamp(b, 0, 255)
+
+        return Color3.fromRGB(r, g, b), { r, g, b }
+    end
+end
+
+--// =====================================================
+--// APPLY SAVED COLOR ON LOAD
+--// =====================================================
+
+applyBackgroundColor(Color3.fromRGB(
+    Data.UI.BackgroundRGB[1],
+    Data.UI.BackgroundRGB[2],
+    Data.UI.BackgroundRGB[3]
+))
+
+--// =====================================================
+--// CUSTOM BACKGROUND UI
+--// =====================================================
+
+local function setBGFromData()
+    local rgb = Data.UI.BackgroundRGB
+    CURRENT_BG_COLOR = Color3.fromRGB(rgb[1], rgb[2], rgb[3])
+end
+
+setBGFromData()
+
+Txt(
+    "Custom Background (R,G,B)",
+    255,255,255,
+    true, "18,18,21",
+    true, "Save",
+
+    -- LIVE PREVIEW
+    function(box)
+        local color = select(1, parseRGB(box.Text))
+        if color then
+            applyBackgroundColor(color)
+        end
+    end,
+
+    -- CONFIRM + SAVE
+    function(box, btn)
+        local color, raw = parseRGB(box.Text)
+        if not color then return end
+
+        Data.UI.BackgroundRGB = raw
+        saveData(Data)
+        applyBackgroundColor(color)
+
+        -- visual confirm
+        btn.TextColor3 = Color3.fromRGB(0,255,0)
+        task.delay(0.35, function()
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+        end)
+    end
+)
+
+-- background watcher (ไม่บล็อก)
+task.spawn(function()
+	while true do
+		if not MENU_INSTANCE then
+			local menu =
+				findByPath(
+					CoreGui,
+					"ExperienceSettings.Menu"
+				)
+			if menu
+			and menu:IsA("ScreenGui") then
+				MENU_INSTANCE = menu
+				applyHideMenu()
+			end
+			end
+		task.wait(0.25)
+	end
+end)
+
+Txt(
+    "Hide ExperienceSettings",
+    255,255,255,
+    false, nil,
+    true, nil,
+
+    function(newStatus)
+        HIDE_MENU_STATUS = newStatus
+        Data.UI.HideMenu = newStatus
+        saveData(Data)
+        applyHideMenu()
+    end,
+
+    nil,
+    Data.UI.HideMenu
+)
+
+--// =====================================================
+--// FOUND HUMANOIDROOTPART STATUS
+--// =====================================================
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- สร้าง Text อย่างเดียว (ไม่มี box / ไม่มีปุ่ม)
+local ui = Txt(
+    "FoundHumanoidRootPart: NO",
+    255,255,255,
+    false, nil,
+    false, nil
+)
+
+local label = ui.Label
+
+-- ฟังก์ชันเช็ค HRP
+local function updateHRPStatus()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+    if hrp then
+        label.Text = "FoundHumanoidRootPart: YES"
+        label.TextColor3 = Color3.fromRGB(0,255,0)
+    else
+        label.Text = "FoundHumanoidRootPart: NO"
+        label.TextColor3 = Color3.fromRGB(255,0,0)
+    end
+end
+
+-- เช็คตอนแรก
+updateHRPStatus()
+
+-- เช็คเมื่อ character โหลดใหม่
+LocalPlayer.CharacterAdded:Connect(function(char)
+    updateHRPStatus()
+
+    -- เผื่อ HRP โผล่ช้า
+    char.ChildAdded:Connect(function(child)
+        if child.Name == "HumanoidRootPart" then
+            updateHRPStatus()
+        end
+    end)
+end)
+
+-- fallback: loop กันพลาด
+task.spawn(function()
+    while true do
+        updateHRPStatus()
+        task.wait(0.5)
+    end
+end)
+
+--// =====================================================
+--// SETTINGS TRANSPARENCY SYSTEM
+--// =====================================================
+
+local CoreGui = game:GetService("CoreGui")
+
+local SETTINGS_INSTANCES = {}
+local CURRENT_TRANSPARENCY = Data.UI.SettingsTransparency or 0.5
+
+-- path ที่ต้องใช้
+local SETTINGS_PATHS = {
+    "LoaderSettings.Holder",
+    "LoaderSettings.Holder.OPEN/CLOSE",
+    "LoaderSettings.Holder.Holder"
+}
+
+-- find by path
+local function findByPath(root, path)
+    local cur = root
+    for part in string.gmatch(path, "[^%.]+") do
+        cur = cur:FindFirstChild(part)
+        if not cur then return nil end
+    end
+    return cur
+end
+
+-- apply transparency
+local function applyTransparency(value)
+    CURRENT_TRANSPARENCY = math.clamp(value, 0, 1)
+
+    for _, inst in ipairs(SETTINGS_INSTANCES) do
+        if inst:IsA("GuiObject") then
+            inst.BackgroundTransparency = CURRENT_TRANSPARENCY
+        end
+    end
+end
+
+-- watcher (ไม่บล็อก)
+task.spawn(function()
+    while #SETTINGS_INSTANCES < #SETTINGS_PATHS do
+        SETTINGS_INSTANCES = {}
+
+        for _, path in ipairs(SETTINGS_PATHS) do
+            local inst = findByPath(CoreGui, path)
+            if inst and inst:IsA("GuiObject") then
+                table.insert(SETTINGS_INSTANCES, inst)
+            end
+        end
+
+        task.wait(0.25)
+    end
+
+    -- เจอครบ → apply ตาม data
+    applyTransparency(CURRENT_TRANSPARENCY)
+end)
+
+Txt(
+    "Settings Transparency",
+    255,255,255,
+    true, "0.3",
+    true, "Save",
+
+    -- LIVE PREVIEW
+    function(box)
+        local v = tonumber(box.Text)
+        if v then
+            applyTransparency(v)
+        end
+    end,
+
+    -- SAVE
+    function(box, btn)
+        local v = tonumber(box.Text)
+        if not v then return end
+
+        v = math.clamp(v, 0, 1)
+        Data.UI.SettingsTransparency = v
+        saveData(Data)
+        applyTransparency(v)
+
+        btn.TextColor3 = Color3.fromRGB(0,255,0)
+        task.delay(0.35, function()
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+        end)
+    end
+)
+
+-- =====================================================
+-- LOAD DATA
+-- =====================================================
+local Data = loadData()
+Data.UI = Data.UI or {}
+Data.UI.UIScale = tonumber(Data.UI.UIScale) or 1
+
+-- =====================================================
+-- SERVICES
+-- =====================================================
+local CoreGui = game:GetService("CoreGui")
+
+-- =====================================================
+-- STATE
+-- =====================================================
+local MENU_INSTANCE = nil
+local UISCALE_INSTANCE = nil
+local CURRENT_SCALE = Data.UI.UIScale
+
+-- =====================================================
+-- FIND MENU (CoreGui.ExperienceSettings.Menu)
+-- =====================================================
+local function tryFindMenu()
+    local root = CoreGui:FindFirstChild("ExperienceSettings")
+    if not root then return nil end
+    return root:FindFirstChild("Menu")
+end
+
+-- =====================================================
+-- APPLY UI SCALE
+-- =====================================================
+local function applyUIScale(scale)
+    if not MENU_INSTANCE then return end
+
+    CURRENT_SCALE = math.clamp(scale or CURRENT_SCALE, 0.5, 2)
+
+    -- reset ถ้า UIScale ติด menu เก่า
+    if UISCALE_INSTANCE and UISCALE_INSTANCE.Parent ~= MENU_INSTANCE then
+        UISCALE_INSTANCE = nil
+    end
+
+    if not UISCALE_INSTANCE then
+        UISCALE_INSTANCE = MENU_INSTANCE:FindFirstChild("MenuUIScale")
+
+        if not UISCALE_INSTANCE then
+            UISCALE_INSTANCE = Instance.new("UIScale")
+            UISCALE_INSTANCE.Name = "MenuUIScale"
+            UISCALE_INSTANCE.Parent = MENU_INSTANCE
+        end
+    end
+
+    UISCALE_INSTANCE.Scale = CURRENT_SCALE
+end
+
+-- =====================================================
+-- WATCHER (รอ menu ได้ตลอด / ไม่บล็อก)
+-- =====================================================
+task.spawn(function()
+    while true do
+        local menu = tryFindMenu()
+        if menu and menu ~= MENU_INSTANCE then
+            MENU_INSTANCE = menu
+            UISCALE_INSTANCE = nil
+            applyUIScale(CURRENT_SCALE) -- apply จาก data ทันที
+        end
+        task.wait(0.25)
+    end
+end)
+
+-- =====================================================
+-- UI (Txt)
+-- =====================================================
+Txt(
+    "Set UIScaled",
+    255,255,255,
+    true, tostring(Data.UI.UIScale),
+    true, "Save",
+
+    -- LIVE PREVIEW
+    function(box)
+        local v = tonumber(box.Text)
+        if v then
+            applyUIScale(v)
+        end
+    end,
+
+    -- SAVE
+    function(box, btn)
+        local v = tonumber(box.Text)
+        if not v then return end
+
+        v = math.clamp(v, 0.5, 2)
+        Data.UI.UIScale = v
+        saveData(Data)
+        applyUIScale(v)
+
+        -- feedback
+        btn.TextColor3 = Color3.fromRGB(0,255,0)
+        task.delay(0.35, function()
+            btn.TextColor3 = Color3.fromRGB(255,255,255)
+        end)
+    end
+)
+
+local StarterGui = game:GetService("StarterGui")
+
+local function isHealthEnabled()
+    local ok, res = pcall(function()
+        return StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+    end)
+    return ok and res or false
+end
+
+local function setHealth(state)
+    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, state)
+end
+
+-- TXT: Status
+local healthTxt = Txt(
+    "IsHealthOn: ...",
+    0,255,0,
+    false,nil,
+    false,nil
+)
+
+-- TXT: Toggle
+local HealthToggle = Txt(
+    "HealthBarToggle",
+    255,255,255,
+    false,nil,
+    true,"",
+    function(status)
+        setHealth(status)
+    end,
+    function(status)
+        setHealth(status)
+    end,
+    isHealthEnabled()
+)
+
+-- 🔁 Unified watcher
+task.spawn(function()
+    local last
+    while true do
+        local on = isHealthEnabled()
+        if on ~= last then
+            -- update text
+            healthTxt.Label.Text = "IsHealthOn: " .. (on and "YES" or "NO")
+            healthTxt.Label.TextColor3 = on
+                and Color3.fromRGB(0,255,0)
+                or Color3.fromRGB(255,0,0)
+
+            -- update button
+            updateToggle(HealthToggle.Button, on)
+
+            last = on
+        end
+        task.wait(0.5)
+    end
+end)
+
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local placeId = game.PlaceId
+
+------------------------------------------------------------
+
+local rejoinUI = Txt(
+    "Rejoin",
+    255,255,255,
+    false, nil,
+    true, "Confirm",
+    nil,
+    function(box, btn)
+        btn.Text = "Rejoining..."
+        btn.TextColor3 = Color3.fromRGB(150,255,150)
+
+        task.spawn(function()
+            task.wait(0.5)
+            TeleportService:Teleport(placeId, player)
+        end)
+    end
+)
+
+------------------------------------------------------------
+
+local switchUI = Txt(
+    "Switch Server",
+    255,255,255,
+    false, nil,
+    true, "Confirm",
+    nil,
+    function(box, btn)
+        btn.Text = "Finding Server..."
+        btn.TextColor3 = Color3.fromRGB(255,255,0)
+
+        task.spawn(function()
+            local start = tick()
+            local found = false
+
+            while tick() - start < 5 do
+                local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
+                local success, result = pcall(function()
+                    return HttpService:JSONDecode(game:HttpGet(url))
+                end)
+
+                if success and result and result.data then
+                    for _, server in ipairs(result.data) do
+                        if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                            found = true
+                            TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
+                            return
+                        end
+                    end
+                end
+
+                task.wait(1)
+            end
+
+            if not found then
+                btn.Text = "Server not found or full"
+                btn.TextColor3 = Color3.fromRGB(255,150,0)
+            end
+        end)
+    end
+)
+
+------------------------------------------------------------
+
+local lowSwitchUI = Txt(
+    "Switch to Low Players Server",
+    255,255,255,
+    false, nil,
+    true, "Confirm",
+    nil,
+    function(box, btn)
+        btn.Text = "Finding Low Players Server..."
+        btn.TextColor3 = Color3.fromRGB(255,255,0)
+
+        local start = tick()
+        local found = false
+
+        while tick() - start < 5 do
+            local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
+            local success, result = pcall(function()
+                return HttpService:JSONDecode(game:HttpGet(url))
+            end)
+
+            if success and result and result.data then
+                for _, server in ipairs(result.data) do
+                    if server.playing >= 3 and server.playing <= 5 and server.id ~= game.JobId then
+                        found = true
+                        TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
+                        return
+                    end
+                end
+            end
+
+            task.wait(1)
+        end
+
+        if not found then
+            btn.Text = "Server not found, please try again later."
+            btn.TextColor3 = Color3.fromRGB(255,170,0)
+        end
+    end
+)
+
+------------------------------------------------------------
+
+-- ExperienceSettings Frames
+local ESFrames = {
+    "About_Background",
+    "Background",
+    "AIOpenSource",
+    "Load_Background",
+    "ProfileStatus",
+    "Holder",
+    "Search"
+}
+
+-- TopBarApp Frames
+local TBFrames = {
+    "point"
+}
+
+-- State
+local DragState = false
+local DragLoopStarted = false
+
+local function applyDraggableUI(state)
+
+    DragState = state
+
+    if DragLoopStarted then
+        return
+    end
+
+    DragLoopStarted = true
+
+    task.spawn(function()
+
+        while true do
+
+            -- ExperienceSettings
+            local vES = CoreGui:FindFirstChild("ExperienceSettings")
+            if vES then
+                for _,name in ipairs(ESFrames) do
+                    local ui = vES:FindFirstChild(name, true)
+                    if ui and ui:IsA("Frame") then
+                        ui.Active = DragState
+                        ui.Draggable = DragState
+                    end
+                end
+            end
+
+            -- TopBarApp
+            local vTopBar = CoreGui:FindFirstChild("TopBarApp")
+            if vTopBar then
+                for _,name in ipairs(TBFrames) do
+                    local ui = vTopBar:FindFirstChild(name, true)
+                    if ui and ui:IsA("Frame") then
+                        ui.Active = DragState
+                        ui.Draggable = DragState
+                    end
+                end
+            end
+
+            task.wait(0.5)
+
+        end
+
+    end)
+
+end
+
+
+
+local function DragUItweenColor(obj,color)
+    TweenService:Create(
+        obj,
+        TweenInfo.new(0.25),
+        {TextColor3 = color}
+    ):Play()
+end
+
+-- toggle UI
+local DraUI = Txt(
+    "Draggable UI",
+    255,255,255,
+    false,nil,
+    true,"OFF",
+
+    function(state)
+
+        Data.UI.DraggableUI = state
+        saveData(Data)
+
+        applyDraggableUI(state)
+
+    end,
+
+    nil,
+
+    Data.UI.DraggableUI
+)
+
+-- apply color when UI created
+if DraUI.Button then
+    if Data.UI.DraggableUI then
+        DraUI.Button.Text = "ON"
+        DragUItweenColor(DraUI.Button, Color3.fromRGB(0,255,0))
+    else
+        DraUI.Button.Text = "OFF"
+        DragUItweenColor(DraUI.Button, Color3.fromRGB(255,0,0))
+    end
+end
+
+-- apply ตอนโหลด
+task.spawn(function()
+    applyDraggableUI(Data.UI.DraggableUI)
+end)
+
+--// =====================================================
+--// CROSSHAIR SYSTEM (FIXED)
+--// =====================================================
+
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+
+local DEFAULT_CROSSHAIR =
+	"rbxassetid://118624373632520"
+
+local DEFAULT_TOOL_CROSSHAIR =
+	"rbxassetid://73868291781876"
+
+local TARGET_SHIFT = nil
+
+--====================================================--
+-- GET IMAGE FROM DATA
+--====================================================--
+
+local function getNormalCrosshair()
+
+	local id = Data.UI.CrosshairID
+
+	if not id
+	or id == ""
+	or id == "0" then
+
+		return DEFAULT_CROSSHAIR
+	end
+
+	return id
+end
+
+local function getToolCrosshair()
+
+	local id = Data.UI.ToolCrosshairID
+
+	if not id
+	or id == ""
+	or id == "0" then
+
+		return DEFAULT_TOOL_CROSSHAIR
+	end
+
+	return id
+end
+
+--====================================================--
+-- TOOL CHECK
+--====================================================--
+
+local function isToolEnabled()
+
+	local char = player.Character
+
+	if not char then
+		return false
+	end
+
+	for _, v in ipairs(char:GetChildren()) do
+		if v:IsA("Tool") then
+			return true
+		end
+	end
+
+	return false
+end
+
+--====================================================--
+-- APPLY CROSSHAIR
+--====================================================--
+
+local function applyCrosshair()
+
+	if not TARGET_SHIFT then
+		return
+	end
+
+	local current =
+		TARGET_SHIFT.Image
+
+	--================================================--
+	-- TOOL MODE
+	--================================================--
+
+	if isToolEnabled() then
+
+		local newTool =
+			getToolCrosshair()
+
+		-- ถ้าปัจจุบันยังเป็น default
+		-- หรือเป็นค่าว่าง
+		-- ให้เปลี่ยนทันที
+
+		if current == DEFAULT_TOOL_CROSSHAIR
+		or current == ""
+		or current == "0" then
+
+			TARGET_SHIFT.Image =
+				newTool
+
+		-- ถ้า save ใหม่แล้ว
+		-- แต่ current ยังไม่ตรง
+		-- force update
+
+		elseif current ~= newTool then
+
+			TARGET_SHIFT.Image =
+				newTool
+
+		end
+
+	--================================================--
+	-- NORMAL MODE
+	--================================================--
+
+	else
+
+		local newNormal =
+			getNormalCrosshair()
+
+		if current == DEFAULT_CROSSHAIR
+		or current == ""
+		or current == "0" then
+
+			TARGET_SHIFT.Image =
+				newNormal
+
+		elseif current ~= newNormal then
+
+			TARGET_SHIFT.Image =
+				newNormal
+
+		end
+
+	end
+end
+
+--====================================================--
+-- FIND TARGETSHIFT
+-- NON-BLOCKING
+--====================================================--
+
+task.spawn(function()
+
+	while true do
+
+		local target =
+			CoreGui:FindFirstChild(
+				"TargetShift",
+				true
+			)
+
+		if target
+		and target:IsA("ImageLabel") then
+
+			TARGET_SHIFT = target
+
+			-- APPLY ล่าสุดจาก DATA ทันที
+			applyCrosshair()
+
+			break
+		end
+
+		task.wait(0.2)
+	end
+
+end)
+
+--====================================================--
+-- CHARACTER WATCHER
+--====================================================--
+
+task.spawn(function()
+
+	local function bindCharacter(char)
+
+		char.ChildAdded:Connect(function(v)
+
+			if v:IsA("Tool") then
+				task.wait()
+				applyCrosshair()
+			end
+
+		end)
+
+		char.ChildRemoved:Connect(function(v)
+
+			if v:IsA("Tool") then
+				task.wait()
+				applyCrosshair()
+			end
+
+		end)
+
+		task.wait()
+		applyCrosshair()
+
+	end
+
+	if player.Character then
+		bindCharacter(player.Character)
+	end
+
+	player.CharacterAdded:Connect(bindCharacter)
+
+end)
+
+--====================================================--
+-- ANTI DEFAULT OVERRIDE
+-- Functions.lua กันดื้อ
+--====================================================--
+
+task.spawn(function()
+
+	while true do
+
+		if TARGET_SHIFT then
+
+			local current =
+				TARGET_SHIFT.Image
+
+			-- TOOL MODE
+			if isToolEnabled() then
+
+				local wanted =
+					getToolCrosshair()
+
+				if current == DEFAULT_TOOL_CROSSHAIR
+				and wanted ~= DEFAULT_TOOL_CROSSHAIR then
+
+					TARGET_SHIFT.Image =
+						wanted
+				end
+
+			-- NORMAL MODE
+			else
+
+				local wanted =
+					getNormalCrosshair()
+
+				if current == DEFAULT_CROSSHAIR
+				and wanted ~= DEFAULT_CROSSHAIR then
+
+					TARGET_SHIFT.Image =
+						wanted
+				end
+
+			end
+
+		end
+
+		task.wait(0.05)
+
+	end
+
+end)
+
+--====================================================--
+-- CUSTOM CROSSHAIR ID
+--====================================================--
+
+Txt(
+	"Custom Crosshair ID",
+
+	255,255,255,
+
+	true, "Type Image ID",
+
+	true, "Save",
+
+	nil,
+
+	function(box, btn)
+
+		local text =
+			tostring(box.Text or "")
+
+		-- RESET
+		if text == ""
+		or text == "0" then
+
+			Data.UI.CrosshairID =
+				DEFAULT_CROSSHAIR
+
+		else
+
+			text =
+				text:gsub(
+					"rbxassetid://",
+					""
+				)
+
+			Data.UI.CrosshairID =
+				"rbxassetid://" .. text
+
+		end
+
+		saveData(Data)
+
+		-- APPLY NOW
+		applyCrosshair()
+
+		-- VISUAL
+		btn.TextColor3 =
+			Color3.fromRGB(0,255,0)
+
+		task.delay(0.35,function()
+
+			btn.TextColor3 =
+				Color3.fromRGB(255,255,255)
+
+		end)
+
+	end,
+
+	nil,
+
+	ins2
+)
+
+--====================================================--
+-- CUSTOM TOOL CROSSHAIR ID
+--====================================================--
+
+Txt(
+	"Custom Tool Crosshair ID",
+
+	255,255,255,
+
+	true, "Type Image ID",
+
+	true, "Save",
+
+	nil,
+
+	function(box, btn)
+
+		local text =
+			tostring(box.Text or "")
+
+		-- RESET
+		if text == ""
+		or text == "0" then
+
+			Data.UI.ToolCrosshairID =
+				DEFAULT_TOOL_CROSSHAIR
+
+		else
+
+			text =
+				text:gsub(
+					"rbxassetid://",
+					""
+				)
+
+			Data.UI.ToolCrosshairID =
+				"rbxassetid://" .. text
+
+		end
+
+		saveData(Data)
+
+		-- APPLY NOW
+		applyCrosshair()
+
+		-- VISUAL
+		btn.TextColor3 =
+			Color3.fromRGB(0,255,0)
+
+		task.delay(0.35,function()
+
+			btn.TextColor3 =
+				Color3.fromRGB(255,255,255)
+
+		end)
+
+	end,
+
+	nil,
+
+	ins2
+)
+
+local SoundState = false
+local PainSoundId = "rbxassetid://126351915401997"
+
+local painui
+
+
+local function UpdatePainSound(state)
+
+    SoundState = state
+
+    local char = player.Character
+
+    if not char then
+        if painui and painui.Button then
+            painui.Button.Text = "No Character"
+            painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+        end
+        return
+    end
+
+
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+
+    if not hrp then
+        if painui and painui.Button then
+            painui.Button.Text = "No HRP"
+            painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+        end
+        return
+    end
+
+
+    local sounds = {}
+
+    for _,v in ipairs(hrp:GetChildren()) do
+        if v.Name == "PainNoise" and v:IsA("Sound") then
+            table.insert(sounds, v)
+        end
+    end
+
+
+    if #sounds == 0 then
+        if painui and painui.Button then
+            painui.Button.Text = "No Sound"
+            painui.Button.TextColor3 = Color3.fromRGB(170,170,170)
+        end
+        return
+    end
+
+
+    -- Keep one PainNoise
+    local sound = sounds[1]
+
+    for i = 2, #sounds do
+        sounds[i]:Destroy()
+    end
+
+
+    if SoundState then
+        -- ON
+        sound.SoundId = PainSoundId
+
+        if painui and painui.Button then
+            painui.Button.Text = "ON"
+            painui.Button.TextColor3 = Color3.fromRGB(0,255,120)
+        end
+
+    else
+        -- OFF
+        sound.SoundId = ""
+
+        if painui and painui.Button then
+            painui.Button.Text = "OFF"
+            painui.Button.TextColor3 = Color3.fromRGB(255,70,70)
+        end
+    end
+
+end
+
+
+
+painui = Txt(
+    "Pain Sound (DamageOverlay)",
+    255,255,255,
+
+    false,nil,
+
+    true,nil,
+
+    nil,
+
+    function(state)
+        UpdatePainSound(state)
+    end,
+
+    SoundState,
+
+    ins
+)
+
+
+
+local function WatchPainSound(char)
+
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+
+    -- If PainNoise already exists
+    task.spawn(function()
+        local sound = hrp:WaitForChild("PainNoise", 5)
+
+        if sound then
+            UpdatePainSound(SoundState)
+        end
+    end)
+
+
+    -- If PainNoise appears later
+    hrp.ChildAdded:Connect(function(child)
+
+        if child.Name == "PainNoise" and child:IsA("Sound") then
+
+            task.wait()
+
+            UpdatePainSound(SoundState)
+
+        end
+
+    end)
+
+end
+
+
+
+-- First spawn
+if player.Character then
+    WatchPainSound(player.Character)
+end
+
+
+-- Respawn
+player.CharacterAdded:Connect(function(char)
+
+    WatchPainSound(char)
+
+end)
+
+--======= PATH ========--
+local ES
+local List
+
+task.spawn(function()
+
+    ES = game:GetService("CoreGui")
+        :WaitForChild("ExperienceSettings")
+        :WaitForChild("Menu")
+
+	task.wait(7)
+
+    List = {
+        ai = ES:WaitForChild("AIOpenSource").Frame,
+        ab = ES:WaitForChild("About_Background").Inside,
+        bg = ES:WaitForChild("Background"),
+        hrs = ES:WaitForChild("HolderScreen"),
+        lb = ES:WaitForChild("Load_Background"),
+        ms = ES:WaitForChild("MiddleScreen"),
+        pfs = ES:WaitForChild("ProfileStatus"),
+        sh = ES:WaitForChild("Search"),
+    }
+
+end)
+
+--======= ENGLISH ========--
+--// =====================================================
+--// TEXT-DETECTION LOCALIZATION ENGINE v2
+--// Path-based translation: full Device export is the primary source.
+--// =====================================================
+
+local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
+local LocalizationService = game:GetService("LocalizationService")
+
+local L = {}
+
+local ExperienceSettings
+
+L.CurrentLanguage = "EN"
+L.SelectedLanguage = "EN"
+L.latestClick = "EN"
+L.Busy = false
+L.Cooldown = 2
+L.LastRequest = 0
+
+L.CacheFile =
+    "ExperienceSettings/translation_cache.json"
+
+-- Roblox LocalizationService is the primary translation provider.
+-- Local L.DB/cache remains as a fallback.
+L.RemoteURL = nil
+
+
+L.Request =
+    request
+    or http_request
+    or (syn and syn.request)
+
+L.LanguageButtons = {}
+L.RefreshLanguageButtons = nil
+
+L.Source =
+    setmetatable({}, {__mode = "k"})
+
+L.Applied =
+    setmetatable({}, {__mode = "k"})
+
+L.Connections =
+    setmetatable({}, {__mode = "k"})
+
+L.PathSources = {
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.Holder.z8_ChatGPT.NewMessage|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.Holder.LoadFrame[\"Warning & Load\"]|Text"] = "The ExperienceSettings has been deactivated for some reason.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[3].Description|Text"] = "The most powerful admin commands.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[3].Title|Text"] = "<b>Infinite yield (@edge.egg | discord)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[3].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[3].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[4].Description|Text"] = "A keyboard for mobile. Crack by Ata",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[4].Title|Text"] = "<b>Delta Keyboard (@sakura)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[4].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[4].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[5].Description|Text"] = "Not my script but Ill actively update it with new features. Includes optimization + rspy plugin!",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[5].Title|Text"] = "<b>Dex++ (@mcdaggitt)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[5].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[5].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[6].Description|Text"] = "Universal script allows you to tp to players, also lets you fling them and many more.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[6].Title|Text"] = "<b>RoChip (@83937293938381929383)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[6].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[6].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[7].Description|Text"] = "lets you copy everything right in the native console interface (/console OR F9)",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[7].Title|Text"] = "<b>ConsoleCopyButton (@Lordi_scripts)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[7].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[7].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[8].Description|Text"] = "Take your Roblox experience to the next level by listening to your favorite  music or watching YouTube videos while you play.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[8].Title|Text"] = "<b>YouTube Music Player V8 (@Turmux404)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[8].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[8].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[9].Description|Text"] = "yet another random hub menu.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[9].Title|Text"] = "<b>YARHM - MM2, FTF, Forsaken, CNA Sim, etc. (@Imperial)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[9].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[9].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[10].Description|Text"] = "Introducing AFEM Max, the powerful AFEM you know and love and now EVEN MORE supercharged!",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[10].Title|Text"] = "<b>AFEM MAX - 40K EMOTES SCRIPT BEST (@Imperial)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[10].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[10].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[11].Description|Text"] = "The best Remote Spy (and not only) in Roblox's history after being developed for.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[11].Title|Text"] = "<b>Ketamine (@Kawi)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[11].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[11].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[12].Description|Text"] = "The Updated UNC Test, Since the old UNC test checks for getfenv(0) and not getgenv()",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[12].Title|Text"] = "<b>UNC Test (@vxsty)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[12].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[12].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[13].Description|Text"] = "Credits to @yourfriendfromschool1 for the script idea.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[13].Title|Text"] = "<b>MoreUNC (@vxsty)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[13].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[13].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[14].Description|Text"] = "An improvised version of MoreUNC! Gets around 52 to 53% UNC on Roblox Studio (Roblox studio has 0%)",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[14].Title|Text"] = "<b>MoreUNC V2 (@vxsty)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[14].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[14].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[15].Description|Text"] = "MoreUNC v3, the newest version of moreunc, with less functions, but more complex functions.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[15].Title|Text"] = "<b>MoreUNC V3 (@vxsty)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[15].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[15].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[16].Description|Text"] = "HAVE BUGS FOR NOW; added random avatars; Apply with username-ids, and u can add to favorites.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[16].Title|Text"] = "<b>Universal avatar changer free (@byted)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[16].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[16].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[17].Description|Text"] = "New FE Script for Free  Animation Bundles in Roblox. As you may know, Roblox recently introduced custom UGC  animation bundles",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[17].Title|Text"] = "<b>FREE BUNDLES and EMOTES l FE (@Bac0nH1ckOff)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[17].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[17].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[18].Description|Text"] = "cyan dot = predicted pos; yellow line = trajectory; green line = velocity; red = landing spot",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[18].Title|Text"] = "<b>universal movement predictor (@koboldpaws)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[18].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[18].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[19].Description|Text"] = "works with any ugc with the name \"tail\" in it",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[19].Title|Text"] = "<b>physics based tail animator (@koboldpaws)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[19].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[19].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[20].Description|Text"] = "Removes gameplay puased",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[20].Title|Text"] = "<b>Anti GamePlay Paused (@sillzchibi)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[20].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[20].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[21].Description|Text"] = "Admin commands; More than 280+ admin commands; This is a reworked version no bugs found; Better than old nameless admin and inf yeild.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[21].Title|Text"] = "<b>Nameless admin REWORKED (@Screatkin)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[21].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[21].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[22].Description|Text"] = "Nameless Admin is a universal admin script, that has over 300+ commands.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[22].Title|Text"] = "<b>Nameless admin (@Stars)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[22].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[22].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[23].Description|Text"] = "K to open/close; a script i modded and replaced unworking stuff.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[23].Title|Text"] = "<b>Orca modded (@moma1133222)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[23].Execute|Text"] = "Execute",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[23].Copy|Text"] = "Copy",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.ExperienceName|Text"] = "[UP] Just a baseplate.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Pmax.Players|Text"] = "Player :",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Pmax.PlayerCount|Text"] = "15/22",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Pmax.SeeAll|Text"] = "A button that doesn't do NOTHING",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Buttons.Leave|Text"] = "Leave The Experience",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Buttons[\"Reset character\"]|Text"] = "Reset character",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Buttons.Resume|Text"] = "Resume",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame1.Bar.ToggleButton|Text"] = "ON",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame1.Label|Text"] = "Enable ValueLabels",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame1.Label.Description|Text"] = "<b><u>ValueLabel</u></b>\nShow ValueLabel at the Top HealthBar.\n• FPS - Frame Per second\n• HP - Health ( How to read: 100.000 HP = 100 HP )\n• WS/s - Walkspeed per studs ( How to read: 16.000 WS/s = 16 WS/s )",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame2.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame2.Label|Text"] = "Shaders - Sunset",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame2.Label.Description|Text"] = "<b><u>Shaders</u></b>\nWhat a beautiful sunset!\nGraphic quality recommend 6+",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame3.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame3.Label|Text"] = "White Light",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame3.Label.Description|Text"] = "<b><u>White Light</u></b>\nJust a PointLight around the you.\nUseful in the dark.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame4.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame4.Label|Text"] = "RGB Light",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame4.Label.Description|Text"] = "<b><u>RGB Light</u></b>\nSame as White Light, but RGB.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame5.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame5.Label|Text"] = "ESP",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame5.Label.Description|Text"] = "<b><u>ESP</u></b>\nSee all players around the map.\nAlso TextLabel will change color following team color.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame6.Bar.ToggleButton|Text"] = "ON",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame6.Label|Text"] = "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame6.Label.Description|Text"] = "<b><u>Damage Overlay</u></b>\nDisplays visual damage effects when your character takes damage.\n\n<stroke color=\"rgb(255,0,0)\" thickness=\"1\">\n<font color=\"#ff5555\">\n<b>⚠ Photosensitive Epilepsy Warning</b>\n\nThis effect may contain:\n• Flashing lights\n• Rapid brightness changes\n• Screen color pulses\n\nIf you experience dizziness, eye strain, or discomfort,\nplease turn this feature <b>OFF</b> immediately.\n</font></stroke>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame7.Bar.ToggleButton|Text"] = "ON",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame7.Label|Text"] = "MoreToggles",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.B_Frame.Frame7.Label.Description|Text"] = "<b><u>MoreToggles</u></b>\nOpen second toggle menu.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[2].Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[2].Label|Text"] = "LighterCyan.ai (Discontinued)",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[2].Label.Description|Text"] = "<b><u>LighterCyan.ai</u></b>\nIt's discontinued bro.\n😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[3].Bar.ToggleButton|Text"] = "ON",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[3].Label|Text"] = "HealthBar",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[3].Label.Description|Text"] = "<b><u>HealthBar</u></b>\nShow HealthBar at the Top Right.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[4].Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[4].Label|Text"] = "Disable Death Sound",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[4].Label.Description|Text"] = "<b><u>Death Sound</u></b>\nPlay sound after character dead.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame4.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame4.Label|Text"] = "FreeCam (Mobile)",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame4.Label.Description|Text"] = "<b><u>FreeCam</u></b>\n\tExplore around the world with FreeCam! (Mobile Only)",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame5.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame5.Label|Text"] = "Almost Endless Fallen (-50K)",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame5.Label.Description|Text"] = "<b><u>Almost Endless Fallen</u></b>\nSet FallenPartDestroyHeight at -50000.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame6.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame6.Label|Text"] = "Flashlight",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame6.Label.Description|Text"] = "<b><u>Flashlight</u></b>\nIt will make you in the first person with light, and also recommend set graphic quality at 6+",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame7.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame7.Label|Text"] = "ESP Highlight Players & Non-Players",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame7.Label.Description|Text"] = "<b><u>ESP Highlight Players & Non-Players</u></b>\nIt will highlight HumanoidRootPart. Players is <font color=\"rgb(0,255,0)\">green</font> and Non-Players is <font color=\"rgb(255,10,10)\">red</font>.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame8.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame8.Label|Text"] = "Shift Lock (Mobile)",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame8.Label.Description|Text"] = "<b><u>Shift Lock</u></b>\nShift Lock for Mobile players. Also you can CUSTOMIZE CROSSHAIR by open <b>Settings - 2</b> in <b>Settings - Loader Rejoiner</b>!",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame9.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame9.Label|Text"] = "Hitbox Shower",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame9.Label.Description|Text"] = "<b><u>Hitbox Shower</u></b>\nSee all hitbox players \n(Using ViewportFrame)",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame10.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame10.Label|Text"] = "Last Death",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame10.Label.Description|Text"] = "<b><u>Last Death</u></b>\nIt will show last position where you die at\nas a frozen ghost character...",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame11.Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame11.Label|Text"] = "ServerPositionPredictor (By @zephyrr)",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame11.Label.Description|Text"] = "<b><u>ServerPositionPredictor</u></b>\nShowing between Server and Client.\nServer is a second character of you. (Displaying as like ping)\nClient is you.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[13].Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[13].Label|Text"] = "Show Physics",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[13].Label.Description|Text"] = "<b><u>Show Physics</u></b>\nDisplays colorful trajectory lines (\"player speedometers\") and landing prediction points showing where your character is expected to land.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[14].Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[14].Label|Text"] = "Global Physics",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[14].Label.Description|Text"] = "<b><u>Global Physics</u></b>\nSame as Show Physics Toggle, but you're just seeing the physics of other players and objects too.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[15].Bar.ToggleButton|Text"] = "OFF",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[15].Label|Text"] = "Relax / Gif Animation Editor",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame:GetChildren()[15].Label.Description|Text"] = "<b><u>Gif Animation Editor</u></b>\nShow or hide the Gif Animation Editor window.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Load_Background.Loading|Text"] = "Loading",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Load_Background.Wait|Text"] = "Starting ExperienceSettings. Please wait...",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Load_Background.Credit|Text"] = "Creator by @5teve3019D on ScriptBlox/HaxHell",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Load_Background.Skip|Text"] = "Close fuc#king annoying load bar",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.About_Background.Inside[\"Discord link\"]|PlaceholderText"] = "",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.About_Background.Inside[\"Inside.2\"].a2_txts:GetChildren()[1]|Text"] = "@5teve3019D",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.About_Background.Inside[\"Inside.2\"].a2_txts:GetChildren()[2]|Text"] = "“Creator of the ExperiencSettings.”",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.About_Background.Inside[\"Inside.2\"].a2_txts:GetChildren()[3]|Text"] = "[ User on ScriptBlox/HaxHell ]",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.About_Background.Inside.Scroll.About|Text"] = "The ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.About_Background.Inside.Help|Text"] = "Oh, if the ExperienceSettings was disabled. You can hide the text by click the button.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.About_Background.Inside.Hide|Text"] = "Hide",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Settings|Text"] = "Settings",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Dragger|Text"] = "Drag",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-editor\"]|Text"] = "<u><b>Editor</b></u>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.AddIdle|Text"] = "+",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_1|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_1.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_2|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_2.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_3|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_3.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_4|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_4.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_5|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_5.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_6|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_6.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_7|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_7.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_8|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_8.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_9|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_9.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_10|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_10.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-idle\"]|Text"] = "Idle",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-idle\"].ClearIdle|Text"] = "Clear All Idle",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-WhenClick\"]|Text"] = "When Click",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-WhenClick\"].ClearWhenClick|Text"] = "Clear All When Click",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.AddWhenClick|Text"] = "+",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_1|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_1.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_2|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_2.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_3|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_3.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_4|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_4.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_5|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_5.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_6|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_6.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_7|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_7.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_8|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_8.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_9|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_9.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_10|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_10.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_11|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_11.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_12|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_12.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_13|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_13.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_14|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_14.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_15|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_15.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_16|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_16.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_17|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_17.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_18|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_18.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_19|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_19.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_20|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_20.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_21|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_21.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_22|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_22.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_23|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_23.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_24|PlaceholderText"] = "Image ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_24.TextButton|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-FrameRate\"]|Text"] = "Frame Rate",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle_FPS|PlaceholderText"] = "Idle's FPS",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick_FPS|PlaceholderText"] = "When Click's FPS",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-Idle-FrameRate\"]|Text"] = "Idle Frame Rate",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-WhenClick-FrameRate\"]|Text"] = "When Click Frame Rate",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Save|Text"] = "Save",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.GetcustomassetSwitch.Getdevicepathinput|PlaceholderText"] = "Example: 'Folder/'",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.GetcustomassetSwitch.GetSwitch|Text"] = "Image",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"Textlabel-Credit\"]|Text"] = "Relax / Gif Animation Editor by <font color='rgb(85,255,255)'>5teve3019D</font>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.MoreMenu|Text"] = "• • •",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Holder.Username|Text"] = "<b>ExperienceSettings</b> (@ExperienceSettings)",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll:GetChildren()[5]|Text"] = "-- <b>Texts</b> --",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll:GetChildren()[6]|Text"] = "-- <b>Buttons</b> --",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlayerID|Text"] = "PlayerID: 10640542665",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.FriendCount|Text"] = "Friends in the server: 0",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlayerAge|Text"] = "PlayerAge: 189 day",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlayerBirth|Text"] = "PlayerBirth: 08/03/2026",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CameraMode|Text"] = "CameraMode: Enum.CameraMode.Classic",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlaceID|Text"] = "PlaceID: 123974602339071",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CreatorName|Text"] = "Creator: The Local Maze",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CreatorID|Text"] = "CreatorID: 34901800",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.AFK|Text"] = "AFK: 00:00 | LastAFK: 00:03",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlayingTime|Text"] = "PlayingTime: 000:00:03:06",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.RealTimeClock|Text"] = "Real Time Clock: 14:07:55",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.WalkSpeed|Text"] = "WalkSpeed: 16",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.JumpPower|Text"] = "JumpPower: 50",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.Damage|Text"] = "BestDamage: 0 | LastDamage: 0",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.Heal|Text"] = "BestHeal: 0 | LastHeal: 0",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.Deaths|Text"] = "Deaths: 0",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.Inventory|Text"] = "Tools: 0",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.HoldingTool|Text"] = "HoldingTool: none",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.MaxHealth|Text"] = "MaxHealth: 100",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.StandingOn|Text"] = "StandingOn: Plastic",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PositionOfCharacter|Text"] = "Position: X: -61.70 | Y: 3.00 | Z: 20.80",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CharacterType|Text"] = "CharacterType: R15",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.TimeOfDay|Text"] = "TimeOfDay: 14:00:00",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.DeveloperConsole|Text"] = "Open Developer console",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.DropTool|Text"] = "Drop Tool",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.DropTools|Text"] = "Drop all tools",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.Debugs[\"Sorry!\"]|Text"] = "Debugs page is <b><u>not</u></b> done yet.\nTry to press the button at the top right.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.MusicPlayer[\"Sorry!\"]|Text"] = "Music Player page is <b><u>not</u></b> done yet.\nTry to press the button at the top right. Yeah bro, you're not in the loop stop pressing the button.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.MusicPlayer.Display.MusicName|Text"] = "Untitled Song",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.MusicPlayer.Display.PlayButton|Text"] = "<b>▶</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.SwitchButton|Text"] = "1",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.AIOpenSource.Frame.Text.chat|PlaceholderText"] = "Type /Help to show all commands or Say something...",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.AIOpenSource.Frame.Text.Send|Text"] = "✓",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.AIOpenSource.Frame.Text.Clear|Text"] = "X",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.AIOpenSource.Frame.Topic|Text"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.AIOpenSource.Frame.ver|Text"] = "Version:<b> UIs 6.929.2 </b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.AIOpenSource.Frame.Unavailable|Text"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.AIOpenSource.Frame.api|PlaceholderText"] = "[ Your API here (ChatGPT or Gemini) ]",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.AIOpenSource.Frame.Confirm_api|Text"] = "Confirm API",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.AIOpenSource.Frame.Unsaved_API|Text"] = "Unsaved API",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.AIOpenSource.Frame.Status|Text"] = "Status: Unknown",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput|PlaceholderText"] = "Search here!",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody:GetChildren()[3]|Text"] = "<b>Script Type (Default/Free/Paid)</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody:GetChildren()[3].Switch|Text"] = "",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody:GetChildren()[4]|Text"] = "<b>Universal</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody:GetChildren()[4].Switch|Text"] = "",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody:GetChildren()[5]|Text"] = "<b>Verified</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody:GetChildren()[5].Switch|Text"] = "",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody:GetChildren()[6]|Text"] = "<b>Patched</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody:GetChildren()[6].Switch|Text"] = "",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody:GetChildren()[7]|Text"] = "<b>Key</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody:GetChildren()[7].Switch|Text"] = "",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.SortContainer.SortBy|Text"] = "<b>Sort by: Default</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.SortContainer.SortOrder|Text"] = "<b>Sort order: Default</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.CreatorInput|PlaceholderText"] = "Input: Creator...",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.GameInput|PlaceholderText"] = "Input: Game ID",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.TypeOfAnAPI|Text"] = "<b>Search API: ScriptBlox</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.Back|Text"] = "Switch back to the <b>Current version</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.Preview|Text"] = "Switch to the <b>Preview version</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.Scrips[\"Sorry!\"]|Text"] = "<font size=\"50\" color=\"rgb(255,0,0)\">Sorry!</font> \n We are making the UI better than before and mobile friendly! \n <font size=\"10\">From White the creator</font>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.Scrips.Body.State.Verified|Text"] = "<b>Verified</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.Scrips.Body.State.Key|Text"] = "<b>Key</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.Scrips.Body.State.Patched|Text"] = "<b>Patched</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.Scrips.Body.State.Free|Text"] = "<b>Free</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.Scrips.Body.State.Paid|Text"] = "<b>Paid</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.Scrips.Body.Details|Text"] = "<font size='12'><b>Script Title</b></font>\nUniversal Script 📌\nBy @API Not supported\nClick 'View' for more details.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.Scrips.Body.ViewButton|Text"] = "<b><i>View</i></b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.List.Scrips.Body.BookmarkButton|Text"] = "<b><i>Bookmark</i></b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.NameOfScriptTitle|Text"] = "<b>Script Title</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.TypeScript|Text"] = "📌 Universal Script",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Creator|Text"] = "By @Username",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.CreationDate|Text"] = "Creation Date: DD/MM/YYYY",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Likes|Text"] = "<b>Like: -</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Dislikes|Text"] = "<b>Dislike: -</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Visits|Text"] = "<b>Visit: -</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Features|Text"] = "<b>Description</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.FeaturesScroll.FeaturesBox|PlaceholderText"] = "No description yet.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Tags|Text"] = "<b>Tag</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.RawScript|Text"] = "<b>Raw Script</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.CodeScroll.CodeBox|PlaceholderText"] = "Hmm... Looks like there's no source code in here. Please make sure you select the script or the owner didn't put a source code yet.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Execute|Text"] = "<b>Execute</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Copy|Text"] = "<b>Copy To Clipboard</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.ClosePage|Text"] = "<b>Back »</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.CloseBookmark|Text"] = "<b>Back »</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarkTopic|Text"] = "<b>Bookmark page</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Title|Text"] = "<b>Script Title</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Source|Text"] = "From: Source",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Execute|Text"] = "<b>Execute</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Copy|Text"] = "<b>Copy</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.View|Text"] = "<b>View</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Remove|Text"] = "<b>Remove from the bookmark page</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.PopUp.Scroll.Thank|Text"] = "<b><font size=\"12\">Happy 1st Anniversary of The ExperienceSettings!</font></b>\nWe want to let you know for those who using our script; we want to say <b>thank you for using our script!</b> \n \nTo close this <b>GUI</b> you can simply click <b><font size=\"9\">\"Remind me later.\"</font></b> or <b><font size=\"9\">\"Dont show this again.\"</font></b> button to continue use The ExperienceSettings.",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.PopUp.FrameOfButtons.RemindMeLater|Text"] = "<b>Remind Me Later</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.PopUp.FrameOfButtons.Close|Text"] = "<b>Don't show this again</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame[\"a3_Input&Send\"].Ask|PlaceholderText"] = "Ask anything...",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame[\"a3_Input&Send\"].Send|Text"] = "✓",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame[\"a3_Input&Send\"].clear|Text"] = "×",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame[\"a3_Input&Send\"][\"re-chat\"]|Text"] = "re-chat",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame.a1_option[\"a1.logo\"].Text|Text"] = "LighterCyan",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame.a1_option[\"a2.Chat\"].TextButton|Text"] = "🗨️ Chat",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame.a1_option[\"a3.Settings\"].TextButton|Text"] = "⚙️ Settings",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame.a1_option[\"a4.Explorer\"].TextButton|Text"] = "🌏 Explorer",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame.a1_option[\"a5.About\"].TextButton|Text"] = "📜 About",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame.a1_option[\"a6.Executor\"].TextButton|Text"] = "✏️ Executor",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame.a1_option[\"a7.SaveScript\"].TextButton|Text"] = "📂 SaveScript",
+    ["game:GetService(\"CoreGui\").ExperienceSettings[\"LighterCyan.ai\"].Holder.InsetFrame.a1_option[\"z9.More\"].TextButton|Text"] = "📦 More",
+}
+
+L.LocaleMap = {
+    ["EN"] = "en-us",
+    ["ES"] = "es",
+    ["TH"] = "th",
+    ["PT-BR"] = "pt-br",
+    ["PT-PT"] = "pt-pt",
+    ["RU"] = "ru",
+    ["KO"] = "ko",
+}
+
+L.Translators = {}
+L.Ready = {}
+
+L.Cache = {
+    ["EN"] = {},
+    ["ES"] = {},
+    ["TH"] = {},
+    ["PT-BR"] = {},
+    ["PT-PT"] = {},
+    ["RU"] = {},
+    ["KO"] = {},
+}
+
+L.DB = {
+    ["ES"] = {
+        ["Type /Help to show all commands or Say something..."] = "Escribe /Help para mostrar todos los comandos o di algo...",
+        ["Confirm API"] = "Confirmar API",
+        ["Unsaved API"] = "API no guardada",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ Tu API aquí (ChatGPT o Gemini) ]",
+        ["Status: No key"] = "Estado: Sin clave",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>Pensamiento IA</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>FUNCIONES NO DISPONIBLES (Antiguas)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nExperienceSettings es una herramienta de depuración que puedes usar por tu cuenta; ¡tiene muchas herramientas!\nHealthBar fue un remake más fluido y mejor, y ValueLabels sirve para mostrar valores.\nSi tu ExperienceSettings está deshabilitado, hay tres razones:\n • El HumanoidRootPart fue eliminado hace demasiado tiempo.\n • El Experience no admite ExperienceSettings.\n • El script no pudo cargarse.\nSi te gusta, ¡puedes apoyarme en Discord!\n¡Gracias por usar ExperienceSettings! ♥️\n\n54% de la GUI está hecha a mano\n10% del script está hecho a mano\n36% del script está hecho con IA\n\nCreador: @5teve3019D (GUI, pequeño script)\nAyudante: ChatGPT (Script) <-- Sí, recibió muchas quejas jaja.\nPequeño ayudante: Copilot de GitHub (Script)\nDato curioso: lo antiguo es más feo que lo de ahora jajaja, te lo juro 😂 Ah, no has visto lo de antes :(\n\n========================\n➕ = Añadir algo\n📢 = Anuncios\n🔨 = En desarrollo\n🔷 = Plan para futuras actualizaciones\n✅ = Hecho\n⚠️ = Tiene problemas\n🟠 = Pronto se actualizará\n❌ = Error\n⚫ = No se puede arreglar\n➖ = Desconectado o descontinuado\n-------\n📌 Actualizado: esta información ya no aparece en las actualizaciones; ¡por favor únete a nuestra comunidad de Discord para seguirlas!\n-------\n🔁 En progreso: funciones que ya no aparecen\n-------\n❌ Fallado: funciones no disponibles que ya no aparecen\n-------\n\n✨ CRÉDITOS DEL SCRIPT ✨\n[ Nombre del script ] por [ Creador ] [ Estado de verificación ]\n\nQueremos decir que tu script es increíble y se usa en nuestro proyecto para depuración y fines educativos.\nGracias por tu contribución :3 ❤️\n- Debugger\n\n-- Lista de créditos --\n'Ketamine' por @Cherry (✓ Verificado)\n'OG AFEM – Legacy' por @Imperial (✓ Verificado)\n'Chat' por usuario desconocido\n'UNC' por usuario desconocido\n'REM' por @evildotcom (X No verificado)\n'GameProber' por @Imperial (✓ Verificado)\n'AudioPlayer' por usuario desconocido\n'EmoteSelect' por usuario desconocido\n'Universal Movement Predictor' por @zephyrr (X No verificado)\n'Server Position Predictor' por @zephyrr (X No verificado)\n'Open Source Universal Chat' por @neutral (X No verificado)\n\n-- Aviso para creadores de scripts --\nSi eres creador de uno de los scripts mencionados arriba y no quieres que tu script esté incluido,\npor favor contáctanos a través de nuestro foro de Discord y lo eliminaremos de inmediato.\n",
+        ["Hide"] = "Ocultar",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "Oh, si ExperienceSettings está deshabilitado, puedes ocultar el texto pulsando el botón.",
+        ["Leave"] = "Salir",
+        ["Reset character"] = "Reiniciar personaje",
+        ["Resume"] = "Continuar",
+        ["Open Roblox Settings"] = "Abrir configuración de Roblox",
+        ["Player :"] = "Jugador :",
+        ["Enable ValueLabels"] = "Activar ValueLabels",
+        ["Shaders - Recommend graphics 5+"] = "Shaders - Se recomiendan gráficos 5+",
+        ["White Light"] = "Luz blanca",
+        ["RGB Light"] = "Luz RGB",
+        ["ESP (Beta)"] = "ESP (Beta)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "Superposición de daño <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ PRESIONA AQUÍ PARA LEER LA DESCRIPCIÓN ⚠</b></font></stroke>",
+        ["MoreToggles"] = "Más toggles",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (Descontinuado)",
+        ["Show Physics"] = "Mostrar física",
+        ["Last Death"] = "Última muerte",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (Por @zephyrr)",
+        ["Enable HealthBar"] = "Activar HealthBar",
+        ["Global Physics"] = "Física global",
+        ["Disable Death Sound"] = "Desactivar sonido de muerte",
+        ["FreeCam (Mobile)"] = "FreeCam (Móvil)",
+        ["Almost Endless Fallen (-50K)"] = "Caída casi interminable (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "Linterna (Primera persona y GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "ESP resalta jugadores y no jugadores",
+        ["Shift Lock (Mobile)"] = "Shift Lock (Móvil)",
+        ["Hitbox Shower"] = "Lluvia de hitboxes",
+        ["Close fuc#king annoying load bar"] = "Cerrar barra de carga molesta",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Creador por @5teve3019D en ScriptBlox/HaxHell",
+        ["Loading"] = "Cargando",
+        ["Starting ExperienceSettings. Please wait..."] = "Iniciando ExperienceSettings. Por favor espera...",
+        ["It might have bug and it still in beta."] = "Podría tener errores y todavía está en beta.",
+        ["Open Developer console"] = "Abrir consola de desarrollador",
+        ["Drop Tool"] = "Soltar herramienta",
+        ["Drop all tools"] = "Soltar todas las herramientas",
+        ["<b>Description</b>"] = "<b>Descripción</b>",
+        ["Description"] = "Descripción",
+        ["<b>Remove from the bookmark page</b>"] = "<b>Eliminar de la página de marcadores</b>",
+        ["Remove from the bookmark page"] = "Eliminar de la página de marcadores",
+        ["Search here!"] = "¡Busca aquí!",
+        ["[ Select first ] Searcher"] = "[ Selecciona primero ] Buscador",
+    },
+    ["TH"] = {
+        ["Type /Help to show all commands or Say something..."] = "พิมพ์ /Help เพื่อดูคำสั่งทั้งหมด หรือพิมพ์อะไรสักอย่าง...",
+        ["Confirm API"] = "ยืนยัน API",
+        ["Unsaved API"] = "API ยังไม่บันทึก",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ ใส่ API ของคุณที่นี่ (ChatGPT หรือ Gemini) ]",
+        ["Status: No key"] = "สถานะ: ไม่มีคีย์",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>ฟีเจอร์ที่ใช้งานไม่ได้ (ของเก่า)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nExperienceSettings เป็นเครื่องมือดีบักที่คุณสามารถใช้ได้เอง มีเครื่องมือเยอะมาก!\nสำหรับ HealthBar นั้นเป็นเวอร์ชันรีเมคที่ลื่นกว่าและดีกว่า และ ValueLabels ใช้สำหรับแสดงค่า\nถ้า ExperienceSettings ของคุณถูกปิดใช้งาน มีอยู่ 3 สาเหตุ:\n • HumanoidRootPart ถูกลบไปนานเกินไป\n • Experience นี้ไม่รองรับ ExperienceSettings\n • สคริปต์โหลดไม่สำเร็จ\nถ้าคุณชอบมัน คุณสามารถสนับสนุนฉันได้ทาง Discord!\nขอบคุณที่ใช้ ExperienceSettings! ♥️\n\n54% ของ GUI ทำด้วยมือ\n10% ของสคริปต์ทำด้วยมือ\n36% ของสคริปต์ทำโดย AI\n\nผู้สร้าง: @5teve3019D (GUI, สคริปต์ส่วนเล็ก)\nผู้ช่วย: ChatGPT (สคริปต์) <-- เขาโดนบ่นเยอะมากเลย ฮ่าๆ\nผู้ช่วยตัวเล็ก: Copilot ของ GitHub (สคริปต์)\nเกร็ดน่าสนใจ: ของเก่าขี้เหร่กว่าตอนนี้เยอะเลย ฉันสาบาน 😂 โอ้ คุณยังไม่เคยเห็นมันสินะ :(\n\n========================\n➕ = เพิ่มอะไรบางอย่าง\n📢 = ประกาศ\n🔨 = กำลังพัฒนา\n🔷 = แผนสำหรับอัปเดตในอนาคต\n✅ = เสร็จแล้ว\n⚠️ = มีปัญหา\n🟠 = จะอัปเดตเร็ว ๆ นี้\n❌ = บั๊ก\n⚫ = ไม่สามารถแก้ได้\n➖ = ตัดการเชื่อมต่อหรือยกเลิกการพัฒนา\n-------\n📌 อัปเดต: ข้อมูลในส่วนนี้จะไม่แสดงในอัปเดตอีกต่อไป กรุณาเข้าร่วมชุมชน Discord ของเราเพื่อรับข่าวสารต่อไป!\n-------\n🔁 อยู่ระหว่างดำเนินการ: ฟีเจอร์ที่ไม่แสดงอีกแล้ว\n-------\n❌ ล้มเหลว: ฟีเจอร์ที่ไม่พร้อมใช้งานซึ่งไม่แสดงอีกแล้ว\n-------\n\n✨ เครดิตสคริปต์ ✨\n[ ชื่อสคริปต์ ] โดย [ ผู้สร้าง ] [ สถานะการยืนยัน ]\n\nเราขอบอกว่าสคริปต์ของคุณยอดเยี่ยมมาก และถูกใช้ในโปรเจกต์ของเราเพื่อการดีบักและเพื่อการศึกษา\nขอบคุณสำหรับผลงานของคุณ :3 ❤️\n- Debugger\n\n-- รายชื่อเครดิต --\n'Ketamine' โดย @Cherry (✓ ยืนยันแล้ว)\n'OG AFEM – Legacy' โดย @Imperial (✓ ยืนยันแล้ว)\n'Chat' โดยผู้ใช้ไม่ทราบชื่อ\n'UNC' โดยผู้ใช้ไม่ทราบชื่อ\n'REM' โดย @evildotcom (X ยังไม่ยืนยัน)\n'GameProber' โดย @Imperial (✓ ยืนยันแล้ว)\n'AudioPlayer' โดยผู้ใช้ไม่ทราบชื่อ\n'EmoteSelect' โดยผู้ใช้ไม่ทราบชื่อ\n'Universal Movement Predictor' โดย @zephyrr (X ยังไม่ยืนยัน)\n'Server Position Predictor' โดย @zephyrr (X ยังไม่ยืนยัน)\n'Open Source Universal Chat' โดย @neutral (X ยังไม่ยืนยัน)\n\n-- แจ้งเตือนสำหรับผู้สร้างสคริปต์ --\nหากคุณเป็นผู้สร้างสคริปต์ที่ระบุไว้ข้างต้น และไม่ต้องการให้สคริปต์ของคุณถูกรวมไว้\nกรุณาติดต่อเราผ่านฟอรัม Discord ของเรา และเราจะลบออกให้ทันที\n",
+        ["Hide"] = "ซ่อน",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "อ้อ ถ้า ExperienceSettings ถูกปิดใช้งาน คุณสามารถซ่อนข้อความได้โดยกดปุ่มนี้",
+        ["Leave"] = "ออก",
+        ["Reset character"] = "รีเซ็ตตัวละคร",
+        ["Resume"] = "กลับเข้าเกม",
+        ["Open Roblox Settings"] = "เปิดการตั้งค่า Roblox",
+        ["Player :"] = "ผู้เล่น :",
+        ["Enable ValueLabels"] = "เปิด ValueLabels",
+        ["Shaders - Recommend graphics 5+"] = "Shaders - แนะนำกราฟิก 5+",
+        ["White Light"] = "แสงสีขาว",
+        ["RGB Light"] = "แสง RGB",
+        ["ESP (Beta)"] = "ESP (เบต้า)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "โอเวอร์เลย์ความเสียหาย <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ แตะที่นี่เพื่ออ่านคำอธิบาย ⚠</b></font></stroke>",
+        ["MoreToggles"] = "ตัวเลือกเพิ่มเติม",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (เลิกพัฒนาแล้ว)",
+        ["Show Physics"] = "แสดงฟิสิกส์",
+        ["Last Death"] = "การตายครั้งล่าสุด",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (โดย @zephyrr)",
+        ["Enable HealthBar"] = "เปิด HealthBar",
+        ["Global Physics"] = "ฟิสิกส์แบบรวม",
+        ["Disable Death Sound"] = "ปิดเสียงตาย",
+        ["FreeCam (Mobile)"] = "FreeCam (มือถือ)",
+        ["Almost Endless Fallen (-50K)"] = "Almost Endless Fallen (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "ไฟฉาย (บุคคลที่หนึ่ง & GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "ESP ไฮไลต์ผู้เล่นและสิ่งที่ไม่ใช่ผู้เล่น",
+        ["Shift Lock (Mobile)"] = "Shift Lock (มือถือ)",
+        ["Hitbox Shower"] = "Hitbox Shower",
+        ["Close fuc#king annoying load bar"] = "ปิดแถบโหลดน่ารำคาญ",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "ผู้สร้างโดย @5teve3019D บน ScriptBlox/HaxHell",
+        ["Loading"] = "กำลังโหลด",
+        ["Starting ExperienceSettings. Please wait..."] = "กำลังเริ่ม ExperienceSettings กรุณารอสักครู่...",
+        ["It might have bug and it still in beta."] = "อาจมีบั๊ก และยังอยู่ในช่วงเบต้า",
+        ["Open Developer console"] = "เปิดคอนโซลนักพัฒนา",
+        ["Drop Tool"] = "ทิ้งเครื่องมือ",
+        ["Drop all tools"] = "ทิ้งเครื่องมือทั้งหมด",
+        ["<b>Description</b>"] = "<b>คำอธิบาย</b>",
+        ["Description"] = "คำอธิบาย",
+        ["<b>Remove from the bookmark page</b>"] = "<b>ลบออกจากหน้าบุ๊กมาร์ก</b>",
+        ["Remove from the bookmark page"] = "ลบออกจากหน้าบุ๊กมาร์ก",
+        ["Search here!"] = "ค้นหาที่นี่!",
+        ["[ Select first ] Searcher"] = "[ เลือกก่อน ] ตัวค้นหา",
+    },
+    ["PT-BR"] = {
+        ["Type /Help to show all commands or Say something..."] = "Digite /Ajuda para ver todos os comandos ou diga algo...",
+        ["Confirm API"] = "Confirmar API",
+        ["Unsaved API"] = "API não salva",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ Sua API aqui (ChatGPT ou Gemini) ]",
+        ["Status: No key"] = "Status: Sem chave",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>IA-Pensando</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>RECURSOS INDISPONÍVEIS (Antigos)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nO ExperienceSettings é um conjunto de ferramentas de debug que você pode usar por conta própria. Existem muitas ferramentas!\nO HealthBar foi um remake mais suave e melhor, e o ValueLabels serve para mostrar valores.\nSe o seu ExperienceSettings estiver desativado, existem três motivos:\n • O HumanoidRootPart foi removido por muito tempo.\n • A experiência não suporta o ExperienceSettings.\n • O script falhou ao carregar.\nSe você gostar, pode me apoiar no Discord!\nObrigado por usar o ExperienceSettings! ♥️\n\n54% da interface foi feita manualmente\n10% do script foi feito manualmente\n36% do script foi feito por IA\n\nCriador: @5teve3019D (GUI, pequeno script)\nAjudante: ChatGPT (script) <-- Ele recebeu muitas reclamações kkk.\nPequeno ajudante: Copilot da GitHub (script)\nCuriosidade: o antigo era mais feio que o atual, eu juro 😂 Ah, você ainda não viu :(\n\n========================\n➕ = Adicionar algo\n📢 = Anúncios\n🔨 = Em desenvolvimento\n🔷 = Planejado para futuras atualizações\n✅ = Concluído\n⚠️ = Com problemas\n🟠 = Atualizando em breve\n❌ = Bug\n⚫ = Não pode ser corrigido\n➖ = Desconectado ou descontinuado\n-------\n📌 Atualizado: a atualização desta informação não aparece mais; entre na nossa comunidade no Discord para acompanhar as novidades!\n-------\n🔁 Em progresso: recursos que não aparecem mais\n-------\n❌ Falhou: recursos indisponíveis que não aparecem mais\n-------\n\n✨ CRÉDITOS DO SCRIPT ✨\n[ Nome do Script ] por [ Criador ] [ Status de Verificação ]\n\nQueremos dizer que o seu script é incrível e está sendo usado no nosso projeto para fins de debug e educação.\nObrigado pela sua contribuição :3 ❤️\n- Debugger\n\n-- Lista de créditos --\n'Ketamine' por @Cherry (✓ Verificado)\n'OG AFEM – Legacy' por @Imperial (✓ Verificado)\n'Chat' por usuário desconhecido\n'UNC' por usuário desconhecido\n'REM' por @evildotcom (X Não verificado)\n'GameProber' por @Imperial (✓ Verificado)\n'AudioPlayer' por usuário desconhecido\n'EmoteSelect' por usuário desconhecido\n'Universal Movement Predictor' por @zephyrr (X Não verificado)\n'Server Position Predictor' por @zephyrr (X Não verificado)\n'Open Source Universal Chat' por @neutral (X Não verificado)\n\n-- Aviso aos criadores de script --\nSe você for um criador de script listado acima e não quiser que o seu script seja incluído,\nentre em contato pelo nosso fórum no Discord, e vamos removê-lo imediatamente.\n",
+        ["Hide"] = "Ocultar",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "Ah, se o ExperienceSettings estiver desativado, você pode ocultar este texto clicando no botão.",
+        ["Leave"] = "Sair",
+        ["Reset character"] = "Resetar personagem",
+        ["Resume"] = "Continuar",
+        ["Open Roblox Settings"] = "Abrir configurações do Roblox",
+        ["Player :"] = "Jogador :",
+        ["Enable ValueLabels"] = "Ativar ValueLabels",
+        ["Shaders - Recommend graphics 5+"] = "Shaders - Recomendado: gráficos 5+",
+        ["White Light"] = "Luz branca",
+        ["RGB Light"] = "Luz RGB",
+        ["ESP (Beta)"] = "ESP (Beta)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "Sobreposição de dano <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ TOQUE AQUI PARA LER A DESCRIÇÃO ⚠</b></font></stroke>",
+        ["MoreToggles"] = "Mais Toggles",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (Descontinuado)",
+        ["Show Physics"] = "Mostrar física",
+        ["Last Death"] = "Última morte",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (Por @zephyrr)",
+        ["Enable HealthBar"] = "Ativar HealthBar",
+        ["Global Physics"] = "Física global",
+        ["Disable Death Sound"] = "Desativar som de morte",
+        ["FreeCam (Mobile)"] = "FreeCam (Mobile)",
+        ["Almost Endless Fallen (-50K)"] = "Queda quase infinita (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "Lanterna (Primeira pessoa & GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "ESP destaca jogadores e não jogadores",
+        ["Shift Lock (Mobile)"] = "Shift Lock (Mobile)",
+        ["Hitbox Shower"] = "Chuva de hitboxes",
+        ["Close fuc#king annoying load bar"] = "Fechar a barra de carregamento irritante",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Criado por @5teve3019D no ScriptBlox/HaxHell",
+        ["Loading"] = "Carregando",
+        ["Starting ExperienceSettings. Please wait..."] = "Iniciando o ExperienceSettings. Aguarde...",
+        ["It might have bug and it still in beta."] = "Pode ter bugs e ainda está em beta.",
+        ["Open Developer console"] = "Abrir console de desenvolvedor",
+        ["Drop Tool"] = "Dropar ferramenta",
+        ["Drop all tools"] = "Dropar todas as ferramentas",
+        ["<b>Description</b>"] = "<b>Descrição</b>",
+        ["Description"] = "Descrição",
+        ["<b>Remove from the bookmark page</b>"] = "<b>Remover da página de favoritos</b>",
+        ["Remove from the bookmark page"] = "Remover da página de favoritos",
+        ["Search here!"] = "Pesquise aqui!",
+        ["[ Select first ] Searcher"] = "[ Selecione primeiro ] Pesquisar",
+    },
+    ["PT-PT"] = {
+        ["Type /Help to show all commands or Say something..."] = "Escreve /Ajuda para ver todos os comandos ou diz algo...",
+        ["Confirm API"] = "Confirmar API",
+        ["Unsaved API"] = "API não guardada",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ A tua API aqui (ChatGPT ou Gemini) ]",
+        ["Status: No key"] = "Estado: Sem chave",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>IA-Pensando</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>FUNCIONALIDADES INDISPONÍVEIS (Antigas)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nO ExperienceSettings é um conjunto de ferramentas de depuração que podes usar por tua conta. Existem muitas ferramentas!\nO HealthBar foi um remake mais suave e melhor, e o ValueLabels serve para mostrar valores.\nSe o teu ExperienceSettings estiver desativado, existem três motivos:\n • O HumanoidRootPart foi removido há demasiado tempo.\n • A experiência não suporta o ExperienceSettings.\n • O script falhou ao carregar.\nSe gostares, podes apoiar-me no Discord!\nObrigado por usares o ExperienceSettings! ♥️\n\n54% da interface foi feita manualmente\n10% do script foi feito manualmente\n36% do script foi feito por IA\n\nCriador: @5teve3019D (GUI, pequeno script)\nAjudante: ChatGPT (script) <-- Ele recebeu muitas reclamações lol.\nPequeno ajudante: Copilot da GitHub (script)\nCuriosidade: o antigo era mais feio do que o atual, eu juro 😂 Ah, ainda não viste :(\n\n========================\n➕ = Adicionar algo\n📢 = Anúncios\n🔨 = Em desenvolvimento\n🔷 = Planeado para futuras atualizações\n✅ = Concluído\n⚠️ = Com problemas\n🟠 = A atualizar em breve\n❌ = Bug\n⚫ = Não pode ser corrigido\n➖ = Desligado ou descontinuado\n-------\n📌 Atualizado: esta informação já não aparece; junta-te à nossa comunidade no Discord para acompanhares as novidades!\n-------\n🔁 Em progresso: funcionalidades que já não aparecem\n-------\n❌ Falhou: funcionalidades indisponíveis que já não aparecem\n-------\n\n✨ CRÉDITOS DO SCRIPT ✨\n[ Nome do Script ] por [ Criador ] [ Estado de Verificação ]\n\nQueremos dizer que o teu script é incrível e está a ser usado no nosso projeto para fins de depuração e educação.\nObrigado pela tua contribuição :3 ❤️\n- Debugger\n\n-- Lista de créditos --\n'Ketamine' por @Cherry (✓ Verificado)\n'OG AFEM – Legacy' por @Imperial (✓ Verificado)\n'Chat' por utilizador desconhecido\n'UNC' por utilizador desconhecido\n'REM' por @evildotcom (X Não verificado)\n'GameProber' por @Imperial (✓ Verificado)\n'AudioPlayer' por utilizador desconhecido\n'EmoteSelect' por utilizador desconhecido\n'Universal Movement Predictor' por @zephyrr (X Não verificado)\n'Server Position Predictor' por @zephyrr (X Não verificado)\n'Open Source Universal Chat' por @neutral (X Não verificado)\n\n-- Aviso aos criadores de script --\nSe fores um criador de script listado acima e não quiseres que o teu script seja incluído,\nentra em contacto através do nosso fórum no Discord, e vamos removê-lo imediatamente.\n",
+        ["Hide"] = "Ocultar",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "Ah, se o ExperienceSettings estiver desativado, podes ocultar este texto clicando no botão.",
+        ["Leave"] = "Sair",
+        ["Reset character"] = "Reiniciar personagem",
+        ["Resume"] = "Continuar",
+        ["Open Roblox Settings"] = "Abrir definições do Roblox",
+        ["Player :"] = "Jogador :",
+        ["Enable ValueLabels"] = "Ativar ValueLabels",
+        ["Shaders - Recommend graphics 5+"] = "Shaders - Recomendado: gráficos 5+",
+        ["White Light"] = "Luz branca",
+        ["RGB Light"] = "Luz RGB",
+        ["ESP (Beta)"] = "ESP (Beta)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "Sobreposição de dano <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ TOCA AQUI PARA LER A DESCRIÇÃO ⚠</b></font></stroke>",
+        ["MoreToggles"] = "Mais Toggles",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (Descontinuado)",
+        ["Show Physics"] = "Mostrar física",
+        ["Last Death"] = "Última morte",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (Por @zephyrr)",
+        ["Enable HealthBar"] = "Ativar HealthBar",
+        ["Global Physics"] = "Física global",
+        ["Disable Death Sound"] = "Desativar som de morte",
+        ["FreeCam (Mobile)"] = "FreeCam (Telemóvel)",
+        ["Almost Endless Fallen (-50K)"] = "Queda quase infinita (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "Lanterna (1.ª pessoa & GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "ESP destaca jogadores e não jogadores",
+        ["Shift Lock (Mobile)"] = "Shift Lock (Telemóvel)",
+        ["Hitbox Shower"] = "Chuva de hitboxes",
+        ["Close fuc#king annoying load bar"] = "Fechar a barra de carregamento irritante",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Criado por @5teve3019D no ScriptBlox/HaxHell",
+        ["Loading"] = "A carregar",
+        ["Starting ExperienceSettings. Please wait..."] = "A iniciar o ExperienceSettings. Aguarda...",
+        ["It might have bug and it still in beta."] = "Pode ter bugs e ainda está em beta.",
+        ["Open Developer console"] = "Abrir consola de desenvolvedor",
+        ["Drop Tool"] = "Largar ferramenta",
+        ["Drop all tools"] = "Largar todas as ferramentas",
+        ["<b>Description</b>"] = "<b>Descrição</b>",
+        ["Description"] = "Descrição",
+        ["<b>Remove from the bookmark page</b>"] = "<b>Remover da página de favoritos</b>",
+        ["Remove from the bookmark page"] = "Remover da página de favoritos",
+        ["Search here!"] = "Pesquisa aqui!",
+        ["[ Select first ] Searcher"] = "[ Seleciona primeiro ] Pesquisar",
+    },
+    ["RU"] = {
+        ["Type /Help to show all commands or Say something..."] = "Введите /Help, чтобы показать все команды, или напишите что-нибудь...",
+        ["Confirm API"] = "Подтвердить API",
+        ["Unsaved API"] = "API не сохранён",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ Ваш API здесь (ChatGPT или Gemini) ]",
+        ["Status: No key"] = "Статус: нет ключа",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>ИИ-Мышление</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>НЕДОСТУПНЫЕ ФУНКЦИИ (Старые)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nExperienceSettings — это набор отладочных инструментов, которыми ты можешь пользоваться сам. Тут много разных инструментов!\nHealthBar — это ремейк, который работает плавнее и лучше, а ValueLabels показывают значения.\nЕсли ExperienceSettings отключён, есть три причины:\n • HumanoidRootPart был удалён слишком давно.\n • Эта Experience не поддерживает ExperienceSettings.\n • Скрипт не смог загрузиться.\nЕсли тебе нравится этот проект, ты можешь поддержать меня в Discord!\nСпасибо за использование ExperienceSettings! ♥️\n\n54% интерфейса сделано вручную\n10% скрипта сделано вручную\n36% скрипта сделано ИИ\n\nСоздатель: @5teve3019D (GUI, небольшой скрипт)\nПомощник: ChatGPT (скрипт) <-- На него было много жалоб лол.\nМаленький помощник: Copilot от GitHub (скрипт)\nИнтересный факт: старый вариант был намного хуже, чем сейчас, клянусь 😂 О, ты его ещё не видел :(\n\n========================\n➕ = Добавить что-то\n📢 = Объявления\n🔨 = В разработке\n🔷 = Планируется в будущем обновлении\n✅ = Готово\n⚠️ = Есть проблемы\n🟠 = Скоро обновится\n❌ = Баг\n⚫ = Невозможно исправить\n➖ = Отключено или устарело\n-------\n📌 Обновлено: обновления этой информации больше не показываются, пожалуйста, присоединяйся к нашему Discord-сообществу, чтобы следить за новостями!\n-------\n🔁 В процессе: функции, которые больше не отображаются\n-------\n❌ Не удалось: недоступные функции, которые больше не отображаются\n-------\n\n✨ КРЕДИТЫ СКРИПТА ✨\n[ Название скрипта ] от [ Создатель ] [ Статус проверки ]\n\nМы хотим сказать, что твой скрипт потрясающий, и он используется в нашем проекте для отладки и обучения.\nСпасибо за твой вклад :3 ❤️\n- Debugger\n\n-- Список кредитов --\n'Ketamine' от @Cherry (✓ Проверено)\n'OG AFEM – Legacy' от @Imperial (✓ Проверено)\n'Chat' от неизвестного пользователя\n'UNC' от неизвестного пользователя\n'REM' от @evildotcom (X Не проверено)\n'GameProber' от @Imperial (✓ Проверено)\n'AudioPlayer' от неизвестного пользователя\n'EmoteSelect' от неизвестного пользователя\n'Universal Movement Predictor' от @zephyrr (X Не проверено)\n'Server Position Predictor' от @zephyrr (X Не проверено)\n'Open Source Universal Chat' от @neutral (X Не проверено)\n\n-- Примечание для авторов скриптов --\nЕсли ты автор скрипта, указанного выше, и не хочешь, чтобы он был включён,\nсвяжись с нами через наш Discord-форум, и мы удалим его сразу же.\n",
+        ["Hide"] = "Скрыть",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "Ах, если ExperienceSettings отключён, ты можешь скрыть этот текст, нажав кнопку.",
+        ["Leave"] = "Выйти",
+        ["Reset character"] = "Сбросить персонажа",
+        ["Resume"] = "Продолжить",
+        ["Open Roblox Settings"] = "Открыть настройки Roblox",
+        ["Player :"] = "Игрок :",
+        ["Enable ValueLabels"] = "Включить ValueLabels",
+        ["Shaders - Recommend graphics 5+"] = "Шейдеры - рекомендуется графика 5+",
+        ["White Light"] = "Белый свет",
+        ["RGB Light"] = "RGB-свет",
+        ["ESP (Beta)"] = "ESP (бета)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "Наложение урона <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ НАЖМИТЕ ЗДЕСЬ, ЧТОБЫ ПРОЧИТАТЬ ОПИСАНИЕ ⚠</b></font></stroke>",
+        ["MoreToggles"] = "Ещё тумблеры",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (Устарело)",
+        ["Show Physics"] = "Показать физику",
+        ["Last Death"] = "Последняя смерть",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (От @zephyrr)",
+        ["Enable HealthBar"] = "Включить HealthBar",
+        ["Global Physics"] = "Глобальная физика",
+        ["Disable Death Sound"] = "Отключить звук смерти",
+        ["FreeCam (Mobile)"] = "FreeCam (Mobile)",
+        ["Almost Endless Fallen (-50K)"] = "Почти бесконечное падение (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "Фонарик (Первое лицо & GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "ESP выделяет игроков и неигроков",
+        ["Shift Lock (Mobile)"] = "Shift Lock (Mobile)",
+        ["Hitbox Shower"] = "Дождь хитбоксов",
+        ["Close fuc#king annoying load bar"] = "Закрыть бесящую полосу загрузки",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Создатель: @5teve3019D на ScriptBlox/HaxHell",
+        ["Loading"] = "Загрузка",
+        ["Starting ExperienceSettings. Please wait..."] = "Запуск ExperienceSettings. Пожалуйста, подожди...",
+        ["It might have bug and it still in beta."] = "Возможны баги, и это всё ещё beta.",
+        ["Open Developer console"] = "Открыть консоль разработчика",
+        ["Drop Tool"] = "Выбросить предмет",
+        ["Drop all tools"] = "Выбросить все предметы",
+        ["<b>Description</b>"] = "<b>Описание</b>",
+        ["Description"] = "Описание",
+        ["<b>Remove from the bookmark page</b>"] = "<b>Удалить со страницы закладок</b>",
+        ["Remove from the bookmark page"] = "Удалить со страницы закладок",
+        ["Search here!"] = "Поиск здесь!",
+        ["[ Select first ] Searcher"] = "[ Сначала выбери ] Поиск",
+    },
+    ["KO"] = {
+        ["Type /Help to show all commands or Say something..."] = "모든 명령을 보려면 /Help 를 입력하거나 아무 말이나 해보세요...",
+        ["Confirm API"] = "API 확인",
+        ["Unsaved API"] = "저장되지 않은 API",
+        ["[ Your API here (ChatGPT or Gemini) ]"] = "[ 여기에 API 입력 (ChatGPT 또는 Gemini) ]",
+        ["Status: No key"] = "상태: 키 없음",
+        ["<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-생각중</stroke></b>",
+        ["<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>사용할 수 없는 기능 (오래된 기능)</stroke></b>",
+        ["\nThe ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = "\nExperienceSettings는 혼자서 사용할 수 있는 디버그 도구 모음입니다. 정말 많은 기능이 있어요!\nHealthBar는 더 부드럽고 개선된 리메이크이며, ValueLabels는 값을 표시하는 데 사용됩니다.\nExperienceSettings가 비활성화되는 이유는 세 가지입니다.\n • HumanoidRootPart가 너무 오래 전에 제거됨.\n • 해당 경험이 ExperienceSettings를 지원하지 않음.\n • 스크립트 로딩에 실패함.\n마음에 드셨다면 Discord에서 응원해 주세요!\nExperienceSettings를 사용해 주셔서 감사합니다! ♥️\n\n인터페이스 54%는 수작업으로 제작됨\n스크립트 10%는 수작업으로 제작됨\n스크립트 36%는 AI로 제작됨\n\n제작자: @5teve3019D (GUI, 작은 스크립트)\n도움: ChatGPT (스크립트) <-- 불만도 많이 받았어요 ㅋㅋ\n작은 도우미: GitHub Copilot (스크립트)\n재미있는 사실: 예전 버전은 지금보다 훨씬 못생겼어요, 진짜예요 😂 아직 안 보셨죠 :(\n\n========================\n➕ = 추가\n📢 = 공지\n🔨 = 개발 중\n🔷 = 향후 업데이트 예정\n✅ = 완료\n⚠️ = 문제 있음\n🟠 = 곧 업데이트\n❌ = 버그\n⚫ = 수정 불가\n➖ = 연결 끊김 또는 서비스 종료\n-------\n📌 업데이트됨: 이 정보의 업데이트는 더 이상 표시되지 않습니다. 최신 소식을 보려면 Discord 커뮤니티에 참여해 주세요!\n-------\n🔁 진행 중: 더 이상 표시되지 않는 기능\n-------\n❌ 실패: 사용할 수 없게 되어 더 이상 표시되지 않는 기능\n-------\n\n✨ 스크립트 크레딧 ✨\n[ 스크립트 이름 ] by [ 제작자 ] [ 검증 상태 ]\n\n당신의 스크립트는 정말 멋지고, 현재 우리 프로젝트에서 디버깅 및 교육용으로 사용되고 있습니다.\n기여해 주셔서 감사합니다 :3 ❤️\n- Debugger\n\n-- 크레딧 목록 --\n'Ketamine' by @Cherry (✓ 검증됨)\n'OG AFEM – Legacy' by @Imperial (✓ 검증됨)\n'Chat' by 알 수 없는 사용자\n'UNC' by 알 수 없는 사용자\n'REM' by @evildotcom (X 미검증)\n'GameProber' by @Imperial (✓ 검증됨)\n'AudioPlayer' by 알 수 없는 사용자\n'EmoteSelect' by 알 수 없는 사용자\n'Universal Movement Predictor' by @zephyrr (X 미검증)\n'Server Position Predictor' by @zephyrr (X 미검증)\n'Open Source Universal Chat' by @neutral (X 미검증)\n\n-- 스크립트 제작자 안내 --\n위 목록에 포함된 스크립트의 제작자 중 자신의 스크립트가 포함되기를 원하지 않는 분은,\nDiscord 포럼으로 연락해 주세요. 즉시 제거하겠습니다.\n",
+        ["Hide"] = "숨기기",
+        ["Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."] = "아, ExperienceSettings가 비활성화되어 있어도 이 버튼을 눌러 이 텍스트를 숨길 수 있습니다.",
+        ["Leave"] = "나가기",
+        ["Reset character"] = "캐릭터 초기화",
+        ["Resume"] = "계속하기",
+        ["Open Roblox Settings"] = "Roblox 설정 열기",
+        ["Player :"] = "플레이어 :",
+        ["Enable ValueLabels"] = "ValueLabels 활성화",
+        ["Shaders - Recommend graphics 5+"] = "셰이더 - 권장 그래픽 5+",
+        ["White Light"] = "화이트 라이트",
+        ["RGB Light"] = "RGB 라이트",
+        ["ESP (Beta)"] = "ESP (베타)",
+        ["Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>"] = "데미지 오버레이 <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ 여기를 눌러 설명을 읽어 주세요 ⚠</b></font></stroke>",
+        ["MoreToggles"] = "더 많은 토글",
+        ["LighterCyan.ai (Discontinued)"] = "LighterCyan.ai (지원 종료)",
+        ["Show Physics"] = "물리 표시",
+        ["Last Death"] = "마지막 죽음",
+        ["ServerPositionPredictor (By @zephyrr)"] = "ServerPositionPredictor (@zephyrr 제작)",
+        ["Enable HealthBar"] = "HealthBar 활성화",
+        ["Global Physics"] = "전역 물리",
+        ["Disable Death Sound"] = "죽음 소리 비활성화",
+        ["FreeCam (Mobile)"] = "FreeCam (모바일)",
+        ["Almost Endless Fallen (-50K)"] = "거의 끝없는 바닥 (-50K)",
+        ["Flashlight (FirstPerson & GFX 6+)"] = "손전등 (1인칭 & GFX 6+)",
+        ["ESP Highlight Players & Non-Players"] = "플레이어와 비플레이어 ESP 강조",
+        ["Shift Lock (Mobile)"] = "Shift Lock (모바일)",
+        ["Hitbox Shower"] = "히트박스 샤워",
+        ["Close fuc#king annoying load bar"] = "짜증나는 로딩 바 닫기",
+        ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "ScriptBlox/HaxHell의 @5teve3019D 제작",
+        ["Loading"] = "로딩 중",
+        ["Starting ExperienceSettings. Please wait..."] = "ExperienceSettings를 시작하는 중입니다. 잠시만 기다려 주세요...",
+        ["It might have bug and it still in beta."] = "버그가 있을 수 있으며 아직 베타 상태입니다.",
+        ["Open Developer console"] = "개발자 콘솔 열기",
+        ["Drop Tool"] = "도구 버리기",
+        ["Drop all tools"] = "모든 도구 버리기",
+        ["<b>Description</b>"] = "<b>설명</b>",
+        ["Description"] = "설명",
+        ["<b>Remove from the bookmark page</b>"] = "<b>북마크 페이지에서 제거</b>",
+        ["Remove from the bookmark page"] = "북마크 페이지에서 제거",
+        ["Search here!"] = "여기에서 검색하세요!",
+        ["[ Select first ] Searcher"] = "[ 먼저 선택 ] 검색",
+    },
+}
+
+
+L.SimilarCache =
+    setmetatable({}, {__mode = "k"})
+
+L.Candidates = {
+    "Type /Help to show all commands or Say something...",
+    "Confirm API",
+    "Unsaved API",
+    "[ Your API here (ChatGPT or Gemini) ]",
+    "Status: Unknown",
+    "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>",
+    "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>",
+    "Version:<b> VER </b>",
+    "[ User on ScriptBlox/HaxHell ]",
+    "“Creator of the ExperiencSettings.”",
+    "The ExperienceSettings is debug tools you can use on your own, there are a lot of tools! For HealthBar was a remake of better and smoother and ValueLabels for show values. If your ExperienceSettings was Disabled there are three reasons,  • HumanoidRootPart was removed too long.  • The Experience doesn't support the ExperienceSettings.  • Script failed to load. If you enjoy it, you can support me on discord! Thank you for using ExperienceSettings! ♥️  54% Gui is made by hand 10% Script is made by hand 36% Script is made by ai  Creator: @5teve3019D (Gui, Little Script) Helper: ChatGPT (Script) <-- He got a lot of complaints lol. Little Helper: Copilot of GitHub (Script) Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(  ======================== ➕ = Add something 📢 = Announcements 🔨 = In-develop 🔷 = Plan ahead for updates ✅ = Done ⚠️ = Have issues 🟠 = Updating soon ❌ = Bug ⚫ = Cannot fix ➖ = Disconnected or discontinued ------- 📌 Updated: Update in this information is no longer appear now, please join our discord community to following update! ------- 🔁 In progress: No longer appear features ------- ❌ Failed: No longer appear unavailable features -------  ✨ SCRIPT CREDITS ✨ [ Script Name ] by [ Creator ] [ Verification Status ]  We want to say that your script is awesome, and it is used in our project for debugging and educational purposes. Thank you for your contribution :3 ❤️ - Debugger  -- Credits List -- 'Ketamine' by @Cherry (✓ Verified) 'OG AFEM – Legacy' by @Imperial (✓ Verified) 'Chat' by Unknown user 'UNC' by Unknown user 'REM' by @evildotcom (X Not verified) 'GameProber' by @Imperial (✓ Verified) 'AudioPlayer' by Unknown user 'EmoteSelect' by Unknown user 'Universal Movement Predictor' by @zephyrr (X Not verified) 'Server Position Predictor' by @zephyrr (X Not verified) 'Open Source Universal Chat' by @neutral (X Not verified)  -- Notice to Script Creators -- If you are a script creator listed above and do not want your script to be included, please contact us via our Discord forum, and we will remove it immediately. ",
+    "Hide",
+    "Oh, if the ExperienceSettings was disabled. You can hide the text by click the button.",
+    "Leave The Experience",
+    "Reset character",
+    "Resume",
+    "A button that doesn't do NOTHING",
+    "Player :",
+    "ON",
+    "OFF",
+    "Enable ValueLabels",
+    "<b><u>ValueLabel</u></b> Show ValueLabel at the Top HealthBar. • FPS - Frame Per second • HP - Health ( How to read: 100.000 HP = 100 HP ) • WS/s - Walkspeed per studs ( How to read: 16.000 WS/s = 16 WS/s )",
+    "Shaders - Sunset",
+    "<b><u>Shaders</u></b> What a beautiful sunset! Graphic quality recommend 6+",
+    "White Light",
+    "<b><u>White Light</u></b> Just a PointLight around the you. Useful in the dark.",
+    "RGB Light",
+    "<b><u>RGB Light</u></b> Same as White Light, but RGB.",
+    "ESP",
+    "<b><u>ESP</u></b> See all players around the map. Also TextLabel will change color following team color.",
+    "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>",
+    "<b><u>Damage Overlay</u></b> Displays visual damage effects when your character takes damage.  <stroke color=\"rgb(255,0,0)\" thickness=\"1\"> <font color=\"#ff5555\"> <b>⚠ Photosensitive Epilepsy Warning</b>  This effect may contain: • Flashing lights • Rapid brightness changes • Screen color pulses  If you experience dizziness, eye strain, or discomfort, please turn this feature <b>OFF</b> immediately. </font></stroke>",
+    "MoreToggles",
+    "<b><u>MoreToggles</u></b> Open second toggle menu.",
+    "Show Physics",
+    "<b><u>Show Physics</u></b> Displays colorful trajectory lines (\"player speedometers\") and landing prediction points showing where your character is expected to land.",
+    "LighterCyan.ai (Discontinued)",
+    "<b><u>LighterCyan.ai</u></b> It's discontinued bro. 😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭",
+    "Last Death",
+    "<b><u>Last Death</u></b> It will show last position where you die at as a frozen ghost character...",
+    "ServerPositionPredictor (By @zephyrr)",
+    "<b><u>ServerPositionPredictor</u></b> Showing between Server and Client. Server is a second character of you. (Displaying as like ping) Client is you.",
+    "HealthBar",
+    "<b><u>HealthBar</u></b> Show HealthBar at the Top Right.",
+    "Global Physics",
+    "<b><u>Global Physics</u></b> Same as Show Physics Toggle, but you're just seeing the physics of other players and objects too.",
+    "Disable Death Sound",
+    "<b><u>Death Sound</u></b> Play sound after character dead.",
+    "Relax / Gif Animation Predictor",
+    "<b><u>Gif Animation Editor</u></b> Show or hide the Gif Animation Editor window.",
+    "FreeCam (Mobile)",
+    "<b><u>FreeCam</u></b> \tExplore around the world with FreeCam! (Mobile Only)",
+    "Almost Endless Fallen (-50K)",
+    "<b><u>Almost Endless Fallen</u></b> Set FallenPartDestroyHeight at -50000.",
+    "Flashlight",
+    "<b><u>Flashlight</u></b> It will make you in the first person with light, and also recommend set graphic quality at 6+",
+    "ESP Highlight Players & Non-Players",
+    "<b><u>ESP Highlight Players & Non-Players</u></b> It will highlight HumanoidRootPart. Players is <font color=\"rgb(0,255,0)\">green</font> and Non-Players is <font color=\"rgb(255,10,10)\">red</font>.",
+    "Shift Lock (Mobile)",
+    "<b><u>Shift Lock</u></b> Shift Lock for Mobile players. Also you can CUSTOMIZE CROSSHAIR by open <b>Settings - 2</b> in <b>Settings - Loader Rejoiner</b>!",
+    "Hitbox Shower",
+    "<b><u>Hitbox Shower</u></b> See all hitbox players  (Using ViewportFrame)",
+    "Settings",
+    "Drag",
+    "Image",
+    "Example: 'Folder/'",
+    "Idle's FPS",
+    "Save",
+    "When Click's FPS",
+    "Frame Rate",
+    "Idle Frame Rate",
+    "When Click",
+    "When Click Frame Rate",
+    "<u><b>Editor</b></u>",
+    "Idle",
+    "Relax / Gif Animation Editor by <font color='rgb(85,255,255)'>5teve3019D</font>",
+    "Debugs page is <b><u>not</u></b> done yet. Try to press the button at the top right.",
+    "Untitled Song",
+    "CreatorID: ID ",
+    "Creator: NAME",
+    "Open Developer console",
+    "Drop Tool",
+    "Drop all tools",
+    "PlaceID: ID",
+    "PlayerAge: COUNT",
+    "PlayerBirth: DATE",
+    "Position: ASIX",
+    "TimeOfDay: DATE",
+    "AFK: TIME | LastAFK: TIME",
+    "CameraMode: ENUM",
+    "CharacterType: RIGTYPE",
+    "BestDamage: COUNT | LastDamage: COUNT",
+    "Deaths: COUNT",
+    "Friends in the server: COUNT",
+    "BestHeal: COUNT | LastHeal: COUNT",
+    "HoldingTool: ITEM",
+    "Tools: AMOUNT",
+    "JumpPower: NUM",
+    "MaxHealth: NUM",
+    "PlayingTime: TIME",
+    "Real Time Clock: TIME",
+    "-- <b>Buttons</b> --",
+    "-- <b>Texts</b> --",
+    "StandingOn: MATERIAL",
+    "WalkSpeed: NUM",
+    "<b>Free</b>",
+    "<b>Key</b>",
+    "<b>Paid</b>",
+    "<b>Patched</b>",
+    "<b>Verified</b>",
+    "<b><i>Bookmark</i></b>",
+    "<b><i>View</i></b>",
+    "<font size='12'><b>SCRIPTTITLE</b></font> GAMENAME By @API Not supported Click 'View' for more details.",
+    "<b>Copy</b>",
+    "<b>Execute</b>",
+    "<b>Remove from the bookmark page</b>",
+    "<b>View</b>",
+    "From: API",
+    "<b>Back »</b>",
+    "<b>Bookmark page</b>",
+    "Creation Date: DATE",
+    "By @USER",
+    "<b>Dislike: COUNT</b>",
+    "<b>Description</b>",
+    "<b>Like: COUNT</b>",
+    "<b>Raw Script</b>",
+    "<b>Tag</b>",
+    "Universal Script 📌",
+    "<b>Visit: COUNT</b>",
+    "Search here!",
+    "The ExperienceSettings has been deactivated for some reason.",
+    "Copy",
+    "Execute",
+    "<b>Don't show this again</b>",
+    "<b>Remind Me Later</b>",
+    "<b><font size=\"12\">Happy 1st Anniversary of The ExperienceSettings!</font></b> We want to let you know for those who using our script; we want to say <b>thank you for using our script!</b>    To close this <b>GUI</b> you can simply click <b><font size=\"9\">\"Remind me later.\"</font></b> or <b><font size=\"9\">\"Dont show this again.\"</font></b> button to continue use The ExperienceSettings.",
+    "re-chat",
+    "Ask anything..."
+}
+
+local function StripRichText(text)
+    return tostring(text or ""):gsub("<[^>]->", "")
+end
+
+local function PlainCacheKey(text)
+    return "__PLAIN_RICHTEXT__" .. StripRichText(text)
+end
+
+local function NormalizeSimilarityText(text)
+    text = tostring(text or "")
+    text = text:gsub("\r\n", "\n")
+    text = text:gsub("\r", "\n")
+    text = text:gsub("\\n", "\n")
+    text = text:gsub("\\t", " ")
+    text = text:gsub("\n", " ")
+    text = text:gsub("\t", " ")
+    text = text:gsub("%s+", " ")
+    text = text:gsub("^%s+", "")
+    text = text:gsub("%s+$", "")
+    text = text:gsub("“", '"'):gsub("”", '"')
+    text = text:gsub("‘", "'"):gsub("’", "'")
+    return text:lower()
+end
+
+local function SimilarityTextWithoutRichText(text)
+    return NormalizeSimilarityText(tostring(text or ""):gsub("<[^>]->", ""))
+end
+
+local function CommonPrefixRatio(a, b)
+    local length = math.min(#a, #b)
+    if length == 0 then
+        return 1
+    end
+
+    local same = 0
+    for i = 1, length do
+        if a:sub(i, i) ~= b:sub(i, i) then
+            break
+        end
+        same += 1
+    end
+
+    return same / math.max(#a, #b)
+end
+
+local function TokenSimilarity(a, b)
+    local function makeTokens(value)
+        local tokens = {}
+        for token in value:gmatch("[%w@#%%_%-]+") do
+            tokens[#tokens + 1] = token
+        end
+        return tokens
+    end
+
+    local ta = makeTokens(a)
+    local tb = makeTokens(b)
+
+    if #ta <= 1 or #tb <= 1 then
+        return 0
+    end
+
+    local lookup = {}
+    for _, token in ipairs(ta) do
+        lookup[token] = true
+    end
+
+    local common = 0
+    local used = {}
+
+    for _, token in ipairs(tb) do
+        if lookup[token] and not used[token] then
+            used[token] = true
+            common += 1
+        end
+    end
+
+    return (2 * common) / (#ta + #tb)
+end
+
+local function FindSimilarLocalizationSource(sourceText)
+    local source = tostring(sourceText or "")
+    if source == "" then
+        return nil
+    end
+
+    L.SimilarCache[source] =
+        L.SimilarCache[source] or {}
+
+    local cached = L.SimilarCache[source].Resolved
+    if cached then
+        return cached
+    end
+
+    local normalized = NormalizeSimilarityText(source)
+    local plainNormalized =
+        SimilarityTextWithoutRichText(source)
+
+    -- Path sources are resolved before this function when possible.
+    -- Keep this function text-only to avoid the freeze caused by scanning
+    -- a large candidate index on every language switch.
+
+    -- First pass: exact normalized match.
+    for _, candidate in ipairs(L.Candidates) do
+        if NormalizeSimilarityText(candidate) == normalized then
+            L.SimilarCache[source].Resolved = candidate
+            return candidate
+        end
+    end
+
+    -- Second pass: the canonical source may be in L.DB but not in List.
+    for _, entries in pairs(L.DB) do
+        for candidate in pairs(entries) do
+            if NormalizeSimilarityText(candidate) == normalized then
+                L.SimilarCache[source].Resolved = candidate
+                return candidate
+            end
+        end
+    end
+
+    -- Third pass: high-confidence fuzzy match.
+    local bestCandidate = nil
+    local bestScore = 0
+
+    local function testCandidate(candidate)
+        if candidate == source then
+            return
+        end
+
+        local candidateNormalized =
+            NormalizeSimilarityText(candidate)
+
+        local candidatePlain =
+            SimilarityTextWithoutRichText(candidate)
+
+        local lengthRatio =
+            math.min(#normalized, #candidateNormalized)
+            / math.max(1, math.max(#normalized, #candidateNormalized))
+
+        if lengthRatio < 0.72 then
+            return
+        end
+
+        local scoreA =
+            TokenSimilarity(normalized, candidateNormalized)
+
+        local scoreB =
+            TokenSimilarity(plainNormalized, candidatePlain)
+
+        local scoreC =
+            CommonPrefixRatio(
+                normalized,
+                candidateNormalized
+            )
+
+        local score =
+            math.max(scoreA, scoreB) * 0.75
+            + scoreC * 0.25
+
+        if score > bestScore then
+            bestScore = score
+            bestCandidate = candidate
+        end
+    end
+
+    for _, candidate in ipairs(L.Candidates) do
+        testCandidate(candidate)
+    end
+
+    for _, entries in pairs(L.DB) do
+        for candidate in pairs(entries) do
+            testCandidate(candidate)
+        end
+    end
+
+    if bestCandidate and bestScore >= 0.92 then
+        L.SimilarCache[source].Resolved =
+            bestCandidate
+        L.SimilarCache[source].Score =
+            bestScore
+        return bestCandidate
+    end
+
+    return nil
+end
+
+
+-- Import the static L.DB.
+for language, entries in pairs(L.DB) do
+    for sourceText, translatedText in pairs(entries) do
+        L.Cache[language][sourceText] = translatedText
+
+        local plainKey = PlainCacheKey(sourceText)
+        if plainKey ~= PlainCacheKey("") then
+            L.Cache[language][plainKey] = translatedText
+        end
+    end
+end
+
+local function IsTranslationSkipped(obj)
+    local current = obj
+
+    while current do
+        if current:GetAttribute("SkipAutoTranslate") == true then
+            return true
+        end
+
+        if current == ExperienceSettings then
+            break
+        end
+
+        current = current.Parent
+    end
+
+    return false
+end
+
+local function SaveTranslationCache()
+    if not writefile then
+        return false
+    end
+
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode({
+            Version = 1,
+            Languages = L.Cache
+        })
+    end)
+
+    if not ok then
+        return false
+    end
+
+    local saveOk = pcall(function()
+        if not isfolder("ExperienceSettings") then
+            makefolder("ExperienceSettings")
+        end
+
+        writefile(L.CacheFile, encoded)
+    end)
+
+    return saveOk
+end
+
+local function LoadTranslationCache()
+    if not readfile
+        or not isfile
+        or not isfile(L.CacheFile) then
+        return
+    end
+
+    local ok, decoded = pcall(function()
+        return HttpService:JSONDecode(readfile(L.CacheFile))
+    end)
+
+    if not ok
+        or type(decoded) ~= "table"
+        or type(decoded.Languages) ~= "table" then
+        return
+    end
+
+    for language, entries in pairs(decoded.Languages) do
+        if L.Cache[language]
+            and type(entries) == "table" then
+
+            for sourceText, translatedText in pairs(entries) do
+                if type(sourceText) == "string"
+                    and type(translatedText) == "string" then
+
+                    L.Cache[language][sourceText] =
+                        translatedText
+                end
+            end
+        end
+    end
+end
+
+LoadTranslationCache()
+
+-- Protect only the dynamic parts.
+-- Example:
+--   "Health: 100" -> "Health: __DYNAMIC_1__"
+local function SelectTextToTranslateOnly(text)
+    local source = tostring(text or "")
+    local protected = {}
+    local counter = 0
+
+    local function protect(value)
+        counter += 1
+        protected[counter] = value
+        return string.format("__DYNAMIC_%d__", counter)
+    end
+
+    -- RichText tags are permanent syntax, not dynamic values.
+    -- Keeping them literal prevents adjacent-tag matching failures.
+
+    source = source:gsub("https?://%S+", function(value)
+        return protect(value)
+    end)
+
+    source = source:gsub("rbxassetid://%d+", function(value)
+        return protect(value)
+    end)
+
+    source = source:gsub("@[%w_]+", function(value)
+        return protect(value)
+    end)
+
+    -- Common runtime placeholders used by ExperienceSettings.
+    source = source:gsub("%f[%a](VER|COUNT|DATE|TIME|ASIX|ENUM|RIGTYPE|ITEM|MATERIAL|NUM|NAME|ID|AMOUNT)%f[%A]", function(value)
+        return protect(value)
+    end)
+
+    source = source:gsub("[%+%-]?%d[%d,%.]*%%?", function(value)
+        return protect(value)
+    end)
+
+    return source, protected
+end
+
+local function RestoreSelectedText(text, protected)
+    local result = tostring(text or "")
+
+    for index = #protected, 1, -1 do
+        local token = string.format("__DYNAMIC_%d__", index)
+
+        result = result:gsub(token, function()
+            return protected[index]
+        end)
+    end
+
+    return result
+end
+
+-- Normalize static DB entries so runtime dynamic values can match the same template.
+for language, entries in pairs(L.DB) do
+    for sourceText, translatedText in pairs(entries) do
+        local template, protected = SelectTextToTranslateOnly(sourceText)
+        if template ~= sourceText and not L.Cache[language][template] then
+            local translatedTemplate = translatedText
+            for index = #protected, 1, -1 do
+                local value = tostring(protected[index] or "")
+                if value ~= "" then
+                    local escaped = value:gsub("([%%%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
+                    translatedTemplate = translatedTemplate:gsub(
+                        escaped,
+                        string.format("__DYNAMIC_%d__", index),
+                        1
+                    )
+                end
+            end
+            L.Cache[language][template] = translatedTemplate
+            L.Cache[language][PlainCacheKey(template)] = translatedTemplate
+        end
+    end
+end
+
+
+local function GetLocalizationTranslator(language)
+    if language == "EN" then
+        return nil
+    end
+
+    local existing = L.Translators[language]
+    if existing then
+        return existing
+    end
+
+    local localeId = L.LocaleMap[language]
+    if not localeId then
+        return nil
+    end
+
+    local ok, translator = pcall(function()
+        return LocalizationService:GetTranslatorForLocaleAsync(localeId)
+    end)
+
+    if ok and translator then
+        L.Translators[language] = translator
+        L.Ready[language] = true
+        return translator
+    end
+
+    L.Ready[language] = false
+    return nil
+end
+
+local function TranslateFromLocalization(obj, sourceText, language, preferredSource)
+    if language == "EN" or not obj or sourceText == "" then
+        return nil
+    end
+
+    local translator = GetLocalizationTranslator(language)
+    if not translator then
+        return nil
+    end
+
+    local tried = {}
+    local function trySource(candidate)
+        candidate = tostring(candidate or "")
+        if candidate == "" or tried[candidate] then
+            return nil
+        end
+
+        tried[candidate] = true
+
+        local ok, translated = pcall(function()
+            return translator:Translate(obj, candidate)
+        end)
+
+        if not ok or type(translated) ~= "string" then
+            return nil
+        end
+
+        -- Roblox returns the source text when no translated entry is available.
+        if translated == candidate then
+            return nil
+        end
+
+        return translated
+    end
+
+    -- 1. Path-based canonical source from the full Device export.
+    -- This is the primary source now; runtime text is used as fallback.
+    if preferredSource and preferredSource ~= "" then
+        local translated = trySource(preferredSource)
+        if translated then
+            return translated, preferredSource
+        end
+    end
+
+    -- 2. Exact runtime source.
+    local translated = trySource(sourceText)
+    if translated then
+        return translated, sourceText
+    end
+
+    -- 3. Equivalent whitespace source.
+    -- This fixes real newlines, literal "\\n", tabs, and repeated spaces.
+    local normalizedCandidate =
+        sourceText
+            :gsub("\\r\\n", " ")
+            :gsub("[\\r\\n\\t]", " ")
+            :gsub("\\\\n", " ")
+            :gsub("%s+", " ")
+            :gsub("^%s+", "")
+            :gsub("%s+$", "")
+
+    if normalizedCandidate ~= sourceText then
+        translated = trySource(normalizedCandidate)
+        if translated then
+            return translated, normalizedCandidate
+        end
+    end
+
+    -- 3. Find the closest known canonical source.
+    local similarSource =
+        FindSimilarLocalizationSource(sourceText)
+
+    if similarSource and similarSource ~= sourceText then
+        translated = trySource(similarSource)
+        if translated then
+            return translated, similarSource
+        end
+    end
+
+    return nil
+end
+
+local function GetCachedTranslation(sourceText, language)
+    if language == "EN" then
+        return sourceText
+    end
+
+    local cache = L.Cache[language]
+    if not cache then
+        return nil
+    end
+
+    local exact = cache[sourceText]
+    if exact then
+        return exact
+    end
+
+    local plain = cache[PlainCacheKey(sourceText)]
+    if plain then
+        return plain
+    end
+
+    local template, protected =
+        SelectTextToTranslateOnly(sourceText)
+
+    local cachedTemplate = cache[template]
+    if cachedTemplate then
+        return RestoreSelectedText(cachedTemplate, protected)
+    end
+
+    local cachedPlainTemplate = cache[PlainCacheKey(template)]
+    if cachedPlainTemplate then
+        return RestoreSelectedText(cachedPlainTemplate, protected)
+    end
+
+    return nil, template, protected
+end
+
+L.State =
+    setmetatable({}, {__mode = "k"})
+
+local function EscapeLuaPattern(value)
+    return tostring(value or ""):gsub("([%%%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
+end
+
+-- Match the current text against a permanent/dynamic template.
+-- Example:
+--   "Health: __DYNAMIC_1__"
+--   "Health: 100"
+-- -> { [1] = "100" }
+local function MatchDynamicTemplate(template, text)
+    template = tostring(template or "")
+    text = tostring(text or "")
+
+    local patternParts = {"^"}
+    local dynamicOrder = {}
+    local cursor = 1
+
+    while true do
+        local startPos, endPos, index =
+            template:find("__DYNAMIC_(%d+)__", cursor)
+
+        if not startPos then
+            local tail = template:sub(cursor)
+            if tail ~= "" then
+                patternParts[#patternParts + 1] = EscapeLuaPattern(tail)
+            end
+            break
+        end
+
+        local permanent = template:sub(cursor, startPos - 1)
+
+        if permanent ~= "" then
+            patternParts[#patternParts + 1] = EscapeLuaPattern(permanent)
+        end
+
+        patternParts[#patternParts + 1] = "(.-)"
+        dynamicOrder[#dynamicOrder + 1] = tonumber(index)
+        cursor = endPos + 1
+    end
+
+    patternParts[#patternParts + 1] = "$"
+
+    local captures = {
+        string.match(
+            text,
+            table.concat(patternParts)
+        )
+    }
+
+    if #dynamicOrder == 0 then
+        return text == template and {}
+            or nil
+    end
+
+    if #captures ~= #dynamicOrder then
+        return nil
+    end
+
+    local values = {}
+
+    for i, index in ipairs(dynamicOrder) do
+        values[index] = captures[i]
+    end
+
+    return values
+end
+
+local function FormatPathName(name)
+    name = tostring(name or "")
+
+    if name:match("^[A-Za-z_][A-Za-z0-9_]*$") then
+        return "." .. name
+    end
+
+    return "[" .. string.format("%q", name) .. "]"
+end
+
+local function GetObjectPath(obj)
+    if not obj then
+        return nil
+    end
+
+    local parts = {}
+    local current = obj
+
+    while current and current ~= CoreGui do
+        local parent = current.Parent
+
+        if not parent then
+            break
+        end
+
+        local children = parent:GetChildren()
+        local childIndex = nil
+        local sameNameCount = 0
+
+        for index, child in ipairs(children) do
+            if child.Name == current.Name then
+                sameNameCount = sameNameCount + 1
+            end
+
+            if child == current then
+                childIndex = index
+            end
+        end
+
+        if sameNameCount > 1 and childIndex then
+            table.insert(
+                parts,
+                1,
+                ":GetChildren()[" .. tostring(childIndex) .. "]"
+            )
+        else
+            table.insert(
+                parts,
+                1,
+                FormatPathName(current.Name)
+            )
+        end
+
+        current = parent
+    end
+
+    if current == CoreGui then
+        return 'game:GetService("CoreGui")' .. table.concat(parts)
+    end
+
+    local ok, fullName = pcall(function()
+        return obj:GetFullName()
+    end)
+
+    if ok and type(fullName) == "string" and fullName ~= "" then
+        return fullName
+    end
+
+    return nil
+end
+
+local function GetPathSource(obj, property)
+    local path = GetObjectPath(obj)
+    if not path then
+        return nil, nil
+    end
+
+    return path,
+        L.PathSources[path .. "|" .. tostring(property)]
+end
+
+local function RestoreDynamicValuesFromSource(
+    translatedText,
+    canonicalSource,
+    currentTemplate,
+    currentValues
+)
+    if type(translatedText) ~= "string"
+        or type(canonicalSource) ~= "string" then
+        return translatedText
+    end
+
+    local canonicalTemplate, canonicalValues =
+        SelectTextToTranslateOnly(canonicalSource)
+
+    if canonicalTemplate ~= currentTemplate then
+        return translatedText
+    end
+
+    local result = translatedText
+
+    for index = #canonicalValues, 1, -1 do
+        local oldValue = tostring(canonicalValues[index] or "")
+        local newValue = tostring(currentValues[index] or oldValue)
+
+        if oldValue ~= ""
+            and newValue ~= oldValue then
+            local escaped =
+                oldValue:gsub("([%%%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
+
+            result = result:gsub(
+                escaped,
+                function()
+                    return newValue
+                end,
+                1
+            )
+        end
+    end
+
+    return result
+end
+
+local function GetState(obj, property)
+    L.State[obj] =
+        L.State[obj] or {}
+
+    L.State[obj][property] =
+        L.State[obj][property] or {}
+
+    return L.State[obj][property]
+end
+
+local function BuildSourceState(obj, property, sourceText)
+    local state =
+        GetState(obj, property)
+
+    local path, pathSource =
+        GetPathSource(obj, property)
+
+    local template, protected =
+        SelectTextToTranslateOnly(sourceText)
+
+    state.Path = path
+    state.PathSource = pathSource
+    state.SourceTemplate = template
+    state.DynamicValues = protected
+    state.SourceText = sourceText
+
+    return state
+end
+
+local function GetStateTranslation(obj, state, property, language)
+    if not state
+        or not state.SourceTemplate
+        or state.SourceTemplate == "" then
+        return nil
+    end
+
+    local sourceRendered = RestoreSelectedText(
+        state.SourceTemplate,
+        state.DynamicValues or {}
+    )
+
+    if language == "EN" then
+        return sourceRendered
+    end
+
+    local cache = L.Cache[language]
+    if not cache then
+        return nil
+    end
+
+    -- 1. Path-based canonical source.
+    -- Path is now the primary identity, so runtime text differences do not
+    -- have to be used as the lookup key first.
+    local pathSource = state.PathSource
+    if pathSource and pathSource ~= "" then
+        local canonicalTemplate, canonicalValues =
+            SelectTextToTranslateOnly(pathSource)
+
+        if canonicalTemplate == state.SourceTemplate then
+            local translated = cache[pathSource]
+
+            if translated then
+                return RestoreDynamicValuesFromSource(
+                    translated,
+                    pathSource,
+                    state.SourceTemplate,
+                    state.DynamicValues or {}
+                )
+            end
+
+            translated = TranslateFromLocalization(
+                obj,
+                sourceRendered,
+                language,
+                pathSource
+            )
+
+            if translated then
+                local translatedText, usedSource = translated, nil
+                -- TranslateFromLocalization may return the source key as a
+                -- second result. Keep compatibility with its old one-value API.
+                -- (Lua assigns the first value here, so detect the canonical path
+                -- ourselves from the success branch below.)
+                cache[pathSource] = translatedText
+
+                return RestoreDynamicValuesFromSource(
+                    translatedText,
+                    pathSource,
+                    state.SourceTemplate,
+                    state.DynamicValues or {}
+                )
+            end
+        end
+    end
+
+    -- 2. Exact runtime cache.
+    local translated = cache[sourceRendered]
+    if translated then
+        return translated
+    end
+
+    -- 3. Roblox LocalizationService / Localization Table.
+    translated = TranslateFromLocalization(
+        obj,
+        sourceRendered,
+        language
+    )
+
+    if translated then
+        cache[sourceRendered] = translated
+        cache[PlainCacheKey(sourceRendered)] = translated
+        return translated
+    end
+
+    -- 4. Existing L.DB/cache template fallback.
+    translated = GetCachedTranslation(sourceRendered, language)
+    if translated then
+        return translated
+    end
+
+    local translatedTemplate = cache
+        and (cache[state.SourceTemplate]
+            or cache[PlainCacheKey(state.SourceTemplate)])
+
+    if translatedTemplate then
+        return RestoreSelectedText(
+            translatedTemplate,
+            state.DynamicValues or {}
+        )
+    end
+
+    return nil
+end
+
+local function ApplyStateToObject(obj, property, language)
+    if not obj
+        or not obj.Parent
+        or IsTranslationSkipped(obj) then
+        return false
+    end
+
+    local state =
+        L.State[obj]
+        and L.State[obj][property]
+
+    if not state then
+        return false
+    end
+
+    local rendered =
+        GetStateTranslation(
+            obj,
+            state,
+            property,
+            language
+        )
+
+    if rendered == nil then
+        return false
+    end
+
+    if property == "Text"
+        and obj:IsA("TextBox")
+        and obj.TextEditable then
+        return false
+    end
+
+    L.Applied[obj] =
+        L.Applied[obj] or {}
+
+    L.Applied[obj][property] =
+        rendered
+
+    obj[property] = rendered
+    return true
+end
+
+local function UpdateDynamicState(obj, property, currentValue)
+    local state =
+        L.State[obj]
+        and L.State[obj][property]
+
+    if not state then
+        return false
+    end
+
+    -- 1. The GUI changed only its dynamic part while
+    --    already translated. Match against the translated template.
+    if L.CurrentLanguage ~= "EN" then
+        local translatedTemplate =
+            L.Cache[L.CurrentLanguage]
+            and L.Cache[L.CurrentLanguage][state.SourceTemplate]
+
+        if translatedTemplate then
+            local translatedDynamic =
+                MatchDynamicTemplate(
+                    translatedTemplate,
+                    currentValue
+                )
+
+            if translatedDynamic then
+                state.DynamicValues =
+                    translatedDynamic
+
+                return true
+            end
+        end
+    end
+
+    -- 2. The GUI may have restored/changed the English text.
+    local sourceDynamic =
+        MatchDynamicTemplate(
+            state.SourceTemplate,
+            currentValue
+        )
+
+    if sourceDynamic then
+        state.DynamicValues =
+            sourceDynamic
+
+        state.SourceText =
+            RestoreSelectedText(
+                state.SourceTemplate,
+                sourceDynamic
+            )
+
+        return true
+    end
+
+    return false
+end
+
+local function BindProperty(obj, property)
+    if not obj
+        or not obj.Parent
+        or IsTranslationSkipped(obj) then
+        return
+    end
+
+    L.Source[obj] =
+        L.Source[obj] or {}
+
+    L.Applied[obj] =
+        L.Applied[obj] or {}
+
+    L.Connections[obj] =
+        L.Connections[obj] or {}
+
+    if L.Connections[obj][property] then
+        return
+    end
+
+    if property == "Text"
+        and obj:IsA("TextBox")
+        and obj.TextEditable then
+        return
+    end
+
+    local currentValue =
+        tostring(obj[property] or "")
+
+    local state =
+        BuildSourceState(
+            obj,
+            property,
+            currentValue
+        )
+
+    L.Source[obj][property] =
+        state.SourceText
+
+    L.Applied[obj][property] =
+        currentValue
+
+    L.Connections[obj][property] =
+        obj:GetPropertyChangedSignal(property):Connect(function()
+            local changedValue =
+                tostring(obj[property] or "")
+
+            local applied =
+                L.Applied[obj]
+                and L.Applied[obj][property]
+
+            -- Ignore our own translated write.
+            if applied == changedValue then
+                return
+            end
+
+            if property == "Text"
+                and obj:IsA("TextBox")
+                and obj.TextEditable then
+                return
+            end
+
+            -- English is always the canonical source.
+            if L.CurrentLanguage == "EN" then
+                local newState =
+                    BuildSourceState(
+                        obj,
+                        property,
+                        changedValue
+                    )
+
+                L.Source[obj][property] =
+                    newState.SourceText
+
+                L.Applied[obj][property] =
+                    changedValue
+
+                return
+            end
+
+            -- Most changes are only dynamic values.
+            -- Keep the already-translated permanent text.
+            if UpdateDynamicState(
+                obj,
+                property,
+                changedValue
+            ) then
+                local rendered =
+                    GetStateTranslation(
+                        obj,
+                        L.State[obj][property],
+                        property,
+                        L.CurrentLanguage
+                    )
+
+                if rendered then
+                    L.Applied[obj][property] =
+                        rendered
+
+                    if rendered ~= changedValue then
+                        obj[property] = rendered
+                    end
+                end
+
+                return
+            end
+
+            -- A genuinely new permanent string appeared.
+            -- Rebuild the source template instead of treating
+            -- the previously translated text as English.
+            local newState =
+                BuildSourceState(
+                    obj,
+                    property,
+                    changedValue
+                )
+
+            L.Source[obj][property] =
+                newState.SourceText
+
+            L.Applied[obj][property] =
+                changedValue
+
+            task.defer(function()
+                if not obj.Parent
+                    or L.Busy then
+                    return
+                end
+
+                local language =
+                    L.CurrentLanguage
+
+                if language == "EN" then
+                    return
+                end
+
+                local template =
+                    newState.SourceTemplate
+
+                if template == "" then
+                    return
+                end
+
+                local cached =
+                    L.Cache[language]
+                    and L.Cache[language][template]
+
+                if cached then
+                    ApplyStateToObject(
+                        obj,
+                        property,
+                        language
+                    )
+                    return
+                end
+
+                -- Local-only mode: do not request a translation provider here.
+                -- If a translation is added to L.Cache later, the next
+                -- ApplyCachedLanguage() pass will render it.
+                ApplyStateToObject(
+                    obj,
+                    property,
+                    language
+                )
+            end)
+        end)
+end
+
+local function BindTextBoxEditable(obj)
+    if not obj:IsA("TextBox")
+        or not obj.Parent then
+        return
+    end
+
+    L.Connections[obj] =
+        L.Connections[obj] or {}
+
+    if L.Connections[obj]._TextEditable then
+        return
+    end
+
+    L.Connections[obj]._TextEditable =
+        obj:GetPropertyChangedSignal("TextEditable"):Connect(function()
+            if obj.TextEditable then
+                if L.Source[obj] then
+                    L.Source[obj].Text = nil
+                end
+
+                if L.Applied[obj] then
+                    L.Applied[obj].Text = nil
+                end
+
+                if L.State[obj] then
+                    L.State[obj].Text = nil
+                end
+
+                return
+            end
+
+            BindProperty(obj, "Text")
+        end)
+end
+
+local function ScanInstance(obj)
+    if not obj
+        or IsTranslationSkipped(obj) then
+        return
+    end
+
+    if obj:IsA("TextLabel")
+        or obj:IsA("TextButton") then
+
+        BindProperty(obj, "Text")
+
+    elseif obj:IsA("TextBox") then
+
+        BindProperty(
+            obj,
+            "PlaceholderText"
+        )
+
+        BindTextBoxEditable(obj)
+
+        if not obj.TextEditable then
+            BindProperty(obj, "Text")
+        end
+    end
+
+    -- Full descendant scan: every child under this parent is visited.
+    for _, child in ipairs(obj:GetDescendants()) do
+        if not IsTranslationSkipped(child) then
+            if child:IsA("TextLabel") or child:IsA("TextButton") then
+                BindProperty(child, "Text")
+            elseif child:IsA("TextBox") then
+                BindProperty(child, "PlaceholderText")
+                BindTextBoxEditable(child)
+                if not child.TextEditable then
+                    BindProperty(child, "Text")
+                end
+            end
+        end
+    end
+end
+
+local function ApplyCachedLanguage(language)
+    L.CurrentLanguage = language
+    local processed = 0
+
+    for obj, properties in pairs(L.State) do
+        if obj
+            and obj.Parent
+            and not IsTranslationSkipped(obj) then
+
+            for property, state in pairs(properties) do
+                if property == "Text"
+                    and obj:IsA("TextBox")
+                    and obj.TextEditable then
+                    continue
+                end
+
+                local rendered =
+                    GetStateTranslation(
+                        obj,
+                        state,
+                        property,
+                        language
+                    )
+
+                if rendered then
+                    L.Applied[obj] =
+                        L.Applied[obj] or {}
+
+                    L.Applied[obj][property] =
+                        rendered
+
+                    if obj[property] ~= rendered then
+                        obj[property] = rendered
+                    end
+
+                    L.Source[obj] =
+                        L.Source[obj] or {}
+
+                    L.Source[obj][property] =
+                        state.SourceText
+                end
+
+                processed += 1
+
+                -- No yield here. Translate the whole cached set in one tight pass.
+                -- This makes the short language-switch hitch happen once instead of
+                -- repeatedly yielding throughout the translation pass.
+            end
+        end
+    end
+end
+
+local function SetPermanentTranslationSource(
+    obj,
+    property,
+    sourceText
+)
+    local state =
+        BuildSourceState(
+            obj,
+            property,
+            sourceText
+        )
+
+    L.Source[obj] =
+        L.Source[obj] or {}
+
+    L.Source[obj][property] =
+        state.SourceText
+end
+
+local SetLanguageButtonsLocked
+
+local function ChangeLanguage(language)
+    if not ExperienceSettings then
+        return
+    end
+
+    if L.Busy then
+        return
+    end
+
+    -- Same language = zero work, zero API calls.
+    if L.latestClick == language then
+        return
+    end
+
+    L.latestClick = language
+    L.SelectedLanguage = language
+    L.RefreshLanguageButtons()
+    L.Busy = true
+
+    SetLanguageButtonsLocked(true)
+
+    task.spawn(function()
+        -- Load the Roblox LocalizationService translator for the selected locale.
+        -- No external translation provider is used.
+        if language ~= "EN" then
+            GetLocalizationTranslator(language)
+        end
+
+        -- Re-scan in case the game created new GUI elements.
+        ScanInstance(ExperienceSettings)
+
+        if language == "EN" then
+            ApplyCachedLanguage("EN")
+
+            L.Busy = false
+            SetLanguageButtonsLocked(false)
+            L.SelectedLanguage = L.CurrentLanguage
+            L.RefreshLanguageButtons()
+            return
+        end
+
+        -- One non-blocking translation pass. Results are cached per source/locale.
+        ApplyCachedLanguage(language)
+        SaveTranslationCache()
+
+        L.Busy = false
+        SetLanguageButtonsLocked(false)
+        L.SelectedLanguage = L.CurrentLanguage
+        L.RefreshLanguageButtons()
+    end)
+end
+
+SetLanguageButtonsLocked = function(locked)
+    for _, button in pairs(L.LanguageButtons) do
+        if button and button.Parent then
+            button.Active = not locked
+            button.AutoButtonColor = not locked
+        end
+    end
+end
+
+-- Never translate the language selector itself.
+ins2:SetAttribute("SkipAutoTranslate", true)
+
+-- ExperienceSettings may be created/moved into CoreGui later.
+-- Wait for it in a separate thread so the rest of Loader.lua keeps running.
+task.spawn(function()
+    ExperienceSettings = CoreGui:WaitForChild("ExperienceSettings")
+
+    -- Initial scan. PathSources are used as canonical lookup identities.
+    ScanInstance(ExperienceSettings)
+
+    -- New GUI objects are picked up automatically.
+    ExperienceSettings.DescendantAdded:Connect(function(obj)
+        task.defer(function()
+            if not obj
+                or not obj.Parent
+                or IsTranslationSkipped(obj) then
+                return
+            end
+
+            ScanInstance(obj)
+
+            if L.CurrentLanguage ~= "EN" and not L.Busy then
+                ApplyStateToObject(obj, "Text", L.CurrentLanguage)
+                ApplyStateToObject(obj, "PlaceholderText", L.CurrentLanguage)
+            end
+        end)
+    end)
+end)
+
+-- One-shot translation only. Dynamic text is not re-translated on a timer.
+-- New GUI objects are handled by DescendantAdded.
+
+local EngBtn = Txt(
+    "🇺🇸 English",
+    255,255,255,
+    false,nil,
+    true,"Select",
+    nil,
+    function()
+        ChangeLanguage("EN")
+    end,
+    nil,
+    ins2
+).Button
+
+local SpaBtn = Txt(
+    "🇪🇸 Español",
+    255,255,255,
+    false,nil,
+    true,"Select",
+    nil,
+    function()
+        ChangeLanguage("ES")
+    end,
+    nil,
+    ins2
+).Button
+
+local ThaBtn = Txt(
+    "🇹🇭 ไทย",
+    255,255,255,
+    false,nil,
+    true,"เลือก",
+    nil,
+    function()
+        ChangeLanguage("TH")
+    end,
+    nil,
+    ins2
+).Button
+
+local BraBtn = Txt(
+    "🇧🇷 Português (Brasil)",
+    255,255,255,
+    false,nil,
+    true,"Selecionar",
+    nil,
+    function()
+        ChangeLanguage("PT-BR")
+    end,
+    nil,
+    ins2
+).Button
+
+local PorBtn = Txt(
+    "🇵🇹 Português (Portugal)",
+    255,255,255,
+    false,nil,
+    true,"Selecionar",
+    nil,
+    function()
+        ChangeLanguage("PT-PT")
+    end,
+    nil,
+    ins2
+).Button
+
+local RusBtn = Txt(
+    "🇷🇺 Русский",
+    255,255,255,
+    false,nil,
+    true,"Выбрать",
+    nil,
+    function()
+        ChangeLanguage("RU")
+    end,
+    nil,
+    ins2
+).Button
+
+local KorBtn = Txt(
+    "🇰🇷 한국어 (대한민국)",
+    255,255,255,
+    false,nil,
+    true,"선택",
+    nil,
+    function()
+        ChangeLanguage("KO")
+    end,
+    nil,
+    ins2
+).Button
+
+L.LanguageButtons = {
+    EN = EngBtn,
+    ES = SpaBtn,
+    TH = ThaBtn,
+    ["PT-BR"] = BraBtn,
+    ["PT-PT"] = PorBtn,
+    RU = RusBtn,
+    KO = KorBtn
+}
+
+L.RefreshLanguageButtons = function()
+    for language, button in pairs(L.LanguageButtons) do
+        if button and button.Parent then
+            local selected = (L.SelectedLanguage == language)
+            button.TextColor3 = selected
+                and Color3.fromRGB(0,255,0)
+                or Color3.fromRGB(255,255,255)
+            button.BackgroundTransparency = selected and 0.15 or 1
+        end
+    end
+end
+
+L.RefreshLanguageButtons()
+
+-- This only way the last toggle
+local StarterGui = game:GetService("StarterGui")
+
+Txt(
+    "Console shortcut",
+    255,255,255,
+    false,nil,
+    true,"OPEN",
+    nil,
+    function()
+        pcall(function()
+            StarterGui:SetCore("DevConsoleVisible", true)
+        end)
+    end
+)
+
+local kill = Txt(
+    "Kill Gui - This Settings only",
+    255,80,80,
+    false, nil,
+    true, "Destroy",
+    nil,
+    function(_, btn)
+        if not btn.Active then return end
+        if gui and gui.Parent then
+            gui:Destroy()
+        end
+    end
+)
+
+local killBtn = kill.Button
+
+task.spawn(function()
+    while killBtn and killBtn.Parent do
+        if not CONTINUE_LOCK then
+            killBtn.Active = false
+        end
+        task.wait(0.2)
+    end
+end)
+
+task.spawn(function()
+    while killBtn and killBtn.Parent do
+        local isAlwaysOn = alwaysBtn.Text == "ON"
+
+        if not CONTINUE_LOCK then
+            -- Continue ถูกกดแล้ว
+            killBtn.Active = false
+            killBtn.Text = "Cannot destroy"
+            killBtn.TextColor3 = Color3.fromRGB(255,0,0)
+
+        elseif isAlwaysOn then
+            -- Always Load เปิด
+            killBtn.Active = false
+            killBtn.Text = "Cannot destroy"
+            killBtn.TextColor3 = Color3.fromRGB(255,0,0)
+
+        else
+            -- ปกติ
+            killBtn.Active = true
+            killBtn.Text = "Destroy"
+            killBtn.TextColor3 = Color3.fromRGB(255,255,255)
+        end
+
+        task.wait(0.2)
+    end
+end)
+
+print[[------------------------------------------------------------
+[ Settings - Loader Rejoiner ] Successful loaded.
+
+>> for Information
+  - Continue loadstring = Load ExperienceSettings
+  - Always Load = Auto load ExperienceSettings
+  - Custom Background (R,G,B) = Custom ExperienceSettings Background
+  - FoundHumanoidRootPart: State = If there HumanoidRootPart or not
+  - Hide ExperienceSettings = Hide TopBar and another frames
+  - Settings Transparency = Set Transparency this Settings - Loader Rejoiner 
+  - Set UIScale = Set UIScale of ExperienceSettings
+  - IsHealthOn: State = Always checking HealthBar is on or not
+  - HealthBarToggle = ON/OFF HealthBar
+  - Console shortcut = The short way to open developer console on mobile
+  - Kill Gui = Destroy this Settings - Loader Rejoiner
+------------------------------------------------------------
+]]
+
+-- WAIT
+while CONTINUE_LOCK do
+    task.wait()
+end
