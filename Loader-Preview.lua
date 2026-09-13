@@ -4036,13 +4036,23 @@ local function BuildSourceState(obj, property, sourceText)
     local path, pathSource =
         GetPathSource(obj, property)
 
+    -- Preserve the first known source. Re-scanning after translation must NOT
+    -- turn the translated value into the new source of truth.
+    local existingSource = state.SourceText
+    local existingTemplate = state.SourceTemplate
+    local existingDynamic = state.DynamicValues
+
+    if existingSource and existingSource ~= "" then
+        sourceText = existingSource
+    end
+
     local template, protected =
         SelectTextToTranslateOnly(sourceText)
 
-    state.Path = path
-    state.PathSource = pathSource
-    state.SourceTemplate = template
-    state.DynamicValues = protected
+    state.Path = state.Path or path
+    state.PathSource = state.PathSource or pathSource
+    state.SourceTemplate = existingTemplate or template
+    state.DynamicValues = existingDynamic or protected
     state.SourceText = sourceText
 
     return state
@@ -4627,170 +4637,245 @@ local function ApplyCachedLanguage(language, onComplete)
         end
     end
 
-    local function runPass()
-        if generation ~= L.TranslationGeneration then
-            return
-        end
+    -- Single worker architecture:
+    -- NEVER spawn processBatch from inside itself. A yielding worker is used
+    -- instead, which prevents C-stack growth while still checking one item
+    -- at a time and allowing the UI scheduler to breathe between items.
+    local function worker()
+        local pass = 0
+        local totalApplied = 0
+        local totalChecked = 0
 
-        pass += 1
+        while generation == L.TranslationGeneration do
+            pass += 1
 
-        -- Re-scan before EVERY pass so newly-created/static GUI objects are
-        -- included and old objects whose source changed are rebuilt.
-        ScanInstance(ExperienceSettings)
+            -- Re-scan before every pass. BuildSourceState is source-safe below,
+            -- so already-translated text cannot replace the canonical source.
+            ScanInstance(ExperienceSettings)
 
-        local queue = {}
+            local queue = {}
+            local skipped = 0
 
-        for obj, properties in pairs(L.State) do
-            if obj
-                and obj.Parent
-                and not IsTranslationSkipped(obj) then
+            for obj, properties in pairs(L.State) do
+                if obj
+                    and obj.Parent
+                    and not IsTranslationSkipped(obj) then
 
-                for property, state in pairs(properties) do
-                    if not IsLocalizationExcluded(obj, property)
-                        and not IsDynamicTranslationTarget(obj, state, property)
-                        and not (
-                            property == "Text"
-                            and obj:IsA("TextBox")
-                            and obj.TextEditable
-                        )
-                        and NeedsTranslation(
-                            obj,
-                            property,
-                            state,
-                            language
-                        ) then
+                    for property, state in pairs(properties) do
+                        if not IsLocalizationExcluded(obj, property)
+                            and not IsDynamicTranslationTarget(obj, state, property)
+                            and not (
+                                property == "Text"
+                                and obj:IsA("TextBox")
+                                and obj.TextEditable
+                            ) then
 
-                        queue[#queue + 1] = {
-                            obj = obj,
-                            property = property,
-                            state = state,
-                        }
+                            totalChecked += 1
+
+                            local needs = false
+                            local okNeeds, resultNeeds = pcall(
+                                NeedsTranslation,
+                                obj,
+                                property,
+                                state,
+                                language
+                            )
+
+                            if okNeeds then
+                                needs = resultNeeds == true
+                            else
+                                skipped += 1
+                                warn(
+                                    "[Translation][CHECK ERROR]",
+                                    obj:GetFullName(),
+                                    property,
+                                    tostring(resultNeeds)
+                                )
+                            end
+
+                            if needs then
+                                queue[#queue + 1] = {
+                                    obj = obj,
+                                    property = property,
+                                    state = state,
+                                }
+                            end
+                        end
                     end
                 end
             end
-        end
 
-        -- This pass found nothing missing.
-        if #queue == 0 then
-            finish()
-            return
-        end
+            print(
+                string.format(
+                    "[Translation][PASS %d] language=%s queue=%d checked=%d skipped=%d",
+                    pass,
+                    tostring(language),
+                    #queue,
+                    totalChecked,
+                    skipped
+                )
+            )
 
-        local index = 1
-        local appliedThisPass = 0
-        local batchSize = 3
-        local timeBudget = 0.0025
-
-        local function processBatch()
-            if generation ~= L.TranslationGeneration then
-                return
+            if #queue == 0 then
+                print(
+                    string.format(
+                        "[Translation][DONE] language=%s passes=%d applied=%d",
+                        tostring(language),
+                        pass,
+                        totalApplied
+                    )
+                )
+                break
             end
 
-            local started = os.clock()
-            local count = 0
+            local appliedThisPass = 0
 
-            while index <= #queue do
+            -- Process EXACTLY ONE text at a time.
+            for index = 1, #queue do
+                if generation ~= L.TranslationGeneration then
+                    return
+                end
+
                 local item = queue[index]
-                index += 1
-                count += 1
-
                 local obj = item.obj
                 local property = item.property
                 local state = item.state
 
-                if obj
+                local shouldApply = false
+                local okNeeds, resultNeeds = pcall(
+                    NeedsTranslation,
+                    obj,
+                    property,
+                    state,
+                    language
+                )
+
+                if okNeeds then
+                    shouldApply = resultNeeds == true
+                else
+                    warn(
+                        "[Translation][RECHECK ERROR]",
+                        obj and obj:GetFullName() or "<nil>",
+                        property,
+                        tostring(resultNeeds)
+                    )
+                end
+
+                if shouldApply
+                    and obj
                     and obj.Parent
                     and not IsTranslationSkipped(obj)
                     and not IsLocalizationExcluded(obj, property)
                     and not IsDynamicTranslationTarget(obj, state, property) then
 
-                    -- Re-check immediately before applying. This prevents a
-                    -- stale queue item from overwriting a value changed by
-                    -- another UI operation during this pass.
-                    if NeedsTranslation(
-                        obj,
-                        property,
-                        state,
-                        language
-                    ) then
-                        local before =
-                            tostring(obj[property] or "")
+                    local before = tostring(obj[property] or "")
 
-                        local ok, rendered = pcall(
-                            GetStateTranslation,
-                            obj,
-                            state,
-                            property,
-                            language
+                    print(
+                        string.format(
+                            "[Translation][CHECK] pass=%d item=%d/%d path=%s property=%s",
+                            pass,
+                            index,
+                            #queue,
+                            state.Path or "<no-path>",
+                            property
                         )
+                    )
 
-                        if ok
-                            and rendered
-                            and rendered ~= ""
-                            and rendered ~= before then
+                    local okRender, rendered = pcall(
+                        GetStateTranslation,
+                        obj,
+                        state,
+                        property,
+                        language
+                    )
 
-                            local appliedOK = pcall(function()
-                                L.Applied[obj] =
-                                    L.Applied[obj] or {}
+                    if not okRender then
+                        warn(
+                            "[Translation][TRANSLATE ERROR]",
+                            state.Path or obj:GetFullName(),
+                            property,
+                            tostring(rendered)
+                        )
+                    elseif rendered and rendered ~= "" and rendered ~= before then
+                        local appliedOK, appliedErr = pcall(function()
+                            L.Applied[obj] = L.Applied[obj] or {}
+                            L.Applied[obj][property] = rendered
 
-                                L.Applied[obj][property] =
-                                    rendered
+                            L.AppliedMeta[obj] = L.AppliedMeta[obj] or {}
+                            L.AppliedMeta[obj][property] = {
+                                Language = language,
+                                Source = state.SourceText,
+                                Text = rendered,
+                            }
 
-                                L.AppliedMeta[obj] =
-                                    L.AppliedMeta[obj] or {}
+                            obj[property] = rendered
 
-                                L.AppliedMeta[obj][property] = {
-                                    Language = language,
-                                    Source = state.SourceText,
-                                    Text = rendered,
-                                }
+                            L.Source[obj] = L.Source[obj] or {}
+                            L.Source[obj][property] = state.SourceText
+                        end)
 
-                                if obj[property] ~= rendered then
-                                    obj[property] = rendered
-                                end
+                        if appliedOK then
+                            appliedThisPass += 1
+                            totalApplied += 1
 
-                                L.Source[obj] =
-                                    L.Source[obj] or {}
-
-                                L.Source[obj][property] =
-                                    state.SourceText
-                            end)
-
-                            if appliedOK then
-                                appliedThisPass += 1
-                                totalApplied += 1
-                            end
+                            print(
+                                string.format(
+                                    "[Translation][APPLY] pass=%d item=%d path=%s",
+                                    pass,
+                                    index,
+                                    state.Path or "<no-path>"
+                                )
+                            )
+                        else
+                            warn(
+                                "[Translation][APPLY ERROR]",
+                                state.Path or obj:GetFullName(),
+                                property,
+                                tostring(appliedErr)
+                            )
                         end
+                    else
+                        warn(
+                            "[Translation][NO RESULT]",
+                            state.Path or obj:GetFullName(),
+                            property,
+                            "source=" .. tostring(state.SourceText)
+                        )
                     end
                 end
 
-                if count >= batchSize
-                    or os.clock() - started >= timeBudget then
-                    break
-                end
+                -- Yield AFTER every single item. This is the key C-stack fix.
+                task.wait()
             end
 
-            if index <= #queue then
-                -- Never recursively defer the same callback.
-                task.spawn(processBatch)
-                return
-            end
+            print(
+                string.format(
+                    "[Translation][PASS %d DONE] applied=%d remaining=%d",
+                    pass,
+                    appliedThisPass,
+                    #queue - appliedThisPass
+                )
+            )
 
-            -- Pass completed. If nothing changed, another identical pass
-            -- cannot make progress and would otherwise loop forever.
+            -- No progress means the remaining entries have no available local
+            -- translation. Stop instead of spinning forever.
             if appliedThisPass == 0 then
-                finish()
-                return
+                warn(
+                    string.format(
+                        "[Translation][STOP] pass=%d made no progress; remaining=%d",
+                        pass,
+                        #queue
+                    )
+                )
+                break
             end
 
-            -- Give the UI one scheduler turn, then scan again.
-            task.spawn(runPass)
+            -- Yield before the next scan, but DO NOT call worker/runPass again.
+            task.wait()
         end
-
-        task.spawn(processBatch)
     end
 
-    task.spawn(runPass)
+    task.spawn(worker)
 end
 
 local function SetPermanentTranslationSource(
