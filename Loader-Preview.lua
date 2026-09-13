@@ -1,4 +1,4 @@
--- Loader script 6.4
+-- Loader script 6.7
 
 ------------------------------------------------------------------------------------------
 
@@ -2021,6 +2021,11 @@ L.Source =
     setmetatable({}, {__mode = "k"})
 
 L.Applied =
+    setmetatable({}, {__mode = "k"})
+
+-- Tracks exactly which language/source produced the currently applied text.
+-- This lets the translator skip objects that are already translated.
+L.AppliedMeta =
     setmetatable({}, {__mode = "k"})
 
 L.Connections =
@@ -4164,6 +4169,90 @@ local function GetStateTranslation(obj, state, property, language)
     return nil
 end
 
+local function NeedsTranslation(obj, property, state, language)
+    if not obj
+        or not property
+        or not state
+        or IsLocalizationExcluded(obj, property) then
+        return false
+    end
+
+    if not obj.Parent
+        or IsTranslationSkipped(obj) then
+        return false
+    end
+
+    if property == "Text"
+        and obj:IsA("TextBox")
+        and obj.TextEditable then
+        return false
+    end
+
+    local currentValue =
+        tostring(obj[property] or "")
+
+    local sourceRendered =
+        RestoreSelectedText(
+            state.SourceTemplate or "",
+            state.DynamicValues or {}
+        )
+
+    if language == "EN" then
+        return currentValue ~= sourceRendered
+    end
+
+    local applied =
+        L.Applied[obj]
+        and L.Applied[obj][property]
+
+    local meta =
+        L.AppliedMeta[obj]
+        and L.AppliedMeta[obj][property]
+
+    -- Fast path: this exact source is already rendered for this language.
+    if meta
+        and meta.Language == language
+        and meta.Source == state.SourceText
+        and meta.Text == currentValue then
+        return false
+    end
+
+    if applied == currentValue
+        and meta
+        and meta.Language == language then
+        return false
+    end
+
+    -- A cached translation may already be present even when this object was
+    -- created after the previous scan. Do not call LocalizationService again.
+    local cached =
+        GetCachedTranslation(sourceRendered, language)
+
+    if cached then
+        return currentValue ~= cached
+    end
+
+    if state.PathSource and state.PathSource ~= "" then
+        local pathCache =
+            L.Cache[language]
+            and L.Cache[language][state.PathSource]
+
+        if pathCache then
+            local restored =
+                RestoreDynamicValuesFromSource(
+                    pathCache,
+                    state.PathSource,
+                    state.SourceTemplate,
+                    state.DynamicValues or {}
+                )
+
+            return currentValue ~= restored
+        end
+    end
+
+    return true
+end
+
 local function ApplyStateToObject(obj, property, language)
     if IsLocalizationExcluded(obj, property) then
         return false
@@ -4207,6 +4296,15 @@ local function ApplyStateToObject(obj, property, language)
 
         L.Applied[obj][property] =
             rendered
+
+        L.AppliedMeta[obj] =
+            L.AppliedMeta[obj] or {}
+
+        L.AppliedMeta[obj][property] = {
+            Language = language,
+            Source = state.SourceText,
+            Text = rendered,
+        }
 
         obj[property] = rendered
     end)
@@ -4368,6 +4466,15 @@ local function BindProperty(obj, property)
                     L.Applied[obj][property] =
                         rendered
 
+                    L.AppliedMeta[obj] =
+                        L.AppliedMeta[obj] or {}
+
+                    L.AppliedMeta[obj][property] = {
+                        Language = L.CurrentLanguage,
+                        Source = L.State[obj][property].SourceText,
+                        Text = rendered,
+                    }
+
                     if rendered ~= changedValue then
                         obj[property] = rendered
                     end
@@ -4461,6 +4568,10 @@ local function BindTextBoxEditable(obj)
                     L.Applied[obj].Text = nil
                 end
 
+                if L.AppliedMeta[obj] then
+                    L.AppliedMeta[obj].Text = nil
+                end
+
                 if L.State[obj] then
                     L.State[obj].Text = nil
                 end
@@ -4533,6 +4644,15 @@ local function ApplyCachedLanguage(language)
                     continue
                 end
 
+                if not NeedsTranslation(
+                    obj,
+                    property,
+                    state,
+                    language
+                ) then
+                    continue
+                end
+
                 local ok, rendered = pcall(
                     GetStateTranslation,
                     obj,
@@ -4548,6 +4668,15 @@ local function ApplyCachedLanguage(language)
 
                         L.Applied[obj][property] =
                             rendered
+
+                        L.AppliedMeta[obj] =
+                            L.AppliedMeta[obj] or {}
+
+                        L.AppliedMeta[obj][property] = {
+                            Language = language,
+                            Source = state.SourceText,
+                            Text = rendered,
+                        }
 
                         if obj[property] ~= rendered then
                             obj[property] = rendered
@@ -4567,10 +4696,6 @@ local function ApplyCachedLanguage(language)
                 end
 
                 processed += 1
-
-                -- No yield here. Translate the whole cached set in one tight pass.
-                -- This makes the short language-switch hitch happen once instead of
-                -- repeatedly yielding throughout the translation pass.
             end
         end
     end
