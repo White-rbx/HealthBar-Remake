@@ -2942,6 +2942,8 @@ local function TokenSimilarity(a, b)
     return (2 * common) / (#ta + #tb)
 end
 
+local SelectTextToTranslateOnly
+
 local function FindSimilarLocalizationSource(sourceText, language)
     local source = tostring(sourceText or "")
     if source == "" then
@@ -3557,7 +3559,7 @@ LoadTranslationCache()
 -- Protect only the dynamic parts.
 -- Example:
 --   "Health: 100" -> "Health: __DYNAMIC_1__"
-local function SelectTextToTranslateOnly(text)
+SelectTextToTranslateOnly = function(text)
     local source = tostring(text or "")
     local protected = {}
     local counter = 0
