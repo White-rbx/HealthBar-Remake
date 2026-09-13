@@ -4596,67 +4596,24 @@ end
 local function ApplyCachedLanguage(language, onComplete)
     L.CurrentLanguage = language
 
-    -- A language pass must be independent from the previous language pass.
-    -- AppliedMeta is still useful for the current language, but old language
-    -- metadata must never be used to skip the new language.
+    -- Every language change starts from a clean applied-state.
     L.AppliedMeta = setmetatable({}, {__mode = "k"})
-
-    -- Build a queue first. Only the three dynamic TextButtons (plus editable
-    -- TextBox.Text) are skipped. Every remaining supported text property uses
-    -- Directly/cache translation only.
-    local queue = {}
-
-    for obj, properties in pairs(L.State) do
-        if obj
-            and obj.Parent
-            and not IsTranslationSkipped(obj) then
-
-            for property, state in pairs(properties) do
-                if IsLocalizationExcluded(obj, property) then
-                    continue
-                end
-
-                if IsDynamicTranslationTarget(obj, state, property) then
-                    continue
-                end
-
-                if property == "Text"
-                    and obj:IsA("TextBox")
-                    and obj.TextEditable then
-                    continue
-                end
-
-                if NeedsTranslation(
-                    obj,
-                    property,
-                    state,
-                    language
-                ) then
-                    queue[#queue + 1] = {
-                        obj = obj,
-                        property = property,
-                        state = state,
-                    }
-                end
-            end
-        end
-    end
-
-    -- Nothing needs translation: finish immediately.
-    if #queue == 0 then
-        if onComplete then
-            onComplete()
-        end
-        return
-    end
 
     L.TranslationGeneration += 1
     local generation = L.TranslationGeneration
     L.TranslationRunning = true
 
-    local index = 1
-    local batchSize = 3
-    local timeBudget = 0.0025
+    -- Repeated-pass translation:
+    --   1. Scan current GUI.
+    --   2. Translate everything currently missing.
+    --   3. Scan again.
+    --   4. Continue until there is nothing left to translate,
+    --      or a full pass makes zero progress.
+    --
+    -- This is intentionally NOT a timer/translation loop. Each pass is
+    -- started only after the previous pass has completely finished.
+    local pass = 0
+    local totalApplied = 0
 
     local function finish()
         if generation ~= L.TranslationGeneration then
@@ -4670,85 +4627,170 @@ local function ApplyCachedLanguage(language, onComplete)
         end
     end
 
-    local function processBatch()
+    local function runPass()
         if generation ~= L.TranslationGeneration then
             return
         end
 
-        local started = os.clock()
-        local count = 0
+        pass += 1
 
-        while index <= #queue do
-            local item = queue[index]
-            index += 1
-            count += 1
+        -- Re-scan before EVERY pass so newly-created/static GUI objects are
+        -- included and old objects whose source changed are rebuilt.
+        ScanInstance(ExperienceSettings)
 
-            local obj = item.obj
-            local property = item.property
-            local state = item.state
+        local queue = {}
 
+        for obj, properties in pairs(L.State) do
             if obj
                 and obj.Parent
-                and not IsTranslationSkipped(obj)
-                and not IsLocalizationExcluded(obj, property) then
+                and not IsTranslationSkipped(obj) then
 
-                local ok, rendered = pcall(
-                    GetStateTranslation,
-                    obj,
-                    state,
-                    property,
-                    language
-                )
+                for property, state in pairs(properties) do
+                    if not IsLocalizationExcluded(obj, property)
+                        and not IsDynamicTranslationTarget(obj, state, property)
+                        and not (
+                            property == "Text"
+                            and obj:IsA("TextBox")
+                            and obj.TextEditable
+                        )
+                        and NeedsTranslation(
+                            obj,
+                            property,
+                            state,
+                            language
+                        ) then
 
-                if ok and rendered then
-                    pcall(function()
-                        L.Applied[obj] =
-                            L.Applied[obj] or {}
-
-                        L.Applied[obj][property] =
-                            rendered
-
-                        L.AppliedMeta[obj] =
-                            L.AppliedMeta[obj] or {}
-
-                        L.AppliedMeta[obj][property] = {
-                            Language = language,
-                            Source = state.SourceText,
-                            Text = rendered,
+                        queue[#queue + 1] = {
+                            obj = obj,
+                            property = property,
+                            state = state,
                         }
-
-                        if obj[property] ~= rendered then
-                            obj[property] = rendered
-                        end
-
-                        L.Source[obj] =
-                            L.Source[obj] or {}
-
-                        L.Source[obj][property] =
-                            state.SourceText
-                    end)
+                    end
                 end
-            end
-
-            -- A small hard item limit prevents one large batch from running
-            -- too long even when Translate() itself is expensive.
-            if count >= batchSize
-                or os.clock() - started >= timeBudget then
-                break
             end
         end
 
-        if index <= #queue then
-            -- Use a fresh coroutine instead of recursively deferring the
-            -- same callback. This avoids Roblox's re-entrancy depth limit.
-            task.spawn(processBatch)
+        -- This pass found nothing missing.
+        if #queue == 0 then
+            finish()
             return
         end
 
-        finish()
+        local index = 1
+        local appliedThisPass = 0
+        local batchSize = 3
+        local timeBudget = 0.0025
+
+        local function processBatch()
+            if generation ~= L.TranslationGeneration then
+                return
+            end
+
+            local started = os.clock()
+            local count = 0
+
+            while index <= #queue do
+                local item = queue[index]
+                index += 1
+                count += 1
+
+                local obj = item.obj
+                local property = item.property
+                local state = item.state
+
+                if obj
+                    and obj.Parent
+                    and not IsTranslationSkipped(obj)
+                    and not IsLocalizationExcluded(obj, property)
+                    and not IsDynamicTranslationTarget(obj, state, property) then
+
+                    -- Re-check immediately before applying. This prevents a
+                    -- stale queue item from overwriting a value changed by
+                    -- another UI operation during this pass.
+                    if NeedsTranslation(
+                        obj,
+                        property,
+                        state,
+                        language
+                    ) then
+                        local before =
+                            tostring(obj[property] or "")
+
+                        local ok, rendered = pcall(
+                            GetStateTranslation,
+                            obj,
+                            state,
+                            property,
+                            language
+                        )
+
+                        if ok
+                            and rendered
+                            and rendered ~= ""
+                            and rendered ~= before then
+
+                            local appliedOK = pcall(function()
+                                L.Applied[obj] =
+                                    L.Applied[obj] or {}
+
+                                L.Applied[obj][property] =
+                                    rendered
+
+                                L.AppliedMeta[obj] =
+                                    L.AppliedMeta[obj] or {}
+
+                                L.AppliedMeta[obj][property] = {
+                                    Language = language,
+                                    Source = state.SourceText,
+                                    Text = rendered,
+                                }
+
+                                if obj[property] ~= rendered then
+                                    obj[property] = rendered
+                                end
+
+                                L.Source[obj] =
+                                    L.Source[obj] or {}
+
+                                L.Source[obj][property] =
+                                    state.SourceText
+                            end)
+
+                            if appliedOK then
+                                appliedThisPass += 1
+                                totalApplied += 1
+                            end
+                        end
+                    end
+                end
+
+                if count >= batchSize
+                    or os.clock() - started >= timeBudget then
+                    break
+                end
+            end
+
+            if index <= #queue then
+                -- Never recursively defer the same callback.
+                task.spawn(processBatch)
+                return
+            end
+
+            -- Pass completed. If nothing changed, another identical pass
+            -- cannot make progress and would otherwise loop forever.
+            if appliedThisPass == 0 then
+                finish()
+                return
+            end
+
+            -- Give the UI one scheduler turn, then scan again.
+            task.spawn(runPass)
+        end
+
+        task.spawn(processBatch)
     end
 
-    task.spawn(processBatch)
+    task.spawn(runPass)
 end
 
 local function SetPermanentTranslationSource(
