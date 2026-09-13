@@ -1,4 +1,5 @@
--- Loader script 6.15
+-- Loader script 6.19
+-- Translation System: 6.11 Static-Direct + Dynamic-Only Buttons
 
 ------------------------------------------------------------------------------------------
 
@@ -2016,6 +2017,8 @@ L.Request =
     or (syn and syn.request)
 
 L.LanguageButtons = {}
+L.LanguageButtonDefaultText = {}
+L.LanguageButtonStatus = nil
 L.RefreshLanguageButtons = nil
 
 L.Source =
@@ -3785,6 +3788,11 @@ end
 L.State =
     setmetatable({}, {__mode = "k"})
 
+-- Guards property writes performed by click-state Localization so the
+-- Text/PlaceholderText change signal cannot recursively re-translate itself.
+L.LocalizationWrite =
+    setmetatable({}, {__mode = "k"})
+
 local function EscapeLuaPattern(value)
     return tostring(value or ""):gsub("([%%%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
 end
@@ -4150,40 +4158,99 @@ local function Directly(sourceText, language, pathSource)
     return nil
 end
 
--- Static-only translation policy.
--- Dynamic/runtime text is skipped completely so it cannot consume translation work.
-local function IsDynamicTranslationTarget(obj, state, property)
-    if not obj or not state then
+-- Dynamic classification policy.
+--
+-- 1) LIVE/ValueChanger dynamic:
+--    Any text object under a ValueChanger branch can change at any time.
+--    It MUST NOT use Directly() and MUST NOT use LocalizationService.
+--
+-- 2) CLICK/interaction dynamic:
+--    Any text object under TextChangeOnlyWhenClick is state-based UI text.
+--    It MAY change when clicked, so it uses LocalizationService ONLY.
+--
+-- 3) Static:
+--    Everything else follows the normal Directly() path.
+
+local function HasAncestorNamed(obj, targetName)
+    if not obj then
         return false
     end
 
-    -- Player-entered TextBox content is always dynamic/user input.
+    targetName = tostring(targetName or ""):lower()
+    if targetName == "" then
+        return false
+    end
+
+    local current = obj.Parent
+    while current do
+        if tostring(current.Name or ""):lower() == targetName then
+            return true
+        end
+
+        if current == ExperienceSettings then
+            break
+        end
+
+        current = current.Parent
+    end
+
+    return false
+end
+
+local function IsValueChangerDynamic(obj, property)
+    if not obj or not property then
+        return false
+    end
+
+    -- Editable/user-entered TextBox.Text is always live dynamic.
     if property == "Text"
         and obj:IsA("TextBox")
         and obj.TextEditable then
         return true
     end
 
-    -- Only these three TextButtons are explicitly dynamic in the UI.
-    -- Every other TextButton is treated as permanent/static text.
-    if property == "Text" and obj:IsA("TextButton") then
-        local name = tostring(obj.Name or ""):lower()
-        local source = StripRichText(tostring(state.SourceText or "")):lower()
+    -- The project convention: a ValueChanger at the end of the object
+    -- hierarchy marks a live value that can update whenever the game changes.
+    return HasAncestorNamed(obj, "ValueChanger")
+end
 
+local function IsTextChangeOnlyWhenClick(obj, property)
+    if not obj or not property then
+        return false
+    end
+
+    if HasAncestorNamed(obj, "TextChangeOnlyWhenClick") then
+        return true
+    end
+
+    -- Keep the known click-state buttons as a safe fallback even if their
+    -- parent container is not named TextChangeOnlyWhenClick.
+    if property == "Text" then
+        local name = tostring(obj.Name or ""):lower()
         if name == "execute"
             or name == "copy"
             or name == "copy to clipboard" then
             return true
         end
-
-        if source == "execute"
-            or source == "copy"
-            or source == "copy to clipboard" then
-            return true
-        end
     end
 
     return false
+end
+
+local function GetDynamicTranslationMode(obj, property)
+    if IsValueChangerDynamic(obj, property) then
+        return "LIVE"
+    end
+
+    if IsTextChangeOnlyWhenClick(obj, property) then
+        return "CLICK"
+    end
+
+    return "STATIC"
+end
+
+local function IsDynamicTranslationTarget(obj, state, property)
+    return IsValueChangerDynamic(obj, property)
 end
 
 local function IsLocalizationDirectOnlyProperty(obj, property, state)
@@ -4209,6 +4276,11 @@ local function IsLocalizationDirectOnlyProperty(obj, property, state)
 
     if obj:IsA("TextButton") then
         return not IsDynamicTranslationTarget(obj, state, property)
+            and not IsTextChangeOnlyWhenClick(obj, property)
+    end
+
+    if IsTextChangeOnlyWhenClick(obj, property) then
+        return false
     end
 
     return false
@@ -4223,6 +4295,7 @@ local function GetStateTranslation(obj, state, property, language)
         return nil
     end
 
+    -- Live/ValueChanger dynamic text is never translated.
     if IsDynamicTranslationTarget(obj, state, property) then
         return nil
     end
@@ -4250,6 +4323,36 @@ local function GetStateTranslation(obj, state, property, language)
 
     if language == "EN" then
         return sourceRendered
+    end
+
+    -- Click/state dynamic text MUST use Roblox LocalizationService only.
+    -- Directly() is intentionally forbidden for this class.
+    if IsTextChangeOnlyWhenClick(obj, property) then
+        local okLocalize, localized, localizedSource = pcall(
+            Localizate,
+            obj,
+            sourceRendered,
+            language,
+            nil
+        )
+
+        if not okLocalize then
+            warn(
+                "[Translation][CLICK LOCALIZATION ERROR]",
+                state.Path or obj:GetFullName(),
+                property,
+                tostring(localized)
+            )
+            return nil
+        end
+
+        if type(localized) == "string"
+            and localized ~= ""
+            and localized ~= sourceRendered then
+            return localized
+        end
+
+        return nil
     end
 
     -- Static UI is Directly-only now. This includes TextLabel,
@@ -4541,11 +4644,120 @@ local function BindProperty(obj, property)
     L.Applied[obj][property] =
         currentValue
 
-    -- Translation is intentionally one-shot.
-    -- Do NOT watch Text/PlaceholderText changes here: dynamic GUI updates
-    -- (for example counters/status values) can fire every few seconds and
-    -- repeatedly trigger translation work, causing frame drops.
-    -- Language changes and newly-created objects are handled explicitly.
+    print(
+        string.format(
+            "[Translation][CLASSIFY] %s | %s | %s",
+            state.Path or obj:GetFullName(),
+            property,
+            GetDynamicTranslationMode(obj, property)
+        )
+    )
+
+    -- Live/ValueChanger text is intentionally one-shot and unobserved.
+    -- It can change at any time, so it must never trigger translation work.
+    -- Click-state text is different: it changes because the user interacts
+    -- with it, and it is explicitly allowed to use LocalizationService.
+    if IsTextChangeOnlyWhenClick(obj, property) then
+        local signal = obj:GetPropertyChangedSignal(property)
+
+        L.Connections[obj][property] = signal:Connect(function()
+            if not obj.Parent
+                or IsTranslationSkipped(obj)
+                or IsLocalizationExcluded(obj, property)
+                or IsValueChangerDynamic(obj, property) then
+                return
+            end
+
+            L.LocalizationWrite = L.LocalizationWrite
+                or setmetatable({}, {__mode = "k"})
+            L.LocalizationWrite[obj] =
+                L.LocalizationWrite[obj] or {}
+
+            if L.LocalizationWrite[obj][property] then
+                return
+            end
+
+            local currentValue =
+                tostring(obj[property] or "")
+
+            if currentValue == "" then
+                return
+            end
+
+            local state =
+                L.State[obj]
+                and L.State[obj][property]
+
+            if not state then
+                return
+            end
+
+            -- A user click can replace the current English state. When that
+            -- happens, rebuild the canonical source from the new state.
+            state.SourceText = currentValue
+            state.SourceTemplate, state.DynamicValues =
+                SelectTextToTranslateOnly(currentValue)
+
+            if L.CurrentLanguage == "EN" then
+                return
+            end
+
+            task.spawn(function()
+                local okLocalize, localized = pcall(
+                    Localizate,
+                    obj,
+                    currentValue,
+                    L.CurrentLanguage,
+                    nil
+                )
+
+                if okLocalize
+                    and type(localized) == "string"
+                    and localized ~= ""
+                    and localized ~= currentValue
+                    and obj.Parent then
+
+                    L.LocalizationWrite[obj][property] = true
+
+                    local okApply = pcall(function()
+                        obj[property] = localized
+                    end)
+
+                    if okApply then
+                        L.Applied[obj] =
+                            L.Applied[obj] or {}
+                        L.Applied[obj][property] = localized
+
+                        L.AppliedMeta[obj] =
+                            L.AppliedMeta[obj] or {}
+                        L.AppliedMeta[obj][property] = {
+                            Language = L.CurrentLanguage,
+                            Source = state.SourceText,
+                            Text = localized,
+                        }
+
+                        print(
+                            "[Translation][CLICK]",
+                            state.Path or obj:GetFullName(),
+                            currentValue,
+                            "=>",
+                            localized
+                        )
+                    end
+
+                    -- Always release the recursion guard, even if the property
+                    -- write itself fails.
+                    L.LocalizationWrite[obj][property] = false
+                else
+                    print(
+                        "[Translation][CLICK NO RESULT]",
+                        state.Path or obj:GetFullName(),
+                        currentValue
+                    )
+                end
+            end)
+        end)
+    end
 
 end
 
@@ -4905,6 +5117,11 @@ local function ApplyCachedLanguage(language, onComplete)
             -- Yield before the next scan, but DO NOT call worker/runPass again.
             task.wait()
         end
+
+        -- IMPORTANT: release the language buttons after the worker really
+        -- finishes. 6.15 defined finish(), but never called it, so L.Busy
+        -- stayed true forever after the first language change.
+        finish()
     end
 
     task.spawn(worker)
@@ -4947,8 +5164,11 @@ local function ChangeLanguage(language)
 
     L.latestClick = language
     L.SelectedLanguage = language
-    L.RefreshLanguageButtons()
     L.Busy = true
+    L.LanguageButtonStatus = "Working"
+
+    -- Immediately show Working... on the language that was clicked.
+    L.RefreshLanguageButtons()
 
     SetLanguageButtonsLocked(true)
 
@@ -4960,8 +5180,9 @@ local function ChangeLanguage(language)
         if language == "EN" then
             ApplyCachedLanguage("EN", function()
                 L.Busy = false
-                SetLanguageButtonsLocked(false)
                 L.SelectedLanguage = L.CurrentLanguage
+                L.LanguageButtonStatus = "Selected"
+                SetLanguageButtonsLocked(false)
                 L.RefreshLanguageButtons()
             end)
             return
@@ -4973,8 +5194,9 @@ local function ChangeLanguage(language)
             SaveTranslationCache()
 
             L.Busy = false
-            SetLanguageButtonsLocked(false)
             L.SelectedLanguage = L.CurrentLanguage
+            L.LanguageButtonStatus = "Selected"
+            SetLanguageButtonsLocked(false)
             L.RefreshLanguageButtons()
         end)
     end)
@@ -5123,10 +5345,27 @@ L.LanguageButtons = {
     KO = KorBtn
 }
 
+-- Preserve the original label so Working... / Selected can be temporary.
+for language, button in pairs(L.LanguageButtons) do
+    if button then
+        L.LanguageButtonDefaultText[language] = button.Text
+    end
+end
+
 L.RefreshLanguageButtons = function()
     for language, button in pairs(L.LanguageButtons) do
         if button and button.Parent then
             local selected = (L.SelectedLanguage == language)
+            local status = L.LanguageButtonStatus
+
+            if selected and status == "Working" then
+                button.Text = "Working..."
+            elseif selected and status == "Selected" then
+                button.Text = "Selected"
+            else
+                button.Text = L.LanguageButtonDefaultText[language] or button.Text
+            end
+
             button.TextColor3 = selected
                 and Color3.fromRGB(0,255,0)
                 or Color3.fromRGB(255,255,255)
