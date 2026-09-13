@@ -1,4 +1,4 @@
--- Loader script 4.32
+-- Loader script 4.33
 
 ------------------------------------------------------------------------------------------
 
@@ -230,6 +230,9 @@ local POSITIONS = {
     0,    -- OPEN 1
     0.3   -- OPEN 2
 }
+
+print("TweenInfo =", TweenInfo)
+print("TweenInfo.new =", TweenInfo and TweenInfo.new)
 
 local state = 1 -- เริ่มที่ OFF
 
