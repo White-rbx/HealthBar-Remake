@@ -1,4 +1,4 @@
--- Loader script 5.3
+-- Loader script 5.5
 
 ------------------------------------------------------------------------------------------
 
@@ -2027,7 +2027,7 @@ L.Connections =
     setmetatable({}, {__mode = "k"})
 
 L.PathSources = {
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.Holder.z8_ChatGPT.NewMessage|Text"] = "-",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.Holder.z8_ChatGPT.NewMessage|Text"] = "0",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.Holder.LoadFrame[\"Warning & Load\"]|Text"] = "The ExperienceSettings has been deactivated for some reason.",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[3].Description|Text"] = "The most powerful admin commands.",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[3].Title|Text"] = "<b>Infinite yield (@edge.egg | discord)</b>",
@@ -2115,7 +2115,7 @@ L.PathSources = {
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.TopBar.TopButtons:GetChildren()[23].Copy|Text"] = "Copy",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.ExperienceName|Text"] = "[UP] Just a baseplate.",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Pmax.Players|Text"] = "Player :",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Pmax.PlayerCount|Text"] = "15/22",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Pmax.PlayerCount|Text"] = "7/22",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Pmax.SeeAll|Text"] = "A button that doesn't do NOTHING",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Buttons.Leave|Text"] = "Leave The Experience",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Background.Settings.Buttons[\"Reset character\"]|Text"] = "Reset character",
@@ -2198,79 +2198,11 @@ L.PathSources = {
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Dragger|Text"] = "Drag",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-editor\"]|Text"] = "<u><b>Editor</b></u>",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.AddIdle|Text"] = "+",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_1|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_1.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_2|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_2.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_3|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_3.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_4|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_4.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_5|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_5.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_6|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_6.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_7|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_7.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_8|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_8.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_9|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_9.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_10|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_10.TextButton|Text"] = "-",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-idle\"]|Text"] = "Idle",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-idle\"].ClearIdle|Text"] = "Clear All Idle",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-WhenClick\"]|Text"] = "When Click",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-WhenClick\"].ClearWhenClick|Text"] = "Clear All When Click",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.AddWhenClick|Text"] = "+",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_1|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_1.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_2|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_2.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_3|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_3.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_4|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_4.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_5|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_5.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_6|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_6.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_7|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_7.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_8|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_8.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_9|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_9.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_10|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_10.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_11|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_11.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_12|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_12.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_13|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_13.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_14|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_14.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_15|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_15.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_16|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_16.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_17|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_17.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_18|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_18.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_19|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_19.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_20|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_20.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_21|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_21.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_22|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_22.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_23|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_23.TextButton|Text"] = "-",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_24|PlaceholderText"] = "Image ID",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_24.TextButton|Text"] = "-",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor[\"TextLabel-FrameRate\"]|Text"] = "Frame Rate",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle_FPS|PlaceholderText"] = "Idle's FPS",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick_FPS|PlaceholderText"] = "When Click's FPS",
@@ -2293,8 +2225,8 @@ L.PathSources = {
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CreatorName|Text"] = "Creator: The Local Maze",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CreatorID|Text"] = "CreatorID: 34901800",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.AFK|Text"] = "AFK: 00:00 | LastAFK: 00:03",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlayingTime|Text"] = "PlayingTime: 000:00:03:06",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.RealTimeClock|Text"] = "Real Time Clock: 14:07:55",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlayingTime|Text"] = "PlayingTime: 000:00:03:22",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.RealTimeClock|Text"] = "Real Time Clock: 14:32:12",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.WalkSpeed|Text"] = "WalkSpeed: 16",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.JumpPower|Text"] = "JumpPower: 50",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.Damage|Text"] = "BestDamage: 0 | LastDamage: 0",
@@ -2304,7 +2236,7 @@ L.PathSources = {
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.HoldingTool|Text"] = "HoldingTool: none",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.MaxHealth|Text"] = "MaxHealth: 100",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.StandingOn|Text"] = "StandingOn: Plastic",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PositionOfCharacter|Text"] = "Position: X: -61.70 | Y: 3.00 | Z: 20.80",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PositionOfCharacter|Text"] = "Position: X: -54.36 | Y: 3.00 | Z: -49.11",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CharacterType|Text"] = "CharacterType: R15",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.TimeOfDay|Text"] = "TimeOfDay: 14:00:00",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.DeveloperConsole|Text"] = "Open Developer console",
@@ -2369,7 +2301,7 @@ L.PathSources = {
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.ClosePage|Text"] = "<b>Back »</b>",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.CloseBookmark|Text"] = "<b>Back »</b>",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarkTopic|Text"] = "<b>Bookmark page</b>",
-    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Title|Text"] = "<b>Script Title</b>",
+    ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Title|Text"] = "<b>Script Title (discontinued but working)</b>",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Source|Text"] = "From: Source",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Execute|Text"] = "<b>Execute</b>",
     ["game:GetService(\"CoreGui\").ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Copy|Text"] = "<b>Copy</b>",
@@ -3733,14 +3665,17 @@ local function ApplyStateToObject(obj, property, language)
         return false
     end
 
-    L.Applied[obj] =
-        L.Applied[obj] or {}
+    local ok = pcall(function()
+        L.Applied[obj] =
+            L.Applied[obj] or {}
 
-    L.Applied[obj][property] =
-        rendered
+        L.Applied[obj][property] =
+            rendered
 
-    obj[property] = rendered
-    return true
+        obj[property] = rendered
+    end)
+
+    return ok
 end
 
 local function UpdateDynamicState(obj, property, currentValue)
@@ -4044,7 +3979,7 @@ end
 
 local function ApplyCachedLanguage(language)
     L.CurrentLanguage = language
-    local processed = 0
+    local processed = 0 -- Device.json-driven, per-object safe pass
 
     for obj, properties in pairs(L.State) do
         if obj
@@ -4058,30 +3993,37 @@ local function ApplyCachedLanguage(language)
                     continue
                 end
 
-                local rendered =
-                    GetStateTranslation(
-                        obj,
-                        state,
-                        property,
-                        language
-                    )
+                local ok, rendered = pcall(
+                    GetStateTranslation,
+                    obj,
+                    state,
+                    property,
+                    language
+                )
 
-                if rendered then
-                    L.Applied[obj] =
-                        L.Applied[obj] or {}
+                if ok and rendered then
+                    local appliedOk = pcall(function()
+                        L.Applied[obj] =
+                            L.Applied[obj] or {}
 
-                    L.Applied[obj][property] =
-                        rendered
+                        L.Applied[obj][property] =
+                            rendered
 
-                    if obj[property] ~= rendered then
-                        obj[property] = rendered
+                        if obj[property] ~= rendered then
+                            obj[property] = rendered
+                        end
+
+                        L.Source[obj] =
+                            L.Source[obj] or {}
+
+                        L.Source[obj][property] =
+                            state.SourceText
+                    end)
+
+                    -- If this object disappeared during the pass, simply skip it.
+                    if not appliedOk then
+                        continue
                     end
-
-                    L.Source[obj] =
-                        L.Source[obj] or {}
-
-                    L.Source[obj][property] =
-                        state.SourceText
                 end
 
                 processed += 1
