@@ -1,4 +1,5 @@
--- Loader script 6.8
+-- Loader script 2.91
+-- Translation System: 6.8 Preview
 
 ------------------------------------------------------------------------------------------
 
@@ -2027,6 +2028,11 @@ L.Applied =
 -- This lets the translator skip objects that are already translated.
 L.AppliedMeta =
     setmetatable({}, {__mode = "k"})
+
+-- Translation queue state. Work is spread across frames so a full translation
+-- pass does not block the game for a long continuous period.
+L.TranslationGeneration = 0
+L.TranslationRunning = false
 
 L.Connections =
     setmetatable({}, {__mode = "k"})
@@ -4497,9 +4503,12 @@ local function ScanInstance(obj)
     end
 end
 
-local function ApplyCachedLanguage(language)
+local function ApplyCachedLanguage(language, onComplete)
     L.CurrentLanguage = language
-    local processed = 0 -- Device.json-driven, per-object safe pass
+
+    -- Build a queue first. This keeps the hot path small and lets us spread
+    -- expensive LocalizationService work over multiple scheduler turns.
+    local queue = {}
 
     for obj, properties in pairs(L.State) do
         if obj
@@ -4517,14 +4526,71 @@ local function ApplyCachedLanguage(language)
                     continue
                 end
 
-                if not NeedsTranslation(
+                if NeedsTranslation(
                     obj,
                     property,
                     state,
                     language
                 ) then
-                    continue
+                    queue[#queue + 1] = {
+                        obj = obj,
+                        property = property,
+                        state = state,
+                    }
                 end
+            end
+        end
+    end
+
+    -- Nothing needs translation: finish immediately.
+    if #queue == 0 then
+        if onComplete then
+            onComplete()
+        end
+        return
+    end
+
+    L.TranslationGeneration += 1
+    local generation = L.TranslationGeneration
+    L.TranslationRunning = true
+
+    local index = 1
+    local batchSize = 3
+    local timeBudget = 0.0025
+
+    local function finish()
+        if generation ~= L.TranslationGeneration then
+            return
+        end
+
+        L.TranslationRunning = false
+
+        if onComplete then
+            onComplete()
+        end
+    end
+
+    local function processBatch()
+        if generation ~= L.TranslationGeneration then
+            return
+        end
+
+        local started = os.clock()
+        local count = 0
+
+        while index <= #queue do
+            local item = queue[index]
+            index += 1
+            count += 1
+
+            local obj = item.obj
+            local property = item.property
+            local state = item.state
+
+            if obj
+                and obj.Parent
+                and not IsTranslationSkipped(obj)
+                and not IsLocalizationExcluded(obj, property) then
 
                 local ok, rendered = pcall(
                     GetStateTranslation,
@@ -4535,7 +4601,7 @@ local function ApplyCachedLanguage(language)
                 )
 
                 if ok and rendered then
-                    local appliedOk = pcall(function()
+                    pcall(function()
                         L.Applied[obj] =
                             L.Applied[obj] or {}
 
@@ -4561,17 +4627,28 @@ local function ApplyCachedLanguage(language)
                         L.Source[obj][property] =
                             state.SourceText
                     end)
-
-                    -- If this object disappeared during the pass, simply skip it.
-                    if not appliedOk then
-                        continue
-                    end
                 end
+            end
 
-                processed += 1
+            -- A small hard item limit prevents one large batch from running
+            -- too long even when Translate() itself is expensive.
+            if count >= batchSize
+                or os.clock() - started >= timeBudget then
+                break
             end
         end
+
+        if index <= #queue then
+            -- task.defer yields back to the scheduler without adding a fixed
+            -- sleep. The remaining translation continues on a later turn.
+            task.defer(processBatch)
+            return
+        end
+
+        finish()
     end
+
+    task.defer(processBatch)
 end
 
 local function SetPermanentTranslationSource(
@@ -4627,23 +4704,25 @@ local function ChangeLanguage(language)
         ScanInstance(ExperienceSettings)
 
         if language == "EN" then
-            ApplyCachedLanguage("EN")
+            ApplyCachedLanguage("EN", function()
+                L.Busy = false
+                SetLanguageButtonsLocked(false)
+                L.SelectedLanguage = L.CurrentLanguage
+                L.RefreshLanguageButtons()
+            end)
+            return
+        end
+
+        -- One queued translation pass. Work is spread across scheduler turns
+        -- so the full set can still finish without a long frame hitch.
+        ApplyCachedLanguage(language, function()
+            SaveTranslationCache()
 
             L.Busy = false
             SetLanguageButtonsLocked(false)
             L.SelectedLanguage = L.CurrentLanguage
             L.RefreshLanguageButtons()
-            return
-        end
-
-        -- One non-blocking translation pass. Results are cached per source/locale.
-        ApplyCachedLanguage(language)
-        SaveTranslationCache()
-
-        L.Busy = false
-        SetLanguageButtonsLocked(false)
-        L.SelectedLanguage = L.CurrentLanguage
-        L.RefreshLanguageButtons()
+        end)
     end)
 end
 
