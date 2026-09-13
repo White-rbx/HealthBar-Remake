@@ -1,4 +1,4 @@
--- Loader script 6.2
+-- Loader script 6.21
 -- Translation System: 6.11 Static-Direct + Dynamic-Only Buttons
 
 ------------------------------------------------------------------------------------------
@@ -2036,6 +2036,12 @@ L.AppliedMeta =
 -- pass does not block the game for a long continuous period.
 L.TranslationGeneration = 0
 L.TranslationRunning = false
+
+L.Canonical =
+    setmetatable({}, {__mode = "k"})
+
+L.CanonicalTemplate =
+    setmetatable({}, {__mode = "k"})
 
 L.Connections =
     setmetatable({}, {__mode = "k"})
