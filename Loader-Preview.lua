@@ -1,4 +1,4 @@
--- Loader script 6
+-- Loader script 6.2
 
 ------------------------------------------------------------------------------------------
 
@@ -3869,6 +3869,42 @@ local function GetObjectPath(obj)
     return nil
 end
 
+L.LocalizationExcluded = {
+    [
+        'game:GetService("CoreGui").ExperienceSettings.Menu.Search.List.Scrips.Body.Details|Text'
+    ] = true,
+    [
+        'game:GetService("CoreGui").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.NameOfScriptTitle|Text'
+    ] = true,
+    [
+        'game:GetService("CoreGui").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.TypeScript|Text'
+    ] = true,
+    [
+        'game:GetService("CoreGui").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Likes|Text'
+    ] = true,
+    [
+        'game:GetService("CoreGui").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Dislikes|Text'
+    ] = true,
+    [
+        'game:GetService("CoreGui").ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Visits|Text'
+    ] = true,
+}
+
+local function IsLocalizationExcluded(obj, property)
+    if not obj or not property then
+        return false
+    end
+
+    local path = GetObjectPath(obj)
+    if not path then
+        return false
+    end
+
+    return L.LocalizationExcluded[
+        path .. "|" .. tostring(property)
+    ] == true
+end
+
 local function GetPathSource(obj, property)
     local path = GetObjectPath(obj)
     if not path then
@@ -4032,6 +4068,10 @@ local function Directly(sourceText, language, pathSource)
 end
 
 local function GetStateTranslation(obj, state, property, language)
+    if IsLocalizationExcluded(obj, property) then
+        return nil
+    end
+
     if not state
         or not state.SourceTemplate
         or state.SourceTemplate == "" then
@@ -4116,6 +4156,10 @@ local function GetStateTranslation(obj, state, property, language)
 end
 
 local function ApplyStateToObject(obj, property, language)
+    if IsLocalizationExcluded(obj, property) then
+        return false
+    end
+
     if not obj
         or not obj.Parent
         or IsTranslationSkipped(obj) then
@@ -4470,6 +4514,10 @@ local function ApplyCachedLanguage(language)
             and not IsTranslationSkipped(obj) then
 
             for property, state in pairs(properties) do
+                if IsLocalizationExcluded(obj, property) then
+                    continue
+                end
+
                 if property == "Text"
                     and obj:IsA("TextBox")
                     and obj.TextEditable then
