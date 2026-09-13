@@ -1,4 +1,4 @@
--- Loader script 4.33
+-- Loader script 4.35
 
 ------------------------------------------------------------------------------------------
 
@@ -230,9 +230,6 @@ local POSITIONS = {
     0,    -- OPEN 1
     0.3   -- OPEN 2
 }
-
-print("TweenInfo =", TweenInfo)
-print("TweenInfo.new =", TweenInfo and TweenInfo.new)
 
 local state = 1 -- เริ่มที่ OFF
 
@@ -1993,41 +1990,43 @@ local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 local LocalizationService = game:GetService("LocalizationService")
 
+local L = {}
+
 local ExperienceSettings
 
-local CurrentLanguage = "EN"
-local SelectedLanguage = "EN"
-local latestClick = "EN"
-local TranslationBusy = false
-local TranslationCooldown = 2
-local LastApiRequest = 0
+L.CurrentLanguage = "EN"
+L.SelectedLanguage = "EN"
+L.latestClick = "EN"
+L.Busy = false
+L.Cooldown = 2
+L.LastRequest = 0
 
-local TranslationCacheFile =
+L.CacheFile =
     "ExperienceSettings/translation_cache.json"
 
 -- Roblox LocalizationService is the primary translation provider.
--- Local TranslationDB/cache remains as a fallback.
-local REMOTE_CACHE_URL = nil
+-- Local L.DB/cache remains as a fallback.
+L.RemoteURL = nil
 
 
-local HTTP_REQUEST =
+L.Request =
     request
     or http_request
     or (syn and syn.request)
 
-local LanguageButtons = {}
-local RefreshLanguageButtons
+L.LanguageButtons = {}
+L.RefreshLanguageButtons = nil
 
-local TranslationSource =
+L.Source =
     setmetatable({}, {__mode = "k"})
 
-local TranslationApplied =
+L.Applied =
     setmetatable({}, {__mode = "k"})
 
-local TranslationConnections =
+L.Connections =
     setmetatable({}, {__mode = "k"})
 
-local LocaleMap = {
+L.LocaleMap = {
     ["EN"] = "en-us",
     ["ES"] = "es",
     ["TH"] = "th",
@@ -2037,10 +2036,10 @@ local LocaleMap = {
     ["KO"] = "ko",
 }
 
-local LocalizationTranslators = {}
-local LocalizationReady = {}
+L.Translators = {}
+L.Ready = {}
 
-local TranslationCache = {
+L.Cache = {
     ["EN"] = {},
     ["ES"] = {},
     ["TH"] = {},
@@ -2050,7 +2049,7 @@ local TranslationCache = {
     ["KO"] = {},
 }
 
-local TranslationDB = {
+L.DB = {
     ["ES"] = {
         ["Type /Help to show all commands or Say something..."] = "Escribe /Help para mostrar todos los comandos o di algo...",
         ["Confirm API"] = "Confirmar API",
@@ -2330,12 +2329,10 @@ local TranslationDB = {
 }
 
 
-local LocalizationLookupCache = {}
-local SimilarSourceCache = {}
-local SimilarCandidateIndex = {}
-local SimilarCandidateList = {}
+L.SimilarCache =
+    setmetatable({}, {__mode = "k"})
 
-local LocalizationSourceCandidates = {
+L.Candidates = {
     "Type /Help to show all commands or Say something...",
     "Confirm API",
     "Unsaved API",
@@ -2503,51 +2500,6 @@ local function SimilarityTextWithoutRichText(text)
     return NormalizeSimilarityText(tostring(text or ""):gsub("<[^>]->", ""))
 end
 
-local function AddSimilarityCandidate(candidate)
-    candidate = tostring(candidate or "")
-    if candidate == "" or SimilarCandidateIndex[candidate] then
-        return
-    end
-
-    local normalized = NormalizeSimilarityText(candidate)
-    local plain = SimilarityTextWithoutRichText(candidate)
-
-    local item = {
-        Source = candidate,
-        Normalized = normalized,
-        Plain = plain,
-        Length = #normalized,
-    }
-
-    SimilarCandidateIndex[candidate] = item
-    SimilarCandidateList[#SimilarCandidateList + 1] = item
-
-    if normalized ~= "" then
-        SimilarCandidateIndex["N:" .. normalized] = item
-    end
-
-    if plain ~= "" and plain ~= normalized then
-        SimilarCandidateIndex["P:" .. plain] = item
-    end
-end
-
-local function BuildSimilarityCandidateIndex()
-    table.clear(SimilarCandidateIndex)
-    table.clear(SimilarCandidateList)
-
-    for _, candidate in ipairs(LocalizationSourceCandidates or {}) do
-        AddSimilarityCandidate(candidate)
-    end
-
-    for _, entries in pairs(TranslationDB) do
-        for candidate in pairs(entries) do
-            AddSimilarityCandidate(candidate)
-        end
-    end
-end
-
-BuildSimilarityCandidateIndex()
-
 local function CommonPrefixRatio(a, b)
     local length = math.min(#a, #b)
     if length == 0 then
@@ -2605,95 +2557,111 @@ local function FindSimilarLocalizationSource(sourceText)
         return nil
     end
 
-    local cached = SimilarSourceCache[source]
-    if cached ~= nil then
-        return cached.Resolved
+    L.SimilarCache[source] =
+        L.SimilarCache[source] or {}
+
+    local cached = L.SimilarCache[source].Resolved
+    if cached then
+        return cached
     end
 
     local normalized = NormalizeSimilarityText(source)
-    local plainNormalized = SimilarityTextWithoutRichText(source)
+    local plainNormalized =
+        SimilarityTextWithoutRichText(source)
 
-    -- O(1) normalized lookups first.
-    local exactNormalized = SimilarCandidateIndex["N:" .. normalized]
-    if exactNormalized then
-        SimilarSourceCache[source] = {
-            Resolved = exactNormalized.Source,
-            Score = 1,
-        }
-        return exactNormalized.Source
+    -- First pass: exact normalized match.
+    for _, candidate in ipairs(L.Candidates) do
+        if NormalizeSimilarityText(candidate) == normalized then
+            L.SimilarCache[source].Resolved = candidate
+            return candidate
+        end
     end
 
-    local exactPlain = SimilarCandidateIndex["P:" .. plainNormalized]
-    if exactPlain then
-        SimilarSourceCache[source] = {
-            Resolved = exactPlain.Source,
-            Score = 1,
-        }
-        return exactPlain.Source
+    -- Second pass: the canonical source may be in L.DB but not in List.
+    for _, entries in pairs(L.DB) do
+        for candidate in pairs(entries) do
+            if NormalizeSimilarityText(candidate) == normalized then
+                L.SimilarCache[source].Resolved = candidate
+                return candidate
+            end
+        end
     end
 
-    -- Fuzzy matching is intentionally only done once per unique source.
+    -- Third pass: high-confidence fuzzy match.
     local bestCandidate = nil
     local bestScore = 0
-    local sourceLength = #normalized
 
-    local function testCandidate(item)
-        if item.Source == source then
+    local function testCandidate(candidate)
+        if candidate == source then
             return
         end
 
-        local maxLength = math.max(sourceLength, item.Length)
-        local minLength = math.min(sourceLength, item.Length)
-        local lengthRatio = minLength / math.max(1, maxLength)
+        local candidateNormalized =
+            NormalizeSimilarityText(candidate)
+
+        local candidatePlain =
+            SimilarityTextWithoutRichText(candidate)
+
+        local lengthRatio =
+            math.min(#normalized, #candidateNormalized)
+            / math.max(1, math.max(#normalized, #candidateNormalized))
 
         if lengthRatio < 0.72 then
             return
         end
 
-        local scoreA = TokenSimilarity(normalized, item.Normalized)
-        local scoreB = TokenSimilarity(plainNormalized, item.Plain)
-        local scoreC = CommonPrefixRatio(normalized, item.Normalized)
+        local scoreA =
+            TokenSimilarity(normalized, candidateNormalized)
 
-        local score = math.max(scoreA, scoreB) * 0.75 + scoreC * 0.25
+        local scoreB =
+            TokenSimilarity(plainNormalized, candidatePlain)
+
+        local scoreC =
+            CommonPrefixRatio(
+                normalized,
+                candidateNormalized
+            )
+
+        local score =
+            math.max(scoreA, scoreB) * 0.75
+            + scoreC * 0.25
 
         if score > bestScore then
             bestScore = score
-            bestCandidate = item.Source
+            bestCandidate = candidate
         end
     end
 
-    -- Cheap filtering before fuzzy work. This prevents comparing huge blocks
-    -- against every candidate when their lengths are obviously unrelated.
-    for _, item in ipairs(SimilarCandidateList) do
-        testCandidate(item)
+    for _, candidate in ipairs(L.Candidates) do
+        testCandidate(candidate)
+    end
+
+    for _, entries in pairs(L.DB) do
+        for candidate in pairs(entries) do
+            testCandidate(candidate)
+        end
     end
 
     if bestCandidate and bestScore >= 0.92 then
-        SimilarSourceCache[source] = {
-            Resolved = bestCandidate,
-            Score = bestScore,
-        }
+        L.SimilarCache[source].Resolved =
+            bestCandidate
+        L.SimilarCache[source].Score =
+            bestScore
         return bestCandidate
     end
-
-    -- Cache misses too, so the same untranslated string does not trigger
-    -- another full similarity pass every 5 seconds.
-    SimilarSourceCache[source] = {
-        Resolved = false,
-        Score = bestScore,
-    }
 
     return nil
 end
 
--- Import the static TranslationDB.
-for language, entries in pairs(TranslationDB) do
+
+-- Import the static L.DB.
+for language, entries in pairs(L.DB) do
     for sourceText, translatedText in pairs(entries) do
-        TranslationCache[language][sourceText] = translatedText
+        L.Cache[language][sourceText] = translatedText
 
         local plainKey = PlainCacheKey(sourceText)
         if plainKey ~= PlainCacheKey("") then
-            TranslationCache[language][plainKey] = translatedText
+            L.Cache[language][plainKey] = translatedText
         end
     end
 end
@@ -2724,7 +2692,7 @@ local function SaveTranslationCache()
     local ok, encoded = pcall(function()
         return HttpService:JSONEncode({
             Version = 1,
-            Languages = TranslationCache
+            Languages = L.Cache
         })
     end)
 
@@ -2737,7 +2705,7 @@ local function SaveTranslationCache()
             makefolder("ExperienceSettings")
         end
 
-        writefile(TranslationCacheFile, encoded)
+        writefile(L.CacheFile, encoded)
     end)
 
     return saveOk
@@ -2746,12 +2714,12 @@ end
 local function LoadTranslationCache()
     if not readfile
         or not isfile
-        or not isfile(TranslationCacheFile) then
+        or not isfile(L.CacheFile) then
         return
     end
 
     local ok, decoded = pcall(function()
-        return HttpService:JSONDecode(readfile(TranslationCacheFile))
+        return HttpService:JSONDecode(readfile(L.CacheFile))
     end)
 
     if not ok
@@ -2761,14 +2729,14 @@ local function LoadTranslationCache()
     end
 
     for language, entries in pairs(decoded.Languages) do
-        if TranslationCache[language]
+        if L.Cache[language]
             and type(entries) == "table" then
 
             for sourceText, translatedText in pairs(entries) do
                 if type(sourceText) == "string"
                     and type(translatedText) == "string" then
 
-                    TranslationCache[language][sourceText] =
+                    L.Cache[language][sourceText] =
                         translatedText
                 end
             end
@@ -2834,10 +2802,10 @@ local function RestoreSelectedText(text, protected)
 end
 
 -- Normalize static DB entries so runtime dynamic values can match the same template.
-for language, entries in pairs(TranslationDB) do
+for language, entries in pairs(L.DB) do
     for sourceText, translatedText in pairs(entries) do
         local template, protected = SelectTextToTranslateOnly(sourceText)
-        if template ~= sourceText and not TranslationCache[language][template] then
+        if template ~= sourceText and not L.Cache[language][template] then
             local translatedTemplate = translatedText
             for index = #protected, 1, -1 do
                 local value = tostring(protected[index] or "")
@@ -2850,8 +2818,8 @@ for language, entries in pairs(TranslationDB) do
                     )
                 end
             end
-            TranslationCache[language][template] = translatedTemplate
-            TranslationCache[language][PlainCacheKey(template)] = translatedTemplate
+            L.Cache[language][template] = translatedTemplate
+            L.Cache[language][PlainCacheKey(template)] = translatedTemplate
         end
     end
 end
@@ -2862,12 +2830,12 @@ local function GetLocalizationTranslator(language)
         return nil
     end
 
-    local existing = LocalizationTranslators[language]
+    local existing = L.Translators[language]
     if existing then
         return existing
     end
 
-    local localeId = LocaleMap[language]
+    local localeId = L.LocaleMap[language]
     if not localeId then
         return nil
     end
@@ -2877,12 +2845,12 @@ local function GetLocalizationTranslator(language)
     end)
 
     if ok and translator then
-        LocalizationTranslators[language] = translator
-        LocalizationReady[language] = true
+        L.Translators[language] = translator
+        L.Ready[language] = true
         return translator
     end
 
-    LocalizationReady[language] = false
+    L.Ready[language] = false
     return nil
 end
 
@@ -2891,17 +2859,8 @@ local function TranslateFromLocalization(obj, sourceText, language)
         return nil
     end
 
-    LocalizationLookupCache[language] = LocalizationLookupCache[language] or {}
-    local lookup = LocalizationLookupCache[language]
-
-    local cached = lookup[sourceText]
-    if cached ~= nil then
-        return cached or nil
-    end
-
     local translator = GetLocalizationTranslator(language)
     if not translator then
-        lookup[sourceText] = false
         return nil
     end
 
@@ -2927,7 +2886,6 @@ local function TranslateFromLocalization(obj, sourceText, language)
             return nil
         end
 
-        lookup[sourceText] = translated
         return translated
     end
 
@@ -2966,7 +2924,6 @@ local function TranslateFromLocalization(obj, sourceText, language)
         end
     end
 
-    lookup[sourceText] = false
     return nil
 end
 
@@ -2975,7 +2932,7 @@ local function GetCachedTranslation(sourceText, language)
         return sourceText
     end
 
-    local cache = TranslationCache[language]
+    local cache = L.Cache[language]
     if not cache then
         return nil
     end
@@ -3006,7 +2963,7 @@ local function GetCachedTranslation(sourceText, language)
     return nil, template, protected
 end
 
-local TranslationState =
+L.State =
     setmetatable({}, {__mode = "k"})
 
 local function EscapeLuaPattern(value)
@@ -3077,13 +3034,13 @@ local function MatchDynamicTemplate(template, text)
 end
 
 local function GetState(obj, property)
-    TranslationState[obj] =
-        TranslationState[obj] or {}
+    L.State[obj] =
+        L.State[obj] or {}
 
-    TranslationState[obj][property] =
-        TranslationState[obj][property] or {}
+    L.State[obj][property] =
+        L.State[obj][property] or {}
 
-    return TranslationState[obj][property]
+    return L.State[obj][property]
 end
 
 local function BuildSourceState(obj, property, sourceText)
@@ -3120,7 +3077,7 @@ local function GetStateTranslation(obj, state, property, language)
         return sourceRendered
     end
 
-    local cache = TranslationCache[language]
+    local cache = L.Cache[language]
 
     -- 1. Exact cached translation.
     local translated = cache and cache[sourceRendered]
@@ -3136,12 +3093,12 @@ local function GetStateTranslation(obj, state, property, language)
     )
 
     if translated then
-        TranslationCache[language][sourceRendered] = translated
-        TranslationCache[language][PlainCacheKey(sourceRendered)] = translated
+        L.Cache[language][sourceRendered] = translated
+        L.Cache[language][PlainCacheKey(sourceRendered)] = translated
         return translated
     end
 
-    -- 3. Existing local TranslationDB/cache template fallback.
+    -- 3. Existing L.DB/cache template fallback.
     translated = GetCachedTranslation(sourceRendered, language)
     if translated then
         return translated
@@ -3169,8 +3126,8 @@ local function ApplyStateToObject(obj, property, language)
     end
 
     local state =
-        TranslationState[obj]
-        and TranslationState[obj][property]
+        L.State[obj]
+        and L.State[obj][property]
 
     if not state then
         return false
@@ -3194,10 +3151,10 @@ local function ApplyStateToObject(obj, property, language)
         return false
     end
 
-    TranslationApplied[obj] =
-        TranslationApplied[obj] or {}
+    L.Applied[obj] =
+        L.Applied[obj] or {}
 
-    TranslationApplied[obj][property] =
+    L.Applied[obj][property] =
         rendered
 
     obj[property] = rendered
@@ -3206,8 +3163,8 @@ end
 
 local function UpdateDynamicState(obj, property, currentValue)
     local state =
-        TranslationState[obj]
-        and TranslationState[obj][property]
+        L.State[obj]
+        and L.State[obj][property]
 
     if not state then
         return false
@@ -3215,10 +3172,10 @@ local function UpdateDynamicState(obj, property, currentValue)
 
     -- 1. The GUI changed only its dynamic part while
     --    already translated. Match against the translated template.
-    if CurrentLanguage ~= "EN" then
+    if L.CurrentLanguage ~= "EN" then
         local translatedTemplate =
-            TranslationCache[CurrentLanguage]
-            and TranslationCache[CurrentLanguage][state.SourceTemplate]
+            L.Cache[L.CurrentLanguage]
+            and L.Cache[L.CurrentLanguage][state.SourceTemplate]
 
         if translatedTemplate then
             local translatedDynamic =
@@ -3266,16 +3223,16 @@ local function BindProperty(obj, property)
         return
     end
 
-    TranslationSource[obj] =
-        TranslationSource[obj] or {}
+    L.Source[obj] =
+        L.Source[obj] or {}
 
-    TranslationApplied[obj] =
-        TranslationApplied[obj] or {}
+    L.Applied[obj] =
+        L.Applied[obj] or {}
 
-    TranslationConnections[obj] =
-        TranslationConnections[obj] or {}
+    L.Connections[obj] =
+        L.Connections[obj] or {}
 
-    if TranslationConnections[obj][property] then
+    if L.Connections[obj][property] then
         return
     end
 
@@ -3295,20 +3252,20 @@ local function BindProperty(obj, property)
             currentValue
         )
 
-    TranslationSource[obj][property] =
+    L.Source[obj][property] =
         state.SourceText
 
-    TranslationApplied[obj][property] =
+    L.Applied[obj][property] =
         currentValue
 
-    TranslationConnections[obj][property] =
+    L.Connections[obj][property] =
         obj:GetPropertyChangedSignal(property):Connect(function()
             local changedValue =
                 tostring(obj[property] or "")
 
             local applied =
-                TranslationApplied[obj]
-                and TranslationApplied[obj][property]
+                L.Applied[obj]
+                and L.Applied[obj][property]
 
             -- Ignore our own translated write.
             if applied == changedValue then
@@ -3322,7 +3279,7 @@ local function BindProperty(obj, property)
             end
 
             -- English is always the canonical source.
-            if CurrentLanguage == "EN" then
+            if L.CurrentLanguage == "EN" then
                 local newState =
                     BuildSourceState(
                         obj,
@@ -3330,10 +3287,10 @@ local function BindProperty(obj, property)
                         changedValue
                     )
 
-                TranslationSource[obj][property] =
+                L.Source[obj][property] =
                     newState.SourceText
 
-                TranslationApplied[obj][property] =
+                L.Applied[obj][property] =
                     changedValue
 
                 return
@@ -3349,13 +3306,13 @@ local function BindProperty(obj, property)
                 local rendered =
                     GetStateTranslation(
                         obj,
-                        TranslationState[obj][property],
+                        L.State[obj][property],
                         property,
-                        CurrentLanguage
+                        L.CurrentLanguage
                     )
 
                 if rendered then
-                    TranslationApplied[obj][property] =
+                    L.Applied[obj][property] =
                         rendered
 
                     if rendered ~= changedValue then
@@ -3376,20 +3333,20 @@ local function BindProperty(obj, property)
                     changedValue
                 )
 
-            TranslationSource[obj][property] =
+            L.Source[obj][property] =
                 newState.SourceText
 
-            TranslationApplied[obj][property] =
+            L.Applied[obj][property] =
                 changedValue
 
             task.defer(function()
                 if not obj.Parent
-                    or TranslationBusy then
+                    or L.Busy then
                     return
                 end
 
                 local language =
-                    CurrentLanguage
+                    L.CurrentLanguage
 
                 if language == "EN" then
                     return
@@ -3403,8 +3360,8 @@ local function BindProperty(obj, property)
                 end
 
                 local cached =
-                    TranslationCache[language]
-                    and TranslationCache[language][template]
+                    L.Cache[language]
+                    and L.Cache[language][template]
 
                 if cached then
                     ApplyStateToObject(
@@ -3416,7 +3373,7 @@ local function BindProperty(obj, property)
                 end
 
                 -- Local-only mode: do not request a translation provider here.
-                -- If a translation is added to TranslationCache later, the next
+                -- If a translation is added to L.Cache later, the next
                 -- ApplyCachedLanguage() pass will render it.
                 ApplyStateToObject(
                     obj,
@@ -3433,26 +3390,26 @@ local function BindTextBoxEditable(obj)
         return
     end
 
-    TranslationConnections[obj] =
-        TranslationConnections[obj] or {}
+    L.Connections[obj] =
+        L.Connections[obj] or {}
 
-    if TranslationConnections[obj]._TextEditable then
+    if L.Connections[obj]._TextEditable then
         return
     end
 
-    TranslationConnections[obj]._TextEditable =
+    L.Connections[obj]._TextEditable =
         obj:GetPropertyChangedSignal("TextEditable"):Connect(function()
             if obj.TextEditable then
-                if TranslationSource[obj] then
-                    TranslationSource[obj].Text = nil
+                if L.Source[obj] then
+                    L.Source[obj].Text = nil
                 end
 
-                if TranslationApplied[obj] then
-                    TranslationApplied[obj].Text = nil
+                if L.Applied[obj] then
+                    L.Applied[obj].Text = nil
                 end
 
-                if TranslationState[obj] then
-                    TranslationState[obj].Text = nil
+                if L.State[obj] then
+                    L.State[obj].Text = nil
                 end
 
                 return
@@ -3504,10 +3461,10 @@ local function ScanInstance(obj)
 end
 
 local function ApplyCachedLanguage(language)
-    CurrentLanguage = language
+    L.CurrentLanguage = language
     local processed = 0
 
-    for obj, properties in pairs(TranslationState) do
+    for obj, properties in pairs(L.State) do
         if obj
             and obj.Parent
             and not IsTranslationSkipped(obj) then
@@ -3528,10 +3485,10 @@ local function ApplyCachedLanguage(language)
                     )
 
                 if rendered then
-                    TranslationApplied[obj] =
-                        TranslationApplied[obj] or {}
+                    L.Applied[obj] =
+                        L.Applied[obj] or {}
 
-                    TranslationApplied[obj][property] =
+                    L.Applied[obj][property] =
                         rendered
 
                     if obj[property] ~= rendered then
@@ -3543,10 +3500,10 @@ local function ApplyCachedLanguage(language)
                         task.wait()
                     end
 
-                    TranslationSource[obj] =
-                        TranslationSource[obj] or {}
+                    L.Source[obj] =
+                        L.Source[obj] or {}
 
-                    TranslationSource[obj][property] =
+                    L.Source[obj][property] =
                         state.SourceText
                 end
             end
@@ -3566,10 +3523,10 @@ local function SetPermanentTranslationSource(
             sourceText
         )
 
-    TranslationSource[obj] =
-        TranslationSource[obj] or {}
+    L.Source[obj] =
+        L.Source[obj] or {}
 
-    TranslationSource[obj][property] =
+    L.Source[obj][property] =
         state.SourceText
 end
 
@@ -3580,19 +3537,19 @@ local function ChangeLanguage(language)
         return
     end
 
-    if TranslationBusy then
+    if L.Busy then
         return
     end
 
     -- Same language = zero work, zero API calls.
-    if latestClick == language then
+    if L.latestClick == language then
         return
     end
 
-    latestClick = language
-    SelectedLanguage = language
-    RefreshLanguageButtons()
-    TranslationBusy = true
+    L.latestClick = language
+    L.SelectedLanguage = language
+    L.RefreshLanguageButtons()
+    L.Busy = true
 
     SetLanguageButtonsLocked(true)
 
@@ -3609,10 +3566,10 @@ local function ChangeLanguage(language)
         if language == "EN" then
             ApplyCachedLanguage("EN")
 
-            TranslationBusy = false
+            L.Busy = false
             SetLanguageButtonsLocked(false)
-            SelectedLanguage = CurrentLanguage
-            RefreshLanguageButtons()
+            L.SelectedLanguage = L.CurrentLanguage
+            L.RefreshLanguageButtons()
             return
         end
 
@@ -3620,15 +3577,15 @@ local function ChangeLanguage(language)
         ApplyCachedLanguage(language)
         SaveTranslationCache()
 
-        TranslationBusy = false
+        L.Busy = false
         SetLanguageButtonsLocked(false)
-        SelectedLanguage = CurrentLanguage
-        RefreshLanguageButtons()
+        L.SelectedLanguage = L.CurrentLanguage
+        L.RefreshLanguageButtons()
     end)
 end
 
 SetLanguageButtonsLocked = function(locked)
-    for _, button in pairs(LanguageButtons) do
+    for _, button in pairs(L.LanguageButtons) do
         if button and button.Parent then
             button.Active = not locked
             button.AutoButtonColor = not locked
@@ -3658,9 +3615,9 @@ task.spawn(function()
 
             ScanInstance(obj)
 
-            if CurrentLanguage ~= "EN" and not TranslationBusy then
-                ApplyStateToObject(obj, "Text", CurrentLanguage)
-                ApplyStateToObject(obj, "PlaceholderText", CurrentLanguage)
+            if L.CurrentLanguage ~= "EN" and not L.Busy then
+                ApplyStateToObject(obj, "Text", L.CurrentLanguage)
+                ApplyStateToObject(obj, "PlaceholderText", L.CurrentLanguage)
             end
         end)
     end)
@@ -3672,15 +3629,15 @@ task.spawn(function()
         if ExperienceSettings and ExperienceSettings.Parent then
             ScanInstance(ExperienceSettings)
 
-            if CurrentLanguage ~= "EN" then
-                GetLocalizationTranslator(CurrentLanguage)
+            if L.CurrentLanguage ~= "EN" then
+                GetLocalizationTranslator(L.CurrentLanguage)
             end
 
-            if CurrentLanguage ~= "EN" and not TranslationBusy then
-                ApplyCachedLanguage(CurrentLanguage)
+            if L.CurrentLanguage ~= "EN" and not L.Busy then
+                ApplyCachedLanguage(L.CurrentLanguage)
             end
 
-            RefreshLanguageButtons()
+            L.RefreshLanguageButtons()
         end
     end
 end)
@@ -3776,7 +3733,7 @@ local KorBtn = Txt(
     ins2
 ).Button
 
-LanguageButtons = {
+L.LanguageButtons = {
     EN = EngBtn,
     ES = SpaBtn,
     TH = ThaBtn,
@@ -3786,10 +3743,10 @@ LanguageButtons = {
     KO = KorBtn
 }
 
-RefreshLanguageButtons = function()
-    for language, button in pairs(LanguageButtons) do
+L.RefreshLanguageButtons = function()
+    for language, button in pairs(L.LanguageButtons) do
         if button and button.Parent then
-            local selected = (SelectedLanguage == language)
+            local selected = (L.SelectedLanguage == language)
             button.TextColor3 = selected
                 and Color3.fromRGB(0,255,0)
                 or Color3.fromRGB(255,255,255)
@@ -3798,7 +3755,7 @@ RefreshLanguageButtons = function()
     end
 end
 
-RefreshLanguageButtons()
+L.RefreshLanguageButtons()
 
 -- This only way the last toggle
 local StarterGui = game:GetService("StarterGui")
