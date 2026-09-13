@@ -1,4 +1,4 @@
--- Loader script 4.2
+-- Loader script 4.3
 
 ------------------------------------------------------------------------------------------
 
@@ -2180,6 +2180,26 @@ local LocalizationSourceCandidates = {
     "re-chat",
     "Ask anything..."
 }
+
+local function NormalizeSimilarityText(text)
+    text = tostring(text or "")
+    text = text:gsub("\r\n", "\n")
+    text = text:gsub("\r", "\n")
+    text = text:gsub("\\n", "\n")
+    text = text:gsub("\\t", " ")
+    text = text:gsub("\n", " ")
+    text = text:gsub("\t", " ")
+    text = text:gsub("%s+", " ")
+    text = text:gsub("^%s+", "")
+    text = text:gsub("%s+$", "")
+    text = text:gsub("“", '"'):gsub("”", '"')
+    text = text:gsub("‘", "'"):gsub("’", "'")
+    return text:lower()
+end
+
+local function SimilarityTextWithoutRichText(text)
+    return NormalizeSimilarityText(tostring(text or ""):gsub("<[^>]->", ""))
+end
 
 local function AddSimilarityCandidate(candidate)
     candidate = tostring(candidate or "")
