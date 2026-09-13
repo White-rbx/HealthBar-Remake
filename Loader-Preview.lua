@@ -1,4 +1,4 @@
--- Loader script 5.9
+-- Loader script 6
 
 ------------------------------------------------------------------------------------------
 
@@ -2397,6 +2397,7 @@ L.DB = {
         ["<b>Remove from the bookmark page</b>"] = "<b>Eliminar de la página de marcadores</b>",
         ["Remove from the bookmark page"] = "Eliminar de la página de marcadores",
         ["Search here!"] = "¡Busca aquí!",
+        ["Enter"] = "Entrar",
         ["[ Select first ] Searcher"] = "[ Selecciona primero ] Buscador",
     },
     ["TH"] = {
@@ -2449,6 +2450,7 @@ L.DB = {
         ["<b>Remove from the bookmark page</b>"] = "<b>ลบออกจากหน้าบุ๊กมาร์ก</b>",
         ["Remove from the bookmark page"] = "ลบออกจากหน้าบุ๊กมาร์ก",
         ["Search here!"] = "ค้นหาที่นี่!",
+        ["Enter"] = "เข้า",
         ["[ Select first ] Searcher"] = "[ เลือกก่อน ] ตัวค้นหา",
         ["The ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n"] = null,
         ["Status: Unknown"] = "สถานะ: ไม่ทราบ",
@@ -2542,6 +2544,7 @@ L.DB = {
         ["<b>Remove from the bookmark page</b>"] = "<b>Remover da página de favoritos</b>",
         ["Remove from the bookmark page"] = "Remover da página de favoritos",
         ["Search here!"] = "Pesquise aqui!",
+        ["Enter"] = "Entrar",
         ["[ Select first ] Searcher"] = "[ Selecione primeiro ] Pesquisar",
     },
     ["PT-PT"] = {
@@ -2593,6 +2596,7 @@ L.DB = {
         ["<b>Remove from the bookmark page</b>"] = "<b>Remover da página de favoritos</b>",
         ["Remove from the bookmark page"] = "Remover da página de favoritos",
         ["Search here!"] = "Pesquisa aqui!",
+        ["Enter"] = "Entrar",
         ["[ Select first ] Searcher"] = "[ Seleciona primeiro ] Pesquisar",
     },
     ["RU"] = {
@@ -2644,6 +2648,7 @@ L.DB = {
         ["<b>Remove from the bookmark page</b>"] = "<b>Удалить со страницы закладок</b>",
         ["Remove from the bookmark page"] = "Удалить со страницы закладок",
         ["Search here!"] = "Поиск здесь!",
+        ["Enter"] = "Войти",
         ["[ Select first ] Searcher"] = "[ Сначала выбери ] Поиск",
     },
     ["KO"] = {
@@ -2695,6 +2700,7 @@ L.DB = {
         ["<b>Remove from the bookmark page</b>"] = "<b>북마크 페이지에서 제거</b>",
         ["Remove from the bookmark page"] = "북마크 페이지에서 제거",
         ["Search here!"] = "여기에서 검색하세요!",
+        ["Enter"] = "입력",
         ["[ Select first ] Searcher"] = "[ 먼저 선택 ] 검색",
     },
 }
@@ -2834,6 +2840,7 @@ L.Candidates = {
     "Universal Script 📌",
     "<b>Visit: COUNT</b>",
     "Search here!",
+    "Enter",
     "The ExperienceSettings has been deactivated for some reason.",
     "Copy",
     "Execute",
