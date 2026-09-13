@@ -1,4 +1,4 @@
--- Loader script 4.4
+-- Loader script 5
 
 ------------------------------------------------------------------------------------------
 
@@ -1983,7 +1983,7 @@ end)
 --======= ENGLISH ========--
 --// =====================================================
 --// TEXT-DETECTION LOCALIZATION ENGINE v2
---// No Path-based translation.
+--// Path-based translation: full Device export is the primary source.
 --// =====================================================
 
 local HttpService = game:GetService("HttpService")
@@ -2025,6 +2025,253 @@ L.Applied =
 
 L.Connections =
     setmetatable({}, {__mode = "k"})
+
+L.PathSources = {
+    ["CoreGui.ExperienceSettings.Menu.TopBar.Holder.z8_ChatGPT.NewMessage|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.TopBar.Holder.LoadFrame.Warning & Load|Text"] = "The ExperienceSettings has been deactivated for some reason.",
+    ["CoreGui.ExperienceSettings.Menu.Background.ExperienceName|Text"] = "[UP] Just a baseplate.",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.Pmax.Players|Text"] = "Player :",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.Pmax.PlayerCount|Text"] = "12/22",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.Pmax.SeeAll|Text"] = "A button that doesn't do NOTHING",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.Buttons.Leave|Text"] = "Leave The Experience",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.Buttons.Reset character|Text"] = "Reset character",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.Buttons.Resume|Text"] = "Resume",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame1.Bar.ToggleButton|Text"] = "ON",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame1.Label|Text"] = "Enable ValueLabels",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame1.Label.Description|Text"] = "<b><u>ValueLabel</u></b>\nShow ValueLabel at the Top HealthBar.\n• FPS - Frame Per second\n• HP - Health ( How to read: 100.000 HP = 100 HP )\n• WS/s - Walkspeed per studs ( How to read: 16.000 WS/s = 16 WS/s )",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame2.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame2.Label|Text"] = "Shaders - Sunset",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame2.Label.Description|Text"] = "<b><u>Shaders</u></b>\nWhat a beautiful sunset!\nGraphic quality recommend 6+",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame3.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame3.Label|Text"] = "White Light",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame3.Label.Description|Text"] = "<b><u>White Light</u></b>\nJust a PointLight around the you.\nUseful in the dark.",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame4.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame4.Label|Text"] = "RGB Light",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame4.Label.Description|Text"] = "<b><u>RGB Light</u></b>\nSame as White Light, but RGB.",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame5.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame5.Label|Text"] = "ESP",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame5.Label.Description|Text"] = "<b><u>ESP</u></b>\nSee all players around the map.\nAlso TextLabel will change color following team color.",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame6.Bar.ToggleButton|Text"] = "ON",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame6.Label|Text"] = "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame6.Label.Description|Text"] = "<b><u>Damage Overlay</u></b>\nDisplays visual damage effects when your character takes damage.\n\n<stroke color=\"rgb(255,0,0)\" thickness=\"1\">\n<font color=\"#ff5555\">\n<b>⚠ Photosensitive Epilepsy Warning</b>\n\nThis effect may contain:\n• Flashing lights\n• Rapid brightness changes\n• Screen color pulses\n\nIf you experience dizziness, eye strain, or discomfort,\nplease turn this feature <b>OFF</b> immediately.\n</font></stroke>",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame7.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame7.Label|Text"] = "MoreToggles",
+    ["CoreGui.ExperienceSettings.Menu.Background.Settings.B_Frame.Frame7.Label.Description|Text"] = "<b><u>MoreToggles</u></b>\nOpen second toggle menu.",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame4.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame4.Label|Text"] = "FreeCam (Mobile)",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame4.Label.Description|Text"] = "<b><u>FreeCam</u></b>\n\tExplore around the world with FreeCam! (Mobile Only)",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame5.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame5.Label|Text"] = "Almost Endless Fallen (-50K)",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame5.Label.Description|Text"] = "<b><u>Almost Endless Fallen</u></b>\nSet FallenPartDestroyHeight at -50000.",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame6.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame6.Label|Text"] = "Flashlight",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame6.Label.Description|Text"] = "<b><u>Flashlight</u></b>\nIt will make you in the first person with light, and also recommend set graphic quality at 6+",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame7.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame7.Label|Text"] = "ESP Highlight Players & Non-Players",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame7.Label.Description|Text"] = "<b><u>ESP Highlight Players & Non-Players</u></b>\nIt will highlight HumanoidRootPart. Players is <font color=\"rgb(0,255,0)\">green</font> and Non-Players is <font color=\"rgb(255,10,10)\">red</font>.",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame8.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame8.Label|Text"] = "Shift Lock (Mobile)",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame8.Label.Description|Text"] = "<b><u>Shift Lock</u></b>\nShift Lock for Mobile players. Also you can CUSTOMIZE CROSSHAIR by open <b>Settings - 2</b> in <b>Settings - Loader Rejoiner</b>!",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame9.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame9.Label|Text"] = "Hitbox Shower",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame9.Label.Description|Text"] = "<b><u>Hitbox Shower</u></b>\nSee all hitbox players \n(Using ViewportFrame)",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame10.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame10.Label|Text"] = "Last Death",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame10.Label.Description|Text"] = "<b><u>Last Death</u></b>\nIt will show last position where you die at\nas a frozen ghost character...",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame11.Bar.ToggleButton|Text"] = "OFF",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame11.Label|Text"] = "ServerPositionPredictor (By @zephyrr)",
+    ["CoreGui.ExperienceSettings.Menu.Background.Inner_Background.Toggles.B_Frame.Frame11.Label.Description|Text"] = "<b><u>ServerPositionPredictor</u></b>\nShowing between Server and Client.\nServer is a second character of you. (Displaying as like ping)\nClient is you.",
+    ["CoreGui.ExperienceSettings.Menu.Load_Background.Loading|Text"] = "Loading",
+    ["CoreGui.ExperienceSettings.Menu.Load_Background.Wait|Text"] = "Starting ExperienceSettings. Please wait...",
+    ["CoreGui.ExperienceSettings.Menu.Load_Background.Credit|Text"] = "Creator by @5teve3019D on ScriptBlox/HaxHell",
+    ["CoreGui.ExperienceSettings.Menu.Load_Background.Skip|Text"] = "Close fuc#king annoying load bar",
+    ["CoreGui.ExperienceSettings.Menu.About_Background.Inside.Scroll.About|Text"] = "The ExperienceSettings is debug tools you can use on your own, there are a lot of tools!\nFor HealthBar was a remake of better and smoother and ValueLabels for show values.\nIf your ExperienceSettings was Disabled there are three reasons,\n • HumanoidRootPart was removed too long.\n • The Experience doesn't support the ExperienceSettings.\n • Script failed to load.\nIf you enjoy it, you can support me on discord!\nThank you for using ExperienceSettings! ♥️\n\n54% Gui is made by hand\n10% Script is made by hand\n36% Script is made by ai\n\nCreator: @5teve3019D (Gui, Little Script)\nHelper: ChatGPT (Script) <-- He got a lot of complaints lol.\nLittle Helper: Copilot of GitHub (Script)\nFun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(\n\n========================\n➕ = Add something\n📢 = Announcements\n🔨 = In-develop\n🔷 = Plan ahead for updates\n✅ = Done\n⚠️ = Have issues\n🟠 = Updating soon\n❌ = Bug\n⚫ = Cannot fix\n➖ = Disconnected or discontinued\n-------\n📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!\n-------\n🔁 In progress: No longer appear features\n-------\n❌ Failed: No longer appear unavailable features\n-------\n\n✨ SCRIPT CREDITS ✨\n[ Script Name ] by [ Creator ] [ Verification Status ]\n\nWe want to say that your script is awesome, and it is used in our project for debugging and educational purposes.\nThank you for your contribution :3 ❤️\n- Debugger\n\n-- Credits List --\n'Ketamine' by @Cherry (✓ Verified)\n'OG AFEM – Legacy' by @Imperial (✓ Verified)\n'Chat' by Unknown user\n'UNC' by Unknown user\n'REM' by @evildotcom (X Not verified)\n'GameProber' by @Imperial (✓ Verified)\n'AudioPlayer' by Unknown user\n'EmoteSelect' by Unknown user\n'Universal Movement Predictor' by @zephyrr (X Not verified)\n'Server Position Predictor' by @zephyrr (X Not verified)\n'Open Source Universal Chat' by @neutral (X Not verified)\n\n-- Notice to Script Creators --\nIf you are a script creator listed above and do not want your script to be included,\nplease contact us via our Discord forum, and we will remove it immediately.\n",
+    ["CoreGui.ExperienceSettings.Menu.About_Background.Inside.Help|Text"] = "Oh, if the ExperienceSettings was disabled. You can hide the text by click the button.",
+    ["CoreGui.ExperienceSettings.Menu.About_Background.Inside.Hide|Text"] = "Hide",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Settings|Text"] = "Settings",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Dragger|Text"] = "Drag",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.TextLabel-editor|Text"] = "<u><b>Editor</b></u>",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.AddIdle|Text"] = "+",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_1|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_1.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_2|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_2.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_3|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_3.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_4|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_4.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_5|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_5.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_6|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_6.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_7|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_7.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_8|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_8.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_9|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_9.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_10|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle.Image_10.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.TextLabel-idle|Text"] = "Idle",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.TextLabel-idle.ClearIdle|Text"] = "Clear All Idle",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.TextLabel-WhenClick|Text"] = "When Click",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.TextLabel-WhenClick.ClearWhenClick|Text"] = "Clear All When Click",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.AddWhenClick|Text"] = "+",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_1|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_1.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_2|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_2.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_3|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_3.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_4|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_4.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_5|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_5.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_6|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_6.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_7|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_7.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_8|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_8.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_9|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_9.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_10|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_10.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_11|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_11.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_12|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_12.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_13|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_13.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_14|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_14.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_15|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_15.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_16|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_16.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_17|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_17.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_18|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_18.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_19|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_19.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_20|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_20.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_21|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_21.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_22|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_22.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_23|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_23.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_24|PlaceholderText"] = "Image ID",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick.Image_24.TextButton|Text"] = "-",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.TextLabel-FrameRate|Text"] = "Frame Rate",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Idle_FPS|PlaceholderText"] = "Idle's FPS",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.WhenClick_FPS|PlaceholderText"] = "When Click's FPS",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.TextLabel-Idle-FrameRate|Text"] = "Idle Frame Rate",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.TextLabel-WhenClick-FrameRate|Text"] = "When Click Frame Rate",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Save|Text"] = "Save",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.GetcustomassetSwitch.Getdevicepathinput|PlaceholderText"] = "Example: 'Folder/'",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.GetcustomassetSwitch.GetSwitch|Text"] = "Image",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.Textlabel-Credit|Text"] = "Relax / Gif Animation Editor by <font color='rgb(85,255,255)'>5teve3019D</font>",
+    ["CoreGui.ExperienceSettings.Menu.HolderScreen.Relax.Editor.MoreMenu|Text"] = "• • •",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Holder.Username|Text"] = "<b>ExperienceSettings</b> (@ExperienceSettings)",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlayerID|Text"] = "PlayerID: 10640542665",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.FriendCount|Text"] = "Friends in the server: 0",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlayerAge|Text"] = "PlayerAge: 189 day",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlayerBirth|Text"] = "PlayerBirth: 08/03/2026",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CameraMode|Text"] = "CameraMode: Enum.CameraMode.Classic",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlaceID|Text"] = "PlaceID: 123974602339071",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CreatorName|Text"] = "Creator: The Local Maze",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CreatorID|Text"] = "CreatorID: 34901800",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.AFK|Text"] = "AFK: 00:00 | LastAFK: 00:02",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PlayingTime|Text"] = "PlayingTime: 000:00:03:07",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.RealTimeClock|Text"] = "Real Time Clock: 13:25:45",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.WalkSpeed|Text"] = "WalkSpeed: 16",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.JumpPower|Text"] = "JumpPower: 50",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.Damage|Text"] = "BestDamage: 0 | LastDamage: 0",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.Heal|Text"] = "BestHeal: 0 | LastHeal: 0",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.Deaths|Text"] = "Deaths: 0",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.Inventory|Text"] = "Tools: 0",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.HoldingTool|Text"] = "HoldingTool: none",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.MaxHealth|Text"] = "MaxHealth: 100",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.StandingOn|Text"] = "StandingOn: Plastic",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.PositionOfCharacter|Text"] = "Position: X: 27.22 | Y: 3.00 | Z: 33.58",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.CharacterType|Text"] = "CharacterType: R15",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.TimeOfDay|Text"] = "TimeOfDay: 14:00:00",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.DeveloperConsole|Text"] = "Open Developer console",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.DropTool|Text"] = "Drop Tool",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.ProfileCharacter.Scroll.DropTools|Text"] = "Drop all tools",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.Debugs.Sorry!|Text"] = "Debugs page is <b><u>not</u></b> done yet.\nTry to press the button at the top right.",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.MusicPlayer.Sorry!|Text"] = "Music Player page is <b><u>not</u></b> done yet.\nTry to press the button at the top right. Yeah bro, you're not in the loop stop pressing the button.",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.MusicPlayer.Display.MusicName|Text"] = "Untitled Song",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.MusicPlayer.Display.PlayButton|Text"] = "<b>▶</b>",
+    ["CoreGui.ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus.SwitchButton|Text"] = "1",
+    ["CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame.Text.chat|PlaceholderText"] = "Type /Help to show all commands or Say something...",
+    ["CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame.Text.Send|Text"] = "✓",
+    ["CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame.Text.Clear|Text"] = "X",
+    ["CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame.Topic|Text"] = "<b><stroke color='rgb(85,255,255)' thickness='2'>AI-Thinking</stroke></b>",
+    ["CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame.ver|Text"] = "Version:<b> UIs 6.929.2 </b>",
+    ["CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame.Unavailable|Text"] = "<b><stroke color='rgb(255,100,100)' thickness='1' transparency='0'>UNAVAILABLE FEATURES (Old)</stroke></b>",
+    ["CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame.api|PlaceholderText"] = "[ Your API here (ChatGPT or Gemini) ]",
+    ["CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame.Confirm_api|Text"] = "Confirm API",
+    ["CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame.Unsaved_API|Text"] = "Unsaved API",
+    ["CoreGui.ExperienceSettings.Menu.AIOpenSource.Frame.Status|Text"] = "Status: Unknown",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.SearchInput|PlaceholderText"] = "Search here!",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.SortContainer.SortBy|Text"] = "<b>Sort by: Default</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.SortContainer.SortOrder|Text"] = "<b>Sort order: Default</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.CreatorInput|PlaceholderText"] = "Input: Creator...",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.GameInput|PlaceholderText"] = "Input: Game ID",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.TypeOfAnAPI|Text"] = "<b>Search API: ScriptBlox</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.Back|Text"] = "Switch back to the <b>Current version</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.SearchInput.Filter.FilterBody.Preview|Text"] = "Switch to the <b>Preview version</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.Scrips.Body.State.Verified|Text"] = "<b>Verified</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.Scrips.Body.State.Key|Text"] = "<b>Key</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.Scrips.Body.State.Patched|Text"] = "<b>Patched</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.Scrips.Body.State.Free|Text"] = "<b>Free</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.Scrips.Body.State.Paid|Text"] = "<b>Paid</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.Scrips.Body.Details|Text"] = "<font size='12'><b>Script Title</b></font>\nGameName By @API Not supported\nClick 'View' for more details.",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.Scrips.Body.ViewButton|Text"] = "<b><i>View</i></b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.List.Scrips.Body.BookmarkButton|Text"] = "<b><i>Bookmark</i></b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.NameOfScriptTitle|Text"] = "<b>Script Title</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.TypeScript|Text"] = "📌 Universal Script",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Creator|Text"] = "By @Username",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.CreationDate|Text"] = "Creation Date: DD/MM/YYYY",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Likes|Text"] = "<b>Like: -</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Dislikes|Text"] = "<b>Dislike: -</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Visits|Text"] = "<b>Visit: -</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Features|Text"] = "<b>Description</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.FeaturesScroll.FeaturesBox|PlaceholderText"] = "No description yet.",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Tags|Text"] = "<b>Tag</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.RawScript|Text"] = "<b>Raw Script</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.CodeScroll.CodeBox|PlaceholderText"] = "Hmm... Looks like there's no source code in here. Please make sure you select the script or the owner didn't put a source code yet.",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Execute|Text"] = "<b>Execute</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.Copy|Text"] = "<b>Copy To Clipboard</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.InPage.ViewPage.ClosePage|Text"] = "<b>Back »</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.CloseBookmark|Text"] = "<b>Back »</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarkTopic|Text"] = "<b>Bookmark page</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Title|Text"] = "<b>loadstringScriptChecker (discontinued but working)</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Source|Text"] = "From: ScriptBlox",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Execute|Text"] = "<b>Execute</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Copy|Text"] = "<b>Copy</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.View|Text"] = "<b>View</b>",
+    ["CoreGui.ExperienceSettings.Menu.Search.Page.Bookmark.ViewBookmark.BookmarList.Body.Remove|Text"] = "<b>Remove from the bookmark page</b>",
+    ["CoreGui.ExperienceSettings.Menu.PopUp.Scroll.Thank|Text"] = "<b><font size=\"12\">Happy 1st Anniversary of The ExperienceSettings!</font></b>\nWe want to let you know for those who using our script; we want to say <b>thank you for using our script!</b> \n \nTo close this <b>GUI</b> you can simply click <b><font size=\"9\">\"Remind me later.\"</font></b> or <b><font size=\"9\">\"Dont show this again.\"</font></b> button to continue use The ExperienceSettings.",
+    ["CoreGui.ExperienceSettings.Menu.PopUp.FrameOfButtons.RemindMeLater|Text"] = "<b>Remind Me Later</b>",
+    ["CoreGui.ExperienceSettings.Menu.PopUp.FrameOfButtons.Close|Text"] = "<b>Don't show this again</b>",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a3_Input&Send.Ask|PlaceholderText"] = "Ask anything...",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a3_Input&Send.Send|Text"] = "✓",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a3_Input&Send.clear|Text"] = "×",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a3_Input&Send.re-chat|Text"] = "re-chat",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a1_option.a1.logo.Text|Text"] = "LighterCyan",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a1_option.a2.Chat.TextButton|Text"] = "🗨️ Chat",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a1_option.a3.Settings.TextButton|Text"] = "⚙️ Settings",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a1_option.a4.Explorer.TextButton|Text"] = "🌏 Explorer",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a1_option.a5.About.TextButton|Text"] = "📜 About",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a1_option.a6.Executor.TextButton|Text"] = "✏️ Executor",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a1_option.a7.SaveScript.TextButton|Text"] = "📂 SaveScript",
+    ["CoreGui.ExperienceSettings.LighterCyan.ai.Holder.InsetFrame.a1_option.z9.More.TextButton|Text"] = "📦 More",
+}
 
 L.LocaleMap = {
     ["EN"] = "en-us",
@@ -2475,7 +2722,7 @@ L.Candidates = {
     "<b>Verified</b>",
     "<b><i>Bookmark</i></b>",
     "<b><i>View</i></b>",
-    "<font size='12'><b>Zero Point Instant Steal & more</b></font> Steal An Egg By @API Not supported Click 'View' for more details.",
+    "<font size='12'><b>SCRIPTTITLE</b></font> GAMENAME By @API Not supported Click 'View' for more details.",
     "<b>Copy</b>",
     "<b>Execute</b>",
     "<b>Remove from the bookmark page</b>",
@@ -2492,6 +2739,7 @@ L.Candidates = {
     "<b>Tag</b>",
     "Universal Script 📌",
     "<b>Visit: COUNT</b>",
+    "Search here!",
     "The ExperienceSettings has been deactivated for some reason.",
     "Copy",
     "Execute",
@@ -2598,6 +2846,10 @@ local function FindSimilarLocalizationSource(sourceText)
     local normalized = NormalizeSimilarityText(source)
     local plainNormalized =
         SimilarityTextWithoutRichText(source)
+
+    -- Path sources are resolved before this function when possible.
+    -- Keep this function text-only to avoid the freeze caused by scanning
+    -- a large candidate index on every language switch.
 
     -- First pass: exact normalized match.
     for _, candidate in ipairs(L.Candidates) do
@@ -2884,7 +3136,7 @@ local function GetLocalizationTranslator(language)
     return nil
 end
 
-local function TranslateFromLocalization(obj, sourceText, language)
+local function TranslateFromLocalization(obj, sourceText, language, preferredSource)
     if language == "EN" or not obj or sourceText == "" then
         return nil
     end
@@ -2919,13 +3171,22 @@ local function TranslateFromLocalization(obj, sourceText, language)
         return translated
     end
 
-    -- 1. Exact source.
-    local translated = trySource(sourceText)
-    if translated then
-        return translated
+    -- 1. Path-based canonical source from the full Device export.
+    -- This is the primary source now; runtime text is used as fallback.
+    if preferredSource and preferredSource ~= "" then
+        local translated = trySource(preferredSource)
+        if translated then
+            return translated, preferredSource
+        end
     end
 
-    -- 2. Equivalent whitespace source.
+    -- 2. Exact runtime source.
+    local translated = trySource(sourceText)
+    if translated then
+        return translated, sourceText
+    end
+
+    -- 3. Equivalent whitespace source.
     -- This fixes real newlines, literal "\\n", tabs, and repeated spaces.
     local normalizedCandidate =
         sourceText
@@ -2939,7 +3200,7 @@ local function TranslateFromLocalization(obj, sourceText, language)
     if normalizedCandidate ~= sourceText then
         translated = trySource(normalizedCandidate)
         if translated then
-            return translated
+            return translated, normalizedCandidate
         end
     end
 
@@ -2950,7 +3211,7 @@ local function TranslateFromLocalization(obj, sourceText, language)
     if similarSource and similarSource ~= sourceText then
         translated = trySource(similarSource)
         if translated then
-            return translated
+            return translated, similarSource
         end
     end
 
@@ -3063,6 +3324,74 @@ local function MatchDynamicTemplate(template, text)
     return values
 end
 
+local function GetObjectPath(obj)
+    if not obj then
+        return nil
+    end
+
+    local ok, fullName = pcall(function()
+        return obj:GetFullName()
+    end)
+
+    if ok and type(fullName) == "string" and fullName ~= "" then
+        return fullName
+    end
+
+    return nil
+end
+
+local function GetPathSource(obj, property)
+    local path = GetObjectPath(obj)
+    if not path then
+        return nil, nil
+    end
+
+    return path,
+        L.PathSources[path .. "|" .. tostring(property)]
+end
+
+local function RestoreDynamicValuesFromSource(
+    translatedText,
+    canonicalSource,
+    currentTemplate,
+    currentValues
+)
+    if type(translatedText) ~= "string"
+        or type(canonicalSource) ~= "string" then
+        return translatedText
+    end
+
+    local canonicalTemplate, canonicalValues =
+        SelectTextToTranslateOnly(canonicalSource)
+
+    if canonicalTemplate ~= currentTemplate then
+        return translatedText
+    end
+
+    local result = translatedText
+
+    for index = #canonicalValues, 1, -1 do
+        local oldValue = tostring(canonicalValues[index] or "")
+        local newValue = tostring(currentValues[index] or oldValue)
+
+        if oldValue ~= ""
+            and newValue ~= oldValue then
+            local escaped =
+                oldValue:gsub("([%%%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
+
+            result = result:gsub(
+                escaped,
+                function()
+                    return newValue
+                end,
+                1
+            )
+        end
+    end
+
+    return result
+end
+
 local function GetState(obj, property)
     L.State[obj] =
         L.State[obj] or {}
@@ -3077,16 +3406,17 @@ local function BuildSourceState(obj, property, sourceText)
     local state =
         GetState(obj, property)
 
+    local path, pathSource =
+        GetPathSource(obj, property)
+
     local template, protected =
         SelectTextToTranslateOnly(sourceText)
 
+    state.Path = path
+    state.PathSource = pathSource
     state.SourceTemplate = template
     state.DynamicValues = protected
-    state.SourceText =
-        RestoreSelectedText(
-            template,
-            protected
-        )
+    state.SourceText = sourceText
 
     return state
 end
@@ -3108,14 +3438,62 @@ local function GetStateTranslation(obj, state, property, language)
     end
 
     local cache = L.Cache[language]
+    if not cache then
+        return nil
+    end
 
-    -- 1. Exact cached translation.
-    local translated = cache and cache[sourceRendered]
+    -- 1. Path-based canonical source.
+    -- Path is now the primary identity, so runtime text differences do not
+    -- have to be used as the lookup key first.
+    local pathSource = state.PathSource
+    if pathSource and pathSource ~= "" then
+        local canonicalTemplate, canonicalValues =
+            SelectTextToTranslateOnly(pathSource)
+
+        if canonicalTemplate == state.SourceTemplate then
+            local translated = cache[pathSource]
+
+            if translated then
+                return RestoreDynamicValuesFromSource(
+                    translated,
+                    pathSource,
+                    state.SourceTemplate,
+                    state.DynamicValues or {}
+                )
+            end
+
+            translated = TranslateFromLocalization(
+                obj,
+                sourceRendered,
+                language,
+                pathSource
+            )
+
+            if translated then
+                local translatedText, usedSource = translated, nil
+                -- TranslateFromLocalization may return the source key as a
+                -- second result. Keep compatibility with its old one-value API.
+                -- (Lua assigns the first value here, so detect the canonical path
+                -- ourselves from the success branch below.)
+                cache[pathSource] = translatedText
+
+                return RestoreDynamicValuesFromSource(
+                    translatedText,
+                    pathSource,
+                    state.SourceTemplate,
+                    state.DynamicValues or {}
+                )
+            end
+        end
+    end
+
+    -- 2. Exact runtime cache.
+    local translated = cache[sourceRendered]
     if translated then
         return translated
     end
 
-    -- 2. Roblox LocalizationService / Localization Table.
+    -- 3. Roblox LocalizationService / Localization Table.
     translated = TranslateFromLocalization(
         obj,
         sourceRendered,
@@ -3123,12 +3501,12 @@ local function GetStateTranslation(obj, state, property, language)
     )
 
     if translated then
-        L.Cache[language][sourceRendered] = translated
-        L.Cache[language][PlainCacheKey(sourceRendered)] = translated
+        cache[sourceRendered] = translated
+        cache[PlainCacheKey(sourceRendered)] = translated
         return translated
     end
 
-    -- 3. Existing L.DB/cache template fallback.
+    -- 4. Existing L.DB/cache template fallback.
     translated = GetCachedTranslation(sourceRendered, language)
     if translated then
         return translated
@@ -3536,7 +3914,7 @@ local function ApplyCachedLanguage(language)
 
                 -- Translate/check one text at a time.
                 -- This prevents a large GUI from freezing while switching language.
-                task.wait(0.1)
+                task.wait(0)
             end
         end
     end
@@ -3632,7 +4010,7 @@ ins2:SetAttribute("SkipAutoTranslate", true)
 task.spawn(function()
     ExperienceSettings = CoreGui:WaitForChild("ExperienceSettings")
 
-    -- Initial scan. No Paths are used.
+    -- Initial scan. PathSources are used as canonical lookup identities.
     ScanInstance(ExperienceSettings)
 
     -- New GUI objects are picked up automatically.
