@@ -1,5 +1,5 @@
 -- Loader script 2.91
--- Translation System: 6.8 Preview
+-- Translation System: 6.9 Static-Only
 
 ------------------------------------------------------------------------------------------
 
@@ -2005,8 +2005,9 @@ L.LastRequest = 0
 L.CacheFile =
     "ExperienceSettings/translation_cache.json"
 
--- Roblox LocalizationService is the primary translation provider.
--- Local L.DB/cache remains as a fallback.
+-- Static-only translation mode.
+-- Local L.DB/cache/similarity is the only translation provider.
+-- Roblox LocalizationService is intentionally not used for these UI texts.
 L.RemoteURL = nil
 
 
@@ -4087,8 +4088,89 @@ local function Directly(sourceText, language, pathSource)
     return nil
 end
 
+-- Static-only translation policy.
+-- Dynamic/runtime text is skipped completely so it cannot consume translation work.
+local function IsDynamicTranslationTarget(obj, state, property)
+    if not obj or not state then
+        return false
+    end
+
+    local source = tostring(state.SourceText or "")
+    local lower = source:lower()
+    local path = tostring(state.PathSource or ""):lower()
+
+    -- Editable player input is never a translation target.
+    if property == "Text" and obj:IsA("TextBox") and obj.TextEditable then
+        return true
+    end
+
+    -- Known runtime/status fields from ExperienceSettings.
+    local dynamicLabels = {
+        "playerid:",
+        "playerage:",
+        "playerbirth:",
+        "friends in the server:",
+        "playingtime:",
+        "real time clock:",
+        "foundhumanoidrootpart:",
+        "ishealthon:",
+        "health:",
+        "speed:",
+        "ping:",
+        "fps:",
+        "memory:",
+        "latency:",
+        "uptime:",
+    }
+
+    for _, label in ipairs(dynamicLabels) do
+        if lower:sub(1, #label) == label then
+            return true
+        end
+    end
+
+    -- Runtime paths commonly used by counters/status widgets.
+    local dynamicPathHints = {
+        "profilestatus",
+        "status",
+        "playerid",
+        "playerage",
+        "playerbirth",
+        "playingtime",
+        "realtimeclock",
+        "friendcount",
+        "ping",
+        "fps",
+    }
+
+    for _, hint in ipairs(dynamicPathHints) do
+        if path:find(hint, 1, true) then
+            return true
+        end
+    end
+
+    -- Pure runtime timestamps / dates / counters.
+    if source:match("^%d%d:%d%d:%d%d$")
+        or source:match("^%d%d%d%d[%-%/]%d%d[%-%/]%d%d$")
+        or source:match("^%d%d[%/%-]%d%d[%/%-]%d%d%d%d$") then
+        return true
+    end
+
+    return false
+end
+
+local function IsLocalizationDirectOnlyProperty(obj, property, state)
+    -- Names, descriptions, buttons, and other static UI text intentionally use
+    -- only the local DB/cache/similarity engine. LocalizationService is not used.
+    return obj ~= nil and state ~= nil and property ~= nil
+end
+
 local function GetStateTranslation(obj, state, property, language)
     if IsLocalizationExcluded(obj, property) then
+        return nil
+    end
+
+    if IsDynamicTranslationTarget(obj, state, property) then
         return nil
     end
 
@@ -4108,49 +4190,15 @@ local function GetStateTranslation(obj, state, property, language)
     end
 
     -- ==========================================
-    -- 1. LOCALIZATE
-    -- Roblox LocalizationService / Localization Table only.
+    -- STATIC-ONLY DIRECT TRANSLATION
+    -- Do not call Roblox LocalizationService here.
+    -- Names, descriptions, buttons, and other static UI text
+    -- are handled only by the local DB/cache/similarity engine.
     -- ==========================================
-    local translated = Localizate(
-        obj,
-        sourceRendered,
-        language,
-        state.PathSource
-    )
-
-    if translated then
-        local translatedText = translated
-
-        if state.PathSource
-            and state.PathSource ~= "" then
-            translatedText =
-                RestoreDynamicValuesFromSource(
-                    translatedText,
-                    state.PathSource,
-                    state.SourceTemplate,
-                    state.DynamicValues or {}
-                )
-        end
-
-        local cache = L.Cache[language]
-        if cache then
-            cache[sourceRendered] = translatedText
-            cache[PlainCacheKey(sourceRendered)] = translatedText
-
-            if state.PathSource and state.PathSource ~= "" then
-                cache[state.PathSource] = translatedText
-            end
-        end
-
-        return translatedText
+    if not IsLocalizationDirectOnlyProperty(obj, property, state) then
+        return nil
     end
 
-    -- ==========================================
-    -- 2. DIRECTLY
-    -- Local DB/cache/similarity only.
-    -- This is the guaranteed fallback when Roblox
-    -- LocalizationService has no entry.
-    -- ==========================================
     local direct, directSource = Directly(
         sourceRendered,
         language,
@@ -4185,6 +4233,10 @@ local function NeedsTranslation(obj, property, state, language)
 
     if not obj.Parent
         or IsTranslationSkipped(obj) then
+        return false
+    end
+
+    if IsDynamicTranslationTarget(obj, state, property) then
         return false
     end
 
@@ -4275,6 +4327,10 @@ local function ApplyStateToObject(obj, property, language)
         and L.State[obj][property]
 
     if not state then
+        return false
+    end
+
+    if IsDynamicTranslationTarget(obj, state, property) then
         return false
     end
 
@@ -4520,6 +4576,10 @@ local function ApplyCachedLanguage(language, onComplete)
                     continue
                 end
 
+                if IsDynamicTranslationTarget(obj, state, property) then
+                    continue
+                end
+
                 if property == "Text"
                     and obj:IsA("TextBox")
                     and obj.TextEditable then
@@ -4694,12 +4754,7 @@ local function ChangeLanguage(language)
     SetLanguageButtonsLocked(true)
 
     task.spawn(function()
-        -- Load the Roblox LocalizationService translator for the selected locale.
-        -- No external translation provider is used.
-        if language ~= "EN" then
-            GetLocalizationTranslator(language)
-        end
-
+        -- Static-only mode: no Roblox LocalizationService calls are made.
         -- Re-scan in case the game created new GUI elements.
         ScanInstance(ExperienceSettings)
 
