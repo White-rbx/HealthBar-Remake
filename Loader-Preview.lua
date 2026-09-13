@@ -1,4 +1,4 @@
--- Loader script 6.19
+-- Loader script 6.2
 -- Translation System: 6.11 Static-Direct + Dynamic-Only Buttons
 
 ------------------------------------------------------------------------------------------
@@ -4039,30 +4039,42 @@ local function GetState(obj, property)
 end
 
 local function BuildSourceState(obj, property, sourceText)
-    local state =
-        GetState(obj, property)
+    local state = GetState(obj, property)
+    local path, pathSource = GetPathSource(obj, property)
 
-    local path, pathSource =
-        GetPathSource(obj, property)
+    L.Canonical[obj] = L.Canonical[obj] or {}
+    L.CanonicalTemplate[obj] = L.CanonicalTemplate[obj] or {}
 
-    -- Preserve the first known source. Re-scanning after translation must NOT
-    -- turn the translated value into the new source of truth.
-    local existingSource = state.SourceText
-    local existingTemplate = state.SourceTemplate
-    local existingDynamic = state.DynamicValues
-
-    if existingSource and existingSource ~= "" then
-        sourceText = existingSource
-    end
+    -- Canonical source priority:
+    --   1) source captured on the very first bind
+    --   2) authoritative PathSource from Device/PathSources
+    --   3) previously cached canonical map
+    --   4) current GUI value only for genuinely new/unmapped objects
+    --
+    -- Never use a translated GUI value to replace the canonical source.
+    local canonical =
+        state.SourceText
+        or L.Canonical[obj][property]
+        or pathSource
+        or sourceText
 
     local template, protected =
-        SelectTextToTranslateOnly(sourceText)
+        SelectTextToTranslateOnly(canonical)
+
+    local canonicalTemplate =
+        state.SourceTemplate
+        or L.CanonicalTemplate[obj][property]
+        or template
 
     state.Path = state.Path or path
     state.PathSource = state.PathSource or pathSource
-    state.SourceTemplate = existingTemplate or template
-    state.DynamicValues = existingDynamic or protected
-    state.SourceText = sourceText
+    state.SourceTemplate = canonicalTemplate
+    state.DynamicValues = state.DynamicValues or protected
+    state.SourceText = canonical
+
+    -- Freeze the canonical source for all future language switches.
+    L.Canonical[obj][property] = state.SourceText
+    L.CanonicalTemplate[obj][property] = state.SourceTemplate
 
     return state
 end
@@ -4841,6 +4853,44 @@ local function ScanInstance(obj)
     end
 end
 
+local function EnsureCanonicalState()
+    for obj, properties in pairs(L.State) do
+        if obj and obj.Parent and properties then
+            for property, state in pairs(properties) do
+                if state then
+                    L.Canonical[obj] = L.Canonical[obj] or {}
+                    L.CanonicalTemplate[obj] = L.CanonicalTemplate[obj] or {}
+
+                    local canonical =
+                        L.Canonical[obj][property]
+                        or state.SourceText
+                        or state.PathSource
+
+                    if canonical and canonical ~= "" then
+                        state.SourceText = canonical
+                        L.Canonical[obj][property] = canonical
+                    end
+
+                    local template =
+                        L.CanonicalTemplate[obj][property]
+                        or state.SourceTemplate
+
+                    if (not template or template == "") and canonical then
+                        local builtTemplate =
+                            SelectTextToTranslateOnly(canonical)
+                        template = builtTemplate
+                    end
+
+                    if template and template ~= "" then
+                        state.SourceTemplate = template
+                        L.CanonicalTemplate[obj][property] = template
+                    end
+                end
+            end
+        end
+    end
+end
+
 local function ApplyCachedLanguage(language, onComplete)
     L.CurrentLanguage = language
 
@@ -4890,6 +4940,7 @@ local function ApplyCachedLanguage(language, onComplete)
             -- Re-scan before every pass. BuildSourceState is source-safe below,
             -- so already-translated text cannot replace the canonical source.
             ScanInstance(ExperienceSettings)
+            EnsureCanonicalState()
 
             local queue = {}
             local skipped = 0
@@ -5176,6 +5227,7 @@ local function ChangeLanguage(language)
         -- Re-scan in case the game created new GUI elements.
         -- LocalizationService is requested only for eligible static UI text.
         ScanInstance(ExperienceSettings)
+        EnsureCanonicalState()
 
         if language == "EN" then
             ApplyCachedLanguage("EN", function()
