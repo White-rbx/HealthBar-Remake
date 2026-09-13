@@ -1,4 +1,4 @@
--- Loader script 5.5
+-- Loader script 5.7
 
 ------------------------------------------------------------------------------------------
 
@@ -3187,7 +3187,8 @@ local function GetLocalizationTranslator(language)
     return nil
 end
 
-local function TranslateFromLocalization(obj, sourceText, language, preferredSource)
+-- Localizate: Roblox LocalizationService / Localization Table only.
+local function Localizate(obj, sourceText, language, preferredSource)
     if language == "EN" or not obj or sourceText == "" then
         return nil
     end
@@ -3527,6 +3528,87 @@ local function BuildSourceState(obj, property, sourceText)
     return state
 end
 
+
+local function Directly(sourceText, language, pathSource)
+    if language == "EN" then
+        return tostring(sourceText or "")
+    end
+
+    local sourceRendered = tostring(sourceText or "")
+    if sourceRendered == "" then
+        return nil
+    end
+
+    local cache = L.Cache[language]
+    if not cache then
+        return nil
+    end
+
+    -- 1. Path-based canonical source. This is the strongest local identity.
+    if pathSource and pathSource ~= "" then
+        local translated = cache[pathSource]
+        if translated then
+            return translated, pathSource
+        end
+
+        local template, protected =
+            SelectTextToTranslateOnly(pathSource)
+
+        local currentTemplate, currentProtected =
+            SelectTextToTranslateOnly(sourceRendered)
+
+        if template == currentTemplate then
+            translated = cache[template]
+                or cache[PlainCacheKey(template)]
+
+            if translated then
+                return RestoreSelectedText(
+                    translated,
+                    currentProtected
+                ), pathSource
+            end
+        end
+    end
+
+    -- 2. Exact/local cache and static DB.
+    local translated = GetCachedTranslation(
+        sourceRendered,
+        language
+    )
+
+    if translated then
+        return translated, sourceRendered
+    end
+
+    -- 3. Similarity fallback. This handles whitespace/newline differences,
+    -- RichText-vs-plain variants, and slightly changed source strings.
+    local similarSource =
+        FindSimilarLocalizationSource(sourceRendered)
+
+    if similarSource and similarSource ~= sourceRendered then
+        translated = cache[similarSource]
+
+        if translated then
+            local currentTemplate, currentProtected =
+                SelectTextToTranslateOnly(sourceRendered)
+
+            local similarTemplate, similarProtected =
+                SelectTextToTranslateOnly(similarSource)
+
+            if currentTemplate == similarTemplate then
+                return RestoreSelectedText(
+                    translated,
+                    currentProtected
+                ), similarSource
+            end
+
+            return translated, similarSource
+        end
+    end
+
+    return nil
+end
+
 local function GetStateTranslation(obj, state, property, language)
     if not state
         or not state.SourceTemplate
@@ -3543,90 +3625,69 @@ local function GetStateTranslation(obj, state, property, language)
         return sourceRendered
     end
 
-    local cache = L.Cache[language]
-    if not cache then
-        return nil
-    end
-
-    -- 1. Path-based canonical source.
-    -- Path is now the primary identity, so runtime text differences do not
-    -- have to be used as the lookup key first.
-    local pathSource = state.PathSource
-    if pathSource and pathSource ~= "" then
-        local canonicalTemplate, canonicalValues =
-            SelectTextToTranslateOnly(pathSource)
-
-        if canonicalTemplate == state.SourceTemplate then
-            local translated = cache[pathSource]
-
-            if translated then
-                return RestoreDynamicValuesFromSource(
-                    translated,
-                    pathSource,
-                    state.SourceTemplate,
-                    state.DynamicValues or {}
-                )
-            end
-
-            translated = TranslateFromLocalization(
-                obj,
-                sourceRendered,
-                language,
-                pathSource
-            )
-
-            if translated then
-                local translatedText, usedSource = translated, nil
-                -- TranslateFromLocalization may return the source key as a
-                -- second result. Keep compatibility with its old one-value API.
-                -- (Lua assigns the first value here, so detect the canonical path
-                -- ourselves from the success branch below.)
-                cache[pathSource] = translatedText
-
-                return RestoreDynamicValuesFromSource(
-                    translatedText,
-                    pathSource,
-                    state.SourceTemplate,
-                    state.DynamicValues or {}
-                )
-            end
-        end
-    end
-
-    -- 2. Exact runtime cache.
-    local translated = cache[sourceRendered]
-    if translated then
-        return translated
-    end
-
-    -- 3. Roblox LocalizationService / Localization Table.
-    translated = TranslateFromLocalization(
+    -- ==========================================
+    -- 1. LOCALIZATE
+    -- Roblox LocalizationService / Localization Table only.
+    -- ==========================================
+    local translated = Localizate(
         obj,
         sourceRendered,
-        language
+        language,
+        state.PathSource
     )
 
     if translated then
-        cache[sourceRendered] = translated
-        cache[PlainCacheKey(sourceRendered)] = translated
-        return translated
+        local translatedText = translated
+
+        if state.PathSource
+            and state.PathSource ~= "" then
+            translatedText =
+                RestoreDynamicValuesFromSource(
+                    translatedText,
+                    state.PathSource,
+                    state.SourceTemplate,
+                    state.DynamicValues or {}
+                )
+        end
+
+        local cache = L.Cache[language]
+        if cache then
+            cache[sourceRendered] = translatedText
+            cache[PlainCacheKey(sourceRendered)] = translatedText
+
+            if state.PathSource and state.PathSource ~= "" then
+                cache[state.PathSource] = translatedText
+            end
+        end
+
+        return translatedText
     end
 
-    -- 4. Existing L.DB/cache template fallback.
-    translated = GetCachedTranslation(sourceRendered, language)
-    if translated then
-        return translated
-    end
+    -- ==========================================
+    -- 2. DIRECTLY
+    -- Local DB/cache/similarity only.
+    -- This is the guaranteed fallback when Roblox
+    -- LocalizationService has no entry.
+    -- ==========================================
+    local direct, directSource = Directly(
+        sourceRendered,
+        language,
+        state.PathSource
+    )
 
-    local translatedTemplate = cache
-        and (cache[state.SourceTemplate]
-            or cache[PlainCacheKey(state.SourceTemplate)])
+    if direct then
+        if directSource
+            and state.PathSource
+            and directSource == state.PathSource then
+            direct = RestoreDynamicValuesFromSource(
+                direct,
+                state.PathSource,
+                state.SourceTemplate,
+                state.DynamicValues or {}
+            )
+        end
 
-    if translatedTemplate then
-        return RestoreSelectedText(
-            translatedTemplate,
-            state.DynamicValues or {}
-        )
+        return direct
     end
 
     return nil
