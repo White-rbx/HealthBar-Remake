@@ -1,4 +1,4 @@
--- Loader script 2.91
+-- Loader script 6.18
 -- Translation System: 6.11 Static-Direct + Dynamic-Only Buttons
 
 ------------------------------------------------------------------------------------------
@@ -2017,6 +2017,8 @@ L.Request =
     or (syn and syn.request)
 
 L.LanguageButtons = {}
+L.LanguageButtonDefaultText = {}
+L.LanguageButtonStatus = nil
 L.RefreshLanguageButtons = nil
 
 L.Source =
@@ -4906,6 +4908,11 @@ local function ApplyCachedLanguage(language, onComplete)
             -- Yield before the next scan, but DO NOT call worker/runPass again.
             task.wait()
         end
+
+        -- IMPORTANT: release the language buttons after the worker really
+        -- finishes. 6.15 defined finish(), but never called it, so L.Busy
+        -- stayed true forever after the first language change.
+        finish()
     end
 
     task.spawn(worker)
@@ -4948,8 +4955,11 @@ local function ChangeLanguage(language)
 
     L.latestClick = language
     L.SelectedLanguage = language
-    L.RefreshLanguageButtons()
     L.Busy = true
+    L.LanguageButtonStatus = "Working"
+
+    -- Immediately show Working... on the language that was clicked.
+    L.RefreshLanguageButtons()
 
     SetLanguageButtonsLocked(true)
 
@@ -4961,8 +4971,9 @@ local function ChangeLanguage(language)
         if language == "EN" then
             ApplyCachedLanguage("EN", function()
                 L.Busy = false
-                SetLanguageButtonsLocked(false)
                 L.SelectedLanguage = L.CurrentLanguage
+                L.LanguageButtonStatus = "Selected"
+                SetLanguageButtonsLocked(false)
                 L.RefreshLanguageButtons()
             end)
             return
@@ -4974,8 +4985,9 @@ local function ChangeLanguage(language)
             SaveTranslationCache()
 
             L.Busy = false
-            SetLanguageButtonsLocked(false)
             L.SelectedLanguage = L.CurrentLanguage
+            L.LanguageButtonStatus = "Selected"
+            SetLanguageButtonsLocked(false)
             L.RefreshLanguageButtons()
         end)
     end)
@@ -5124,10 +5136,27 @@ L.LanguageButtons = {
     KO = KorBtn
 }
 
+-- Preserve the original label so Working... / Selected can be temporary.
+for language, button in pairs(L.LanguageButtons) do
+    if button then
+        L.LanguageButtonDefaultText[language] = button.Text
+    end
+end
+
 L.RefreshLanguageButtons = function()
     for language, button in pairs(L.LanguageButtons) do
         if button and button.Parent then
             local selected = (L.SelectedLanguage == language)
+            local status = L.LanguageButtonStatus
+
+            if selected and status == "Working" then
+                button.Text = "Working..."
+            elseif selected and status == "Selected" then
+                button.Text = "Selected"
+            else
+                button.Text = L.LanguageButtonDefaultText[language] or button.Text
+            end
+
             button.TextColor3 = selected
                 and Color3.fromRGB(0,255,0)
                 or Color3.fromRGB(255,255,255)
