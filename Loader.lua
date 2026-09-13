@@ -1,4 +1,4 @@
--- Loader script 4.35
+-- Loader script 4.4
 
 ------------------------------------------------------------------------------------------
 
@@ -2094,6 +2094,11 @@ L.DB = {
         ["Open Developer console"] = "Abrir consola de desarrollador",
         ["Drop Tool"] = "Soltar herramienta",
         ["Drop all tools"] = "Soltar todas las herramientas",
+        ["<b>Description</b>"] = "<b>Descripción</b>",
+        ["Description"] = "Descripción",
+        ["<b>Remove from the bookmark page</b>"] = "<b>Eliminar de la página de marcadores</b>",
+        ["Remove from the bookmark page"] = "Eliminar de la página de marcadores",
+        ["Search here!"] = "¡Busca aquí!",
         ["[ Select first ] Searcher"] = "[ Selecciona primero ] Buscador",
     },
     ["TH"] = {
@@ -2140,6 +2145,11 @@ L.DB = {
         ["Open Developer console"] = "เปิดคอนโซลนักพัฒนา",
         ["Drop Tool"] = "ทิ้งเครื่องมือ",
         ["Drop all tools"] = "ทิ้งเครื่องมือทั้งหมด",
+        ["<b>Description</b>"] = "<b>คำอธิบาย</b>",
+        ["Description"] = "คำอธิบาย",
+        ["<b>Remove from the bookmark page</b>"] = "<b>ลบออกจากหน้าบุ๊กมาร์ก</b>",
+        ["Remove from the bookmark page"] = "ลบออกจากหน้าบุ๊กมาร์ก",
+        ["Search here!"] = "ค้นหาที่นี่!",
         ["[ Select first ] Searcher"] = "[ เลือกก่อน ] ตัวค้นหา",
     },
     ["PT-BR"] = {
@@ -2186,6 +2196,11 @@ L.DB = {
         ["Open Developer console"] = "Abrir console de desenvolvedor",
         ["Drop Tool"] = "Dropar ferramenta",
         ["Drop all tools"] = "Dropar todas as ferramentas",
+        ["<b>Description</b>"] = "<b>Descrição</b>",
+        ["Description"] = "Descrição",
+        ["<b>Remove from the bookmark page</b>"] = "<b>Remover da página de favoritos</b>",
+        ["Remove from the bookmark page"] = "Remover da página de favoritos",
+        ["Search here!"] = "Pesquise aqui!",
         ["[ Select first ] Searcher"] = "[ Selecione primeiro ] Pesquisar",
     },
     ["PT-PT"] = {
@@ -2232,6 +2247,11 @@ L.DB = {
         ["Open Developer console"] = "Abrir consola de desenvolvedor",
         ["Drop Tool"] = "Largar ferramenta",
         ["Drop all tools"] = "Largar todas as ferramentas",
+        ["<b>Description</b>"] = "<b>Descrição</b>",
+        ["Description"] = "Descrição",
+        ["<b>Remove from the bookmark page</b>"] = "<b>Remover da página de favoritos</b>",
+        ["Remove from the bookmark page"] = "Remover da página de favoritos",
+        ["Search here!"] = "Pesquisa aqui!",
         ["[ Select first ] Searcher"] = "[ Seleciona primeiro ] Pesquisar",
     },
     ["RU"] = {
@@ -2278,6 +2298,11 @@ L.DB = {
         ["Open Developer console"] = "Открыть консоль разработчика",
         ["Drop Tool"] = "Выбросить предмет",
         ["Drop all tools"] = "Выбросить все предметы",
+        ["<b>Description</b>"] = "<b>Описание</b>",
+        ["Description"] = "Описание",
+        ["<b>Remove from the bookmark page</b>"] = "<b>Удалить со страницы закладок</b>",
+        ["Remove from the bookmark page"] = "Удалить со страницы закладок",
+        ["Search here!"] = "Поиск здесь!",
         ["[ Select first ] Searcher"] = "[ Сначала выбери ] Поиск",
     },
     ["KO"] = {
@@ -2324,6 +2349,11 @@ L.DB = {
         ["Open Developer console"] = "개발자 콘솔 열기",
         ["Drop Tool"] = "도구 버리기",
         ["Drop all tools"] = "모든 도구 버리기",
+        ["<b>Description</b>"] = "<b>설명</b>",
+        ["Description"] = "설명",
+        ["<b>Remove from the bookmark page</b>"] = "<b>북마크 페이지에서 제거</b>",
+        ["Remove from the bookmark page"] = "북마크 페이지에서 제거",
+        ["Search here!"] = "여기에서 검색하세요!",
         ["[ Select first ] Searcher"] = "[ 먼저 선택 ] 검색",
     },
 }
@@ -3495,17 +3525,18 @@ local function ApplyCachedLanguage(language)
                         obj[property] = rendered
                     end
 
-                    processed += 1
-                    if processed % 12 == 0 then
-                        task.wait()
-                    end
-
                     L.Source[obj] =
                         L.Source[obj] or {}
 
                     L.Source[obj][property] =
                         state.SourceText
                 end
+
+                processed += 1
+
+                -- Translate/check one text at a time.
+                -- This prevents a large GUI from freezing while switching language.
+                task.wait(0.1)
             end
         end
     end
@@ -3623,24 +3654,8 @@ task.spawn(function()
     end)
 end)
 
--- Full translation pass every 5 seconds for the currently selected language.
-task.spawn(function()
-    while task.wait(5) do
-        if ExperienceSettings and ExperienceSettings.Parent then
-            ScanInstance(ExperienceSettings)
-
-            if L.CurrentLanguage ~= "EN" then
-                GetLocalizationTranslator(L.CurrentLanguage)
-            end
-
-            if L.CurrentLanguage ~= "EN" and not L.Busy then
-                ApplyCachedLanguage(L.CurrentLanguage)
-            end
-
-            L.RefreshLanguageButtons()
-        end
-    end
-end)
+-- One-shot translation only. Dynamic text is not re-translated on a timer.
+-- New GUI objects are handled by DescendantAdded.
 
 local EngBtn = Txt(
     "🇺🇸 English",
