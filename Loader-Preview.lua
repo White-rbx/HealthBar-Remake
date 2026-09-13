@@ -1,5 +1,5 @@
 -- Loader script 2.91
--- Translation System: 6.10 Static-Only + Localization
+-- Translation System: 6.11 Static-Direct + Dynamic-Only Buttons
 
 ------------------------------------------------------------------------------------------
 
@@ -2942,52 +2942,97 @@ local function TokenSimilarity(a, b)
     return (2 * common) / (#ta + #tb)
 end
 
-local function FindSimilarLocalizationSource(sourceText)
+local function FindSimilarLocalizationSource(sourceText, language)
     local source = tostring(sourceText or "")
     if source == "" then
         return nil
     end
 
+    local cache = language and L.Cache[language]
+
     L.SimilarCache[source] =
         L.SimilarCache[source] or {}
 
-    local cached = L.SimilarCache[source].Resolved
-    if cached then
-        return cached
+    local languageCache =
+        language and L.SimilarCache[source][language]
+
+    if languageCache then
+        return languageCache.Resolved
     end
 
     local normalized = NormalizeSimilarityText(source)
     local plainNormalized =
         SimilarityTextWithoutRichText(source)
 
-    -- Path sources are resolved before this function when possible.
-    -- Keep this function text-only to avoid the freeze caused by scanning
-    -- a large candidate index on every language switch.
+    local function hasTranslation(candidate)
+        if not cache then
+            return false
+        end
 
-    -- First pass: exact normalized match.
+        if cache[candidate] then
+            return true
+        end
+
+        local plainKey = PlainCacheKey(candidate)
+        if cache[plainKey] then
+            return true
+        end
+
+        local template = SelectTextToTranslateOnly(candidate)
+        if template and template ~= "" then
+            if cache[template]
+                or cache[PlainCacheKey(template)] then
+                return true
+            end
+        end
+
+        return false
+    end
+
+    local function remember(candidate, score)
+        L.SimilarCache[source][language or "__ANY__"] = {
+            Resolved = candidate,
+            Score = score,
+        }
+        return candidate
+    end
+
+    -- First pass: exact normalized match WITH a translation for this language.
     for _, candidate in ipairs(L.Candidates) do
-        if NormalizeSimilarityText(candidate) == normalized then
-            L.SimilarCache[source].Resolved = candidate
-            return candidate
+        if NormalizeSimilarityText(candidate) == normalized
+            and (not language or hasTranslation(candidate)) then
+            return remember(candidate, 1)
         end
     end
 
-    -- Second pass: the canonical source may be in L.DB but not in List.
+    -- Second pass: canonical sources from the translation DB.
     for _, entries in pairs(L.DB) do
         for candidate in pairs(entries) do
-            if NormalizeSimilarityText(candidate) == normalized then
-                L.SimilarCache[source].Resolved = candidate
-                return candidate
+            if NormalizeSimilarityText(candidate) == normalized
+                and (not language or hasTranslation(candidate)) then
+                return remember(candidate, 1)
             end
         end
     end
 
-    -- Third pass: high-confidence fuzzy match.
+    -- Third pass: high-confidence fuzzy match, but ONLY among candidates
+    -- that actually have a translation for the selected language.
     local bestCandidate = nil
     local bestScore = 0
 
+    local seen = {}
+
     local function testCandidate(candidate)
+        if seen[candidate] then
+            return
+        end
+        seen[candidate] = true
+
         if candidate == source then
+            return
+        end
+
+        if language and not hasTranslation(candidate) then
             return
         end
 
@@ -3038,16 +3083,12 @@ local function FindSimilarLocalizationSource(sourceText)
     end
 
     if bestCandidate and bestScore >= 0.92 then
-        L.SimilarCache[source].Resolved =
-            bestCandidate
-        L.SimilarCache[source].Score =
-            bestScore
-        return bestCandidate
+        return remember(bestCandidate, bestScore)
     end
 
+    L.SimilarCache[source][language or "__ANY__"] = false
     return nil
 end
-
 
 
 -- v23: extra Directly coverage for Search + ProfileStatus + popup/static UI.
@@ -3692,7 +3733,7 @@ local function Localizate(obj, sourceText, language, preferredSource)
 
     -- 3. Find the closest known canonical source.
     local similarSource =
-        FindSimilarLocalizationSource(sourceText)
+        FindSimilarLocalizationSource(sourceText, language)
 
     if similarSource and similarSource ~= sourceText then
         translated = trySource(similarSource)
@@ -4059,19 +4100,29 @@ local function Directly(sourceText, language, pathSource)
         return translated, sourceRendered
     end
 
-    -- 3. Similarity fallback. This handles whitespace/newline differences,
-    -- RichText-vs-plain variants, and slightly changed source strings.
+    -- 3. Similarity fallback. IMPORTANT: the similarity search is
+    -- language-aware, so it never locks onto a canonical source that has no
+    -- translation for the currently selected language.
     local similarSource =
-        FindSimilarLocalizationSource(sourceRendered)
+        FindSimilarLocalizationSource(sourceRendered, language)
 
     if similarSource and similarSource ~= sourceRendered then
         translated = cache[similarSource]
+            or cache[PlainCacheKey(similarSource)]
+
+        if not translated then
+            local similarTemplate =
+                SelectTextToTranslateOnly(similarSource)
+
+            translated = cache[similarTemplate]
+                or cache[PlainCacheKey(similarTemplate)]
+        end
 
         if translated then
             local currentTemplate, currentProtected =
                 SelectTextToTranslateOnly(sourceRendered)
 
-            local similarTemplate, similarProtected =
+            local similarTemplate =
                 SelectTextToTranslateOnly(similarSource)
 
             if currentTemplate == similarTemplate then
@@ -4095,65 +4146,30 @@ local function IsDynamicTranslationTarget(obj, state, property)
         return false
     end
 
-    local source = tostring(state.SourceText or "")
-    local lower = source:lower()
-    local path = tostring(state.PathSource or ""):lower()
-
-    -- Editable player input is never a translation target.
-    if property == "Text" and obj:IsA("TextBox") and obj.TextEditable then
+    -- Player-entered TextBox content is always dynamic/user input.
+    if property == "Text"
+        and obj:IsA("TextBox")
+        and obj.TextEditable then
         return true
     end
 
-    -- Known runtime/status fields from ExperienceSettings.
-    local dynamicLabels = {
-        "playerid:",
-        "playerage:",
-        "playerbirth:",
-        "friends in the server:",
-        "playingtime:",
-        "real time clock:",
-        "foundhumanoidrootpart:",
-        "ishealthon:",
-        "health:",
-        "speed:",
-        "ping:",
-        "fps:",
-        "memory:",
-        "latency:",
-        "uptime:",
-    }
+    -- Only these three TextButtons are explicitly dynamic in the UI.
+    -- Every other TextButton is treated as permanent/static text.
+    if property == "Text" and obj:IsA("TextButton") then
+        local name = tostring(obj.Name or ""):lower()
+        local source = StripRichText(tostring(state.SourceText or "")):lower()
 
-    for _, label in ipairs(dynamicLabels) do
-        if lower:sub(1, #label) == label then
+        if name == "execute"
+            or name == "copy"
+            or name == "copy to clipboard" then
             return true
         end
-    end
 
-    -- Runtime paths commonly used by counters/status widgets.
-    local dynamicPathHints = {
-        "profilestatus",
-        "status",
-        "playerid",
-        "playerage",
-        "playerbirth",
-        "playingtime",
-        "realtimeclock",
-        "friendcount",
-        "ping",
-        "fps",
-    }
-
-    for _, hint in ipairs(dynamicPathHints) do
-        if path:find(hint, 1, true) then
+        if source == "execute"
+            or source == "copy"
+            or source == "copy to clipboard" then
             return true
         end
-    end
-
-    -- Pure runtime timestamps / dates / counters.
-    if source:match("^%d%d:%d%d:%d%d$")
-        or source:match("^%d%d%d%d[%-%/]%d%d[%-%/]%d%d$")
-        or source:match("^%d%d[%/%-]%d%d[%/%-]%d%d%d%d$") then
-        return true
     end
 
     return false
@@ -4164,23 +4180,24 @@ local function IsLocalizationDirectOnlyProperty(obj, property, state)
         return false
     end
 
-    -- These are intentionally handled by the local translation DB/cache.
-    -- They must NOT go through Roblox LocalizationService.
-    if obj:IsA("TextButton") or obj:IsA("ImageButton") then
+    -- New policy: all static text uses the Directly/cache engine.
+    -- TextButton is Directly unless it is one of the three dynamic buttons.
+    if obj:IsA("TextLabel") then
         return true
     end
 
-    local name = tostring(obj.Name or ""):lower()
+    if obj:IsA("TextBox") then
+        if property == "Text" then
+            return not obj.TextEditable
+        end
 
-    -- Display names/titles/descriptions are permanent UI content, not
-    -- LocalizationService targets in this translation system.
-    if name == "title"
-        or name == "description"
-        or name == "nameoftitle"
-        or name == "scriptnametitle"
-        or name == "togglename"
-        or name == "toggle" then
-        return true
+        if property == "PlaceholderText" then
+            return true
+        end
+    end
+
+    if obj:IsA("TextButton") then
+        return not IsDynamicTranslationTarget(obj, state, property)
     end
 
     return false
@@ -4210,8 +4227,8 @@ local function GetStateTranslation(obj, state, property, language)
         return sourceRendered
     end
 
-    -- Names, descriptions, and buttons are intentionally translated only
-    -- through the local DB/cache/similarity engine.
+    -- Static UI is Directly-only now. This includes TextLabel,
+    -- non-editable TextBox.Text, TextBox.PlaceholderText, and static TextButton.
     if IsLocalizationDirectOnlyProperty(obj, property, state) then
         local direct, directSource = Directly(
             sourceRendered,
@@ -4235,50 +4252,6 @@ local function GetStateTranslation(obj, state, property, language)
         end
 
         return nil
-    end
-
-    -- Other static UI text may use the Roblox Localization Table first.
-    -- If the table has no entry, fall back to the local DB/cache.
-    local localized, localizedSource = Localizate(
-        obj,
-        sourceRendered,
-        language,
-        state.PathSource
-    )
-
-    if localized then
-        if localizedSource
-            and state.PathSource
-            and localizedSource == state.PathSource then
-            localized = RestoreDynamicValuesFromSource(
-                localized,
-                state.PathSource,
-                state.SourceTemplate,
-                state.DynamicValues or {}
-            )
-        end
-        return localized
-    end
-
-    local direct, directSource = Directly(
-        sourceRendered,
-        language,
-        state.PathSource
-    )
-
-    if direct then
-        if directSource
-            and state.PathSource
-            and directSource == state.PathSource then
-            direct = RestoreDynamicValuesFromSource(
-                direct,
-                state.PathSource,
-                state.SourceTemplate,
-                state.DynamicValues or {}
-            )
-        end
-
-        return direct
     end
 
     return nil
@@ -4623,9 +4596,14 @@ end
 local function ApplyCachedLanguage(language, onComplete)
     L.CurrentLanguage = language
 
-    -- Build a queue first. Dynamic text is excluded before any provider call.
-    -- Static names/descriptions/buttons use Directly(); other static UI may use
-    -- LocalizationService and then Directly() as fallback.
+    -- A language pass must be independent from the previous language pass.
+    -- AppliedMeta is still useful for the current language, but old language
+    -- metadata must never be used to skip the new language.
+    L.AppliedMeta = setmetatable({}, {__mode = "k"})
+
+    -- Build a queue first. Only the three dynamic TextButtons (plus editable
+    -- TextBox.Text) are skipped. Every remaining supported text property uses
+    -- Directly/cache translation only.
     local queue = {}
 
     for obj, properties in pairs(L.State) do
