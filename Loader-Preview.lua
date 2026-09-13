@@ -1,4 +1,4 @@
--- Loader script 6.7
+-- Loader script 6.8
 
 ------------------------------------------------------------------------------------------
 
@@ -4409,139 +4409,12 @@ local function BindProperty(obj, property)
     L.Applied[obj][property] =
         currentValue
 
-    L.Connections[obj][property] =
-        obj:GetPropertyChangedSignal(property):Connect(function()
-            local changedValue =
-                tostring(obj[property] or "")
+    -- Translation is intentionally one-shot.
+    -- Do NOT watch Text/PlaceholderText changes here: dynamic GUI updates
+    -- (for example counters/status values) can fire every few seconds and
+    -- repeatedly trigger translation work, causing frame drops.
+    -- Language changes and newly-created objects are handled explicitly.
 
-            local applied =
-                L.Applied[obj]
-                and L.Applied[obj][property]
-
-            -- Ignore our own translated write.
-            if applied == changedValue then
-                return
-            end
-
-            if property == "Text"
-                and obj:IsA("TextBox")
-                and obj.TextEditable then
-                return
-            end
-
-            -- English is always the canonical source.
-            if L.CurrentLanguage == "EN" then
-                local newState =
-                    BuildSourceState(
-                        obj,
-                        property,
-                        changedValue
-                    )
-
-                L.Source[obj][property] =
-                    newState.SourceText
-
-                L.Applied[obj][property] =
-                    changedValue
-
-                return
-            end
-
-            -- Most changes are only dynamic values.
-            -- Keep the already-translated permanent text.
-            if UpdateDynamicState(
-                obj,
-                property,
-                changedValue
-            ) then
-                local rendered =
-                    GetStateTranslation(
-                        obj,
-                        L.State[obj][property],
-                        property,
-                        L.CurrentLanguage
-                    )
-
-                if rendered then
-                    L.Applied[obj][property] =
-                        rendered
-
-                    L.AppliedMeta[obj] =
-                        L.AppliedMeta[obj] or {}
-
-                    L.AppliedMeta[obj][property] = {
-                        Language = L.CurrentLanguage,
-                        Source = L.State[obj][property].SourceText,
-                        Text = rendered,
-                    }
-
-                    if rendered ~= changedValue then
-                        obj[property] = rendered
-                    end
-                end
-
-                return
-            end
-
-            -- A genuinely new permanent string appeared.
-            -- Rebuild the source template instead of treating
-            -- the previously translated text as English.
-            local newState =
-                BuildSourceState(
-                    obj,
-                    property,
-                    changedValue
-                )
-
-            L.Source[obj][property] =
-                newState.SourceText
-
-            L.Applied[obj][property] =
-                changedValue
-
-            task.defer(function()
-                if not obj.Parent
-                    or L.Busy then
-                    return
-                end
-
-                local language =
-                    L.CurrentLanguage
-
-                if language == "EN" then
-                    return
-                end
-
-                local template =
-                    newState.SourceTemplate
-
-                if template == "" then
-                    return
-                end
-
-                local cached =
-                    L.Cache[language]
-                    and L.Cache[language][template]
-
-                if cached then
-                    ApplyStateToObject(
-                        obj,
-                        property,
-                        language
-                    )
-                    return
-                end
-
-                -- Local-only mode: do not request a translation provider here.
-                -- If a translation is added to L.Cache later, the next
-                -- ApplyCachedLanguage() pass will render it.
-                ApplyStateToObject(
-                    obj,
-                    property,
-                    language
-                )
-            end)
-        end)
 end
 
 local function BindTextBoxEditable(obj)
