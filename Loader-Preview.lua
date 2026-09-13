@@ -1,5 +1,5 @@
 -- Loader script 2.91
--- Translation System: 6.9 Static-Only
+-- Translation System: 6.10 Static-Only + Localization
 
 ------------------------------------------------------------------------------------------
 
@@ -4160,9 +4160,30 @@ local function IsDynamicTranslationTarget(obj, state, property)
 end
 
 local function IsLocalizationDirectOnlyProperty(obj, property, state)
-    -- Names, descriptions, buttons, and other static UI text intentionally use
-    -- only the local DB/cache/similarity engine. LocalizationService is not used.
-    return obj ~= nil and state ~= nil and property ~= nil
+    if not obj or not property or not state then
+        return false
+    end
+
+    -- These are intentionally handled by the local translation DB/cache.
+    -- They must NOT go through Roblox LocalizationService.
+    if obj:IsA("TextButton") or obj:IsA("ImageButton") then
+        return true
+    end
+
+    local name = tostring(obj.Name or ""):lower()
+
+    -- Display names/titles/descriptions are permanent UI content, not
+    -- LocalizationService targets in this translation system.
+    if name == "title"
+        or name == "description"
+        or name == "nameoftitle"
+        or name == "scriptnametitle"
+        or name == "togglename"
+        or name == "toggle" then
+        return true
+    end
+
+    return false
 end
 
 local function GetStateTranslation(obj, state, property, language)
@@ -4189,14 +4210,54 @@ local function GetStateTranslation(obj, state, property, language)
         return sourceRendered
     end
 
-    -- ==========================================
-    -- STATIC-ONLY DIRECT TRANSLATION
-    -- Do not call Roblox LocalizationService here.
-    -- Names, descriptions, buttons, and other static UI text
-    -- are handled only by the local DB/cache/similarity engine.
-    -- ==========================================
-    if not IsLocalizationDirectOnlyProperty(obj, property, state) then
+    -- Names, descriptions, and buttons are intentionally translated only
+    -- through the local DB/cache/similarity engine.
+    if IsLocalizationDirectOnlyProperty(obj, property, state) then
+        local direct, directSource = Directly(
+            sourceRendered,
+            language,
+            state.PathSource
+        )
+
+        if direct then
+            if directSource
+                and state.PathSource
+                and directSource == state.PathSource then
+                direct = RestoreDynamicValuesFromSource(
+                    direct,
+                    state.PathSource,
+                    state.SourceTemplate,
+                    state.DynamicValues or {}
+                )
+            end
+
+            return direct
+        end
+
         return nil
+    end
+
+    -- Other static UI text may use the Roblox Localization Table first.
+    -- If the table has no entry, fall back to the local DB/cache.
+    local localized, localizedSource = Localizate(
+        obj,
+        sourceRendered,
+        language,
+        state.PathSource
+    )
+
+    if localized then
+        if localizedSource
+            and state.PathSource
+            and localizedSource == state.PathSource then
+            localized = RestoreDynamicValuesFromSource(
+                localized,
+                state.PathSource,
+                state.SourceTemplate,
+                state.DynamicValues or {}
+            )
+        end
+        return localized
     end
 
     local direct, directSource = Directly(
@@ -4562,8 +4623,9 @@ end
 local function ApplyCachedLanguage(language, onComplete)
     L.CurrentLanguage = language
 
-    -- Build a queue first. This keeps the hot path small and lets us spread
-    -- expensive LocalizationService work over multiple scheduler turns.
+    -- Build a queue first. Dynamic text is excluded before any provider call.
+    -- Static names/descriptions/buttons use Directly(); other static UI may use
+    -- LocalizationService and then Directly() as fallback.
     local queue = {}
 
     for obj, properties in pairs(L.State) do
@@ -4699,16 +4761,16 @@ local function ApplyCachedLanguage(language, onComplete)
         end
 
         if index <= #queue then
-            -- task.defer yields back to the scheduler without adding a fixed
-            -- sleep. The remaining translation continues on a later turn.
-            task.defer(processBatch)
+            -- Use a fresh coroutine instead of recursively deferring the
+            -- same callback. This avoids Roblox's re-entrancy depth limit.
+            task.spawn(processBatch)
             return
         end
 
         finish()
     end
 
-    task.defer(processBatch)
+    task.spawn(processBatch)
 end
 
 local function SetPermanentTranslationSource(
@@ -4754,8 +4816,8 @@ local function ChangeLanguage(language)
     SetLanguageButtonsLocked(true)
 
     task.spawn(function()
-        -- Static-only mode: no Roblox LocalizationService calls are made.
         -- Re-scan in case the game created new GUI elements.
+        -- LocalizationService is requested only for eligible static UI text.
         ScanInstance(ExperienceSettings)
 
         if language == "EN" then
