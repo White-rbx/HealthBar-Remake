@@ -1,4 +1,4 @@
--- Loader script 6.21²
+-- Loader script 6.22
 -- Translation System: 6.11 Static-Direct + Dynamic-Only Buttons
 
 ------------------------------------------------------------------------------------------
@@ -2020,6 +2020,13 @@ L.LanguageButtons = {}
 L.LanguageButtonDefaultText = {}
 L.LanguageButtonStatus = nil
 L.RefreshLanguageButtons = nil
+
+-- Language selector timing UI.
+-- Working... shows elapsed whole seconds while translation is running.
+-- Done! shows the final WorkingSeconds before waiting PauseSeconds, then Selected.
+L.WorkingSeconds = 0
+L.PauseSeconds = 1
+L.LanguageButtonTimerGeneration = 0
 
 L.Source =
     setmetatable({}, {__mode = "k"})
@@ -4694,6 +4701,23 @@ local function BindProperty(obj, property)
         return
     end
 
+    -- HARD RULE: ValueChanger-controlled text is NEVER translated.
+    -- Do not create translation state, cache, Localization listeners, or
+    -- Directly work for it. This prevents ValueChanger feedback loops.
+    if IsValueChangerDynamic(obj, property) then
+        print(
+            string.format(
+                "[Translation][SKIP VALUECHANGER] %s | %s | ValueChanger=%s",
+                obj:GetFullName(),
+                property,
+                FindControllerRelation(obj, "ValueChanger")
+                    and FindControllerRelation(obj, "ValueChanger"):GetFullName()
+                    or "detected"
+            )
+        )
+        return
+    end
+
     local currentValue =
         tostring(obj[property] or "")
 
@@ -5014,7 +5038,12 @@ local function ApplyCachedLanguage(language, onComplete)
                     and not IsTranslationSkipped(obj) then
 
                     for property, state in pairs(properties) do
-                        if not IsLocalizationExcluded(obj, property)
+                        -- ValueChanger is an absolute exclusion. If a controller
+                        -- appeared after the initial scan, remove this state so
+                        -- no translation path can touch it.
+                        if IsValueChangerDynamic(obj, property) then
+                            properties[property] = nil
+                        elseif not IsLocalizationExcluded(obj, property)
                             and not IsDynamicTranslationTarget(obj, state, property)
                             and not (
                                 property == "Text"
@@ -5118,6 +5147,7 @@ local function ApplyCachedLanguage(language, onComplete)
                     and obj.Parent
                     and not IsTranslationSkipped(obj)
                     and not IsLocalizationExcluded(obj, property)
+                    and not IsValueChangerDynamic(obj, property)
                     and not IsDynamicTranslationTarget(obj, state, property) then
 
                     local before = tostring(obj[property] or "")
@@ -5280,39 +5310,67 @@ local function ChangeLanguage(language)
     L.SelectedLanguage = language
     L.Busy = true
     L.LanguageButtonStatus = "Working"
+    L.WorkingSeconds = 0
+    L.LanguageButtonTimerGeneration += 1
+    local timerGeneration = L.LanguageButtonTimerGeneration
 
-    -- Immediately show Working... on the language that was clicked.
+    -- Immediately show Working... (0)
     L.RefreshLanguageButtons()
-
     SetLanguageButtonsLocked(true)
+
+    -- Keep the selector timer independent from the translation worker.
+    local started = os.clock()
+
+    task.spawn(function()
+
+        while L.Busy
+            and timerGeneration == L.LanguageButtonTimerGeneration do
+            L.WorkingSeconds = math.floor(os.clock() - started)
+            L.RefreshLanguageButtons()
+            task.wait(0.25)
+        end
+    end)
 
     task.spawn(function()
         -- Re-scan in case the game created new GUI elements.
-        -- LocalizationService is requested only for eligible static UI text.
         ScanInstance(ExperienceSettings)
         EnsureCanonicalState()
 
-        if language == "EN" then
-            ApplyCachedLanguage("EN", function()
-                L.Busy = false
-                L.SelectedLanguage = L.CurrentLanguage
-                L.LanguageButtonStatus = "Selected"
-                SetLanguageButtonsLocked(false)
-                L.RefreshLanguageButtons()
-            end)
-            return
-        end
+        local function complete()
+            if timerGeneration ~= L.LanguageButtonTimerGeneration then
+                return
+            end
 
-        -- One queued translation pass. Work is spread across scheduler turns
-        -- so the full set can still finish without a long frame hitch.
-        ApplyCachedLanguage(language, function()
-            SaveTranslationCache()
-
+            -- Freeze the actual elapsed time for the final status.
+            L.WorkingSeconds = math.max(0, math.floor(os.clock() - started))
             L.Busy = false
             L.SelectedLanguage = L.CurrentLanguage
+
+            -- Show Done! (final WorkingSeconds), wait PauseSeconds, then Selected.
+            L.LanguageButtonStatus = "Done"
+            L.RefreshLanguageButtons()
+
+            if L.PauseSeconds > 0 then
+                task.wait(L.PauseSeconds)
+            end
+
+            if timerGeneration ~= L.LanguageButtonTimerGeneration then
+                return
+            end
+
             L.LanguageButtonStatus = "Selected"
             SetLanguageButtonsLocked(false)
             L.RefreshLanguageButtons()
+        end
+
+        if language == "EN" then
+            ApplyCachedLanguage("EN", complete)
+            return
+        end
+
+        ApplyCachedLanguage(language, function()
+            SaveTranslationCache()
+            complete()
         end)
     end)
 end
@@ -5474,7 +5532,15 @@ L.RefreshLanguageButtons = function()
             local status = L.LanguageButtonStatus
 
             if selected and status == "Working" then
-                button.Text = "Working..."
+                button.Text = string.format(
+                    "Working... (%ds)",
+                    tonumber(L.WorkingSeconds) or 0
+                )
+            elseif selected and status == "Done" then
+                button.Text = string.format(
+                    "Done! (%ds)",
+                    tonumber(L.WorkingSeconds) or 0
+                )
             elseif selected and status == "Selected" then
                 button.Text = "Selected"
             else
