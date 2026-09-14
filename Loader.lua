@@ -1,4 +1,4 @@
--- Loader script 6.19
+-- Loader script 6.23
 -- Translation System: 6.11 Static-Direct + Dynamic-Only Buttons
 
 ------------------------------------------------------------------------------------------
@@ -1983,7 +1983,7 @@ end)
 
 --======= ENGLISH ========--
 --// =====================================================
---// TEXT-DETECTION LOCALIZATION ENGINE v2
+--// TEXT-DETECTION LOCALIZATION ENGINE v2.1
 --// Path-based translation: full Device export is the primary source.
 --// =====================================================
 
@@ -2021,6 +2021,13 @@ L.LanguageButtonDefaultText = {}
 L.LanguageButtonStatus = nil
 L.RefreshLanguageButtons = nil
 
+-- Language selector timing UI.
+-- Working... shows elapsed whole seconds while translation is running.
+-- Done! shows the final WorkingSeconds before waiting PauseSeconds, then Selected.
+L.WorkingSeconds = 0
+L.PauseSeconds = 1
+L.LanguageButtonTimerGeneration = 0
+
 L.Source =
     setmetatable({}, {__mode = "k"})
 
@@ -2036,6 +2043,12 @@ L.AppliedMeta =
 -- pass does not block the game for a long continuous period.
 L.TranslationGeneration = 0
 L.TranslationRunning = false
+
+L.Canonical =
+    setmetatable({}, {__mode = "k"})
+
+L.CanonicalTemplate =
+    setmetatable({}, {__mode = "k"})
 
 L.Connections =
     setmetatable({}, {__mode = "k"})
@@ -4039,30 +4052,42 @@ local function GetState(obj, property)
 end
 
 local function BuildSourceState(obj, property, sourceText)
-    local state =
-        GetState(obj, property)
+    local state = GetState(obj, property)
+    local path, pathSource = GetPathSource(obj, property)
 
-    local path, pathSource =
-        GetPathSource(obj, property)
+    L.Canonical[obj] = L.Canonical[obj] or {}
+    L.CanonicalTemplate[obj] = L.CanonicalTemplate[obj] or {}
 
-    -- Preserve the first known source. Re-scanning after translation must NOT
-    -- turn the translated value into the new source of truth.
-    local existingSource = state.SourceText
-    local existingTemplate = state.SourceTemplate
-    local existingDynamic = state.DynamicValues
-
-    if existingSource and existingSource ~= "" then
-        sourceText = existingSource
-    end
+    -- Canonical source priority:
+    --   1) source captured on the very first bind
+    --   2) authoritative PathSource from Device/PathSources
+    --   3) previously cached canonical map
+    --   4) current GUI value only for genuinely new/unmapped objects
+    --
+    -- Never use a translated GUI value to replace the canonical source.
+    local canonical =
+        state.SourceText
+        or L.Canonical[obj][property]
+        or pathSource
+        or sourceText
 
     local template, protected =
-        SelectTextToTranslateOnly(sourceText)
+        SelectTextToTranslateOnly(canonical)
+
+    local canonicalTemplate =
+        state.SourceTemplate
+        or L.CanonicalTemplate[obj][property]
+        or template
 
     state.Path = state.Path or path
     state.PathSource = state.PathSource or pathSource
-    state.SourceTemplate = existingTemplate or template
-    state.DynamicValues = existingDynamic or protected
-    state.SourceText = sourceText
+    state.SourceTemplate = canonicalTemplate
+    state.DynamicValues = state.DynamicValues or protected
+    state.SourceText = canonical
+
+    -- Freeze the canonical source for all future language switches.
+    L.Canonical[obj][property] = state.SourceText
+    L.CanonicalTemplate[obj][property] = state.SourceTemplate
 
     return state
 end
@@ -4197,6 +4222,130 @@ local function HasAncestorNamed(obj, targetName)
     return false
 end
 
+local function FindControllerRelation(obj, controllerName)
+    if not obj then
+        return nil
+    end
+
+    controllerName = tostring(controllerName or ""):lower()
+    if controllerName == "" then
+        return nil
+    end
+
+    -- 1) Most reliable relation: the controller is an ancestor.
+    local current = obj.Parent
+    while current do
+        if tostring(current.Name or ""):lower() == controllerName then
+            return current
+        end
+
+        if current == ExperienceSettings then
+            break
+        end
+
+        current = current.Parent
+    end
+
+    -- 2) Some UI layouts keep the controller as a sibling of the value.
+    --    Only accept this when there is exactly ONE direct sibling/controller
+    --    with that name, preventing an entire panel from becoming dynamic.
+    local parent = obj.Parent
+    if parent then
+        local found = nil
+        local count = 0
+
+        for _, child in ipairs(parent:GetChildren()) do
+            if tostring(child.Name or ""):lower() == controllerName then
+                found = child
+                count += 1
+            end
+        end
+
+        if count == 1 then
+            return found
+        end
+    end
+
+    return nil
+end
+
+-- Absolute Translate List exclusions for known ValueChanger-driven fields.
+-- These entries are intentionally removed from the translation queue entirely.
+-- They must never reach Directly() or LocalizationService.
+local ValueChangerTranslateListSkip = {
+    PlayerID = true,
+    FriendCount = true,
+    PlayerAge = true,
+    PlayerBirth = true,
+    PlaceID = true,
+    CreatorName = true,
+    CreatorID = true,
+    AFK = true,
+    PlayingTime = true,
+    RealTimeClock = true,
+    WalkSpeed = true,
+    JumpPower = true,
+    Damage = true,
+    Heal = true,
+    Deaths = true,
+    Inventory = true,
+    HoldingTool = true,
+    MaxHealth = true,
+    StandingOn = true,
+    PositionOfCharacter = true,
+    CharacterType = true,
+    TimeOfDay = true,
+}
+
+-- Other dynamic/special fields found in Device.json.
+-- These are intentionally removed from the translation queue entirely.
+-- They must never reach Directly() or LocalizationService.
+local DynamicTranslateListSkip = {
+    PlayerCount = true,
+    PlayerButton = true,
+    SwitchButton = true,
+    Status = true,
+    ver = true,
+    CreationDate = true,
+    Creator = true,
+}
+
+local function IsValueChangerTranslateListSkip(obj)
+    if not obj then
+        return false
+    end
+
+    local path = obj:GetFullName()
+
+    -- ProfileStatus runtime values.
+    if string.find(path, "ExperienceSettings.ProfileStatus", 1, true)
+        or string.find(path, "ExperienceSettings.Menu.ProfileStatus", 1, true) then
+        if ValueChangerTranslateListSkip[obj.Name] == true then
+            return true
+        end
+    end
+
+    -- Background.Settings.Pmax.PlayerCount
+    if string.find(path, "ExperienceSettings.Menu.Background.Settings.Pmax", 1, true)
+        and obj.Name == "PlayerCount" then
+        return true
+    end
+
+    -- AIOpenSource runtime/special fields.
+    if string.find(path, "ExperienceSettings.Menu.AIOpenSource", 1, true)
+        and DynamicTranslateListSkip[obj.Name] == true then
+        return true
+    end
+
+    -- Search API-generated metadata.
+    if string.find(path, "ExperienceSettings.Menu.Search.Page.InPage.ViewPage", 1, true)
+        and DynamicTranslateListSkip[obj.Name] == true then
+        return true
+    end
+
+    return false
+end
+
 local function IsValueChangerDynamic(obj, property)
     if not obj or not property then
         return false
@@ -4209,9 +4358,14 @@ local function IsValueChangerDynamic(obj, property)
         return true
     end
 
-    -- The project convention: a ValueChanger at the end of the object
-    -- hierarchy marks a live value that can update whenever the game changes.
-    return HasAncestorNamed(obj, "ValueChanger")
+    -- FIRST: remove known ValueChanger-driven runtime fields from the
+    -- Translate List before any translation state/cache/listener is created.
+    if IsValueChangerTranslateListSkip(obj) then
+        return true
+    end
+
+    -- SECOND: detect an actual runtime ValueChanger controller relation.
+    return FindControllerRelation(obj, "ValueChanger") ~= nil
 end
 
 local function IsTextChangeOnlyWhenClick(obj, property)
@@ -4628,6 +4782,23 @@ local function BindProperty(obj, property)
         return
     end
 
+    -- HARD RULE: ValueChanger-controlled text is NEVER translated.
+    -- Do not create translation state, cache, Localization listeners, or
+    -- Directly work for it. This prevents ValueChanger feedback loops.
+    if IsValueChangerDynamic(obj, property) then
+        print(
+            string.format(
+                "[Translation][SKIP VALUECHANGER] %s | %s | ValueChanger=%s",
+                obj:GetFullName(),
+                property,
+                FindControllerRelation(obj, "ValueChanger")
+                    and FindControllerRelation(obj, "ValueChanger"):GetFullName()
+                    or "detected"
+            )
+        )
+        return
+    end
+
     local currentValue =
         tostring(obj[property] or "")
 
@@ -4644,12 +4815,21 @@ local function BindProperty(obj, property)
     L.Applied[obj][property] =
         currentValue
 
+    local classification =
+        GetDynamicTranslationMode(obj, property)
+
+    local controller =
+        FindControllerRelation(obj, "ValueChanger")
+
     print(
         string.format(
-            "[Translation][CLASSIFY] %s | %s | %s",
+            "[Translation][CLASSIFY] %s | %s | %s%s",
             state.Path or obj:GetFullName(),
             property,
-            GetDynamicTranslationMode(obj, property)
+            classification,
+            controller
+                and (" | ValueChanger=" .. controller:GetFullName())
+                or ""
         )
     )
 
@@ -4841,6 +5021,44 @@ local function ScanInstance(obj)
     end
 end
 
+local function EnsureCanonicalState()
+    for obj, properties in pairs(L.State) do
+        if obj and obj.Parent and properties then
+            for property, state in pairs(properties) do
+                if state then
+                    L.Canonical[obj] = L.Canonical[obj] or {}
+                    L.CanonicalTemplate[obj] = L.CanonicalTemplate[obj] or {}
+
+                    local canonical =
+                        L.Canonical[obj][property]
+                        or state.SourceText
+                        or state.PathSource
+
+                    if canonical and canonical ~= "" then
+                        state.SourceText = canonical
+                        L.Canonical[obj][property] = canonical
+                    end
+
+                    local template =
+                        L.CanonicalTemplate[obj][property]
+                        or state.SourceTemplate
+
+                    if (not template or template == "") and canonical then
+                        local builtTemplate =
+                            SelectTextToTranslateOnly(canonical)
+                        template = builtTemplate
+                    end
+
+                    if template and template ~= "" then
+                        state.SourceTemplate = template
+                        L.CanonicalTemplate[obj][property] = template
+                    end
+                end
+            end
+        end
+    end
+end
+
 local function ApplyCachedLanguage(language, onComplete)
     L.CurrentLanguage = language
 
@@ -4890,6 +5108,7 @@ local function ApplyCachedLanguage(language, onComplete)
             -- Re-scan before every pass. BuildSourceState is source-safe below,
             -- so already-translated text cannot replace the canonical source.
             ScanInstance(ExperienceSettings)
+            EnsureCanonicalState()
 
             local queue = {}
             local skipped = 0
@@ -4900,7 +5119,13 @@ local function ApplyCachedLanguage(language, onComplete)
                     and not IsTranslationSkipped(obj) then
 
                     for property, state in pairs(properties) do
-                        if not IsLocalizationExcluded(obj, property)
+                        -- ValueChanger is an absolute exclusion. If a controller
+                        -- appeared after the initial scan, remove this state so
+                        -- no translation path can touch it.
+                        if IsValueChangerDynamic(obj, property) then
+                            -- Absolute Translate List removal: do not queue it.
+                            properties[property] = nil
+                        elseif not IsLocalizationExcluded(obj, property)
                             and not IsDynamicTranslationTarget(obj, state, property)
                             and not (
                                 property == "Text"
@@ -5004,6 +5229,7 @@ local function ApplyCachedLanguage(language, onComplete)
                     and obj.Parent
                     and not IsTranslationSkipped(obj)
                     and not IsLocalizationExcluded(obj, property)
+                    and not IsValueChangerDynamic(obj, property)
                     and not IsDynamicTranslationTarget(obj, state, property) then
 
                     local before = tostring(obj[property] or "")
@@ -5166,38 +5392,67 @@ local function ChangeLanguage(language)
     L.SelectedLanguage = language
     L.Busy = true
     L.LanguageButtonStatus = "Working"
+    L.WorkingSeconds = 0
+    L.LanguageButtonTimerGeneration += 1
+    local timerGeneration = L.LanguageButtonTimerGeneration
 
-    -- Immediately show Working... on the language that was clicked.
+    -- Immediately show Working... (0)
     L.RefreshLanguageButtons()
-
     SetLanguageButtonsLocked(true)
+
+    -- Keep the selector timer independent from the translation worker.
+    local started = os.clock()
+
+    task.spawn(function()
+
+        while L.Busy
+            and timerGeneration == L.LanguageButtonTimerGeneration do
+            L.WorkingSeconds = math.floor(os.clock() - started)
+            L.RefreshLanguageButtons()
+            task.wait(0.25)
+        end
+    end)
 
     task.spawn(function()
         -- Re-scan in case the game created new GUI elements.
-        -- LocalizationService is requested only for eligible static UI text.
         ScanInstance(ExperienceSettings)
+        EnsureCanonicalState()
 
-        if language == "EN" then
-            ApplyCachedLanguage("EN", function()
-                L.Busy = false
-                L.SelectedLanguage = L.CurrentLanguage
-                L.LanguageButtonStatus = "Selected"
-                SetLanguageButtonsLocked(false)
-                L.RefreshLanguageButtons()
-            end)
-            return
-        end
+        local function complete()
+            if timerGeneration ~= L.LanguageButtonTimerGeneration then
+                return
+            end
 
-        -- One queued translation pass. Work is spread across scheduler turns
-        -- so the full set can still finish without a long frame hitch.
-        ApplyCachedLanguage(language, function()
-            SaveTranslationCache()
-
+            -- Freeze the actual elapsed time for the final status.
+            L.WorkingSeconds = math.max(0, math.floor(os.clock() - started))
             L.Busy = false
             L.SelectedLanguage = L.CurrentLanguage
+
+            -- Show Done! (final WorkingSeconds), wait PauseSeconds, then Selected.
+            L.LanguageButtonStatus = "Done"
+            L.RefreshLanguageButtons()
+
+            if L.PauseSeconds > 0 then
+                task.wait(L.PauseSeconds)
+            end
+
+            if timerGeneration ~= L.LanguageButtonTimerGeneration then
+                return
+            end
+
             L.LanguageButtonStatus = "Selected"
             SetLanguageButtonsLocked(false)
             L.RefreshLanguageButtons()
+        end
+
+        if language == "EN" then
+            ApplyCachedLanguage("EN", complete)
+            return
+        end
+
+        ApplyCachedLanguage(language, function()
+            SaveTranslationCache()
+            complete()
         end)
     end)
 end
@@ -5359,7 +5614,15 @@ L.RefreshLanguageButtons = function()
             local status = L.LanguageButtonStatus
 
             if selected and status == "Working" then
-                button.Text = "Working..."
+                button.Text = string.format(
+                    "Working... (%ds)",
+                    tonumber(L.WorkingSeconds) or 0
+                )
+            elseif selected and status == "Done" then
+                button.Text = string.format(
+                    "Done! (%ds)",
+                    tonumber(L.WorkingSeconds) or 0
+                )
             elseif selected and status == "Selected" then
                 button.Text = "Selected"
             else
