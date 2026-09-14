@@ -1,4 +1,4 @@
--- Loader script 6.21
+-- Loader script 6.21²
 -- Translation System: 6.11 Static-Direct + Dynamic-Only Buttons
 
 ------------------------------------------------------------------------------------------
@@ -1983,7 +1983,7 @@ end)
 
 --======= ENGLISH ========--
 --// =====================================================
---// TEXT-DETECTION LOCALIZATION ENGINE v2
+--// TEXT-DETECTION LOCALIZATION ENGINE v2.1
 --// Path-based translation: full Device export is the primary source.
 --// =====================================================
 
@@ -4215,6 +4215,53 @@ local function HasAncestorNamed(obj, targetName)
     return false
 end
 
+local function FindControllerRelation(obj, controllerName)
+    if not obj then
+        return nil
+    end
+
+    controllerName = tostring(controllerName or ""):lower()
+    if controllerName == "" then
+        return nil
+    end
+
+    -- 1) Most reliable relation: the controller is an ancestor.
+    local current = obj.Parent
+    while current do
+        if tostring(current.Name or ""):lower() == controllerName then
+            return current
+        end
+
+        if current == ExperienceSettings then
+            break
+        end
+
+        current = current.Parent
+    end
+
+    -- 2) Some UI layouts keep the controller as a sibling of the value.
+    --    Only accept this when there is exactly ONE direct sibling/controller
+    --    with that name, preventing an entire panel from becoming dynamic.
+    local parent = obj.Parent
+    if parent then
+        local found = nil
+        local count = 0
+
+        for _, child in ipairs(parent:GetChildren()) do
+            if tostring(child.Name or ""):lower() == controllerName then
+                found = child
+                count += 1
+            end
+        end
+
+        if count == 1 then
+            return found
+        end
+    end
+
+    return nil
+end
+
 local function IsValueChangerDynamic(obj, property)
     if not obj or not property then
         return false
@@ -4227,9 +4274,10 @@ local function IsValueChangerDynamic(obj, property)
         return true
     end
 
-    -- The project convention: a ValueChanger at the end of the object
-    -- hierarchy marks a live value that can update whenever the game changes.
-    return HasAncestorNamed(obj, "ValueChanger")
+    -- Behavior-based detection. Do not hardcode ProfileStatus or particular
+    -- field names. Only an actual runtime ValueChanger relationship marks it
+    -- as LIVE dynamic and therefore completely skipped by translation.
+    return FindControllerRelation(obj, "ValueChanger") ~= nil
 end
 
 local function IsTextChangeOnlyWhenClick(obj, property)
@@ -4662,12 +4710,21 @@ local function BindProperty(obj, property)
     L.Applied[obj][property] =
         currentValue
 
+    local classification =
+        GetDynamicTranslationMode(obj, property)
+
+    local controller =
+        FindControllerRelation(obj, "ValueChanger")
+
     print(
         string.format(
-            "[Translation][CLASSIFY] %s | %s | %s",
+            "[Translation][CLASSIFY] %s | %s | %s%s",
             state.Path or obj:GetFullName(),
             property,
-            GetDynamicTranslationMode(obj, property)
+            classification,
+            controller
+                and (" | ValueChanger=" .. controller:GetFullName())
+                or ""
         )
     )
 
