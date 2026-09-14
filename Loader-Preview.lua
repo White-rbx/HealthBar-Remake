@@ -1,4 +1,4 @@
--- Loader script 6.22
+-- Loader script 6.23
 -- Translation System: 6.11 Static-Direct + Dynamic-Only Buttons
 
 ------------------------------------------------------------------------------------------
@@ -4269,6 +4269,83 @@ local function FindControllerRelation(obj, controllerName)
     return nil
 end
 
+-- Absolute Translate List exclusions for known ValueChanger-driven fields.
+-- These entries are intentionally removed from the translation queue entirely.
+-- They must never reach Directly() or LocalizationService.
+local ValueChangerTranslateListSkip = {
+    PlayerID = true,
+    FriendCount = true,
+    PlayerAge = true,
+    PlayerBirth = true,
+    PlaceID = true,
+    CreatorName = true,
+    CreatorID = true,
+    AFK = true,
+    PlayingTime = true,
+    RealTimeClock = true,
+    WalkSpeed = true,
+    JumpPower = true,
+    Damage = true,
+    Heal = true,
+    Deaths = true,
+    Inventory = true,
+    HoldingTool = true,
+    MaxHealth = true,
+    StandingOn = true,
+    PositionOfCharacter = true,
+    CharacterType = true,
+    TimeOfDay = true,
+}
+
+-- Other dynamic/special fields found in Device.json.
+-- These are intentionally removed from the translation queue entirely.
+-- They must never reach Directly() or LocalizationService.
+local DynamicTranslateListSkip = {
+    PlayerCount = true,
+    PlayerButton = true,
+    SwitchButton = true,
+    Status = true,
+    ver = true,
+    CreationDate = true,
+    Creator = true,
+}
+
+local function IsValueChangerTranslateListSkip(obj)
+    if not obj then
+        return false
+    end
+
+    local path = obj:GetFullName()
+
+    -- ProfileStatus runtime values.
+    if string.find(path, "ExperienceSettings.ProfileStatus", 1, true)
+        or string.find(path, "ExperienceSettings.Menu.ProfileStatus", 1, true) then
+        if ValueChangerTranslateListSkip[obj.Name] == true then
+            return true
+        end
+    end
+
+    -- Background.Settings.Pmax.PlayerCount
+    if string.find(path, "ExperienceSettings.Menu.Background.Settings.Pmax", 1, true)
+        and obj.Name == "PlayerCount" then
+        return true
+    end
+
+    -- AIOpenSource runtime/special fields.
+    if string.find(path, "ExperienceSettings.Menu.AIOpenSource", 1, true)
+        and DynamicTranslateListSkip[obj.Name] == true then
+        return true
+    end
+
+    -- Search API-generated metadata.
+    if string.find(path, "ExperienceSettings.Menu.Search.Page.InPage.ViewPage", 1, true)
+        and DynamicTranslateListSkip[obj.Name] == true then
+        return true
+    end
+
+    return false
+end
+
 local function IsValueChangerDynamic(obj, property)
     if not obj or not property then
         return false
@@ -4281,9 +4358,13 @@ local function IsValueChangerDynamic(obj, property)
         return true
     end
 
-    -- Behavior-based detection. Do not hardcode ProfileStatus or particular
-    -- field names. Only an actual runtime ValueChanger relationship marks it
-    -- as LIVE dynamic and therefore completely skipped by translation.
+    -- FIRST: remove known ValueChanger-driven runtime fields from the
+    -- Translate List before any translation state/cache/listener is created.
+    if IsValueChangerTranslateListSkip(obj) then
+        return true
+    end
+
+    -- SECOND: detect an actual runtime ValueChanger controller relation.
     return FindControllerRelation(obj, "ValueChanger") ~= nil
 end
 
@@ -5042,6 +5123,7 @@ local function ApplyCachedLanguage(language, onComplete)
                         -- appeared after the initial scan, remove this state so
                         -- no translation path can touch it.
                         if IsValueChangerDynamic(obj, property) then
+                            -- Absolute Translate List removal: do not queue it.
                             properties[property] = nil
                         elseif not IsLocalizationExcluded(obj, property)
                             and not IsDynamicTranslationTarget(obj, state, property)
