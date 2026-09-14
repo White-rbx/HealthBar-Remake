@@ -1,4 +1,4 @@
--- searcher... yes. 11.54
+-- searcher... yes. 11.55
 
 -- =====>> Saved Functions <<=====
 
@@ -1614,10 +1614,12 @@ local function normalizeScript(api, item)
 		return {
 			id = item._id,
 			name = item.title or item.name,
+
 			creator = item.owner
 				and item.owner.username,
 
-			description = item.description or item.features,
+			description = item.description
+				or item.features,
 
 			gameName = item.game
 				and item.game.name,
@@ -1632,15 +1634,21 @@ local function normalizeScript(api, item)
 			likes = item.likeCount or 0,
 			dislikes = item.dislikeCount or 0,
 
-			verified = item.isVerified == true,
+			-- ScriptBlox API fields
+			verified = item.verified == true,
+
 			patched = item.isPatched == true,
+
 			universal = item.isUniversal == true,
-			paid = item.isPaid == true,
-      scriptType =
-            item.isPaid == true
-            and "paid"
-            or "free",
-			key = item.keySystem == true,
+
+			paid = item.scriptType == "paid",
+
+			scriptType =
+				item.scriptType == "paid"
+				and "paid"
+				or "free",
+
+			key = item.key == true,
 
 			createdAt = item.createdAt,
 			updatedAt = item.updatedAt,
@@ -1663,7 +1671,9 @@ local function normalizeScript(api, item)
 
 		return {
 			id = item._id,
+
 			name = item.name,
+
 			creator = account
 				and account.username,
 
@@ -1707,7 +1717,9 @@ local function normalizeScript(api, item)
 
 		return {
 			id = item.id,
+
 			name = item.title,
+
 			creator = author
 				and author.username,
 
@@ -1723,31 +1735,34 @@ local function normalizeScript(api, item)
 				),
 
 			views = stats
-				and stats.views or 0,
+				and stats.views
+				or 0,
 
 			likes = stats
-				and stats.likes or 0,
+				and stats.likes
+				or 0,
 
 			dislikes = 0,
 
 			verified = false,
+
 			patched = flags
 				and flags.patched == true,
 
-			universal = item.type
-				== "universal",
+			universal =
+				item.type == "universal",
 
 			paid = flags
 				and flags.isPaid == true,
 
-      scriptType =
-    flags == nil
-    and nil
-    or (
-        flags.isPaid == true
-        and "paid"
-        or "free"
-    ),
+			scriptType =
+				flags == nil
+				and nil
+				or (
+					flags.isPaid == true
+					and "paid"
+					or "free"
+				),
 
 			key = flags
 				and flags.keySystem == true,
@@ -1775,7 +1790,9 @@ local function normalizeScript(api, item)
 
 		return {
 			id = item.id,
+
 			name = item.title,
+
 			creator = creator
 				and creator.username,
 
