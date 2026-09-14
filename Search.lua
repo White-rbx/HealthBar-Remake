@@ -1,4 +1,4 @@
--- searcher... yes. 11.53
+-- searcher... yes. 11.54
 
 -- =====>> Saved Functions <<=====
 
@@ -982,7 +982,7 @@ end
         filterType[key] =
             state
 
-        -- Change color only
+        -- Change color
         tweenSize(
             switch,
             nil,
@@ -990,6 +990,13 @@ end
             FILTER_COLORS[state],
             0.1
         )
+
+        -- Apply the selected filter immediately.
+        task.defer(function()
+            if refreshSearch and not loading then
+                refreshSearch()
+            end
+        end)
 
     end)
 
