@@ -1,4 +1,4 @@
--- Ok 4.96
+-- Ok 4.961
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -710,7 +710,7 @@ local MTB_X_CLOSED = 0.46
 local MTB_X_OPEN   = 0 -- open => X = 0
 
 -- hr sizes in px for open/close
-local HR_WIDTH_OPEN  = 311
+local HR_WIDTH_OPEN  = 354
 local HR_WIDTH_CLOSE = 90
 
 -- safe setter for mtb position (uses tweenObject if available)
