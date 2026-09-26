@@ -1,4 +1,4 @@
--- Ok 4.963
+-- Ok 4.964
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -640,7 +640,7 @@ editor.BackgroundTransparency = 1
 editor.Active = true
 editor.Visible = false
 editor.Parent = hr
-createUICorner(editor 1, 0,)
+createUICorner(editor 1, 0)
 
 
 -- Hamburger menu (hbm)
