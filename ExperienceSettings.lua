@@ -1,4 +1,4 @@
--- Ok 4.961
+-- Ok 4.962
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -630,6 +630,18 @@ Set.Active = true
 Set.Visible = false
 Set.Parent = hr
 createUICorner(Set, 1, 0)
+
+local editor = Instance.new("ImageButton")
+editor.Name = "a5_Editor"
+editor.Size = UDim2.new(0, 34, 0.8, 0)
+editor.Image = "rbxassetid://73984153023004"
+editor.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+editor.BackgroundTransparency = 1
+editor.Active = true
+editor.Visible = false
+editor.Parent = hr
+createUICorner(editor 1, 0,)
+
 
 -- Hamburger menu (hbm)
 local hbm = Instance.new("ImageButton")
