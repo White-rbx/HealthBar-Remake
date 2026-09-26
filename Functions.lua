@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.27
+-- So uhm just a script lol. 6.271
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -964,7 +964,7 @@ task.spawn(function()
 
 	local function checkHolderSize()
 		local x = holder.Size.X.Offset
-		if x > 353 then
+		if x > 311 then
 			sta.Visible = true
 		else
 			sta.Visible = false
@@ -1196,9 +1196,6 @@ local function updateStatusVisibility()
 		if offset == 311 then
 			pcall(function() statusBtn.Visible = true end)
 			setButtonOpen("a2_Status", true)
-		elseif offset > 311 then
-			pcall(function() statusBtn.Visible = false end)
-			setButtonOpen("a2_Status", false)
 		elseif offset == 90 or offset == 44 then
 			pcall(function() statusBtn.Visible = false end)
 			setButtonOpen("a2_Status", false)
