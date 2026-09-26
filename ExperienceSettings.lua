@@ -1,4 +1,4 @@
--- Ok 4.962
+-- Ok 4.963
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -821,7 +821,6 @@ hr.Size = UDim2.new(0, 300, 1, 0)
 -- [ HRP Watcher System - No Debug / Clean Production ]
 --========================================================--
 
-local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
