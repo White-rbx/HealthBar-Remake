@@ -1,4 +1,4 @@
-local v_ver = [[Editor 0.1 Test]]
+local v_ver = [[Editor 0.2 Test]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -313,15 +313,16 @@ local editor = menu.TopBar.Holder.a5_Editor
 
 local eback = Instance.new("Frame")
 eback.Name = "Editor"
-eback.Position = UDim2.new(0.1,0,1,0)
+eback.Position = UDim2.new(0.1,0,1.1,0)
 eback.Size = UDim2.new(0.8,0,0.8,0)
 eback.BorderMode = Enum.BorderMode.Inset
 eback.BorderSizePixel = 5
 eback.BackgroundColor3 = Color3.fromRGB(17,18,25)
-eback.BackgroundTransparency = 0.1
+eback.BackgroundTransparency = 1
 eback.Active = false
 eback.Parent = menu
 Corner(0,8,eback)
+ListLayout(eback, 0, 10, "HCenter", "VCenter", "SLayout", "FillV")
 
 local cs = Instance.new("TextLabel")
 cs.Name = "ComingSoon"
@@ -332,17 +333,18 @@ cs.TextScaled = true
 cs.Text = "Coming Soon!"
 cs.BorderMode = Enum.BorderMode.Inset
 cs.BorderSizePixel = 100
+cs.Visible = false
 cs.Parent = eback
 
 editor.MouseButton1Click:Connect(function()
   if state == true then
       editor.Image = "rbxassetid://73984153023004"
       state = false
-      Tween(eback, nil, UDim2.new(0.1,0,1,0), nil, 0.4)
+      Tween(eback, nil, UDim2.new(0.1,0,1.1,0), nil, 0.4)
   else
       editor.Image = "rbxassetid://108682872011804"
       state = true
-      Tween(eback, nil, UDim2.new(0.1,0,0.15,0), nil, 0.4)
+      Tween(eback, nil, UDim2.new(0.1,0,0.18,0), nil, 0.4)
   end
 end)
 
@@ -361,3 +363,43 @@ task.spawn(function()
 
 	holder:GetPropertyChangedSignal("Size"):Connect(checkHolderSize)
 end)
+
+local can = Instance.new("Frame")
+can.Name = "Page"
+can.Size = UDim2.new(1,0,0.8,0)
+can.BackgroundColor3 = eback.BackgroundColor3
+can.BackgroundTransparency = 0.1
+can.BorderMode = eback.BorderMode
+can.BorderSizePixel = 5
+can.Active = false
+can.Parent = eback
+Corner(0,8,can)
+
+local bottombar = Instance.new("CanvasGroup")
+bottombar.Name = "BottmBar"
+bottombar.Size = UDim2.new(0,500,0,50)
+bottombar.BackgroundColor3 = eback.BackgroundColor3
+bottombar.BackgroundTransparency = 0.1
+bottombar.BorderMode = eback.BorderMode
+bottombar.BorderSizePixel = 5
+bottombar.Active = false
+bottombar.Parent = eback
+Corner(1, 0,bottombar)
+
+local topic = Instance.new("TextLabel")
+topic.Name = "Topic"
+topic.Size = UDim2.new(0,200,0,35)
+topic.Position = UDim2.new(0,0,0,-45)
+topic.BackgroundColor3 = eback.BackgroundColor3
+topic.BackgroundTransparency = 0.1
+topic.Text = "<b>Unknow Page</b>"
+topic.TextScaled = true
+topic.TextColor3 = Color3.new(1,1,1)
+topic.RichText = true
+topic.BorderMode = eback.BorderMode
+topic.BorderSizePixel = 5
+topic.TextXAlignment = Enum.TextXAlignment.Left
+topic.Parent = can
+Corner(0,8,topic)
+
+topic.Text = "<b>Coming Soon!</b>"
