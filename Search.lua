@@ -1,4 +1,4 @@
--- searcher... yes. 11.56
+-- searcher... yes. 11.57
 
 -- =====>> Saved Functions <<=====
 
@@ -401,8 +401,9 @@ List.Parent = sea
 
 -----
 
-local Page = Instance.new("CanvasGroup")
+local Page = Instance.new("Frame")
 Page.Name = "Page"
+Page.ClipsDescendants = true
 Page.Size = UDim2.new(0,0,1,0)
 Page.BorderMode = Enum.BorderMode.Inset
 Page.BorderSizePixel = 5
