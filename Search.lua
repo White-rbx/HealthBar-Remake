@@ -1,4 +1,4 @@
--- searcher... yes. 11.55
+-- searcher... yes. 11.56
 
 -- =====>> Saved Functions <<=====
 
@@ -428,8 +428,9 @@ Book.BackgroundTransparency = 1
 Book.Visible = false
 Book.Parent = Page
 
-local vb = Instance.new("CanvasGroup")
+local vb = Instance.new("Frame")
 vb.Name = "ViewBookmark"
+vb.ClipsDescendants = true
 vb.Size = UDim2.new(1,0,1,0)
 vb.BackgroundColor3 = Color3.new(1,1,1)
 vb.BorderMode = Enum.BorderMode.Inset
@@ -439,8 +440,9 @@ vb.Parent = Book
 Corner(0,8,vb)
 Gradient(vb, -90,0,0, Color3.fromRGB(255,170,0), Color3.fromRGB(255,0,0))
 
-local vp = Instance.new("CanvasGroup")
+local vp = Instance.new("Frame")
 vp.Name = "ViewPage"
+vp.ClipsDescendants = true
 vp.Size = UDim2.new(1,0,1,0)
 vp.BackgroundColor3 = Color3.new(1,1,1)
 vp.BorderMode = Enum.BorderMode.Inset
