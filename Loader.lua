@@ -1,4 +1,4 @@
--- Loader script 6.26
+-- Loader script 6.27
 
 ------------------------------------------------------------------------------------------
 
@@ -5646,66 +5646,71 @@ Txt("« UI »", 255,255,255, false,nil,false,nil,nil,nil,nil,ins2)
 
 
 -- Set ExperienceSetting's ScreenGui ScreenInsets
-task.spawn(function()
-    local screenGui = game:GetService("CoreGui")
-        :WaitForChild("ExperienceSettings")
-    local menu = screenGui:WaitForChild("Menu")
 
-    local states = {
-        {
-            Name = "DeviceSafeInsets",
-            Enum = Enum.ScreenInsets.DeviceSafeInset
-        },
-        {
-            Name = "CoreUISafeInset",
-            Enum = Enum.ScreenInsets.CoreUISafeInset
-        },
-        {
-            Name = "None",
-            Enum = Enum.ScreenInsets.None
-        }
+local screenInsetStates = {
+    {
+        Name = "DeviceSafeInsets",
+        Enum = Enum.ScreenInsets.DeviceSafeInset
+    },
+    {
+        Name = "CoreUISafeInset",
+        Enum = Enum.ScreenInsets.CoreUISafeInset
+    },
+    {
+        Name = "None",
+        Enum = Enum.ScreenInsets.None
     }
+}
 
-    local current = 1
+local screenInsetCurrent = 1
 
-    -- Find saved state
-    for i, state in ipairs(states) do
-        if state.Name == Data.UI.ScreenInsets then
-            current = i
-            break
+for i, state in ipairs(screenInsetStates) do
+    if state.Name == Data.UI.ScreenInsets then
+        screenInsetCurrent = i
+        break
+    end
+end
+
+Txt(
+    "Set ExperienceSetting's ScreenGui",
+    255,255,255,
+
+    false, nil,
+
+    true,
+    screenInsetStates[screenInsetCurrent].Name,
+
+    nil,
+
+    function(box, btn)
+        screenInsetCurrent =
+            screenInsetCurrent % #screenInsetStates + 1
+
+        local state = screenInsetStates[screenInsetCurrent]
+
+        Data.UI.ScreenInsets = state.Name
+
+        if MENU_INSTANCE then
+            MENU_INSTANCE.ScreenInsets = state.Enum
         end
+
+        btn.Text = state.Name
+
+        saveData(Data)
+    end,
+
+    nil,
+    ins2
+)
+
+-- Apply saved state when Menu exists
+task.spawn(function()
+    while not MENU_INSTANCE do
+        task.wait()
     end
 
-    -- Apply saved ScreenInsets
-    screenGui.ScreenInsets = states[current].Enum
-
-    Txt(
-        "Set ExperienceSetting's ScreenGui",
-        255,255,255,
-
-        false, nil,
-
-        true,
-        states[current].Name,
-
-        nil,
-
-        function(box, btn)
-            current = current % #states + 1
-
-            local state = states[current]
-
-            Data.UI.ScreenInsets = state.Name
-            screenGui.ScreenInsets = state.Enum
-
-            btn.Text = state.Name
-
-            saveData(Data)
-        end,
-
-        nil,
-        ins2
-    )
+    MENU_INSTANCE.ScreenInsets =
+        screenInsetStates[screenInsetCurrent].Enum
 end)
 
 local function parseLayoutOrder(value)
