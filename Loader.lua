@@ -1,4 +1,4 @@
--- Loader script 6.27
+-- Loader script 6.271
 
 ------------------------------------------------------------------------------------------
 
@@ -5650,11 +5650,11 @@ Txt("« UI »", 255,255,255, false,nil,false,nil,nil,nil,nil,ins2)
 local screenInsetStates = {
     {
         Name = "DeviceSafeInsets",
-        Enum = Enum.ScreenInsets.DeviceSafeInset
+        Enum = Enum.ScreenInsets.DeviceSafeInsets
     },
     {
         Name = "CoreUISafeInset",
-        Enum = Enum.ScreenInsets.CoreUISafeInset
+        Enum = Enum.ScreenInsets.CoreUISafeInsets
     },
     {
         Name = "None",
