@@ -1,4 +1,4 @@
--- Loader script 6.271
+-- Loader script 6.272
 
 ------------------------------------------------------------------------------------------
 
@@ -305,7 +305,7 @@ local DEFAULT_DATA = {
         CrosshairID = "rbxassetid://118624373632520",
         ToolCrosshairID = "rbxassetid://73868291781876",
 		ScreenInsets = "DeviceSafeInsets",
-		ScreenLayoutOrder = math.huge
+		DisplayOrder = math.huge
     }
 }
 
@@ -5713,7 +5713,15 @@ task.spawn(function()
         screenInsetStates[screenInsetCurrent].Enum
 end)
 
-local function parseLayoutOrder(value)
+-- Screen.DisplayOrder
+
+local function parseDisplayOrder(value)
+    if value == math.huge
+        or value == math.mininteger
+        or value == math.maxinteger then
+        return value
+    end
+
     value = tostring(value):lower():gsub("%s+", "")
 
     if value == "math.huge" then
@@ -5727,35 +5735,7 @@ local function parseLayoutOrder(value)
     return tonumber(value)
 end
 
-local function layoutOrderText(value)
-    if value == math.huge then
-        return "math.huge"
-    elseif value == math.mininteger then
-        return "math.mininteger"
-    elseif value == math.maxinteger then
-        return "math.maxinteger"
-    end
-
-    return tostring(value)
-end
-
--- Screen.LayoutOrder
-
-local function parseLayoutOrder(value)
-    value = tostring(value):lower():gsub("%s+", "")
-
-    if value == "math.huge" then
-        return math.huge
-    elseif value == "math.mininteger" then
-        return math.mininteger
-    elseif value == "math.maxinteger" then
-        return math.maxinteger
-    end
-
-    return tonumber(value)
-end
-
-local function layoutOrderText(value)
+local function displayOrderText(value)
     if value == math.huge then
         return "math.huge"
     elseif value == math.mininteger then
@@ -5768,39 +5748,39 @@ local function layoutOrderText(value)
 end
 
 Txt(
-    "Screen.LayoutOrder",
+    "Screen.DisplayOrder",
     255,255,255,
 
     true,
-    layoutOrderText(Data.UI.ScreenLayoutOrder or math.huge),
+    displayOrderText(Data.UI.DisplayOrder or math.huge),
 
     true,
     "Save",
 
     -- LIVE PREVIEW
     function(box)
-        local value = parseLayoutOrder(box.Text)
+        local value = parseDisplayOrder(box.Text)
 
         if value ~= nil and MENU_INSTANCE then
-            MENU_INSTANCE.LayoutOrder = value
+            MENU_INSTANCE.DisplayOrder = value
         end
     end,
 
     -- SAVE
     function(box, btn)
-        local value = parseLayoutOrder(box.Text)
+        local value = parseDisplayOrder(box.Text)
 
         if value == nil then
-            box.Text = layoutOrderText(
-                Data.UI.ScreenLayoutOrder or math.huge
+            box.Text = displayOrderText(
+                Data.UI.DisplayOrder or math.huge
             )
             return
         end
 
-        Data.UI.ScreenLayoutOrder = value
+        Data.UI.DisplayOrder = value
 
         if MENU_INSTANCE then
-            MENU_INSTANCE.LayoutOrder = value
+            MENU_INSTANCE.DisplayOrder = value
         end
 
         saveData(Data)
