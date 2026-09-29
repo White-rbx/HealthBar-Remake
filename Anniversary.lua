@@ -1,4 +1,4 @@
-local v_ver = [[Anniversary 1.5 yay]]
+local v_ver = [[Anniversary 1.6 yay]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -291,8 +291,9 @@ local loc = {
 
 local menu = s.CoreGui:WaitForChild("ExperienceSettings").Menu
 
-local main = Instance.new("CanvasGroup")
+local main = Instance.new("Frame")
 main.Name = "PopUp"
+main.ClipsDescendants = true
 main.Position = UDim2.new(0.35,0,1,0) -- Y Scale Open = 0.23
 main.Size = UDim2.new(0.3,0,0.6,0)
 main.BackgroundTransparency = 1
