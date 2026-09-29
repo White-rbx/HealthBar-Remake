@@ -1,4 +1,4 @@
--- Loader script 6.25
+-- Loader script 6.26
 
 ------------------------------------------------------------------------------------------
 
@@ -304,7 +304,8 @@ local DEFAULT_DATA = {
         DraggableUI = false,
         CrosshairID = "rbxassetid://118624373632520",
         ToolCrosshairID = "rbxassetid://73868291781876",
-		ScreenInsets = "DeviceSafeInsets"
+		ScreenInsets = "DeviceSafeInsets",
+		ScreenLayoutOrder = math.huge
     }
 }
 
@@ -5707,7 +5708,110 @@ task.spawn(function()
     )
 end)
 
+local function parseLayoutOrder(value)
+    value = tostring(value):lower():gsub("%s+", "")
 
+    if value == "math.huge" then
+        return math.huge
+    elseif value == "math.mininteger" then
+        return math.mininteger
+    elseif value == "math.maxinteger" then
+        return math.maxinteger
+    end
+
+    return tonumber(value)
+end
+
+local function layoutOrderText(value)
+    if value == math.huge then
+        return "math.huge"
+    elseif value == math.mininteger then
+        return "math.mininteger"
+    elseif value == math.maxinteger then
+        return "math.maxinteger"
+    end
+
+    return tostring(value)
+end
+
+-- Screen.LayoutOrder
+
+local function parseLayoutOrder(value)
+    value = tostring(value):lower():gsub("%s+", "")
+
+    if value == "math.huge" then
+        return math.huge
+    elseif value == "math.mininteger" then
+        return math.mininteger
+    elseif value == "math.maxinteger" then
+        return math.maxinteger
+    end
+
+    return tonumber(value)
+end
+
+local function layoutOrderText(value)
+    if value == math.huge then
+        return "math.huge"
+    elseif value == math.mininteger then
+        return "math.mininteger"
+    elseif value == math.maxinteger then
+        return "math.maxinteger"
+    end
+
+    return tostring(value)
+end
+
+Txt(
+    "Screen.LayoutOrder",
+    255,255,255,
+
+    true,
+    layoutOrderText(Data.UI.ScreenLayoutOrder or math.huge),
+
+    true,
+    "Save",
+
+    -- LIVE PREVIEW
+    function(box)
+        local value = parseLayoutOrder(box.Text)
+
+        if value ~= nil and MENU_INSTANCE then
+            MENU_INSTANCE.LayoutOrder = value
+        end
+    end,
+
+    -- SAVE
+    function(box, btn)
+        local value = parseLayoutOrder(box.Text)
+
+        if value == nil then
+            box.Text = layoutOrderText(
+                Data.UI.ScreenLayoutOrder or math.huge
+            )
+            return
+        end
+
+        Data.UI.ScreenLayoutOrder = value
+
+        if MENU_INSTANCE then
+            MENU_INSTANCE.LayoutOrder = value
+        end
+
+        saveData(Data)
+
+        btn.TextColor3 = Color3.fromRGB(0,255,0)
+
+        task.delay(0.35, function()
+            if btn and btn.Parent then
+                btn.TextColor3 = Color3.fromRGB(255,255,255)
+            end
+        end)
+    end,
+
+    nil,
+    ins2
+)
 
 
 
