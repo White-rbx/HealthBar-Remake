@@ -1,5 +1,4 @@
--- Loader script 6.23
--- Translation System: 6.11 Static-Direct + Dynamic-Only Buttons
+-- Loader script 6.25
 
 ------------------------------------------------------------------------------------------
 
@@ -304,7 +303,8 @@ local DEFAULT_DATA = {
         UIScale = 1,
         DraggableUI = false,
         CrosshairID = "rbxassetid://118624373632520",
-        ToolCrosshairID = "rbxassetid://73868291781876"
+        ToolCrosshairID = "rbxassetid://73868291781876",
+		ScreenInsets = "DeviceSafeInsets"
     }
 }
 
@@ -5499,6 +5499,8 @@ end)
 -- One-shot translation only. Dynamic text is not re-translated on a timer.
 -- New GUI objects are handled by DescendantAdded.
 
+Txt("« Languages (Not 100%) »", 255,255,255, false,nil,false,nil,nil,nil,nil,ins2)
+
 local EngBtn = Txt(
     "🇺🇸 English",
     255,255,255,
@@ -5638,6 +5640,95 @@ L.RefreshLanguageButtons = function()
 end
 
 L.RefreshLanguageButtons()
+
+Txt("« UI »", 255,255,255, false,nil,false,nil,nil,nil,nil,ins2)
+
+
+-- Set ExperienceSetting's ScreenGui ScreenInsets
+task.spawn(function()
+    local screenGui = game:GetService("CoreGui")
+        :WaitForChild("ExperienceSettings")
+    local menu = screenGui:WaitForChild("Menu")
+
+    local states = {
+        {
+            Name = "DeviceSafeInsets",
+            Enum = Enum.ScreenInsets.DeviceSafeInset
+        },
+        {
+            Name = "CoreUISafeInset",
+            Enum = Enum.ScreenInsets.CoreUISafeInset
+        },
+        {
+            Name = "None",
+            Enum = Enum.ScreenInsets.None
+        }
+    }
+
+    local current = 1
+
+    -- Find saved state
+    for i, state in ipairs(states) do
+        if state.Name == Data.UI.ScreenInsets then
+            current = i
+            break
+        end
+    end
+
+    -- Apply saved ScreenInsets
+    screenGui.ScreenInsets = states[current].Enum
+
+    Txt(
+        "Set ExperienceSetting's ScreenGui",
+        255,255,255,
+
+        false, nil,
+
+        true,
+        states[current].Name,
+
+        nil,
+
+        function(box, btn)
+            current = current % #states + 1
+
+            local state = states[current]
+
+            Data.UI.ScreenInsets = state.Name
+            screenGui.ScreenInsets = state.Enum
+
+            btn.Text = state.Name
+
+            saveData(Data)
+        end,
+
+        nil,
+        ins2
+    )
+end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 -- This only way the last toggle
 local StarterGui = game:GetService("StarterGui")
