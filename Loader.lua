@@ -1,4 +1,4 @@
--- Loader script 6.272
+-- Loader script 6.273
 
 ------------------------------------------------------------------------------------------
 
@@ -5642,7 +5642,7 @@ end
 
 L.RefreshLanguageButtons()
 
-Txt("« UI »", 255,255,255, false,nil,false,nil,nil,nil,nil,ins2)
+Txt("« Debug »", 255,255,255, false,nil,false,nil,nil,nil,nil,ins2)
 
 
 -- Set ExperienceSetting's ScreenGui ScreenInsets
