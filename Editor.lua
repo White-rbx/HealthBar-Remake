@@ -1,4 +1,4 @@
-local v_ver = [[Editor 0.2 Test]]
+local v_ver = [[Editor 0.3 Test]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -289,7 +289,7 @@ local loc = {
 
 ---------------------------------------------------------------------------------------
 
-local function Tween(obj, size, pos, backcol, time)
+local function Tween(obj, size, pos, backcol, tra, time)
     local tween = s.TweenService:Create(
         obj,
         TweenInfo.new(
@@ -300,6 +300,7 @@ local function Tween(obj, size, pos, backcol, time)
         {Size = size,
         Position = pos,
         BackgroundColor3 = backcol,
+        BackgroundTransparency = tra,
         }
     )
 
@@ -324,27 +325,15 @@ eback.Parent = menu
 Corner(0,8,eback)
 ListLayout(eback, 0, 10, "HCenter", "VCenter", "SLayout", "FillV")
 
-local cs = Instance.new("TextLabel")
-cs.Name = "ComingSoon"
-cs.Size = UDim2.new(1,0,1,0)
-cs.BackgroundTransparency = 1
-cs.TextColor3 = Color3.new(1,1,1)
-cs.TextScaled = true
-cs.Text = "Coming Soon!"
-cs.BorderMode = Enum.BorderMode.Inset
-cs.BorderSizePixel = 100
-cs.Visible = false
-cs.Parent = eback
-
 editor.MouseButton1Click:Connect(function()
   if state == true then
       editor.Image = "rbxassetid://73984153023004"
       state = false
-      Tween(eback, nil, UDim2.new(0.1,0,1.1,0), nil, 0.4)
+      Tween(eback, nil, UDim2.new(0.1,0,1.1,0), nil,nil, 0.4)
   else
       editor.Image = "rbxassetid://108682872011804"
       state = true
-      Tween(eback, nil, UDim2.new(0.1,0,0.18,0), nil, 0.4)
+      Tween(eback, nil, UDim2.new(0.1,0,0.18,0), nil,nil, 0.4)
   end
 end)
 
@@ -370,14 +359,16 @@ can.Size = UDim2.new(1,0,0.8,0)
 can.BackgroundColor3 = eback.BackgroundColor3
 can.BackgroundTransparency = 0.1
 can.BorderMode = eback.BorderMode
-can.BorderSizePixel = 5
+can.BorderSizePixel = 10
 can.Active = false
 can.Parent = eback
 Corner(0,8,can)
 
-local bottombar = Instance.new("CanvasGroup")
+local bottombar = Instance.new("Frame")
 bottombar.Name = "BottmBar"
-bottombar.Size = UDim2.new(0,500,0,50)
+bottombar.ClipsDescendants = true
+bottombar.AutomaticSize = Enum.AutomaticSize.X
+bottombar.Size = UDim2.new(0,0,0,50)
 bottombar.BackgroundColor3 = eback.BackgroundColor3
 bottombar.BackgroundTransparency = 0.1
 bottombar.BorderMode = eback.BorderMode
@@ -385,11 +376,12 @@ bottombar.BorderSizePixel = 5
 bottombar.Active = false
 bottombar.Parent = eback
 Corner(1, 0,bottombar)
+ListLayout(bottombar, 0, 5, "HCenter", "VCenter", "SLayout", "FillH")
 
 local topic = Instance.new("TextLabel")
 topic.Name = "Topic"
 topic.Size = UDim2.new(0,200,0,35)
-topic.Position = UDim2.new(0,0,0,-45)
+topic.Position = UDim2.new(0,0,0,-50)
 topic.BackgroundColor3 = eback.BackgroundColor3
 topic.BackgroundTransparency = 0.1
 topic.Text = "<b>Unknow Page</b>"
@@ -402,4 +394,89 @@ topic.TextXAlignment = Enum.TextXAlignment.Left
 topic.Parent = can
 Corner(0,8,topic)
 
-topic.Text = "<b>Coming Soon!</b>"
+topic.Text = "<b>Information</b>"
+
+local incan = Instance.new("Frame")
+incan.Name = "InsideCanvas"
+incan.ClipsDescendants = true
+incan.Size = UDim2.new(1,0,1,0)
+incan.BackgroundTransparency = 1
+incan.BorderSizePixel = 0
+incan.Active = false
+incan.Parent = can
+
+local incan2 = Instance.new("Frame")
+incan2.Name = "SecondInsideCanvasNoClip"
+incan2.Size = UDim2.new(1,0,1,0)
+incan2.Position = UDim2.new(0,0,0,0)
+incan2.BackgroundTransparency = 1
+incan2.BorderSizePixel = 0
+incan2.Active = false
+incan2.Parent = incan
+ListLayout(incan2, 0, 0, "HLeft", "VCenter", "SLayout", "FillH")
+
+local pageButtons = {}
+
+local function addpage(vtopic, vtopic2, image, udim2)
+    local Frame = Instance.new("Frame")
+    Frame.Name = tostring(vtopic)
+    Frame.ClipsDescendants = false
+    Frame.Active = false
+    Frame.Size = UDim2.new(1,0,1,0)
+    Frame.BackgroundTransparency = 1
+    Frame.Parent = incan2
+
+    local Button = Instance.new("ImageButton")
+    Button.Name = tostring(vtopic)
+    Button.Size = UDim2.new(0,40,0,40)
+    Button.BackgroundColor3 = Color3.new(1,1,1)
+    Button.BackgroundTransparency = 1
+    Button.Image = "rbxassetid://" .. tonumber(image)
+    Button.Parent = bottombar
+    Corner(1,0,Button)
+
+    table.insert(pageButtons, Button)
+
+    Button.MouseButton1Click:Connect(function()
+        for _, otherButton in ipairs(pageButtons) do
+            Tween(otherButton, nil,nil,nil, 1, 0.2)
+        end
+
+        Tween(Button, nil,nil,nil, 0.5, 0.2)
+
+        Tween(incan2, nil, udim2, nil,nil, 0.4)
+        topic.Text = "<b>" .. tostring(vtopic2) .. "</b>"
+    end)
+
+  return Frame
+end
+
+addpage("Test", "Information", 76063966669126, UDim2.new(0,0,0,0))
+addpage("Editor", "Editor", 79382593376107, UDim2.new(-1,0,0,0))
+addpage("Device", "Device Exeplorer", 77415773465628, UDim2.new(-1,0,0,0))
+addpage("Dex", "Dex Exeplorer", 73941302443097, UDim2.new(-2,0,0,0))
+addpage("PlayersList", "Learderboard", 133148371698132, UDim2.new(-4,0,0,0))
+addpage("ServerList", "ServerList", 124257243656869, UDim2.new(-5,0,0,0))
+addpage("About", "About", 128234289075456, UDim2.new(-6,0,0,0))
+
+local ic2 = {
+  Test = incan2.Test,
+  Editor = incan2.Editor,
+  Device = incan2.Device,
+  Dex = incan2.Dex,
+  PlayersList = incan2.PlayersList,
+  ServerList = incan2.ServerList,
+  About = incan2.About,
+}
+
+local cs = Instance.new("TextLabel")
+cs.Name = "ComingSoon"
+cs.Size = UDim2.new(1,0,1,0)
+cs.BackgroundTransparency = 1
+cs.TextColor3 = Color3.new(1,1,1)
+cs.TextScaled = true
+cs.Text = "Underdevelopment, will be available soon!"
+cs.BorderMode = Enum.BorderMode.Inset
+cs.BorderSizePixel = 100
+cs.Visible = true
+cs.Parent = ic2.Test
