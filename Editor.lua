@@ -1,4 +1,4 @@
-local v_ver = [[Editor 0.3 Test]]
+local v_ver = [[Editor 0.4 Test]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -378,10 +378,20 @@ bottombar.Parent = eback
 Corner(1, 0,bottombar)
 ListLayout(bottombar, 0, 5, "HCenter", "VCenter", "SLayout", "FillH")
 
+local icon = Instance.new("ImageLabel")
+icon.Name = "Icon"
+icon.Size = UDim2.new(0,35,0,35)
+icon.Position = UDim2.new(0,0,0,-50)
+icon.BackgroundColor3 = eback.BackgroundColor3
+icon.BackgroundTransparency = 0.1
+icon.Image = "rbxassetid://76063966669126"
+icon.Parent = can
+Corner(0,8,icon)
+
 local topic = Instance.new("TextLabel")
 topic.Name = "Topic"
 topic.Size = UDim2.new(0,200,0,35)
-topic.Position = UDim2.new(0,0,0,-50)
+topic.Position = UDim2.new(0,40,0,-50)
 topic.BackgroundColor3 = eback.BackgroundColor3
 topic.BackgroundTransparency = 0.1
 topic.Text = "<b>Unknow Page</b>"
@@ -424,6 +434,7 @@ local function addpage(vtopic, vtopic2, image, udim2)
     Frame.Active = false
     Frame.Size = UDim2.new(1,0,1,0)
     Frame.BackgroundTransparency = 1
+    Frame.BorderSizePixel = 0
     Frame.Parent = incan2
 
     local Button = Instance.new("ImageButton")
@@ -446,6 +457,7 @@ local function addpage(vtopic, vtopic2, image, udim2)
 
         Tween(incan2, nil, udim2, nil,nil, 0.4)
         topic.Text = "<b>" .. tostring(vtopic2) .. "</b>"
+        icon.Image = "rbxassetid://".. tonumber(image)
     end)
 
   return Frame
@@ -453,11 +465,12 @@ end
 
 addpage("Test", "Information", 76063966669126, UDim2.new(0,0,0,0))
 addpage("Editor", "Editor", 79382593376107, UDim2.new(-1,0,0,0))
-addpage("Device", "Device Exeplorer", 77415773465628, UDim2.new(-1,0,0,0))
-addpage("Dex", "Dex Exeplorer", 73941302443097, UDim2.new(-2,0,0,0))
+addpage("Device", "Device Exeplorer", 77415773465628, UDim2.new(-2,0,0,0))
+addpage("Dex", "Dex Exeplorer", 73941302443097, UDim2.new(-3,0,0,0))
 addpage("PlayersList", "Learderboard", 133148371698132, UDim2.new(-4,0,0,0))
 addpage("ServerList", "ServerList", 124257243656869, UDim2.new(-5,0,0,0))
-addpage("About", "About", 128234289075456, UDim2.new(-6,0,0,0))
+addpage("Settings", "Settings", 109951202940492, UDim2.new(-6,0,0,0))
+addpage("About", "About", 128234289075456, UDim2.new(-7,0,0,0))
 
 local ic2 = {
   Test = incan2.Test,
