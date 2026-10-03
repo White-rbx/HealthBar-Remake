@@ -1,4 +1,4 @@
--- Loader script 6.273
+-- Loader script 6.275
 
 ------------------------------------------------------------------------------------------
 
@@ -5715,16 +5715,18 @@ end)
 
 -- Screen.DisplayOrder
 
+local DEFAULT_DISPLAY_ORDER = 2147483646
+
 local function parseDisplayOrder(value)
-    if value == math.huge
-        or value == math.mininteger
-        or value == math.maxinteger then
+    if type(value) == "number" then
         return value
     end
 
     value = tostring(value):lower():gsub("%s+", "")
 
-    if value == "math.huge" then
+    if value == "default" then
+        return DEFAULT_DISPLAY_ORDER
+    elseif value == "math.huge" then
         return math.huge
     elseif value == "math.mininteger" then
         return math.mininteger
@@ -5736,7 +5738,9 @@ local function parseDisplayOrder(value)
 end
 
 local function displayOrderText(value)
-    if value == math.huge then
+    if value == DEFAULT_DISPLAY_ORDER then
+        return "Default"
+    elseif value == math.huge then
         return "math.huge"
     elseif value == math.mininteger then
         return "math.mininteger"
@@ -5752,7 +5756,7 @@ Txt(
     255,255,255,
 
     true,
-    displayOrderText(Data.UI.DisplayOrder or math.huge),
+    displayOrderText(Data.UI.DisplayOrder or DEFAULT_DISPLAY_ORDER),
 
     true,
     "Save",
@@ -5772,7 +5776,7 @@ Txt(
 
         if value == nil then
             box.Text = displayOrderText(
-                Data.UI.DisplayOrder or math.huge
+                Data.UI.DisplayOrder or DEFAULT_DISPLAY_ORDER
             )
             return
         end
