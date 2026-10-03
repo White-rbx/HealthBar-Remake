@@ -1,4 +1,4 @@
-local v_ver = [[Editor 0.4 Test]]
+local v_ver = [[Editor 0.9 Test]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -310,6 +310,109 @@ end
 
 local state = false
 local menu = game:GetService("CoreGui"):WaitForChild("ExperienceSettings").Menu
+
+local notif = Instance.new("Frame")
+notif.Name = "Notification"
+notif.ClipsDescendants = true
+notif.Size = UDim2.new(1,0,0.4,0)
+notif.Position = UDim2.new(0,0,0.11,0)
+notif.BorderMode = Enum.BorderMode.Inset
+notif.BorderSizePixel = 10
+notif.BackgroundTransparency = 1
+notif.Active = false
+notif.Parent = menu
+ListLayout(notif, 0,5,"HCenter","VTop","SLayout","FillV")
+
+
+local function ding(txt, time, R, G, B)
+    local duration = tonumber(time)
+
+    local main = Instance.new("Frame")
+    main.Name = "Main"
+    main.ClipsDescendants = true
+    main.AutomaticSize = Enum.AutomaticSize.XY
+    main.BackgroundTransparency = 1
+    main.Active = false
+    main.Parent = notif
+    Corner(0,5,main)
+
+    local scale = Instance.new("UIScale")
+    scale.Scale = 0
+    scale.Parent = main
+
+    local body = Instance.new("Frame")
+    body.Name = "Body"
+    body.ClipsDescendants = true
+    body.AutomaticSize = Enum.AutomaticSize.XY
+    body.BackgroundColor3 = Color3.new(0,0,0)
+    body.BackgroundTransparency = 0.5
+    body.BorderMode = Enum.BorderMode.Inset
+    body.BorderSizePixel = 10
+    body.Active = false
+    body.Parent = main
+    Corner(0,5,body)
+
+    local s_body = Stroke(body, "ASMBorder", R or 255, G or 255, B or 255, "LJMRound", 2, 0)
+    s_body.BorderStrokePosition = Enum.BorderStrokePosition.Inner
+
+    local text = Instance.new("TextLabel")
+    text.Name = "Text"
+    text.BackgroundTransparency = 1
+    text.AutomaticSize = Enum.AutomaticSize.XY
+    text.TextSize = 12
+    text.TextWrapped = true
+    text.RichText = true
+    text.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+    text.Text = txt == nil and "<b>Failed</b>: Uhm.. I forgot" or tostring(txt)
+    text.Parent = body
+
+    local timer = Instance.new("Frame")
+    timer.Name = "Timer"
+    timer.Size = UDim2.new(1,0,0,5)
+    timer.Position = UDim2.new(0,0,1,-5)
+    timer.BackgroundColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
+    timer.BorderSizePixel = 0
+    timer.Active = false
+    timer.Parent = main
+
+    -- Open: UIScale 0 -> 1
+    s.TweenService:Create(
+        scale,
+        TweenInfo.new(0.2, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
+        {Scale = 1}
+    ):Play()
+
+    -- Countdown (nil or 0 = permanent)
+    if duration and duration > 0 then
+        local timerTween = s.TweenService:Create(
+            timer,
+            TweenInfo.new(duration, Enum.EasingStyle.Linear),
+            {Size = UDim2.new(0,0,0,5)}
+        )
+
+        timerTween:Play()
+
+        task.delay(duration, function()
+            if not main.Parent then
+                return
+            end
+
+            -- Close: UIScale 1 -> 0
+            local closeTween = s.TweenService:Create(
+                scale,
+                TweenInfo.new(0.2, Enum.EasingStyle.Bounce, Enum.EasingDirection.In),
+                {Scale = 0}
+            )
+
+            closeTween:Play()
+            closeTween.Completed:Wait()
+
+            main:Destroy()
+        end)
+    end
+end
+
+
 local editor = menu.TopBar.Holder.a5_Editor
 
 local eback = Instance.new("Frame")
@@ -493,3 +596,367 @@ cs.BorderMode = Enum.BorderMode.Inset
 cs.BorderSizePixel = 100
 cs.Visible = true
 cs.Parent = ic2.Test
+
+-- >> Editor << --
+
+local e_sc = Instance.new("ScrollingFrame")
+e_sc.Name = "Tabs"
+e_sc.Size = UDim2.new(0.2,0,1,0)
+e_sc.BorderMode = Enum.BorderMode.Inset
+e_sc.BorderSizePixel = 5
+e_sc.BackgroundColor3 = Color3.fromRGB(37,37,37)
+e_sc.CanvasSize = UDim2.new(0,0,0,0)
+e_sc.ScrollBarThickness = 0
+e_sc.ScrollingDirection = Enum.ScrollingDirection.Y
+e_sc.AutomaticCanvasSize = Enum.AutomaticSize.Y
+e_sc.Parent = ic2.Editor
+Corner(0,8,e_sc)
+ListLayout(e_sc,0,3,"HCenter","VTop","SLayout","FillV")
+
+local selectTab = {}
+
+local function addtab(file)
+    local morev = false
+    local defaultTitle = "Script.lua"
+
+    local btn = Instance.new("TextButton")
+    btn.Name = tostring(file or defaultTitle)
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.BorderMode = Enum.BorderMode.Inset
+    btn.BorderSizePixel = 5
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.AutomaticSize = Enum.AutomaticSize.Y
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.BackgroundColor3 = Color3.fromRGB(79, 79, 79)
+    btn.Text = ""
+    btn.Parent = e_sc
+    Corner(0, 5, btn)
+
+  local options = Instance.new("ScrollingFrame")
+  options.Name = "Options"
+  options.Size = UDim2.new(1,0,0,0)
+  options.Position = UDim2.new(0,0,0,30)
+  options.BackgroundColor3 = Color3.fromRGB(131,131,131)
+  options.Visible = false
+  options.BorderMode = Enum.BorderMode.Inset
+  options.BorderSizePixel = 5
+  options.CanvasSize = UDim2.new(0,0,0,0)
+  options.AutomaticCanvasSize = Enum.AutomaticSize.Y
+  options.ScrollingDirection = Enum.ScrollingDirection.Y
+  options.ScrollBarThickness = 0
+  options.Parent = btn
+  Corner(0,5,options)
+  ListLayout(options,0,3,"HLeft","VTop","SLayout","FillV")
+
+  local more = Instance.new("TextButton")
+  more.Name = "more"
+  more.Size = UDim2.new(0,25,0,25)
+  more.Position = UDim2.new(1,-25,0,0)
+  more.BackgroundColor3 = Color3.fromRGB(121,121,121)
+  more.BorderMode = Enum.BorderMode.Inset
+  more.BorderSizePixel = 3
+  more.TextScaled = true
+  more.TextColor3 = Color3.new(1,1,1)
+  more.Text = "•••"
+  more.Parent = btn
+  Corner(0, 3, more)
+
+  more.MouseButton1Click:Connect(function()
+    if morev == false then
+        morev = true
+        options.Visible = true
+        more.Text = "✓"
+        more.TextColor3 = Color3.new(0,0,0)
+        Tween(options, UDim2.new(1,0,0,150),nil,nil,nil, 0.2)
+        Tween(more, nil,nil,Color3.new(0,1,0),nil, 0.2)
+      else
+        morev = false
+        more.Text = "•••"
+        more.TextColor3 = Color3.new(1,1,1)
+        Tween(options, UDim2.new(1,0,0,0),nil,nil,nil, 0.2)
+        Tween(more, nil,nil,Color3.fromRGB(121,121,121),nil, 0.2).Completed:Wait()
+        options.Visible = false
+      end
+    end)
+    
+  local del = Instance.new("TextButton")
+  del.Name = "Delete"
+  del.Size = UDim2.new(1,0,0,25)
+  del.BackgroundColor3 = Color3.fromRGB(63, 0, 0)
+  del.BorderMode = Enum.BorderMode.Inset
+  del.BorderSizePixel = 3
+  del.TextScaled = true
+  del.TextColor3 = Color3.new(1,0,0)
+  del.Text = "Delete"
+  del.Parent = options
+  Corner(0, 3, del)
+
+  local dup = Instance.new("TextButton")
+  dup.Name = "Duplicate"
+  dup.Size = UDim2.new(1,0,0,25)
+  dup.BackgroundColor3 = Color3.fromRGB(170, 255, 255)
+  dup.BorderMode = Enum.BorderMode.Inset
+  dup.BorderSizePixel = 3
+  dup.TextScaled = true
+  dup.TextColor3 = Color3.fromRGB(0, 85, 255)
+  dup.Text = "Duplicate"
+  dup.Parent = options
+  Corner(0, 3, dup)
+
+  local exe = Instance.new("TextButton")
+  exe.Name = "Execute"
+  exe.Size = UDim2.new(1,0,0,25)
+  exe.BackgroundColor3 = Color3.fromRGB(85, 255, 127)
+  exe.BorderMode = Enum.BorderMode.Inset
+  exe.BorderSizePixel = 3
+  exe.TextScaled = true
+  exe.TextColor3 = Color3.fromRGB(0,170,0)
+  exe.Text = "Execute"
+  exe.Parent = options
+  Corner(0, 3, exe)
+
+  local cop = Instance.new("TextButton")
+  cop.Name = "Copy"
+  cop.Size = UDim2.new(1,0,0,25)
+  cop.BackgroundColor3 = Color3.fromRGB(255, 255, 127)
+  cop.BorderMode = Enum.BorderMode.Inset
+  cop.BorderSizePixel = 3
+  cop.TextScaled = true
+  cop.TextColor3 = Color3.fromRGB(255, 170, 0)
+  cop.Text = "Copy"
+  cop.Parent = options
+  Corner(0, 3, cop)
+
+  local loc = Instance.new("TextButton")
+  loc.Name = "LockEditable"
+  loc.Size = UDim2.new(1,0,0,25)
+  loc.BackgroundColor3 = Color3.fromRGB(0,0,0)
+  loc.BorderMode = Enum.BorderMode.Inset
+  loc.BorderSizePixel = 3
+  loc.TextScaled = true
+  loc.TextColor3 = Color3.fromRGB(0,255,0) -- unlock = lime; lock = red
+  loc.Text = "Lock Editable" -- unlock = "Lock Editable"; lock = "Unlock Editable"
+  loc.Parent = options
+  Corner(0, 3, loc)
+
+  local bac = Instance.new("TextBox")
+  bac.Name = "BackgroundColor3"
+  bac.Size = UDim2.new(1,0,0,25)
+  bac.BackgroundColor3 = Color3.fromRGB(0,0,0)
+  bac.BackgroundTransparency = 0.8
+  bac.BorderMode = Enum.BorderMode.Inset
+  bac.BorderSizePixel = 3
+  bac.TextScaled = true
+  bac.TextColor3 = Color3.fromRGB(79,79,79)
+  bac.Text = "79,79,79"
+  bac.PlaceholderText = "BackgroundColor3: 79,79,79"
+  bac.ClearTextOnFocus = true
+  bac.Parent = options
+  Corner(0, 3, bac)
+
+  local tc3 = Instance.new("TextBox")
+  tc3.Name = "TextColor3"
+  tc3.Size = UDim2.new(1,0,0,25)
+  tc3.BackgroundColor3 = Color3.fromRGB(0,0,0)
+  tc3.BackgroundTransparency = 0.8
+  tc3.BorderMode = Enum.BorderMode.Inset
+  tc3.BorderSizePixel = 3
+  tc3.TextScaled = true
+  tc3.TextColor3 = Color3.fromRGB(255,255,255)
+  tc3.Text = "255,255,255"
+  tc3.PlaceholderText = "TextColor3: 255,255,255"
+  tc3.ClearTextOnFocus = true
+  tc3.Parent = options
+  Corner(0, 3, tc3)
+
+  local sid = Instance.new("TextLabel")
+  sid.Name = "ScriptID"
+  sid.Size = UDim2.new(1,0,0,25)
+  sid.BackgroundColor3 = Color3.fromRGB(255,255,255)
+  sid.BorderMode = Enum.BorderMode.Inset
+  sid.BorderSizePixel = 3
+  sid.TextScaled = true
+  sid.TextColor3 = Color3.fromRGB(0,0, 0)
+  sid.Text = "ScriptID: 0"
+  sid.Parent = options
+  Corner(0, 3, sid)
+  
+    local title = Instance.new("TextBox")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -28, 0, 25)
+    title.BorderMode = Enum.BorderMode.Inset
+    title.BorderSizePixel = 3
+    title.BackgroundTransparency = 1
+    title.Active = false
+    title.TextEditable = false
+    title.ClearTextOnFocus = false
+    title.TextColor3 = Color3.new(1, 1, 1)
+    title.TextScaled = true
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Text = tostring(file or defaultTitle)
+    title.PlaceholderText = defaultTitle
+    title.PlaceholderColor3 = Color3.new(1, 1, 1)
+    title.Parent = btn
+
+    table.insert(selectTab, btn)
+
+    local lastClick = 0
+    local originalTitle = title.Text
+    local editing = false
+    local destroyed = false
+
+    local function finishEditing(cancel)
+        if not editing then
+            return
+        end
+
+        if cancel then
+            title.Text = originalTitle
+        elseif title.Text:match("^%s*$") then
+            title.Text = defaultTitle
+        end
+
+        btn.Name = title.Text
+        title.TextEditable = false
+        title.Active = false
+        editing = false
+    end
+
+    local function beginEditing()
+        if destroyed or editing then
+            return
+        end
+
+        originalTitle = title.Text
+        editing = true
+        title.TextEditable = true
+        title.Active = true
+        title:CaptureFocus()
+    end
+
+    btn.Activated:Connect(function()
+        for _, otherbtn in ipairs(selectTab) do
+            Tween(
+                otherbtn,
+                nil,
+                nil,
+                Color3.fromRGB(79, 79, 79),
+                nil,
+                0.2
+            )
+
+            if otherbtn ~= btn then
+                local otherTitle = otherbtn:FindFirstChild("Title")
+
+                if otherTitle and otherTitle.TextEditable then
+                    if otherTitle.Text:match("^%s*$") then
+                        otherTitle.Text = defaultTitle
+                    end
+
+                    otherTitle.TextEditable = false
+                    otherTitle.Active = false
+                end
+            end
+        end
+
+        Tween(
+            btn,
+            nil,
+            nil,
+            Color3.fromRGB(150, 150, 150),
+            nil,
+            0.2
+        )
+    end)
+
+    title.InputBegan:Connect(function(input)
+        if destroyed or editing then
+            return
+        end
+
+        local inputType = input.UserInputType
+
+        if inputType ~= Enum.UserInputType.MouseButton1
+            and inputType ~= Enum.UserInputType.Touch then
+            return
+        end
+
+        local now = os.clock()
+
+        if now - lastClick <= 1 then
+            lastClick = 0
+            beginEditing()
+        else
+            lastClick = now
+        end
+    end)
+
+    title.FocusLost:Connect(function(enterPressed)
+        if not editing then
+            return
+        end
+
+        if enterPressed then
+            finishEditing(false)
+        else
+            finishEditing(false)
+        end
+    end)
+
+    s.UserInputService.InputBegan:Connect(function(input)
+        if destroyed or not editing then
+            return
+        end
+
+        if input.KeyCode == Enum.KeyCode.Escape then
+            finishEditing(true)
+        end
+    end)
+
+    del.Activated:Connect(function()
+        if destroyed then
+            return
+        end
+
+        destroyed = true
+
+        if editing then
+            editing = false
+            title.TextEditable = false
+            title.Active = false
+        end
+
+        for i, tab in ipairs(selectTab) do
+            if tab == btn then
+                table.remove(selectTab, i)
+                break
+            end
+        end
+
+        btn:Destroy()
+    end)
+end
+
+local add = Instance.new("TextButton")
+add.Name = "add"
+add.Size = UDim2.new(0,35,0,35)
+add.BorderMode = Enum.BorderMode.Inset
+add.BorderSizePixel = 5
+add.TextXAlignment = Enum.TextXAlignment.Center
+add.AutomaticSize = Enum.AutomaticSize.None
+add.TextColor3 = Color3.new(1,1,1)
+add.BackgroundColor3 = Color3.fromRGB(79,79,79)
+add.TextScaled = true
+add.Text = "+"
+add.LayoutOrder = 2147483647
+add.Parent = e_sc
+Corner(0,5,add)
+
+add.MouseButton1Click:Connect(function()
+  addtab()
+end)
+
+ding("Hello, World!", 5, 0,255,255)
+task.wait(1)
+ding("Load successful :)", 5, 0,255,0)
+ding("ExperienceSettings (Beta); Notification from Editor <3", 8, 255,255,0)
