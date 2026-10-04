@@ -1,4 +1,4 @@
-local v_ver = [[Editor 0.9 Test]]
+local v_ver = [[Editor 0.91 Test]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -959,4 +959,8 @@ end)
 ding("Hello, World!", 5, 0,255,255)
 task.wait(1)
 ding("Load successful :)", 5, 0,255,0)
-ding("ExperienceSettings (Beta); Notification from Editor <3", 8, 255,255,0)
+task.wait(1)
+ding([[ExperienceSettings (Beta); Notification from <b>Editor</b> <3
+  ———————————————————————————
+  Version ExperienceSettings: <b>0.821.1.4-Beta</b>
+  Version Editor: <b>]].. v_ver .."</b>", 8, 255,255,0)
