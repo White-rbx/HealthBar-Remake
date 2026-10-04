@@ -1,4 +1,4 @@
-local v_ver = [[Editor 0.95 Test]]
+local v_ver = [[Editor 0.98 Test]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -616,53 +616,71 @@ ListLayout(e_cs,0,3,"HLeft","VTop","SLayout","FillV")
 
 local LogService = game:GetService("LogService")
 local conList = {}
+local outputQueue = {}
+local processing = false
 
 local MAX_OUTPUTS = 250
 
 local OUTPUT_COLORS = {
-    [Enum.MessageType.MessageOutput] = Color3.fromRGB(255, 255, 255), -- White
-    [Enum.MessageType.MessageWarning] = Color3.fromRGB(255, 255, 0), -- Yellow
-    [Enum.MessageType.MessageError] = Color3.fromRGB(255, 0, 0), -- Red
-    [Enum.MessageType.MessageInfo] = Color3.fromRGB(0, 255, 255) -- Cyan
+    [Enum.MessageType.MessageOutput] = Color3.fromRGB(255, 255, 255),
+    [Enum.MessageType.MessageWarning] = Color3.fromRGB(255, 255, 0),
+    [Enum.MessageType.MessageError] = Color3.fromRGB(255, 0, 0),
+    [Enum.MessageType.MessageInfo] = Color3.fromRGB(0, 255, 255)
 }
 
 local function con(output, messageType)
-    local color = OUTPUT_COLORS[messageType]
-        or Color3.fromRGB(255, 255, 255)
+    table.insert(outputQueue, {
+        Text = tostring(output),
+        Type = messageType
+    })
 
-    -- Shift old outputs down
-    for _, item in ipairs(conList) do
-        item.LayoutOrder += 1
+    if processing then
+        return
     end
 
-    local btn = Instance.new("TextButton")
-    btn.Name = "Output"
-    btn.AutomaticSize = Enum.AutomaticSize.XY
-    btn.Size = UDim2.new(1, 0, 0, 0)
-    btn.BackgroundTransparency = 0.6
-    btn.BackgroundColor3 = color
-    btn.TextColor3 = color
-    btn.Text = tostring(output)
-    btn.TextWrapped = true
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.TextYAlignment = Enum.TextYAlignment.Top
-    btn.BorderMode = Enum.BorderMode.Inset
-    btn.BorderSizePixel = 3
-    btn.LayoutOrder = 0
-    btn.Parent = e_cs
+    processing = true
 
-    Corner(0, 3, btn)
+    task.spawn(function()
+        while #outputQueue > 0 do
+            local item = table.remove(outputQueue, 1)
+            local color = OUTPUT_COLORS[item.Type]
+                or Color3.fromRGB(255, 255, 255)
 
-    table.insert(conList, 1, btn)
+            for _, old in ipairs(conList) do
+                old.LayoutOrder += 1
+            end
 
-    -- Remove the oldest output when exceeding the limit
-    if #conList > MAX_OUTPUTS then
-        local oldest = table.remove(conList)
-        oldest:Destroy()
-    end
+            local btn = Instance.new("TextButton")
+            btn.Name = "Output"
+            btn.AutomaticSize = Enum.AutomaticSize.Y
+            btn.Size = UDim2.new(1, 0, 0, 0)
+            btn.BackgroundTransparency = 0.6
+            btn.BackgroundColor3 = color
+            btn.TextColor3 = color
+            btn.Text = item.Text
+            btn.TextWrapped = true
+            btn.TextXAlignment = Enum.TextXAlignment.Left
+            btn.TextYAlignment = Enum.TextYAlignment.Top
+            btn.BorderMode = Enum.BorderMode.Inset
+            btn.BorderSizePixel = 3
+            btn.LayoutOrder = 0
+            btn.Parent = e_cs
+
+            Corner(0, 3, btn)
+
+            table.insert(conList, 1, btn)
+
+            if #conList > MAX_OUTPUTS then
+                table.remove(conList):Destroy()
+            end
+
+            task.wait(0.03)
+        end
+
+        processing = false
+    end)
 end
 
--- Capture Developer Console messages
 LogService.MessageOut:Connect(function(message, messageType)
     con(message, messageType)
 end)
