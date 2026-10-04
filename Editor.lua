@@ -1,4 +1,4 @@
-local v_ver = [[Editor 0.91 Test]]
+local v_ver = [[Editor 0.95 Test]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -599,6 +599,78 @@ cs.Parent = ic2.Test
 
 -- >> Editor << --
 
+local e_cs = Instance.new("ScrollingFrame")
+e_cs.Name = "Console"
+e_cs.Size = UDim2.new(0.8,-5,0.2,0)
+e_cs.Position = UDim2.new(0.2,5,0.8,0)
+e_cs.BorderMode = Enum.BorderMode.Inset
+e_cs.BorderSizePixel = 5
+e_cs.BackgroundColor3 = Color3.fromRGB(0,0,0)
+e_cs.CanvasSize = UDim2.new(0,0,0,0)
+e_cs.ScrollBarThickness = 0
+e_cs.ScrollingDirection = Enum.ScrollingDirection.Y
+e_cs.AutomaticCanvasSize = Enum.AutomaticSize.Y
+e_cs.Parent = ic2.Editor
+Corner(0,8,e_cs)
+ListLayout(e_cs,0,3,"HLeft","VTop","SLayout","FillV")
+
+local LogService = game:GetService("LogService")
+local conList = {}
+
+local MAX_OUTPUTS = 250
+
+local OUTPUT_COLORS = {
+    [Enum.MessageType.MessageOutput] = Color3.fromRGB(255, 255, 255), -- White
+    [Enum.MessageType.MessageWarning] = Color3.fromRGB(255, 255, 0), -- Yellow
+    [Enum.MessageType.MessageError] = Color3.fromRGB(255, 0, 0), -- Red
+    [Enum.MessageType.MessageInfo] = Color3.fromRGB(0, 255, 255) -- Cyan
+}
+
+local function con(output, messageType)
+    local color = OUTPUT_COLORS[messageType]
+        or Color3.fromRGB(255, 255, 255)
+
+    -- Shift old outputs down
+    for _, item in ipairs(conList) do
+        item.LayoutOrder += 1
+    end
+
+    local btn = Instance.new("TextButton")
+    btn.Name = "Output"
+    btn.AutomaticSize = Enum.AutomaticSize.XY
+    btn.Size = UDim2.new(1, 0, 0, 0)
+    btn.BackgroundTransparency = 0.6
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = color
+    btn.Text = tostring(output)
+    btn.TextWrapped = true
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.TextYAlignment = Enum.TextYAlignment.Top
+    btn.BorderMode = Enum.BorderMode.Inset
+    btn.BorderSizePixel = 3
+    btn.LayoutOrder = 0
+    btn.Parent = e_cs
+
+    Corner(0, 3, btn)
+
+    table.insert(conList, 1, btn)
+
+    -- Remove the oldest output when exceeding the limit
+    if #conList > MAX_OUTPUTS then
+        local oldest = table.remove(conList)
+        oldest:Destroy()
+    end
+end
+
+-- Capture Developer Console messages
+LogService.MessageOut:Connect(function(message, messageType)
+    con(message, messageType)
+end)
+
+-- Just testing
+con("Hello, World!", Enum.MessageType.MessageOutput)
+con("Not done yet, keep waiting for the update lol.", Enum.MessageType.MessageWarning)
+
 local e_sc = Instance.new("ScrollingFrame")
 e_sc.Name = "Tabs"
 e_sc.Size = UDim2.new(0.2,0,1,0)
@@ -792,6 +864,7 @@ local function addtab(file)
     title.ClearTextOnFocus = false
     title.TextColor3 = Color3.new(1, 1, 1)
     title.TextScaled = true
+    title.TextSize = 24
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Text = tostring(file or defaultTitle)
     title.PlaceholderText = defaultTitle
@@ -960,7 +1033,7 @@ ding("Hello, World!", 5, 0,255,255)
 task.wait(1)
 ding("Load successful :)", 5, 0,255,0)
 task.wait(1)
-ding([[ExperienceSettings (Beta); Notification from <b>Editor</b> <3
+ding([[ExperienceSettings (Beta); Notification from <b>Editor</b> &lt;3
   ———————————————————————————
   Version ExperienceSettings: <b>0.821.1.4-Beta</b>
   Version Editor: <b>]].. v_ver .."</b>", 8, 255,255,0)
