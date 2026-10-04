@@ -1,4 +1,4 @@
--- Loader script 6.275
+-- Loader script 6.276
 
 ------------------------------------------------------------------------------------------
 
@@ -3510,15 +3510,25 @@ local function IsTranslationSkipped(obj)
     return false
 end
 
-local function SaveTranslationCache()
+local function SaveTranslationCache(language)
     if not writefile then
         return false
     end
 
+    language = language or L.CurrentLanguage
+    local selectedCache = L.Cache[language]
+    if type(selectedCache) ~= "table" then
+        return false
+    end
+
+    -- Persist only the selected language, not stale entries for every language.
     local ok, encoded = pcall(function()
         return HttpService:JSONEncode({
-            Version = 1,
-            Languages = L.Cache
+            Version = 2,
+            Language = language,
+            Languages = {
+                [language] = selectedCache
+            }
         })
     end)
 
@@ -3530,7 +3540,6 @@ local function SaveTranslationCache()
         if not isfolder("ExperienceSettings") then
             makefolder("ExperienceSettings")
         end
-
         writefile(L.CacheFile, encoded)
     end)
 
@@ -3538,35 +3547,56 @@ local function SaveTranslationCache()
 end
 
 local function LoadTranslationCache()
-    if not readfile
-        or not isfile
-        or not isfile(L.CacheFile) then
+    if not readfile or not isfile or not isfile(L.CacheFile) then
+        return
+    end
+
+    local rawCache
+    local okRead = pcall(function()
+        rawCache = readfile(L.CacheFile)
+    end)
+    if not okRead or type(rawCache) ~= "string" then
         return
     end
 
     local ok, decoded = pcall(function()
-        return HttpService:JSONDecode(readfile(L.CacheFile))
+        return HttpService:JSONDecode(rawCache)
     end)
-
-    if not ok
-        or type(decoded) ~= "table"
+    if not ok or type(decoded) ~= "table"
         or type(decoded.Languages) ~= "table" then
         return
     end
 
-    for language, entries in pairs(decoded.Languages) do
-        if L.Cache[language]
-            and type(entries) == "table" then
+    local language = decoded.Language
+    if type(language) ~= "string" or type(L.Cache[language]) ~= "table" then
+        -- Legacy files did not record the active language. Use the current
+        -- default language rather than merging every old language together.
+        language = L.CurrentLanguage
+    end
 
-            for sourceText, translatedText in pairs(entries) do
-                if type(sourceText) == "string"
-                    and type(translatedText) == "string" then
-
-                    L.Cache[language][sourceText] =
-                        translatedText
-                end
+    local entries = decoded.Languages[language]
+    if type(entries) == "table" and type(L.Cache[language]) == "table" then
+        for sourceText, translatedText in pairs(entries) do
+            if type(sourceText) == "string" and type(translatedText) == "string" then
+                L.Cache[language][sourceText] = translatedText
             end
         end
+    end
+
+    local languageCount = 0
+    for _ in pairs(decoded.Languages) do
+        languageCount += 1
+    end
+
+    -- Keep a one-time backup before migrating a legacy multi-language cache.
+    if decoded.Version ~= 2 or languageCount ~= 1 or decoded.Language ~= language then
+        pcall(function()
+            local backupFile = "ExperienceSettings/translation_cache.backup.json"
+            if not isfile(backupFile) then
+                writefile(backupFile, rawCache)
+            end
+        end)
+        SaveTranslationCache(language)
     end
 end
 
@@ -4787,16 +4817,6 @@ local function BindProperty(obj, property)
     -- Do not create translation state, cache, Localization listeners, or
     -- Directly work for it. This prevents ValueChanger feedback loops.
     if IsValueChangerDynamic(obj, property) then
-        print(
-            string.format(
-                "[Translation][SKIP VALUECHANGER] %s | %s | ValueChanger=%s",
-                obj:GetFullName(),
-                property,
-                FindControllerRelation(obj, "ValueChanger")
-                    and FindControllerRelation(obj, "ValueChanger"):GetFullName()
-                    or "detected"
-            )
-        )
         return
     end
 
@@ -4815,24 +4835,6 @@ local function BindProperty(obj, property)
 
     L.Applied[obj][property] =
         currentValue
-
-    local classification =
-        GetDynamicTranslationMode(obj, property)
-
-    local controller =
-        FindControllerRelation(obj, "ValueChanger")
-
-    print(
-        string.format(
-            "[Translation][CLASSIFY] %s | %s | %s%s",
-            state.Path or obj:GetFullName(),
-            property,
-            classification,
-            controller
-                and (" | ValueChanger=" .. controller:GetFullName())
-                or ""
-        )
-    )
 
     -- Live/ValueChanger text is intentionally one-shot and unobserved.
     -- It can change at any time, so it must never trigger translation work.
@@ -4917,24 +4919,11 @@ local function BindProperty(obj, property)
                             Text = localized,
                         }
 
-                        print(
-                            "[Translation][CLICK]",
-                            state.Path or obj:GetFullName(),
-                            currentValue,
-                            "=>",
-                            localized
-                        )
                     end
 
                     -- Always release the recursion guard, even if the property
                     -- write itself fails.
                     L.LocalizationWrite[obj][property] = false
-                else
-                    print(
-                        "[Translation][CLICK NO RESULT]",
-                        state.Path or obj:GetFullName(),
-                        currentValue
-                    )
                 end
             end)
         end)
@@ -4982,42 +4971,32 @@ local function BindTextBoxEditable(obj)
 end
 
 local function ScanInstance(obj)
-    if not obj
-        or IsTranslationSkipped(obj) then
+    -- Process only this instance. DescendantAdded calls this once per new object.
+    if not obj or not obj.Parent or IsTranslationSkipped(obj) then
         return
     end
 
-    if obj:IsA("TextLabel")
-        or obj:IsA("TextButton") then
-
+    if obj:IsA("TextLabel") or obj:IsA("TextButton") then
         BindProperty(obj, "Text")
-
     elseif obj:IsA("TextBox") then
-
-        BindProperty(
-            obj,
-            "PlaceholderText"
-        )
-
+        BindProperty(obj, "PlaceholderText")
         BindTextBoxEditable(obj)
-
         if not obj.TextEditable then
             BindProperty(obj, "Text")
         end
     end
+end
 
-    -- Full descendant scan: every child under this parent is visited.
-    for _, child in ipairs(obj:GetDescendants()) do
-        if not IsTranslationSkipped(child) then
-            if child:IsA("TextLabel") or child:IsA("TextButton") then
-                BindProperty(child, "Text")
-            elseif child:IsA("TextBox") then
-                BindProperty(child, "PlaceholderText")
-                BindTextBoxEditable(child)
-                if not child.TextEditable then
-                    BindProperty(child, "Text")
-                end
-            end
+local function ScanTree(root)
+    if not root then
+        return
+    end
+
+    ScanInstance(root)
+    for index, child in ipairs(root:GetDescendants()) do
+        ScanInstance(child)
+        if index % 40 == 0 then
+            task.wait()
         end
     end
 end
@@ -5108,7 +5087,9 @@ local function ApplyCachedLanguage(language, onComplete)
 
             -- Re-scan before every pass. BuildSourceState is source-safe below,
             -- so already-translated text cannot replace the canonical source.
-            ScanInstance(ExperienceSettings)
+            if pass == 1 then
+                ScanTree(ExperienceSettings)
+            end
             EnsureCanonicalState()
 
             local queue = {}
@@ -5169,26 +5150,7 @@ local function ApplyCachedLanguage(language, onComplete)
                 end
             end
 
-            print(
-                string.format(
-                    "[Translation][PASS %d] language=%s queue=%d checked=%d skipped=%d",
-                    pass,
-                    tostring(language),
-                    #queue,
-                    totalChecked,
-                    skipped
-                )
-            )
-
             if #queue == 0 then
-                print(
-                    string.format(
-                        "[Translation][DONE] language=%s passes=%d applied=%d",
-                        tostring(language),
-                        pass,
-                        totalApplied
-                    )
-                )
                 break
             end
 
@@ -5235,16 +5197,6 @@ local function ApplyCachedLanguage(language, onComplete)
 
                     local before = tostring(obj[property] or "")
 
-                    print(
-                        string.format(
-                            "[Translation][CHECK] pass=%d item=%d/%d path=%s property=%s",
-                            pass,
-                            index,
-                            #queue,
-                            state.Path or "<no-path>",
-                            property
-                        )
-                    )
 
                     local okRender, rendered = pcall(
                         GetStateTranslation,
@@ -5283,14 +5235,6 @@ local function ApplyCachedLanguage(language, onComplete)
                             appliedThisPass += 1
                             totalApplied += 1
 
-                            print(
-                                string.format(
-                                    "[Translation][APPLY] pass=%d item=%d path=%s",
-                                    pass,
-                                    index,
-                                    state.Path or "<no-path>"
-                                )
-                            )
                         else
                             warn(
                                 "[Translation][APPLY ERROR]",
@@ -5300,33 +5244,12 @@ local function ApplyCachedLanguage(language, onComplete)
                             )
                         end
                     else
-                        local reason = rendered == nil and "TRANSLATION_NIL"
-                            or rendered == before and "UNCHANGED_SOURCE"
-                            or type(rendered) ~= "string" and ("INVALID_TYPE:" .. type(rendered))
-                            or "EMPTY_RESULT"
-
-                        warn(
-                            "[Translation][NO RESULT]",
-                            state.Path or obj:GetFullName(),
-                            property,
-                            reason,
-                            "source=" .. tostring(state.SourceText)
-                        )
                     end
                 end
 
                 -- Yield AFTER every single item. This is the key C-stack fix.
                 task.wait()
             end
-
-            print(
-                string.format(
-                    "[Translation][PASS %d DONE] applied=%d remaining=%d",
-                    pass,
-                    appliedThisPass,
-                    #queue - appliedThisPass
-                )
-            )
 
             -- No progress means the remaining entries have no available local
             -- translation. Stop instead of spinning forever.
@@ -5415,8 +5338,6 @@ local function ChangeLanguage(language)
     end)
 
     task.spawn(function()
-        -- Re-scan in case the game created new GUI elements.
-        ScanInstance(ExperienceSettings)
         EnsureCanonicalState()
 
         local function complete()
@@ -5447,12 +5368,15 @@ local function ChangeLanguage(language)
         end
 
         if language == "EN" then
-            ApplyCachedLanguage("EN", complete)
+            ApplyCachedLanguage("EN", function()
+                SaveTranslationCache("EN")
+                complete()
+            end)
             return
         end
 
         ApplyCachedLanguage(language, function()
-            SaveTranslationCache()
+            SaveTranslationCache(language)
             complete()
         end)
     end)
@@ -5475,8 +5399,8 @@ ins2:SetAttribute("SkipAutoTranslate", true)
 task.spawn(function()
     ExperienceSettings = CoreGui:WaitForChild("ExperienceSettings")
 
-    -- Initial scan. PathSources are used as canonical lookup identities.
-    ScanInstance(ExperienceSettings)
+    -- Initial scan; yield periodically to avoid freezing large UI trees.
+    ScanTree(ExperienceSettings)
 
     -- New GUI objects are picked up automatically.
     ExperienceSettings.DescendantAdded:Connect(function(obj)
