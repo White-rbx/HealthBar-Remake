@@ -1,4 +1,4 @@
-local v_ver = [[Editor 1.97 Master]]
+local v_ver = [[Editor 2.10 Master]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -2486,21 +2486,21 @@ e_sr.ScrollBarThickness = 5
 e_sr.AutomaticCanvasSize = Enum.AutomaticSize.XY
 e_sr.Parent = e_ed
 Corner(0,8,e_sr)
-ListLayout(e_sr,0,3,"HLeft","VTop","SLayout","FillH")
+ListLayout(e_sr,0,10,"HLeft","VTop","SLayout","FillH")
 
 local linen = Instance.new("TextLabel")
 linen.Name = "LineNumber"
 linen.Position = UDim2.new(0,0,0,0)
 linen.AutomaticSize = Enum.AutomaticSize.XY
-linen.BorderMode = Enum.BorderMode.Inset
+linen.BackgroundTransparency = 1
 linen.Size = UDim2.new(0,0,0,0)
 linen.AutomaticSize = Enum.AutomaticSize.XY
-linen.BorderSizePixel = 5
+linen.BorderSizePixel = 0
 linen.BorderColor3 = linen.BackgroundColor3
 linen.TextSize = 14
 linen.Text = ""
 linen.Font = Enum.Font.Code
-linen.TextXAlignment = Enum.TextXAlignment.Left
+linen.TextXAlignment = Enum.TextXAlignment.Right
 linen.TextYAlignment = Enum.TextYAlignment.Top
 linen.TextColor3 = Color3.new(0,0,0)
 linen.Parent = e_sr
@@ -2520,8 +2520,7 @@ code.Position = UDim2.new(0,0,0,0)
 code.Size = UDim2.new(0,0,0,0)
 code.AutomaticSize = Enum.AutomaticSize.None
 code.BackgroundTransparency = 1
-code.BorderMode = Enum.BorderMode.Inset
-code.BorderSizePixel = 5
+code.BorderSizePixel = 0
 code.TextSize = 14
 code.Text = ""
 code.TextXAlignment = Enum.TextXAlignment.Left
@@ -2542,6 +2541,7 @@ syn.Size = code.Size
 syn.Position = UDim2.new(0,0,0,0)
 syn.AutomaticSize = Enum.AutomaticSize.None
 syn.BackgroundTransparency = 1
+syn.BorderSizePixel = 0
 syn.RichText = true
 syn.TextSize = code.TextSize
 syn.Text = ""
@@ -2551,50 +2551,357 @@ syn.TextColor3 = code.TextColor3
 syn.Font = code.Font
 syn.TextWrapped = code.TextWrapped
 syn.ClipsDescendants = false
+syn.ZIndex = 2
 syn.Parent = cands
 
-loc.SyntaxEnabled = true
-loc.SyntaxEditing = false
+local cur = Instance.new("Frame")
+cur.Name = "CodeAndSyn"
+cur.Size = UDim2.new(0,code.TextSize - 6,0,code.TextSize)
+cur.Position = UDim2.new(0,0,0,0)
+cur.BackgroundColor3 = Color3.fromRGB(0,255,255)
+cur.Active = false
+cur.BorderSizePixel = 0
+cur.ZIndex = 3
+cur.Visible = false
+cur.Parent = syn
 
--- Keep the RichText layer aligned with the editable Code while it is focused.
--- The ScrollingFrame handles the actual editor scrolling; the syntax layer follows
--- the same origin during editing and returns to the normal origin afterward.
-loc.SyncSyntaxScroll = function()
-    if loc.SyntaxEditing then
-        syn.Position = UDim2.new(0,0,0,0)
-    else
-        syn.Position = UDim2.new(0,0,0,0)
+local sync = Instance.new("Frame")
+sync.Name = "SyntaxCorrection"
+sync.ClipsDescendants = true
+sync.ZIndex = 4
+sync.Size = UDim2.new(0,200,0,200)
+sync.Position = UDim2.new(0,0,0,code.TextSize + 2)
+sync.BackgroundColor3 = Color3.fromRGB(50,50,50)
+sync.BorderMode = Enum.BorderMode.Inset
+sync.BorderSizePixel = 5
+sync.Visible = false
+sync.Parent = cur
+Corner(0,4,sync)
+
+local t_sync = Instance.new("TextLabel")
+t_sync.Name = "TextLabelSyntaxCorrection"
+t_sync.Size = UDim2.new(1,0,0,20)
+t_sync.BackgroundTransparency = 1
+t_sync.ZIndex = 4
+t_sync.TextColor3 = Color3.new(1,1,1)
+t_sync.TextScaled = true
+t_sync.Text = "Matching"
+t_sync.TextXAlignment = Enum.TextXAlignment.Left
+t_sync.TextYAlignment = Enum.TextYAlignment.Top
+t_sync.Parent = sync
+
+local t_typing = Instance.new("TextLabel")
+t_typing.Name = "TextLabelTyping"
+t_typing.Size = UDim2.new(0.5,0,0,20)
+t_typing.Position = UDim2.new(0.5,0,0,0)
+t_typing.BackgroundTransparency = 0.5
+t_typing.ZIndex = 4
+t_typing.RichText = true
+t_typing.TextColor3 = Color3.new(1,1,1)
+t_typing.TextScaled = true
+t_typing.Text = ""
+t_typing.TextXAlignment = Enum.TextXAlignment.Left
+t_typing.TextYAlignment = Enum.TextYAlignment.Top
+t_typing.Parent = sync
+Corner(0,2,t_typing)
+
+local mac = Instance.new("Frame")
+mac.Name = "Matching"
+mac.ClipsDescendants = true
+mac.ZIndex = 4
+mac.Size = UDim2.new(1,0,1,-20)
+mac.Position = UDim2.new(0,0,0,20)
+mac.BackgroundColor3 = Color3.fromRGB(0,0,0)
+mac.BorderMode = Enum.BorderMode.Inset
+mac.BorderSizePixel = 5
+mac.Parent = sync
+Corner(0,4,mac)
+ListLayout(mac, 0, 2, "HCenter", "VTop", "SLayout", "FillV")
+
+local function mact(typed)
+    typed = tostring(typed or "")
+
+    for _, child in ipairs(mac:GetChildren()) do
+        if child:IsA("TextLabel") and child.Name == "MatchingSyntax" then
+            child:Destroy()
+        end
     end
-end
 
-loc.ApplySyntaxMode = function()
-    if loc.SyntaxMode == "OFF" then
-        code.TextTransparency = 0
-        syn.Visible = false
-    elseif loc.SyntaxMode == "ON" then
-        code.TextTransparency = 1
-        syn.Visible = true
-    else -- Edit Only
-        if loc.SyntaxEditing then
-            code.TextTransparency = 0
-            syn.Visible = false
-        else
-            code.TextTransparency = 1
-            syn.Visible = true
+    if typed == "" then
+        t_typing.Text = ""
+        return
+    end
+
+    t_typing.Text = loc.SyntaxCorrectionLookup and loc.SyntaxCorrectionLookup[typed]
+        and loc.RichSyntaxColor(typed, loc.SyntaxCorrectionLookup[typed])
+        or loc.RichSyntaxEscape(typed)
+
+    local results = {}
+    local length = #typed
+
+    for _, item in ipairs(loc.SyntaxCorrectionItems or {}) do
+        local name = item.Name
+        if name:sub(1, length) == typed then
+            local diff = #name - length
+            local order
+
+            if diff <= 3 then
+                order = 0
+            elseif diff <= 7 then
+                order = 1
+            elseif diff <= 12 then
+                order = 2
+            else
+                order = 3
+            end
+
+            results[#results + 1] = {
+                Name = name,
+                Category = item.Category,
+                Order = order,
+                Diff = diff,
+            }
+        end
+    end
+
+    table.sort(results, function(a, b)
+        if a.Order ~= b.Order then
+            return a.Order < b.Order
+        end
+        if a.Diff ~= b.Diff then
+            return a.Diff < b.Diff
+        end
+        return a.Name < b.Name
+    end)
+
+    local maxResults = math.min(#results, 20)
+    local version = (loc.MatchingVersion or 0) + 1
+    loc.MatchingVersion = version
+
+    for i = 1, maxResults do
+        if version ~= loc.MatchingVersion then
+            return
+        end
+
+        local item = results[i]
+        local lab = Instance.new("TextLabel")
+        lab.Name = "MatchingSyntax"
+        lab.Size = UDim2.new(
+            1,
+            0,
+            0,
+            item.Order == 0 and 30 or (item.Order == 1 and 20 or (item.Order == 2 and 18 or 20))
+        )
+        lab.BackgroundColor3 = Color3.new(1,1,1)
+        lab.ZIndex = 4
+        lab.BorderMode = Enum.BorderMode.Inset
+        lab.BorderSizePixel = 2
+        lab.BackgroundTransparency = item.Order == 0 and 0.6
+            or (item.Order == 1 and 0.75 or (item.Order == 2 and 0.9 or 1))
+        lab.LayoutOrder = item.Order
+        lab.TextXAlignment = Enum.TextXAlignment.Left
+        lab.RichText = true
+        lab.TextScaled = true
+        lab.Text = loc.RichSyntaxColor(item.Name, item.Category)
+        lab.Parent = mac
+        Corner(0,2,lab)
+
+        if i % 5 == 0 then
+            task.wait()
         end
     end
 end
 
+local function syncCorrectionVisibility()
+    sync.Visible = cur.Visible
+end
+
+cur:GetPropertyChangedSignal("Visible"):Connect(syncCorrectionVisibility)
+syncCorrectionVisibility()
+
+loc.SyntaxEnabled = true
+loc.SyntaxEditing = false
+
+-- Keep Code/Syntax inside one shared canvas item.
+-- During editing, keep the ScrollingFrame positioned around the cursor.
+loc.GetCursorMetrics = function()
+    local source = tostring(code.Text or "")
+    local cursor = tonumber(code.CursorPosition) or 1
+    local cursorByte = math.clamp(cursor - 1, 0, #source)
+    local prefix = source:sub(1, cursorByte)
+
+    local lineStart = (prefix:match(".*()\n") or 0) + 1
+    local lineNumber = select(2, prefix:gsub("\n", "")) + 1
+    local lineText = source:sub(lineStart, cursorByte)
+
+    local lineHeight = s.TextService:GetTextSize(
+        "A",
+        code.TextSize,
+        code.Font,
+        Vector2.new(100000, 100000)
+    ).Y
+
+    local cursorWidth = s.TextService:GetTextSize(
+        lineText,
+        code.TextSize,
+        code.Font,
+        Vector2.new(100000, 100000)
+    ).X
+
+    return cursorWidth, (lineNumber - 1) * lineHeight, lineHeight
+end
+
+loc.UpdateFakeCursor = function()
+    if not code:IsFocused() then
+        cur.Position = UDim2.new(0,0,0,0)
+        return
+    end
+
+    local cursorX, cursorY, lineHeight = loc.GetCursorMetrics()
+    cur.Size = UDim2.new(0,code.TextSize - 6,0,math.ceil(lineHeight))
+    cur.Position = UDim2.new(0,cursorX,0,cursorY)
+end
+
+loc.ScrollCursorToView = function()
+    if not code:IsFocused() then return end
+
+    loc.UpdateFakeCursor()
+
+    local contentX = (syn.AbsolutePosition.X - e_sr.AbsolutePosition.X) + e_sr.CanvasPosition.X
+    local contentY = (syn.AbsolutePosition.Y - e_sr.AbsolutePosition.Y) + e_sr.CanvasPosition.Y
+    local cursorX = contentX + cur.Position.X.Offset
+    local cursorY = contentY + cur.Position.Y.Offset
+    local cursorRight = cursorX + cur.AbsoluteSize.X
+    local cursorBottom = cursorY + cur.AbsoluteSize.Y
+
+    local viewWidth = math.max(1, e_sr.AbsoluteSize.X - e_sr.ScrollBarThickness)
+    local viewHeight = math.max(1, e_sr.AbsoluteSize.Y - e_sr.ScrollBarThickness)
+    local canvasX = e_sr.CanvasPosition.X
+    local canvasY = e_sr.CanvasPosition.Y
+    local targetX = canvasX
+    local targetY = canvasY
+    local margin = 12
+
+    if cursorX < canvasX + margin then
+        targetX = cursorX - margin
+    elseif cursorRight > canvasX + viewWidth - margin then
+        targetX = cursorRight - viewWidth + margin
+    end
+
+    if cursorY < canvasY + margin then
+        targetY = cursorY - margin
+    elseif cursorBottom > canvasY + viewHeight - margin then
+        targetY = cursorBottom - viewHeight + margin
+    end
+
+    local maxX = math.max(0, e_sr.AbsoluteCanvasSize.X - e_sr.AbsoluteSize.X)
+    local maxY = math.max(0, e_sr.AbsoluteCanvasSize.Y - e_sr.AbsoluteSize.Y)
+    targetX = math.clamp(targetX, 0, maxX)
+    targetY = math.clamp(targetY, 0, maxY)
+
+    if math.abs(targetX - canvasX) > 0.5 or math.abs(targetY - canvasY) > 0.5 then
+        e_sr.CanvasPosition = Vector2.new(targetX, targetY)
+    end
+end
+
+loc.ApplySyntaxMode = function()
+    local focused = code:IsFocused()
+    loc.SyntaxEditing = focused
+    code.Visible = true
+
+    if loc.SyntaxMode == "OFF" then
+        code.TextTransparency = 0
+        syn.Visible = false
+
+    elseif loc.SyntaxMode == "ON" then
+        code.TextTransparency = 1
+        syn.Visible = true
+
+    elseif loc.SyntaxMode == "Both" then
+        code.TextTransparency = focused and 0 or 1
+        syn.Visible = true
+
+    else -- Edit Only
+        -- Start exactly like OFF, then make the smallest possible change:
+        -- when the editor is not focused, switch to the syntax render layer.
+        code.TextTransparency = 0
+        syn.Visible = false
+
+        if not focused then
+            code.TextTransparency = 1
+            syn.Visible = true
+        end
+    end
+
+    cur.Visible = syn.Visible and focused
+end
+
+loc.CursorFollowConnection = nil
+
 code.Focused:Connect(function()
     loc.SyntaxEditing = true
     loc.ApplySyntaxMode()
-    task.defer(loc.SyncSyntaxScroll)
+    local blinkTime = 0
+    local blinkState = true
+    cur.BackgroundTransparency = 0
+
+    if loc.CursorFollowConnection then
+        loc.CursorFollowConnection:Disconnect()
+    end
+
+    loc.CursorFollowConnection = s.RunService.RenderStepped:Connect(function(dt)
+        if not code:IsFocused() then
+            cur.Visible = false
+            cur.BackgroundTransparency = 1
+            return
+        end
+
+        loc.ScrollCursorToView()
+
+        if not syn.Visible then
+            cur.Visible = false
+            cur.BackgroundTransparency = 1
+            return
+        end
+
+        cur.Visible = true
+
+        blinkTime += dt
+        if blinkTime >= 0.5 then
+            blinkTime = 0
+            blinkState = not blinkState
+        end
+
+        cur.BackgroundTransparency = blinkState and 0 or 1
+    end)
+
+    task.defer(function()
+        loc.UpdateFakeCursor()
+        loc.ScrollCursorToView()
+    end)
 end)
 
 code.FocusLost:Connect(function()
     loc.SyntaxEditing = false
+
+    if loc.CursorFollowConnection then
+        loc.CursorFollowConnection:Disconnect()
+        loc.CursorFollowConnection = nil
+    end
+
+    cur.BackgroundTransparency = 1
+    cur.Visible = false
+    cur.Position = UDim2.new(0,0,0,0)
     syn.Position = UDim2.new(0,0,0,0)
     loc.ApplySyntaxMode()
+end)
+
+code:GetPropertyChangedSignal("CursorPosition"):Connect(function()
+    if code:IsFocused() then
+        loc.UpdateFakeCursor()
+        task.defer(loc.ScrollCursorToView)
+        runMatchingCorrection()
+    end
 end)
 
 loc.SyntaxColors = {
@@ -2659,6 +2966,24 @@ table.sort(loc.SyntaxSpecialTokens, function(a, b)
     return #a > #b
 end)
 
+loc.SyntaxCorrectionItems = {}
+loc.SyntaxCorrectionLookup = {}
+
+for _, category in ipairs(syntaxCategories) do
+    local source = syntaxSources[category]
+    if type(source) == "table" then
+        for _, name in ipairs(source) do
+            if type(name) == "string" and #name > 0 and not loc.SyntaxCorrectionLookup[name] then
+                loc.SyntaxCorrectionLookup[name] = category
+                loc.SyntaxCorrectionItems[#loc.SyntaxCorrectionItems + 1] = {
+                    Name = name,
+                    Category = category,
+                }
+            end
+        end
+    end
+end
+
 local function richEscape(value)
     return tostring(value or "")
         :gsub("&", "&amp;")
@@ -2668,6 +2993,27 @@ end
 
 local function richColor(value, category)
     return '<font color="' .. loc.SyntaxColors[category] .. '">' .. richEscape(value) .. '</font>'
+end
+
+loc.RichSyntaxEscape = richEscape
+loc.RichSyntaxColor = richColor
+
+loc.GetTypingToken = function()
+    local source = tostring(code.Text or "")
+    local cursor = tonumber(code.CursorPosition) or (#source + 1)
+    local cursorByte = math.clamp(cursor - 1, 0, #source)
+    local prefix = source:sub(1, cursorByte)
+    return prefix:match("([%w_%.]+)$") or ""
+end
+
+local function runMatchingCorrection()
+    local typed = loc.GetTypingToken()
+    t_typing.Text = typed == "" and "" or (
+        loc.SyntaxCorrectionLookup[typed]
+            and richColor(typed, loc.SyntaxCorrectionLookup[typed])
+            or richEscape(typed)
+    )
+    mact(typed)
 end
 
 local function longBracketEnd(source, startPos)
@@ -2781,12 +3127,6 @@ e_sr:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
     task.defer(loc.SyncEditorSize)
 end)
 
-e_sr:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-    if loc.SyntaxEditing then
-        task.defer(loc.SyncSyntaxScroll)
-    end
-end)
-
 loc.UpdateSyntax = function()
     local source = tostring(code.Text or "")
     local output = {}
@@ -2897,6 +3237,7 @@ loc.AutoSaveLoading = false
 code:GetPropertyChangedSignal("Text"):Connect(function()
     task.defer(loc.UpdateLineNumbers)
     task.defer(loc.UpdateSyntax)
+    runMatchingCorrection()
 
     if loc.AutoSaveLoading or not loc.SelectedTab then return end
 
@@ -3368,6 +3709,8 @@ loc.TextSizeUI = tog(true, "TextSize", nil,nil, true, "14", function(box)
     syn.TextSize = value
     code.TextSize = value
     linen.TextSize = value
+    cur.Size = UDim2.new(0,value - 6,0,value)
+    sync.Position = UDim2.new(0,0,0,value + 2)
     box.Text = tostring(value)
     task.defer(loc.UpdateLineNumbers)
     ding("<b>TextSize</b>: " .. tostring(value), 2.5, 0,255,255)
@@ -3381,6 +3724,8 @@ loc.SyntaxUI = tog(true, "Syntax highlights", true, "Edit Only", nil, nil, nil, 
     if loc.SyntaxMode == "OFF" then
         loc.SyntaxMode = "ON"
     elseif loc.SyntaxMode == "ON" then
+        loc.SyntaxMode = "Both"
+    elseif loc.SyntaxMode == "Both" then
         loc.SyntaxMode = "Edit Only"
     else
         loc.SyntaxMode = "OFF"
@@ -3395,6 +3740,20 @@ end, true)
 loc.SyntaxUI.Button.Text = "Edit Only"
 loc.ApplySyntaxMode()
 loc.UpdateSyntax()
+runMatchingCorrection()
+
+loc.FakeCursorColorUI = tog(true, "Fake Cursor Color set", true, "Set", true, "0,255,255", function(box)
+    local color = loc.ParseRGB(box.Text, nil)
+    if not color then
+        box.Text = string.format("%d,%d,%d", math.floor(cur.BackgroundColor3.R * 255 + 0.5), math.floor(cur.BackgroundColor3.G * 255 + 0.5), math.floor(cur.BackgroundColor3.B * 255 + 0.5))
+        ding("<b>Fake Cursor Color set</b>: Invalid value", 2.5, 255, 255, 0)
+        return
+    end
+    cur.BackgroundColor3 = color
+    box.Text = string.format("%d,%d,%d", math.floor(color.R * 255 + 0.5), math.floor(color.G * 255 + 0.5), math.floor(color.B * 255 + 0.5))
+    ding("<b>Fake Cursor Color set</b>: " .. box.Text, 2.5, 0,255,255)
+end)
+loc.FakeCursorColorUI.Box.Text = "0,255,255"
 
 -- tog(true, "Syntax Preview", true, "OFF", nil,nil) did NOT exist lmfao
 loc.ConsoleUI = tog(true, "LogService - Console", true, "ON", nil,nil, nil, function(state, _, btn)
@@ -3606,8 +3965,7 @@ s.LogService.MessageOut:Connect(function(message, messageType)
 end)
 
 -- Just testing
-con("Hello, World!", Enum.MessageType.MessageOutput)
-con("Not done yet, keep waiting for the update.", Enum.MessageType.MessageWarning)
+con("Hello, World! It's me it's console.", Enum.MessageType.MessageOutput)
 
 local e_sc = Instance.new("ScrollingFrame")
 e_sc.Name = "Tabs"
@@ -3755,11 +4113,27 @@ local function addtab(file, autoSelect)
 
     local function selectCurrent()
         for _, otherbtn in ipairs(selectTab) do
-            Tween(otherbtn,nil,nil,Color3.fromRGB(79,79,79),nil,0.2)
+            local otherMeta = loc.FindMeta(otherbtn:GetAttribute("ScriptID"))
+            local otherBack = otherMeta and loc.ParseRGB(otherMeta.BackgroundColor3,nil) or nil
+            local otherText = otherMeta and loc.ParseRGB(otherMeta.TextColor3,nil) or nil
+            if otherBack then
+                Tween(otherbtn,nil,nil,otherBack,nil,0.2)
+            end
+            if otherText then
+                otherbtn.TextColor3 = otherText
+                local otherTitle = otherbtn:FindFirstChild("Title")
+                if otherTitle then otherTitle.TextColor3 = otherText end
+            end
             local otherTitle=otherbtn:FindFirstChild("Title")
             if otherbtn~=btn and otherTitle and otherTitle.TextEditable then otherTitle.TextEditable=false; otherTitle.Active=false end
         end
-        Tween(btn,nil,nil,Color3.fromRGB(150,150,150),nil,0.2)
+        local selectedBack = loc.ParseRGB(meta.BackgroundColor3,nil)
+        local selectedText = loc.ParseRGB(meta.TextColor3,nil)
+        if selectedBack then Tween(btn,nil,nil,selectedBack,nil,0.2) end
+        if selectedText then
+            btn.TextColor3 = selectedText
+            title.TextColor3 = selectedText
+        end
         loc.SelectedTab=btn
         loc.AutoSaveLoading = true
         code.Text=loc.StripScriptID(readfile(path))
@@ -3767,7 +4141,6 @@ local function addtab(file, autoSelect)
         code.TextEditable=meta.IsTextEditable~=false
         code.TextColor3=loc.ParseRGB(meta.TextColor3,Color3.fromRGB(255,255,255))
         linen.TextColor3=code.TextColor3
-        e_sr.BackgroundColor3=loc.ParseRGB(meta.BackgroundColor3,e_sr.BackgroundColor3)
         bac.Text=tostring(meta.BackgroundColor3)
         tc3.Text=tostring(meta.TextColor3)
         sid.Text="ScriptID: "..tostring(meta.ScriptID)
@@ -3811,7 +4184,6 @@ local function addtab(file, autoSelect)
         if color then
             meta.BackgroundColor3=bac.Text:gsub("%s+","")
             btn.BackgroundColor3=color
-            if loc.SelectedTab==btn then e_sr.BackgroundColor3=color end
             bac.Text=meta.BackgroundColor3
             loc.SaveDraft()
         else
@@ -3977,3 +4349,4 @@ ding([[ExperienceSettings (Beta); Notification from <b>Editor</b> &lt;3
   ———————————————————————————
   Version ExperienceSettings: <b>0.821.1.4-Beta</b>
   Version Editor: <b>]].. v_ver .."</b>", 8, 255,255,0)
+
