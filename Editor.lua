@@ -1,4 +1,4 @@
-local v_ver = [[Editor 1.96 Master]]
+local v_ver = [[Editor 1.97 Master]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -2505,6 +2505,15 @@ linen.TextYAlignment = Enum.TextYAlignment.Top
 linen.TextColor3 = Color3.new(0,0,0)
 linen.Parent = e_sr
 
+-- One shared canvas item keeps Code and Syntax scrolling together.
+local cands = Instance.new("Frame")
+cands.Name = "CodeAndSyn"
+cands.AutomaticSize = Enum.AutomaticSize.XY
+cands.BackgroundTransparency = 1
+cands.Active = false
+cands.BorderSizePixel = 0
+cands.Parent = e_sr
+
 local code = Instance.new("TextBox")
 code.Name = "Code"
 code.Position = UDim2.new(0,0,0,0)
@@ -2524,7 +2533,7 @@ code.PlaceholderText = 'print("Hello, World!")'
 code.MultiLine = true
 code.ClearTextOnFocus = false
 code.TextWrapped = false
-code.Parent = e_sr
+code.Parent = cands
 
 local syn = Instance.new("TextLabel")
 syn.Name = "Syntax"
@@ -2542,7 +2551,7 @@ syn.TextColor3 = code.TextColor3
 syn.Font = code.Font
 syn.TextWrapped = code.TextWrapped
 syn.ClipsDescendants = false
-syn.Parent = code
+syn.Parent = cands
 
 loc.SyntaxEnabled = true
 loc.SyntaxEditing = false
@@ -3758,6 +3767,7 @@ local function addtab(file, autoSelect)
         code.TextEditable=meta.IsTextEditable~=false
         code.TextColor3=loc.ParseRGB(meta.TextColor3,Color3.fromRGB(255,255,255))
         linen.TextColor3=code.TextColor3
+        e_sr.BackgroundColor3=loc.ParseRGB(meta.BackgroundColor3,e_sr.BackgroundColor3)
         bac.Text=tostring(meta.BackgroundColor3)
         tc3.Text=tostring(meta.TextColor3)
         sid.Text="ScriptID: "..tostring(meta.ScriptID)
@@ -3797,10 +3807,33 @@ local function addtab(file, autoSelect)
         meta.IsTextEditable=not(meta.IsTextEditable~=false); code.TextEditable=meta.IsTextEditable; lock.Text=meta.IsTextEditable and "Lock Editable" or "Unlock Editable"; lock.TextColor3=meta.IsTextEditable and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,0,0); loc.SaveDraft()
     end)
     bac.FocusLost:Connect(function()
-        if loc.ParseRGB(bac.Text,nil) then meta.BackgroundColor3=bac.Text:gsub("%s+",""); btn.BackgroundColor3=loc.ParseRGB(meta.BackgroundColor3,btn.BackgroundColor3); loc.SaveDraft() else bac.Text=meta.BackgroundColor3 end
+        local color=loc.ParseRGB(bac.Text,nil)
+        if color then
+            meta.BackgroundColor3=bac.Text:gsub("%s+","")
+            btn.BackgroundColor3=color
+            if loc.SelectedTab==btn then e_sr.BackgroundColor3=color end
+            bac.Text=meta.BackgroundColor3
+            loc.SaveDraft()
+        else
+            bac.Text=meta.BackgroundColor3
+        end
     end)
     tc3.FocusLost:Connect(function()
-        if loc.ParseRGB(tc3.Text,nil) then meta.TextColor3=tc3.Text:gsub("%s+",""); btn.TextColor3=loc.ParseRGB(meta.TextColor3,btn.TextColor3); title.TextColor3=btn.TextColor3; if loc.SelectedTab==btn then code.TextColor3=btn.TextColor3; linen.TextColor3=btn.TextColor3 end; loc.SaveDraft() else tc3.Text=meta.TextColor3 end
+        local color=loc.ParseRGB(tc3.Text,nil)
+        if color then
+            meta.TextColor3=tc3.Text:gsub("%s+","")
+            btn.TextColor3=color
+            title.TextColor3=color
+            if loc.SelectedTab==btn then
+                code.TextColor3=color
+                linen.TextColor3=color
+                syn.TextColor3=color
+            end
+            tc3.Text=meta.TextColor3
+            loc.SaveDraft()
+        else
+            tc3.Text=meta.TextColor3
+        end
     end)
     exe.MouseButton1Click:Connect(function()
         loc.SelectedTab=btn; loc.DirectTarget="File"; loc.RunDirect(true)
