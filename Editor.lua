@@ -1,4 +1,4 @@
-local v_ver = [[Editor 2.19 Master]]
+local v_ver = [[Editor 2.20 Master]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -2563,7 +2563,7 @@ syn.Parent = cands
 
 local cur = Instance.new("Frame")
 cur.Name = "CodeAndSyn"
-cur.Size = UDim2.new(0,code.TextSize - 6,0,code.TextSize)
+cur.Size = UDim2.new(0,math.max(1, code.TextSize + (loc.FakeCursorThicknessOffset or -11)),0,code.TextSize)
 cur.Position = UDim2.new(0,0,0,0)
 cur.BackgroundColor3 = Color3.fromRGB(0,255,255)
 cur.Active = false
@@ -2731,7 +2731,7 @@ local function mact(typed)
 end
 
 local function syncCorrectionVisibility()
-    sync.Visible = cur.Visible
+    sync.Visible = cur.Visible and not loc.HideSyntaxCorrection
 end
 
 cur:GetPropertyChangedSignal("Visible"):Connect(syncCorrectionVisibility)
@@ -2776,7 +2776,7 @@ loc.UpdateFakeCursor = function()
     end
 
     local cursorX, cursorY, lineHeight = loc.GetCursorMetrics()
-    cur.Size = UDim2.new(0,code.TextSize - 6,0,math.ceil(lineHeight))
+    cur.Size = UDim2.new(0,math.max(1, code.TextSize + (loc.FakeCursorThicknessOffset or -11)),0,math.ceil(lineHeight))
     cur.Position = UDim2.new(0,cursorX,0,cursorY)
 end
 
@@ -3899,7 +3899,7 @@ loc.TextSizeUI = tog(true, "TextSize", nil,nil, true, "14", function(box)
     syn.TextSize = value
     code.TextSize = value
     linen.TextSize = value
-    cur.Size = UDim2.new(0,value - 6,0,value)
+    cur.Size = UDim2.new(0,math.max(1, value + (loc.FakeCursorThicknessOffset or -11)),0,value)
     sync.Position = UDim2.new(0,0,0,value + 2)
     box.Text = tostring(value)
     task.defer(loc.UpdateLineNumbers)
@@ -3961,6 +3961,33 @@ loc.FakeCursorColorUI = tog(true, "Fake Cursor Color set", true, "Set", true, "0
     ding("<b>Fake Cursor Color set</b>: " .. box.Text, 2.5, 0,255,255)
 end)
 loc.FakeCursorColorUI.Box.Text = "0,255,255"
+
+loc.FakeCursorThicknessOffset = -11
+loc.FakeCursorThicknessUI = tog(true, "Adjust Fake Cursor Thinkness", true, "Set", true, "-11", function(box)
+    local value = tonumber(box.Text)
+    if not value then
+        box.Text = tostring(loc.FakeCursorThicknessOffset)
+        ding("<b>Adjust Fake Cursor Thinkness</b>: Invalid value", 2.5, 255, 255, 0)
+        return
+    end
+
+    value = math.floor(value)
+    loc.FakeCursorThicknessOffset = value
+    box.Text = tostring(value)
+    cur.Size = UDim2.new(0,math.max(1, code.TextSize + value),0,code.TextSize)
+    ding("<b>Adjust Fake Cursor Thinkness</b>: " .. tostring(value), 2.5, 0,255,255)
+end)
+loc.FakeCursorThicknessUI.Box.Text = "-11"
+
+loc.HideSyntaxCorrection = false
+loc.HideSyntaxCorrectionUI = tog(true, "Hide Syntax Correction", true, "OFF", nil, nil,
+    function(_, btn)
+        loc.HideSyntaxCorrection = not loc.HideSyntaxCorrection
+        btn.Text = loc.HideSyntaxCorrection and "ON" or "OFF"
+        syncCorrectionVisibility()
+        ding("<b>Hide Syntax Correction</b>: " .. (loc.HideSyntaxCorrection and "Hidden" or "Visible"), 2.5, 0,255,255)
+    end)
+loc.HideSyntaxCorrectionUI.Button.Text = "OFF"
 
 -- tog(true, "Syntax Preview", true, "OFF", nil,nil) did NOT exist lmfao
 loc.ConsoleUI = tog(true, "LogService - Console", true, "ON", nil,nil, nil, function(state, _, btn)
