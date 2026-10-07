@@ -1,4 +1,4 @@
-local v_ver = [[Editor 2.12 Console Time]]
+local v_ver = [[Editor 2.19 Master]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -2149,6 +2149,10 @@ Comments = {
   "--",
   "[[]]",
 }
+
+-- Syntax Correction / highlighting entries that are not part of the known API lists.
+-- Runtime-discovered identifiers can be added here as white entries.
+Unknown = {}
 ---------------------------------------------------------------------------------------
 
 local function Tween(obj, size, pos, backcol, tra, time)
@@ -2621,6 +2625,8 @@ mac.Parent = sync
 Corner(0,4,mac)
 ListLayout(mac, 0, 2, "HCenter", "VTop", "SLayout", "FillV")
 
+local normalizeCorrection
+
 local function mact(typed)
     typed = tostring(typed or "")
 
@@ -2635,12 +2641,13 @@ local function mact(typed)
         return
     end
 
-    t_typing.Text = loc.SyntaxCorrectionLookup and loc.SyntaxCorrectionLookup[typed]
-        and loc.RichSyntaxColor(typed, loc.SyntaxCorrectionLookup[typed])
+    local exactTyping = loc.SyntaxCorrectionLookupLower[normalizeCorrection(typed)]
+    t_typing.Text = exactTyping
+        and loc.RichSyntaxColor(typed, exactTyping.Category)
         or loc.RichSyntaxEscape(typed)
 
-    -- Ignore special characters during matching; letters, digits and underscores stay.
-    local normalizedTyped = typed:gsub("[^%w]", "")
+    -- Ignore special characters during matching and compare case-insensitively.
+    local normalizedTyped = normalizeCorrection(typed)
     if normalizedTyped == "" then
         t_typing.Text = typed == "" and "" or richEscape(typed)
         return
@@ -2650,29 +2657,29 @@ local function mact(typed)
     local length = #normalizedTyped
 
     for _, item in ipairs(loc.SyntaxCorrectionItems or {}) do
-        local name = item.Name
-        local normalizedName = tostring(name):gsub("[^%w]", "")
-        if normalizedName:sub(1, length) == normalizedTyped then
-            local diff = #normalizedName - length
-            local order
+            local name = item.Name
+            local normalizedName = normalizeCorrection(name)
+            if normalizedName:sub(1, length) == normalizedTyped then
+                local diff = #normalizedName - length
+                local order
 
-            if diff <= 3 then
-                order = 0
-            elseif diff <= 7 then
-                order = 1
-            elseif diff <= 12 then
-                order = 2
-            else
-                order = 3
+                if diff <= 3 then
+                    order = 0
+                elseif diff <= 7 then
+                    order = 1
+                elseif diff <= 12 then
+                    order = 2
+                else
+                    order = 3
+                end
+
+                results[#results + 1] = {
+                    Name = name,
+                    Category = item.Category,
+                    Order = order,
+                    Diff = diff,
+                }
             end
-
-            results[#results + 1] = {
-                Name = name,
-                Category = item.Category,
-                Order = order,
-                Diff = diff,
-            }
-        end
     end
 
     table.sort(results, function(a, b)
@@ -2916,6 +2923,7 @@ loc.SyntaxColors = {
     sUNC = "rgb(255,255,0)",
     Special = "rgb(0,255,127)",
     Comments = "rgb(128,128,128)",
+    Unknown = "rgb(255,255,255)",
 }
 
 loc.SyntaxLookup = {}
@@ -2923,7 +2931,7 @@ loc.SyntaxMultiTokens = {}
 loc.SyntaxSpecialTokens = {}
 
 -- Priority resolves names that appear in more than one API category.
-local syntaxCategories = {"Keywords", "sUNC", "Classes", "Enums", "DataTypes", "Globals"}
+local syntaxCategories = {"Keywords", "sUNC", "Classes", "Enums", "DataTypes", "Globals", "Unknown"}
 local syntaxSources = {
     Classes = Classes,
     Enums = Enums,
@@ -2931,6 +2939,7 @@ local syntaxSources = {
     Globals = Globals,
     Keywords = Keywords,
     sUNC = sUNC,
+    Unknown = Unknown,
 }
 
 for _, category in ipairs(syntaxCategories) do
@@ -2971,17 +2980,26 @@ end)
 
 loc.SyntaxCorrectionItems = {}
 loc.SyntaxCorrectionLookup = {}
+loc.SyntaxCorrectionLookupLower = {}
+
+normalizeCorrection = function(value)
+    return tostring(value or ""):gsub("[^%w]", ""):lower()
+end
 
 for _, category in ipairs(syntaxCategories) do
     local source = syntaxSources[category]
     if type(source) == "table" then
         for _, name in ipairs(source) do
             if type(name) == "string" and #name > 0 and not loc.SyntaxCorrectionLookup[name] then
-                loc.SyntaxCorrectionLookup[name] = category
-                loc.SyntaxCorrectionItems[#loc.SyntaxCorrectionItems + 1] = {
-                    Name = name,
-                    Category = category,
-                }
+                local normalizedName = normalizeCorrection(name)
+                if normalizedName ~= "" and not loc.SyntaxCorrectionLookupLower[normalizedName] then
+                    loc.SyntaxCorrectionLookup[name] = category
+                    loc.SyntaxCorrectionLookupLower[normalizedName] = {Name = name, Category = category}
+                    loc.SyntaxCorrectionItems[#loc.SyntaxCorrectionItems + 1] = {
+                        Name = name,
+                        Category = category,
+                    }
+                end
             end
         end
     end
@@ -3006,14 +3024,172 @@ loc.GetTypingToken = function()
     local cursor = tonumber(code.CursorPosition) or (#source + 1)
     local cursorByte = math.clamp(cursor - 1, 0, #source)
     local prefix = source:sub(1, cursorByte)
-    return prefix:match("([%w_%.]+)$") or ""
+    -- Only the final identifier is the current syntax token.
+    -- Example: Enum.Bord -> Bord.
+    return prefix:match("([%w_]+)$") or ""
+end
+
+loc.FindCorrection = function(typed)
+    local normalizedTyped = normalizeCorrection(typed)
+    if normalizedTyped == "" then return nil end
+
+    local best = nil
+    local length = #normalizedTyped
+
+    for _, item in ipairs(loc.SyntaxCorrectionItems or {}) do
+        local normalizedName = normalizeCorrection(item.Name)
+        if normalizedName:sub(1, length) == normalizedTyped then
+            local diff = #normalizedName - length
+            local order = diff <= 3 and 0 or (diff <= 7 and 1 or (diff <= 12 and 2 or 3))
+
+            if not best
+                or order < best.Order
+                or (order == best.Order and diff < best.Diff)
+                or (order == best.Order and diff == best.Diff and item.Name < best.Name) then
+                best = {Name = item.Name, Category = item.Category, Order = order, Diff = diff}
+            end
+        end
+    end
+
+    return best
+end
+
+-- Scan the editor source for identifier-like syntax that is not present in the
+-- known syntax lists. Unknown is a runtime collection, not a copy of the
+-- current partially typed token.
+loc.RefreshUnknownSyntax = function(source)
+    source = tostring(source or "")
+
+    local found = {}
+    local seen = {}
+    local pos = 1
+    local length = #source
+
+    local function readQuotedString(startPos, quote)
+        local i = startPos + 1
+        while i <= length do
+            local ch = source:sub(i, i)
+            if ch == "\\" then
+                i += 2
+            elseif ch == quote then
+                return i + 1
+            else
+                i += 1
+            end
+        end
+        return length + 1
+    end
+
+    local function readLongBracket(startPos)
+        if source:sub(startPos, startPos) ~= "[" then return nil end
+        local i = startPos + 1
+        while source:sub(i, i) == "=" do
+            i += 1
+        end
+        if source:sub(i, i) ~= "[" then return nil end
+        local close = "]" .. string.rep("=", i - startPos - 1) .. "]"
+        local finish = source:find(close, i + 1, true)
+        return finish and finish + #close or length + 1
+    end
+
+    local function addUnknown(word)
+        local normalized = normalizeCorrection(word)
+        if normalized == "" or seen[normalized] then return end
+
+        local known = loc.SyntaxCorrectionLookupLower[normalized]
+        if known and known.Category ~= "Unknown" then return end
+
+        seen[normalized] = true
+        found[#found + 1] = word
+    end
+
+    while pos <= length do
+        local one = source:sub(pos, pos)
+        local two = source:sub(pos, pos + 1)
+
+        if two == "--" then
+            local longEnd = readLongBracket(pos + 2)
+            if longEnd then
+                pos = longEnd
+            else
+                local lineEnd = source:find("\n", pos + 2, true)
+                pos = lineEnd or (length + 1)
+            end
+        elseif one == '"' or one == "'" or one == "`" then
+            pos = readQuotedString(pos, one)
+        elseif one == "[" then
+            local longEnd = readLongBracket(pos)
+            if longEnd then
+                pos = longEnd
+            else
+                pos += 1
+            end
+        elseif one:match("[%a_]") then
+            local finish = pos + 1
+            while finish <= length and source:sub(finish, finish):match("[%w_]") do
+                finish += 1
+            end
+
+            addUnknown(source:sub(pos, finish - 1))
+            pos = finish
+        else
+            pos += 1
+        end
+    end
+
+    -- Keep Unknown synchronized with the current editor source.
+    for i = #Unknown, 1, -1 do
+        Unknown[i] = nil
+    end
+    for _, word in ipairs(found) do
+        Unknown[#Unknown + 1] = word
+    end
+
+    -- Remove previous runtime Unknown entries from the lookup tables.
+    for name, category in pairs(loc.SyntaxLookup) do
+        if category == "Unknown" then
+            loc.SyntaxLookup[name] = nil
+        end
+    end
+    for name, category in pairs(loc.SyntaxCorrectionLookup) do
+        if category == "Unknown" then
+            loc.SyntaxCorrectionLookup[name] = nil
+        end
+    end
+    for normalized, item in pairs(loc.SyntaxCorrectionLookupLower) do
+        if item.Category == "Unknown" then
+            loc.SyntaxCorrectionLookupLower[normalized] = nil
+        end
+    end
+
+    local keptItems = {}
+    for _, item in ipairs(loc.SyntaxCorrectionItems or {}) do
+        if item.Category ~= "Unknown" then
+            keptItems[#keptItems + 1] = item
+        end
+    end
+    loc.SyntaxCorrectionItems = keptItems
+
+    for _, word in ipairs(Unknown) do
+        local normalized = normalizeCorrection(word)
+        loc.SyntaxLookup[word] = "Unknown"
+        loc.SyntaxCorrectionLookup[word] = "Unknown"
+        loc.SyntaxCorrectionLookupLower[normalized] = {Name = word, Category = "Unknown"}
+        loc.SyntaxCorrectionItems[#loc.SyntaxCorrectionItems + 1] = {
+            Name = word,
+            Category = "Unknown",
+        }
+    end
 end
 
 local function runMatchingCorrection()
     local typed = loc.GetTypingToken()
+    local normalizedTyped = normalizeCorrection(typed)
+    local exact = loc.SyntaxCorrectionLookupLower[normalizedTyped]
+
     t_typing.Text = typed == "" and "" or (
-        loc.SyntaxCorrectionLookup[typed]
-            and richColor(typed, loc.SyntaxCorrectionLookup[typed])
+        exact
+            and richColor(typed, exact.Category)
             or richEscape(typed)
     )
     mact(typed)
@@ -3026,6 +3202,8 @@ code:GetPropertyChangedSignal("CursorPosition"):Connect(function()
         runMatchingCorrection()
     end
 end)
+
+
 
 local function longBracketEnd(source, startPos)
     if source:sub(startPos, startPos) ~= "[" then return nil end
@@ -3247,6 +3425,7 @@ loc.AutoSaveLoading = false
 
 code:GetPropertyChangedSignal("Text"):Connect(function()
     task.defer(loc.UpdateLineNumbers)
+    loc.RefreshUnknownSyntax(code.Text)
     task.defer(loc.UpdateSyntax)
     runMatchingCorrection()
 
@@ -3766,6 +3945,8 @@ end, true)
 loc.SyntaxUI.Button.Text = "ON"
 loc.ApplySyntaxMode()
 loc.UpdateSyntax()
+loc.RefreshUnknownSyntax(code.Text)
+loc.UpdateSyntax()
 runMatchingCorrection()
 
 loc.FakeCursorColorUI = tog(true, "Fake Cursor Color set", true, "Set", true, "0,255,255", function(box)
@@ -4209,8 +4390,7 @@ local function addtab(file, autoSelect)
         code.Text=loc.StripScriptID(readfile(path))
         loc.AutoSaveLoading = false
         code.TextEditable=meta.IsTextEditable~=false
-        code.TextColor3=loc.ParseRGB(meta.TextColor3,Color3.fromRGB(255,255,255))
-        linen.TextColor3=loc.LineNumberColor or code.TextColor3
+        linen.TextColor3=loc.LineNumberColor or linen.TextColor3
         bac.Text=tostring(meta.BackgroundColor3)
         tc3.Text=tostring(meta.TextColor3)
         sid.Text="ScriptID: "..tostring(meta.ScriptID)
@@ -4266,12 +4446,8 @@ local function addtab(file, autoSelect)
             meta.TextColor3=tc3.Text:gsub("%s+","")
             btn.TextColor3=color
             title.TextColor3=color
-            if loc.SelectedTab==btn then
-                code.TextColor3=color
-                if loc.LineNumberColor == nil then
-                    linen.TextColor3=color
-                end
-                syn.TextColor3=color
+            if loc.SelectedTab==btn and loc.LineNumberColor == nil then
+                linen.TextColor3=color
             end
             tc3.Text=meta.TextColor3
             loc.SaveDraft()
@@ -4423,4 +4599,3 @@ ding([[ExperienceSettings (Beta); Notification from <b>Editor</b> &lt;3
   ———————————————————————————
   Version ExperienceSettings: <b>0.821.1.4-Beta</b>
   Version Editor: <b>]].. v_ver .."</b>", 8, 255,255,0)
-
