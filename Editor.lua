@@ -1,4 +1,4 @@
-local v_ver = [[Editor 2.10 Master]]
+local v_ver = [[Editor 2.12 Console Time]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -2498,12 +2498,15 @@ linen.AutomaticSize = Enum.AutomaticSize.XY
 linen.BorderSizePixel = 0
 linen.BorderColor3 = linen.BackgroundColor3
 linen.TextSize = 14
-linen.Text = ""
+linen.Text = "1"
 linen.Font = Enum.Font.Code
 linen.TextXAlignment = Enum.TextXAlignment.Right
 linen.TextYAlignment = Enum.TextYAlignment.Top
-linen.TextColor3 = Color3.new(0,0,0)
+linen.TextColor3 = Color3.new(1,1,1)
 linen.Parent = e_sr
+
+-- nil keeps the existing per-file line-number color until the new setting is used.
+loc.LineNumberColor = Color3.fromRGB(255,255,255)
 
 -- One shared canvas item keeps Code and Syntax scrolling together.
 local cands = Instance.new("Frame")
@@ -2636,13 +2639,21 @@ local function mact(typed)
         and loc.RichSyntaxColor(typed, loc.SyntaxCorrectionLookup[typed])
         or loc.RichSyntaxEscape(typed)
 
+    -- Ignore special characters during matching; letters, digits and underscores stay.
+    local normalizedTyped = typed:gsub("[^%w]", "")
+    if normalizedTyped == "" then
+        t_typing.Text = typed == "" and "" or richEscape(typed)
+        return
+    end
+
     local results = {}
-    local length = #typed
+    local length = #normalizedTyped
 
     for _, item in ipairs(loc.SyntaxCorrectionItems or {}) do
         local name = item.Name
-        if name:sub(1, length) == typed then
-            local diff = #name - length
+        local normalizedName = tostring(name):gsub("[^%w]", "")
+        if normalizedName:sub(1, length) == normalizedTyped then
+            local diff = #normalizedName - length
             local order
 
             if diff <= 3 then
@@ -2896,14 +2907,6 @@ code.FocusLost:Connect(function()
     loc.ApplySyntaxMode()
 end)
 
-code:GetPropertyChangedSignal("CursorPosition"):Connect(function()
-    if code:IsFocused() then
-        loc.UpdateFakeCursor()
-        task.defer(loc.ScrollCursorToView)
-        runMatchingCorrection()
-    end
-end)
-
 loc.SyntaxColors = {
     Classes = "rgb(255,80,80)",
     Enums = "rgb(255,165,0)",
@@ -3015,6 +3018,14 @@ local function runMatchingCorrection()
     )
     mact(typed)
 end
+
+code:GetPropertyChangedSignal("CursorPosition"):Connect(function()
+    if code:IsFocused() then
+        loc.UpdateFakeCursor()
+        task.defer(loc.ScrollCursorToView)
+        runMatchingCorrection()
+    end
+end)
 
 local function longBracketEnd(source, startPos)
     if source:sub(startPos, startPos) ~= "[" then return nil end
@@ -3717,10 +3728,25 @@ loc.TextSizeUI = tog(true, "TextSize", nil,nil, true, "14", function(box)
 end)
 loc.TextSizeUI.Box.Text = tostring(code.TextSize)
 
-loc.SyntaxMode = "Edit Only"
+loc.LineNumberColorUI = tog(true, "Line Number Color set", true, "Set", true, "0,0,0", function(box)
+    local color = loc.ParseRGB(box.Text, nil)
+    if not color then
+        local current = loc.LineNumberColor or linen.TextColor3
+        box.Text = string.format("%d,%d,%d", math.floor(current.R * 255 + 0.5), math.floor(current.G * 255 + 0.5), math.floor(current.B * 255 + 0.5))
+        ding("<b>Line Number Color set</b>: Invalid value", 2.5, 255, 255, 0)
+        return
+    end
+    loc.LineNumberColor = color
+    linen.TextColor3 = color
+    box.Text = string.format("%d,%d,%d", math.floor(color.R * 255 + 0.5), math.floor(color.G * 255 + 0.5), math.floor(color.B * 255 + 0.5))
+    ding("<b>Line Number Color set</b>: " .. box.Text, 2.5, 0,255,255)
+end)
+loc.LineNumberColorUI.Box.Text = "0,0,0"
+
+loc.SyntaxMode = "ON"
 loc.SyntaxEnabled = true
 
-loc.SyntaxUI = tog(true, "Syntax highlights", true, "Edit Only", nil, nil, nil, function(_, _, btn)
+loc.SyntaxUI = tog(true, "Syntax highlights", true, "ON", nil, nil, nil, function(_, _, btn)
     if loc.SyntaxMode == "OFF" then
         loc.SyntaxMode = "ON"
     elseif loc.SyntaxMode == "ON" then
@@ -3737,7 +3763,7 @@ loc.SyntaxUI = tog(true, "Syntax highlights", true, "Edit Only", nil, nil, nil, 
     loc.UpdateSyntax()
 end, true)
 
-loc.SyntaxUI.Button.Text = "Edit Only"
+loc.SyntaxUI.Button.Text = "ON"
 loc.ApplySyntaxMode()
 loc.UpdateSyntax()
 runMatchingCorrection()
@@ -3786,6 +3812,21 @@ loc.ConsoleLimitUI = tog(true, "Console Limit", true, "Set", true, "250", functi
     ding("<b>Console Limit</b>: " .. tostring(value), 2.5, 0,255,255)
 end)
 loc.ConsoleLimitUI.Box.Text = tostring(loc.MaxOutputs)
+
+loc.ConsoleShowTimeUI = tog(true, "Console Show Time", true, "24 Hours", nil, nil, nil, function(state, _, btn)
+    if state then
+        loc.ConsoleTimeMode = "24 Hours"
+        btn.Text = "24 Hours"
+        if loc.RefreshConsoleTimes then loc.RefreshConsoleTimes() end
+        ding("<b>Console Show Time</b>: 24 Hours", 2.5, 0,255,255)
+    else
+        loc.ConsoleTimeMode = "12 Hours"
+        btn.Text = "12 Hours (AM/PM)"
+        if loc.RefreshConsoleTimes then loc.RefreshConsoleTimes() end
+        ding("<b>Console Show Time</b>: 12 Hours (AM/PM)", 2.5, 0,255,255)
+    end
+end, true)
+loc.ConsoleShowTimeUI.Button.Text = "24 Hours"
 
 loc.SaveUI = tog(true, "Save", true, "Save", true, "Script.lua", function(box, btn)
     if loc.SaveNew then loc.SaveNew(box, btn) end
@@ -3875,6 +3916,27 @@ loc.ConList = {}
 loc.OutputQueue = {}
 loc.ConsoleProcessing = false
 loc.NextOutputOrder = 0
+loc.ConsoleTimeMode = "24 Hours"
+
+loc.GetConsoleTime = function(timestamp)
+    timestamp = tonumber(timestamp) or os.time()
+    if loc.ConsoleTimeMode == "12 Hours" then
+        return os.date("%I:%M:%S %p", timestamp)
+    end
+    return os.date("%H:%M:%S", timestamp)
+end
+
+loc.RefreshConsoleTimes = function()
+    for _, btn in ipairs(loc.ConList or {}) do
+        if btn and btn.Parent then
+            local timestamp = tonumber(btn:GetAttribute("ConsoleTimestamp"))
+            local output = btn:GetAttribute("ConsoleOutput")
+            if timestamp and output ~= nil then
+                btn.Text = loc.GetConsoleTime(timestamp) .. "\n" .. tostring(output)
+            end
+        end
+    end
+end
 
 loc.OutputColors = {
     [Enum.MessageType.MessageOutput] = Color3.fromRGB(255, 255, 255),
@@ -3884,9 +3946,15 @@ loc.OutputColors = {
 }
 
 local function con(output, messageType)
+    local text = tostring(output)
+
+    -- Normalize the common executor error prefix ":2914:" -> "2914:".
+    text = text:gsub("^:(%d+):", "%1:", 1)
+
     table.insert(loc.OutputQueue, {
-        Text = tostring(output),
-        Type = messageType
+        Text = text,
+        Type = messageType,
+        Time = os.time()
     })
 
     if loc.ConsoleProcessing then
@@ -3908,7 +3976,9 @@ local function con(output, messageType)
             btn.BackgroundTransparency = 0.6
             btn.BackgroundColor3 = color
             btn.TextColor3 = color
-            btn.Text = item.Text
+            btn:SetAttribute("ConsoleTimestamp", item.Time)
+            btn:SetAttribute("ConsoleOutput", item.Text)
+            btn.Text = loc.GetConsoleTime(item.Time) .. "\n" .. item.Text
             btn.TextWrapped = true
             btn.TextXAlignment = Enum.TextXAlignment.Left
             btn.TextYAlignment = Enum.TextYAlignment.Top
@@ -4140,7 +4210,7 @@ local function addtab(file, autoSelect)
         loc.AutoSaveLoading = false
         code.TextEditable=meta.IsTextEditable~=false
         code.TextColor3=loc.ParseRGB(meta.TextColor3,Color3.fromRGB(255,255,255))
-        linen.TextColor3=code.TextColor3
+        linen.TextColor3=loc.LineNumberColor or code.TextColor3
         bac.Text=tostring(meta.BackgroundColor3)
         tc3.Text=tostring(meta.TextColor3)
         sid.Text="ScriptID: "..tostring(meta.ScriptID)
@@ -4198,7 +4268,9 @@ local function addtab(file, autoSelect)
             title.TextColor3=color
             if loc.SelectedTab==btn then
                 code.TextColor3=color
-                linen.TextColor3=color
+                if loc.LineNumberColor == nil then
+                    linen.TextColor3=color
+                end
                 syn.TextColor3=color
             end
             tc3.Text=meta.TextColor3
@@ -4339,6 +4411,8 @@ add.MouseButton1Click:Connect(function()
     end
 end)
 
+linen.TextColor3 = loc.LineNumberColor or Color3.fromRGB(255,255,255)
+loc.UpdateLineNumbers()
 task.defer(loc.UpdateLineNumbers)
 
 ding("Hello, World!", 5, 0,255,255)
