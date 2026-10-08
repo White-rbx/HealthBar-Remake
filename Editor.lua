@@ -1,4 +1,4 @@
-local v_ver = [[Editor 2.20 Master]]
+local v_ver = [[Editor 2.22 Master]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -2155,21 +2155,29 @@ Comments = {
 Unknown = {}
 ---------------------------------------------------------------------------------------
 
-local function Tween(obj, size, pos, backcol, tra, time)
-    local tween = s.TweenService:Create(
-        obj,
-        TweenInfo.new(
-            time,
-            Enum.EasingStyle.Quad,
-            Enum.EasingDirection.Out
-        ),
-        {Size = size,
-        Position = pos,
-        BackgroundColor3 = backcol,
-        BackgroundTransparency = tra,
-        }
-    )
+local tweenStyle = {
+    Linear = Enum.EasingStyle.Linear,
+    Sine = Enum.EasingStyle.Sine,
+    Back = Enum.EasingStyle.Back,
+    Quad = Enum.EasingStyle.Quad,
+    Quart = Enum.EasingStyle.Quart,
+    Quint = Enum.EasingStyle.Quint,
+    Bounce = Enum.EasingStyle.Bounce,
+    Elastic = Enum.EasingStyle.Elastic,
+    Exponential = Enum.EasingStyle.Exponential,
+    Circular = Enum.EasingStyle.Circular,
+    Cubic = Enum.EasingStyle.Cubic
+}
 
+local function Tween(obj, propertie, time, style)
+    local properties = propertie or {}
+    local selectedStyle = tweenStyle[style] or (typeof(style) == "EnumItem" and style) or Enum.EasingStyle.Quad
+    local tweenInfo = TweenInfo.new(
+        time or 0.5,
+        selectedStyle,
+        Enum.EasingDirection.Out
+    )
+    local tween = s.TweenService:Create(obj, tweenInfo, properties)
     tween:Play()
     return tween
 end
@@ -2301,11 +2309,11 @@ editor.MouseButton1Click:Connect(function()
   if state == true then
       editor.Image = "rbxassetid://73984153023004"
       state = false
-      Tween(eback, nil, UDim2.new(0.1,0,1.1,0), nil,nil, 0.4)
+      Tween(eback, {Position = UDim2.new(0.1,0,1.1,0)}, 0.4)
   else
       editor.Image = "rbxassetid://108682872011804"
       state = true
-      Tween(eback, nil, UDim2.new(0.1,0,0.18,0), nil,nil, 0.4)
+      Tween(eback, {Position = UDim2.new(0.1,0,0.18,0)}, 0.4)
   end
 end)
 
@@ -2422,12 +2430,12 @@ local function addpage(vtopic, vtopic2, image, udim2)
 
     Button.MouseButton1Click:Connect(function()
         for _, otherButton in ipairs(pageButtons) do
-            Tween(otherButton, nil,nil,nil, 1, 0.2)
+            Tween(otherButton, {BackgroundTransparency = 1}, 0.2)
         end
 
-        Tween(Button, nil,nil,nil, 0.5, 0.2)
+        Tween(Button, {BackgroundTransparency = 0.5}, 0.2)
 
-        Tween(incan2, nil, udim2, nil,nil, 0.4)
+        Tween(incan2, {Position = udim2}, 0.4)
         topic.Text = "<b>" .. tostring(vtopic2) .. "</b>"
         icon.Image = "rbxassetid://".. tonumber(image)
     end)
@@ -2563,7 +2571,7 @@ syn.Parent = cands
 
 local cur = Instance.new("Frame")
 cur.Name = "CodeAndSyn"
-cur.Size = UDim2.new(0,math.max(1, code.TextSize + (loc.FakeCursorThicknessOffset or -11)),0,code.TextSize)
+cur.Size = UDim2.new(0,code.TextSize - 6,0,code.TextSize)
 cur.Position = UDim2.new(0,0,0,0)
 cur.BackgroundColor3 = Color3.fromRGB(0,255,255)
 cur.Active = false
@@ -2731,7 +2739,7 @@ local function mact(typed)
 end
 
 local function syncCorrectionVisibility()
-    sync.Visible = cur.Visible and not loc.HideSyntaxCorrection
+    sync.Visible = cur.Visible
 end
 
 cur:GetPropertyChangedSignal("Visible"):Connect(syncCorrectionVisibility)
@@ -2776,7 +2784,7 @@ loc.UpdateFakeCursor = function()
     end
 
     local cursorX, cursorY, lineHeight = loc.GetCursorMetrics()
-    cur.Size = UDim2.new(0,math.max(1, code.TextSize + (loc.FakeCursorThicknessOffset or -11)),0,math.ceil(lineHeight))
+    cur.Size = UDim2.new(0,code.TextSize - 6,0,math.ceil(lineHeight))
     cur.Position = UDim2.new(0,cursorX,0,cursorY)
 end
 
@@ -3899,7 +3907,7 @@ loc.TextSizeUI = tog(true, "TextSize", nil,nil, true, "14", function(box)
     syn.TextSize = value
     code.TextSize = value
     linen.TextSize = value
-    cur.Size = UDim2.new(0,math.max(1, value + (loc.FakeCursorThicknessOffset or -11)),0,value)
+    cur.Size = UDim2.new(0,value - 6,0,value)
     sync.Position = UDim2.new(0,0,0,value + 2)
     box.Text = tostring(value)
     task.defer(loc.UpdateLineNumbers)
@@ -3961,33 +3969,6 @@ loc.FakeCursorColorUI = tog(true, "Fake Cursor Color set", true, "Set", true, "0
     ding("<b>Fake Cursor Color set</b>: " .. box.Text, 2.5, 0,255,255)
 end)
 loc.FakeCursorColorUI.Box.Text = "0,255,255"
-
-loc.FakeCursorThicknessOffset = -11
-loc.FakeCursorThicknessUI = tog(true, "Adjust Fake Cursor Thinkness", true, "Set", true, "-11", function(box)
-    local value = tonumber(box.Text)
-    if not value then
-        box.Text = tostring(loc.FakeCursorThicknessOffset)
-        ding("<b>Adjust Fake Cursor Thinkness</b>: Invalid value", 2.5, 255, 255, 0)
-        return
-    end
-
-    value = math.floor(value)
-    loc.FakeCursorThicknessOffset = value
-    box.Text = tostring(value)
-    cur.Size = UDim2.new(0,math.max(1, code.TextSize + value),0,code.TextSize)
-    ding("<b>Adjust Fake Cursor Thinkness</b>: " .. tostring(value), 2.5, 0,255,255)
-end)
-loc.FakeCursorThicknessUI.Box.Text = "-11"
-
-loc.HideSyntaxCorrection = false
-loc.HideSyntaxCorrectionUI = tog(true, "Hide Syntax Correction", true, "OFF", nil, nil,
-    function(_, btn)
-        loc.HideSyntaxCorrection = not loc.HideSyntaxCorrection
-        btn.Text = loc.HideSyntaxCorrection and "ON" or "OFF"
-        syncCorrectionVisibility()
-        ding("<b>Hide Syntax Correction</b>: " .. (loc.HideSyntaxCorrection and "Hidden" or "Visible"), 2.5, 0,255,255)
-    end)
-loc.HideSyntaxCorrectionUI.Button.Text = "OFF"
 
 -- tog(true, "Syntax Preview", true, "OFF", nil,nil) did NOT exist lmfao
 loc.ConsoleUI = tog(true, "LogService - Console", true, "ON", nil,nil, nil, function(state, _, btn)
@@ -4339,6 +4320,10 @@ local function addtab(file, autoSelect)
     btn:SetAttribute("ScriptID", id)
     Corner(0,5,btn)
 
+    local btnScale = Instance.new("UIScale")
+    btnScale.Scale = 0.8
+    btnScale.Parent = btn
+
     local options = Instance.new("ScrollingFrame")
     options.Name = "Options"
     options.Size = UDim2.new(1,0,0,0)
@@ -4383,9 +4368,9 @@ local function addtab(file, autoSelect)
 
     more.MouseButton1Click:Connect(function()
         if options.Visible then
-            more.Text="•••"; more.TextColor3=Color3.new(1,1,1); Tween(options,UDim2.new(1,0,0,0),nil,nil,nil,0.2); Tween(more,nil,nil,Color3.fromRGB(121,121,121),nil,0.2).Completed:Wait(); options.Visible=false
+            more.Text="•••"; more.TextColor3=Color3.new(1,1,1); Tween(options, {Size = UDim2.new(1,0,0,0)}, 0.2); Tween(more, {BackgroundColor3 = Color3.fromRGB(121,121,121)}, 0.2).Completed:Wait(); options.Visible=false
         else
-            more.Text="X"; more.TextColor3=Color3.new(1,1,1); options.Visible=true; Tween(options,UDim2.new(1,0,0,150),nil,nil,nil,0.2)
+            more.Text="X"; more.TextColor3=Color3.new(1,1,1); options.Visible=true; Tween(options, {Size = UDim2.new(1,0,0,150)}, 0.2)
         end
     end)
 
@@ -4395,7 +4380,11 @@ local function addtab(file, autoSelect)
             local otherBack = otherMeta and loc.ParseRGB(otherMeta.BackgroundColor3,nil) or nil
             local otherText = otherMeta and loc.ParseRGB(otherMeta.TextColor3,nil) or nil
             if otherBack then
-                Tween(otherbtn,nil,nil,otherBack,nil,0.2)
+                Tween(otherbtn, {BackgroundColor3 = otherBack}, 0.2)
+            end
+            local otherScale = otherbtn:FindFirstChildOfClass("UIScale")
+            if otherScale then
+                Tween(otherScale, {Scale = 0.8}, 0.2)
             end
             if otherText then
                 otherbtn.TextColor3 = otherText
@@ -4407,7 +4396,10 @@ local function addtab(file, autoSelect)
         end
         local selectedBack = loc.ParseRGB(meta.BackgroundColor3,nil)
         local selectedText = loc.ParseRGB(meta.TextColor3,nil)
-        if selectedBack then Tween(btn,nil,nil,selectedBack,nil,0.2) end
+        if selectedBack then Tween(btn, {BackgroundColor3 = selectedBack}, 0.2) end
+        if btnScale then
+            Tween(btnScale, {Scale = 1}, 0.2)
+        end
         if selectedText then
             btn.TextColor3 = selectedText
             title.TextColor3 = selectedText
