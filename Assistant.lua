@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.1 Remake ",
+	sion = " UIs 7.0.11 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -529,7 +529,7 @@ Corner(0,8,f2)
 --—————————————————————————————————————————————
 
 local bar = Instance.new("Frame")
-bar.Nmae = "BarUI"
+bar.Name = "BarUI"
 bar.Size = UDim2.new(1,0,0,50)
 bar.BorderMode = gpt.BorderMode
 bar.BorderSizePixel = 5
