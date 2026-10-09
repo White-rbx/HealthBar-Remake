@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.0 Remake ",
+	sion = " UIs 7.0.0 Remake ", 
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -392,7 +392,7 @@ end
 
 ---------------------------------------------------------------------------------------
 
-local Menu = CoreGui:WaitForChild("ExperienceSettings").Menu
+local Menu = s.CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
 local vHolder = Menu:WaitForChild("HolderScreen")
 local gpt = Menu:WaitForChild("ChatGPT")
