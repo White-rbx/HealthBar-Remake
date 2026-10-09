@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.11 Remake ",
+	sion = " UIs 7.0.12 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -603,7 +603,7 @@ local function addchat(file, nchat)
   btn.BackgroundColor3 = Color3.fromRGB(46,46,46)
   btn.Text = ""
   btn.Parent = scr
-  Conrer(0,5,btn)
+  Corner(0,5,btn)
 
   local scale = Instance.new("UIScale")
   scale.Scale = 0.8
