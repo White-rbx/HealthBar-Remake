@@ -391,8 +391,8 @@ end
 
 ---------------------------------------------------------------------------------------
 
-print(s ~= nil, "s is nil")
-print(s.CoreGui ~= nil, "s.CoreGui is nil")
+print(s == nil, "s is nil")
+print(s and s.CoreGui == nil, "s.CoreGui is nil")
 
 local Menu = s.CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
