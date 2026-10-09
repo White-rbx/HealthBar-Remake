@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.12 Remake ",
+	sion = " UIs 7.0.13 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -591,7 +591,7 @@ scr.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scr.CanvasSize = UDim2.new(0,0,0,0)
 scr.BorderMode = gpt.BorderMode
 scr.BorderSizePixel = 5
-scr.Parent = List
+scr.Parent = f1
 ListLayout(scr,0,3,"HCenter", "VTop", "SLayout", "FillV")
 
 local chatlist = {}
@@ -623,5 +623,5 @@ local function addchat(file, nchat)
 end
 
 new.MouseButton1Click:Connect(function()
-  addchat()
+  addchat(nil)
 end)
