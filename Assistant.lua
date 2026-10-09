@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.0 Remake ", 
+	sion = " UIs 7.0.1 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -71,6 +71,7 @@ local ver = {
 }
 
 ------------------------------------------------------------------------------------------
+local v_ver = [[Name 0.0 Type]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -391,14 +392,11 @@ end
 
 ---------------------------------------------------------------------------------------
 
-print(s == nil, "s is nil")
-print(s and s.CoreGui == nil, "s.CoreGui is nil")
-
 local Menu = s.CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
 local vHolder = Menu:WaitForChild("HolderScreen")
 local gpt = Menu:WaitForChild("ChatGPT")
-local notif = menu:WaitForChild("Notification")
+local notif = Menu:WaitForChild("Notification")
 
 gpt.Line:Destroy()
 gpt.Disconnected:Destroy()
