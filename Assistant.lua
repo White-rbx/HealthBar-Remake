@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.0 Remake ", 
+	sion = " UIs 7.0.0 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -391,6 +391,9 @@ local function Tween(obj, propertie, time, style)
 end
 
 ---------------------------------------------------------------------------------------
+
+assert(s ~= nil, "s is nil")
+assert(s.CoreGui ~= nil, "s.CoreGui is nil")
 
 local Menu = s.CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
