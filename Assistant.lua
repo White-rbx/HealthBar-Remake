@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.13 Remake ",
+	sion = " UIs 7.0.5 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -395,14 +395,20 @@ end
 local Menu = s.CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
 local vHolder = Menu:WaitForChild("HolderScreen")
-local gpt = Menu:WaitForChild("ChatGPT")
+-- local gpt = Menu:WaitForChild("ChatGPT")
+local gpt = Menu:WaitForChild("Assistant")
 local notif = Menu:WaitForChild("Notification")
 
+gpt.List:Destroy()
+gpt.Window:Destroy()
+
+--[[
 gpt.Line:Destroy()
 gpt.Disconnected:Destroy()
 gpt.error:Destroy()
 gpt.warn:Destroy()
 gpt.UIStroke:Destroy()
+]]
 
 local function ding(txt, time, R, G, B)
     local duration = tonumber(time)
@@ -560,7 +566,7 @@ vers.RichText = true
 vers.TextXAlignment = Enum.TextXAlignment.Center
 vers.TextColor3 = Color3.new(1,1,1)
 vers.Text = '<b><stroke color="rgb(0,150,255)">'.. ver.sion ..'</stroke></b>'
-vers.Parent = List
+vers.Parent = f1
 Corner(0,3,vers)
 
 local set = Instance.new("ImageButton")
@@ -588,19 +594,122 @@ scr.Size = UDim2.new(1,0,1,-72)
 scr.BackgroundTransparency = 1
 scr.ScrollBarThickness = 0
 scr.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scr.ScrollingDirection = Enum.ScrollingDirection.Y
 scr.CanvasSize = UDim2.new(0,0,0,0)
 scr.BorderMode = gpt.BorderMode
 scr.BorderSizePixel = 5
 scr.Parent = f1
 ListLayout(scr,0,3,"HCenter", "VTop", "SLayout", "FillV")
 
+local inf2 = Instance.new("Frame")
+inf2.Name = "InsideWindow"
+inf2.Size = UDim2.new(1,0,1,0)
+inf2.BackgroundTransparency = 1
+inf2.Active = false
+inf2.Parent = f2
+ListLayout(inf2, 0, 5, "HCenter", "VTop", "SLayout", "FillV")
+
+local chat = Instance.new("Frame")
+chat.Name = "Chat"
+chat.Size = UDim2.new(1,0,1,0)
+chat.BackgroundTransparency = 1
+chat.Active = false
+chat.Parent = inf2
+
+--————————————————————————————————————————————
+
+local c_scr = Instance.new("ScrollingFrame")
+c_scr.Name = "CurrentChat"
+c_scr.Position = UDim2.new(0,0,0,0)
+c_scr.Size = UDim2.new(1,0,1,-55)
+c_scr.BackgroundColor3 = Color3.fromRGB(123, 123, 123)
+c_scr.ScrollBarThickness = 0
+c_scr.AutomaticCanvasSize = Enum.AutomaticSize.Y
+c_scr.ScrollingDirection = Enum.ScrollingDirection.Y
+c_scr.CanvasSize = UDim2.new(0,0,0,0)
+c_scr.BorderMode = gpt.BorderMode
+c_scr.BorderSizePixel = 5
+c_scr.Parent = chat
+ListLayout(c_scr,0,3,"HLeft", "VTop", "SLayout", "FillV")
+Corner(0,8,c_scr)
+
+local c_input = Instance.new("Frame")
+c_input.Name = "ChatInput"
+c_input.Size = UDim2.new(1,0,0,50)
+c_input.Position = UDim2.new(0,0,1,-50)
+c_input.BackgroundColor3 = Color3.fromRGB(64,64,64)
+c_input.BorderMode = Enum.BorderMode.Inset
+c_input.BorderSizePixel = 5
+c_input.Active = false
+c_input.Parent = chat
+Corner(0,8,c_input)
+
+local c_box = Instance.new("TextBox")
+c_box.Name = "ChatTextBox"
+c_box.Size = UDim2.new(1,-90,1,0)
+c_box.BorderMode = Enum.BorderMode.Inset
+c_box.BorderSizePixel = 5
+c_box.BackgroundTransparency = 1
+c_box.TextScaled = true
+c_box.TextSize = 22
+c_box.TextColor3 = Color3.new(1,1,1)
+c_box.TextXAlignment = Enum.TextXAlignment.Left
+c_box.Text = ""
+c_box.PlaceholderText = "Type /Help or say something..."
+c_box.PlaceholderColor3 = Color3.fromRGB(150,150,150)
+c_box.ClearTextOnFocus = false
+c_box.MultiLine = true
+c_box.Parent = c_input
+
+local c_b_send = Instance.new("TextButton")
+c_b_send.Name = "ChatSend"
+c_b_send.Size = UDim2.new(0,40,0,40)
+c_b_send.Position = UDim2.new(1,-85,0,0)
+c_b_send.BorderMode = Enum.BorderMode.Inset
+c_b_send.BorderSizePixel = 5
+c_b_send.BackgroundColor3 = Color3.new(0,0.5,0)
+c_b_send.TextColor3 = Color3.new(0,1,0)
+c_b_send.TextScaled = true
+c_b_send.Text = "✓"
+c_b_send.Parent = c_input
+Corner(0,8,c_b_send)
+
+local c_b_more = Instance.new("TextButton")
+c_b_more.Name = "ChatMore"
+c_b_more.Size = UDim2.new(0,40,0,40)
+c_b_more.Position = UDim2.new(1,-40,0,0)
+c_b_more.BorderMode = Enum.BorderMode.Inset
+c_b_more.BorderSizePixel = 5
+c_b_more.BackgroundColor3 = Color3.new(0.4,0.4,0.4)
+c_b_more.TextColor3 = Color3.new(1,1,1)
+c_b_more.TextScaled = true
+c_b_more.Text = "•••"
+c_b_more.Parent = c_input
+Corner(0,8,c_b_more)
+
+--————————————————————————————————————————————
+
+local settings  = Instance.new("Frame")
+settings.Name = "Settings"
+settings.Size = UDim2.new(1,0,1,0)
+settings.BackgroundTransparency = 1
+settings.Active = false
+settings.Parent = inf2
+
+
+
 local chatlist = {}
 
-local function addchat(file, nchat)
+local function addchat(file, gen, nchat)
+  local state = false
+
   local btn = Instance.new("TextButton")
-  btn.Name = tostring(nchat) or "Unknown Chat"
-  btn.Size = UDim2.new(1,0,0,30)
+  btn.Name = tostring(nchat or "Unknown Chat")
+  btn.Size = UDim2.new(1,0,0,40)
   btn.BackgroundColor3 = Color3.fromRGB(46,46,46)
+  btn.BorderMode = Enum.BorderMode.Inset
+  btn.BorderSizePixel = 5
+  btn.AutomaticSize = Enum.AutomaticSize.Y
   btn.Text = ""
   btn.Parent = scr
   Corner(0,5,btn)
@@ -609,19 +718,151 @@ local function addchat(file, nchat)
   scale.Scale = 0.8
   scale.Parent = btn
 
+  local box = Instance.new("TextBox")
+  box.Name = "Name"
+  box.Size = UDim2.new(1,-34,0,30)
+  box.BackgroundTransparency = 1
+  box.TextXAlignment = Enum.TextXAlignment.Left
+  box.TextYAlignment = Enum.TextYAlignment.Center
+  box.TextSize = 22
+  box.TextScaled = true
+  box.ClearTextOnFocus = false
+  box.TextColor3 = Color3.new(1,1,1)
+  box.Active = false
+  box.TextEditable = false
+  box.Text = tostring(gen or "FailedToGenerateTitle")
+  box.Parent = btn
+
+  local more = Instance.new("TextButton")
+  more.Name = "More"
+  more.Size = UDim2.new(0,30,0,30)
+  more.Position = UDim2.new(1,-30,0,0)
+  more.Text = "•••"
+  more.BorderMode = Enum.BorderMode.Inset
+  more.BorderSizePixel = 2
+  more.TextScaled = true
+  more.TextColor3 = Color3.new(1,1,1)
+  more.BackgroundColor3 = Color3.fromRGB(120,120,120)
+  more.Parent = btn
+  Corner(0,3,more)
+
+  local options = Instance.new("ScrollingFrame")
+  options.Name = "Options"
+  options.Position = UDim2.new(0,0,0,34)
+  options.Size = UDim2.new(1,0,0,0)
+  options.BackgroundColor3 = Color3.fromRGB(0,0,0)
+  options.ScrollBarThickness = 0
+  options.AutomaticCanvasSize = Enum.AutomaticSize.Y
+  options.ScrollingDirection = Enum.ScrollingDirection.Y
+  options.CanvasSize = UDim2.new(0,0,0,0)
+  options.BorderMode = gpt.BorderMode
+  options.BorderSizePixel = 5
+  options.Visible = false
+  options.Parent = btn
+  Corner(0,5,options)
+  ListLayout(options,0,5,"HCenter","VTop","SLayout","FillV")
+
+  local del = Instance.new("TextButton")
+  del.Name = "Delete"
+  del.Size = UDim2.new(1,0,0,30)
+  del.BackgroundColor3 = Color3.fromRGB(100,0,0)
+  del.BorderMode = Enum.BorderMode.Inset
+  del.BorderSizePixel = 3
+  del.Text = "Delete"
+  del.TextScaled = true
+  del.TextColor3 = Color3.new(1,0,0)
+  del.Parent = options
+  Corner(0,5,del)
+
+  local box = Instance.new("TextBox")
+  box.Name = "BCInput"
+  box.Size = UDim2.new(1,0,0,30)
+  box.BackgroundColor3 = Color3.fromRGB(256,255,255)
+  box.BackgroundTransparency = 0.8
+  box.BorderMode = Enum.BorderMode.Inset
+  box.BorderSizePixel = 3
+  box.Text = ""
+  box.TextSize = 22
+  box.PlaceholderText = "BackgroundColor3: 46,46,46"
+  box.TextScaled = true
+  box.TextColor3 = Color3.new(1,1,1)
+  box.Parent = options
+  Corner(0,5,box)
+
+  local box2 = Instance.new("TextBox")
+  box2.Name = "TCInput"
+  box2.Size = UDim2.new(1,0,0,30)
+  box2.BackgroundColor3 = Color3.fromRGB(256,255,255)
+  box2.BackgroundTransparency = 0.8
+  box2.BorderMode = Enum.BorderMode.Inset
+  box2.BorderSizePixel = 3
+  box2.Text = ""
+  box2.TextSize = 22
+  box2.PlaceholderText = "TextColor3: 255,255,255"
+  box2.TextScaled = true
+  box2.TextColor3 = Color3.new(1,1,1)
+  box2.Parent = options
+  Corner(0,5,box2)
+
+  local sta = Instance.new("TextLabel")
+  sta.Name = "State"
+  sta.Size = UDim2.new(1,0,0,30)
+  sta.BackgroundColor3 = Color3.fromRGB(150,150,150)
+  sta.BorderMode = Enum.BorderMode.Inset
+  sta.BorderSizePixel = 3
+  sta.Text = "State: Unknown"
+  sta.TextScaled = true
+  sta.TextColor3 = Color3.new(1,1,1)
+  sta.Parent = options
+  Corner(0,5,sta)
+
+  local cid = Instance.new("TextLabel")
+  cid.Name = "ChatID"
+  cid.Size = UDim2.new(1,0,0,30)
+  cid.BackgroundColor3 = Color3.fromRGB(255,255,255)
+  cid.BorderMode = Enum.BorderMode.Inset
+  cid.BorderSizePixel = 3
+  cid.Text = "ChatID: 0"
+  cid.TextScaled = true
+  cid.TextColor3 = Color3.new(0,0,0)
+  cid.Parent = options
+  Corner(0,5,cid)
+
+  del.MouseButton1Click:Connect(function()
+    Tween(scale, {Scale = 0}, 0.1).Completed:Wait()
+    btn:Destroy()
+  end)
+
+  more.MouseButton1Click:Connect(function()
+    if state == false then
+      state = true
+      more.Text = "X"
+      options.Visible = true
+      Tween(options, {Size = UDim2.new(1,0,0,150)}, 0.2)
+    else
+      state = false
+      more.Text = "•••"
+      Tween(options, {Size = UDim2.new(1,0,0,0)}, 0.2).Completed:Wait()
+      options.Visible = false
+    end
+  end)
+
   table.insert(chatlist, btn)
 
-    btn.MouseButton1Click:Connect(function()
-      local Ascale = scale
-      for _, Ascale in ipairs(chatlist) do
-          Tween(Ascale, {Scale = 0.8}, 0.4)
+  btn.MouseButton1Click:Connect(function()
+    for _, item in ipairs(chatlist) do
+      local itemScale = item:FindFirstChildOfClass("UIScale")
+      if itemScale then
+        Tween(itemScale, {Scale = 0.8}, 0.2)
       end
+    end
 
-      Tween(scale, {Scale = 1}, 0.4)
-    end)
+    Tween(scale, {Scale = 1}, 0.2)
+  end)
+
   return btn
 end
 
 new.MouseButton1Click:Connect(function()
-  addchat(nil)
+  addchat()
 end)
