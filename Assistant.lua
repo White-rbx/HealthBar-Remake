@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.52 Remake ",
+	sion = " UIs 7.0.8 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -404,13 +404,11 @@ gpt.List:Destroy()
 gpt.Window:Destroy()
 ]]
 
---
 gpt.Line:Destroy()
 gpt.Disconnected:Destroy()
 gpt.error:Destroy()
 gpt.warn:Destroy()
 gpt.UIStroke:Destroy()
-
 
 local function ding(txt, time, R, G, B)
     local duration = tonumber(time)
@@ -505,7 +503,7 @@ end
 
 gpt.Name = "Assistant"
 gpt.BackgroundTransparency = 0.2
-gpt.Size = UDim2.new(0.8,0,0.62,0)
+gpt.Size = UDim2.new(0.8,0,0.8,0)
 gpt.Position = UDim2.new(0.1,0,1,0) -- Open: Y(0.22,0)
 gpt.BorderMode = Enum.BorderMode.Inset
 gpt.BorderSizePixel = 5
@@ -620,19 +618,27 @@ chat.Parent = inf2
 
 --————————————————————————————————————————————
 
+local c_state = false
+
+local c_fr = Instance.new("Frame")
+c_fr.Name = "ChatFrame"
+c_fr.Size = UDim2.new(1,0,1,-55)
+c_fr.BackgroundTransparency = 1
+c_fr.ClipsDescendants = true
+c_fr.Parent = chat
+
 local c_scr = Instance.new("ScrollingFrame")
 c_scr.Name = "CurrentChat"
-c_scr.Position = UDim2.new(0,0,0,0)
-c_scr.Size = UDim2.new(1,0,1,-55)
-c_scr.BackgroundColor3 = Color3.fromRGB(123, 123, 123)
+c_scr.Size = UDim2.new(1,0,1,0)
+c_scr.BackgroundColor3 = Color3.fromRGB(0,0,0)
 c_scr.ScrollBarThickness = 0
 c_scr.AutomaticCanvasSize = Enum.AutomaticSize.Y
 c_scr.ScrollingDirection = Enum.ScrollingDirection.Y
 c_scr.CanvasSize = UDim2.new(0,0,0,0)
 c_scr.BorderMode = gpt.BorderMode
 c_scr.BorderSizePixel = 5
-c_scr.Parent = chat
-ListLayout(c_scr,0,3,"HLeft", "VTop", "SLayout", "FillV")
+c_scr.Parent = c_fr
+ListLayout(c_scr,0,5,"HLeft", "VTop", "SLayout", "FillV")
 Corner(0,8,c_scr)
 
 local c_input = Instance.new("Frame")
@@ -688,6 +694,239 @@ c_b_more.TextScaled = true
 c_b_more.Text = "•••"
 c_b_more.Parent = c_input
 Corner(0,8,c_b_more)
+
+local c_options = Instance.new("ScrollingFrame")
+c_options.Name = "ChatOptions"
+c_options.Position = UDim2.new(1,-305, 0, 5)
+c_options.Size = UDim2.new(0,300,0,-10)
+c_options.BackgroundColor3 = Color3.fromRGB(50,50,50)
+c_options.ScrollBarThickness = 0
+c_options.AutomaticCanvasSize = Enum.AutomaticSize.Y
+c_options.ScrollingDirection = Enum.ScrollingDirection.Y
+c_options.CanvasSize = UDim2.new(0,0,0,0)
+c_options.BorderMode = gpt.BorderMode
+c_options.BorderSizePixel = 5
+c_options.Visible = false
+c_options.Parent = c_fr
+ListLayout(c_options,0,3,"HCenter", "VTop", "SLayout", "FillV")
+Corner(0,8,c_options)
+
+c_b_more.MouseButton1Click:Connect(function()
+  if c_state == false then
+    c_state = true
+    c_b_more.Text = "X"
+    c_options.Visible = true
+    Tween(c_options, {Size = UDim2.new(0,200,1,0)}, 0.4)
+  else
+    c_state = false
+    c_b_more.Text = "•••"
+    Tween(c_options, {Size = UDim2.new(0,200,0,0)}, 0.4).Completed:Wait()
+    c_options.Visible = false
+  end
+end)
+
+local function addoptions(
+    hastxt, ntxt,
+    hasbtn, nbtn,
+    hasbox, nbox,
+    scriptFn, callback, state)
+  
+    hastxt = hastxt == true
+    hasbtn = hasbtn == true
+    hasbox = hasbox == true
+
+    local body = Instance.new("Frame")
+    body.Name = "Body"
+    body.Size = UDim2.new(1, 0, 0, 30)
+    body.BackgroundColor3 = Color3.fromRGB(88, 88, 88)
+    body.BorderMode = Enum.BorderMode.Inset
+    body.BorderSizePixel = 5
+    body.Active = false
+    body.ZIndex = 1
+    body.Parent = c_options
+    Corner(0, 8, body)
+
+    local elements = {}
+    local count = 0
+
+    local function register(obj, enabled)
+        obj.Visible = enabled
+        obj.Parent = body
+
+        if enabled then
+            count += 1
+            elements[#elements + 1] = obj
+        end
+    end
+
+    local txt = Instance.new("TextLabel")
+    txt.Name = tostring(ntxt or "Label")
+    txt.BackgroundTransparency = 1
+    txt.BorderMode = Enum.BorderMode.Inset
+    txt.TextScaled = true
+    txt.RichText = true
+    txt.TextColor3 = Color3.new(1, 1, 1)
+    txt.Text = tostring(ntxt or "Unknown function")
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    register(txt, hastxt)
+
+    local box = Instance.new("TextBox")
+    box.Name = tostring(nbox or "Input")
+    box.BackgroundTransparency = 0.5
+    box.TextScaled = true
+    box.RichText = true
+    box.TextColor3 = Color3.new(1, 1, 1)
+    box.BorderMode = Enum.BorderMode.Inset
+    box.BorderSizePixel = 2
+    box.Text = ""
+    box.PlaceholderColor3 = Color3.new(1,1,1)
+    box.PlaceholderText = tostring(nbox or "Enter value")
+    box.ClearTextOnFocus = false
+    box.TextXAlignment = Enum.TextXAlignment.Center
+    register(box, hasbox)
+    Corner(0, 8, box)
+
+    local btn = Instance.new("TextButton")
+    btn.Name = tostring(nbtn or "Button")
+    btn.BackgroundTransparency = 0.3
+    btn.TextScaled = true
+    btn.RichText = true
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.BorderMode = Enum.BorderMode.Inset
+    btn.BorderSizePixel = 2
+    btn.Text = tostring(nbtn or "OK")
+    btn.TextXAlignment = Enum.TextXAlignment.Center
+    btn.Active = true
+    btn.Selectable = true
+    btn.AutoButtonColor = true
+    btn.ZIndex = 1
+    register(btn, hasbtn)
+    Corner(0, 8, btn)
+
+    -- Calculate the layout of visible elements only.
+    if count > 0 then
+        local width = 1 / count
+
+        for index, obj in ipairs(elements) do
+            obj.Size = UDim2.new(width, 0, 1, 0)
+            obj.Position = UDim2.new((index - 1) * width, 0, 0, 0)
+        end
+    end
+
+    -- Initial toggle state: state must be boolean to enable toggle mode.
+    local toggleState = type(state) == "boolean" and state or nil
+
+    local function activate(source)
+        if source == "Button" and toggleState ~= nil then
+            toggleState = not toggleState
+            btn.Text = toggleState and "ON" or "OFF"
+
+            if callback then
+                callback(toggleState, box, btn)
+            end
+        elseif scriptFn then
+            scriptFn(box, btn, toggleState)
+        end
+    end
+
+    if hasbtn then
+        if toggleState ~= nil then
+            btn.Text = toggleState and "ON" or "OFF"
+        end
+
+        btn.MouseButton1Click:Connect(function()
+            activate("Button")
+        end)
+    end
+
+    if hasbox then
+        box.FocusLost:Connect(function(enterPressed)
+            if enterPressed then
+                activate("TextBox")
+            end
+        end)
+    end
+
+    return {
+        Frame = body,
+        Label = txt,
+        Box = box,
+        Button = btn,
+
+        GetState = function()
+            return toggleState
+        end,
+
+        SetState = function(value)
+            if type(value) == "boolean" then
+                toggleState = value
+
+                if hasbtn then
+                    btn.Text = toggleState and "ON" or "OFF"
+                end
+            end
+        end
+    }
+end
+
+--[[
+    hastxt, ntxt,
+    hasbtn, nbtn,
+    hasbox, nbox,
+    scriptFn, callback, state
+]]
+
+local function meg(txt, direction, issys, r, g, b)
+  local system = issys == true
+  local dir = tostring(direction or "Left")
+  local align = Enum.TextXAlignment[dir] or Enum.TextXAlignment.Left
+
+  local b_body = Instance.new("Frame")
+  b_body.Name = "Body"
+  b_body.AutomaticSize = Enum.AutomaticSize.Y
+  b_body.Size = UDim2.new(1,0,0,0)
+  b_body.BackgroundTransparency = 1
+  b_body.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
+  b_body.Parent = c_scr
+  ListLayout(b_body, 0,0, "H"..dir, "VTop", "SLayout", "FillH")
+
+  local RL = Instance.new("Frame")
+  RL.Name = "Direction"
+  RL.AutomaticSize = Enum.AutomaticSize.Y
+  RL.Size = UDim2.new(system and 0.8 or 0.65,0,0,0)
+  RL.BackgroundTransparency = system and 0.9 or 1
+  RL.BackgroundColor3 = b_body.BackgroundColor3
+  RL.Parent = b_body
+  Corner(0,8,RL)
+  ListLayout(RL, 0,0, "H"..dir, "VTop", "SLayout", "FillH")
+
+  local main = Instance.new("TextBox")
+  main.Name = "Message"
+  main.AutomaticSize = Enum.AutomaticSize.XY
+  main.BorderMode = Enum.BorderMode.Inset
+  main.BorderSizePixel = 3
+  main.BackgroundColor3 = b_body.BackgroundColor3
+  main.Size = UDim2.new(0,50,0,0)
+  main.BackgroundTransparency = system and 1 or 0.5
+  main.TextColor3 = b_body.BackgroundColor3
+  main.RichText = false
+  main.TextWrapped = true
+  main.TextXAlignment = align
+  main.TextYAlignment = Enum.TextYAlignment.Top
+  main.Active = false
+  main.MultiLine = true
+  main.TextEditable = false
+  main.ClearTextOnFocus = false
+  main.PlaceholderText = "Action..."
+  main.Text = tostring(txt or "Failed to generate.")
+  main.TextSize = 12
+  main.Parent = RL
+  Corner(0,5,main)
+end
+
+meg("This is an exmple.", "Center", true, 255,255,0)
+meg("Hello, I am User.", "Right")
+meg("Hello User! What can I help you?", "Left", false, 0,255,255)
 
 --————————————————————————————————————————————
 
