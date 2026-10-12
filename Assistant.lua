@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.8 Remake ",
+	sion = " UIs 7.0.81 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -395,20 +395,20 @@ end
 local Menu = s.CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
 local vHolder = Menu:WaitForChild("HolderScreen")
-local gpt = Menu:WaitForChild("ChatGPT")
--- local gpt = Menu:WaitForChild("Assistant")
+-- local gpt = Menu:WaitForChild("ChatGPT")
+local gpt = Menu:WaitForChild("Assistant")
 local notif = Menu:WaitForChild("Notification")
 
---[[
 gpt.List:Destroy()
 gpt.Window:Destroy()
-]]
 
+--[[
 gpt.Line:Destroy()
 gpt.Disconnected:Destroy()
 gpt.error:Destroy()
 gpt.warn:Destroy()
 gpt.UIStroke:Destroy()
+]]
 
 local function ding(txt, time, R, G, B)
     local duration = tonumber(time)
@@ -579,7 +579,7 @@ set.Parent = bar
 Corner(0,5,set)
 
 local new = Instance.new("ImageButton")
-new.Name = "Settings"
+new.Name = "new"
 new.Size = UDim2.new(0,40,0,40)
 new.Position = UDim2.new(1,-85,0,0)
 new.BackgroundColor3 = Color3.fromRGB(54,54,54)
@@ -608,6 +608,20 @@ inf2.BackgroundTransparency = 1
 inf2.Active = false
 inf2.Parent = f2
 ListLayout(inf2, 0, 5, "HCenter", "VTop", "SLayout", "FillV")
+
+local oset = false
+
+set.MouseButton1Click:Connect(function()
+  if oset == false then
+    oset = true
+    set.Image = "rbxassetid://99070092445366"
+    Tween(inf2, {Position = UDim2.new(0,0,-1,-5)})
+  else
+    oset = false
+      set.Image = "rbxassetid://109951202940492"
+    Tween(inf2, {Position = UDim2.new(0,0,0,0)})
+  end
+end)
 
 local chat = Instance.new("Frame")
 chat.Name = "Chat"
@@ -716,11 +730,11 @@ c_b_more.MouseButton1Click:Connect(function()
     c_state = true
     c_b_more.Text = "X"
     c_options.Visible = true
-    Tween(c_options, {Size = UDim2.new(0,200,1,0)}, 0.4)
+    Tween(c_options, {Size = UDim2.new(0,300,1,-10)}, 0.4)
   else
     c_state = false
     c_b_more.Text = "•••"
-    Tween(c_options, {Size = UDim2.new(0,200,0,0)}, 0.4).Completed:Wait()
+    Tween(c_options, {Size = UDim2.new(0,300,0,0)}, 0.4).Completed:Wait()
     c_options.Visible = false
   end
 end)
@@ -900,6 +914,12 @@ local function meg(txt, direction, issys, r, g, b)
   Corner(0,8,RL)
   ListLayout(RL, 0,0, "H"..dir, "VTop", "SLayout", "FillH")
 
+  local meg1 = Instance.new("Frame")
+  meg1.Name = "MessageOut"
+  meg1.AutomaticSize = Enum.AutomaticSize.XY
+  meg1.BackgroundTransparency = 1
+  meg1.Parent = RL
+  
   local main = Instance.new("TextBox")
   main.Name = "Message"
   main.AutomaticSize = Enum.AutomaticSize.XY
@@ -920,13 +940,54 @@ local function meg(txt, direction, issys, r, g, b)
   main.PlaceholderText = "Action..."
   main.Text = tostring(txt or "Failed to generate.")
   main.TextSize = 12
-  main.Parent = RL
+  main.Parent = meg1
   Corner(0,5,main)
+
+  local btnbar = Instance.new("Frame")
+  btnbar.Name = "ButtonBar"
+  btnbar.AutomaticSize = Enum.AutomaticSize.X
+  btnbar.Size = UDim2.new(1,0,0,16)
+  btnbar.Position = UDim2.new(0,0,1,5)
+  btnbar.BackgroundTransparency = 1
+  btnbar.Active = false
+  btnbar.Parent = meg1
+  Corner(0,5,btnbar)
+  ListLayout(btnbar, 0,5, "HLeft", "VCenter", "SLayout", "FillH")
+
+  local function inbtn(image, scriptFn, callback, isvisible)
+  local imageId = tonumber(image)
+  if not imageId then
+    return
+  end
+
+  local btn = Instance.new("ImageButton")
+  btn.Name = "Shortcut"
+  btn.Size = UDim2.new(0,16,0,16)
+  btn.Image = "rbxassetid://"..imageId
+  btn.BackgroundColor3 = b_body.BackgroundColor3
+  btn.Visible = isvisible == nil and not system or isvisible == true
+  btn.Active = true
+  btn.Parent = btnbar
+  Corner(0,3,btn)
+
+  if callback then
+    btn.MouseButton1Click:Connect(function()
+      callback(btn)
+    end)
+  end
+  end
+
+  if system == true then
+      btnbar:Destroy()
+  end
 end
 
 meg("This is an exmple.", "Center", true, 255,255,0)
 meg("Hello, I am User.", "Right")
 meg("Hello User! What can I help you?", "Left", false, 0,255,255)
+meg("How do I make a sandwiches?", "Right")
+meg([[To make a classic sandwich, place your favorite fillings like cheese, sliced meat, lettuce, and tomato between two slices of bread. You can add spreadable condiments like mayo or mustard to the bread first for extra flavor.
+]], "Left", false, 0,255,255)
 
 --————————————————————————————————————————————
 
