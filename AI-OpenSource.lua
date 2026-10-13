@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.929.2 ",
+	sion = " UIs 6.929.3 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -6171,6 +6171,7 @@ end
     if currentApiKey then setStatusText("Key present (unconfirmed)") else setStatusText("No key") end
 
     safeTxt(user.Suc, "**Hello, World!** Please **scroll up** to see **all information** above.", 0,255,0)
+	safeTxt(user.Warn, [[We're planning to remake AI-Thinking to Assistant for a better experience, can be work with editor.]], 255,255,0)
     return true
 end
 
