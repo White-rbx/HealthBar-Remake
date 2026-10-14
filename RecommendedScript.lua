@@ -1,4 +1,4 @@
-local v_ver = [[Recommanded Script 2.3 Yes]]
+local v_ver = [[Recommanded Script 2.31 Yes]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -408,6 +408,7 @@ end
 add("Infinite yield (@edge.egg | discord)", "The most powerful admin commands.", "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source", 150, 50, 50)
 add("Delta Keyboard (@sakura)", "A keyboard for mobile. Crack by Ata", "https://raw.githubusercontent.com/Xxtan31/Ata/main/deltakeyboardcrack.txt")
 add("Dex++ (@mcdaggitt)", "Not my script but Ill actively update it with new features. Includes optimization + rspy plugin!", "https://raw.githubusercontent.com/jodta/my-scripts/refs/heads/main/Dex%2B%2B/Decompiler%20Fix.lua",0,150,0)
+add("Dex Premium (@Ximmy1234)", "Dex with improvements", "https://raw.githubusercontent.com/XIMMYzwsss/Dex-Premium/refs/heads/main/DexPremium.lua", 50,255,50)
 add("RoChip (@83937293938381929383)", "Universal script allows you to tp to players, also lets you fling them and many more.", "https://rawscripts.net/raw/Universal-Script-rochips-universal-18294",155,155,0)
 add("ConsoleCopyButton (@Lordi_scripts)", "lets you copy everything right in the native console interface (/console OR F9)", "https://rawscripts.net/raw/Universal-Script-Richie-panel-upd-v1-0-4-18440",150,0,150)
 add("YouTube Music Player V8 (@Turmux404)", "Take your Roblox experience to the next level by listening to your favorite  music or watching YouTube videos while you play.", "https://raw.githubusercontent.com/Dan41/Roblox-Scripts/refs/heads/main/Youtube%20Music%20Player/YoutubeMusicPlayer.lua",220,0,0)
