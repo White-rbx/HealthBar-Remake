@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.929.4 ",
+	sion = " UIs 6.929.6 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -67,6 +67,7 @@ local ver = {
 (:17/8/2026 | 4:19 pm: A) Added gemini-3.7-flash, don't be surprised if I still continue updates; add new features or anything will be discontinued unless can be continuing updates if it NOT due to out of local.
 (:23/7/2026 | 4:49 pm: F) Fixed Here chat I guess.
 (:12/9/2026 | 4:04 pm: A) Added Gemini 3.8 flash, added more modelswitch add adjust ScrollingFrame.
+(:15/10/2026 | 7:03 am: A) Added gemini-4-argon.
 ]],
 }
 ------------------------------------------------------------------------------------------
@@ -1724,6 +1725,7 @@ local GEMINI_MODELS = {
 	["gemini-3.6-flash"] = "gemini-3.6-flash",
 	["gemini-3.7-flash"] = "gemini-3.7-flash",
 	["gemini-3.8-flash"] = "gemini-3.8-flash",
+	["gemini-4-argon"] = "gemini-4-argon",
 }
 
 local CLAUDE_MODELS = {
@@ -2739,6 +2741,7 @@ Your limit:
     *• gemini-3.5-flash*
 	*• gemini-3.6-flash*
 	*• gemini-3.7-flash*
+	*• gemini-4-argon*
 **/CLAUDESwitch** - Change Text limit 
 	 *• FREE*
  	 *• PRO*
@@ -4392,6 +4395,7 @@ local HELP_TEXT = [=[
     *• gemini-3.5-flash*
 	*• gemini-3.6-flash*
 	*• gemini-3.7-flash*
+    *• gemini-4-argon*
 **/CLAUDESwitch** - Change Text limit 
 	 *• FREE*
  	 *• PRO*
