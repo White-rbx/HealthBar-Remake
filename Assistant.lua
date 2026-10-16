@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.91 Remake ",
+	sion = " UIs 7.0.92 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -399,16 +399,17 @@ local gpt = Menu:WaitForChild("ChatGPT")
 -- local gpt = Menu:WaitForChild("Arcsen")
 local notif = Menu:WaitForChild("Notification")
 
+--[[
 gpt.List:Destroy()
 gpt.Window:Destroy()
+]]
 
---[[
+--
 gpt.Line:Destroy()
 gpt.Disconnected:Destroy()
 gpt.error:Destroy()
 gpt.warn:Destroy()
 gpt.UIStroke:Destroy()
-]]
 
 local function ding(txt, time, R, G, B)
     local duration = tonumber(time)
