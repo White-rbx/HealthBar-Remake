@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.82 Remake ",
+	sion = " UIs 7.0.9 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -395,20 +395,20 @@ end
 local Menu = s.CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
 local vHolder = Menu:WaitForChild("HolderScreen")
-local gpt = Menu:WaitForChild("ChatGPT")
 -- local gpt = Menu:WaitForChild("Assistant")
+local gpt = Menu:WaitForChild("Arcsen")
 local notif = Menu:WaitForChild("Notification")
 
---[[
 gpt.List:Destroy()
 gpt.Window:Destroy()
-]]
 
+--[[
 gpt.Line:Destroy()
 gpt.Disconnected:Destroy()
 gpt.error:Destroy()
 gpt.warn:Destroy()
 gpt.UIStroke:Destroy()
+]]
 
 local function ding(txt, time, R, G, B)
     local duration = tonumber(time)
@@ -501,7 +501,7 @@ local function ding(txt, time, R, G, B)
     end
 end
 
-gpt.Name = "Assistant"
+gpt.Name = "Arcsen"
 gpt.BackgroundTransparency = 0.2
 gpt.Size = UDim2.new(0.8,0,0.8,0)
 gpt.Position = UDim2.new(0.1,0,1,0) -- Open: Y(0.22,0)
@@ -519,6 +519,7 @@ f1.BorderMode = gpt.BorderMode
 f1.BorderSizePixel = 5
 f1.Parent = gpt
 Corner(0,8,f1)
+Gradient(f1, 90,0,0,{Color3.fromRGB(85,85,255),Color3.fromRGB(0,0,127)})
 
 local f2 = Instance.new("Frame")
 f2.Name = "Window"
@@ -541,24 +542,27 @@ bar.BorderMode = gpt.BorderMode
 bar.BorderSizePixel = 5
 bar.Parent = f1
 Corner(0,8,bar)
+Gradient(bar, 45, 0,0, {Color3.fromRGB(85,170,255), Color3.fromRGB(0,85,255)})
 
 local topic = Instance.new("TextLabel")
 topic.Name = "Topic"
 topic.Size = UDim2.new(0.5,0,1,0)
 topic.BackgroundTransparency = 1
+topic.BackgroundColor3 = Color3.fromRGB(0,85,255)
 topic.TextSize = 16
 topic.TextScaled = true
 topic.TextWrapped = true
 topic.RichText = true
 topic.TextXAlignment = Enum.TextXAlignment.Left
 topic.TextColor3 = Color3.new(1,1,1)
-topic.Text = '<u><b><stroke color="rgb(0,255,255)" thickness="1">Assistant</stroke></b></u>'
+topic.Text = '<u><b><stroke color="rgb(0,255,255)" thickness="1">Arcsen</stroke></b></u>'
 topic.Parent = bar
 
 local vers = Instance.new("TextLabel")
 vers.Name = "Version"
 vers.Size = UDim2.new(0.9,0,0,15)
 vers.Position = UDim2.new(0.05,0,0,52)
+vers.BackgroundColor3 = Color3.fromRGB(85,85,255)
 vers.TextSize = 16
 vers.TextScaled = true
 vers.TextWrapped = true
@@ -573,19 +577,27 @@ local set = Instance.new("ImageButton")
 set.Name = "Settings"
 set.Size = UDim2.new(0,40,0,40)
 set.Position = UDim2.new(1,-40,0,0)
-set.BackgroundColor3 = Color3.fromRGB(54,54,54)
+set.BackgroundColor3 = Color3.fromRGB(255,255,255)
+set.BackgroundTransparency = 0.75
 set.Image = "rbxassetid://109951202940492"
 set.Parent = bar
 Corner(0,5,set)
+Stroke(set, ASMBorder, 255,255,255, LJMRound, 1, 0)
+local set_g = Gradient(set, 45,0,0,{Color3.new(1,1,1),Color3.new(1,1,1),},{0,1,0})
+set_g.Parent = set.UIStroke
 
 local new = Instance.new("ImageButton")
 new.Name = "new"
 new.Size = UDim2.new(0,40,0,40)
 new.Position = UDim2.new(1,-85,0,0)
-new.BackgroundColor3 = Color3.fromRGB(54,54,54)
+new.BackgroundColor3 = Color3.fromRGB(255,255,255)
+new.BackgroundTransparency = 0.75
 new.Image = "rbxassetid://73984153023004"
 new.Parent = bar
 Corner(0,5,new)
+Stroke(new, ASMBorder, 255,255,255, LJMRound, 1, 0)
+local set_n =Gradient(new, 45,0,0,{Color3.new(1,1,1),Color3.new(1,1,1),},{0,1,0})
+set_n.Parent = new.UIStroke
 
 local scr = Instance.new("ScrollingFrame")
 scr.Name = "History"
@@ -599,7 +611,7 @@ scr.CanvasSize = UDim2.new(0,0,0,0)
 scr.BorderMode = gpt.BorderMode
 scr.BorderSizePixel = 5
 scr.Parent = f1
-ListLayout(scr,0,3,"HCenter", "VTop", "SLayout", "FillV")
+ListLayout(scr,0,8,"HCenter", "VTop", "SLayout", "FillV")
 
 local inf2 = Instance.new("Frame")
 inf2.Name = "InsideWindow"
@@ -991,14 +1003,249 @@ meg([[To make a classic sandwich, place your favorite fillings like cheese, slic
 
 --————————————————————————————————————————————
 
-local settings  = Instance.new("Frame")
+local settings  = Instance.new("ScrollingFrame")
 settings.Name = "Settings"
 settings.Size = UDim2.new(1,0,1,0)
 settings.BackgroundTransparency = 1
-settings.Active = false
+settings.BorderMode = Enum.BorderMode.Inset
+settings.BorderSizePixel = 5
+settings.CanvasSize = UDim2.new(0,0,0,0)
+settings.ScrollingDirection = Enum.ScrollingDirection.Y
+settings.ScrollBarThickness = 0
+settings.AutomaticCanvasSize = Enum.AutomaticSize.Y
 settings.Parent = inf2
+ListLayout(settings, 0,5, "HLeft", "VTop", "SLayout", "FillV")
 
+local function addset(name, gname, r, g, b, uiandfunction)
+  local More_s = false
+  
+  local Body_s = Instance.new("Frame")
+  Body_s.Name = tostring(name or "UnknownGroup")
+  Body_s.AutomaticSize = Enum.AutomaticSize.Y
+  Body_s.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
+  Body_s.Size = UDim2.new(1,0,0,0)
+  Body_s.BorderMode = Enum.BorderMode.Inset
+  Body_s.BorderSizePixel = 5
+  Body_s.BackgroundTransparency = 0.75
+  Body_s.Active = false
+  Body_s.Parent = settings
+  Corner(0,5,Body_s)
+  Stroke(Body_s, ASMBorder, r or 255,g or 255,b or 255, LJMRound, 1, 0)
+  Gradient(Body_s, 90,0,0, {Color3.fromRGB(r or 255, g or 255, b or 255), Color3.new(1,1,1)}, {0,1})
 
+  local tp = Instance.new("TextLabel")
+  tp.Name = "Group"
+  tp.Size = UDim2.new(1,-25,0,20)
+  tp.BackgroundTransparency = 1
+  tp.TextXAlignment = Enum.TextXAlignment.Left
+  tp.TextScaled = true
+  tp.RichText = true
+  tp.TextColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
+  tp.Text = tostring(gname or "Unknown Group")
+  tp.Parent = Body_s
+
+  local btn_s = Instance.new("ImageButton")
+  btn_s.Name = "more"
+  btn_s.Size = UDim2.new(0,20,0,20)
+  btn_s.Position = UDim2.new(1,-20,0,0)
+  btn_s.BackgroundTransparency = 0.75
+  btn_s.BackgroundColor3 = Color3.fromRGB(r or 255, g or 255, b or 255)
+  btn_s.Image = "rbxassetid://106910450665586"
+  btn_s.Parent = Body_s
+  Corner(0,3,btn_s)
+
+  local fm = Instance.new("Frame")
+  fm.Name = "Inside"
+  fm.Position = UDim2.new(0,0,0,25)
+  fm.Size = UDim2.new(1,0,0,0)
+  fm.AutomaticSize = Enum.AutomaticSize.Y
+  fm.BackgroundTransparency = 1
+  fm.BorderMode = Enum.BorderMode.Inset
+  fm.BorderSizePixel = 5
+  fm.Visible = false
+  fm.Parent = Body_s
+
+  btn_s.MouseButton1Click:Connect(function()
+    if More_s == false then
+      More_s = true
+      btn_s.Image = "rbxassetid://76063966669126"
+      fm.Visible = true
+    else
+      More_s = false
+      btn_s.Image = "rbxassetid://106910450665586"
+      fm.Visible = false
+    end
+  end)
+
+  if type(uiandfunction) == "function" then
+    uiandfunction(fm)
+  elseif type(uiandfunction) == "table" then
+    for _, item in ipairs(uiandfunction) do
+      if typeof(item) == "Instance" then
+        item.Parent = fm
+      elseif type(item) == "function" then
+        item(fm)
+      end
+    end
+  end
+
+  return fm
+  
+end
+
+local function o(parent, fill, option_, isb, tb, isselect, isi, tih, scriptFN, callback)
+    isb = isb == true
+    isi = isi == true
+    isselect = isselect == true
+
+    local autoSize = Enum.AutomaticSize.None
+    if type(fill) == "string" then
+        autoSize = Enum.AutomaticSize[fill] or Enum.AutomaticSize.None
+    end
+
+    local reserve = (isb and isi) and 210 or ((isb or isi) and 105 or 0)
+
+    local frame = Instance.new("Frame")
+    frame.Name = "Body"
+    frame.Size = UDim2.new(1, 0, 0, 30)
+    frame.AutomaticSize = autoSize
+    frame.BorderMode = Enum.BorderMode.Inset
+    frame.BorderSizePixel = 5
+    frame.BackgroundColor3 = Color3.new(1, 1, 1)
+    frame.BackgroundTransparency = 0.75
+    frame.Active = false
+    frame.ClipsDescendants = false
+    frame.Parent = parent
+    frame.ZIndex = 1
+    Corner(0, 5, frame)
+
+    local txt = Instance.new("TextLabel")
+    txt.Name = "Name"
+    txt.Size = UDim2.new(1, -reserve, 0, 20)
+    txt.BackgroundTransparency = 1
+    txt.TextScaled = true
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    txt.AutomaticSize = autoSize
+    txt.TextColor3 = Color3.new(1, 1, 1)
+    txt.Text = tostring(option_ or "Unknown")
+    txt.Parent = frame
+    txt.ZIndex = 2
+
+    local btn_o = Instance.new("TextButton")
+    btn_o.Name = "Button"
+    btn_o.Size = UDim2.new(0, 100, 0, 20)
+    btn_o.Position = UDim2.new(1, -100, 0, 0)
+    btn_o.BackgroundColor3 = Color3.new(1, 1, 1)
+    btn_o.BackgroundTransparency = 0.75
+    btn_o.TextScaled = true
+    btn_o.TextColor3 = Color3.new(1, 1, 1)
+    btn_o.Text = tostring(tb or "OK")
+    btn_o.Visible = isb or isselect
+    btn_o.ClipsDescendants = false
+    btn_o.Parent = frame
+    btn_o.ZIndex = 3
+    Corner(0, 3, btn_o)
+
+    local box_o = Instance.new("TextBox")
+    box_o.Name = "Input"
+    box_o.Size = UDim2.new(0, 100, 0, 20)
+    box_o.Position = UDim2.new(1, -100, 0, 0)
+    box_o.BackgroundColor3 = Color3.new(1, 1, 1)
+    box_o.BackgroundTransparency = 0.75
+    box_o.TextSize = 22
+    box_o.TextColor3 = Color3.new(1, 1, 1)
+    box_o.PlaceholderColor3 = Color3.new(0.5, 0.5, 0.5)
+    box_o.Text = ""
+    box_o.ClearTextOnFocus = false
+    box_o.PlaceholderText = tostring(tih or "Input")
+    box_o.Visible = isi
+    box_o.Parent = frame
+    box_o.ZIndex = 3
+    Corner(0, 3, box_o)
+
+    -- Position rules: Button and Input
+    if isb and isi then
+        btn_o.Position = UDim2.new(1, -100, 0, 0)
+        box_o.Position = UDim2.new(1, -205, 0, 0)
+    elseif isb then
+        btn_o.Position = UDim2.new(1, -100, 0, 0)
+    elseif isi then
+        box_o.Position = UDim2.new(1, -100, 0, 0)
+    end
+
+    local sd = Instance.new("Frame")
+    sd.Name = "Select"
+    sd.Size = UDim2.new(0, 100, 0, 0)
+    sd.Position = UDim2.new(0, 0, 0, 25)
+    sd.BackgroundColor3 = btn_o.BackgroundColor3
+    sd.BackgroundTransparency = 0.15
+    sd.AutomaticSize = Enum.AutomaticSize.Y
+    sd.BorderMode = Enum.BorderMode.Inset
+    sd.BorderSizePixel = 2
+    sd.Visible = isselect
+    sd.ClipsDescendants = false
+    sd.Parent = btn_o
+    sd.ZIndex = 4
+    Corner(0, 3, sd)
+
+    ListLayout(sd, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
+
+    local ui = {
+        Parent = parent,
+        Frame = frame,
+        Label = txt,
+        Button = btn_o,
+        Input = box_o,
+        Select = sd
+    }
+
+    local function addse(child)
+        local value = tostring(child or "UnknownChild")
+
+        local btnb = Instance.new("TextButton")
+        btnb.Name = value
+        btnb.Size = UDim2.new(1, 0, 0, 20)
+        btnb.BackgroundTransparency = 1
+        btnb.TextScaled = true
+        btnb.TextColor3 = Color3.new(1, 1, 1)
+        btnb.Text = value
+        btnb.Parent = sd
+        btnb.ZIndex = 5
+
+        btnb.MouseButton1Click:Connect(function()
+            btn_o.Text = value
+            sd.Visible = false
+
+            if type(callback) == "function" then
+                callback(value, "select", ui)
+            end
+        end)
+
+        return btnb
+    end
+
+    ui.AddSelect = addse
+
+    btn_o.MouseButton1Click:Connect(function()
+        if isselect then
+            sd.Visible = not sd.Visible
+        elseif type(callback) == "function" then
+            callback(btn_o.Text, "button", ui)
+        end
+    end)
+
+    box_o.FocusLost:Connect(function(enterPressed)
+        if type(callback) == "function" then
+            callback(box_o.Text, "input", ui, enterPressed)
+        end
+    end)
+
+    if type(scriptFN) == "function" then
+        scriptFN(ui)
+    end
+
+    return ui
+end
 
 local chatlist = {}
 
@@ -1008,9 +1255,10 @@ local function addchat(file, gen, nchat)
   local btn = Instance.new("TextButton")
   btn.Name = tostring(nchat or "Unknown Chat")
   btn.Size = UDim2.new(1,0,0,40)
-  btn.BackgroundColor3 = Color3.fromRGB(46,46,46)
+  btn.BackgroundColor3 = Color3.fromRGB(255,255,255)
   btn.BorderMode = Enum.BorderMode.Inset
   btn.BorderSizePixel = 5
+  btn.BackgroundTransparency = 0.75
   btn.AutomaticSize = Enum.AutomaticSize.Y
   btn.Text = ""
   btn.Parent = scr
@@ -1042,11 +1290,18 @@ local function addchat(file, gen, nchat)
   more.Text = "•••"
   more.BorderMode = Enum.BorderMode.Inset
   more.BorderSizePixel = 2
+  more.BackgroundTransparency = 0.75
   more.TextScaled = true
   more.TextColor3 = Color3.new(1,1,1)
-  more.BackgroundColor3 = Color3.fromRGB(120,120,120)
+  more.BackgroundColor3 = Color3.fromRGB(255,255,255)
   more.Parent = btn
   Corner(0,3,more)
+
+  Stroke(btn, ASMBorder, 255,255,255, LJMRound, 1, 0)
+  local btn_b =Gradient(new, 45,0,0,{Color3.new(1,1,1),Color3.new(1,1,1),},{0,1,0})
+  btn_b.Parent = btn.UIStroke
+  local btn_s = Gradient(new, 45,0,0,{Color3.new(1,1,1),Color3.new(1,1,1),},{0,0.8,0})
+  btn_s.Parent = btn
 
   local options = Instance.new("ScrollingFrame")
   options.Name = "Options"
@@ -1085,7 +1340,7 @@ local function addchat(file, gen, nchat)
   box.BorderSizePixel = 3
   box.Text = ""
   box.TextSize = 22
-  box.PlaceholderText = "BackgroundColor3: 46,46,46"
+  box.PlaceholderText = "BackgroundColor3: 255,255,255"
   box.TextScaled = true
   box.TextColor3 = Color3.new(1,1,1)
   box.Parent = options
