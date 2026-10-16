@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.0.9 Remake ",
+	sion = " UIs 7.0.91 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -395,8 +395,8 @@ end
 local Menu = s.CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
 local vHolder = Menu:WaitForChild("HolderScreen")
--- local gpt = Menu:WaitForChild("Assistant")
-local gpt = Menu:WaitForChild("Arcsen")
+local gpt = Menu:WaitForChild("ChatGPT")
+-- local gpt = Menu:WaitForChild("Arcsen")
 local notif = Menu:WaitForChild("Notification")
 
 gpt.List:Destroy()
