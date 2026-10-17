@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 1.2 Oof]]
+local v_ver = [[ExperienceSettings-SetUp 1.21Oof]]
 
 ------------------------------------------------------------------------------------------
 
@@ -336,7 +336,7 @@ ban(
 ) -- Crazy LMAO
 
 ban("makiro5556", "Bad Behavior", "Appeal to John in discord | Last seen: 'Nothingness'; Game ID: 6252985844")
-
+ban("108ooopppko", "การเป็นศัตรูและการหักหลังผู้อื่น", "โปรดติดต่อจอห์นผ่านทางดิสคอร์ด | เห็นล่าสุดที่: 'Rintama High'; เกมไอดี: 131031240633619")
 --[[]]
 
 local banData = isBanned()
