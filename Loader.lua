@@ -1,4 +1,4 @@
--- Well 3.27
+-- Well 3.28
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -566,7 +566,7 @@ local BannedList = {
         ["makiro5556"] = true,
     },
     UserIds = {
-        -- [123456789] = true,
+        [11810742331] = true, -- 108ooopppko
     }
 }
 
