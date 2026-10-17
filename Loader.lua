@@ -1,4 +1,4 @@
--- Well 3.29
+-- Well 3.3
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -564,9 +564,10 @@ local valueGui = CoreGui:WaitForChild("TopBarApp", 10)
 local BannedList = {
     Usernames = {
         ["makiro5556"] = true,
+		["108oooooooppppko"] = true,
     },
     UserIds = {
-        ["11810742331"] = true, -- 108ooopppko
+		-- [123456789] = true,
     }
 }
 
