@@ -1,4 +1,4 @@
-local v_ver = [[Editor 2.22 Master]]
+local v_ver = [[Editor 2.23 Master]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -2025,6 +2025,8 @@ Keywords = {
   "self",
   "type",
   "typeof",
+  "true",
+  "false",
 }
 
 sUNC = {
