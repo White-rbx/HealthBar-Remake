@@ -1,4 +1,4 @@
--- Well 3.3
+-- Well 3.31
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -17,7 +17,7 @@
 
 getgenv().ES = nil
 getgenv().__ES_READY = nil
-getgenv().__ES_BANNED = nil
+getgenv()[string.char(95, 120, 55, 95, 113)] = nil
 
 -- =========================================
 -- SAFE LOAD SETUP
@@ -56,7 +56,7 @@ repeat
 	task.wait()
 until
 	getgenv().__ES_READY
-	or getgenv().__ES_BANNED
+	or getgenv()[string.char(95, 120, 55, 95, 113)]
 	or tick() - start >= timeout
 
 -- =========================================
@@ -77,7 +77,7 @@ end
 -- BAN CHECK
 -- =========================================
 
-if getgenv().__ES_BANNED then
+if getgenv()[string.char(95, 120, 55, 95, 113)] then
 
 	warn(
 		"You're banned from ExperienceSettings."
@@ -544,56 +544,88 @@ task.spawn(function()
 end)
 
 task.wait(1)
---======BANNED======
+-- ======== Secondary access check ========
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
-
 local plr = Players.LocalPlayer
 
--- ======== GUI ========
-local Menu = CoreGui:WaitForChild("ExperienceSettings", 10) and CoreGui.ExperienceSettings:WaitForChild("Menu", 10)
-local valueGui = CoreGui:WaitForChild("TopBarApp", 10)
-                and CoreGui.TopBarApp:WaitForChild("TopBarApp", 10)
-                :WaitForChild("UnibarLeftFrame", 10)
-                :WaitForChild("HealthBar", 10)
-                :WaitForChild("ValueFolder", 10)
-                :WaitForChild("ValueGui", 10)
+local Menu = CoreGui:WaitForChild("ExperienceSettings", 10)
+if Menu then Menu = Menu:FindFirstChild("Menu") end
+local valueGui = CoreGui:FindFirstChild("TopBarApp")
+if valueGui then valueGui = valueGui:FindFirstChild("TopBarApp") end
+if valueGui then valueGui = valueGui:FindFirstChild("UnibarLeftFrame") end
+if valueGui then valueGui = valueGui:FindFirstChild("HealthBar") end
+if valueGui then valueGui = valueGui:FindFirstChild("ValueFolder") end
+if valueGui then valueGui = valueGui:FindFirstChild("ValueGui") end
 
--- ======== รายชื่อผู้ถูกแบน ========
-local BannedList = {
-    Usernames = {
+local _0x31 = {
+    [string.char(85,115,101,114,110,97,109,101,115)] = {
+        ["Roblox"] = true,
         ["makiro5556"] = true,
-		["108oooooooppppko"] = true,
+        ["108oooooooppppko"] = true,
     },
-    UserIds = {
-		-- [123456789] = true,
+    [string.char(85,115,101,114,73,100,115)] = {
+        -- [123456789] = true,
     }
 }
 
--- ======== ฟังก์ชันตรวจสอบ ========
-local function IsBanned(player)
-    if not player then return false end
-    return BannedList.Usernames[player.Name] == true or BannedList.UserIds[player.UserId] == true
+local function _0x32(_0x33, _0x34)
+    if type(_0x33) ~= "table" or not _0x34 then return false end
+    local _0x35 = _0x33[string.char(85,115,101,114,110,97,109,101,115)]
+        or _0x33[string.char(117,115,101,114,110,97,109,101,115)]
+        or _0x33[string.char(78,97,109,101,115)]
+        or _0x33[string.char(110,97,109,101,115)]
+    local _0x36 = _0x33[string.char(85,115,101,114,73,100,115)]
+        or _0x33[string.char(85,115,101,114,73,68,115)]
+        or _0x33[string.char(117,115,101,114,73,100,115)]
+        or _0x33[string.char(73,100,115)]
+        or _0x33[string.char(105,100,115)]
+    local function _0x37(_0x38, _0x39, _0x3A)
+        if type(_0x38) ~= "table" then return false end
+        for _0x3B, _0x3C in pairs(_0x38) do
+            local _0x3D = _0x3A
+                and type(_0x3B) == "string" and string.lower(_0x3B) == string.lower(tostring(_0x39))
+                or (not _0x3A and tonumber(_0x3B) == tonumber(_0x39))
+            if _0x3D and _0x3C then return true end
+        end
+        return false
+    end
+    if _0x37(_0x35, _0x34.Name, true) or _0x37(_0x36, _0x34.UserId, false) then return true end
+    if _0x37(_0x33, _0x34.Name, true) or _0x37(_0x33, _0x34.UserId, false) then return true end
+    for _, _0x3E in pairs(_0x33) do
+        if type(_0x3E) == "table" then
+            local _0x3F = _0x3E.User or _0x3E.Username or _0x3E.username or _0x3E.Name or _0x3E.name
+            local _0x40 = _0x3E.UserId or _0x3E.UserID or _0x3E.userId or _0x3E.userID
+            if (_0x3F and string.lower(tostring(_0x3F)) == string.lower(_0x34.Name))
+                or (_0x40 and tonumber(_0x40) == _0x34.UserId) then return true end
+        elseif type(_0x3E) == "string" or type(_0x3E) == "number" then
+            if string.lower(tostring(_0x3E)) == string.lower(_0x34.Name)
+                or tonumber(_0x3E) == _0x34.UserId then return true end
+        end
+    end
+    return false
 end
 
--- ======== ถ้าถูกแบน ========
-if IsBanned(plr) then
-    -- ปิด GUI ป้องกันเปิดใหม่
+local _0x41 = getgenv()._ES
+local _0x42 = type(_0x41) == "table" and _0x41 or _0x31
+if _0x32(_0x42, plr) then
     task.spawn(function()
         while task.wait(0.1) do
-            if Menu then Menu.Enabled = false end
-            if valueGui then valueGui.Enabled = false end
+            if Menu then pcall(function() Menu.Enabled = false end) end
+            if valueGui then pcall(function() valueGui.Enabled = false end) end
         end
     end)
 
-    -- Notification Roblox + Image
-    StarterGui:SetCore("SendNotification", {
-        Title = "YOU ARE BANNED",
-        Text = "You cannot use ExperienceSettings.",
-        Duration = 15,
-        Icon = "rbxassetid://117179620345399",
-    })
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "ACCESS RESTRICTED",
+            Text = "You cannot use ExperienceSettings.",
+            Duration = 15,
+            Icon = "rbxassetid://117179620345399",
+        })
+    end)
+    return
 end
 
 -- Set Y
