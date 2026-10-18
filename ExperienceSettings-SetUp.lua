@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 1.22 Oof]]
+local v_ver = [[ExperienceSettings-SetUp 1.23 Oof]]
 
 ------------------------------------------------------------------------------------------
 
@@ -153,94 +153,233 @@ end
 local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
 local GuiService = game:GetService("GuiService")
-local _0x11 = game:GetService("Players").LocalPlayer
-local _0x12 = string.char(95, 120, 55, 95, 113)
+local Players = game:GetService("Players")
 
+-- 3D/2D Destroy
+local Debris = game:GetService("Debris")
+
+-- 3D Wprkspace
+local Workspace = game:GetService("Workspace")
+local TeleportService = game:GetService("TeleportService")
+local Camera = Workspace.CurrentCamera
+
+-- Third Party
+local HttpService = game:GetService("HttpService")
+
+-- Audio / Feedback
+local SoundService = game:GetService("SoundService")
+
+-- Commerce / Monetization
+local MarketplaceService = game:GetService("MarketplaceService")
+
+-- Runtime / Frame Updates
+local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
+
+-- Animation / Transitions
+local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
+
+-- Input (Desktop / Mobile)
+local UserInputService = game:GetService("UserInputService")
+local TouchInputService = game:GetService("TouchInputService")
+
+---------------------------------------------------------------------------------------
+
+local old = CoreGui:FindFirstChild("ExperienceSettings-SetUp")
+if old then
+	old:Destroy()
+end
+
+-- Folder
+local Folder = Instance.new("Folder")
+Folder.Name = "ExperienceSettings-SetUp"
+Folder.Parent = game:GetService("CoreGui")
+
+local Screen = Instance.new("ScreenGui")
+Screen.Name = "Display"
+Screen.DisplayOrder = 2147483647
+Screen.ScreenInsets = Enum.ScreenInsets.None
+Screen.Parent = Folder
+
+local Frame = Instance.new("Frame")
+Frame.Name = "SetUp"
+Frame.Size = UDim2.new(1,0,1,0)
+Frame.BackgroundColor3 = Color3.new(0,0,0)
+Frame.BackgroundTransparency = 1
+Frame.Parent = Screen
+
+local Image = Instance.new("ImageLabel")
+Image.AnchorPoint = Vector2.new(0.5,0.5)
+Image.Position = UDim2.new(0.5,0,0.5,0)
+Image.Size = UDim2.new(0,640,0,640)
+Image.BackgroundTransparency = 1
+Image.ImageTransparency = 1
+Image.Parent = Frame
+
+local Logo = Instance.new("ImageLabel")
+Logo.Name = "Logo"
+Logo.Image = "rbxassetid://120500539322715"
+Logo.Active = true
+Logo.BackgroundTransparency = 1
+Logo.ImageTransparency = 1
+Logo.Position = UDim2.new(0, 186, 0, 356)
+Logo.Size = UDim2.new(0, 50, 0, 50)
+Logo.Parent = Image
+
+local Team = Instance.new("TextLabel")
+Team.Name = "Brand"
+Team.RichText = true
+Team.Text = "<b><font color=\"rgb(0,255,255)\">Arc</font></b><b><font color=\"rgb(255,255,0)\">Script</font></b> Dev"
+Team.TextColor3 = Color3.new(1, 1, 1)
+Team.TextSize = 16
+Team.Active = true
+Team.BackgroundTransparency = 1
+Team.TextTransparency = 1
+Team.Position = UDim2.new(0, 50, 0, 0)
+Team.Size = UDim2.new(0, 200, 0, 50)
+Team.Parent = Logo
+
+local Canvas = Instance.new("CanvasGroup")
+Canvas.Visible = false
+Canvas.GroupTransparency = 1
+Canvas.Position = UDim2.new(0.1,0,0.5,0)
+Canvas.Size = UDim2.new(0.8,0,0.5,0)
+Canvas.Parent = Frame
+
+local twarn = Instance.new("TextLabel")
+twarn.BackgroundTransparency = 1
+twarn.TextTransparency = 1
+twarn.Size = UDim2.new(1,0,0,90)
+twarn.TextSize = 18
+twarn.TextColor3 = Color3.new(1,1,1)
+twarn.Text = [[We're <mark color="rgb(255,255,0)" transparency="0.8">setting up</mark> for you. Its may take a few seconds!]]
+twarn.TextWrapped = true
+twarn.RichText = true
+twarn.Parent = Canvas
+
+local CanBar = Instance.new("CanvasGroup")
+CanBar.Size = UDim2.new(0.7,0,0,20)
+CanBar.Position = UDim2.new(0.15,0,0,105)
+CanBar.BackgroundTransparency = 1
+CanBar.Parent = Canvas
+Corner(1,0,CanBar)
+Stroke(CanBar, ASMBorder, 255,255,255, LJMRound, 2, 0)
+
+local CanBarStroke = CanBar.UIStroke
+
+local insideBar = Instance.new("Frame")
+insideBar.BackgroundTransparency = 1
+insideBar.Position = UDim2.new(0.01,0,0.16,0)
+insideBar.Size = UDim2.new(0.98,0,0.68,0)
+insideBar.Parent = CanBar
+
+local Load = Instance.new("Frame")
+Load.Size = UDim2.new(0,0,1,0)
+Load.BackgroundColor3 = Color3.new(1,1,1)
+Load.Parent = insideBar
+Corner(1,0, Load)
+
+local btnBar = Instance.new("TextButton")
+btnBar.Visible = false
+btnBar.Active = true
+btnBar.Position = UDim2.new(0.4,0,0.4,30)
+btnBar.Size = UDim2.new(0.2,0,0.2,0)
+btnBar.BackgroundColor3 = Color3.new(1,0,0)
+btnBar.Text = "Close"
+btnBar.TextWrapped = true
+btnBar.RichText = true
+btnBar.TextColor3 = Color3.new(1,1,1)
+btnBar.TextSize = 18
+btnBar.Parent = Canvas
+Corner(0.15,0,btnBar)
+Stroke(btnBar, ASMBorder, 170,0,0, LJMRound, 3, 0)
+
+btnBar.MouseButton1Click:Connect(function()
+	if Folder then
+		Folder:Destroy()
+	end
+end)
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Primary source: getgenv()._ES
+-- Backup is used only when the primary source is absent or invalid.
 local _0x13 = {
-	[string.char(85,115,101,114,110,97,109,101,115)] = {
-		["Roblox"] = {
-			Reason = "I'm sorry I had to...",
-			Description = "You are the CEO you cannot using our script."
-		},
-		["makiro5556"] = {
-			Reason = "Bad Behavior",
-			Description = "Appeal to John in discord | Last seen: 'Nothingness'; Game ID: 6252985844"
-		},
-		["108oooooooppppko"] = {
-			Reason = "การเป็นศัตรูและการหักหลังผู้อื่น",
-			Description = "โปรดติดต่อจอห์นผ่านทางดิสคอร์ด | เห็นล่าสุดที่: 'Rintama High'; เกมไอดี: 131031240633619"
-		}
-	},
-	[string.char(85,115,101,114,73,100,115)] = {
-		-- [123456789] = true,
-	}
+    Usernames = {
+        ["Roblox"] = {
+            Reason = "I'm sorry I had to...",
+            Description = "You are the CEO you cannot using our script."
+        },
+        ["makiro5556"] = {
+            Reason = "Bad Behavior",
+            Description = "Appeal to John in discord | Last seen: 'Nothingness'; Game ID: 6252985844"
+        },
+        ["108oooooooppppko"] = {
+            Reason = "การเป็นศัตรูและการหักหลังผู้อื่น",
+            Description = "โปรดติดต่อจอห์นผ่านทางดิสคอร์ด | เห็นล่าสุดที่: 'Rintama High'; เกมไอดี: 131031240633619"
+        }
+    },
+    UserIds = {
+        -- [123456789] = { Reason = "...", Description = "..." },
+    }
 }
 
-local function _0x14(_0x15)
-	if type(_0x15) == "table" then
-		return {
-			Reason = tostring(_0x15.Reason or "Restricted access"),
-			Description = tostring(_0x15.Description or "This account is listed in the access restriction data.")
-		}
-	end
-	return {
-		Reason = "Restricted access",
-		Description = "This account is listed in the access restriction data."
-	}
+local function _0x14(entry)
+    if type(entry) == "table" then
+        return {
+            Reason = tostring(entry.Reason or "Restricted access"),
+            Description = tostring(entry.Description or "This account is listed in the access restriction data.")
+        }
+    end
+    if entry then
+        return {
+            Reason = "Restricted access",
+            Description = "This account is listed in the access restriction data."
+        }
+    end
+    return nil
 end
 
-local function _0x16(_0x17, _0x18)
-	if type(_0x17) ~= "table" then return nil end
-	local _0x19 = _0x17[string.char(85,115,101,114,110,97,109,101,115)]
-		or _0x17[string.char(117,115,101,114,110,97,109,101,115)]
-		or _0x17[string.char(78,97,109,101,115)]
-		or _0x17[string.char(110,97,109,101,115)]
-	local _0x1A = _0x17[string.char(85,115,101,114,73,100,115)]
-		or _0x17[string.char(85,115,101,114,73,68,115)]
-		or _0x17[string.char(117,115,101,114,73,100,115)]
-		or _0x17[string.char(73,100,115)]
-		or _0x17[string.char(105,100,115)]
+local function _0x15(source)
+    if type(source) ~= "table" then return nil end
+    local names = source.Usernames or source.usernames or source.Names or source.names
+    local ids = source.UserIds or source.UserIDs or source.userIds or source.Ids or source.ids
 
-	local function _0x1B(_0x1C, _0x1D, _0x1E)
-		if type(_0x1C) ~= "table" then return nil end
-		for _0x1F, _0x20 in pairs(_0x1C) do
-			local _0x21 = false
-			if _0x1E then
-				_0x21 = type(_0x1F) == "string" and string.lower(_0x1F) == string.lower(tostring(_0x1D))
-			else
-				_0x21 = tonumber(_0x1F) == tonumber(_0x1D)
-			end
-			if _0x21 and _0x20 then return _0x14(_0x20) end
-		end
-		return nil
-	end
+    if type(names) == "table" then
+        local entry = names[player.Name]
+        if entry then return _0x14(entry) end
+        for name, data in pairs(names) do
+            if type(name) == "string" and string.lower(name) == string.lower(player.Name) and data then
+                return _0x14(data)
+            end
+        end
+    end
 
-	local _0x22 = _0x1B(_0x19, _0x11.Name, true) or _0x1B(_0x1A, _0x11.UserId, false)
-	if _0x22 then return _0x22 end
-	_0x22 = _0x1B(_0x17, _0x11.Name, true) or _0x1B(_0x17, _0x11.UserId, false)
-	if _0x22 then return _0x22 end
+    if type(ids) == "table" then
+        local entry = ids[player.UserId] or ids[tostring(player.UserId)]
+        if entry then return _0x14(entry) end
+    end
 
-	for _0x23, _0x24 in pairs(_0x17) do
-		if type(_0x24) == "table" then
-			local _0x25 = _0x24.User or _0x24.Username or _0x24.username or _0x24.Name or _0x24.name
-			local _0x26 = _0x24.UserId or _0x24.UserID or _0x24.userId or _0x24.userID
-			if (_0x25 and string.lower(tostring(_0x25)) == string.lower(_0x11.Name))
-				or (_0x26 and tonumber(_0x26) == _0x11.UserId) then
-				return _0x14(_0x24)
-			end
-		elseif type(_0x24) == "string" or type(_0x24) == "number" then
-			if string.lower(tostring(_0x24)) == string.lower(_0x11.Name)
-				or tonumber(_0x24) == _0x11.UserId then
-				return _0x14(true)
-			end
-		end
-	end
-	return nil
+    local entry = source[player.Name] or source[player.UserId] or source[tostring(player.UserId)]
+    if entry then return _0x14(entry) end
+    for key, data in pairs(source) do
+        if type(key) == "string" and string.lower(key) == string.lower(player.Name) and data then
+            return _0x14(data)
+        end
+    end
+    return nil
 end
 
-local _0x27 = getgenv()._ES
-local _0x28 = type(_0x27) == "table" and _0x27 or _0x13
-local banData = _0x16(_0x28, _0x11)
+local _0x16 = getgenv()._ES
+local banData
+if type(_0x16) == "table" then
+    banData = _0x15(_0x16)
+else
+    banData = _0x15(_0x13)
+end
+local isBannedUser = banData ~= nil
 local anim = {
 	0,85215834651365,113081160999318,110302272078310,74005522254669,74901110508812,
 	100677834962357,119529343123060,102721895347323,112327619673337,73610060099140,
@@ -318,10 +457,10 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 -- =========================
 
 getgenv().__ES_READY = false
-getgenv()[_0x12] = false
+getgenv().__ES_BANNED = false
 
 if banData then
-	getgenv()[_0x12] = true
+	getgenv().__ES_BANNED = true
 	getgenv().ES = nil
 
 	task.defer(function()
