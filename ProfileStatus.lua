@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.899 Beta]]
+local v_ver = [[Script ahh 2.9 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -245,11 +245,10 @@ local pro = Instance.new("Frame")
 pro.Name = "ProfileStatus"
 pro.Position = UDim2.new(0.25,0,1,0)
 pro.Size = UDim2.new(0.5,0,0.7,0)
-pro.BackgroundColor3 = Color3.fromRGB(0,0,0)
-pro.BackgroundTransparency = 0.3
+pro.BackgroundColor3 = Color3.fromRGB(17, 18, 25)
+pro.BackgroundTransparency = 0
 pro.Parent = Menu
 Corner(0,8,pro)
-Stroke(pro, ASMBorder, 255,255,255, LSMRound, 1, 0)
 ListLayout(pro, 0, 0, "HCenter", "VCenter", "SName", "FillV")
 
 -- [ pro.prin ]
@@ -263,187 +262,16 @@ prin.Parent = pro
 local pchar = Instance.new("Frame")
 pchar.Name = "ProfileCharacter"
 pchar.Active = false
-pchar.Size = UDim2.new(0.5,0,1,0)
+pchar.Size = UDim2.new(1,0,1,0)
 pchar.BackgroundTransparency = 1
 pchar.BorderMode = Enum.BorderMode.Inset
 pchar.BorderSizePixel = 3
 pchar.Parent = prin
 
-local dg = Instance.new("Frame")
-dg.Name = "Debugs"
-dg.Active = false
-dg.Position = UDim2.new(0.5,0,0,34)
-dg.Size = UDim2.new(0.5,0,1,-34)
-dg.BackgroundTransparency = 1
-dg.BorderMode = Enum.BorderMode.Inset
-dg.BorderSizePixel = 3
-dg.Parent = prin
-
-local soon = Instance.new("TextLabel")
-soon.Name = "Sorry!"
-soon.Size = UDim2.new(1,0,1,0)
-soon.BackgroundTransparency = 1
-soon.TextColor3 = Color3.new(1,1,1)
-soon.RichText = true
-soon.Text = [[Debugs page is <b><u>not</u></b> done yet.
-Try to press the button at the top right.]]
-soon.TextSize = 10
-soon.TextWrapped = true
-soon.Parent = dg
-
-local mc = Instance.new("Frame")
-mc.Name = "MusicPlayer"
-mc.Active = false
-mc.Position = UDim2.new(0.5,0,0,34)
-mc.Size = UDim2.new(0.5,0,1,-34)
-mc.BackgroundTransparency = dg.BackgroundTransparency
-mc.BorderMode = dg.BorderMode
-mc.BorderSizePixel = dg.BorderSizePixel
-mc.Visible = false
-mc.Parent = prin
-
-local soon1 = soon:Clone()
-soon1.Text = [[Music Player page is <b><u>not</u></b> done yet.
-Try to press the button at the top right. Yeah bro, you're not in the loop stop pressing the button.]]
-soon1.Parent = mc
-
-local dis = Instance.new("Frame")
-dis.Name = "Display"
-dis.Size = UDim2.new(1,0,0,80)
-dis.BackgroundColor3 = Color3.new(1,1,1)
-dis.BackgroundTransparency = 0.7
-dis.BorderMode = Enum.BorderMode.Inset
-dis.BorderSizePixel = 5
-dis.Parent = mc
-Corner(0,8,dis)
-local disS = Stroke(dis, ASMBorder, 255, 255, 255, LJMRound, 1, 0)
-Gradient(disS, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
-Gradient(dis, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
-
-local MN = Instance.new("TextLabel")
-MN.Name = "MusicName"
-MN.Size = UDim2.new(1,0,0,20)
-MN.TextColor3 = Color3.new(1,1,1)
-MN.TextWrapped = true
-MN.TextScaled = true
-MN.Text = "Untitled Song"
-MN.BackgroundTransparency = 1
-MN.TextXAlignment = Enum.TextXAlignment.Center
-MN.Parent = dis
-
-local Playbtn = Instance.new("TextButton")
-Playbtn.Name = "PlayButton"
-Playbtn.Size = UDim2.new(0,30,0,30)
-Playbtn.Position = UDim2.new(0,0,1,-30)
-Playbtn.BackgroundTransparency = 0
-Playbtn.TextColor3 = Color3.new(1,1,1)
-Playbtn.RichText = true
-Playbtn.TextScaled = true
-Playbtn.Text = "<b>".."▶".."</b>" -- ┃┃
-Playbtn.Parent = dis
-
-Gradient(Playbtn, 45, 0, 0, {Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255), Color3.fromRGB(255,255,255)}, {0.1, 0.8, 0.1})
-Corner(0,7,Playbtn)
-
-local normalSize = UDim2.new(0, 30, 0, 30)
-local clickBigSize = UDim2.new(0, 10, 0, 10)
-local clickSmallSize = UDim2.new(0, 50, 0, 50)
-local holdSize = UDim2.new(0, 40, 0, 40)
-
-local holding = false
-local holdTriggered = false
-
-local function tweenSize(size, time)
-	local tween = TweenService:Create(
-		Playbtn,
-		TweenInfo.new(
-			time,
-			Enum.EasingStyle.Quad,
-			Enum.EasingDirection.Out
-		),
-		{Size = size}
-	)
-
-	tween:Play()
-	return tween
-end
-
-local function togglePlay()
-	if Playbtn.Text == "<b>▶</b>" then
-		Playbtn.Text = "<b>┃┃</b>"
-	else
-		Playbtn.Text = "<b>▶</b>"
-	end
-end
-
-Playbtn.MouseButton1Down:Connect(function()
-	holding = true
-	holdTriggered = false
-
-	task.delay(1.5, function()
-		if holding then
-			holdTriggered = true
-
-			-- Hold: 30 → 40
-			tweenSize(holdSize, 1)
-		end
-	end)
-end)
-
-Playbtn.MouseButton1Up:Connect(function()
-	if not holding then
-		return
-	end
-
-	holding = false
-
-	if holdTriggered then
-		-- Release หลัง Hold
-		tweenSize(normalSize, 0.6)
-	else
-		-- Click / Tap:
-		-- 30 → 60
-		tweenSize(clickBigSize, 0.2).Completed:Wait()
-
-		-- 60 → 15
-		tweenSize(clickSmallSize, 0.05).Completed:Wait()
-
-		-- 15 → 30
-		tweenSize(normalSize, 0.3)
-
-		togglePlay()
-	end
-end)
-
-
-local shbtn = Instance.new("TextButton")
-shbtn.Name = "SwitchButton"
-shbtn.Size = UDim2.new(0,30,0,30)
-shbtn.Position = UDim2.new(1,-30,0,0)
-shbtn.Text = "1"
-shbtn.BackgroundColor3 = Color3.new(0.2,0.2,0.2)
-shbtn.TextColor3 = Color3.new(1,1,1)
-shbtn.Parent = prin
-
-Corner(0,8,shbtn)
-Stroke(shbtn, ASMBorder, 255,255,255, LJMRound, 1, 0)
-
-shbtn.MouseButton1Click:Connect(function()
-  if dg.Visible == true then
-     dg.Visible = false
-     mc.Visible = true
-     shbtn.Text = "2"
-  else
-     dg.Visible = true
-     mc.Visible = false
-     shbtn.Text = "1"
-  end
-end)
-
 -- [ pro.pchar.pfhr ]
 local pfhr = Instance.new("Frame")
 pfhr.Name = "Holder"
-pfhr.Size = UDim2.new(1,0,0.2,0)
+pfhr.Size = UDim2.new(1,0,0,80)
 pfhr.BackgroundTransparency = 1
 pfhr.Parent = pchar
 
@@ -460,7 +288,7 @@ Corner(0,8,pf)
 local user = Instance.new("TextLabel")
 user.Name = "Username"
 user.Size = UDim2.new(0.6,0,0.3,0)
-user.Position = UDim2.new(0,82,0,0)
+user.Position = UDim2.new(0,85,0,0)
 user.BackgroundTransparency = 1
 user.TextScaled = true
 user.RichText = true
@@ -472,7 +300,7 @@ user.Parent = pfhr
 -- [ pro.pchar.scr ]
 local scr = Instance.new("ScrollingFrame")
 scr.Name = "Scroll"
-scr.Size = UDim2.new(1,0,0.79,0)
+scr.Size = UDim2.new(1,0,1,-80)
 scr.Position = UDim2.new(0,0,0.21,0)
 scr.CanvasSize = UDim2.new(0,0,0,0)
 scr.BorderMode = Enum.BorderMode.Inset
@@ -483,13 +311,26 @@ scr.ScrollBarThickness = 0
 scr.BackgroundTransparency = 1
 scr.Parent = pchar
 ListLayout(scr, 0, 5, "HCenter", "VTop", "SLayout", "FillV")
-Stroke(scr, ASMBorder, 255,255,255, LJMRound, 1, 0)
 Corner(0,3,scr)
 
 -- [ function Text ]
 local TextExtraFunction = {}
 
-local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Workin, Function)
+local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, lay, Workin, Function)
+    local Body = Instance.new("Frame")
+    Body.Name = tostring(Name or "Unknown")
+    Body.Size = UDim2.new(1,-2,0,20)
+    Body.BackgroundTransparency = 1
+    Body.Parent = parent
+
+    local img = Instance.new("ImageLabel")
+    img.Name = "Icon"
+    img.Size = UDim2.new(0,20,0,20)
+    img.BackgroundTransparency = 0.8
+    img.BackgroundColor3 = Color3.fromRGB(R1 or 255, G1 or 255, B1 or 255)
+    img.Image = "rbxassetid://86157935898545"
+    img.Parent = Body
+    
     local txt = Instance.new("TextLabel")
     txt.Name = tostring(Name)
     txt.Text = tostring(TextContent)
@@ -499,12 +340,15 @@ local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Work
     txt.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     txt.TextScaled = true
 	txt.RichText = true
-	txt.LayoutOrder = 1
-    txt.Size = UDim2.new(0.99, 0, 0, 20)
-    txt.Parent = parent
+	txt.LayoutOrder = tonumber(lay or 0)
+    txt.Size = UDim2.new(1, -25, 0, 20)
+    txt.Position = UDim2.new(25,0,0,0)
+    txt.Parent = Body
 
     Corner(0, 5, txt)
     Stroke(txt, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
+    Corner(0, 5, img)
+    Stroke(img, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
 
     -- Workin loop (สคริปต์หลัก)
     if typeof(Workin) == "function" then
@@ -532,7 +376,21 @@ wf.BackgroundTransparency = 1
 wf.Parent = scr
 
 -- [ function Button ]
-local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Workin, Callback, Function)
+local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, lay, Workin, Callback, Function)
+    local Body = Instance.new("Frame")
+    Body.Name = tostring(Name or "Unknown")
+    Body.Size = UDim2.new(1,-2,0,20)
+    Body.BackgroundTransparency = 1
+    Body.Parent = parent
+
+    local img = Instance.new("ImageLabel")
+    img.Name = "Icon"
+    img.Size = UDim2.new(0,20,0,20)
+    img.BackgroundColor3 = Color3.fromRGB(R1 or 255, G1 or 255, B1 or 255)
+    img.BackgroundTransparency = 0.8
+    img.Image = "rbxassetid://85495702622937"
+    img.Parent = Body
+          
     local btn = Instance.new("TextButton")
     btn.Name = tostring(Name)
     btn.Text = tostring(TextContent)
@@ -542,12 +400,15 @@ local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, Wo
     btn.TextScaled = true
 	btn.RichText = true
 	btn.TextColor3 = Color3.new(1,1,1)
-    btn.Size = UDim2.new(0.99, 0, 0, 20)
-	btn.LayoutOrder = 3
-    btn.Parent = parent
+    btn.Size = UDim2.new(1, -25, 0, 20)
+    btnPosition = UDim2.new(25,0,0,0)
+	btn.LayoutOrder = tonumber(lay or 0)
+    btn.Parent = Body
 
     Corner(0, 5, btn)
     Stroke(btn, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
+    Corner(0, 5, img)
+    Stroke(img, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
 
     -- Callback (ไม่มี debug)
     if typeof(Callback) == "function" then
@@ -583,7 +444,7 @@ local function space(parent, layoutorder, text)
 	space.BackgroundTransparency = 1
     space.LayoutOrder = layoutorder or 1
 	space.TextColor3 = Color3.new(1,1,1)
-	space.Text = tostring(text)
+	space.Text = tostring("<b>" .. text .."</b>")
 	space.RichText = true
 	space.TextWrapped = true
 	space.TextSize = 10
@@ -592,8 +453,9 @@ local function space(parent, layoutorder, text)
     space.Parent = parent
 end
 
-space(scr, 0, "-- <b>Texts</b> --")
-space(scr, 2, "-- <b>Buttons</b> --")
+space(scr, 0, "You")
+space(scr, 2, "Experience")
+spacd(scr, 4, "Others")
 						
 -- Load Avatar
 task.spawn(function()
@@ -671,7 +533,7 @@ end)
 -- PLAYER BASIC INFO
 --====================================================
 -- PlayerID
-Button(scr,"PlayerID","PlayerID: ...",true,255,255,255,180,180,255,
+Button(scr,"PlayerID","PlayerID: ...",true,255,255,255,180,180,255,1,
 	function(btn)
 		btn.Text = "PlayerID: "..lp.UserId
 	end,
@@ -686,7 +548,7 @@ Text(
     "Friends in the server: 0",
     false,
     255, 255, 255,
-    0, 255, 0,
+    0, 255, 0,3,
     function(txtLabel)
         local Players = game:GetService("Players")
         local LocalPlayer = Players.LocalPlayer
@@ -710,7 +572,7 @@ Text(
 )
 
 -- PlayerAge
-Button(scr,"PlayerAge","PlayerAge: ...",true,255,255,255,200,200,255,
+Button(scr,"PlayerAge","PlayerAge: ...",true,255,255,255,200,200,255,1,
 	function(btn)
 		btn.Text = "PlayerAge: "..lp.AccountAge.." day"
 	end,
@@ -720,7 +582,7 @@ Button(scr,"PlayerAge","PlayerAge: ...",true,255,255,255,200,200,255,
 )
 
 -- PlayerBirth
-Button(scr,"PlayerBirth","PlayerBirth: ...",true,255,255,255,200,255,200,
+Button(scr,"PlayerBirth","PlayerBirth: ...",true,255,255,255,200,255,200,1,
 	function(btn)
 		local birth = os.time() - (lp.AccountAge * 86400)
 		local d = os.date("*t", birth)
@@ -738,7 +600,7 @@ Button(scr,"PlayerBirth","PlayerBirth: ...",true,255,255,255,200,255,200,
 --====================================================
 -- CAMERA MODE
 --====================================================
-local camText = Text(scr,"CameraMode","CameraMode: ...",false,255,255,255,255,255,255)
+local camText = Text(scr,"CameraMode","CameraMode: ...",false,255,255,255,255,255,255,3)
 local function updateCam()
 	camText.Text = "CameraMode: "..tostring(lp.CameraMode)
 end
@@ -748,7 +610,7 @@ lp:GetPropertyChangedSignal("CameraMode"):Connect(updateCam)
 --====================================================
 -- PLACE / CREATOR
 --====================================================
-Button(scr,"PlaceID","PlaceID: ...",true,255,255,255,180,180,255,
+Button(scr,"PlaceID","PlaceID: ...",true,255,255,255,180,180,255,3,
 	function(btn) btn.Text = "PlaceID: "..game.PlaceId end,
 	function() if setclipboard then setclipboard(tostring(game.PlaceId)) end end
 )
@@ -758,7 +620,7 @@ pcall(function()
 	placeInfo = MarketplaceService:GetProductInfo(game.PlaceId)
 end)
 
-Button(scr,"CreatorName","Creator: ...",true,255,255,255,255,220,150,
+Button(scr,"CreatorName","Creator: ...",true,255,255,255,255,220,150,3,
 	function(btn)
 		if placeInfo then
 			btn.Text = "Creator: "..placeInfo.Creator.Name
@@ -771,7 +633,7 @@ Button(scr,"CreatorName","Creator: ...",true,255,255,255,255,220,150,
 	end
 )
 
-Button(scr,"CreatorID","CreatorID: ...",true,255,255,255,255,200,200,
+Button(scr,"CreatorID","CreatorID: ...",true,255,255,255,255,200,200,3,
 	function(btn)
 		if placeInfo then
 			btn.Text = "CreatorID: "..placeInfo.Creator.CreatorTargetId
@@ -816,7 +678,7 @@ local afkText = Text(
 	"AFK: 00:00 | LastAFK: 00:00",
 	false,
 	255,255,255,
-	255,255,255
+	255,255,255,1
 )
 
 local function fmt(sec)
@@ -851,7 +713,7 @@ local playingText = Text(
 	"PlayingTime: 000:00:00:00",
 	false,
 	200,220,255,
-	200,220,255
+	200,220,255,1
 )
 
 local function formatTime(sec)
@@ -879,7 +741,7 @@ Text(
 	"00:00:00",                     
 	false,                           
     255, 255, 255,                   
-    0, 255, 255,                   
+    0, 255, 255,1,          
     function(txtLabel)             
         -- ดึงเวลาปัจจุบันตามโลกจริง
         local timeData = os.date("*t")
@@ -894,8 +756,8 @@ Text(
 --====================================================
 -- WALKSPEED / JUMPPOWER (REALTIME)
 --====================================================
-local wsText = Text(scr,"WalkSpeed","WalkSpeed: -",false,160,200,255,160,200,255)
-local jpText = Text(scr,"JumpPower","JumpPower: -",false,255,150,150,255,150,150)
+local wsText = Text(scr,"WalkSpeed","WalkSpeed: -",false,160,200,255,160,200,255,1)
+local jpText = Text(scr,"JumpPower","JumpPower: -",false,255,150,150,255,150,150,1)
 
 task.spawn(function()
 	while true do
@@ -914,8 +776,8 @@ local lastHp
 local totalDmg, lastDmg = 0,0
 local totalHeal, lastHeal = 0,0
 
-local dmgText  = Text(scr,"Damage","BestDamage: 0 | LastDamage: 0",false,255,80,80,255,80,80)
-local healText = Text(scr,"Heal","BestHeal: 0 | LastHeal: 0",false,80,255,120,80,255,120)
+local dmgText  = Text(scr,"Damage","BestDamage: 0 | LastDamage: 0",false,255,80,80,255,80,80,1)
+local healText = Text(scr,"Heal","BestHeal: 0 | LastHeal: 0",false,80,255,120,80,255,120,1)
 
 local function bindHealth()
 	if not Humanoid then return end
@@ -945,7 +807,7 @@ if Humanoid then bindHealth() end
 -- DEATHS
 --====================================================
 local deaths = 0
-local deathText = Text(scr,"Deaths","Deaths: 0",false,255,80,80,255,80,80)
+local deathText = Text(scr,"Deaths","Deaths: 0",false,255,80,80,255,80,80,1)
 
 local function bindDeaths()
 	if not Humanoid then return end
@@ -964,7 +826,7 @@ if Humanoid then bindDeaths() end
 --====================================================
 -- INVENTORY (RESPAWN SAFE)
 --====================================================
-local invText = Text(scr,"Inventory","Tools: 0",false,255,255,255,255,255,255)
+local invText = Text(scr,"Inventory","Tools: 0",false,255,255,255,255,255,255,1)
 
 local backpackConnAdd
 local backpackConnRemove
@@ -1004,7 +866,7 @@ end)
 --====================================================
 -- HOLDING TOOL
 --====================================================
-local holdText = Text(scr,"HoldingTool","HoldingTool: none",false,255,255,255,255,255,255)
+local holdText = Text(scr,"HoldingTool","HoldingTool: none",false,255,255,255,255,255,255,1)
 
 task.spawn(function()
 	while true do
@@ -1019,7 +881,7 @@ end)
 --====================================================
 -- MAX HEALTH
 --====================================================
-local maxText = Text(scr,"MaxHealth","MaxHealth: -",false,255,80,80,255,80,80)
+local maxText = Text(scr,"MaxHealth","MaxHealth: -",false,255,80,80,255,80,80,1)
 
 task.spawn(function()
 	while true do
@@ -1033,7 +895,7 @@ end)
 --====================================================
 -- STANDING ON (FloorMaterial)
 --====================================================
-local standText = Text(scr,"StandingOn","StandingOn: Air",false,80,255,120,80,255,120)
+local standText = Text(scr,"StandingOn","StandingOn: Air",false,80,255,120,80,255,120,1)
 
 task.spawn(function()
 	while true do
@@ -1053,7 +915,7 @@ local posButton = Button(
 	"Position: X: - | Y: - | Z: -",
 	true,                 -- Active (กดได้)
 	120,255,255,          -- Text color (Cyan)
-	120,255,255,          -- Stroke color
+	120,255,255,3         -- Stroke color
 	nil,                  -- Workin (ใช้ loop ด้านล่างแทน)
 	function(btn)         -- Callback (Copy)
 		if HRP and HRP.Parent then
@@ -1099,7 +961,7 @@ local charTypeText = Text(
 	"CharacterType: -",
 	false,
 	255,255,255,
-	255,255,255
+	255,255,255,1
 )
 
 task.spawn(function()
@@ -1128,7 +990,7 @@ local timeText = Button(
 	"TimeOfDay: 00:00:00",
 	true,
 	255,230,120,       -- Yellow
-	255,230,120
+	255,230,120,3
 )
 
 task.spawn(function()
@@ -1160,7 +1022,7 @@ Button(
 	"Open Developer console",
 	false,
 	180,220,255,          -- Light blue sky
-	180,220,255,
+	180,220,255,5,
 	nil,                  -- ❌ Workin = ไม่ใช้
 	function(btn)         -- ✅ Callback = ตอนกดจริง
 		pcall(function()
@@ -1195,7 +1057,7 @@ Button(
 	"Drop Tool",
 	true,
 	255,255,0,
-	255,220,120,
+	255,220,120,5,
 	nil,
 	function(btn)
 		local tool = getEquippedTool()
@@ -1217,7 +1079,7 @@ Button(
 	"Drop all tools",
 	true,
 	255,120,150,
-	255,80,80,
+	255,80,80,5,
 	nil,
 	function(btn)
 		local char = getCharacter()
