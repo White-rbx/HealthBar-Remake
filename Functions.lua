@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.97
+-- So uhm just a script lol. 6.971
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -426,8 +426,7 @@ bigt.Size = UDim2.new(1,0,1,0)
 bigt.BackgroundTransparency = 1
 bigt.AutomaticSize = Enum.AutomaticSize.XY
 bigt.RichText = true
-bigt.Text = [[
-<font size ='12'>About</font>
+bigt.Text = [[<font size ='12'>About</font>
 ExperienceSettings is a Universal tool that which is a all-in-one tools like
  • Editor
  • Searcher
@@ -479,8 +478,7 @@ Thank you for your contribution :3 ❤️
 
 <font color='rgb(0,255,0)'>Notice to Script Creators</font>
 If you are a script creator listed above and do not want your script to be included,
-please contact us via our Discord forum, and we will remove it immediately.
-]]
+please contact us via our Discord forum, and we will remove it immediately.]]
 bigt.TextColor3 = Color3.fromRGB(255,255,255)
 bigt.TextScaled = false
 bigt.TextXAlignment = Enum.TextXAlignment.Left
