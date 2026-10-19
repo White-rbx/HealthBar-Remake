@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.94 Stats]]
+local v_ver = [[Script ahh 2.95 Stats]]
 
 ------------------------------------------------------------------------------------------
 
@@ -321,7 +321,7 @@ user.Parent = pfhr
 local scr = Instance.new("ScrollingFrame")
 scr.Name = "Scroll"
 scr.Size = UDim2.new(1,0,1,-80)
-scr.Position = UDim2.new(0,0,0.21,0)
+scr.Position = UDim2.new(0,0,0,85)
 scr.CanvasSize = UDim2.new(0,0,0,0)
 scr.BorderMode = Enum.BorderMode.Inset
 scr.BorderSizePixel = 5
@@ -361,6 +361,9 @@ local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, lay,
     txt.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     txt.TextScaled = true
 	txt.RichText = true
+	txt.BorderMode = Enum.BorderMode.Inset
+	txt.BorderSizePixel = 2
+	txt.TextXAlignment = Enum.TextXAlignment.Left
 	txt.Size = UDim2.new(1, -25, 0, 20)
     txt.Position = UDim2.new(0,25,0,0)
     txt.Parent = Body
@@ -420,6 +423,9 @@ local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, la
 	btn.BackgroundColor3 = Color3.fromRGB(R1 or 255, G1 or 255, B1 or 255)
     btn.TextScaled = true
 	btn.RichText = true
+	btn.BorderMode = Enum.BorderMode.Inset
+	btn.BorderSizePixel = 2
+	btn.TextXAlignment = Enum.TextXAlignment.Left
 	btn.TextColor3 = Color3.new(1,1,1)
     btn.Size = UDim2.new(1, -25, 0, 20)
     btn.Position = UDim2.new(0,25,0,0)
@@ -460,13 +466,14 @@ end
 local function space(parent, layoutorder, text)
 	local space = Instance.new("TextLabel")
 	space.Name = "Space"
-	space.Size = UDim2.new(0.99,0,0,11)
+	space.Size = UDim2.new(0.99,0,0,25)
 	space.BackgroundTransparency = 1
     space.LayoutOrder = layoutorder or 1
 	space.TextColor3 = Color3.new(1,1,1)
 	space.Text = tostring("<b>" .. text .."</b>")
 	space.RichText = true
 	space.TextWrapped = true
+    space.TextScaled = true
 	space.TextSize = 10
 	space.TextXAlignment = Enum.TextXAlignment.Center
 	space.TextYAlignment = Enum.TextYAlignment.Center
