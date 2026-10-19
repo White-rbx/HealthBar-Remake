@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.9
+-- So uhm just a script lol. 6.95
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -407,7 +407,7 @@ txt.Parent = iN2
 local scrF = Instance.new("ScrollingFrame")
 scrF.Name = "Scroll"
 scrF.Position = UDim2.new(0,0,0,105)
-scrF.Size = UDim2.new(1,0,0.6,0)
+scrF.Size = UDim2.new(1,0,1,-160)
 scrF.BackgroundTransparency = 0.8
 scrF.CanvasSize = UDim2.new(0,0,0,0)
 scrF.BackgroundColor3 = Color3.new(1,1,1)
