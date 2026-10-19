@@ -1,4 +1,4 @@
-local v_ver = [[Editor 2.23 Master]]
+local v_ver = [[Editor 2.24 Master]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -2451,8 +2451,9 @@ addpage("Device", "Device Exeplorer", 77415773465628, UDim2.new(-2,0,0,0))
 addpage("Dex", "Dex Exeplorer", 73941302443097, UDim2.new(-3,0,0,0))
 addpage("PlayersList", "Learderboard", 133148371698132, UDim2.new(-4,0,0,0))
 addpage("ServerList", "ServerList", 124257243656869, UDim2.new(-5,0,0,0))
-addpage("Settings", "Settings", 109951202940492, UDim2.new(-6,0,0,0))
-addpage("About", "About", 128234289075456, UDim2.new(-7,0,0,0))
+addpage("MusicPlayer", "Music Player", 120343700432506, UDim2.new(-6,0,0,0))
+addpage("Settings", "Settings", 109951202940492, UDim2.new(-7,0,0,0))
+addpage("About", "About", 128234289075456, UDim2.new(-8,0,0,0))
 
 local ic2 = {
   Test = incan2.Test,
