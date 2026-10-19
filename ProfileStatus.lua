@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.9 Beta]]
+local v_ver = [[Script ahh 2.92 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -50,14 +50,32 @@ local StrokeUI = {
 }
 
 local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+    if not parent then return nil end
+
     local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
-    stroke.ApplyStrokeMode = StrokeUI[ASM] or StrokeUI.ASMBorder
+    local strokeMode = typeof(ASM) == "EnumItem" and ASM
+        or (type(ASM) == "string" and StrokeUI[ASM])
+        or StrokeUI.ASMBorder
+    local lineJoin = typeof(LJM) == "EnumItem" and LJM
+        or (type(LJM) == "string" and StrokeUI[LJM])
+        or StrokeUI.LJMRound
+
+    stroke.ApplyStrokeMode = strokeMode
     stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
-    stroke.LineJoinMode = StrokeUI[LJM] or StrokeUI.LJMRound
+    stroke.LineJoinMode = lineJoin
     stroke.Thickness = Tn or 1
     stroke.Transparency = Transy or 0
     stroke.Parent = parent
     return stroke
+end
+
+-- Change a UIStroke color when an action cannot be completed.
+local function warnStroke(target, warningColor)
+    if not target then return end
+    local stroke = target:FindFirstChildOfClass("UIStroke")
+    if stroke then
+        stroke.Color = warningColor or Color3.fromRGB(255, 0, 0)
+    end
 end
 -- =====END FUNCTION UISTROKE=====
 
@@ -164,27 +182,29 @@ local AspectUI = {
 
 --// ASPECT FUNCTION
 function Aspect(parent, ratio, aspectType, dominantAxis)
-	if not parent then return end
-	
-	-- prevent duplicates
-	local existing = parent:FindFirstChildOfClass("UIAspectRatioConstraint")
-	if existing then
-		-- update instead
-		existing.AspectRatio = AspectUI[ratio] or existing.AspectRatio
-		existing.AspectType = AspectUI[aspectType] or existing.AspectType
-		existing.DominantAxis = AspectUI[dominantAxis] or existing.DominantAxis
-		return existing
-	end
-	
-	-- create new
-	local constraint = Instance.new("UIAspectRatioConstraint")
-	constraint.Parent = parent
-	
-	constraint.AspectRatio = AspectUI[ratio] or 1
-	constraint.AspectType = AspectUI[aspectType] or AspectUI.Fit
-	constraint.DominantAxis = AspectUI[dominantAxis] or AspectUI.Width
-	
-	return constraint
+    if not parent then return end
+
+    -- Numeric ratios (for example 1 or 16/9) should be used directly.
+    local ratioValue = type(ratio) == "number" and ratio > 0 and ratio or nil
+    local typeValue = typeof(aspectType) == "EnumItem" and aspectType
+        or (type(aspectType) == "string" and AspectUI[aspectType])
+    local axisValue = typeof(dominantAxis) == "EnumItem" and dominantAxis
+        or (type(dominantAxis) == "string" and AspectUI[dominantAxis])
+
+    local existing = parent:FindFirstChildOfClass("UIAspectRatioConstraint")
+    if existing then
+        if ratioValue then existing.AspectRatio = ratioValue end
+        if typeValue then existing.AspectType = typeValue end
+        if axisValue then existing.DominantAxis = axisValue end
+        return existing
+    end
+
+    local constraint = Instance.new("UIAspectRatioConstraint")
+    constraint.AspectRatio = ratioValue or 1
+    constraint.AspectType = typeValue or AspectUI.Fit
+    constraint.DominantAxis = axisValue or AspectUI.Width
+    constraint.Parent = parent
+    return constraint
 end
 
 -- =====END FUNCTION UIASPECTRATIONCONSTRAINT=====
@@ -346,9 +366,9 @@ local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, lay,
     txt.Parent = Body
 
     Corner(0, 5, txt)
-    Stroke(txt, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
+    Stroke(txt, "ASMBorder", R1 or 255, G1 or 255, B1 or 255, "LJMRound", 1, 0)
     Corner(0, 5, img)
-    Stroke(img, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
+    Stroke(img, "ASMBorder", R1 or 255, G1 or 255, B1 or 255, "LJMRound", 1, 0)
 
     -- Workin loop (สคริปต์หลัก)
     if typeof(Workin) == "function" then
@@ -401,14 +421,14 @@ local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, la
 	btn.RichText = true
 	btn.TextColor3 = Color3.new(1,1,1)
     btn.Size = UDim2.new(1, -25, 0, 20)
-    btnPosition = UDim2.new(25,0,0,0)
+    btn.Position = UDim2.new(25,0,0,0)
 	btn.LayoutOrder = tonumber(lay or 0)
     btn.Parent = Body
 
     Corner(0, 5, btn)
-    Stroke(btn, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
+    Stroke(btn, "ASMBorder", R1 or 255, G1 or 255, B1 or 255, "LJMRound", 1, 0)
     Corner(0, 5, img)
-    Stroke(img, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
+    Stroke(img, "ASMBorder", R1 or 255, G1 or 255, B1 or 255, "LJMRound", 1, 0)
 
     -- Callback (ไม่มี debug)
     if typeof(Callback) == "function" then
@@ -455,7 +475,7 @@ end
 
 space(scr, 0, "You")
 space(scr, 2, "Experience")
-spacd(scr, 4, "Others")
+space(scr, 4, "Others")
 						
 -- Load Avatar
 task.spawn(function()
