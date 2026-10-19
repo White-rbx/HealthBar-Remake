@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.275
+-- So uhm just a script lol. 6.9
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -269,11 +269,10 @@ bk.Name = "Load_Background"
 bk.Size = UDim2.new(0.4,0,0.2,0)
 bk.Position = UDim2.new(0.3,0,0.70,0)
 bk.BackgroundColor3 = Color3.fromRGB(0,0,0)
-bk.BackgroundTransparency = 0.5
+bk.BackgroundTransparency = 0.1
 bk.Visible = true
 bk.Parent = Menu
 Corner(0, 10, bk)
-Stroke(bk, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
 
 local line = Instance.new("Frame")
 line.Name = "Line"
@@ -289,6 +288,8 @@ lg.BackgroundTransparency = 1
 lg.Position = UDim2.new(0.02,0,0.02,0)
 lg.Size = UDim2.new(0.96,0,0.2,0)
 lg.Text = "Loading"
+lg.BorderMode = Enum.BorderMode.Inset
+lg.TextScaled = true
 lg.TextSize = 20
 lg.TextColor3 = Color3.fromRGB(255,255,255)
 lg.Parent = bk
@@ -300,6 +301,7 @@ wt.Position = UDim2.new(0.02,0,0.25,0)
 wt.Size = UDim2.new(0.96,0,0.35,0)
 wt.Text = "Starting ExperienceSettings. Please wait..."
 wt.TextScaled = true
+wt.BorderMode = Enum.BorderMode.Inset
 wt.TextColor3 = Color3.fromRGB(255,255,255)
 wt.Parent = bk
 
@@ -310,6 +312,7 @@ wl.Position = UDim2.new(0.02,0,0.65,0)
 wl.Size = UDim2.new(0.96,0,0.13,0)
 wl.Text = "Creator by @5teve3019D on ScriptBlox/HaxHell"
 wl.TextScaled = true
+wl.BorderMode = Enum.BorderMode.Inset
 wl.TextColor3 = Color3.fromRGB(255,255,255)
 wl.Parent = bk
 
@@ -319,20 +322,19 @@ skp.BackgroundTransparency = 0.8
 skp.BackgroundColor3 = Color3.fromRGB(255,255,255)
 skp.Position = UDim2.new(0.02,0,0.85,0)
 skp.Size = UDim2.new(0.96,0,0.1,0)
-skp.Text = "Close fuc#king annoying load bar"
+skp.Text = "Close the fuc#king annoying load bar"
 skp.TextScaled = true
 skp.TextColor3 = Color3.fromRGB(255,255,255)
 skp.Parent = bk
-Corner(0,8,skp)
-Stroke(skp, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
+Corner(0,6,skp)
 
 local lder = Instance.new("Frame")
 lder.Name = "Loader"
 lder.BackgroundTransparency = 0.8
-lder.BackgroundColor3 = Color3.fromRGB(255,255,255)
+lder.BackgroundColor3 = Color3.fromRGB(0,255,0)
 lder.Size = UDim2.new(0,0,1,0)
 lder.Parent = skp
-Corner(0, 8, lder)
+Corner(0, 5, lder)
 
 -- =====>> Button About <<=====
 local Ab = Instance.new("Frame")
@@ -340,11 +342,10 @@ Ab.Name = "About_Background"
 Ab.Active = false
 Ab.Position = UDim2.new(0.25,0,1,0)
 Ab.Size = UDim2.new(0.5,0,0.7,0)
-Ab.BackgroundColor3 = Color3.fromRGB(11,11,21)
-Ab.BackgroundTransparency = 0.3
+Ab.BackgroundColor3 = Color3.fromRGB(0,0,0)
+Ab.BackgroundTransparency = 0.1
 Ab.Parent = Menu
-Corner(0,12,Ab)
-Stroke(Ab, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
+Corner(0,8,Ab)
 
 local In = Instance.new("Frame")
 In.Name = "Inside"
@@ -359,21 +360,19 @@ linkDc.Name = "Discord link"
 linkDc.TextScaled = true
 linkDc.Text = "https://discord.gg/nFz3ypxUMA"
 linkDc.TextColor3 = Color3.fromRGB(255,255,255)
-linkDc.BackgroundTransparency = 1
+linkDc.BackgroundTransparency = 0.5
 linkDc.ClearTextOnFocus = false
-linkDc.Size = UDim2.new(0.34,0,0,20)
-linkDc.Position = UDim2.new(0.65,0,0,0)
+linkDc.Size = UDim2.new(0,150,0,20)
+linkDc.Position = UDim2.new(1,-150,0,0)
 linkDc.Parent = In
-Corner(1, 0, linkDc)
-Stroke(linkDc, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
+Corner(0,5, linkDc)
 
 local in1 = Instance.new("Frame")
 in1.Name = "Inside.2"
 in1.Active = false
-in1.Size = UDim2.new(1,0,0,100)
+in1.Size = UDim2.new(1,-155,0,100)
 in1.BackgroundTransparency = 1
 in1.Parent = In
-createUIListLayout(in1, 0, 5, "HLeft", "VTop", "SName", "FillH")
 
 local imag = Instance.new("ImageLabel")
 imag.Name = "a1_Icon"
@@ -387,99 +386,79 @@ Corner(0, 8, imag)
 local iN2 = Instance.new("Frame")
 iN2.Name = "a2_txts"
 iN2.Active = false
-iN2.Size = UDim2.new(0.5,0,0,40)
+iN2.Size = UDim2.new(1,-105,0,40)
+iN2.Position = UDim2.new(0,105,0,0)
 iN2.BackgroundTransparency  = 1
 iN2.Parent = in1
 
 local txt = Instance.new("TextLabel")
-txt.Name = "Name"
+txt.Name = "Info"
 txt.Active = false
 txt.TextXAlignment = Enum.TextXAlignment.Left
-txt.Size = UDim2.new(1,0,0,40)
+txt.TextYAlignment = Enum.TextYAlignment.Top
+txt.Size = UDim2.new(1,0,1,0)
 txt.BackgroundTransparency = 1
-txt.Text = "@5teve3019D"
+txt.Text = "<b><font color='rgb(0,255,255)'>5teve3019D</font></b>\n<font size='10' color='rgb(255,255,0)'>Creator of ArcScript project</font><font size='10'>\nUser in <b>ScriptBlox</b> and <b>HaxHell</b></font>"
 txt.TextColor3 = Color3.fromRGB(255,255,255)
-txt.TextScaled =  true
+txt.TextWrapped =  true
+txt.RichText = true
 txt.Parent = iN2
-
-local txt2 = Instance.new("TextLabel")
-txt2.Name = "Name"
-txt2.Active = false
-txt2.TextXAlignment = Enum.TextXAlignment.Left
-txt2.Size = UDim2.new(1,0,0,35)
-txt2.Position = UDim2.new(0,0,0,36)
-txt2.BackgroundTransparency = 1
-txt2.Text = "“Creator of the ExperiencSettings.”"
-txt2.TextColor3 = Color3.fromRGB(255,255,255)
-txt2.TextScaled =  true
-txt2.Parent = iN2
-
-local txt3 = Instance.new("TextLabel")
-txt3.Name = "Name"
-txt3.Active = false
-txt3.TextXAlignment = Enum.TextXAlignment.Left
-txt3.Size = UDim2.new(1,0,0,15)
-txt3.Position = UDim2.new(0,0,0,70)
-txt3.BackgroundTransparency = 1
-txt3.Text = "[ User on ScriptBlox/HaxHell ]"
-txt3.TextColor3 = Color3.fromRGB(255,255,255)
-txt3.TextScaled =  true
-txt3.Parent = iN2
 
 local scrF = Instance.new("ScrollingFrame")
 scrF.Name = "Scroll"
-scrF.Position = UDim2.new(0,0,0.26,0)
+scrF.Position = UDim2.new(0,0,0,105)
 scrF.Size = UDim2.new(1,0,0.6,0)
-scrF.BackgroundTransparency = 1
+scrF.BackgroundTransparency = 0.8
+scrF.CanvasSize = UDim2.new(0,0,0,0)
+scrF.BackgroundColor3 = Color3.new(1,1,1)
+scrF.BorderMode = Enum.BorderMode.Inset
+scrF.BorderSizePixel = 5
+scrF.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrF.ScrollBarThickness = 0
+scrF.ScrollingDirection = Enum.ScrollingDirection.Y
 scrF.Parent = In
-Stroke(scrF, ASMBorder, 255,255,255, LSMRound, 1, 0.5)
-
+Corner(0,8,scrF)
 
 local bigt = Instance.new("TextLabel")
 bigt.Name = "About"
 bigt.Active = false
 bigt.Size = UDim2.new(1,0,1,0)
 bigt.BackgroundTransparency = 1
+bigt.AutomaticSize = Enum.AutomaticSize.Y
+bigt.RichText = true
 bigt.Text = [[
-The ExperienceSettings is debug tools you can use on your own, there are a lot of tools!
-For HealthBar was a remake of better and smoother and ValueLabels for show values.
-If your ExperienceSettings was Disabled there are three reasons,
- • HumanoidRootPart was removed too long.
- • The Experience doesn't support the ExperienceSettings.
- • Script failed to load.
-If you enjoy it, you can support me on discord!
-Thank you for using ExperienceSettings! ♥️
+<font size ='12'>About</font>
+ExperienceSettings is a Universal tool that which is a all-in-one tools like
+ • Editor
+ • Searcher
+ • Stats
+ • And more!
 
-54% Gui is made by hand
-10% Script is made by hand
-36% Script is made by ai
+At first of history it was made for HealthBar because of Roblox make it more ugly, so I remade HealthBar into old one but <b>more colorful!</b> with <i>
+ "PING"
+ "FPS"
+ "HP" and "Walkspeed/studs"!</i>
 
-Creator: @5teve3019D (Gui, Little Script)
-Helper: ChatGPT (Script) <-- He got a lot of complaints lol.
-Little Helper: Copilot of GitHub (Script)
-Fun fact: Old is ugly than now lol I swear 😂 Oh, you haven't seen it :(
+ExperienceSettings was made for <b>Mobile Friendly</b> and <b>Easy to use</b>
 
-========================
-➕ = Add something
-📢 = Announcements
-🔨 = In-develop
-🔷 = Plan ahead for updates
-✅ = Done
-⚠️ = Have issues
-🟠 = Updating soon
-❌ = Bug
-⚫ = Cannot fix
-➖ = Disconnected or discontinued
--------
-📌 Updated: Update in this information is no longer appear now, please join our discord community to following update!
--------
-🔁 In progress: No longer appear features
--------
-❌ Failed: No longer appear unavailable features
--------
+<font size='12'>FAQ</font>
+<b>Dose these project uses an AI?</b>
+Yes, these project uses an AI but <font color='rgb(255,0,0)'>NOT</font> the <b>UI/UX</b>. We uses an AI only for functional.
 
-✨ SCRIPT CREDITS ✨
-[ Script Name ] by [ Creator ] [ Verification Status ]
+<b>Are you an UI/UX Designer?</b>
+Yes, we are.
+
+<b>Is it safe to use the ExperienceSettings?</b>
+You're using this ExperienceSettings rigth now.
+But I hope you don't execute a fake one.
+
+<font size='12'>User Safety</font>
+User safety was made for security and user in mind.
+We do NOT steal any personal data from you.
+Our script are completely client side except for an API like <i>Searcher API and AI-Thinking</i> 
+
+<font size='12' color='rgb(255,255,0)>'Script Credits</font>
+<i>[ Script Name ] by [ Creator ] [ Verification Status ]</i>
 
 We want to say that your script is awesome, and it is used in our project for debugging and educational purposes.
 Thank you for your contribution :3 ❤️
@@ -498,7 +477,7 @@ Thank you for your contribution :3 ❤️
 'Server Position Predictor' by @zephyrr (X Not verified)
 'Open Source Universal Chat' by @neutral (X Not verified)
 
--- Notice to Script Creators --
+<font color='rgb'0,255,0)'>Notice to Script Creators</font>
 If you are a script creator listed above and do not want your script to be included,
 please contact us via our Discord forum, and we will remove it immediately.
 ]]
@@ -511,8 +490,8 @@ bigt.Parent = scrF
 local tip = Instance.new("TextLabel")
 tip.Name = "Help"
 tip.Active = false
-tip.Size = UDim2.new(0.8,0,0,30)
-tip.Position = UDim2.new(0,0,0.88,0)
+tip.Size = UDim2.new(1,-105,0,60)
+tip.Position = UDim2.new(0,0,1,-50)
 tip.BackgroundTransparency = 1
 tip.TextColor3 = Color3.fromRGB(255,255,255)
 tip.TextScaled = true
@@ -522,15 +501,14 @@ tip.Parent = In
 local hid = Instance.new("TextButton")
 hid.Name = "Hide"
 hid.Active = true
-hid.Position = UDim2.new(0.8,0,0.88,0)
-hid.Size = UDim2.new(0.2,0,0,30)
-hid.BackgroundTransparency = 1
+hid.Position = UDim2.new(1,-100,1,-50)
+hid.Size = UDim2.new(100,0,0,50)
+hid.BackgroundTransparency = 0.5
 hid.Text = "Hide"
 hid.TextScaled = true
 hid.TextColor3 = Color3.fromRGB(255,255,255)
 hid.Parent = In
-Corner(1,0,hid)
-Stroke(hid, ASMBorder, 255, 255, 255, LSMRound, 1, 0)
+Corner(0,8,hid)
 
 -- ================
 local mfr = Instance.new("Frame")
