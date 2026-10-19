@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.96
+-- So uhm just a script lol. 6.97
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -477,7 +477,7 @@ Thank you for your contribution :3 ❤️
 'Server Position Predictor' by @zephyrr (X Not verified)
 'Open Source Universal Chat' by @neutral (X Not verified)
 
-<font color='rgb'0,255,0)'>Notice to Script Creators</font>
+<font color='rgb(0,255,0)'>Notice to Script Creators</font>
 If you are a script creator listed above and do not want your script to be included,
 please contact us via our Discord forum, and we will remove it immediately.
 ]]
@@ -495,7 +495,8 @@ tip.Position = UDim2.new(0,0,1,-50)
 tip.BackgroundTransparency = 1
 tip.TextColor3 = Color3.fromRGB(255,255,255)
 tip.TextScaled = true
-tip.Text = "Oh, if the ExperienceSettings was disabled. You can hide the text by click the button."
+tip.RichText = true
+tip.Text = "Oh, if the ExperienceSettings was disabled. You can hide the text by click this button or click <i>Hide ExperienceSettings</i> in <b>Settings - Loader Rejoiner</b>."
 tip.Parent = In
 
 local hid = Instance.new("TextButton")
