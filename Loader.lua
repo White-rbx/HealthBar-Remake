@@ -1,4 +1,4 @@
--- Well 3.31
+-- Well 3.32
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -563,10 +563,10 @@ local _0x31 = {
     [string.char(85,115,101,114,110,97,109,101,115)] = {
         ["Roblox"] = true,
         ["makiro5556"] = true,
-        ["108oooooooppppko"] = true,
     },
     [string.char(85,115,101,114,73,100,115)] = {
         -- [123456789] = true,
+		[11810742331] = true,
     }
 }
 
