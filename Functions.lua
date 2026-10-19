@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.95
+-- So uhm just a script lol. 6.96
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -413,9 +413,9 @@ scrF.CanvasSize = UDim2.new(0,0,0,0)
 scrF.BackgroundColor3 = Color3.new(1,1,1)
 scrF.BorderMode = Enum.BorderMode.Inset
 scrF.BorderSizePixel = 5
-scrF.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrF.AutomaticCanvasSize = Enum.AutomaticSize.XY
 scrF.ScrollBarThickness = 0
-scrF.ScrollingDirection = Enum.ScrollingDirection.Y
+scrF.ScrollingDirection = Enum.ScrollingDirection.XY
 scrF.Parent = In
 Corner(0,8,scrF)
 
@@ -424,7 +424,7 @@ bigt.Name = "About"
 bigt.Active = false
 bigt.Size = UDim2.new(1,0,1,0)
 bigt.BackgroundTransparency = 1
-bigt.AutomaticSize = Enum.AutomaticSize.Y
+bigt.AutomaticSize = Enum.AutomaticSize.XY
 bigt.RichText = true
 bigt.Text = [[
 <font size ='12'>About</font>
@@ -457,12 +457,12 @@ User safety was made for security and user in mind.
 We do NOT steal any personal data from you.
 Our script are completely client side except for an API like <i>Searcher API and AI-Thinking</i> 
 
-<font size='12' color='rgb(255,255,0)>'Script Credits</font>
+<font size='12' color='rgb(255,255,0)'>Script Credits</font>
 <i>[ Script Name ] by [ Creator ] [ Verification Status ]</i>
 
 We want to say that your script is awesome, and it is used in our project for debugging and educational purposes.
 Thank you for your contribution :3 ❤️
-- Debugger
+- <font color='rgb(0,255,255)'>5teve3019D</font>
 
 -- Credits List --
 'Ketamine' by @Cherry (✓ Verified)
@@ -490,7 +490,7 @@ bigt.Parent = scrF
 local tip = Instance.new("TextLabel")
 tip.Name = "Help"
 tip.Active = false
-tip.Size = UDim2.new(1,-105,0,60)
+tip.Size = UDim2.new(1,-105,0,50)
 tip.Position = UDim2.new(0,0,1,-50)
 tip.BackgroundTransparency = 1
 tip.TextColor3 = Color3.fromRGB(255,255,255)
@@ -502,7 +502,7 @@ local hid = Instance.new("TextButton")
 hid.Name = "Hide"
 hid.Active = true
 hid.Position = UDim2.new(1,-100,1,-50)
-hid.Size = UDim2.new(100,0,0,50)
+hid.Size = UDim2.new(0,100,0,50)
 hid.BackgroundTransparency = 0.5
 hid.Text = "Hide"
 hid.TextScaled = true
