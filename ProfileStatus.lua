@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.95 Stats]]
+local v_ver = [[Script ahh 2.96 Stats]]
 
 ------------------------------------------------------------------------------------------
 
@@ -266,7 +266,7 @@ pro.Name = "ProfileStatus"
 pro.Position = UDim2.new(0.25,0,1,0)
 pro.Size = UDim2.new(0.5,0,0.7,0)
 pro.BackgroundColor3 = Color3.fromRGB(17, 18, 25)
-pro.BackgroundTransparency = 0
+pro.BackgroundTransparency = 0.1
 pro.Parent = Menu
 Corner(0,8,pro)
 ListLayout(pro, 0, 0, "HCenter", "VCenter", "SName", "FillV")
