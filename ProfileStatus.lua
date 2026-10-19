@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.93 Beta]]
+local v_ver = [[Script ahh 2.94 Stats]]
 
 ------------------------------------------------------------------------------------------
 
@@ -341,6 +341,7 @@ local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, lay,
     Body.Name = tostring(Name or "Unknown")
     Body.Size = UDim2.new(1,-2,0,20)
     Body.BackgroundTransparency = 1
+    Body.LayoutOrder = tonumber(lay or 0)
     Body.Parent = parent
 
     local img = Instance.new("ImageLabel")
@@ -360,9 +361,8 @@ local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, lay,
     txt.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     txt.TextScaled = true
 	txt.RichText = true
-	txt.LayoutOrder = tonumber(lay or 0)
-    txt.Size = UDim2.new(1, -25, 0, 20)
-    txt.Position = UDim2.new(25,0,0,0)
+	txt.Size = UDim2.new(1, -25, 0, 20)
+    txt.Position = UDim2.new(0,25,0,0)
     txt.Parent = Body
 
     Corner(0, 5, txt)
@@ -401,6 +401,7 @@ local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, la
     Body.Name = tostring(Name or "Unknown")
     Body.Size = UDim2.new(1,-2,0,20)
     Body.BackgroundTransparency = 1
+	Body.LayoutOrder = tonumber(lay or 0)
     Body.Parent = parent
 
     local img = Instance.new("ImageLabel")
@@ -421,8 +422,7 @@ local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, la
 	btn.RichText = true
 	btn.TextColor3 = Color3.new(1,1,1)
     btn.Size = UDim2.new(1, -25, 0, 20)
-    btn.Position = UDim2.new(25,0,0,0)
-	btn.LayoutOrder = tonumber(lay or 0)
+    btn.Position = UDim2.new(0,25,0,0)
     btn.Parent = Body
 
     Corner(0, 5, btn)
