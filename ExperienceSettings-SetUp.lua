@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 1.23 Oof]]
+local v_ver = [[ExperienceSettings-SetUp 1.24 Oof]]
 
 ------------------------------------------------------------------------------------------
 
@@ -316,13 +316,13 @@ local _0x13 = {
             Reason = "Bad Behavior",
             Description = "Appeal to John in discord | Last seen: 'Nothingness'; Game ID: 6252985844"
         },
-        ["108oooooooppppko"] = {
-            Reason = "การเป็นศัตรูและการหักหลังผู้อื่น",
-            Description = "โปรดติดต่อจอห์นผ่านทางดิสคอร์ด | เห็นล่าสุดที่: 'Rintama High'; เกมไอดี: 131031240633619"
-        }
     },
     UserIds = {
         -- [123456789] = { Reason = "...", Description = "..." },
+		["11810742331"] = {
+            Reason = "การเป็นศัตรูและการหักหลังผู้อื่น",
+            Description = "โปรดติดต่อจอห์นผ่านทางดิสคอร์ด | เห็นล่าสุดที่: 'Rintama High'; เกมไอดี: 131031240633619"
+		}
     }
 }
 
