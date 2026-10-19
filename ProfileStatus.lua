@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.92 Beta]]
+local v_ver = [[Script ahh 2.93 Beta]]
 
 ------------------------------------------------------------------------------------------
 
@@ -935,7 +935,7 @@ local posButton = Button(
 	"Position: X: - | Y: - | Z: -",
 	true,                 -- Active (กดได้)
 	120,255,255,          -- Text color (Cyan)
-	120,255,255,3         -- Stroke color
+	120,255,255,3,        -- Stroke color
 	nil,                  -- Workin (ใช้ loop ด้านล่างแทน)
 	function(btn)         -- Callback (Copy)
 		if HRP and HRP.Parent then
