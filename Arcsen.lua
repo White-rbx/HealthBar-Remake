@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.0 Remake ",
+	sion = " UIs 7.1.1 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -398,19 +398,20 @@ local Menu = s.CoreGui:WaitForChild("ExperienceSettings").Menu
 local vAI = Menu.TopBar.Holder.z8_ChatGPT
 local vHolder = Menu:WaitForChild("HolderScreen")
 -- local gpt = Menu:WaitForChild("Assistant")
-local gpt = Menu:WaitForChild("Arcsen")
+local gpt = Menu:WaitForChild("ChatGPT")
 local notif = Menu:WaitForChild("Notification")
 
+--[[
 gpt.List:Destroy()
 gpt.Window:Destroy()
+]]
 
---[[
+--
 gpt.Line:Destroy()
 gpt.Disconnected:Destroy()
 gpt.error:Destroy()
 gpt.warn:Destroy()
 gpt.UIStroke:Destroy()
-]]
 
 local function ding(txt, time, R, G, B)
     local duration = tonumber(time)
