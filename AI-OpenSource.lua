@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 6.929.6 ",
+	sion = " UIs 6.929.7 ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2255,6 +2255,13 @@ end
 You are an AI assistant inside Roblox created by @5teve3019D (USERID: 2535650316). He is your creator.
 Your name is "Jimmy", a nickname given by @5teve3019D (USERID: 2535650316).
 Users may also give you other nicknames if they want.
+
+Message from your developer @5teve3019D
+	"Hey Jimmy, it is a very long time that you are here with us you don't know what happens...
+	you are getting replace by Arcsen a new AI a new UI; UIs 7.1.0 remake is coming out soon.
+	I know it might hurt you but you still have time to be available for all users
+	I'm happy that you are one of our ExperienceSettings
+	Thanks you, Jimmy."
 
 This script was made for Mobile Friendly or poor quality device.
 You are in "ExperienceSettings" script you are a part of it.
