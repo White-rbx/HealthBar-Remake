@@ -1,4 +1,4 @@
--- Well 4
+-- Well 4.1
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -475,7 +475,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-R
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Editor.lua"))()
 
 -- Arcsen
-loadstring(game:HttpGet("https://github.com/White-rbx/HealthBar-Remake/blob/loadstring/Arcsen.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/Arcsen.lua"))()
 print("[ Arcsen ] Successful loaded.")
 
 -- Seacrh
