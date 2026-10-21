@@ -67,7 +67,7 @@ local ver = {
 (:17/8/2026 | 4:19 pm: A) Added gemini-3.7-flash, don't be surprised if I still continue updates; add new features or anything will be discontinued unless can be continuing updates if it NOT due to out of local.
 (:23/7/2026 | 4:49 pm: F) Fixed Here chat I guess.
 (:12/9/2026 | 4:04 pm: A) Added Gemini 3.8 flash, added more modelswitch add adjust ScrollingFrame.
-]],
+(:22/10/2026 | 3:39 am: B) Big update remaked of UIs 7.1.0 Remake is here!]],
 }
 
 ------------------------------------------------------------------------------------------
