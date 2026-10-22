@@ -1,15 +1,12 @@
 --[[
     ArcsenCommand-Module.lua
-    Version: 0.2.0
+    Version: 0.3.1
 
     Purpose:
       - Command core only; creates no UI.
       - Publishes its API through getgenv().ArcsenCommand.
-      - First migrated command: /HereChat ON, /HereChat OFF, /HereChat STATUS.
+      - Supports /HereChat ON, OFF, STATUS.
       - Sends output to Arcsen through setOutput(callback).
-
-    Load this trusted file before Arcsen tries to use it.
-    This is an executor-side script, not a standard Roblox ModuleScript.
 ]]
 
 local getEnvironment = getgenv
@@ -22,7 +19,7 @@ if type(sharedEnvironment) ~= "table" then
     error("ArcsenCommand could not access the shared executor environment.", 0)
 end
 
--- Clean up a previous copy, if this file is executed again.
+-- Clean up a previous copy if this file is executed again.
 local previous = sharedEnvironment.ArcsenCommand
 if type(previous) == "table" and type(previous.destroy) == "function" then
     pcall(previous.destroy)
@@ -33,7 +30,8 @@ local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local module = {
-    version = "0.2.0",
+    version = "0.3.1",
+    APIVersion = 1,
     commands = {},
     _output = nil,
     _onCommandsChanged = nil,
@@ -100,7 +98,6 @@ local function disconnectHereChat()
 end
 
 local function plainText(value)
-    -- The Arcsen callback should render this as plain text (RichText = false).
     return tostring(value or "")
 end
 
@@ -114,9 +111,10 @@ local function getPlayerByName(name)
 end
 
 local function getSenderColor(name)
-    -- Stable, readable color for the whole incoming-message bubble.
+    -- Stable color for the sender accent.
     local seed = 0
     name = tostring(name or "")
+
     for index = 1, #name do
         seed = (seed + string.byte(name, index)) % 2147483647
     end
@@ -141,7 +139,8 @@ local function isDuplicate(username, text)
     local now = os.clock()
 
     -- The new and legacy chat APIs can report the same message close together.
-    if key == module._lastMessageKey and (now - module._lastMessageAt) < 2 then
+    if key == module._lastMessageKey
+        and (now - module._lastMessageAt) < 2 then
         return true
     end
 
@@ -157,29 +156,55 @@ local function showIncomingMessage(username, text, player)
 
     username = tostring(username or "Unknown")
     text = tostring(text or "")
+
     if text == "" then
         return
     end
 
-    if player and player == Players.LocalPlayer then
-        return
-    end
+    -- Do not exclude Players.LocalPlayer here.
+    -- The local player's own processed chat message must also be displayed.
+    -- Duplicate messages reported by both chat APIs are filtered below.
 
     if isDuplicate(username, text) then
         return
     end
 
     local red, green, blue = getSenderColor(username)
+    local teamName = nil
+    local teamRed, teamGreen, teamBlue = nil, nil, nil
+    local userId = nil
 
-    -- Keep the message body separate from the sender name. Arcsen renders the
-    -- username as the message header and places this text underneath it.
+    if player then
+        userId = player.UserId
+
+        local team = player.Team
+        if team then
+            teamName = team.Name
+
+            local teamColor = team.TeamColor.Color
+            teamRed = math.floor(teamColor.R * 255 + 0.5)
+            teamGreen = math.floor(teamColor.G * 255 + 0.5)
+            teamBlue = math.floor(teamColor.B * 255 + 0.5)
+        end
+    end
+
+    -- Arcsen owns the header layout.
+    -- Send metadata separately and keep the message body as plain text.
     emit(plainText(text), "chat", {
         source = "HereChat",
-        username = username,
+        username = player and player.Name or username,
         displayName = player and player.DisplayName or username,
+        userId = userId,
+
+        teamName = teamName,
+        teamR = teamRed,
+        teamG = teamGreen,
+        teamB = teamBlue,
+
         r = red,
         g = green,
         b = blue,
+
         isSystem = false,
         copyable = true,
     })
@@ -199,7 +224,10 @@ local function connectNewChat()
 
             local username = textSource.Name or "Unknown"
             local userId = tonumber(textSource.UserId)
-            local player = userId and Players:GetPlayerByUserId(userId) or nil
+            local player = userId
+                and Players:GetPlayerByUserId(userId)
+                or nil
+
             showIncomingMessage(username, message.Text, player)
         end)
     end)
@@ -211,8 +239,14 @@ end
 
 local function connectLegacyChat()
     local ok, connection = pcall(function()
-        local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-        local event = chatEvents and chatEvents:FindFirstChild("OnMessageDoneFiltering")
+        local chatEvents =
+            ReplicatedStorage:FindFirstChild(
+                "DefaultChatSystemChatEvents"
+            )
+
+        local event = chatEvents
+            and chatEvents:FindFirstChild("OnMessageDoneFiltering")
+
         if not event then
             return nil
         end
@@ -221,16 +255,23 @@ local function connectLegacyChat()
             if not module._hereChatEnabled or module._destroyed then
                 return
             end
+
             if type(messageData) ~= "table" then
                 return
             end
+
             if not messageData.FromSpeaker or not messageData.Message then
                 return
             end
 
             local username = tostring(messageData.FromSpeaker)
             local player = getPlayerByName(username)
-            showIncomingMessage(username, messageData.Message, player)
+
+            showIncomingMessage(
+                username,
+                messageData.Message,
+                player
+            )
         end)
     end)
 
@@ -245,9 +286,16 @@ function module.setHereChat(enabled)
     end
 
     enabled = enabled == true
+
     if module._hereChatEnabled == enabled then
-        local result = "HereChat already " .. (enabled and "ON" or "OFF")
-        emit(result, "info", {source = "ArcsenCommand", isSystem = true})
+        local result = "HereChat already " ..
+            (enabled and "ON" or "OFF")
+
+        emit(result, "info", {
+            source = "ArcsenCommand",
+            isSystem = true,
+        })
+
         return true, result
     end
 
@@ -257,9 +305,16 @@ function module.setHereChat(enabled)
     if enabled then
         connectNewChat()
         connectLegacyChat()
-        emit("HereChat: ON", "success", {source = "ArcsenCommand", isSystem = true})
+
+        emit("HereChat: ON", "success", {
+            source = "ArcsenCommand",
+            isSystem = true,
+        })
     else
-        emit("HereChat: OFF", "success", {source = "ArcsenCommand", isSystem = true})
+        emit("HereChat: OFF", "success", {
+            source = "ArcsenCommand",
+            isSystem = true,
+        })
     end
 
     return true, "HereChat " .. (enabled and "ON" or "OFF")
@@ -271,55 +326,94 @@ end
 
 function module.registerCommand(name, handler, description)
     name = tostring(name or ""):lower():gsub("^/", "")
+
     if name == "" then
         return false, "Command name is empty."
     end
+
     if type(handler) ~= "function" then
         return false, "Command handler must be a function."
     end
 
     module.commands[name] = {
         handler = handler,
-        description = tostring(description or "No description provided."),
+        description = tostring(
+            description or "No description provided."
+        ),
     }
+
     notifyCommandsChanged()
     return true
 end
 
 module.registerCommand("herechat", function(arguments)
-    local option = tostring(arguments or ""):lower():match("^%s*(%S*)") or ""
+    local option = tostring(arguments or "")
+        :lower()
+        :match("^%s*(%S*)") or ""
 
     if option == "on" then
         local ok, result = module.setHereChat(true)
+
         if not ok then
-            emit(result, "error", {source = "ArcsenCommand", isSystem = true})
+            emit(result, "error", {
+                source = "ArcsenCommand",
+                isSystem = true,
+            })
         end
+
         return true, result
+
     elseif option == "off" then
         local ok, result = module.setHereChat(false)
+
         if not ok then
-            emit(result, "error", {source = "ArcsenCommand", isSystem = true})
+            emit(result, "error", {
+                source = "ArcsenCommand",
+                isSystem = true,
+            })
         end
+
         return true, result
+
     elseif option == "status" then
-        local result = "HereChat: " .. (module.isHereChatEnabled() and "ON" or "OFF")
-        emit(result, "info", {source = "ArcsenCommand", isSystem = true})
+        local result = "HereChat: " ..
+            (module.isHereChatEnabled() and "ON" or "OFF")
+
+        emit(result, "info", {
+            source = "ArcsenCommand",
+            isSystem = true,
+        })
+
         return true, result
     end
 
     local usage = "Usage: /HereChat ON | OFF | STATUS"
-    emit(usage, "warning", {source = "ArcsenCommand", isSystem = true})
+
+    emit(usage, "warning", {
+        source = "ArcsenCommand",
+        isSystem = true,
+    })
+
     return true, usage
 end, "Toggle incoming chat display: /HereChat ON, OFF, or STATUS")
 
 module.registerCommand("help", function()
     local names = {}
+
     for name in pairs(module.commands) do
         table.insert(names, "/" .. name)
     end
+
     table.sort(names)
-    local message = "Available commands: " .. table.concat(names, ", ")
-    emit(message, "info", {source = "ArcsenCommand", isSystem = true})
+
+    local message = "Available commands: " ..
+        table.concat(names, ", ")
+
+    emit(message, "info", {
+        source = "ArcsenCommand",
+        isSystem = true,
+    })
+
     return true, message
 end, "List commands registered with ArcsenCommand")
 
@@ -332,24 +426,43 @@ function module.handleCommand(command, outputCallback)
         return false, "ArcsenCommand has been destroyed."
     end
 
-    command = tostring(command or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    command = tostring(command or "")
+        :gsub("^%s+", "")
+        :gsub("%s+$", "")
+
     local name, arguments = command:match("^/(%S+)%s*(.*)$")
+
     if not name then
         return false, "Not a command."
     end
 
     name = name:lower()
+
     local item = module.commands[name]
     if not item then
-        local errorMessage = "Unknown command: /" .. name .. " (try /help)"
-        emit(errorMessage, "error", {source = "ArcsenCommand", isSystem = true})
+        local errorMessage = "Unknown command: /" ..
+            name .. " (try /help)"
+
+        emit(errorMessage, "error", {
+            source = "ArcsenCommand",
+            isSystem = true,
+        })
+
         return true, errorMessage
     end
 
-    local ok, handled, result = pcall(item.handler, arguments, command)
+    local ok, handled, result =
+        pcall(item.handler, arguments, command)
+
     if not ok then
-        local errorMessage = "Command /" .. name .. " failed: " .. tostring(handled)
-        emit(errorMessage, "error", {source = "ArcsenCommand", isSystem = true})
+        local errorMessage = "Command /" ..
+            name .. " failed: " .. tostring(handled)
+
+        emit(errorMessage, "error", {
+            source = "ArcsenCommand",
+            isSystem = true,
+        })
+
         return true, errorMessage
     end
 
@@ -363,7 +476,9 @@ function module.destroy()
 
     module._destroyed = true
     module._hereChatEnabled = false
+
     disconnectHereChat()
+
     if sharedEnvironment.ArcsenCommand == module then
         sharedEnvironment.ArcsenCommand = nil
     end
