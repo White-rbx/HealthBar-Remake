@@ -1,6 +1,6 @@
 --[[
     ArcsenCommand-Module.lua
-    Version: 0.1.0
+    Version: 0.2.0
 
     Purpose:
       - Command core only; creates no UI.
@@ -33,9 +33,10 @@ local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local module = {
-    version = "0.1.0",
+    version = "0.2.0",
     commands = {},
     _output = nil,
+    _onCommandsChanged = nil,
     _hereChatEnabled = false,
     _connections = {},
     _lastMessageKey = nil,
@@ -76,6 +77,21 @@ function module.setOutput(callback)
     return true
 end
 
+function module.setOnCommandsChanged(callback)
+    if callback ~= nil and type(callback) ~= "function" then
+        return false, "Command-change callback must be a function or nil."
+    end
+
+    module._onCommandsChanged = callback
+    return true
+end
+
+local function notifyCommandsChanged()
+    if type(module._onCommandsChanged) == "function" then
+        pcall(module._onCommandsChanged, module.commands)
+    end
+end
+
 local function disconnectHereChat()
     for index = #module._connections, 1, -1 do
         safeDisconnect(module._connections[index])
@@ -86,23 +102,6 @@ end
 local function plainText(value)
     -- The Arcsen callback should render this as plain text (RichText = false).
     return tostring(value or "")
-end
-
-local function playerLabel(player, fallbackName)
-    if not player then
-        return "@" .. plainText(fallbackName or "Unknown")
-    end
-
-    local label = "@" .. plainText(player.Name)
-    if player.DisplayName ~= player.Name then
-        label = label .. " (" .. plainText(player.DisplayName) .. ")"
-    end
-
-    if player.Team then
-        label = "[" .. plainText(player.Team.Name) .. "] " .. label
-    end
-
-    return label
 end
 
 local function getPlayerByName(name)
@@ -171,15 +170,18 @@ local function showIncomingMessage(username, text, player)
     end
 
     local red, green, blue = getSenderColor(username)
-    local message = playerLabel(player, username) .. ": " .. plainText(text)
 
-    emit(message, "chat", {
+    -- Keep the message body separate from the sender name. Arcsen renders the
+    -- username as the message header and places this text underneath it.
+    emit(plainText(text), "chat", {
         source = "HereChat",
         username = username,
+        displayName = player and player.DisplayName or username,
         r = red,
         g = green,
         b = blue,
         isSystem = false,
+        copyable = true,
     })
 end
 
@@ -280,6 +282,7 @@ function module.registerCommand(name, handler, description)
         handler = handler,
         description = tostring(description or "No description provided."),
     }
+    notifyCommandsChanged()
     return true
 end
 
