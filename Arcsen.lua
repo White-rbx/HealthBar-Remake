@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.36 Remake ",
+	sion = " UIs 7.1.4 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -400,64 +400,62 @@ local vHolder = Menu:WaitForChild("HolderScreen")
 local gpt = Menu:WaitForChild("ChatGPT")
 local notif = Menu:WaitForChild("Notification")
 
--- Unread Message Counter: only count new user/assistant messages, never history redraws.
-do
+
+-- Unread counter: count only newly inserted user/assistant chat messages, never history redraws.
+loc.UnreadMessageCount = 0
+loc.MessageCounter = vAI:FindFirstChild("Counter")
+if not loc.MessageCounter or not loc.MessageCounter:IsA("TextLabel") then
+    if loc.MessageCounter then loc.MessageCounter:Destroy() end
+    loc.MessageCounter = Instance.new("TextLabel")
+end
+loc.MessageCounter.Name = "Counter"
+loc.MessageCounter.Size = UDim2.new(0, 30, 0, 30)
+loc.MessageCounter.BackgroundColor3 = Color3.fromRGB(0, 85, 255)
+loc.MessageCounter.BorderMode = Enum.BorderMode.Inset
+loc.MessageCounter.BorderSizePixel = 5
+loc.MessageCounter.TextSize = 10
+loc.MessageCounter.TextColor3 = Color3.new(1, 1, 1)
+loc.MessageCounter.AutomaticSize = Enum.AutomaticSize.X
+loc.MessageCounter.ZIndex = 2147483646
+loc.MessageCounter.Position = UDim2.new(0, 15, 0, 20)
+loc.MessageCounter.Text = "0"
+loc.MessageCounter.Visible = false
+loc.MessageCounter.Parent = vAI
+Corner(1, 0, loc.MessageCounter)
+
+loc.UpdateMessageCounter = function()
+    if not loc.MessageCounter or not loc.MessageCounter.Parent then return end
+    loc.MessageCounter.Text = loc.UnreadMessageCount > 9999 and "9999+" or tostring(loc.UnreadMessageCount)
+    loc.MessageCounter.Visible = loc.UnreadMessageCount > 0 and gpt.Position.Y.Scale > 1
+end
+
+loc.ResetMessageCounter = function()
     loc.UnreadMessageCount = 0
-    loc.MessageCounter = vAI:FindFirstChild("Counter")
-    if not loc.MessageCounter or not loc.MessageCounter:IsA("TextLabel") then
-        if loc.MessageCounter then loc.MessageCounter:Destroy() end
-        loc.MessageCounter = Instance.new("TextLabel")
+    if loc.MessageCounter then
+        loc.MessageCounter.Text = "0"
+        loc.MessageCounter.Visible = false
     end
+end
 
-    loc.MessageCounter.Name = "Counter"
-    loc.MessageCounter.Size = UDim2.new(0, 30, 0, 30)
-    loc.MessageCounter.BackgroundColor3 = Color3.fromRGB(0, 85, 255)
-    loc.MessageCounter.BorderMode = Enum.BorderMode.Inset
-    loc.MessageCounter.BorderSizePixel = 5
-    loc.MessageCounter.TextSize = 10
-    loc.MessageCounter.TextColor3 = Color3.new(1, 1, 1)
-    loc.MessageCounter.AutomaticSize = Enum.AutomaticSize.X
-    loc.MessageCounter.ZIndex = 2147483646
-    loc.MessageCounter.Position = UDim2.new(0, 15, 0, 20)
-    loc.MessageCounter.Text = "0"
-    loc.MessageCounter.Visible = false
-    loc.MessageCounter.Parent = vAI
-    Corner(1, 0, loc.MessageCounter)
-
-    loc.UpdateMessageCounter = function()
-        if not loc.MessageCounter or not loc.MessageCounter.Parent then return end
-        loc.MessageCounter.Text = loc.UnreadMessageCount > 9999 and "9999+" or tostring(loc.UnreadMessageCount)
-        loc.MessageCounter.Visible = loc.UnreadMessageCount > 0 and gpt.Position.Y.Scale > 1
+loc.RecordMessageForCounter = function(role)
+    if role ~= "user" and role ~= "assistant" then return end
+    if gpt.Position.Y.Scale <= 1 then
+        loc.ResetMessageCounter()
+        return
     end
+    loc.UnreadMessageCount = math.min(1000000000, (tonumber(loc.UnreadMessageCount) or 0) + 1)
+    loc.UpdateMessageCounter()
+end
 
-    loc.ResetMessageCounter = function()
-        loc.UnreadMessageCount = 0
-        if loc.MessageCounter then
-            loc.MessageCounter.Text = "0"
-            loc.MessageCounter.Visible = false
-        end
-    end
-
-    loc.RecordMessageForCounter = function(role)
-        if role ~= "user" and role ~= "assistant" then return end
-        if gpt.Position.Y.Scale <= 1 then
-            loc.ResetMessageCounter()
-            return
-        end
-        loc.UnreadMessageCount = math.min(1000000000, (tonumber(loc.UnreadMessageCount) or 0) + 1)
+gpt:GetPropertyChangedSignal("Position"):Connect(function()
+    if gpt.Position.Y.Scale <= 1 then
+        loc.ResetMessageCounter()
+    else
         loc.UpdateMessageCounter()
     end
+end)
+loc.ResetMessageCounter()
 
-    gpt:GetPropertyChangedSignal("Position"):Connect(function()
-        if gpt.Position.Y.Scale <= 1 then
-            loc.ResetMessageCounter()
-        else
-            loc.UpdateMessageCounter()
-        end
-    end)
-
-    loc.ResetMessageCounter()
-end
 
 --[[[
 gpt.List:Destroy()
@@ -1094,7 +1092,6 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
   m_name.TextSize = 12
   m_name.TextColor3 = b_body.BackgroundColor3
   m_name.Text = tostring(per or "Person")
-  m_name.RichText = messageOptions.NameRichText == true
   m_name.TextWrapped = true
   m_name.TextXAlignment = Enum.TextXAlignment[dir] or Enum.TextXAlignment.Left
   m_name.TextYAlignment = Enum.TextYAlignment.Top
@@ -1427,7 +1424,7 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
           btn.Image = "rbxassetid://76063966669126"
         end
       end
-    end, messageOptions.CommandChat ~= true and messageOptions.SpeakerType == "user")
+    end, messageOptions.SpeakerType == "user")
     if editButton and messageOptions.IsEditing == true then
       editButton.Image = "rbxassetid://76063966669126"
       if loc.API and type(loc.API.EditingMessage) == "table" then
@@ -1455,7 +1452,7 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
         main:CaptureFocus()
         warn("[Arcsen] Clipboard function is unavailable; select and copy the text manually.")
       end
-    end, messageOptions.CommandChat == true or messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user")
+    end, messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user")
 
     inbtn("81942007444642", "Like", function(btn)
       if messageOptions.SpeakerType == "user" then
@@ -1470,17 +1467,15 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
       if type(messageOptions.OnLike) == "function" then
         messageOptions.OnLike(messageOptions.LikedByUser)
       end
-    end, messageOptions.CommandChat ~= true and (messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user"))
+    end, messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user")
 
     inbtn("74459863797782", "Retry", function()
       if type(messageOptions.OnRetry) == "function" then
         messageOptions.OnRetry()
       end
     end,
-      messageOptions.CommandChat ~= true and (
-        (messageOptions.IsLatest == true and messageOptions.SpeakerType == "ai" and messageOptions.CanRetryAI == true)
-        or (messageOptions.IsLatest == true and messageOptions.SpeakerType == "user" and messageOptions.CanRetry == true)
-      ))
+      (messageOptions.IsLatest == true and messageOptions.SpeakerType == "ai" and messageOptions.CanRetryAI == true)
+      or (messageOptions.IsLatest == true and messageOptions.SpeakerType == "user" and messageOptions.CanRetry == true))
 
     -- AIs may like the user's message using the explicit response marker.
     for _, button in ipairs(btnbar:GetChildren()) do
@@ -2873,14 +2868,6 @@ local function addchat(file, gen, nchat)
   del.MouseButton1Click:Connect(function()
     Tween(scale, {Scale = 0}, 0.1).Completed:Wait()
     if loc.API and loc.API.ChatData then
-      loc.API.DeleteCandidate = loc.API.ChatData[tostring(nchat)]
-      if loc.API.DeleteCandidate and loc.API.DeleteCandidate.IsHereChat then
-        loc.API.DeleteCore = loc.API.ArcsenCommand
-        if type(loc.API.DeleteCore) == "table" and type(loc.API.DeleteCore.setHereChat) == "function" then
-          pcall(loc.API.DeleteCore.setHereChat, false)
-        end
-        loc.API.HereChatTabID = nil
-      end
       loc.API.ChatData[tostring(nchat)] = nil
       if loc.API.ActiveChatID == tostring(nchat) then
         loc.API.ActiveChatID = nil
@@ -3340,26 +3327,6 @@ end
 loc.API.DrawMessage = function(chatID, index, message)
     loc.API.DrawChatForMessage = loc.API.ChatData[tostring(chatID)]
     local isLatestMessage = loc.API.DrawChatForMessage ~= nil and index == #(loc.API.DrawChatForMessage.Messages or {})
-
-    if message.role == "herechat" then
-        return meg(
-            tostring(message.text or ""),
-            tostring(message.header or message.displayName or message.username or "Unknown"),
-            message.direction == "Right" and "Right" or "Left", false,
-            tonumber(message.r) or 125,
-            tonumber(message.g) or 190,
-            tonumber(message.b) or 255,
-            nil,
-            {
-                CommandChat = true,
-                NameRichText = true,
-                RawText = tostring(message.text or ""),
-                RichText = false,
-                IsHereChat = true,
-            }
-        )
-    end
-
     loc.API.DrawSpeaker = message.role == "assistant" and "Arcsen" or tostring(loc.API.Active.UserNickname or loc.API.UserNickname or "User")
     loc.API.DrawSpeakerType = message.role == "assistant" and "ai" or "user"
     return meg(message.text, loc.API.DrawSpeaker, message.role == "assistant" and "Left" or "Right", false,
@@ -3412,6 +3379,48 @@ loc.API.DrawMessage = function(chatID, index, message)
         })
 end
 
+-- Time markers are checked only when a new chat message arrives; no background timer is used.
+loc.API.DisplayTimeFormat = loc.API.DisplayTimeFormat or "24Hours"
+loc.API.RenderTimeMarkersAt = function(chatID, afterIndex)
+    loc.API.TimeMarkerChat = loc.API.ChatData[tostring(chatID)]
+    if not loc.API.TimeMarkerChat then return end
+    loc.API.TimeMarkerChat.TimeMarkers = type(loc.API.TimeMarkerChat.TimeMarkers) == "table"
+        and loc.API.TimeMarkerChat.TimeMarkers or {}
+    for _, marker in ipairs(loc.API.TimeMarkerChat.TimeMarkers) do
+        if tonumber(marker.AfterIndex) == tonumber(afterIndex) then
+            meg(tostring(marker.Text or "Time"), "Time", "Center", true, 150, 210, 255)
+        end
+    end
+end
+
+loc.API.MaybeDisplayTime = function(chatID)
+    loc.API.TimeChatID = tostring(chatID or "")
+    loc.API.TimeChat = loc.API.ChatData[loc.API.TimeChatID]
+    if not loc.API.TimeChat then return false end
+    loc.API.TimeChat.TimeMarkers = type(loc.API.TimeChat.TimeMarkers) == "table"
+        and loc.API.TimeChat.TimeMarkers or {}
+    loc.API.TimeNow = os.time()
+    loc.API.TimeLast = tonumber(loc.API.TimeChat.LastDisplayTimeAt)
+    if not loc.API.TimeLast then
+        loc.API.TimeChat.LastDisplayTimeAt = loc.API.TimeNow
+        return false
+    end
+    if loc.API.TimeNow - loc.API.TimeLast < 600 then return false end
+
+    if tostring(loc.API.DisplayTimeFormat) == "12Hours (AM/PM)" then
+        loc.API.FormattedDisplayTime = os.date("%I:%M %p", loc.API.TimeNow)
+    else
+        loc.API.FormattedDisplayTime = os.date("%H:%M", loc.API.TimeNow)
+    end
+
+    table.insert(loc.API.TimeChat.TimeMarkers, {
+        AfterIndex = #(loc.API.TimeChat.Messages or {}),
+        Text = "Time: " .. tostring(loc.API.FormattedDisplayTime)
+    })
+    loc.API.TimeChat.LastDisplayTimeAt = loc.API.TimeNow
+    return true
+end
+
 loc.API.RenderChat = function(chatID, scrollToBottom)
     for _, child in ipairs(c_scr:GetChildren()) do
         if child.Name == "Body" and child:IsA("Frame") then child:Destroy() end
@@ -3419,8 +3428,14 @@ loc.API.RenderChat = function(chatID, scrollToBottom)
     loc.API.ActiveChatID = chatID and tostring(chatID) or nil
     if type(loc.API.UpdateSendButton) == "function" then loc.API.UpdateSendButton() end
     if not loc.API.ActiveChatID or not loc.API.ChatData[loc.API.ActiveChatID] then return end
+    if type(loc.API.RenderTimeMarkersAt) == "function" then
+        loc.API.RenderTimeMarkersAt(loc.API.ActiveChatID, 0)
+    end
     for renderIndex, renderMessage in ipairs(loc.API.ChatData[loc.API.ActiveChatID].Messages) do
         loc.API.DrawMessage(loc.API.ActiveChatID, renderIndex, renderMessage)
+        if type(loc.API.RenderTimeMarkersAt) == "function" then
+            loc.API.RenderTimeMarkersAt(loc.API.ActiveChatID, renderIndex)
+        end
     end
     if loc.API.ChatData[loc.API.ActiveChatID].Busy then
         loc.API.RefreshThinkingStatus(loc.API.ActiveChatID)
@@ -3634,6 +3649,9 @@ loc.API.GenerateResponse = function(chatID, userIndex)
                 end
             end
         end
+        if #(loc.API.ParsedMessages or {}) > 0 and type(loc.API.MaybeDisplayTime) == "function" then
+            loc.API.MaybeDisplayTime(chatID)
+        end
         for _, assistantSegment in ipairs(loc.API.ParsedMessages) do
             table.insert(loc.API.ChatData[chatID].Messages, {
                 role = "assistant",
@@ -3820,14 +3838,6 @@ end
 
 loc.API.UpdateSendButton = function()
     loc.API.SendButtonChat = loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)] or nil
-    loc.API.DefaultChatPlaceholder = loc.API.DefaultChatPlaceholder or c_box.PlaceholderText
-    if loc.API.SendButtonChat and loc.API.SendButtonChat.IsHereChat then
-        c_box.TextEditable = true
-        c_box.PlaceholderText = "Message Roblox chat..."
-    else
-        c_box.TextEditable = true
-        c_box.PlaceholderText = loc.API.DefaultChatPlaceholder
-    end
     if loc.API.SendButtonChat and loc.API.SendButtonChat.Busy then
         c_b_send.Text = "■"
         c_b_send.BackgroundColor3 = Color3.fromRGB(100,0,0)
@@ -3898,33 +3908,6 @@ loc.API.RefreshPendingAttachmentUI = function()
 end
 
 loc.API.SendMessage = function(rawText)
-    loc.API.SendMessageActiveChat = loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)] or nil
-    if loc.API.SendMessageActiveChat and loc.API.SendMessageActiveChat.IsHereChat then
-        loc.API.HereChatText = tostring(rawText or "")
-        if not loc.API.HereChatText:match("%S") then return false end
-        if #(loc.API.PendingInputFiles or {}) > 0 then
-            meg("HereChat supports text messages only. Remove attachments before sending.", nil, "Center", true, 255, 180, 80)
-            return false
-        end
-        loc.API.HereChatCore = loc.API.ArcsenCommand
-        if type(loc.API.HereChatCore) ~= "table" or type(loc.API.HereChatCore.sendMessage) ~= "function" then
-            meg("HereChat sending is unavailable. Update ArcsenCommand-Module.lua to v0.5.0.", nil, "Center", true, 255, 90, 90)
-            return false
-        end
-        loc.API.HereChatCallOK, loc.API.HereChatSendResult, loc.API.HereChatSendReason = pcall(
-            loc.API.HereChatCore.sendMessage, loc.API.HereChatText
-        )
-        if not loc.API.HereChatCallOK then
-            meg("Could not send message: " .. tostring(loc.API.HereChatSendResult), nil, "Center", true, 255, 90, 90)
-            return false
-        end
-        if loc.API.HereChatSendResult ~= true then
-            meg("Could not send message: " .. tostring(loc.API.HereChatSendReason or "Roblox chat rejected the message."), nil, "Center", true, 255, 90, 90)
-            return false
-        end
-        c_box.Text = ""
-        return true
-    end
     if loc.API.EditingMessage and type(loc.API.SubmitMessageEdit) == "function" then
         return loc.API.SubmitMessageEdit(rawText)
     end
@@ -3982,6 +3965,9 @@ loc.API.SendMessage = function(rawText)
         attachmentCount = loc.API.PendingCount,
         attachmentQuotaCharged = false
     }
+    if type(loc.API.MaybeDisplayTime) == "function" then
+        loc.API.MaybeDisplayTime(loc.API.NewChatID)
+    end
     table.insert(loc.API.ChatData[loc.API.NewChatID].Messages, loc.API.NewUserMessage)
     if type(loc.RecordMessageForCounter) == "function" then
         loc.RecordMessageForCounter("user")
@@ -4028,9 +4014,18 @@ loc.API.SaveChats = function()
             TitleGenerated = chatData.TitleGenerated == true,
             TabBackgroundRGB = chatData.TabBackgroundRGB,
             TabTextRGB = chatData.TabTextRGB,
-            IsHereChat = chatData.IsHereChat == true,
+            LastDisplayTimeAt = tonumber(chatData.LastDisplayTimeAt),
+            TimeMarkers = {},
             Messages = {}
         }
+        for _, savedTimeMarker in ipairs(chatData.TimeMarkers or {}) do
+            if type(savedTimeMarker) == "table" then
+                table.insert(loc.API.SaveData.Chats[chatID].TimeMarkers, {
+                    AfterIndex = tonumber(savedTimeMarker.AfterIndex) or 0,
+                    Text = tostring(savedTimeMarker.Text or "Time")
+                })
+            end
+        end
         for _, savedMessage in ipairs(chatData.Messages or {}) do
             table.insert(loc.API.SaveData.Chats[chatID].Messages, {
                 role = savedMessage.role,
@@ -4046,20 +4041,7 @@ loc.API.SaveChats = function()
                 canRetry = savedMessage.canRetry == true,
                 requestError = savedMessage.requestError,
                 attachmentQuotaCharged = savedMessage.attachmentQuotaCharged == true,
-                attachmentCount = tonumber(savedMessage.attachmentCount) or #(savedMessage.attachments or {}),
-                header = savedMessage.header,
-                username = savedMessage.username,
-                displayName = savedMessage.displayName,
-                userId = savedMessage.userId,
-                teamName = savedMessage.teamName,
-                teamR = savedMessage.teamR,
-                teamG = savedMessage.teamG,
-                teamB = savedMessage.teamB,
-                direction = savedMessage.direction,
-                origin = savedMessage.origin,
-                r = savedMessage.r,
-                g = savedMessage.g,
-                b = savedMessage.b
+                attachmentCount = tonumber(savedMessage.attachmentCount) or #(savedMessage.attachments or {})
             })
         end
     end
@@ -4086,10 +4068,6 @@ loc.API.LoadChats = function()
             savedChat.Title = tostring(savedChat.Title or "New Chat")
             savedChat.State = tostring(savedChat.State or "Normal")
             savedChat.Busy = false
-            savedChat.IsHereChat = savedChat.IsHereChat == true
-            if savedChat.IsHereChat then
-                loc.API.HereChatTabID = tostring(savedID)
-            end
             savedChat.MessagesToSend = nil
             savedChat.ResponseOK = nil
             savedChat.ResponseOrError = nil
@@ -4754,252 +4732,27 @@ loc.API.ChatOptionRows.InstantScrollDown = addoptions(
     end
 )
 
--- ArcsenCommand bridge + bidirectional HereChat (Module v0.5.0)
-do
-    local shared = type(getgenv) == "function" and getgenv() or nil
-    local commandCore = type(shared) == "table" and shared.ArcsenCommand or nil
-
-    -- Reload an older module that does not expose the HereChat tab lifecycle API.
-    if type(commandCore) ~= "table"
-        or type(commandCore.setOnHereChatChanged) ~= "function"
-        or type(commandCore.sendMessage) ~= "function" then
-        commandCore = nil
-        local ok, result = pcall(function()
-            if type(loadstring) ~= "function" then
-                error("This executor does not provide loadstring().")
-            end
-
-            local source = game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ArcsenCommand-Module.lua")
-            local chunk, compileError = loadstring(source)
-            if type(chunk) ~= "function" then
-                error(compileError or "Could not compile ArcsenCommand-Module.lua")
-            end
-
-            local returned = chunk()
-            local envNow = type(getgenv) == "function" and getgenv() or nil
-            local registered = type(envNow) == "table" and envNow.ArcsenCommand or nil
-            if type(registered) == "table"
-                and type(registered.setOnHereChatChanged) == "function"
-                and type(registered.sendMessage) == "function" then
-                return registered
-            elseif type(returned) == "table"
-                and type(returned.setOnHereChatChanged) == "function"
-                and type(returned.sendMessage) == "function" then
-                return returned
-            end
-            error("ArcsenCommand-Module.lua is outdated. Upload v0.5.0 or newer to GitHub first.")
-        end)
-
-        if ok then
-            commandCore = result
-        else
-            meg("ArcsenCommand load failed: " .. tostring(result), "Command", "Left", true, 255, 70, 70)
-        end
-    end
-
-    loc.API.ArcsenCommand = commandCore
-
-    if type(commandCore) == "table" and type(commandCore.setOutput) == "function" then
-        local function escapeHeaderText(value)
-            value = tostring(value or "")
-            value = value:gsub("&", "&amp;")
-            value = value:gsub("<", "&lt;")
-            value = value:gsub(">", "&gt;")
-            value = value:gsub('"', "&quot;")
-            value = value:gsub("'", "&apos;")
-            return value
-        end
-
-        loc.API.EnsureHereChatTab = function(activate)
-            loc.API.HereChatTabID = tostring(loc.API.HereChatTabID or "")
-            loc.API.HereChatTabData = loc.API.HereChatTabID ~= "" and loc.API.ChatData[loc.API.HereChatTabID] or nil
-            if not loc.API.HereChatTabData then
-                for existingID, existingChat in pairs(loc.API.ChatData) do
-                    if type(existingChat) == "table" and existingChat.IsHereChat == true then
-                        loc.API.HereChatTabID = tostring(existingID)
-                        loc.API.HereChatTabData = existingChat
-                        break
-                    end
-                end
-            end
-
-            if loc.API.HereChatTabData then
-                if not loc.API.HereChatTabData.Tab or not loc.API.HereChatTabData.Tab.Parent then
-                    loc.API.HereChatTabData.Tab = addchat(nil, "HereChat", loc.API.HereChatTabID)
-                end
-            else
-                loc.API.HereChatIDOK, loc.API.HereChatNewID = pcall(function()
-                    return s.HttpService:GenerateGUID(false)
-                end)
-                if not loc.API.HereChatIDOK or type(loc.API.HereChatNewID) ~= "string" or loc.API.HereChatNewID == "" then
-                    loc.API.HereChatNewID = "HereChat-" .. tostring(os.time()) .. "-" .. tostring(math.random(100000, 999999))
-                end
-                loc.API.HereChatTabID = tostring(loc.API.HereChatNewID)
-                loc.API.HereChatTabData = {
-                    ID = loc.API.HereChatTabID,
-                    Title = "HereChat",
-                    Messages = {},
-                    State = "Normal",
-                    StateBackgroundRGB = loc.API.ColorToRGB(loc.API.StatePalette.Normal[1]),
-                    StateTextRGB = loc.API.ColorToRGB(loc.API.StatePalette.Normal[2]),
-                    Busy = false,
-                    TitleGenerated = true,
-                    IsHereChat = true,
-                }
-                loc.API.ChatData[loc.API.HereChatTabID] = loc.API.HereChatTabData
-                loc.API.HereChatTabData.Tab = addchat(nil, "HereChat", loc.API.HereChatTabID)
-                if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
-            end
-
-            if activate == true then
-                loc.API.ActiveChatID = loc.API.HereChatTabID
-                if type(loc.API.RenderChat) == "function" then
-                    loc.API.RenderChat(loc.API.HereChatTabID, true)
-                end
-                if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
-            end
-            return loc.API.HereChatTabID
-        end
-
-        loc.API.AppendHereChatMessage = function(messageText, metadata)
-            metadata = type(metadata) == "table" and metadata or {}
-            local chatID = loc.API.EnsureHereChatTab(false)
-            local chatData = chatID and loc.API.ChatData[chatID]
-            if not chatData then return false end
-
-            local displayName = tostring(metadata.displayName or metadata.username or "Unknown")
-            local username = tostring(metadata.username or displayName)
-            local userId = tonumber(metadata.userId)
-            local header = escapeHeaderText(displayName) .. " (@" .. escapeHeaderText(username) .. ")"
-            if userId then
-                header = header .. " (" .. tostring(math.floor(userId)) .. ")"
-            end
-
-            local teamName = tostring(metadata.teamName or "")
-            if teamName ~= "" then
-                local tr = math.clamp(tonumber(metadata.teamR) or 255, 0, 255)
-                local tg = math.clamp(tonumber(metadata.teamG) or 255, 0, 255)
-                local tb = math.clamp(tonumber(metadata.teamB) or 255, 0, 255)
-                header = header .. ' <font color="rgb(' .. math.floor(tr) .. ',' .. math.floor(tg) .. ',' .. math.floor(tb) .. ')">| ' .. escapeHeaderText(teamName) .. '</font>'
-            end
-
-            local record = {
-                role = "herechat",
-                text = tostring(messageText or ""),
-                header = header,
-                username = username,
-                displayName = displayName,
-                userId = userId,
-                teamName = teamName ~= "" and teamName or nil,
-                teamR = tonumber(metadata.teamR),
-                teamG = tonumber(metadata.teamG),
-                teamB = tonumber(metadata.teamB),
-                direction = metadata.direction == "Right" and "Right" or "Left",
-                origin = metadata.origin == "Arcsen" and "Arcsen" or "Roblox",
-                r = tonumber(metadata.r) or 125,
-                g = tonumber(metadata.g) or 190,
-                b = tonumber(metadata.b) or 255,
-                richText = false,
-                isSyn = false,
-                likedByUser = false,
-                likedByAI = false,
-            }
-            table.insert(chatData.Messages, record)
-            if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
-
-            if tostring(loc.API.ActiveChatID or "") == chatID then
-                loc.API.DrawMessage(chatID, #chatData.Messages, record)
-                if type(loc.API.ScrollChatToBottom) == "function" then
-                    loc.API.ScrollChatToBottom(chatID)
-                end
-            end
-            return true
-        end
-
-        commandCore.setOutput(function(message, level, metadata)
-            metadata = type(metadata) == "table" and metadata or {}
-
-            if metadata.source == "HereChat" and level == "chat" then
-                if type(loc.API.AppendHereChatMessage) == "function" then
-                    loc.API.AppendHereChatMessage(message, metadata)
-                end
-                return
-            end
-
-            local r, g, b = metadata.r or 0, metadata.g or 170, metadata.b or 255
-            if level == "error" then
-                r, g, b = 255, 70, 70
-            elseif level == "warning" then
-                r, g, b = 255, 210, 50
-            elseif level == "success" then
-                r, g, b = 70, 255, 100
-            end
-
-            meg(message, "Command", "Left", level ~= "chat", r, g, b)
-        end)
-    end
-
-    if type(commandCore) == "table" and type(commandCore.setOnHereChatChanged) == "function" then
-        commandCore.setOnHereChatChanged(function(enabled)
-            if enabled and type(loc.API.EnsureHereChatTab) == "function" then
-                loc.API.EnsureHereChatTab(true)
-            end
-            -- OFF intentionally leaves the HereChat tab and its message history intact.
-        end)
-    end
-
-    if type(commandCore) == "table" and type(commandCore.setOnCommandsChanged) == "function" then
-        commandCore.setOnCommandsChanged(function()
-            if type(loc.API.RefreshArcsenCommandList) == "function" then
-                loc.API.RefreshArcsenCommandList()
-            end
-        end)
-    end
-end
-
--- Process each non-empty line independently; an invalid command won't stop later lines.
-loc.API.ExecuteArcsenCommands = function(rawText)
-    local core = loc.API.ArcsenCommand
-    if type(core) ~= "table" or type(core.handleCommand) ~= "function" then
-        meg("ArcsenCommand is unavailable. Check the module URL and executor support.", "Command", "Left", true, 255, 70, 70)
-        return 0
-    end
-
-    local count = 0
-    for line in tostring(rawText or ""):gmatch("[^\r\n]+") do
-        line = line:gsub("^%s+", ""):gsub("%s+$", "")
-        if line ~= "" then
-            local ok, err = pcall(core.handleCommand, line)
-            if not ok then
-                meg("Command error: " .. tostring(err), "Command", "Left", true, 255, 70, 70)
-            end
-            count = count + 1
-        end
-    end
-    return count
-end
-
-loc.API.ChatOptionRows.Command = addoptions(
-    true, "Command", true, "Run", true, "Commands (one per line)",
+loc.API.ChatOptionRows.DisplayTimeAs = addoptions(
+    true, "Display Time as", true, "Set", true, "12Hours (AM/PM) or 24Hours",
     function(box)
-        loc.API.ExecuteArcsenCommands(box and box.Text or "")
+        loc.API.DisplayTimeInput = tostring(box and box.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        loc.API.DisplayTimeLower = loc.API.DisplayTimeInput:lower()
+        if loc.API.DisplayTimeLower == "12hours (am/pm)" or loc.API.DisplayTimeLower == "12hours" or loc.API.DisplayTimeLower == "12h" then
+            loc.API.DisplayTimeFormat = "12Hours (AM/PM)"
+        elseif loc.API.DisplayTimeLower == "24hours" or loc.API.DisplayTimeLower == "24h" then
+            loc.API.DisplayTimeFormat = "24Hours"
+        else
+            meg("Invalid time format. Enter '12Hours (AM/PM)' or '24Hours'.", nil, "Center", true, 255, 150, 90)
+            return
+        end
+        for _, timeChat in pairs(loc.API.ChatData or {}) do
+            timeChat.LastDisplayTimeAt = os.time()
+        end
+        if box then box.Text = loc.API.DisplayTimeFormat end
+        meg("Display Time as: " .. loc.API.DisplayTimeFormat .. ". A time marker appears on the next chat message after 10 minutes.", nil, "Center", true, 150, 210, 255)
     end
 )
--- Compact multiline command input; slightly taller than standard rows, not a large panel.
-do
-    local row = loc.API.ChatOptionRows.Command
-    if row then
-        row.Frame.Size = UDim2.new(1, 0, 0, 30)
-        row.Box.MultiLine = true
-        row.Box.TextWrapped = false
-        row.Box.TextSize = 12
-        row.Box.TextScaled = false
-        row.Box.TextXAlignment = Enum.TextXAlignment.Left
-        row.Box.TextYAlignment = Enum.TextYAlignment.Center
-        row.Box.ClearTextOnFocus = false
-        row.Box.PlaceholderText = "Commands (one per line)"
-    end
-end
+loc.API.ChatOptionRows.DisplayTimeAs.Box.Text = loc.API.DisplayTimeFormat
 
 -- Global Memory is stored separately from chat history and appended to the effective system prompt.
 -- It is generated from chat transcripts, with secrets and sensitive personal data excluded by instruction.
@@ -5424,94 +5177,9 @@ loc.API.ChangeLogsFrame = addset("Updates", "Change Logs / Update", 255, 170, 90
     loc.API.RefreshChangeLogs()
 end)
 
--- Command catalog: follows the same addset + ScrollingFrame + TextLabel structure as Change Logs.
-loc.API.CommandSettingsFrame = addset("Commands", "Command (0)", 100, 185, 255, function(frame)
-    ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
-
-    local commandReview = Instance.new("ScrollingFrame")
-    commandReview.Name = "CommandReview"
-    commandReview.Size = UDim2.new(1, 0, 0, 260)
-    commandReview.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    commandReview.BackgroundTransparency = 0.5
-    commandReview.ScrollBarThickness = 0
-    commandReview.AutomaticCanvasSize = Enum.AutomaticSize.XY
-    commandReview.ScrollingDirection = Enum.ScrollingDirection.XY
-    commandReview.CanvasSize = UDim2.new(0, 0, 0, 0)
-    commandReview.BorderMode = gpt.BorderMode
-    commandReview.BorderSizePixel = 5
-    commandReview.LayoutOrder = 1
-    commandReview.Parent = frame
-    ListLayout(commandReview, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
-    Corner(0, 8, commandReview)
-
-    local commandLabel = Instance.new("TextLabel")
-    commandLabel.Name = "CommandList"
-    commandLabel.Size = UDim2.new(0, 0, 0, 0)
-    commandLabel.AutomaticSize = Enum.AutomaticSize.XY
-    commandLabel.BackgroundTransparency = 1
-    commandLabel.TextColor3 = Color3.fromRGB(245, 245, 245)
-    commandLabel.TextSize = 14
-    commandLabel.RichText = true
-    commandLabel.TextXAlignment = Enum.TextXAlignment.Left
-    commandLabel.TextYAlignment = Enum.TextYAlignment.Top
-    commandLabel.TextWrapped = false
-    commandLabel.LayoutOrder = 1
-    commandLabel.Parent = commandReview
-
-    loc.API.CommandSettingsReviewFrame = commandReview
-    loc.API.CommandSettingsLabel = commandLabel
-    loc.API.RefreshArcsenCommandList = function()
-        if not loc.API.CommandSettingsLabel or not loc.API.CommandSettingsLabel.Parent then
-            return false
-        end
-
-        local core = loc.API.ArcsenCommand
-        local commands = type(core) == "table" and type(core.commands) == "table" and core.commands or {}
-        local entries = {}
-        for commandName, commandInfo in pairs(commands) do
-            if type(commandInfo) == "table" then
-                entries[#entries + 1] = {
-                    Name = "/" .. tostring(commandName),
-                    Description = tostring(commandInfo.description or "No description provided."),
-                }
-            end
-        end
-        table.sort(entries, function(a, b)
-            return a.Name:lower() < b.Name:lower()
-        end)
-
-        local lines = {}
-        if #entries == 0 then
-            lines[1] = '<font color="#AAB2BF">No commands registered.</font>'
-        else
-            for _, entry in ipairs(entries) do
-                lines[#lines + 1] = '<font color="#65B8FF"><b>' .. loc.API.EscapeRichText(entry.Name) .. '</b></font>'
-                    .. '\n' .. loc.API.EscapeRichText(entry.Description)
-            end
-        end
-        loc.API.CommandSettingsLabel.Text = table.concat(lines, "\n\n")
-
-        local group = frame.Parent and frame.Parent:FindFirstChild("Group")
-        if group then
-            group.Text = "Command (" .. tostring(#entries) .. ")"
-        end
-        return true
-    end
-    loc.API.RefreshArcsenCommandList()
-end)
-
 loc.API.EnsureArcsenStorage()
 loc.API.LoadAttachmentQuota()
 loc.API.LoadGlobalMemory()
 if type(loc.API.RefreshMemoryReviewText) == "function" then loc.API.RefreshMemoryReviewText() end
 loc.API.RefreshPendingAttachmentUI()
 loc.API.LoadChats()
-if type(loc.API.ArcsenCommand) == "table"
-    and type(loc.API.ArcsenCommand.isHereChatEnabled) == "function"
-    and loc.API.ArcsenCommand.isHereChatEnabled()
-    and type(loc.API.EnsureHereChatTab) == "function" then
-    loc.API.EnsureHereChatTab(true)
-end
-if type(loc.UpdateMessageCounter) == "function" then
-    loc.UpdateMessageCounter()
-end
