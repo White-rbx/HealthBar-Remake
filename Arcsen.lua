@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.46 Remake ",
+	sion = " UIs 7.1.48 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -446,7 +446,7 @@ do
 
     -- Call this only when a new message is appended, never from RenderChat/history loading.
     loc.RecordMessageForCounter = function(role)
-        if role ~= "user" and role ~= "assistant" and role ~= "herechat" then return end
+        if role ~= "user" and role ~= "assistant" and role ~= "herechat" and role ~= "system" then return end
         if loc.IsArcsenChatOpen() then
             loc.ResetMessageCounter()
             return
@@ -1505,6 +1505,12 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
         main.Active = false
       end
     end)
+  end
+
+  -- Count system messages only when meg() actually creates a new message.
+  -- Re-rendered saved time markers pass NoCounter=true to avoid false increments.
+  if system and messageOptions.NoCounter ~= true and type(loc.RecordMessageForCounter) == "function" then
+    loc.RecordMessageForCounter("system")
   end
 
   return b_body
@@ -3349,9 +3355,19 @@ loc.API.DrawMessage = function(chatID, index, message)
     local isLatestMessage = loc.API.DrawChatForMessage ~= nil and index == #(loc.API.DrawChatForMessage.Messages or {})
 
     if message.role == "herechat" then
+        loc.API.HereChatRenderHeader = tostring(message.header or message.displayName or message.username or "Unknown")
+        if tonumber(message.timestamp) then
+            if tostring(loc.API.DisplayTimeFormat) == "12Hours (AM/PM)" then
+                loc.API.HereChatTimestampText = os.date("%I:%M %p", tonumber(message.timestamp))
+            else
+                loc.API.HereChatTimestampText = os.date("%H:%M", tonumber(message.timestamp))
+            end
+            loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
+                .. ' <font color="rgb(170,170,170)">• ' .. tostring(loc.API.HereChatTimestampText) .. '</font>'
+        end
         return meg(
             tostring(message.text or ""),
-            tostring(message.header or message.displayName or message.username or "Unknown"),
+            loc.API.HereChatRenderHeader,
             message.direction == "Right" and "Right" or "Left", false,
             tonumber(message.r) or 125,
             tonumber(message.g) or 190,
@@ -3437,7 +3453,7 @@ loc.API.RenderTimeMarkersAt = function(chatID, afterIndex)
                 end
                 loc.API.TimeMarkerText = "Time: " .. tostring(loc.API.TimeMarkerFormatted)
             end
-            meg(loc.API.TimeMarkerText, "Time", "Center", true, 150, 210, 255)
+            meg(loc.API.TimeMarkerText, "Time", "Center", true, 150, 210, 255, nil, {NoCounter = true})
         end
     end
 end
@@ -4139,6 +4155,7 @@ loc.API.SaveChats = function()
                 teamB = savedMessage.teamB,
                 direction = savedMessage.direction,
                 origin = savedMessage.origin,
+                timestamp = tonumber(savedMessage.timestamp),
                 r = savedMessage.r,
                 g = savedMessage.g,
                 b = savedMessage.b
@@ -4863,11 +4880,17 @@ loc.API.ChatOptionRows.DisplayTimeAs = addoptions(
         end
         if box then box.Text = loc.API.DisplayTimeFormat end
         if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
+        -- Re-render the active chat so HereChat timestamps use the newly selected format immediately.
+        if loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)]
+            and type(loc.API.RenderChat) == "function" then
+            loc.API.RenderChat(loc.API.ActiveChatID, false)
+        end
         meg("Display Time as: " .. loc.API.DisplayTimeFormat .. ". A time marker appears when 10 minutes have elapsed and a new message arrives.", nil, "Center", true, 150, 210, 255)
     end
 )
 loc.API.ChatOptionRows.DisplayTimeAs.Box.Text = loc.API.DisplayTimeFormat
 
+-- Message Counter also tracks issys=true meg() messages; HereChat messages include saved timestamps.
 -- ArcsenCommand bridge + bidirectional HereChat (Module v0.5.0)
 do
     local shared = type(getgenv) == "function" and getgenv() or nil
@@ -5010,6 +5033,7 @@ do
                 teamB = tonumber(metadata.teamB),
                 direction = metadata.direction == "Right" and "Right" or "Left",
                 origin = metadata.origin == "Arcsen" and "Arcsen" or "Roblox",
+                timestamp = tonumber(metadata.timestamp) or os.time(),
                 r = tonumber(metadata.r) or 125,
                 g = tonumber(metadata.g) or 190,
                 b = tonumber(metadata.b) or 255,
