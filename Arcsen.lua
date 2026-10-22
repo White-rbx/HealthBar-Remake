@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.42 Remake ",
+	sion = " UIs 7.1.46 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -424,10 +424,16 @@ do
     loc.MessageCounter.Parent = vAI
     Corner(1, 0, loc.MessageCounter)
 
+    -- The chat window is closed at Y.Scale = 1 and opens near Y.Scale = 0.22.
+    -- Treat only positions below 0.95 as open so the fully closed position can count unread messages.
+    loc.IsArcsenChatOpen = function()
+        return gpt.Position.Y.Scale < 0.95
+    end
+
     loc.UpdateMessageCounter = function()
         if not loc.MessageCounter or not loc.MessageCounter.Parent then return end
         loc.MessageCounter.Text = loc.UnreadMessageCount > 9999 and "9999+" or tostring(loc.UnreadMessageCount)
-        loc.MessageCounter.Visible = loc.UnreadMessageCount > 0 and gpt.Position.Y.Scale > 1
+        loc.MessageCounter.Visible = loc.UnreadMessageCount > 0 and not loc.IsArcsenChatOpen()
     end
 
     loc.ResetMessageCounter = function()
@@ -438,9 +444,10 @@ do
         end
     end
 
+    -- Call this only when a new message is appended, never from RenderChat/history loading.
     loc.RecordMessageForCounter = function(role)
-        if role ~= "user" and role ~= "assistant" then return end
-        if gpt.Position.Y.Scale <= 1 then
+        if role ~= "user" and role ~= "assistant" and role ~= "herechat" then return end
+        if loc.IsArcsenChatOpen() then
             loc.ResetMessageCounter()
             return
         end
@@ -449,7 +456,7 @@ do
     end
 
     gpt:GetPropertyChangedSignal("Position"):Connect(function()
-        if gpt.Position.Y.Scale <= 1 then
+        if loc.IsArcsenChatOpen() then
             loc.ResetMessageCounter()
         else
             loc.UpdateMessageCounter()
@@ -5012,6 +5019,10 @@ do
                 likedByAI = false,
             }
             table.insert(chatData.Messages, record)
+            -- Count a newly received/sent HereChat message once, at append time only.
+            if type(loc.RecordMessageForCounter) == "function" then
+                loc.RecordMessageForCounter("herechat")
+            end
             if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
 
             if tostring(loc.API.ActiveChatID or "") == chatID then
