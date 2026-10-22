@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.35 Remake ",
+	sion = " UIs 7.1.36 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -401,7 +401,7 @@ local gpt = Menu:WaitForChild("ChatGPT")
 local notif = Menu:WaitForChild("Notification")
 
 -- Unread Message Counter: only count new user/assistant messages, never history redraws.
-(function()
+do
     loc.UnreadMessageCount = 0
     loc.MessageCounter = vAI:FindFirstChild("Counter")
     if not loc.MessageCounter or not loc.MessageCounter:IsA("TextLabel") then
@@ -457,7 +457,7 @@ local notif = Menu:WaitForChild("Notification")
     end)
 
     loc.ResetMessageCounter()
-end)()
+end
 
 --[[[
 gpt.List:Destroy()
