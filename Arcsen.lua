@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.2 Remake ",
+	sion = " UIs 7.1.3 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -71,7 +71,6 @@ local ver = {
 }
 
 ------------------------------------------------------------------------------------------
--- local v_ver = [[Name 0.0 Type]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -1368,7 +1367,7 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
           btn.Image = "rbxassetid://76063966669126"
         end
       end
-    end, messageOptions.SpeakerType == "user")
+    end, messageOptions.CommandChat ~= true and messageOptions.SpeakerType == "user")
     if editButton and messageOptions.IsEditing == true then
       editButton.Image = "rbxassetid://76063966669126"
       if loc.API and type(loc.API.EditingMessage) == "table" then
@@ -1396,7 +1395,7 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
         main:CaptureFocus()
         warn("[Arcsen] Clipboard function is unavailable; select and copy the text manually.")
       end
-    end, messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user")
+    end, messageOptions.CommandChat == true or messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user")
 
     inbtn("81942007444642", "Like", function(btn)
       if messageOptions.SpeakerType == "user" then
@@ -1411,15 +1410,17 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
       if type(messageOptions.OnLike) == "function" then
         messageOptions.OnLike(messageOptions.LikedByUser)
       end
-    end, messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user")
+    end, messageOptions.CommandChat ~= true and (messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user"))
 
     inbtn("74459863797782", "Retry", function()
       if type(messageOptions.OnRetry) == "function" then
         messageOptions.OnRetry()
       end
     end,
-      (messageOptions.IsLatest == true and messageOptions.SpeakerType == "ai" and messageOptions.CanRetryAI == true)
-      or (messageOptions.IsLatest == true and messageOptions.SpeakerType == "user" and messageOptions.CanRetry == true))
+      messageOptions.CommandChat ~= true and (
+        (messageOptions.IsLatest == true and messageOptions.SpeakerType == "ai" and messageOptions.CanRetryAI == true)
+        or (messageOptions.IsLatest == true and messageOptions.SpeakerType == "user" and messageOptions.CanRetry == true)
+      ))
 
     -- AIs may like the user's message using the explicit response marker.
     for _, button in ipairs(btnbar:GetChildren()) do
@@ -4606,7 +4607,7 @@ loc.API.ChatOptionRows.InstantScrollDown = addoptions(
     end
 )
 
--- ArcsenCommand bridge + multiline command row (Module v0.1.0)
+-- ArcsenCommand bridge + compact multiline command row (Module v0.2.0)
 do
     local shared = type(getgenv) == "function" and getgenv() or nil
     local commandCore = type(shared) == "table" and shared.ArcsenCommand or nil
@@ -4656,9 +4657,27 @@ do
                 r, g, b = 70, 255, 100
             end
 
+            local isHereChat = metadata.source == "HereChat" and level == "chat"
             local isSystem = level ~= "chat"
-            local label = metadata.source == "HereChat" and "HereChat" or "Command"
-            meg(message, label, "Left", isSystem, r, g, b)
+            if isHereChat then
+                local username = tostring(metadata.username or "Unknown")
+                local messageText = tostring(message or "")
+                meg(messageText, "@" .. username, "Left", false, r, g, b, nil, {
+                    CommandChat = true,
+                    RawText = messageText,
+                    RichText = false,
+                })
+            else
+                meg(message, "Command", "Left", isSystem, r, g, b)
+            end
+        end)
+    end
+
+    if type(commandCore) == "table" and type(commandCore.setOnCommandsChanged) == "function" then
+        commandCore.setOnCommandsChanged(function()
+            if type(loc.API.RefreshArcsenCommandList) == "function" then
+                loc.API.RefreshArcsenCommandList()
+            end
         end)
     end
 end
@@ -4691,16 +4710,17 @@ loc.API.ChatOptionRows.Command = addoptions(
         loc.API.ExecuteArcsenCommands(box and box.Text or "")
     end
 )
--- Multi-line input is intentionally taller than the standard one-line option rows.
+-- Compact multiline command input; slightly taller than standard rows, not a large panel.
 do
     local row = loc.API.ChatOptionRows.Command
     if row then
-        row.Frame.Size = UDim2.new(1, 0, 0, 64)
+        row.Frame.Size = UDim2.new(1, 0, 0, 42)
         row.Box.MultiLine = true
         row.Box.TextWrapped = true
         row.Box.TextXAlignment = Enum.TextXAlignment.Left
         row.Box.TextYAlignment = Enum.TextYAlignment.Top
         row.Box.ClearTextOnFocus = false
+        row.Box.PlaceholderText = "Commands (one per line)"
     end
 end
 
@@ -5125,6 +5145,82 @@ loc.API.ChangeLogsFrame = addset("Updates", "Change Logs / Update", 255, 170, 90
         return true
     end
     loc.API.RefreshChangeLogs()
+end)
+
+-- Command catalog: follows the same addset + ScrollingFrame + TextLabel structure as Change Logs.
+loc.API.CommandSettingsFrame = addset("Commands", "Command (0)", 100, 185, 255, function(frame)
+    ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
+
+    local commandReview = Instance.new("ScrollingFrame")
+    commandReview.Name = "CommandReview"
+    commandReview.Size = UDim2.new(1, 0, 0, 260)
+    commandReview.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    commandReview.BackgroundTransparency = 0.5
+    commandReview.ScrollBarThickness = 0
+    commandReview.AutomaticCanvasSize = Enum.AutomaticSize.XY
+    commandReview.ScrollingDirection = Enum.ScrollingDirection.XY
+    commandReview.CanvasSize = UDim2.new(0, 0, 0, 0)
+    commandReview.BorderMode = gpt.BorderMode
+    commandReview.BorderSizePixel = 5
+    commandReview.LayoutOrder = 1
+    commandReview.Parent = frame
+    ListLayout(commandReview, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
+    Corner(0, 8, commandReview)
+
+    local commandLabel = Instance.new("TextLabel")
+    commandLabel.Name = "CommandList"
+    commandLabel.Size = UDim2.new(0, 0, 0, 0)
+    commandLabel.AutomaticSize = Enum.AutomaticSize.XY
+    commandLabel.BackgroundTransparency = 1
+    commandLabel.TextColor3 = Color3.fromRGB(245, 245, 245)
+    commandLabel.TextSize = 14
+    commandLabel.RichText = true
+    commandLabel.TextXAlignment = Enum.TextXAlignment.Left
+    commandLabel.TextYAlignment = Enum.TextYAlignment.Top
+    commandLabel.TextWrapped = false
+    commandLabel.LayoutOrder = 1
+    commandLabel.Parent = commandReview
+
+    loc.API.CommandSettingsReviewFrame = commandReview
+    loc.API.CommandSettingsLabel = commandLabel
+    loc.API.RefreshArcsenCommandList = function()
+        if not loc.API.CommandSettingsLabel or not loc.API.CommandSettingsLabel.Parent then
+            return false
+        end
+
+        local core = loc.API.ArcsenCommand
+        local commands = type(core) == "table" and type(core.commands) == "table" and core.commands or {}
+        local entries = {}
+        for commandName, commandInfo in pairs(commands) do
+            if type(commandInfo) == "table" then
+                entries[#entries + 1] = {
+                    Name = "/" .. tostring(commandName),
+                    Description = tostring(commandInfo.description or "No description provided."),
+                }
+            end
+        end
+        table.sort(entries, function(a, b)
+            return a.Name:lower() < b.Name:lower()
+        end)
+
+        local lines = {}
+        if #entries == 0 then
+            lines[1] = '<font color="#AAB2BF">No commands registered.</font>'
+        else
+            for _, entry in ipairs(entries) do
+                lines[#lines + 1] = '<font color="#65B8FF"><b>' .. loc.API.EscapeRichText(entry.Name) .. '</b></font>'
+                    .. '\n' .. loc.API.EscapeRichText(entry.Description)
+            end
+        end
+        loc.API.CommandSettingsLabel.Text = table.concat(lines, "\n\n")
+
+        local group = frame.Parent and frame.Parent:FindFirstChild("Group")
+        if group then
+            group.Text = "Command (" .. tostring(#entries) .. ")"
+        end
+        return true
+    end
+    loc.API.RefreshArcsenCommandList()
 end)
 
 loc.API.EnsureArcsenStorage()
