@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.5 Remake ",
+	sion = " UIs 7.1.52 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -3745,18 +3745,18 @@ loc.API.ValidateLuaScript = function(source)
     if #loc.API.LuaCandidate > loc.API.LuaScriptMaxLength then return false, "Script is too long (maximum 8000 characters)." end
     loc.API.LuaCleanSource, loc.API.LuaCleanError = loc.API.StripLuaCommentsAndStrings(loc.API.LuaCandidate)
     if not loc.API.LuaCleanSource then return false, loc.API.LuaCleanError end
-    for loc.API.LuaToken in loc.API.LuaCleanSource:gmatch("[%a_][%w_]*") do
-        loc.API.LuaTokenLower = loc.API.LuaToken:lower()
+    for LuaToken in loc.API.LuaCleanSource:gmatch("[%a_][%w_]*") do
+        loc.API.LuaTokenLower = LuaToken:lower()
         if loc.API.LuaUnsafeTokens[loc.API.LuaTokenLower] then
             if loc.API.LuaTokenLower == "for" or loc.API.LuaTokenLower == "while"
                 or loc.API.LuaTokenLower == "repeat" or loc.API.LuaTokenLower == "until"
                 or loc.API.LuaTokenLower == "break" or loc.API.LuaTokenLower == "continue" then
-                return false, "Loop syntax is not allowed (found '" .. loc.API.LuaToken .. "')."
+                return false, "Loop syntax is not allowed (found '" .. LuaToken .. "')."
             end
             if loc.API.LuaTokenLower == "function" then
                 return false, "Function declarations/closures are blocked to prevent recursive or hidden loops."
             end
-            return false, "Restricted API/token is not allowed: " .. loc.API.LuaToken
+            return false, "Restricted API/token is not allowed: " .. LuaToken
         end
     end
     return true, nil
