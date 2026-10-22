@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.3 Remake ",
+	sion = " UIs 7.1.31 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1035,6 +1035,7 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
   m_name.TextSize = 12
   m_name.TextColor3 = b_body.BackgroundColor3
   m_name.Text = tostring(per or "Person")
+  m_name.RichText = messageOptions.NameRichText == true
   m_name.TextWrapped = true
   m_name.TextXAlignment = Enum.TextXAlignment[dir] or Enum.TextXAlignment.Left
   m_name.TextYAlignment = Enum.TextYAlignment.Top
@@ -4645,6 +4646,16 @@ do
     loc.API.ArcsenCommand = commandCore
 
     if type(commandCore) == "table" and type(commandCore.setOutput) == "function" then
+        local function escapeHeaderText(value)
+            value = tostring(value or "")
+            value = value:gsub("&", "&amp;")
+            value = value:gsub("<", "&lt;")
+            value = value:gsub(">", "&gt;")
+            value = value:gsub('"', "&quot;")
+            value = value:gsub("'", "&apos;")
+            return value
+        end
+
         commandCore.setOutput(function(message, level, metadata)
             metadata = type(metadata) == "table" and metadata or {}
 
@@ -4661,9 +4672,25 @@ do
             local isSystem = level ~= "chat"
             if isHereChat then
                 local username = tostring(metadata.username or "Unknown")
+                local displayName = tostring(metadata.displayName or metadata.username or "Unknown")
                 local messageText = tostring(message or "")
-                meg(messageText, "@" .. username, "Left", false, r, g, b, nil, {
+                local header = escapeHeaderText(displayName) .. " (@" .. escapeHeaderText(username) .. ")"
+                local userId = tonumber(metadata.userId)
+                if userId then
+                    header = header .. " (" .. tostring(math.floor(userId)) .. ")"
+                end
+
+                local teamName = tostring(metadata.teamName or "")
+                if teamName ~= "" then
+                    local tr = math.clamp(tonumber(metadata.teamR) or r, 0, 255)
+                    local tg = math.clamp(tonumber(metadata.teamG) or g, 0, 255)
+                    local tb = math.clamp(tonumber(metadata.teamB) or b, 0, 255)
+                    header = header .. ' <font color="rgb(' .. math.floor(tr) .. ',' .. math.floor(tg) .. ',' .. math.floor(tb) .. ')">| ' .. escapeHeaderText(teamName) .. '</font>'
+                end
+
+                meg(messageText, header, "Left", false, r, g, b, nil, {
                     CommandChat = true,
+                    NameRichText = true,
                     RawText = messageText,
                     RichText = false,
                 })
