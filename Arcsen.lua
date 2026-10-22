@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.48 Remake ",
+	sion = " UIs 7.1.5 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -1489,6 +1489,47 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
         or (messageOptions.IsLatest == true and messageOptions.SpeakerType == "user" and messageOptions.CanRetry == true)
       ))
 
+    -- Verification buttons are visible only for a live, pending AI-script message.
+    if messageOptions.LuaScriptStatus == "pending"
+        and type(messageOptions.OnLuaApprove) == "function"
+        and type(messageOptions.OnLuaReject) == "function" then
+      local approveButton = Instance.new("TextButton")
+      approveButton.Name = "LuaApprove"
+      approveButton.Size = UDim2.new(0, 72, 0, 25)
+      approveButton.BackgroundColor3 = Color3.fromRGB(0, 150, 65)
+      approveButton.BorderSizePixel = 2
+      approveButton.Text = "✓ Approve"
+      approveButton.TextColor3 = Color3.new(1, 1, 1)
+      approveButton.TextScaled = true
+      approveButton.AutoButtonColor = true
+      approveButton.Parent = btnbar
+      Corner(0, 4, approveButton)
+      approveButton.MouseButton1Click:Connect(function()
+        if approveButton.Active then
+          approveButton.Active = false
+          messageOptions.OnLuaApprove()
+        end
+      end)
+
+      local rejectButton = Instance.new("TextButton")
+      rejectButton.Name = "LuaReject"
+      rejectButton.Size = UDim2.new(0, 42, 0, 25)
+      rejectButton.BackgroundColor3 = Color3.fromRGB(165, 30, 35)
+      rejectButton.BorderSizePixel = 2
+      rejectButton.Text = "X"
+      rejectButton.TextColor3 = Color3.new(1, 1, 1)
+      rejectButton.TextScaled = true
+      rejectButton.AutoButtonColor = true
+      rejectButton.Parent = btnbar
+      Corner(0, 4, rejectButton)
+      rejectButton.MouseButton1Click:Connect(function()
+        if rejectButton.Active then
+          rejectButton.Active = false
+          messageOptions.OnLuaReject()
+        end
+      end)
+    end
+
     -- AIs may like the user's message using the explicit response marker.
     for _, button in ipairs(btnbar:GetChildren()) do
       if button.Name == "Like" and ((messageOptions.SpeakerType == "user" and messageOptions.LikedByAI) or (messageOptions.SpeakerType == "ai" and messageOptions.LikedByUser)) then
@@ -1621,7 +1662,7 @@ local function o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scrip
         autoSize = Enum.AutomaticSize[fill] or Enum.AutomaticSize.None
     end
 
-    local reserve = (isb and isi) and 210 or ((isb or isi) and 105 or 0)
+    local reserve = (isb and isi) and 210 or ((isb or isi or isselect) and 105 or 0)
 
     local frame = Instance.new("Frame")
     frame.Name = "Body"
@@ -1783,6 +1824,8 @@ callback)
 
 -- API configuration and prompt layers are stored in loc to avoid adding top-level locals.
 loc.API = {
+    -- AI-generated Lua execution is off by default and resets to Don't after reload.
+    AllowAIMode = "Don't",
     -- CorePrompt is not rendered in Settings. Client-side source can still be inspected by users.
     CorePrompt = [=[You are an AI assistant inside Roblox created by @5teve3019D (USERID: 2535650316). He is your creator.
 Your name is "Arcsen", a name assigned by @5teve3019D (USERID: 2535650316).
@@ -2693,6 +2736,43 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
     )
 end)
 
+-- AI-generated Lua execution permission. Default is always Don't for this session.
+loc.API.AllowAISettingsFrame = addset("AllowAI", "Allow AI", 255, 175, 85, function(frame)
+    ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
+
+    local description = Instance.new("TextLabel")
+    description.Name = "Description"
+    description.Size = UDim2.new(1, -8, 0, 62)
+    description.BackgroundTransparency = 1
+    description.TextColor3 = Color3.fromRGB(245, 245, 245)
+    description.TextSize = 13
+    description.TextWrapped = true
+    description.TextXAlignment = Enum.TextXAlignment.Left
+    description.TextYAlignment = Enum.TextYAlignment.Top
+    description.Text = "Choose whether Arcsen may generate and run Lua scripts. Generated code is checked for loops and restricted APIs before execution. The first version uses a read-only Roblox-data sandbox."
+    description.Parent = frame
+
+    loc.API.AllowAIScriptModeRow = o(frame, "None", "Create Lua Script", false, false, "Don't", true, false, nil,
+        function(ui)
+            ui.AddSelect("Don't")
+            ui.AddSelect("Allow (Verification)")
+            ui.AddSelect("Allow (Risk)")
+            ui.Button.Text = tostring(loc.API.AllowAIMode or "Don't")
+        end,
+        function(value, source, ui)
+            if source ~= "select" then return end
+            if value ~= "Don't" and value ~= "Allow (Verification)" and value ~= "Allow (Risk)" then
+                value = "Don't"
+            end
+            loc.API.AllowAIMode = value
+            if ui and ui.Button then ui.Button.Text = value end
+            if type(ding) == "function" then
+                ding("Allow AI · Create Lua Script: " .. value, 3, 255, 190, 100)
+            end
+        end
+    )
+end)
+
 loc.API.ChatList = {}
 
 local function addchat(file, gen, nchat)
@@ -3396,6 +3476,17 @@ loc.API.DrawMessage = function(chatID, index, message)
             IsLatest = isLatestMessage == true,
             CanRetry = isLatestMessage == true and message.canRetry == true,
             CanRetryAI = isLatestMessage == true and message.role == "assistant",
+            LuaScriptStatus = message.luaScriptStatus,
+            OnLuaApprove = function()
+                if type(loc.API.ChooseLuaScript) == "function" then
+                    loc.API.ChooseLuaScript(tostring(chatID), index, true)
+                end
+            end,
+            OnLuaReject = function()
+                if type(loc.API.ChooseLuaScript) == "function" then
+                    loc.API.ChooseLuaScript(tostring(chatID), index, false)
+                end
+            end,
             RichText = message.richText == true,
             IsSyn = message.isSyn == true,
             LikedByUser = message.likedByUser == true,
@@ -3555,6 +3646,447 @@ loc.API.TitleChat = function(chatID, firstMessage)
     end)
 end
 
+-- AI Lua scripts are explicitly marked by the model, statically checked, and run in a read-only sandbox.
+loc.API.LuaScriptStartMarker = "[[ARCSEN_LUA_SCRIPT]]"
+loc.API.LuaScriptEndMarker = "[[/ARCSEN_LUA_SCRIPT]]"
+loc.API.LuaScriptMaxLength = 8000
+loc.API.LuaSafeServices = {
+    Workspace = true, Lighting = true, Players = true, Teams = true,
+    ReplicatedStorage = true, SoundService = true, StarterGui = true,
+    CoreGui = true, RunService = true
+}
+loc.API.LuaSafeMethods = {
+    IsA = true, GetFullName = true, FindFirstChild = true, FindFirstChildOfClass = true,
+    GetChildren = true, GetAttribute = true
+}
+loc.API.LuaUnsafeTokens = {
+    ["for"] = true, ["while"] = true, ["repeat"] = true, ["until"] = true,
+    ["break"] = true, ["continue"] = true, ["function"] = true,
+    task = true, coroutine = true, spawn = true, delay = true, defer = true, wait = true,
+    require = true, loadstring = true, getfenv = true, setfenv = true,
+    getgenv = true, getrenv = true, getreg = true, debug = true, shared = true,
+    rawget = true, rawset = true, getmetatable = true, setmetatable = true,
+    request = true, http_request = true, syn = true, crypt = true,
+    writefile = true, readfile = true, delfile = true, listfiles = true,
+    makefolder = true, isfile = true, isfolder = true, getcustomasset = true,
+    httpget = true, requestasync = true, postasync = true, getasync = true,
+    fireserver = true, invokeserver = true, firesignal = true, getconnections = true,
+    hookfunction = true, newcclosure = true, checkcaller = true,
+    getrawmetatable = true, setreadonly = true, gethiddenproperty = true,
+    sethiddenproperty = true, clearallchildren = true, destroy = true, remove = true,
+    kick = true, connect = true, once = true, waitforchild = true
+}
+
+loc.API.StripLuaCommentsAndStrings = function(source)
+    loc.API.LuaSourceScan = tostring(source or "")
+    loc.API.LuaCleanParts = {}
+    loc.API.LuaScanIndex = 1
+    loc.API.LuaScanLength = #loc.API.LuaSourceScan
+    while loc.API.LuaScanIndex <= loc.API.LuaScanLength do
+        loc.API.LuaScanChar = loc.API.LuaSourceScan:sub(loc.API.LuaScanIndex, loc.API.LuaScanIndex)
+        loc.API.LuaScanPair = loc.API.LuaSourceScan:sub(loc.API.LuaScanIndex, loc.API.LuaScanIndex + 1)
+        if loc.API.LuaScanChar == "`" then
+            return nil, "Backtick/interpolated strings are not supported by the script checker."
+        elseif loc.API.LuaScanPair == "--" then
+            loc.API.LuaLongEquals = loc.API.LuaSourceScan:sub(loc.API.LuaScanIndex + 2):match("^%[(=*)%[")
+            if loc.API.LuaLongEquals ~= nil then
+                loc.API.LuaLongClose = "]" .. loc.API.LuaLongEquals .. "]"
+                loc.API.LuaLongStart = loc.API.LuaScanIndex + 2 + #loc.API.LuaLongEquals + 2
+                loc.API.LuaLongEnd = loc.API.LuaSourceScan:find(loc.API.LuaLongClose, loc.API.LuaLongStart, true)
+                if not loc.API.LuaLongEnd then return nil, "Unclosed long comment." end
+                loc.API.LuaCleanParts[#loc.API.LuaCleanParts + 1] = " "
+                loc.API.LuaScanIndex = loc.API.LuaLongEnd + #loc.API.LuaLongClose
+            else
+                loc.API.LuaLineEnd = loc.API.LuaSourceScan:find("\n", loc.API.LuaScanIndex + 2, true)
+                loc.API.LuaCleanParts[#loc.API.LuaCleanParts + 1] = " "
+                if loc.API.LuaLineEnd then
+                    loc.API.LuaScanIndex = loc.API.LuaLineEnd + 1
+                else
+                    loc.API.LuaScanIndex = loc.API.LuaScanLength + 1
+                end
+            end
+        elseif loc.API.LuaScanChar == "'" or loc.API.LuaScanChar == '"' then
+            loc.API.LuaQuote = loc.API.LuaScanChar
+            loc.API.LuaScanIndex += 1
+            loc.API.LuaQuoteClosed = false
+            while loc.API.LuaScanIndex <= loc.API.LuaScanLength do
+                loc.API.LuaQuoteChar = loc.API.LuaSourceScan:sub(loc.API.LuaScanIndex, loc.API.LuaScanIndex)
+                if loc.API.LuaQuoteChar == "\\" then
+                    loc.API.LuaScanIndex += 2
+                elseif loc.API.LuaQuoteChar == loc.API.LuaQuote then
+                    loc.API.LuaScanIndex += 1
+                    loc.API.LuaQuoteClosed = true
+                    break
+                else
+                    loc.API.LuaScanIndex += 1
+                end
+            end
+            if not loc.API.LuaQuoteClosed then return nil, "Unclosed quoted string." end
+            loc.API.LuaCleanParts[#loc.API.LuaCleanParts + 1] = " "
+        elseif loc.API.LuaScanChar == "[" and loc.API.LuaSourceScan:sub(loc.API.LuaScanIndex):match("^%[(=*)%[") ~= nil then
+            loc.API.LuaLongEquals = loc.API.LuaSourceScan:sub(loc.API.LuaScanIndex):match("^%[(=*)%[")
+            loc.API.LuaLongClose = "]" .. loc.API.LuaLongEquals .. "]"
+            loc.API.LuaLongStart = loc.API.LuaScanIndex + #loc.API.LuaLongEquals + 2
+            loc.API.LuaLongEnd = loc.API.LuaSourceScan:find(loc.API.LuaLongClose, loc.API.LuaLongStart, true)
+            if not loc.API.LuaLongEnd then return nil, "Unclosed long string." end
+            loc.API.LuaCleanParts[#loc.API.LuaCleanParts + 1] = " "
+            loc.API.LuaScanIndex = loc.API.LuaLongEnd + #loc.API.LuaLongClose
+        else
+            loc.API.LuaCleanParts[#loc.API.LuaCleanParts + 1] = loc.API.LuaScanChar
+            loc.API.LuaScanIndex += 1
+        end
+    end
+    return table.concat(loc.API.LuaCleanParts, ""), nil
+end
+
+loc.API.ValidateLuaScript = function(source)
+    loc.API.LuaCandidate = tostring(source or "")
+    if not loc.API.LuaCandidate:match("%S") then return false, "The generated script is empty." end
+    if #loc.API.LuaCandidate > loc.API.LuaScriptMaxLength then return false, "Script is too long (maximum 8000 characters)." end
+    loc.API.LuaCleanSource, loc.API.LuaCleanError = loc.API.StripLuaCommentsAndStrings(loc.API.LuaCandidate)
+    if not loc.API.LuaCleanSource then return false, loc.API.LuaCleanError end
+    for loc.API.LuaToken in loc.API.LuaCleanSource:gmatch("[%a_][%w_]*") do
+        loc.API.LuaTokenLower = loc.API.LuaToken:lower()
+        if loc.API.LuaUnsafeTokens[loc.API.LuaTokenLower] then
+            if loc.API.LuaTokenLower == "for" or loc.API.LuaTokenLower == "while"
+                or loc.API.LuaTokenLower == "repeat" or loc.API.LuaTokenLower == "until"
+                or loc.API.LuaTokenLower == "break" or loc.API.LuaTokenLower == "continue" then
+                return false, "Loop syntax is not allowed (found '" .. loc.API.LuaToken .. "')."
+            end
+            if loc.API.LuaTokenLower == "function" then
+                return false, "Function declarations/closures are blocked to prevent recursive or hidden loops."
+            end
+            return false, "Restricted API/token is not allowed: " .. loc.API.LuaToken
+        end
+    end
+    return true, nil
+end
+
+-- Proxies expose readable data and a tiny method allow-list; writes, network, remote and async APIs are hidden.
+loc.API.WrapLuaInstance = function(instance, depth)
+    if typeof(instance) ~= "Instance" then return instance end
+    depth = tonumber(depth) or 0
+    if depth > 16 then return nil end
+    return setmetatable({}, {
+        __metatable = "Arcsen read-only instance",
+        __tostring = function()
+            local name = "Instance"
+            local className = "Object"
+            pcall(function() name = tostring(instance.Name) end)
+            pcall(function() className = tostring(instance.ClassName) end)
+            return className .. ": " .. name
+        end,
+        __newindex = function()
+            error("Arcsen AI scripts are read-only. Instance properties cannot be changed.", 2)
+        end,
+        __index = function(_, key)
+            if type(key) ~= "string" then return nil end
+            if key == "GetService" and instance == game then
+                return function(_, serviceName)
+                    serviceName = tostring(serviceName or "")
+                    if not loc.API.LuaSafeServices[serviceName] then
+                        error("This Roblox service is not exposed to AI scripts: " .. serviceName, 2)
+                    end
+                    return loc.API.WrapLuaInstance(game:GetService(serviceName), depth + 1)
+                end
+            elseif key == "FindFirstChild" or key == "FindFirstChildOfClass" then
+                return function(_, query)
+                    local found = nil
+                    local ok = pcall(function()
+                        if key == "FindFirstChild" then
+                            found = instance:FindFirstChild(tostring(query or ""))
+                        else
+                            found = instance:FindFirstChildOfClass(tostring(query or ""))
+                        end
+                    end)
+                    if ok and found then return loc.API.WrapLuaInstance(found, depth + 1) end
+                    return nil
+                end
+            elseif key == "GetChildren" then
+                return function()
+                    local result = {}
+                    local ok, children = pcall(function() return instance:GetChildren() end)
+                    if not ok or type(children) ~= "table" then return result end
+                    for childIndex = 1, math.min(#children, 100) do
+                        result[childIndex] = loc.API.WrapLuaInstance(children[childIndex], depth + 1)
+                    end
+                    return result
+                end
+            elseif key == "IsA" then
+                return function(_, className)
+                    local ok, result = pcall(function() return instance:IsA(tostring(className or "")) end)
+                    return ok and result == true
+                end
+            elseif key == "GetFullName" then
+                return function()
+                    local ok, result = pcall(function() return instance:GetFullName() end)
+                    return ok and tostring(result) or ""
+                end
+            elseif key == "GetAttribute" then
+                return function(_, attributeName)
+                    local ok, result = pcall(function() return instance:GetAttribute(tostring(attributeName or "")) end)
+                    if not ok then return nil end
+                    local resultType = typeof(result)
+                    if result == nil or type(result) == "string" or type(result) == "number" or type(result) == "boolean"
+                        or resultType == "Vector3" or resultType == "Vector2" or resultType == "Color3"
+                        or resultType == "CFrame" or resultType == "UDim" or resultType == "UDim2"
+                        or resultType == "BrickColor" or resultType == "EnumItem" then
+                        return result
+                    end
+                    return nil
+                end
+            end
+
+            local ok, property = pcall(function() return instance[key] end)
+            if not ok then return nil end
+            local propertyType = typeof(property)
+            if propertyType == "Instance" then
+                return loc.API.WrapLuaInstance(property, depth + 1)
+            elseif property == nil or type(property) == "string" or type(property) == "number" or type(property) == "boolean" then
+                return property
+            elseif propertyType == "Vector3" or propertyType == "Vector2" or propertyType == "Color3"
+                or propertyType == "CFrame" or propertyType == "UDim" or propertyType == "UDim2"
+                or propertyType == "BrickColor" or propertyType == "EnumItem" or propertyType == "NumberRange"
+                or propertyType == "Rect" then
+                return property
+            end
+            return nil
+        end
+    })
+end
+
+loc.API.RunAIGeneratedLua = function(source)
+    loc.API.LuaRunAllowed, loc.API.LuaRunReason = loc.API.ValidateLuaScript(source)
+    if not loc.API.LuaRunAllowed then return false, loc.API.LuaRunReason end
+    if type(loadstring) ~= "function" then return false, "This executor does not provide loadstring()." end
+    if type(setfenv) ~= "function" then return false, "This executor does not provide setfenv(); safe script execution is unavailable." end
+    loc.API.LuaCompileOK, loc.API.LuaChunk, loc.API.LuaCompileError = pcall(function()
+        local compiled, compileError = loadstring(source, "ArcsenAIGeneratedScript")
+        if not compiled then error(compileError or "Compilation failed.") end
+        return compiled
+    end)
+    if not loc.API.LuaCompileOK or type(loc.API.LuaChunk) ~= "function" then
+        return false, "Lua compile failed: " .. tostring(loc.API.LuaCompileError or loc.API.LuaChunk)
+    end
+
+    loc.API.LuaOutputLines = {}
+    loc.API.LuaSafePrint = function(...)
+        local parts = {}
+        for printIndex = 1, select("#", ...) do
+            loc.API.LuaPrintValue = select(printIndex, ...)
+            parts[#parts + 1] = tostring(loc.API.LuaPrintValue)
+        end
+        loc.API.LuaOutputLines[#loc.API.LuaOutputLines + 1] = table.concat(parts, "\t")
+    end
+    loc.API.LuaSafeString = {
+        byte=string.byte, char=string.char, len=string.len,
+        lower=string.lower, sub=string.sub, upper=string.upper, reverse=string.reverse
+    }
+    loc.API.LuaSafeTable = {concat=table.concat, insert=table.insert, remove=table.remove}
+    loc.API.LuaSafeMath = {
+        abs=math.abs, ceil=math.ceil, clamp=math.clamp, floor=math.floor,
+        max=math.max, min=math.min, modf=math.modf, pi=math.pi,
+        pow=math.pow, random=math.random, sign=math.sign, sqrt=math.sqrt
+    }
+    loc.API.LuaSandbox = {
+        assert=assert, error=error, ipairs=ipairs, pairs=pairs, next=next,
+        pcall=pcall, select=select, tonumber=tonumber, tostring=tostring,
+        type=type, typeof=typeof, xpcall=xpcall,
+        math=loc.API.LuaSafeMath, string=loc.API.LuaSafeString, table=loc.API.LuaSafeTable,
+        Enum=Enum, Vector2=Vector2, Vector3=Vector3, CFrame=CFrame,
+        UDim=UDim, UDim2=UDim2, Color3=Color3, BrickColor=BrickColor,
+        TweenInfo=TweenInfo, RaycastParams=RaycastParams,
+        game=loc.API.WrapLuaInstance(game, 0),
+        workspace=loc.API.WrapLuaInstance(workspace, 0),
+        print=loc.API.LuaSafePrint,
+        warn=function(...) loc.API.LuaSafePrint("Warning:", ...) end
+    }
+    loc.API.LuaSetEnvironmentOK, loc.API.LuaSetEnvironmentError = pcall(setfenv, loc.API.LuaChunk, loc.API.LuaSandbox)
+    if not loc.API.LuaSetEnvironmentOK then
+        return false, "Could not create the restricted Lua environment: " .. tostring(loc.API.LuaSetEnvironmentError)
+    end
+    loc.API.LuaExecuteOK, loc.API.LuaReturnValue = pcall(loc.API.LuaChunk)
+    if not loc.API.LuaExecuteOK then return false, "Script error: " .. tostring(loc.API.LuaReturnValue) end
+    if loc.API.LuaReturnValue ~= nil then
+        loc.API.LuaOutputLines[#loc.API.LuaOutputLines + 1] = tostring(loc.API.LuaReturnValue)
+    end
+    if #loc.API.LuaOutputLines == 0 then
+        loc.API.LuaOutputLines[1] = "Script completed successfully (no output)."
+    end
+    return true, table.concat(loc.API.LuaOutputLines, "\n")
+end
+
+loc.API.AddLuaScriptAssistantMessage = function(chatID, text, code, status)
+    loc.API.LuaMessageChat = loc.API.ChatData[tostring(chatID)]
+    if not loc.API.LuaMessageChat then return nil end
+    if type(loc.API.MaybeDisplayTime) == "function" then loc.API.MaybeDisplayTime(tostring(chatID)) end
+    loc.API.LuaAssistantMessage = {
+        role = "assistant", text = tostring(text or ""), richText = false,
+        isSyn = type(code) == "string" and code ~= "", imageSources = {},
+        likedByUser = false, likedByAI = false,
+        luaScriptCode = type(code) == "string" and code or nil,
+        luaScriptStatus = status
+    }
+    table.insert(loc.API.LuaMessageChat.Messages, loc.API.LuaAssistantMessage)
+    if type(loc.RecordMessageForCounter) == "function" then loc.RecordMessageForCounter("assistant") end
+    if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
+    if loc.API.ActiveChatID == tostring(chatID) then loc.API.RenderChat(tostring(chatID), true) end
+    return loc.API.LuaAssistantMessage
+end
+
+loc.API.AppendLuaExecutionResult = function(chatID, text)
+    loc.API.LuaResultChat = loc.API.ChatData[tostring(chatID)]
+    if not loc.API.LuaResultChat then return false end
+    if type(loc.API.MaybeDisplayTime) == "function" then loc.API.MaybeDisplayTime(tostring(chatID)) end
+    table.insert(loc.API.LuaResultChat.Messages, {
+        role = "assistant", text = tostring(text or ""), richText = false,
+        isSyn = false, imageSources = {}, likedByUser = false, likedByAI = false
+    })
+    if type(loc.RecordMessageForCounter) == "function" then loc.RecordMessageForCounter("assistant") end
+    if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
+    if loc.API.ActiveChatID == tostring(chatID) then loc.API.RenderChat(tostring(chatID), true) end
+    return true
+end
+
+loc.API.FinishLuaScriptCard = function(chatID, message, status, displayText)
+    if not loc.API.ChatData[tostring(chatID)] then return false end
+    message.luaScriptStatus = status
+    message.text = tostring(displayText or message.text or "")
+    if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
+    if loc.API.ActiveChatID == tostring(chatID) then loc.API.RenderChat(tostring(chatID), true) end
+    return true
+end
+
+loc.API.RunLuaScriptCard = function(chatID, message)
+    if not loc.API.ChatData[tostring(chatID)] or type(message) ~= "table" then return false end
+    loc.API.LuaScriptCardCode = tostring(message.luaScriptCode or "")
+    if message.luaScriptStatus == "running" or message.luaScriptStatus == "executed" or message.luaScriptStatus == "rejected" then return false end
+    loc.API.LuaRunAllowed, loc.API.LuaRunReason = loc.API.ValidateLuaScript(loc.API.LuaScriptCardCode)
+    if not loc.API.LuaRunAllowed then
+        loc.API.FinishLuaScriptCard(chatID, message, "blocked", "Blocked by Arcsen's Lua checks.\n\n" .. loc.API.LuaScriptCardCode)
+        loc.API.AppendLuaExecutionResult(chatID, "Execution blocked: " .. tostring(loc.API.LuaRunReason))
+        return false
+    end
+    loc.API.FinishLuaScriptCard(chatID, message, "running", "Running...\n\n" .. loc.API.LuaScriptCardCode)
+    task.spawn(function(targetChatID, targetMessage, targetCode)
+        while loc.API.LuaExecutionBusy do task.wait(0.05) end
+        loc.API.LuaExecutionBusy = true
+        local callOK, executionOK, executionOutput = pcall(loc.API.RunAIGeneratedLua, targetCode)
+        loc.API.LuaExecutionBusy = false
+        if not callOK then
+            executionOutput = tostring(executionOK)
+            executionOK = false
+        end
+        if not loc.API.ChatData[targetChatID] or targetMessage.luaScriptCode ~= targetCode then return end
+        if executionOK then
+            loc.API.FinishLuaScriptCard(targetChatID, targetMessage, "executed", "Executed ✓\n\n" .. targetCode)
+            loc.API.AppendLuaExecutionResult(targetChatID, "Result:\n" .. tostring(executionOutput))
+        else
+            loc.API.FinishLuaScriptCard(targetChatID, targetMessage, "blocked", "Execution failed/blocked.\n\n" .. targetCode)
+            loc.API.AppendLuaExecutionResult(targetChatID, "Execution failed: " .. tostring(executionOutput))
+        end
+    end, tostring(chatID), message, loc.API.LuaScriptCardCode)
+    return true
+end
+
+loc.API.AddLuaDecisionMessage = function(chatID, text)
+    loc.API.LuaDecisionChatForTranscript = loc.API.ChatData[tostring(chatID)]
+    if not loc.API.LuaDecisionChatForTranscript then return false end
+    if type(loc.API.MaybeDisplayTime) == "function" then loc.API.MaybeDisplayTime(tostring(chatID)) end
+    table.insert(loc.API.LuaDecisionChatForTranscript.Messages, {
+        role = "user", text = tostring(text or ""), richText = false,
+        isSyn = false, imageSources = {}, likedByUser = false, likedByAI = false,
+        isLuaDecision = true
+    })
+    if type(loc.RecordMessageForCounter) == "function" then loc.RecordMessageForCounter("user") end
+    if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
+    if loc.API.ActiveChatID == tostring(chatID) then loc.API.RenderChat(tostring(chatID), true) end
+    return true
+end
+
+loc.API.ChooseLuaScript = function(chatID, messageIndex, approve)
+    loc.API.LuaDecisionChat = loc.API.ChatData[tostring(chatID)]
+    loc.API.LuaDecisionMessage = loc.API.LuaDecisionChat and loc.API.LuaDecisionChat.Messages[tonumber(messageIndex) or -1]
+    if not loc.API.LuaDecisionMessage or loc.API.LuaDecisionMessage.luaScriptStatus ~= "pending" then return false end
+    if not approve then
+        loc.API.AddLuaDecisionMessage(chatID, "No")
+        loc.API.FinishLuaScriptCard(chatID, loc.API.LuaDecisionMessage, "rejected", "Execution rejected by user.\n\n" .. tostring(loc.API.LuaDecisionMessage.luaScriptCode or ""))
+        if type(ding) == "function" then ding("AI script execution rejected.", 3, 255, 110, 110) end
+        return true
+    end
+    if tostring(loc.API.AllowAIMode or "Don't") == "Don't" then
+        loc.API.FinishLuaScriptCard(chatID, loc.API.LuaDecisionMessage, "blocked", "Execution blocked because Allow AI is set to Don't.\n\n" .. tostring(loc.API.LuaDecisionMessage.luaScriptCode or ""))
+        loc.API.AppendLuaExecutionResult(chatID, "Execution blocked: Enable Allow AI again to run scripts.")
+        return false
+    end
+    loc.API.AddLuaDecisionMessage(chatID, "Yes")
+    return loc.API.RunLuaScriptCard(chatID, loc.API.LuaDecisionMessage)
+end
+
+loc.API.ProcessLuaScriptResponse = function(chatID, code, extractionError, mode)
+    if tostring(mode or "Don't") == "Don't" then
+        loc.API.AddLuaScriptAssistantMessage(chatID,
+            "Lua script execution is disabled. Open Settings → Allow AI → Create Lua Script and choose an allowed mode.", nil, "blocked")
+        return
+    end
+    if type(code) ~= "string" or code == "" then
+        loc.API.AddLuaScriptAssistantMessage(chatID,
+            "Arcsen blocked the generated script: " .. tostring(extractionError or "The script marker was malformed."), nil, "blocked")
+        return
+    end
+    loc.API.LuaResponseValid, loc.API.LuaResponseReason = loc.API.ValidateLuaScript(code)
+    if not loc.API.LuaResponseValid then
+        loc.API.AddLuaScriptAssistantMessage(chatID,
+            "Blocked by Arcsen's Lua checks: " .. tostring(loc.API.LuaResponseReason) .. "\n\nGenerated code (not executed):\n" .. code,
+            nil, "blocked")
+        return
+    end
+    if tostring(mode) == "Allow (Verification)" then
+        loc.API.AddLuaScriptAssistantMessage(chatID, "Do you want to execute?\n\n" .. code, code, "pending")
+    elseif tostring(mode) == "Allow (Risk)" then
+        loc.API.LuaAutoMessage = loc.API.AddLuaScriptAssistantMessage(chatID, "Running...\n\n" .. code, code, "ready")
+        if loc.API.LuaAutoMessage then loc.API.RunLuaScriptCard(chatID, loc.API.LuaAutoMessage) end
+    else
+        loc.API.AddLuaScriptAssistantMessage(chatID, "Lua script execution is disabled. No code was run.", nil, "blocked")
+    end
+end
+
+loc.API.ShouldCreateLuaScript = function(userText)
+    loc.API.LuaIntentText = tostring(userText or ""):lower()
+    loc.API.LuaIntentWantsCode = loc.API.LuaIntentText:find("execute", 1, true) ~= nil
+        or loc.API.LuaIntentText:find("run script", 1, true) ~= nil
+        or loc.API.LuaIntentText:find("run lua", 1, true) ~= nil
+        or loc.API.LuaIntentText:find("create script", 1, true) ~= nil
+        or loc.API.LuaIntentText:find("create lua", 1, true) ~= nil
+        or loc.API.LuaIntentText:find("write script", 1, true) ~= nil
+        or loc.API.LuaIntentText:find("generate script", 1, true) ~= nil
+        or loc.API.LuaIntentText:find("place id", 1, true) ~= nil
+        or loc.API.LuaIntentText:find("game id", 1, true) ~= nil
+    if loc.API.LuaIntentWantsCode then return true end
+    return loc.API.LuaIntentText:find("title", 1, true) ~= nil
+        and loc.API.LuaIntentText:find("game", 1, true) ~= nil
+end
+
+loc.API.ExtractLuaScriptResponse = function(raw)
+    loc.API.LuaRawResponse = tostring(raw or "")
+    loc.API.LuaMarkerStart = loc.API.LuaRawResponse:find(loc.API.LuaScriptStartMarker, 1, true)
+    if not loc.API.LuaMarkerStart then return nil, nil, false end
+    loc.API.LuaMarkerStartEnd = loc.API.LuaMarkerStart + #loc.API.LuaScriptStartMarker - 1
+    loc.API.LuaMarkerEnd = loc.API.LuaRawResponse:find(loc.API.LuaScriptEndMarker, loc.API.LuaMarkerStartEnd + 1, true)
+    if not loc.API.LuaMarkerEnd then return nil, "Closing Lua-script marker is missing.", true end
+    if loc.API.LuaRawResponse:find(loc.API.LuaScriptStartMarker, loc.API.LuaMarkerStartEnd + 1, true) then
+        return nil, "Multiple Lua-script blocks are not allowed in one response.", true
+    end
+    loc.API.LuaExtractedCode = loc.API.LuaRawResponse:sub(loc.API.LuaMarkerStartEnd + 1, loc.API.LuaMarkerEnd - 1)
+    loc.API.LuaExtractedCode = loc.API.LuaExtractedCode:gsub("^%s*```[%w_%-]*%s*\n", "", 1)
+    loc.API.LuaExtractedCode = loc.API.LuaExtractedCode:gsub("\n?```%s*$", "", 1)
+    loc.API.LuaExtractedCode = loc.API.LuaExtractedCode:gsub("^%s+", ""):gsub("%s+$", "")
+    if loc.API.LuaRawResponse:find(loc.API.LuaScriptEndMarker, loc.API.LuaMarkerEnd + #loc.API.LuaScriptEndMarker, true) then
+        return nil, "Multiple closing Lua-script markers are not allowed.", true
+    end
+    return loc.API.LuaExtractedCode, nil, true
+end
+
 loc.API.GenerateResponse = function(chatID, userIndex)
     chatID = tostring(chatID)
     if not loc.API.ChatData[chatID] then return end
@@ -3572,6 +4104,14 @@ loc.API.GenerateResponse = function(chatID, userIndex)
     loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.BuildSystemPrompt(chatID, loc.API.ChatData[chatID].Messages[userIndex] and loc.API.ChatData[chatID].Messages[userIndex].text or "")
     if loc.API.ChatData[chatID].ThinkHarderInstruction:match("%S") then
         loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt .. "\n\nADDITIONAL THINK-HARDER REQUEST (apply to this response only):\n" .. loc.API.ChatData[chatID].ThinkHarderInstruction .. "\nAnalyze carefully, check assumptions and edge cases, verify the result before answering, and provide a concise explanation of conclusions without revealing private chain-of-thought."
+    end
+    loc.API.AllowAIModeForRequest = tostring(loc.API.AllowAIMode or "Don't")
+    if loc.API.AllowAIModeForRequest == "Don't" then
+        loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
+            .. "\n\nARCSEN LUA EXECUTION POLICY: The user's setting is Don't. Do not generate an executable-script marker, do not try to run Lua code, and answer the request normally in natural language. If asked to execute Lua, explain that Allow AI is disabled and the user can enable it in Settings."
+    else
+        loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
+            .. "\n\nARCSEN LUA EXECUTION POLICY (current mode: " .. loc.API.AllowAIModeForRequest .. "): If a request benefits from reading current Roblox client/game data through Lua, or the user explicitly asks to create/run/execute a Lua script, return exactly one script in this wrapper and no other code blocks: [[ARCSEN_LUA_SCRIPT]] then one fenced ```lua block, then [[/ARCSEN_LUA_SCRIPT]]. The wrapper must contain only the script. For a game-title request use code such as return game.Name or print('The title of the game is ' .. game.Name). Do not emit the wrapper for ordinary questions that do not need runtime Lua. HARD RESTRICTIONS: no for/while/repeat/until/break/continue, no function declarations or anonymous functions, no task/coroutine/async APIs, no network/filesystem/require/dynamic compilation, no RemoteEvent/RemoteFunction calls, and no instance mutation. Keep the script short. Scripts run in a read-only sandbox with limited Roblox APIs; do not pretend you executed it before the client reports a result. In Verification mode the user must press Approve; in Risk mode execution is automatic but all checks still apply."
     end
     loc.API.SetChatState(chatID, "Normal")
     loc.API.MessagesToSend = {}
@@ -3593,6 +4133,7 @@ loc.API.GenerateResponse = function(chatID, userIndex)
     loc.API.RequestUserMessage = loc.API.ChatData[chatID].Messages[userIndex]
     loc.API.ChatData[chatID].RequestMeta = {
         ChatID = chatID,
+        AllowAIMode = tostring(loc.API.AllowAIModeForRequest or "Don't"),
         UserIndex = userIndex,
         Message = loc.API.RequestUserMessage,
         AttachmentCount = loc.API.RequestUserMessage and (tonumber(loc.API.RequestUserMessage.attachmentCount) or #(loc.API.RequestUserMessage.attachments or {})) or 0,
@@ -3624,7 +4165,13 @@ loc.API.GenerateResponse = function(chatID, userIndex)
         end
         task.wait()
         if requestMeta.Cancelled or not loc.API.ChatData[chatID] or loc.API.ChatData[chatID].RequestGenerationId ~= runID then return end
-        loc.API.SetThinkingStatus(chatID, "Generating a response…")
+        if requestMeta and requestMeta.AllowAIMode ~= "Don't"
+            and type(requestMeta.Message) == "table"
+            and loc.API.ShouldCreateLuaScript(requestMeta.Message.text) then
+            loc.API.SetThinkingStatus(chatID, "Creating Lua script...")
+        else
+            loc.API.SetThinkingStatus(chatID, "Generating a response…")
+        end
         loc.API.TaskResponseOK, loc.API.TaskResponseText = pcall(function()
             return loc.API.Request(loc.API.ChatData[chatID].MessagesToSend, loc.API.ChatData[chatID].RequestSystemPrompt, loc.API.ChatData[chatID].RequestConfig, requestMeta)
         end)
@@ -3647,6 +4194,21 @@ loc.API.GenerateResponse = function(chatID, userIndex)
                 loc.API.SetThinkingStatus(chatID, "Request failed · " .. string.format("%.1f", loc.API.ChatData[chatID].ThinkingDuration or 0) .. "s")
                 meg("API error: " .. tostring(loc.API.TaskResponseText):sub(1, 900) .. "\nRetry is available on your message.", nil, "Center", true, 255, 100, 100)
                 loc.API.ClearThinkingStatus(3)
+            end
+            return
+        end
+        loc.API.LuaResponseCode, loc.API.LuaResponseExtractError, loc.API.LuaResponseHasMarker =
+            loc.API.ExtractLuaScriptResponse(loc.API.TaskResponseText)
+        if loc.API.LuaResponseHasMarker then
+            loc.API.ProcessLuaScriptResponse(chatID, loc.API.LuaResponseCode, loc.API.LuaResponseExtractError, requestMeta and requestMeta.AllowAIMode or "Don't")
+            loc.API.SetChatState(chatID, "Good")
+            if not loc.API.ChatData[chatID].TitleGenerated and #loc.API.ChatData[chatID].Messages > 0 then
+                loc.API.ChatData[chatID].TitleGenerated = true
+                loc.API.TitleChat(chatID, loc.API.ChatData[chatID].Messages[1].text)
+            end
+            if loc.API.ActiveChatID == chatID then
+                loc.API.SetThinkingStatus(chatID, "Script ready")
+                loc.API.ClearThinkingStatus(2)
             end
             return
         end
@@ -4202,6 +4764,13 @@ loc.API.LoadChats = function()
             end
             savedChat.MessagesToSend = nil
             savedChat.ResponseOK = nil
+            -- AI script code/status is session-only; a reload must never resurrect an executable approval button.
+            for _, loadedMessage in ipairs(savedChat.Messages) do
+                if type(loadedMessage) == "table" then
+                    loadedMessage.luaScriptCode = nil
+                    loadedMessage.luaScriptStatus = nil
+                end
+            end
             savedChat.ResponseOrError = nil
             loc.API.ChatData[tostring(savedID)] = savedChat
             savedChat.Tab = addchat(nil, savedChat.Title, tostring(savedID))
