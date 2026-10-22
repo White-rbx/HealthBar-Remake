@@ -71,7 +71,7 @@ local ver = {
 }
 
 ------------------------------------------------------------------------------------------
-local v_ver = [[Name 0.0 Type]]
+-- local v_ver = [[Name 0.0 Type]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -4605,6 +4605,104 @@ loc.API.ChatOptionRows.InstantScrollDown = addoptions(
         end
     end
 )
+
+-- ArcsenCommand bridge + multiline command row (Module v0.1.0)
+do
+    local shared = type(getgenv) == "function" and getgenv() or nil
+    local commandCore = type(shared) == "table" and shared.ArcsenCommand or nil
+
+    if type(commandCore) ~= "table" then
+        local ok, result = pcall(function()
+            if type(loadstring) ~= "function" then
+                error("This executor does not provide loadstring().")
+            end
+
+            local source = game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/ArcsenCommand-Module.lua")
+            local chunk, compileError = loadstring(source)
+            if type(chunk) ~= "function" then
+                error(compileError or "Could not compile ArcsenCommand-Module.lua")
+            end
+
+            local returned = chunk()
+            local envNow = type(getgenv) == "function" and getgenv() or nil
+            local registered = type(envNow) == "table" and envNow.ArcsenCommand or nil
+            if type(registered) == "table" then
+                return registered
+            elseif type(returned) == "table" then
+                return returned
+            end
+            error("The downloaded file did not register ArcsenCommand. Upload the module contents first.")
+        end)
+
+        if ok then
+            commandCore = result
+        else
+            meg("ArcsenCommand load failed: " .. tostring(result), "Command", "Left", true, 255, 70, 70)
+        end
+    end
+
+    loc.API.ArcsenCommand = commandCore
+
+    if type(commandCore) == "table" and type(commandCore.setOutput) == "function" then
+        commandCore.setOutput(function(message, level, metadata)
+            metadata = type(metadata) == "table" and metadata or {}
+
+            local r, g, b = metadata.r or 0, metadata.g or 170, metadata.b or 255
+            if level == "error" then
+                r, g, b = 255, 70, 70
+            elseif level == "warning" then
+                r, g, b = 255, 210, 50
+            elseif level == "success" then
+                r, g, b = 70, 255, 100
+            end
+
+            local isSystem = level ~= "chat"
+            local label = metadata.source == "HereChat" and "HereChat" or "Command"
+            meg(message, label, "Left", isSystem, r, g, b)
+        end)
+    end
+end
+
+-- Process each non-empty line independently; an invalid command won't stop later lines.
+loc.API.ExecuteArcsenCommands = function(rawText)
+    local core = loc.API.ArcsenCommand
+    if type(core) ~= "table" or type(core.handleCommand) ~= "function" then
+        meg("ArcsenCommand is unavailable. Check the module URL and executor support.", "Command", "Left", true, 255, 70, 70)
+        return 0
+    end
+
+    local count = 0
+    for line in tostring(rawText or ""):gmatch("[^\r\n]+") do
+        line = line:gsub("^%s+", ""):gsub("%s+$", "")
+        if line ~= "" then
+            local ok, err = pcall(core.handleCommand, line)
+            if not ok then
+                meg("Command error: " .. tostring(err), "Command", "Left", true, 255, 70, 70)
+            end
+            count = count + 1
+        end
+    end
+    return count
+end
+
+loc.API.ChatOptionRows.Command = addoptions(
+    true, "Command", true, "Run", true, "Commands (one per line)",
+    function(box)
+        loc.API.ExecuteArcsenCommands(box and box.Text or "")
+    end
+)
+-- Multi-line input is intentionally taller than the standard one-line option rows.
+do
+    local row = loc.API.ChatOptionRows.Command
+    if row then
+        row.Frame.Size = UDim2.new(1, 0, 0, 64)
+        row.Box.MultiLine = true
+        row.Box.TextWrapped = true
+        row.Box.TextXAlignment = Enum.TextXAlignment.Left
+        row.Box.TextYAlignment = Enum.TextYAlignment.Top
+        row.Box.ClearTextOnFocus = false
+    end
+end
 
 -- Global Memory is stored separately from chat history and appended to the effective system prompt.
 -- It is generated from chat transcripts, with secrets and sensitive personal data excluded by instruction.
