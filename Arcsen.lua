@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.85 Remake ",
+	sion = " UIs 7.1.9 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -3492,6 +3492,9 @@ local function addchat(file, gen, nchat)
 
   table.insert(loc.API.ChatList, btn)
 
+  -- Keep the tab stroke available for message-notification effects.
+  btn:SetAttribute("ArcsenChatID", tostring(nchat or ""))
+
   btn.MouseButton1Click:Connect(function()
     for _, item in ipairs(loc.API.ChatList) do
       local itemScale = item:FindFirstChildOfClass("UIScale")
@@ -3521,6 +3524,89 @@ local function addchat(file, gen, nchat)
   end)
 
   return btn
+end
+
+-- New-message indicators are attached to the target chat tab and rendered at the
+-- first unread message position. They are deliberately not inserted into model
+-- history, so the notification marker is never sent to an AI provider.
+loc.API.ChatTabBlinkStates = loc.API.ChatTabBlinkStates or setmetatable({}, {__mode = "k"})
+loc.API.PendingNewMessageMarkers = loc.API.PendingNewMessageMarkers or {}
+
+loc.API.BlinkChatTab = function(chatID)
+    chatID = tostring(chatID or "")
+    local chatData = loc.API.ChatData and loc.API.ChatData[chatID]
+    local tab = chatData and chatData.Tab
+    if not tab or not tab.Parent then return false end
+
+    local stroke = tab:FindFirstChildOfClass("UIStroke")
+    if not stroke then return false end
+
+    local activeState = loc.API.ChatTabBlinkStates[tab]
+    if activeState then
+        activeState.RepeatRequested = true
+        return true
+    end
+
+    local state = {RepeatRequested = false}
+    loc.API.ChatTabBlinkStates[tab] = state
+    task.spawn(function()
+        local originalTransparency = stroke.Transparency
+        local originalThickness = stroke.Thickness
+        local pulseTransparency = math.clamp(originalTransparency + 0.55, 0, 1)
+        local pulseThickness = math.max(originalThickness + 2, 3)
+        local batchCount = 0
+
+        repeat
+            state.RepeatRequested = false
+            for pulseIndex = 1, 3 do
+                if not tab.Parent or not stroke.Parent then break end
+                local pulseIn = s.TweenService:Create(
+                    stroke,
+                    TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    {Transparency = pulseTransparency, Thickness = pulseThickness}
+                )
+                pulseIn:Play()
+                pulseIn.Completed:Wait()
+                if not tab.Parent or not stroke.Parent then break end
+
+                local pulseOut = s.TweenService:Create(
+                    stroke,
+                    TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    {Transparency = originalTransparency, Thickness = originalThickness}
+                )
+                pulseOut:Play()
+                pulseOut.Completed:Wait()
+            end
+            batchCount += 1
+        until not state.RepeatRequested or batchCount >= 2
+
+        if stroke.Parent then
+            stroke.Transparency = originalTransparency
+            stroke.Thickness = originalThickness
+        end
+        loc.API.ChatTabBlinkStates[tab] = nil
+    end)
+    return true
+end
+
+loc.API.NotifyNewChatMessage = function(chatID, firstMessageIndex)
+    chatID = tostring(chatID or "")
+    local chatData = loc.API.ChatData and loc.API.ChatData[chatID]
+    if not chatData then return false end
+
+    local isVisible = tostring(loc.API.ActiveChatID or "") == chatID
+        and type(loc.IsArcsenChatOpen) == "function"
+        and loc.IsArcsenChatOpen()
+    if isVisible then return false end
+
+    -- Keep the earliest unread point so a burst of messages produces one clear marker.
+    if tonumber(loc.API.PendingNewMessageMarkers[chatID]) == nil then
+        loc.API.PendingNewMessageMarkers[chatID] = math.max(1, math.floor(tonumber(firstMessageIndex) or #(chatData.Messages or {})))
+    end
+    if type(loc.API.BlinkChatTab) == "function" then
+        loc.API.BlinkChatTab(chatID)
+    end
+    return true
 end
 
 -- ===== API backend, conversation history, and chat rendering =====
@@ -4103,7 +4189,20 @@ loc.API.RenderChat = function(chatID, scrollToBottom)
     if type(loc.API.RenderTimeMarkersAt) == "function" then
         loc.API.RenderTimeMarkersAt(loc.API.ActiveChatID, 0)
     end
+    loc.API.RenderChatWindowVisible = type(loc.IsArcsenChatOpen) == "function" and loc.IsArcsenChatOpen()
     for renderIndex, renderMessage in ipairs(loc.API.ChatData[loc.API.ActiveChatID].Messages) do
+        local pendingMarkerIndex = tonumber(loc.API.PendingNewMessageMarkers[loc.API.ActiveChatID])
+        if pendingMarkerIndex and renderIndex >= pendingMarkerIndex then
+            -- Keep the marker pending if the window is still closed. The open-window
+            -- render will show it again and then acknowledge it visually.
+            if loc.API.RenderChatWindowVisible then
+                loc.API.PendingNewMessageMarkers[loc.API.ActiveChatID] = nil
+            end
+            meg("New message", "New message", "Center", true, 115, 190, 255, nil, {
+                NoCounter = true,
+                IsNewMessageMarker = true,
+            })
+        end
         loc.API.DrawMessage(loc.API.ActiveChatID, renderIndex, renderMessage)
         if type(loc.API.RenderTimeMarkersAt) == "function" then
             loc.API.RenderTimeMarkersAt(loc.API.ActiveChatID, renderIndex)
@@ -5754,7 +5853,7 @@ loc.API.GenerateResponse = function(chatID, userIndex)
         if #(loc.API.ParsedMessages or {}) > 0 and type(loc.API.MaybeDisplayTime) == "function" then
             loc.API.MaybeDisplayTime(chatID)
         end
-        for _, assistantSegment in ipairs(loc.API.ParsedMessages) do
+        for assistantSegmentIndex, assistantSegment in ipairs(loc.API.ParsedMessages) do
             table.insert(loc.API.ChatData[chatID].Messages, {
                 role = "assistant",
                 text = tostring(assistantSegment.text or ""),
@@ -5764,6 +5863,9 @@ loc.API.GenerateResponse = function(chatID, userIndex)
                 likedByUser = false,
                 likedByAI = false
             })
+            if assistantSegmentIndex == 1 and type(loc.API.NotifyNewChatMessage) == "function" then
+                loc.API.NotifyNewChatMessage(chatID, #loc.API.ChatData[chatID].Messages)
+            end
             if type(loc.RecordMessageForCounter) == "function" then
                 loc.RecordMessageForCounter("assistant")
             end
@@ -7099,6 +7201,9 @@ do
                 likedByAI = false,
             }
             table.insert(chatData.Messages, record)
+            if record.origin == "Roblox" and type(loc.API.NotifyNewChatMessage) == "function" then
+                loc.API.NotifyNewChatMessage(chatID, #chatData.Messages)
+            end
             -- Count a newly received/sent HereChat message once, at append time only.
             if type(loc.RecordMessageForCounter) == "function" then
                 loc.RecordMessageForCounter("herechat")
@@ -7106,9 +7211,15 @@ do
             if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
 
             if tostring(loc.API.ActiveChatID or "") == chatID then
-                loc.API.DrawMessage(chatID, #chatData.Messages, record)
-                if type(loc.API.ScrollChatToBottom) == "function" then
-                    loc.API.ScrollChatToBottom(chatID)
+                if loc.API.PendingNewMessageMarkers[chatID] and type(loc.API.RenderChat) == "function" then
+                    -- HereChat can append while the window is closed; render the marker
+                    -- now so it is already in the viewport when the user opens Chat.
+                    loc.API.RenderChat(chatID, true)
+                else
+                    loc.API.DrawMessage(chatID, #chatData.Messages, record)
+                    if type(loc.API.ScrollChatToBottom) == "function" then
+                        loc.API.ScrollChatToBottom(chatID)
+                    end
                 end
             end
             return true
