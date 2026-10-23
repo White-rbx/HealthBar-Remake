@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.8 Remake ",
+	sion = " UIs 7.1.85 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -68,7 +68,8 @@ local ver = {
 (:23/7/2026 | 4:49 pm: F) Fixed Here chat I guess.
 (:12/9/2026 | 4:04 pm: A) Added Gemini 3.8 flash, added more modelswitch add adjust ScrollingFrame.
 (:22/10/2026 | 3:39 am: B) Big update remaked of UIs 7.1.0 Remake is here!
-(:23/10/2026 | 8:32 am: A) Added hierarchical workspace file permissions under Allow AI (Create Lua Script / Modify File / All File access).]],
+(:23/10/2026 | 8:32 am: A) Added hierarchical workspace file permissions under Allow AI (Create Lua Script / Modify File / All File access).
+(:23/10/2026: A) Restored daily total-token tracking with date rollover and added HereChat experience-name metadata (Module v0.5.2).]],
 }
 
 ------------------------------------------------------------------------------------------
@@ -2731,8 +2732,8 @@ loc.API.BuildEditorContext = function(chatID, userText)
     else
         table.insert(loc.API.EditorContextLines, 'Allowed path scope: "ExperienceSettings/Editor/" only. Paths outside that directory must be denied by Arcsen.')
     end
-    table.insert(loc.API.EditorContextLines, 'For file actions other than replacing the currently selected Editor/Tabs file, return exactly one machine-readable marker using valid JSON, for example: [[ARCSEN_FILE_ACTION]]{"action":"read","path":"relative/path"}[[/ARCSEN_FILE_ACTION]]. The action must be exactly one of: read, info, list, create, overwrite, move, rename, delete. Use path as the source/target; add destination for move/rename and content (a JSON string) for create/overwrite. Do not put a Markdown fence around the marker. Use read to view contents, info to inspect type/size, list to list a directory (path="" requires All File access=Allow), create to create a new file only, overwrite to replace an existing file, move/rename to move or rename a file, or delete to delete a file. Return only fields needed for the selected action. Do not claim an action succeeded until Arcsen reports the result.')
-    table.insert(loc.API.EditorContextLines, 'Mutating file actions are create, overwrite, move, rename, delete. If Create Lua Script mode contains Verification, Arcsen will show an approval prompt before these mutations. Read/list/info actions do not modify files but are still limited by the path permissions. Draft.json is always read-only. Do not use executor filesystem APIs inside generated Lua code; request file operations only through the marker.')
+    table.insert(loc.API.EditorContextLines, 'MANDATORY WORKSPACE FILE ACTION PROTOCOL: When the user asks you to read, inspect, list, create, overwrite, move, rename, or delete a file/folder in the Executor Workspace, do NOT answer that you cannot perform the action merely because you are an AI. Arcsen provides a file-action handler. Instead, output exactly one machine-readable marker and no other text: [[ARCSEN_FILE_ACTION]]{"action":"delete","path":"relative/path"}[[/ARCSEN_FILE_ACTION]]. Replace the example action/path with the requested operation and actual relative workspace path. Supported actions: read, info, list, create, overwrite, move, rename, delete. Use path as source/target; add destination for move/rename and content (a JSON string) for create/overwrite. No Markdown fences. If the user names a file but its exact path is unknown, first request a list of the relevant directory using action=list; do not guess a path. For root listing use path="" only when All File access=Allow. Arcsen validates permissions and requests approval for mutating actions when Create Lua Script mode contains Verification. Do not claim success until Arcsen reports the result. If permissions/runtime deny the action, Arcsen will report the actual reason.')
+    table.insert(loc.API.EditorContextLines, 'Mutating file actions are create, overwrite, move, rename, delete. If Create Lua Script mode contains Verification, Arcsen will show an approval prompt before these mutations. Read/list/info actions do not modify files but are still limited by path permissions. Draft.json is always read-only. NEVER claim that file deletion or other workspace actions are impossible without trying the ARCSEN_FILE_ACTION protocol. NEVER emit executor filesystem API code (such as delfile/writefile/readfile) as a substitute; request operations only through the marker.')
     return table.concat(loc.API.EditorContextLines, "\n")
 end
 
@@ -2809,6 +2810,129 @@ loc.API.GetTemperatureMax = function(modelName)
     return 2.0
 end
 
+-- Daily token meter: aggregates provider-reported token usage across every model.
+-- If a provider omits usage metadata, a rough text-length estimate is counted and marked with ~.
+loc.API.DailyTokenUsageFile = "ExperienceSettings/Arcsen/DailyTokenUsage.json"
+loc.API.GetDailyUsageDate = function()
+    return os.date("%Y-%m-%d")
+end
+loc.API.FormatTokenCount = function(value)
+    value = tostring(math.max(0, math.floor(tonumber(value) or 0)))
+    local formatted = value:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+    return formatted
+end
+loc.API.EnsureDailyUsageFolder = function()
+    if type(isfolder) == "function" and type(makefolder) == "function" then
+        pcall(function() if not isfolder("ExperienceSettings") then makefolder("ExperienceSettings") end end)
+        pcall(function() if not isfolder("ExperienceSettings/Arcsen") then makefolder("ExperienceSettings/Arcsen") end end)
+    end
+end
+loc.API.SaveDailyTokenUsage = function()
+    if type(writefile) ~= "function" then return false end
+    loc.API.EnsureDailyUsageFolder()
+    loc.API.DailyUsageSaveOK, loc.API.DailyUsageSaveError = pcall(function()
+        writefile(loc.API.DailyTokenUsageFile, s.HttpService:JSONEncode(loc.API.DailyTokenUsage))
+    end)
+    return loc.API.DailyUsageSaveOK == true
+end
+loc.API.RefreshDailyTokenUsage = function()
+    if type(loc.API.DailyUsageRefreshDay) == "function" then loc.API.DailyUsageRefreshDay() end
+    if loc.API.DailyTokenUsageValue and loc.API.DailyTokenUsageValue.Parent then
+        loc.API.DailyTokenUsagePrefix = (tonumber(loc.API.DailyTokenUsage.EstimatedTokens) or 0) > 0 and "~" or ""
+        loc.API.DailyTokenUsageValue.Text = loc.API.DailyTokenUsagePrefix .. loc.API.FormatTokenCount(loc.API.DailyTokenUsage.TotalTokens) .. " tokens"
+    end
+    if loc.API.DailyTokenUsageCaption and loc.API.DailyTokenUsageCaption.Parent then
+        loc.API.DailyTokenUsageCaption.Text = "All models • " .. tostring(tonumber(loc.API.DailyTokenUsage.Requests) or 0) .. " requests • resets daily"
+    end
+end
+loc.API.DailyUsageRefreshDay = function()
+    loc.API.DailyTokenUsage = type(loc.API.DailyTokenUsage) == "table" and loc.API.DailyTokenUsage or {}
+    if tostring(loc.API.DailyTokenUsage.Date or "") ~= loc.API.GetDailyUsageDate() then
+        loc.API.DailyTokenUsage = {
+            Date = loc.API.GetDailyUsageDate(),
+            TotalTokens = 0,
+            ExactTokens = 0,
+            EstimatedTokens = 0,
+            Requests = 0,
+            ByProvider = {}
+        }
+        loc.API.SaveDailyTokenUsage()
+    end
+end
+loc.API.LoadDailyTokenUsage = function()
+    loc.API.DailyTokenUsage = {
+        Date = loc.API.GetDailyUsageDate(),
+        TotalTokens = 0,
+        ExactTokens = 0,
+        EstimatedTokens = 0,
+        Requests = 0,
+        ByProvider = {}
+    }
+    loc.API.EnsureDailyUsageFolder()
+    if type(isfile) == "function" and type(readfile) == "function" then
+        loc.API.DailyUsageExistsOK, loc.API.DailyUsageExists = pcall(isfile, loc.API.DailyTokenUsageFile)
+        if loc.API.DailyUsageExistsOK and loc.API.DailyUsageExists then
+            loc.API.DailyUsageReadOK, loc.API.DailyUsageReadData = pcall(function()
+                return s.HttpService:JSONDecode(readfile(loc.API.DailyTokenUsageFile))
+            end)
+            if loc.API.DailyUsageReadOK and type(loc.API.DailyUsageReadData) == "table"
+                and tostring(loc.API.DailyUsageReadData.Date or "") == loc.API.GetDailyUsageDate() then
+                loc.API.DailyTokenUsage = loc.API.DailyUsageReadData
+            end
+        end
+    end
+    loc.API.DailyTokenUsage.TotalTokens = math.max(0, math.floor(tonumber(loc.API.DailyTokenUsage.TotalTokens) or 0))
+    loc.API.DailyTokenUsage.ExactTokens = math.max(0, math.floor(tonumber(loc.API.DailyTokenUsage.ExactTokens) or 0))
+    loc.API.DailyTokenUsage.EstimatedTokens = math.max(0, math.floor(tonumber(loc.API.DailyTokenUsage.EstimatedTokens) or 0))
+    loc.API.DailyTokenUsage.Requests = math.max(0, math.floor(tonumber(loc.API.DailyTokenUsage.Requests) or 0))
+    loc.API.DailyTokenUsage.ByProvider = type(loc.API.DailyTokenUsage.ByProvider) == "table" and loc.API.DailyTokenUsage.ByProvider or {}
+    loc.API.SaveDailyTokenUsage()
+end
+loc.API.CountPromptTextCharacters = function(value)
+    local total = 0
+    if type(value) == "string" then return #value end
+    if type(value) ~= "table" then return 0 end
+    for key, child in pairs(value) do
+        if type(child) == "string" then
+            if key == "text" or key == "content" or key == "system" then total += #child end
+        elseif type(child) == "table" then
+            total += loc.API.CountPromptTextCharacters(child)
+        end
+    end
+    return total
+end
+loc.API.RecordDailyTokenUsage = function(provider, model, usage, requestBody, responseText)
+    loc.API.DailyUsageRefreshDay()
+    usage = type(usage) == "table" and usage or {}
+    loc.API.UsageInputTokens = tonumber(usage.prompt_tokens or usage.input_tokens or usage.promptTokenCount)
+    loc.API.UsageOutputTokens = tonumber(usage.completion_tokens or usage.output_tokens or usage.candidatesTokenCount)
+    loc.API.UsageTotalTokens = tonumber(usage.total_tokens or usage.totalTokenCount)
+    if not loc.API.UsageTotalTokens and (loc.API.UsageInputTokens or loc.API.UsageOutputTokens) then
+        loc.API.UsageTotalTokens = (loc.API.UsageInputTokens or 0) + (loc.API.UsageOutputTokens or 0)
+    end
+    loc.API.UsageWasEstimated = false
+    if not loc.API.UsageTotalTokens then
+        loc.API.UsagePromptChars = loc.API.CountPromptTextCharacters(requestBody)
+        loc.API.UsageEstimateChars = loc.API.UsagePromptChars + #(tostring(responseText or ""))
+        loc.API.UsageTotalTokens = math.max(1, math.ceil(loc.API.UsageEstimateChars / 4))
+        loc.API.UsageWasEstimated = true
+    end
+    loc.API.UsageTotalTokens = math.max(0, math.floor(loc.API.UsageTotalTokens))
+    loc.API.DailyTokenUsage.TotalTokens = (tonumber(loc.API.DailyTokenUsage.TotalTokens) or 0) + loc.API.UsageTotalTokens
+    if loc.API.UsageWasEstimated then
+        loc.API.DailyTokenUsage.EstimatedTokens = (tonumber(loc.API.DailyTokenUsage.EstimatedTokens) or 0) + loc.API.UsageTotalTokens
+    else
+        loc.API.DailyTokenUsage.ExactTokens = (tonumber(loc.API.DailyTokenUsage.ExactTokens) or 0) + loc.API.UsageTotalTokens
+    end
+    loc.API.DailyTokenUsage.Requests = (tonumber(loc.API.DailyTokenUsage.Requests) or 0) + 1
+    loc.API.DailyTokenUsage.ByProvider = type(loc.API.DailyTokenUsage.ByProvider) == "table" and loc.API.DailyTokenUsage.ByProvider or {}
+    loc.API.UsageProviderKey = tostring(provider or "Unknown") .. "/" .. tostring(model or "Unknown")
+    loc.API.DailyTokenUsage.ByProvider[loc.API.UsageProviderKey] = (tonumber(loc.API.DailyTokenUsage.ByProvider[loc.API.UsageProviderKey]) or 0) + loc.API.UsageTotalTokens
+    loc.API.SaveDailyTokenUsage()
+    loc.API.RefreshDailyTokenUsage()
+end
+loc.API.LoadDailyTokenUsage()
+
 loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(frame)
     ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
 
@@ -2843,6 +2967,50 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
             end
         end
     )
+
+    loc.API.DailyTokenUsageRow = Instance.new("Frame")
+    loc.API.DailyTokenUsageRow.Name = "DailyTokenUsage"
+    loc.API.DailyTokenUsageRow.Size = UDim2.new(1, 0, 0, 42)
+    loc.API.DailyTokenUsageRow.BackgroundColor3 = Color3.fromRGB(88, 88, 88)
+    loc.API.DailyTokenUsageRow.BackgroundTransparency = 0.25
+    loc.API.DailyTokenUsageRow.BorderMode = Enum.BorderMode.Inset
+    loc.API.DailyTokenUsageRow.BorderSizePixel = 3
+    loc.API.DailyTokenUsageRow.Parent = frame
+    Corner(0, 5, loc.API.DailyTokenUsageRow)
+    loc.API.DailyTokenUsageLabel = Instance.new("TextLabel")
+    loc.API.DailyTokenUsageLabel.Name = "Title"
+    loc.API.DailyTokenUsageLabel.BackgroundTransparency = 1
+    loc.API.DailyTokenUsageLabel.Position = UDim2.new(0, 6, 0, 1)
+    loc.API.DailyTokenUsageLabel.Size = UDim2.new(0.57, -6, 0, 20)
+    loc.API.DailyTokenUsageLabel.Text = "Total token used today"
+    loc.API.DailyTokenUsageLabel.TextColor3 = Color3.new(1, 1, 1)
+    loc.API.DailyTokenUsageLabel.TextScaled = true
+    loc.API.DailyTokenUsageLabel.TextXAlignment = Enum.TextXAlignment.Left
+    loc.API.DailyTokenUsageLabel.Parent = loc.API.DailyTokenUsageRow
+    loc.API.DailyTokenUsageValue = Instance.new("TextLabel")
+    loc.API.DailyTokenUsageValue.Name = "Value"
+    loc.API.DailyTokenUsageValue.BackgroundTransparency = 1
+    loc.API.DailyTokenUsageValue.Position = UDim2.new(0.57, 0, 0, 1)
+    loc.API.DailyTokenUsageValue.Size = UDim2.new(0.43, -6, 0, 20)
+    loc.API.DailyTokenUsageValue.Text = "0 tokens"
+    loc.API.DailyTokenUsageValue.TextColor3 = Color3.fromRGB(145, 255, 165)
+    loc.API.DailyTokenUsageValue.TextScaled = true
+    loc.API.DailyTokenUsageValue.TextXAlignment = Enum.TextXAlignment.Right
+    loc.API.DailyTokenUsageValue.Parent = loc.API.DailyTokenUsageRow
+    loc.API.DailyTokenUsageCaption = Instance.new("TextLabel")
+    loc.API.DailyTokenUsageCaption.Name = "Caption"
+    loc.API.DailyTokenUsageCaption.BackgroundTransparency = 1
+    loc.API.DailyTokenUsageCaption.Position = UDim2.new(0, 6, 0, 21)
+    loc.API.DailyTokenUsageCaption.Size = UDim2.new(1, -12, 0, 16)
+    loc.API.DailyTokenUsageCaption.Text = "All models • 0 requests • resets daily"
+    loc.API.DailyTokenUsageCaption.TextColor3 = Color3.fromRGB(225, 225, 225)
+    loc.API.DailyTokenUsageCaption.TextScaled = true
+    loc.API.DailyTokenUsageCaption.TextXAlignment = Enum.TextXAlignment.Left
+    loc.API.DailyTokenUsageCaption.Parent = loc.API.DailyTokenUsageRow
+    loc.API.RefreshDailyTokenUsage()
+    frame:GetPropertyChangedSignal("Visible"):Connect(function()
+        if frame.Visible then loc.API.RefreshDailyTokenUsage() end
+    end)
 
     loc.API.Rows.Key = o(frame, "None", "Put API here", false, false, "", false, true, "Paste API key",
         function(ui)
@@ -3519,6 +3687,15 @@ loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
         loc.API.ResponseText = ""
         pcall(function() loc.API.ResponseText = loc.API.ContentText(loc.API.ResponseData.choices[1].message.content) end)
     end
+    loc.API.ResponseUsage = type(loc.API.ResponseData.usage) == "table" and loc.API.ResponseData.usage
+        or (type(loc.API.ResponseData.usageMetadata) == "table" and loc.API.ResponseData.usageMetadata or {})
+    loc.API.RecordDailyTokenUsage(
+        loc.API.RequestProvider,
+        loc.API.RequestModel,
+        loc.API.ResponseUsage,
+        loc.API.RequestBody,
+        loc.API.ResponseText
+    )
     if not tostring(loc.API.ResponseText or ""):match("%S") then
         error("The provider returned an empty response. Check whether the selected model name is supported by your API key.")
     end
@@ -3766,6 +3943,13 @@ loc.API.DrawMessage = function(chatID, index, message)
             end
             loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
                 .. ' <font color="rgb(170,170,170)">• ' .. tostring(loc.API.HereChatTimestampText) .. '</font>'
+        end
+        if tostring(message.experienceName or ""):match("%S") then
+            loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
+                .. ' <font color="rgb(170,170,170)">• ' .. tostring(message.experienceName) .. '</font>'
+        elseif tonumber(message.placeId) then
+            loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
+                .. ' <font color="rgb(170,170,170)">• Place ' .. tostring(math.floor(tonumber(message.placeId))) .. '</font>'
         end
         return meg(
             tostring(message.text or ""),
@@ -5844,7 +6028,7 @@ loc.API.SendMessage = function(rawText)
         end
         loc.API.HereChatCore = loc.API.ArcsenCommand
         if type(loc.API.HereChatCore) ~= "table" or type(loc.API.HereChatCore.sendMessage) ~= "function" then
-            meg("HereChat sending is unavailable. Update ArcsenCommand-Module.lua to v0.5.0.", nil, "Center", true, 255, 90, 90)
+            meg("HereChat sending is unavailable. Update ArcsenCommand-Module.lua to v0.5.2.", nil, "Center", true, 255, 90, 90)
             return false
         end
         loc.API.HereChatCallOK, loc.API.HereChatSendResult, loc.API.HereChatSendReason = pcall(
@@ -6007,6 +6191,8 @@ loc.API.SaveChats = function()
                 displayName = savedMessage.displayName,
                 userId = savedMessage.userId,
                 teamName = savedMessage.teamName,
+                experienceName = savedMessage.experienceName,
+                placeId = savedMessage.placeId,
                 teamR = savedMessage.teamR,
                 teamG = savedMessage.teamG,
                 teamB = savedMessage.teamB,
@@ -6756,7 +6942,7 @@ loc.API.ChatOptionRows.DisplayTimeAs = addoptions(
 loc.API.ChatOptionRows.DisplayTimeAs.Box.Text = loc.API.DisplayTimeFormat
 
 -- Message Counter also tracks issys=true meg() messages; HereChat messages include saved timestamps.
--- ArcsenCommand bridge + bidirectional HereChat (Module v0.5.0)
+-- ArcsenCommand bridge + bidirectional HereChat (Module v0.5.2)
 do
     local shared = type(getgenv) == "function" and getgenv() or nil
     local commandCore = type(shared) == "table" and shared.ArcsenCommand or nil
@@ -6764,7 +6950,8 @@ do
     -- Reload an older module that does not expose the HereChat tab lifecycle API.
     if type(commandCore) ~= "table"
         or type(commandCore.setOnHereChatChanged) ~= "function"
-        or type(commandCore.sendMessage) ~= "function" then
+        or type(commandCore.sendMessage) ~= "function"
+        or (tonumber(tostring(commandCore.version or ""):match("^0%.5%.(%d+)$")) or 0) < 2 then
         commandCore = nil
         local ok, result = pcall(function()
             if type(loadstring) ~= "function" then
@@ -6789,7 +6976,7 @@ do
                 and type(returned.sendMessage) == "function" then
                 return returned
             end
-            error("ArcsenCommand-Module.lua is outdated. Upload v0.5.0 or newer to GitHub first.")
+            error("ArcsenCommand-Module.lua is outdated. Upload v0.5.2 or newer to GitHub first.")
         end)
 
         if ok then
@@ -6872,7 +7059,7 @@ do
             local displayName = tostring(metadata.displayName or metadata.username or "Unknown")
             local username = tostring(metadata.username or displayName)
             local userId = tonumber(metadata.userId)
-            local header = escapeHeaderText(displayName) .. " (@" .. escapeHeaderText(username) .. ")"
+            local header = "<b>" .. escapeHeaderText(displayName) .. "</b> (@" .. escapeHeaderText(username) .. ")"
             if userId then
                 header = header .. " (" .. tostring(math.floor(userId)) .. ")"
             end
@@ -6882,8 +7069,10 @@ do
                 local tr = math.clamp(tonumber(metadata.teamR) or 255, 0, 255)
                 local tg = math.clamp(tonumber(metadata.teamG) or 255, 0, 255)
                 local tb = math.clamp(tonumber(metadata.teamB) or 255, 0, 255)
-                header = header .. ' <font color="rgb(' .. math.floor(tr) .. ',' .. math.floor(tg) .. ',' .. math.floor(tb) .. ')">| ' .. escapeHeaderText(teamName) .. '</font>'
+                header = header .. ' <font color="rgb(' .. math.floor(tr) .. ',' .. math.floor(tg) .. ',' .. math.floor(tb) .. ')">| <b><i>' .. escapeHeaderText(teamName) .. '</i></b></font>'
             end
+            local experienceName = tostring(metadata.experienceName or (tonumber(metadata.placeId) and ("Place " .. tostring(math.floor(tonumber(metadata.placeId)))) or "Unknown Experience"))
+            local safeExperienceName = escapeHeaderText(experienceName)
 
             local record = {
                 role = "herechat",
@@ -6893,6 +7082,8 @@ do
                 displayName = displayName,
                 userId = userId,
                 teamName = teamName ~= "" and teamName or nil,
+                experienceName = safeExperienceName,
+                placeId = tonumber(metadata.placeId),
                 teamR = tonumber(metadata.teamR),
                 teamG = tonumber(metadata.teamG),
                 teamB = tonumber(metadata.teamB),
