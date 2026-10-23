@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.95 Remake ",
+	sion = " UIs 7.1.96 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -69,7 +69,8 @@ local ver = {
 (:12/9/2026 | 4:04 pm: A) Added Gemini 3.8 flash, added more modelswitch add adjust ScrollingFrame.
 (:22/10/2026 | 3:39 am: B) Big update remaked of UIs 7.1.0 Remake is here!
 (:23/10/2026 | 8:32 am: A) Added hierarchical workspace file permissions under Allow AI (Create Lua Script / Modify File / All File access).
-(:23/10/2026: A) Restored daily total-token tracking with date rollover and added HereChat experience-name metadata (Module v0.5.2).]],
+(:23/10/2026: A) Restored daily total-token tracking with date rollover and added HereChat experience-name metadata (Module v0.5.2).
+(:24/10/2026: F) Neutral game-name header; single expiring New message marker; plain-text AI tab-title validation.]],
 }
 
 ------------------------------------------------------------------------------------------
@@ -460,6 +461,9 @@ do
     gpt:GetPropertyChangedSignal("Position"):Connect(function()
         if loc.IsArcsenChatOpen() then
             loc.ResetMessageCounter()
+            if type(loc.API.ClearNewMessageMarker) == "function" then
+                loc.API.ClearNewMessageMarker(tostring(loc.API.ActiveChatID or ""))
+            end
         else
             loc.UpdateMessageCounter()
         end
@@ -3531,6 +3535,21 @@ end
 -- history, so the notification marker is never sent to an AI provider.
 loc.API.ChatTabBlinkStates = loc.API.ChatTabBlinkStates or setmetatable({}, {__mode = "k"})
 loc.API.PendingNewMessageMarkers = loc.API.PendingNewMessageMarkers or {}
+loc.API.NewMessageMarkerStates = loc.API.NewMessageMarkerStates or {}
+
+loc.API.ClearNewMessageMarker = function(chatID)
+    chatID = tostring(chatID or "")
+    loc.API.PendingNewMessageMarkers[chatID] = nil
+    loc.API.ClearMarkerState = loc.API.NewMessageMarkerStates[chatID]
+    if loc.API.ClearMarkerState then
+        if loc.API.ClearMarkerState.Frame and loc.API.ClearMarkerState.Frame.Parent then
+            loc.API.ClearMarkerState.Frame:Destroy()
+        end
+        loc.API.ClearMarkerState.Frame = nil
+        loc.API.NewMessageMarkerStates[chatID] = nil
+    end
+    return loc.API.ClearMarkerState ~= nil
+end
 
 loc.API.BlinkChatTab = function(chatID)
     chatID = tostring(chatID or "")
@@ -3599,10 +3618,35 @@ loc.API.NotifyNewChatMessage = function(chatID, firstMessageIndex)
         and loc.IsArcsenChatOpen()
     if isVisible then return false end
 
-    -- Keep the earliest unread point so a burst of messages produces one clear marker.
-    if tonumber(loc.API.PendingNewMessageMarkers[chatID]) == nil then
-        loc.API.PendingNewMessageMarkers[chatID] = math.max(1, math.floor(tonumber(firstMessageIndex) or #(chatData.Messages or {})))
+    -- One unread burst gets one marker. Further messages within its 10-second
+    -- lifetime do not add another marker or restart its timer.
+    local markerState = loc.API.NewMessageMarkerStates[chatID]
+    if markerState and tonumber(markerState.ExpiresAt) and os.clock() < markerState.ExpiresAt then
+        return true
     end
+
+    markerState = {
+        ExpiresAt = os.clock() + 10,
+        FirstMessageIndex = math.max(
+            1,
+            math.floor(tonumber(firstMessageIndex) or #(chatData.Messages or {}))
+        ),
+        Shown = false,
+        Frame = nil,
+    }
+    loc.API.NewMessageMarkerStates[chatID] = markerState
+    loc.API.PendingNewMessageMarkers[chatID] = markerState.FirstMessageIndex
+
+    task.delay(10, function()
+        if loc.API.NewMessageMarkerStates[chatID] ~= markerState then return end
+        loc.API.PendingNewMessageMarkers[chatID] = nil
+        if markerState.Frame and markerState.Frame.Parent then
+            markerState.Frame:Destroy()
+        end
+        markerState.Frame = nil
+        loc.API.NewMessageMarkerStates[chatID] = nil
+    end)
+
     if type(loc.API.BlinkChatTab) == "function" then
         loc.API.BlinkChatTab(chatID)
     end
@@ -4035,10 +4079,10 @@ loc.API.DrawMessage = function(chatID, index, message)
             local headerParts = {}
             local experienceName = tostring(message.experienceName or "")
             if experienceName:match("%S") then
-                -- experienceName was escaped when the message record was created.
-                table.insert(headerParts, "<b>" .. experienceName .. "</b>")
+                -- Keep the game name bold but neutral; it must not inherit HereChat's blue accent.
+                table.insert(headerParts, '<font color="rgb(255,255,255)"><b>' .. experienceName .. '</b></font>')
             elseif tonumber(message.placeId) then
-                table.insert(headerParts, "<b>Place " .. tostring(math.floor(tonumber(message.placeId))) .. "</b>")
+                table.insert(headerParts, '<font color="rgb(255,255,255)"><b>Place ' .. tostring(math.floor(tonumber(message.placeId))) .. '</b></font>')
             end
             if tonumber(message.timestamp) then
                 if tostring(loc.API.DisplayTimeFormat) == "12Hours (AM/PM)" then
@@ -4240,18 +4284,27 @@ loc.API.RenderChat = function(chatID, scrollToBottom)
         loc.API.RenderTimeMarkersAt(loc.API.ActiveChatID, 0)
     end
     loc.API.RenderChatWindowVisible = type(loc.IsArcsenChatOpen) == "function" and loc.IsArcsenChatOpen()
+    if loc.API.RenderChatWindowVisible and type(loc.API.ClearNewMessageMarker) == "function" then
+        -- Selecting/opening a chat marks its pending unread divider as read.
+        loc.API.ClearNewMessageMarker(loc.API.ActiveChatID)
+    end
     for renderIndex, renderMessage in ipairs(loc.API.ChatData[loc.API.ActiveChatID].Messages) do
-        local pendingMarkerIndex = tonumber(loc.API.PendingNewMessageMarkers[loc.API.ActiveChatID])
-        if pendingMarkerIndex and renderIndex >= pendingMarkerIndex then
-            -- Keep the marker pending if the window is still closed. The open-window
-            -- render will show it again and then acknowledge it visually.
-            if loc.API.RenderChatWindowVisible then
-                loc.API.PendingNewMessageMarkers[loc.API.ActiveChatID] = nil
-            end
-            meg("New message", "New message", "Center", true, 115, 190, 255, nil, {
-                NoCounter = true,
-                IsNewMessageMarker = true,
-            })
+        loc.API.NewMessageMarkerState = loc.API.NewMessageMarkerStates[loc.API.ActiveChatID]
+        loc.API.PendingMarkerIndex = loc.API.NewMessageMarkerState
+            and tonumber(loc.API.NewMessageMarkerState.FirstMessageIndex)
+            or tonumber(loc.API.PendingNewMessageMarkers[loc.API.ActiveChatID])
+        if loc.API.PendingMarkerIndex and renderIndex >= loc.API.PendingMarkerIndex
+            and loc.API.NewMessageMarkerState
+            and os.clock() < (tonumber(loc.API.NewMessageMarkerState.ExpiresAt) or 0)
+            and (not loc.API.NewMessageMarkerState.Frame or not loc.API.NewMessageMarkerState.Frame.Parent) then
+            -- Keep exactly one temporary divider at the first unread message.
+            -- If a redraw destroys its frame, rebuild that same divider once, never once per message.
+            loc.API.NewMessageMarkerState.Shown = true
+            loc.API.PendingNewMessageMarkers[loc.API.ActiveChatID] = nil
+            loc.API.NewMessageMarkerState.Frame = meg(
+                "New message", "New message", "Center", true, 115, 190, 255, nil,
+                {NoCounter = true, IsNewMessageMarker = true}
+            )
         end
         loc.API.DrawMessage(loc.API.ActiveChatID, renderIndex, renderMessage)
         if type(loc.API.RenderTimeMarkersAt) == "function" then
@@ -4292,15 +4345,39 @@ loc.API.TitleChat = function(chatID, firstMessage)
         loc.API.TitleConfig = table.clone(loc.API.Active)
         loc.API.TitleConfig.Token = 32
         loc.API.TitleConfig.Temperature = 0.2
-        loc.API.TitlePrompt = loc.API.BuildSystemPrompt() .. "\n\nTASK: Create a concise chat tab title (2 to 6 words). Return only the title, without quotes or punctuation. Do not answer the message itself."
+        -- Do not reuse BuildSystemPrompt() here: its executable marker syntax can leak
+        -- into short title generations (for example, a tab title that is just "[[").
+        loc.API.TitlePrompt = "You are a chat-tab title generator. Based only on the user's first message, create a useful, concise title of 2 to 6 words. Return one plain-text line only. Do not use square brackets, markers, code fences, quotation marks, Markdown, a 'Title:' prefix, or commentary. Do not answer the message itself."
         loc.API.TitleOK, loc.API.TitleResult = pcall(function()
-            return loc.API.Request({{role = "user", content = "Create a title for this chat based on this first message:\n" .. tostring(firstMessage or "")}}, loc.API.TitlePrompt, loc.API.TitleConfig)
+            return loc.API.Request({{role = "user", content = "Create a short tab title for this first message:\n" .. tostring(firstMessage or "")}}, loc.API.TitlePrompt, loc.API.TitleConfig)
         end)
         if loc.API.TitleOK and loc.API.ChatData[tostring(chatID)] then
-            loc.API.TitleResult = select(1, loc.API.ParseAssistantResponse(tostring(loc.API.TitleResult or "New Chat")))
-            loc.API.TitleResult = tostring(loc.API.TitleResult or "New Chat"):gsub("[%c]", " "):gsub("^%s+", ""):gsub("%s+$", "")
-            loc.API.TitleResult = loc.API.TitleResult:gsub('^"+', ""):gsub('"+$', ""):gsub("^'+", ""):gsub("'+$", "")
-            loc.API.TitleResult = loc.API.TitleResult:sub(1, 48)
+            loc.API.TitleResult = tostring(loc.API.TitleResult or "")
+            loc.API.TitleResult = loc.API.TitleResult:gsub("^%s*```[%w_%-]*%s*", ""):gsub("%s*```%s*$", "")
+            loc.API.TitleResult = loc.API.TitleResult:gsub("[%c]", " "):gsub("%s+", " ")
+            loc.API.TitleResult = loc.API.TitleResult:gsub("^%s*[Tt]itle%s*:%s*", "")
+            loc.API.TitleResult = loc.API.TitleResult:gsub("^%s*[-*#]+%s*", "")
+            loc.API.TitleResult = loc.API.TitleResult:gsub("^%s*['\"`]+", ""):gsub("['\"`]+%s*$", "")
+            loc.API.TitleResult = loc.API.TitleResult:gsub("^%[%[", ""):gsub("%]%]$", "")
+            loc.API.TitleResult = loc.API.TitleResult:gsub("^%s+", ""):gsub("%s+$", "")
+
+            -- Reject leaked control markers/brackets and use the first message as a fallback.
+            if loc.API.TitleResult:find("%[%[") or loc.API.TitleResult:find("%]%]")
+                or loc.API.TitleResult:find("ARCSEN_", 1, true)
+                or #loc.API.TitleResult < 2 or not loc.API.TitleResult:find("[%w]") then
+                loc.API.TitleFallback = tostring(firstMessage or "")
+                loc.API.TitleFallback = loc.API.TitleFallback:match("([^\r\n]+)") or ""
+                loc.API.TitleFallback = loc.API.TitleFallback:gsub("%[%[.-%]%]", " "):gsub("[%[%]<>]", " ")
+                loc.API.TitleFallback = loc.API.TitleFallback:gsub("[%c]", " "):gsub("%s+", " ")
+                loc.API.TitleFallback = loc.API.TitleFallback:gsub("^%s+", ""):gsub("%s+$", "")
+                loc.API.TitleFallback = loc.API.TitleFallback:sub(1, 48):gsub("%s+$", "")
+                if #loc.API.TitleFallback < 2 or not loc.API.TitleFallback:find("[%w]") then
+                    loc.API.TitleFallback = "New Chat"
+                end
+                loc.API.TitleResult = loc.API.TitleFallback
+            end
+
+            loc.API.TitleResult = loc.API.TitleResult:sub(1, 48):gsub("%s+$", "")
             if loc.API.TitleResult == "" then loc.API.TitleResult = "New Chat" end
             loc.API.ChatData[tostring(chatID)].Title = loc.API.TitleResult
             loc.API.ChatData[tostring(chatID)].TitleGenerated = true
