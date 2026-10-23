@@ -1,6 +1,6 @@
 --[[
     ArcsenCommand-Module.lua
-    Version: 0.5.2
+    Version: 0.5.3
 
     Purpose:
       - Command core only; creates no UI.
