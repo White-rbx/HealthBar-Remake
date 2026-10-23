@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.6 Remake ",
+	sion = " UIs 7.1.65 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2763,7 +2763,7 @@ loc.API.AllowAISettingsFrame = addset("AllowAI", "Allow AI", 255, 175, 85, funct
     description.TextWrapped = true
     description.TextXAlignment = Enum.TextXAlignment.Left
     description.TextYAlignment = Enum.TextYAlignment.Top
-    description.Text = "Choose whether AI-generated Lua may run. Verification modes ask first; modes without Verification can auto-run. Restricted modes use a narrow read-only API. Unrestricted-labelled modes expose a wider read-only API, but the protected CoreGui folder and unsafe APIs remain blocked. Ordinary questions work in every mode."
+    description.Text = "Choose whether AI-generated Lua may run. Verification modes show the script and wait for your approval. Restricted modes use read-only API checks. Verification + Unrestricted allows a broader Roblox API and normal instance changes after approval. CoreGui.ExperienceSettings stays blocked in every mode. Ordinary questions work in every mode."
     description.Parent = frame
 
     loc.API.AllowAIScriptModeRow = o(frame, "None", "Create Lua Script (Select)", false, false, "Don't", true, false, nil,
@@ -3663,7 +3663,7 @@ loc.API.TitleChat = function(chatID, firstMessage)
     end)
 end
 
--- AI Lua scripts are explicitly marked by the model, statically checked, and run in a read-only sandbox.
+-- AI Lua scripts use model-generated code, mode-specific validation, and a guarded runtime wrapper.
 loc.API.LuaScriptStartMarker = "[[ARCSEN_LUA_SCRIPT]]"
 loc.API.LuaScriptEndMarker = "[[/ARCSEN_LUA_SCRIPT]]"
 loc.API.LuaScriptMaxLength = 8000
@@ -3817,22 +3817,120 @@ loc.API.ValidateLuaScript = function(source, mode)
     if not loc.API.LuaCleanSource then return false, loc.API.LuaCleanError end
     for LuaToken in loc.API.LuaCleanSource:gmatch("[%a_][%w_]*") do
         loc.API.LuaTokenLower = LuaToken:lower()
-        if loc.API.LuaUnsafeTokens[loc.API.LuaTokenLower] then
-            if loc.API.LuaTokenLower == "for" or loc.API.LuaTokenLower == "while"
-                or loc.API.LuaTokenLower == "repeat" or loc.API.LuaTokenLower == "until"
-                or loc.API.LuaTokenLower == "break" or loc.API.LuaTokenLower == "continue" then
-                return false, "Loop syntax is not allowed (found '" .. LuaToken .. "')."
+        if loc.API.LuaTokenLower == "for" or loc.API.LuaTokenLower == "while"
+            or loc.API.LuaTokenLower == "repeat" or loc.API.LuaTokenLower == "until"
+            or loc.API.LuaTokenLower == "break" or loc.API.LuaTokenLower == "continue" then
+            return false, "Loop syntax is not allowed (found '" .. LuaToken .. "')."
+        end
+        if loc.API.LuaTokenLower == "function" and loc.API.LuaCandidatePolicy.restricted then
+            return false, "Function declarations/closures are blocked in Restricted mode."
+        end
+        if loc.API.LuaCandidatePolicy.restricted and loc.API.LuaUnsafeTokens[loc.API.LuaTokenLower] then
+            return false, "Restricted API/token is not allowed in this mode: " .. LuaToken
+        end
+        if not loc.API.LuaCandidatePolicy.restricted then
+            -- Keep executor escape hatches outside the generated script's environment.
+            if loc.API.LuaTokenLower == "loadstring" or loc.API.LuaTokenLower == "require"
+                or loc.API.LuaTokenLower == "getfenv" or loc.API.LuaTokenLower == "setfenv"
+                or loc.API.LuaTokenLower == "getgenv" or loc.API.LuaTokenLower == "getrenv"
+                or loc.API.LuaTokenLower == "getreg" or loc.API.LuaTokenLower == "debug"
+                or loc.API.LuaTokenLower == "shared" or loc.API.LuaTokenLower == "rawget"
+                or loc.API.LuaTokenLower == "rawset" or loc.API.LuaTokenLower == "getmetatable"
+                or loc.API.LuaTokenLower == "setmetatable" or loc.API.LuaTokenLower == "request"
+                or loc.API.LuaTokenLower == "http_request" or loc.API.LuaTokenLower == "syn"
+                or loc.API.LuaTokenLower == "crypt" or loc.API.LuaTokenLower == "writefile"
+                or loc.API.LuaTokenLower == "readfile" or loc.API.LuaTokenLower == "delfile"
+                or loc.API.LuaTokenLower == "listfiles" or loc.API.LuaTokenLower == "makefolder"
+                or loc.API.LuaTokenLower == "isfile" or loc.API.LuaTokenLower == "isfolder"
+                or loc.API.LuaTokenLower == "getcustomasset" or loc.API.LuaTokenLower == "hookfunction"
+                or loc.API.LuaTokenLower == "newcclosure" or loc.API.LuaTokenLower == "checkcaller"
+                or loc.API.LuaTokenLower == "getrawmetatable" or loc.API.LuaTokenLower == "setreadonly"
+                or loc.API.LuaTokenLower == "gethiddenproperty" or loc.API.LuaTokenLower == "sethiddenproperty" then
+                return false, "Executor escape API is not exposed to AI scripts: " .. LuaToken
             end
-            if loc.API.LuaTokenLower == "function" then
-                return false, "Function declarations/closures are blocked to prevent recursive or hidden loops."
-            end
-            return false, "Restricted API/token is not allowed: " .. LuaToken
         end
     end
     return true, nil
 end
 
--- Proxies expose readable data and a tiny method allow-list; writes, network, remote and async APIs are hidden.
+-- Runtime wrappers keep the protected folder guarded in every mode. Restricted mode is read-only;
+-- Unrestricted mode permits broader Roblox APIs and property writes, but never returns raw Instances.
+loc.API.LuaWrappedOriginals = setmetatable({}, {__mode = "k"})
+
+loc.API.WrapLuaRuntimeValue = function(value, depth)
+    depth = tonumber(depth) or 0
+    if depth > 16 then return nil end
+    local valueType = typeof(value)
+    if valueType == "Instance" then
+        if loc.API.IsProtectedExperienceSettings(value) then
+            loc.API.MarkProtectedAccess()
+            error("Blocked protected instance: CoreGui.ExperienceSettings", 2)
+        end
+        return loc.API.WrapLuaInstance(value, (tonumber(depth) or 0) + 1)
+    elseif valueType == "RBXScriptSignal" then
+        return loc.API.WrapLuaSignal(value, (tonumber(depth) or 0) + 1)
+    elseif type(value) == "table" then
+        local clone = {}
+        local count = 0
+        for k, v in pairs(value) do
+            count += 1
+            if count > 100 then break end
+            clone[loc.API.WrapLuaRuntimeValue(k, depth + 1)] = loc.API.WrapLuaRuntimeValue(v, depth + 1)
+        end
+        return clone
+    elseif value == nil or type(value) == "string" or type(value) == "number" or type(value) == "boolean" then
+        return value
+    elseif valueType == "Vector3" or valueType == "Vector2" or valueType == "Vector2int16"
+        or valueType == "Vector3int16" or valueType == "Color3" or valueType == "CFrame"
+        or valueType == "UDim" or valueType == "UDim2" or valueType == "BrickColor"
+        or valueType == "EnumItem" or valueType == "NumberRange" or valueType == "Rect"
+        or valueType == "Ray" or valueType == "Region3" or valueType == "Region3int16"
+        or valueType == "PhysicalProperties" or valueType == "DateTime" then
+        return value
+    end
+    return nil
+end
+
+loc.API.WrapLuaSignal = function(signal, depth)
+    return setmetatable({}, {
+        __metatable = "Arcsen guarded signal",
+        __index = function(_, key)
+            if key ~= "Wait" then
+                local policy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
+                if not (policy and not policy.restricted and (key == "Connect" or key == "Once")) then return nil end
+            end
+            if key == "Wait" then
+                return function()
+                    local packed = table.pack(signal:Wait())
+                    for i = 1, packed.n do packed[i] = loc.API.WrapLuaRuntimeValue(packed[i], depth) end
+                    if loc.API.LuaProtectedAccessDetected then error("Blocked protected instance: CoreGui.ExperienceSettings", 2) end
+                    return table.unpack(packed, 1, packed.n)
+                end
+            end
+            return function(_, callback, ...)
+                if type(callback) ~= "function" then error("Signal connection requires a callback function.", 2) end
+                local nativeMethod = signal[key]
+                local connection = nativeMethod(signal, function(...)
+                    if loc.API.LuaProtectedAccessDetected then error("Blocked protected instance: CoreGui.ExperienceSettings", 2) end
+                    return callback(...)
+                end, ...)
+                return connection
+            end
+        end
+    })
+end
+
+loc.API.LuaGuardedPCall = function(callback, ...)
+    local results = table.pack(pcall(callback, ...))
+    if loc.API.LuaProtectedAccessDetected then error("Blocked protected instance: CoreGui.ExperienceSettings", 2) end
+    return table.unpack(results, 1, results.n)
+end
+loc.API.LuaGuardedXPCall = function(callback, handler, ...)
+    local results = table.pack(xpcall(callback, handler, ...))
+    if loc.API.LuaProtectedAccessDetected then error("Blocked protected instance: CoreGui.ExperienceSettings", 2) end
+    return table.unpack(results, 1, results.n)
+end
+
 loc.API.WrapLuaInstance = function(instance, depth)
     if typeof(instance) ~= "Instance" then return instance end
     if loc.API.IsProtectedExperienceSettings(instance) then
@@ -3841,8 +3939,10 @@ loc.API.WrapLuaInstance = function(instance, depth)
     end
     depth = tonumber(depth) or 0
     if depth > 16 then return nil end
-    return setmetatable({}, {
-        __metatable = "Arcsen read-only instance",
+    local proxy = {}
+    loc.API.LuaWrappedOriginals[proxy] = instance
+    return setmetatable(proxy, {
+        __metatable = "Arcsen guarded instance",
         __tostring = function()
             local name = "Instance"
             local className = "Object"
@@ -3850,8 +3950,38 @@ loc.API.WrapLuaInstance = function(instance, depth)
             pcall(function() className = tostring(instance.ClassName) end)
             return className .. ": " .. name
         end,
-        __newindex = function()
-            error("Arcsen AI scripts are read-only. Instance properties cannot be changed.", 2)
+        __newindex = function(_, key, value)
+            if type(key) ~= "string" then error("Invalid Roblox property name.", 2) end
+            local policy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
+            if not policy or policy.restricted then
+                error("Arcsen Restricted mode is read-only. Choose Verification + Unrestricted to allow instance changes.", 2)
+            end
+            if instance == game:GetService("CoreGui") and key:lower() == "experiencesettings" then
+                loc.API.MarkProtectedAccess()
+                error("Blocked protected instance: CoreGui.ExperienceSettings", 2)
+            end
+            if typeof(value) == "table" and loc.API.LuaWrappedOriginals[value] then
+                value = loc.API.LuaWrappedOriginals[value]
+            end
+            local isFolder = false
+            local folderName = ""
+            local folderParent = nil
+            pcall(function()
+                isFolder = instance:IsA("Folder")
+                folderName = tostring(instance.Name)
+                folderParent = instance.Parent
+            end)
+            if isFolder and ((key == "Name" and tostring(value) == "ExperienceSettings" and folderParent == game:GetService("CoreGui"))
+                or (key == "Parent" and folderName == "ExperienceSettings" and value == game:GetService("CoreGui"))) then
+                loc.API.MarkProtectedAccess()
+                error("Blocked protected instance: CoreGui.ExperienceSettings", 2)
+            end
+            if typeof(value) == "Instance" and loc.API.IsProtectedExperienceSettings(value) then
+                loc.API.MarkProtectedAccess()
+                error("Blocked protected instance: CoreGui.ExperienceSettings", 2)
+            end
+            local ok, err = pcall(function() instance[key] = value end)
+            if not ok then error("Roblox property write failed: " .. tostring(err), 2) end
         end,
         __index = function(_, key)
             if type(key) ~= "string" then return nil end
@@ -3859,32 +3989,37 @@ loc.API.WrapLuaInstance = function(instance, depth)
                 loc.API.MarkProtectedAccess()
                 error("Blocked protected instance: CoreGui.ExperienceSettings", 2)
             end
+            local policy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
+            local unrestricted = policy and not policy.restricted
             if key == "GetService" and instance == game then
                 return function(_, serviceName)
                     serviceName = tostring(serviceName or "")
                     loc.API.ActiveLuaPolicy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
                     loc.API.ActiveServiceAllowList = loc.API.ActiveLuaPolicy.restricted and loc.API.LuaSafeServices or loc.API.LuaSafeServicesMidRisk
-                    if not loc.API.ActiveServiceAllowList[serviceName] then
-                        error("This Roblox service is not exposed in the selected Allow AI mode: " .. serviceName, 2)
+                    if loc.API.ActiveLuaPolicy.restricted and not loc.API.ActiveServiceAllowList[serviceName] then
+                        error("This Roblox service is not exposed in Restricted mode: " .. serviceName, 2)
                     end
-                    return loc.API.WrapLuaInstance(game:GetService(serviceName), depth + 1)
+                    local ok, service = pcall(function() return game:GetService(serviceName) end)
+                    if not ok or not service then error("Unable to get Roblox service: " .. serviceName, 2) end
+                    return loc.API.WrapLuaInstance(service, depth + 1)
                 end
-            elseif key == "FindFirstChild" or key == "FindFirstChildOfClass" then
-                return function(_, query)
-                    local found = nil
-                    if instance == game:GetService("CoreGui") and key == "FindFirstChild"
-                        and tostring(query or ""):lower() == "experiencesettings" then
+            elseif key == "FindFirstChild" or key == "FindFirstChildOfClass" or key == "WaitForChild" then
+                return function(_, query, timeout)
+                    local queryName = tostring(query or "")
+                    if instance == game:GetService("CoreGui") and key ~= "FindFirstChildOfClass"
+                        and queryName:lower() == "experiencesettings" then
                         loc.API.MarkProtectedAccess()
                         error("Blocked protected instance: CoreGui.ExperienceSettings", 2)
                     end
-                    local ok = pcall(function()
-                        if key == "FindFirstChild" then
-                            found = instance:FindFirstChild(tostring(query or ""))
-                        else
-                            found = instance:FindFirstChildOfClass(tostring(query or ""))
-                        end
+                    local found
+                    local ok, result = pcall(function()
+                        if key == "FindFirstChild" then return instance:FindFirstChild(queryName)
+                        elseif key == "FindFirstChildOfClass" then return instance:FindFirstChildOfClass(queryName)
+                        else return instance:WaitForChild(queryName, timeout) end
                     end)
-                    if ok and found then
+                    if not ok then error(tostring(result), 2) end
+                    found = result
+                    if found then
                         if loc.API.IsProtectedExperienceSettings(found) then
                             loc.API.MarkProtectedAccess()
                             error("Blocked protected instance: CoreGui.ExperienceSettings", 2)
@@ -3893,17 +4028,19 @@ loc.API.WrapLuaInstance = function(instance, depth)
                     end
                     return nil
                 end
-            elseif key == "GetChildren" then
+            elseif key == "GetChildren" or key == "GetDescendants" then
                 return function()
+                    local ok, children = pcall(function() return instance[key](instance) end)
+                    if not ok or type(children) ~= "table" then return {} end
                     local result = {}
-                    local ok, children = pcall(function() return instance:GetChildren() end)
-                    if not ok or type(children) ~= "table" then return result end
-                    for childIndex = 1, math.min(#children, 100) do
+                    for childIndex = 1, #children do
                         if loc.API.IsProtectedExperienceSettings(children[childIndex]) then
                             loc.API.MarkProtectedAccess()
                             error("Blocked protected instance: CoreGui.ExperienceSettings", 2)
                         end
-                        result[childIndex] = loc.API.WrapLuaInstance(children[childIndex], depth + 1)
+                        if childIndex <= 300 then
+                            result[childIndex] = loc.API.WrapLuaInstance(children[childIndex], depth + 1)
+                        end
                     end
                     return result
                 end
@@ -3921,34 +4058,31 @@ loc.API.WrapLuaInstance = function(instance, depth)
                 return function(_, attributeName)
                     local ok, result = pcall(function() return instance:GetAttribute(tostring(attributeName or "")) end)
                     if not ok then return nil end
-                    local resultType = typeof(result)
-                    if result == nil or type(result) == "string" or type(result) == "number" or type(result) == "boolean"
-                        or resultType == "Vector3" or resultType == "Vector2" or resultType == "Color3"
-                        or resultType == "CFrame" or resultType == "UDim" or resultType == "UDim2"
-                        or resultType == "BrickColor" or resultType == "EnumItem" then
-                        return result
-                    end
-                    return nil
+                    return loc.API.WrapLuaRuntimeValue(result, depth + 1)
                 end
             end
 
             local ok, property = pcall(function() return instance[key] end)
             if not ok then return nil end
             local propertyType = typeof(property)
-            if propertyType == "Instance" then
-                if loc.API.IsProtectedExperienceSettings(property) then
-                    loc.API.MarkProtectedAccess()
-                    error("Blocked protected instance: CoreGui.ExperienceSettings", 2)
+            if propertyType == "Instance" then return loc.API.WrapLuaRuntimeValue(property, depth + 1) end
+            if propertyType == "RBXScriptSignal" then return loc.API.WrapLuaSignal(property, depth + 1) end
+            if type(property) == "function" and unrestricted then
+                return function(_, ...)
+                    if loc.API.LuaProtectedAccessDetected then error("Blocked protected instance: CoreGui.ExperienceSettings", 2) end
+                    local results = table.pack(property(instance, ...))
+                    if loc.API.LuaProtectedAccessDetected then error("Blocked protected instance: CoreGui.ExperienceSettings", 2) end
+                    for resultIndex = 1, results.n do
+                        results[resultIndex] = loc.API.WrapLuaRuntimeValue(results[resultIndex], depth + 1)
+                    end
+                    return table.unpack(results, 1, results.n)
                 end
-                return loc.API.WrapLuaInstance(property, depth + 1)
-            elseif property == nil or type(property) == "string" or type(property) == "number" or type(property) == "boolean" then
-                return property
-            elseif propertyType == "Vector3" or propertyType == "Vector2" or propertyType == "Color3"
+            end
+            if property == nil or type(property) == "string" or type(property) == "number" or type(property) == "boolean" then return property end
+            if propertyType == "Vector3" or propertyType == "Vector2" or propertyType == "Color3"
                 or propertyType == "CFrame" or propertyType == "UDim" or propertyType == "UDim2"
                 or propertyType == "BrickColor" or propertyType == "EnumItem" or propertyType == "NumberRange"
-                or propertyType == "Rect" then
-                return property
-            end
+                or propertyType == "Rect" then return property end
             return nil
         end
     })
@@ -3999,12 +4133,17 @@ loc.API.RunAIGeneratedLua = function(source, mode)
     }
     loc.API.LuaSandbox = {
         assert=assert, error=error, ipairs=ipairs, pairs=pairs, next=next,
-        pcall=pcall, select=select, tonumber=tonumber, tostring=tostring,
-        type=type, typeof=typeof, xpcall=xpcall,
+        pcall=loc.API.LuaGuardedPCall, select=select, tonumber=tonumber, tostring=tostring,
+        type=type, typeof=typeof, xpcall=loc.API.LuaGuardedXPCall,
         math=loc.API.LuaSafeMath, string=loc.API.LuaSafeString, table=loc.API.LuaSafeTable,
         Enum=Enum, Vector2=Vector2, Vector3=Vector3, CFrame=CFrame,
         UDim=UDim, UDim2=UDim2, Color3=Color3, BrickColor=BrickColor,
         TweenInfo=TweenInfo, RaycastParams=RaycastParams,
+        Instance={new=function(className)
+            local policy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
+            if not policy or policy.restricted then error("Instance.new is available only in Unrestricted mode.", 2) end
+            return loc.API.WrapLuaInstance(Instance.new(tostring(className or "")), 0)
+        end},
         game=loc.API.WrapLuaInstance(game, 0),
         workspace=loc.API.WrapLuaInstance(workspace, 0),
         print=loc.API.LuaSafePrint,
@@ -4012,7 +4151,7 @@ loc.API.RunAIGeneratedLua = function(source, mode)
     }
     loc.API.LuaSetEnvironmentOK, loc.API.LuaSetEnvironmentError = pcall(setfenv, loc.API.LuaChunk, loc.API.LuaSandbox)
     if not loc.API.LuaSetEnvironmentOK then
-        return false, "Could not create the restricted Lua environment: " .. tostring(loc.API.LuaSetEnvironmentError)
+        return false, "Could not create the guarded Lua environment: " .. tostring(loc.API.LuaSetEnvironmentError)
     end
     loc.API.LuaExecuteOK, loc.API.LuaReturnValue = pcall(loc.API.LuaChunk)
     if loc.API.LuaProtectedAccessDetected then
@@ -4176,6 +4315,9 @@ loc.API.ProcessLuaScriptResponse = function(chatID, code, extractionError, mode,
         return "blocked"
     end
 
+    if loc.API.ProcessMode == "Allow (Verification + Unrestricted (Mid Risk))" then
+        description = tostring(description or "") .. "\n\nUnrestricted access enabled: this script may change Roblox instance properties or call broader Roblox APIs. Review the code and its effects before approving. CoreGui.ExperienceSettings remains prohibited."
+    end
     loc.API.LuaActionExplanation = tostring(description or ""):gsub("^%s+", ""):gsub("%s+$", "")
     if loc.API.LuaActionExplanation == "" then
         loc.API.LuaActionExplanation = "I'll prepare this Lua action for your review."
@@ -4329,7 +4471,7 @@ loc.API.GenerateResponse = function(chatID, userIndex)
             .. "\n\nARCSEN ACTION POLICY: The user's setting is Don't. Do not generate an executable-script marker, do not execute code, and do not give an external executor/Script Hub workaround for an action. Answer normal informational questions naturally. If the request needs a runtime lookup or executable action, explain that Allow AI is disabled and ask the user to enable it in Settings → Allow AI → Create Lua Script."
     else
         loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
-            .. "\n\nARCSEN ACTION / LUA POLICY (current mode: " .. loc.API.AllowAIModeForRequest .. "): For a request that needs runtime Roblox data or an executable Lua action, begin with one brief natural-language sentence explaining what you intend to do, then return exactly one script wrapped by [[ARCSEN_LUA_SCRIPT]] and [[/ARCSEN_LUA_SCRIPT]], with a single fenced ```lua block inside the wrapper. Keep all explanation outside the wrapper and never put another code block outside it. For a game-title request, use return 'The title of the game is ' .. game.Name. Do not emit a script wrapper for ordinary informational questions. HARD RESTRICTIONS IN EVERY MODE: no for/while/repeat/until/break/continue, no function declarations or anonymous functions, no task/coroutine/async APIs, no network/filesystem/require/dynamic compilation, no RemoteEvent/RemoteFunction calls, no Instance mutation, and never access CoreGui.ExperienceSettings; keep the script short. Restricted modes only expose the small read-only service allow-list. Unrestricted-labelled modes expose a broader read-only service allow-list, not the raw executor environment. Modes containing Verification must wait for user approval; modes without Verification are allowed to auto-run after validation. Do not claim success before the client reports a result. If an operation is blocked or unsupported, explain that honestly and never tell the user to run equivalent code in an external executor or Script Hub."
+            .. "\n\nARCSEN ACTION / LUA POLICY (current mode: " .. loc.API.AllowAIModeForRequest .. "): For a request that needs runtime Roblox data or an executable Lua action, before responding, do a safety review of the proposed code for unintended side effects, permission problems, and obvious errors; do not reveal private chain-of-thought. Begin with one brief natural-language sentence explaining the intended action and safety-relevant effects, then return exactly one script wrapped by [[ARCSEN_LUA_SCRIPT]] and [[/ARCSEN_LUA_SCRIPT]], with a single fenced ```lua block inside the wrapper. Keep explanation outside the wrapper and never put another code block outside it. Do not emit a script wrapper for ordinary informational questions. Never access CoreGui.ExperienceSettings in any form; that folder is always prohibited. Do not use for/while/repeat/until/break/continue loops. Restricted modes use the read-only restricted API and its stricter token checks. Unrestricted-labelled modes may use normal Roblox APIs, Wait/WaitForChild, and Instance property changes; the client still wraps returned Instances and blocks CoreGui.ExperienceSettings. Do not use executor escape hatches, dynamic compilation, filesystem APIs, or external HTTP/network APIs. For Verification modes, show the code for user review and do not execute before approval; modes without Verification may auto-run only after checks pass. Treat user approval as consent to the shown script, not as a reason to conceal meaningful side effects. Do not claim success before the client reports a result. If a request is unsafe or the code has unexpected effects, explain that and propose a safer alternative."
     end
     loc.API.SetChatState(chatID, "Normal")
     loc.API.MessagesToSend = {}
