@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.69 Remake ",
+	sion = " UIs 7.1.7 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2820,7 +2820,7 @@ loc.API.UpdateUsageLabels = function()
 
     if loc.API.Rows.UsageNote then
         if loc.API.HasUsageEstimate then
-            loc.API.Rows.UsageNote.Text = "Speculative · tracked tokens for " .. loc.API.CurrentUsageModel
+            loc.API.Rows.UsageNote.Text = "Speculative context estimate · tracked tokens for " .. loc.API.CurrentUsageModel
         else
             loc.API.Rows.UsageNote.Text = "Speculation unavailable · waiting for reported token data"
         end
@@ -2865,7 +2865,7 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
                 )
                 if loc.API.Rows and loc.API.Rows.Token and loc.API.Rows.Token.Input then
                     loc.API.Rows.Token.Input.Text = tostring(loc.API.Draft.Token)
-                    loc.API.Rows.Token.Label.Text = "Token limit (max " .. tostring(loc.API.GetModelMaxTokens(value)) .. ")"
+                    loc.API.Rows.Token.Label.Text = "Output token limit (max " .. tostring(loc.API.GetModelMaxTokens(value)) .. ")"
                 end
                 if loc.API.Rows and loc.API.Rows.Temperature and loc.API.Rows.Temperature.Input then
                     loc.API.Draft.Temperature = math.clamp(
@@ -2957,7 +2957,7 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
     loc.API.Rows.TokenUsageTitle.BackgroundTransparency = 1
     loc.API.Rows.TokenUsageTitle.Position = UDim2.new(0, 6, 0, 1)
     loc.API.Rows.TokenUsageTitle.Size = UDim2.new(0.52, -6, 0, 18)
-    loc.API.Rows.TokenUsageTitle.Text = "Total token used"
+    loc.API.Rows.TokenUsageTitle.Text = "Total token used (context estimate)"
     loc.API.Rows.TokenUsageTitle.TextXAlignment = Enum.TextXAlignment.Left
     loc.API.Rows.TokenUsageTitle.TextScaled = true
     loc.API.Rows.TokenUsageTitle.TextColor3 = Color3.fromRGB(245, 245, 255)
@@ -3012,7 +3012,7 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
         end
     )
 
-    loc.API.Rows.Token.Label.Text = "Token limit (max " .. tostring(loc.API.GetModelMaxTokens(loc.API.Draft.Model)) .. ")"
+    loc.API.Rows.Token.Label.Text = "Output token limit (max " .. tostring(loc.API.GetModelMaxTokens(loc.API.Draft.Model)) .. ")"
 
     loc.API.Rows.Temperature = o(frame, "None", "Temperature", false, false, "", false, true, "0.7",
         function(ui)
@@ -3075,7 +3075,7 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
             loc.API.UserNickname = loc.API.Active.UserNickname
             loc.API.Rows.Token.Input.Text = tostring(loc.API.Active.Token)
             loc.API.Rows.Temperature.Input.Text = tostring(loc.API.Active.Temperature)
-            loc.API.Rows.Token.Label.Text = "Token limit (max " .. tostring(loc.API.GetModelMaxTokens(loc.API.Active.Model)) .. ")"
+            loc.API.Rows.Token.Label.Text = "Output token limit (max " .. tostring(loc.API.GetModelMaxTokens(loc.API.Active.Model)) .. ")"
             loc.API.Rows.Temperature.Label.Text = "Temperature (0.1-max " .. tostring(loc.API.GetTemperatureMax(loc.API.Active.Model)) .. ")"
             loc.API.UpdateUsageLabels()
 
@@ -3094,7 +3094,7 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
             loc.API.Rows.Model.Button.Text = loc.API.Draft.Model
             loc.API.Rows.Key.Input.Text = ""
             loc.API.Rows.Token.Input.Text = tostring(loc.API.Draft.Token)
-            loc.API.Rows.Token.Label.Text = "Token limit (max " .. tostring(loc.API.GetModelMaxTokens(loc.API.Draft.Model)) .. ")"
+            loc.API.Rows.Token.Label.Text = "Output token limit (max " .. tostring(loc.API.GetModelMaxTokens(loc.API.Draft.Model)) .. ")"
             loc.API.Rows.Temperature.Input.Text = tostring(loc.API.Draft.Temperature)
             loc.API.Rows.Temperature.Label.Text = "Temperature (0.1-max " .. tostring(loc.API.GetTemperatureMax(loc.API.Draft.Model)) .. ")"
             loc.API.Rows.CustomPrompt.Input.Text = loc.API.Draft.CustomPrompt
@@ -3157,22 +3157,19 @@ loc.API.AllowAISettingsFrame = addset("AllowAI", "Allow AI", 255, 175, 85, funct
             end
         end
     )
-end)
 
--- File modification permission is deliberately independent from script execution permission.
-loc.API.ModifyFileSettingsFrame = addset("ModifyFile", "Modify File", 120, 210, 160, function(frame)
-    ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
-    local description = Instance.new("TextLabel")
-    description.Name = "Description"
-    description.Size = UDim2.new(1, -8, 0, 66)
-    description.BackgroundTransparency = 1
-    description.TextColor3 = Color3.fromRGB(245, 245, 245)
-    description.TextSize = 13
-    description.TextWrapped = true
-    description.TextXAlignment = Enum.TextXAlignment.Left
-    description.TextYAlignment = Enum.TextYAlignment.Top
-    description.Text = "Control whether Arcsen may write to the selected Editor/Tabs file. This permission is separate from Allow AI. Draft.json is always read-only."
-    description.Parent = frame
+    -- File-edit permission belongs inside Allow AI settings, but remains independent of script execution mode.
+    local modifyDescription = Instance.new("TextLabel")
+    modifyDescription.Name = "ModifyFileDescription"
+    modifyDescription.Size = UDim2.new(1, -8, 0, 48)
+    modifyDescription.BackgroundTransparency = 1
+    modifyDescription.TextColor3 = Color3.fromRGB(245, 245, 245)
+    modifyDescription.TextSize = 13
+    modifyDescription.TextWrapped = true
+    modifyDescription.TextXAlignment = Enum.TextXAlignment.Left
+    modifyDescription.TextYAlignment = Enum.TextYAlignment.Top
+    modifyDescription.Text = "Modify File controls writing changes to the selected Editor/Tabs file. Draft.json and protected files remain read-only."
+    modifyDescription.Parent = frame
 
     loc.API.ModifyFileModeRow = o(frame, "None", "Modify File", false, false, "Don't", true, false, nil,
         function(ui)
