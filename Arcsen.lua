@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.65 Remake ",
+	sion = " UIs 7.1.66 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -67,7 +67,8 @@ local ver = {
 (:17/8/2026 | 4:19 pm: A) Added gemini-3.7-flash, don't be surprised if I still continue updates; add new features or anything will be discontinued unless can be continuing updates if it NOT due to out of local.
 (:23/7/2026 | 4:49 pm: F) Fixed Here chat I guess.
 (:12/9/2026 | 4:04 pm: A) Added Gemini 3.8 flash, added more modelswitch add adjust ScrollingFrame.
-(:22/10/2026 | 3:39 am: B) Big update remaked of UIs 7.1.0 Remake is here!]],
+(:22/10/2026 | 3:39 am: B) Big update remaked of UIs 7.1.0 Remake is here!
+(:23/10/2026 | 8:32 am: A) Added API Usage indicators, model token-usage display, and an 85% rate-limit warning when response headers provide usage data.]],
 }
 
 ------------------------------------------------------------------------------------------
@@ -2587,6 +2588,145 @@ loc.API.GetTemperatureMax = function(modelName)
     return 2.0
 end
 
+-- API usage telemetry. Providers do not expose one universal account/free-tier quota percentage,
+-- so Usage API uses rate-limit headers when the provider returns them and otherwise shows "-%".
+loc.API.Usage = loc.API.Usage or {
+    LastRequestTokens = 0,
+    LastRequestModel = nil,
+    SessionTokens = 0,
+    RequestCount = 0,
+    PercentByProvider = {},
+    PercentKnownByProvider = {},
+    Warned85ByProvider = {}
+}
+loc.API.RateLimitHeaderPairs = {
+    OpenAI = {
+        {"x-ratelimit-limit-requests", "x-ratelimit-remaining-requests"},
+        {"x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens"}
+    },
+    DeepSeek = {
+        {"x-ratelimit-limit-requests", "x-ratelimit-remaining-requests"},
+        {"x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens"}
+    },
+    Claude = {
+        {"anthropic-ratelimit-requests-limit", "anthropic-ratelimit-requests-remaining"},
+        {"anthropic-ratelimit-tokens-limit", "anthropic-ratelimit-tokens-remaining"}
+    },
+    Gemini = {
+        {"x-ratelimit-limit-requests", "x-ratelimit-remaining-requests"},
+        {"x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens"}
+    }
+}
+
+loc.API.UpdateUsageLabels = function()
+    if not loc.API.Rows then return end
+    loc.API.Usage = loc.API.Usage or {}
+    loc.API.Usage.PercentByProvider = loc.API.Usage.PercentByProvider or {}
+    loc.API.Usage.PercentKnownByProvider = loc.API.Usage.PercentKnownByProvider or {}
+    loc.API.Usage.LastRequestTokens = math.max(0, math.floor(tonumber(loc.API.Usage.LastRequestTokens) or 0))
+    loc.API.UsageDisplayProvider = loc.API.ProviderByModel[tostring(loc.API.Active and loc.API.Active.Model or "")]
+    loc.API.UsageDisplayPercent = loc.API.UsageDisplayProvider and loc.API.Usage.PercentKnownByProvider[loc.API.UsageDisplayProvider]
+        and tonumber(loc.API.Usage.PercentByProvider[loc.API.UsageDisplayProvider]) or nil
+    if loc.API.Rows.UsageValue then
+        loc.API.Rows.UsageValue.Text = loc.API.UsageDisplayPercent and (string.format("%.1f%%", loc.API.UsageDisplayPercent)) or "-%"
+        loc.API.Rows.UsageValue.TextColor3 = loc.API.UsageDisplayPercent and (loc.API.UsageDisplayPercent >= 95 and Color3.fromRGB(255, 90, 90)
+            or loc.API.UsageDisplayPercent >= 85 and Color3.fromRGB(255, 190, 75)
+            or Color3.fromRGB(100, 255, 130)) or Color3.fromRGB(220, 220, 220)
+    end
+    if loc.API.Rows.UsageFill then
+        loc.API.Rows.UsageFill.Size = UDim2.new(math.clamp(tonumber(loc.API.UsageDisplayPercent) or 0, 0, 100) / 100, 0, 1, 0)
+        loc.API.Rows.UsageFill.Visible = loc.API.UsageDisplayPercent ~= nil
+    end
+    if loc.API.Rows.UsageNote then
+        if loc.API.UsageDisplayPercent ~= nil then
+            loc.API.Rows.UsageNote.Text = "Provider-reported rate-limit window · " .. tostring(loc.API.UsageDisplayProvider)
+        else
+            loc.API.Rows.UsageNote.Text = "Rate-limit percentage unavailable · shows -%"
+        end
+    end
+    if loc.API.Rows.TokenUsageValue then
+        loc.API.UsageModelForDisplay = tostring(loc.API.Usage.LastRequestModel or (loc.API.Active and loc.API.Active.Model) or "")
+        loc.API.UsageModelLimit = loc.API.GetModelMaxTokens(loc.API.UsageModelForDisplay)
+        loc.API.Rows.TokenUsageValue.Text = tostring(loc.API.Usage.LastRequestTokens) .. " / " .. tostring(loc.API.UsageModelLimit)
+    end
+    if loc.API.Rows.TokenUsageNote then
+        loc.API.Rows.TokenUsageNote.Text = loc.API.Usage.LastRequestModel
+            and ("Latest request · " .. tostring(loc.API.Usage.LastRequestModel))
+            or "Latest request · waiting for token usage data"
+    end
+end
+
+loc.API.UpdateAPIUsageFromHeaders = function(provider, headers)
+    if type(headers) ~= "table" then return false end
+    loc.API.NormalizedUsageHeaders = {}
+    for headerName, headerValue in pairs(headers) do
+        loc.API.NormalizedUsageHeaders[tostring(headerName):lower()] = tostring(headerValue)
+    end
+    loc.API.UsageProviderPairs = loc.API.RateLimitHeaderPairs[tostring(provider or "")]
+    if type(loc.API.UsageProviderPairs) ~= "table" then return false end
+
+    loc.API.ObservedUsagePercent = nil
+    for _, headerPair in ipairs(loc.API.UsageProviderPairs) do
+        loc.API.HeaderLimit = tonumber(loc.API.NormalizedUsageHeaders[headerPair[1]])
+        loc.API.HeaderRemaining = tonumber(loc.API.NormalizedUsageHeaders[headerPair[2]])
+        if loc.API.HeaderLimit and loc.API.HeaderRemaining and loc.API.HeaderLimit > 0 then
+            loc.API.HeaderUsagePercent = math.clamp((1 - loc.API.HeaderRemaining / loc.API.HeaderLimit) * 100, 0, 100)
+            if loc.API.ObservedUsagePercent == nil or loc.API.HeaderUsagePercent > loc.API.ObservedUsagePercent then
+                loc.API.ObservedUsagePercent = loc.API.HeaderUsagePercent
+            end
+        end
+    end
+    if loc.API.ObservedUsagePercent == nil then return false end
+
+    loc.API.Usage.PercentByProvider[provider] = loc.API.ObservedUsagePercent
+    loc.API.Usage.PercentKnownByProvider[provider] = true
+    loc.API.Usage.LastRateLimitProvider = provider
+    loc.API.Usage.LastRateLimitTime = os.time()
+
+    loc.API.Usage.Warned85ByProvider = loc.API.Usage.Warned85ByProvider or {}
+    if loc.API.ObservedUsagePercent >= 85 and not loc.API.Usage.Warned85ByProvider[provider] then
+        loc.API.Usage.Warned85ByProvider[provider] = true
+        ding("API usage warning · " .. tostring(provider) .. " rate-limit usage reached " .. string.format("%.1f%%", loc.API.ObservedUsagePercent) .. ".", 5, 255, 185, 70)
+    elseif loc.API.ObservedUsagePercent < 85 then
+        loc.API.Usage.Warned85ByProvider[provider] = nil
+    end
+    loc.API.UpdateUsageLabels()
+    return true
+end
+
+loc.API.RecordTokenUsage = function(provider, model, responseData)
+    if type(responseData) ~= "table" then return false end
+    loc.API.TokenUsageObject = provider == "Gemini" and responseData.usageMetadata or responseData.usage
+    if type(loc.API.TokenUsageObject) ~= "table" then return false end
+
+    loc.API.TokenUsageCount = nil
+    if provider == "Gemini" then
+        loc.API.TokenUsageCount = tonumber(loc.API.TokenUsageObject.totalTokenCount)
+        if not loc.API.TokenUsageCount then
+            loc.API.TokenUsageCount = (tonumber(loc.API.TokenUsageObject.promptTokenCount) or 0)
+                + (tonumber(loc.API.TokenUsageObject.candidatesTokenCount) or 0)
+        end
+    elseif provider == "Claude" then
+        loc.API.TokenUsageCount = (tonumber(loc.API.TokenUsageObject.input_tokens) or 0)
+            + (tonumber(loc.API.TokenUsageObject.output_tokens) or 0)
+    else
+        loc.API.TokenUsageCount = tonumber(loc.API.TokenUsageObject.total_tokens)
+        if not loc.API.TokenUsageCount then
+            loc.API.TokenUsageCount = (tonumber(loc.API.TokenUsageObject.prompt_tokens) or 0)
+                + (tonumber(loc.API.TokenUsageObject.completion_tokens) or 0)
+        end
+    end
+    if loc.API.TokenUsageCount == nil then return false end
+
+    loc.API.TokenUsageCount = math.max(0, math.floor(loc.API.TokenUsageCount))
+    loc.API.Usage.LastRequestTokens = loc.API.TokenUsageCount
+    loc.API.Usage.LastRequestModel = tostring(model or (loc.API.Active and loc.API.Active.Model) or "")
+    loc.API.Usage.SessionTokens = (tonumber(loc.API.Usage.SessionTokens) or 0) + loc.API.TokenUsageCount
+    loc.API.Usage.RequestCount = (tonumber(loc.API.Usage.RequestCount) or 0) + 1
+    loc.API.UpdateUsageLabels()
+    return true
+end
+
 loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(frame)
     ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
 
@@ -2621,6 +2761,115 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
             end
         end
     )
+
+    -- Compact usage view for the currently active model/provider.
+    loc.API.Rows.UsageFrame = Instance.new("Frame")
+    loc.API.Rows.UsageFrame.Name = "APIUsage"
+    loc.API.Rows.UsageFrame.Size = UDim2.new(1, 0, 0, 48)
+    loc.API.Rows.UsageFrame.BackgroundColor3 = Color3.fromRGB(40, 55, 65)
+    loc.API.Rows.UsageFrame.BackgroundTransparency = 0.25
+    loc.API.Rows.UsageFrame.BorderSizePixel = 0
+    loc.API.Rows.UsageFrame.Parent = frame
+    Corner(0, 5, loc.API.Rows.UsageFrame)
+
+    loc.API.Rows.UsageTitle = Instance.new("TextLabel")
+    loc.API.Rows.UsageTitle.Name = "UsageTitle"
+    loc.API.Rows.UsageTitle.BackgroundTransparency = 1
+    loc.API.Rows.UsageTitle.Position = UDim2.new(0, 6, 0, 1)
+    loc.API.Rows.UsageTitle.Size = UDim2.new(0.65, -6, 0, 20)
+    loc.API.Rows.UsageTitle.Text = "Usage API"
+    loc.API.Rows.UsageTitle.TextXAlignment = Enum.TextXAlignment.Left
+    loc.API.Rows.UsageTitle.TextScaled = true
+    loc.API.Rows.UsageTitle.TextColor3 = Color3.fromRGB(245, 245, 255)
+    loc.API.Rows.UsageTitle.Parent = loc.API.Rows.UsageFrame
+
+    loc.API.Rows.UsageValue = Instance.new("TextLabel")
+    loc.API.Rows.UsageValue.Name = "UsageValue"
+    loc.API.Rows.UsageValue.BackgroundTransparency = 1
+    loc.API.Rows.UsageValue.Position = UDim2.new(0.65, 0, 0, 1)
+    loc.API.Rows.UsageValue.Size = UDim2.new(0.35, -6, 0, 20)
+    loc.API.Rows.UsageValue.Text = "-%"
+    loc.API.Rows.UsageValue.TextXAlignment = Enum.TextXAlignment.Right
+    loc.API.Rows.UsageValue.TextScaled = true
+    loc.API.Rows.UsageValue.TextColor3 = Color3.fromRGB(220, 220, 220)
+    loc.API.Rows.UsageValue.Parent = loc.API.Rows.UsageFrame
+
+    loc.API.Rows.UsageNote = Instance.new("TextLabel")
+    loc.API.Rows.UsageNote.Name = "UsageNote"
+    loc.API.Rows.UsageNote.BackgroundTransparency = 1
+    loc.API.Rows.UsageNote.Position = UDim2.new(0, 6, 0, 19)
+    loc.API.Rows.UsageNote.Size = UDim2.new(1, -12, 0, 13)
+    loc.API.Rows.UsageNote.Text = "Rate-limit percentage unavailable · shows -%"
+    loc.API.Rows.UsageNote.TextSize = 10
+    loc.API.Rows.UsageNote.TextScaled = false
+    loc.API.Rows.UsageNote.TextWrapped = true
+    loc.API.Rows.UsageNote.TextXAlignment = Enum.TextXAlignment.Left
+    loc.API.Rows.UsageNote.TextColor3 = Color3.fromRGB(210, 210, 220)
+    loc.API.Rows.UsageNote.Parent = loc.API.Rows.UsageFrame
+
+    loc.API.Rows.UsageBar = Instance.new("Frame")
+    loc.API.Rows.UsageBar.Name = "UsageBar"
+    loc.API.Rows.UsageBar.Position = UDim2.new(0, 6, 1, -9)
+    loc.API.Rows.UsageBar.Size = UDim2.new(1, -12, 0, 4)
+    loc.API.Rows.UsageBar.BackgroundColor3 = Color3.fromRGB(25, 30, 35)
+    loc.API.Rows.UsageBar.BorderSizePixel = 0
+    loc.API.Rows.UsageBar.Parent = loc.API.Rows.UsageFrame
+    Corner(1, 0, loc.API.Rows.UsageBar)
+
+    loc.API.Rows.UsageFill = Instance.new("Frame")
+    loc.API.Rows.UsageFill.Name = "Fill"
+    loc.API.Rows.UsageFill.Size = UDim2.new(0, 0, 1, 0)
+    loc.API.Rows.UsageFill.BackgroundColor3 = Color3.fromRGB(100, 255, 130)
+    loc.API.Rows.UsageFill.BorderSizePixel = 0
+    loc.API.Rows.UsageFill.Visible = false
+    loc.API.Rows.UsageFill.Parent = loc.API.Rows.UsageBar
+    Corner(1, 0, loc.API.Rows.UsageFill)
+
+    loc.API.Rows.TokenUsageFrame = Instance.new("Frame")
+    loc.API.Rows.TokenUsageFrame.Name = "TokenUsage"
+    loc.API.Rows.TokenUsageFrame.Size = UDim2.new(1, 0, 0, 36)
+    loc.API.Rows.TokenUsageFrame.BackgroundColor3 = Color3.fromRGB(40, 55, 65)
+    loc.API.Rows.TokenUsageFrame.BackgroundTransparency = 0.25
+    loc.API.Rows.TokenUsageFrame.BorderSizePixel = 0
+    loc.API.Rows.TokenUsageFrame.Parent = frame
+    Corner(0, 5, loc.API.Rows.TokenUsageFrame)
+
+    loc.API.Rows.TokenUsageTitle = Instance.new("TextLabel")
+    loc.API.Rows.TokenUsageTitle.Name = "TokenUsageTitle"
+    loc.API.Rows.TokenUsageTitle.BackgroundTransparency = 1
+    loc.API.Rows.TokenUsageTitle.Position = UDim2.new(0, 6, 0, 1)
+    loc.API.Rows.TokenUsageTitle.Size = UDim2.new(0.52, -6, 0, 18)
+    loc.API.Rows.TokenUsageTitle.Text = "Total token used"
+    loc.API.Rows.TokenUsageTitle.TextXAlignment = Enum.TextXAlignment.Left
+    loc.API.Rows.TokenUsageTitle.TextScaled = true
+    loc.API.Rows.TokenUsageTitle.TextColor3 = Color3.fromRGB(245, 245, 255)
+    loc.API.Rows.TokenUsageTitle.Parent = loc.API.Rows.TokenUsageFrame
+
+    loc.API.Rows.TokenUsageValue = Instance.new("TextLabel")
+    loc.API.Rows.TokenUsageValue.Name = "TokenUsageValue"
+    loc.API.Rows.TokenUsageValue.BackgroundTransparency = 1
+    loc.API.Rows.TokenUsageValue.Position = UDim2.new(0.52, 0, 0, 1)
+    loc.API.Rows.TokenUsageValue.Size = UDim2.new(0.48, -6, 0, 18)
+    loc.API.Rows.TokenUsageValue.Text = "0 / " .. tostring(loc.API.GetModelMaxTokens(loc.API.Active.Model))
+    loc.API.Rows.TokenUsageValue.TextXAlignment = Enum.TextXAlignment.Right
+    loc.API.Rows.TokenUsageValue.TextScaled = true
+    loc.API.Rows.TokenUsageValue.TextColor3 = Color3.fromRGB(220, 240, 255)
+    loc.API.Rows.TokenUsageValue.Parent = loc.API.Rows.TokenUsageFrame
+
+    loc.API.Rows.TokenUsageNote = Instance.new("TextLabel")
+    loc.API.Rows.TokenUsageNote.Name = "TokenUsageNote"
+    loc.API.Rows.TokenUsageNote.BackgroundTransparency = 1
+    loc.API.Rows.TokenUsageNote.Position = UDim2.new(0, 6, 0, 19)
+    loc.API.Rows.TokenUsageNote.Size = UDim2.new(1, -12, 0, 13)
+    loc.API.Rows.TokenUsageNote.Text = "Latest request · waiting for token usage data"
+    loc.API.Rows.TokenUsageNote.TextSize = 10
+    loc.API.Rows.TokenUsageNote.TextScaled = false
+    loc.API.Rows.TokenUsageNote.TextWrapped = true
+    loc.API.Rows.TokenUsageNote.TextXAlignment = Enum.TextXAlignment.Left
+    loc.API.Rows.TokenUsageNote.TextColor3 = Color3.fromRGB(210, 210, 220)
+    loc.API.Rows.TokenUsageNote.Parent = loc.API.Rows.TokenUsageFrame
+
+    loc.API.UpdateUsageLabels()
 
     loc.API.Rows.Key = o(frame, "None", "Put API here", false, false, "", false, true, "Paste API key",
         function(ui)
@@ -2710,6 +2959,7 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
             loc.API.Rows.Temperature.Input.Text = tostring(loc.API.Active.Temperature)
             loc.API.Rows.Token.Label.Text = "Token limit (max " .. tostring(loc.API.GetModelMaxTokens(loc.API.Active.Model)) .. ")"
             loc.API.Rows.Temperature.Label.Text = "Temperature (0.1-max " .. tostring(loc.API.GetTemperatureMax(loc.API.Active.Model)) .. ")"
+            loc.API.UpdateUsageLabels()
 
             ding("API settings saved for this session. Model: " .. loc.API.Active.Model, 4, 80, 255, 120)
         end
@@ -2732,6 +2982,7 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
             loc.API.Rows.CustomPrompt.Input.Text = loc.API.Draft.CustomPrompt
             loc.API.Rows.Nickname.Input.Text = tostring(loc.API.Draft.UserNickname or "User")
             loc.API.UserNickname = tostring(loc.API.Active.UserNickname or "User")
+            loc.API.UpdateUsageLabels()
             ding("API settings restored to default for this session. Add your API key before chatting.", 4, 255, 200, 80)
         end
     )
@@ -3082,6 +3333,9 @@ loc.API.SendHTTP = function(url, method, headers, payload, requestMeta)
     if type(loc.API.HTTPResponse) ~= "table" then error("The HTTP request returned an invalid response.") end
     loc.API.HTTPStatus = tonumber(loc.API.HTTPResponse.StatusCode or loc.API.HTTPResponse.Status)
     loc.API.HTTPBody = tostring(loc.API.HTTPResponse.Body or "")
+    if type(loc.API.UpdateAPIUsageFromHeaders) == "function" then
+        pcall(loc.API.UpdateAPIUsageFromHeaders, loc.API.RequestProvider, loc.API.HTTPResponse.Headers)
+    end
     if loc.API.HTTPStatus and (loc.API.HTTPStatus < 200 or loc.API.HTTPStatus >= 300) then
         loc.API.HTTPDetail = loc.API.HTTPBody
         pcall(function()
@@ -3201,6 +3455,9 @@ loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
 
     loc.API.ResponseBody = loc.API.SendHTTP(loc.API.RequestURL, "POST", loc.API.RequestHeaders, s.HttpService:JSONEncode(loc.API.RequestBody), requestMeta)
     loc.API.ResponseData = s.HttpService:JSONDecode(loc.API.ResponseBody)
+    if type(loc.API.RecordTokenUsage) == "function" then
+        pcall(loc.API.RecordTokenUsage, loc.API.RequestProvider, loc.API.RequestModel, loc.API.ResponseData)
+    end
     if loc.API.RequestProvider == "Gemini" then
         loc.API.ResponseText = ""
         pcall(function()
