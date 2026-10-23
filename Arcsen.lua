@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.68 Remake ",
+	sion = " UIs 7.1.69 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -2781,6 +2781,68 @@ loc.API.RecordTokenUsage = function(provider, model, responseData)
     end
     loc.API.UpdateUsageLabels()
     return true
+end
+
+-- Refresh Usage API (Speculation) and Total token used labels safely.
+-- Define this before the settings UI is built because the UI calls it during creation.
+loc.API.UpdateUsageLabels = function()
+    loc.API.Rows = loc.API.Rows or {}
+    loc.API.Usage = loc.API.Usage or {}
+
+    loc.API.CurrentUsageModel = tostring(
+        (loc.API.Active and loc.API.Active.Model)
+        or (loc.API.Draft and loc.API.Draft.Model)
+        or ""
+    )
+    loc.API.CurrentModelLimit = math.max(1, tonumber(loc.API.GetModelMaxTokens and loc.API.GetModelMaxTokens(loc.API.CurrentUsageModel)) or 32768)
+    loc.API.CurrentModelTokens = math.max(0, tonumber((loc.API.Usage.SessionTokensByModel or {})[loc.API.CurrentUsageModel]) or 0)
+    loc.API.HasUsageEstimate = loc.API.CurrentModelTokens > 0
+    loc.API.CurrentUsagePercent = math.clamp((loc.API.CurrentModelTokens / loc.API.CurrentModelLimit) * 100, 0, 100)
+
+    if loc.API.Rows.UsageValue then
+        loc.API.Rows.UsageValue.Text = loc.API.HasUsageEstimate
+            and (string.format("%.1f%%", loc.API.CurrentUsagePercent))
+            or "-%"
+        loc.API.Rows.UsageValue.TextColor3 = not loc.API.HasUsageEstimate
+            and Color3.fromRGB(220, 220, 220)
+            or (loc.API.CurrentUsagePercent >= 85
+                and Color3.fromRGB(255, 165, 90)
+                or Color3.fromRGB(150, 255, 170))
+    end
+
+    if loc.API.Rows.UsageFill then
+        loc.API.Rows.UsageFill.Visible = loc.API.HasUsageEstimate
+        loc.API.Rows.UsageFill.Size = UDim2.new(loc.API.CurrentUsagePercent / 100, 0, 1, 0)
+        loc.API.Rows.UsageFill.BackgroundColor3 = loc.API.CurrentUsagePercent >= 85
+            and Color3.fromRGB(255, 165, 90)
+            or Color3.fromRGB(100, 255, 130)
+    end
+
+    if loc.API.Rows.UsageNote then
+        if loc.API.HasUsageEstimate then
+            loc.API.Rows.UsageNote.Text = "Speculative · tracked tokens for " .. loc.API.CurrentUsageModel
+        else
+            loc.API.Rows.UsageNote.Text = "Speculation unavailable · waiting for reported token data"
+        end
+    end
+
+    if loc.API.Rows.TokenUsageValue then
+        loc.API.Rows.TokenUsageValue.Text = tostring(loc.API.CurrentModelTokens) .. " / " .. tostring(loc.API.CurrentModelLimit)
+    end
+
+    if loc.API.Rows.TokenUsageNote then
+        local latestTokens = tonumber(loc.API.Usage.LastRequestTokens)
+        local latestModel = tostring(loc.API.Usage.LastRequestModel or "")
+        if latestTokens and latestModel == loc.API.CurrentUsageModel then
+            loc.API.Rows.TokenUsageNote.Text = "Latest request: " .. tostring(math.floor(latestTokens)) .. " tokens · tracked total for this model"
+        elseif loc.API.HasUsageEstimate then
+            loc.API.Rows.TokenUsageNote.Text = "Tracked total for this model · latest request not from this model"
+        else
+            loc.API.Rows.TokenUsageNote.Text = "Latest request · waiting for token usage data"
+        end
+    end
+
+    return loc.API.HasUsageEstimate, loc.API.CurrentUsagePercent, loc.API.CurrentModelTokens
 end
 
 loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(frame)
