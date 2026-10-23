@@ -1,6 +1,6 @@
 --[[
     ArcsenCommand-Module.lua
-    Version: 0.5.1
+    Version: 0.5.2
 
     Purpose:
       - Command core only; creates no UI.
@@ -31,9 +31,10 @@ end
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local module = {
-    version = "0.5.0",
+    version = "0.5.2",
     APIVersion = 1,
     commands = {},
     _output = nil,
@@ -45,7 +46,24 @@ local module = {
     _lastMessageAt = 0,
     _pendingOutgoing = {},
     _destroyed = false,
+    _placeId = tonumber(game.PlaceId) or 0,
+    _universeId = tonumber(game.GameId) or 0,
+    _experienceName = "Place " .. tostring(tonumber(game.PlaceId) or 0),
+    _experienceNameReady = false,
 }
+
+-- Resolve the current PlaceId to a readable Roblox place/experience name.
+-- The ID fallback is kept until MarketplaceService returns a name successfully.
+task.spawn(function()
+    if module._placeId <= 0 then return end
+    local ok, productInfo = pcall(function()
+        return MarketplaceService:GetProductInfo(module._placeId, Enum.InfoType.Asset)
+    end)
+    if ok and type(productInfo) == "table" and type(productInfo.Name) == "string" and productInfo.Name:match("%S") then
+        module._experienceName = productInfo.Name
+        module._experienceNameReady = true
+    end
+end)
 
 local function safeDisconnect(connection)
     if connection then
@@ -284,6 +302,9 @@ local function showIncomingMessage(username, text, player)
         displayName = player and player.DisplayName or username,
         userId = userId,
         teamName = teamName,
+        experienceName = tostring(module._experienceName or ("Place " .. tostring(module._placeId))),
+        placeId = module._placeId,
+        universeId = module._universeId,
         teamR = teamRed,
         teamG = teamGreen,
         teamB = teamBlue,
