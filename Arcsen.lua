@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.1.9 Remake ",
+	sion = " UIs 7.1.95 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -4020,22 +4020,72 @@ loc.API.DrawMessage = function(chatID, index, message)
     local isLatestMessage = loc.API.DrawChatForMessage ~= nil and index == #(loc.API.DrawChatForMessage.Messages or {})
 
     if message.role == "herechat" then
-        loc.API.HereChatRenderHeader = tostring(message.header or message.displayName or message.username or "Unknown")
-        if tonumber(message.timestamp) then
-            if tostring(loc.API.DisplayTimeFormat) == "12Hours (AM/PM)" then
-                loc.API.HereChatTimestampText = os.date("%I:%M %p", tonumber(message.timestamp))
-            else
-                loc.API.HereChatTimestampText = os.date("%H:%M", tonumber(message.timestamp))
+        -- Arcsen-origin messages use the requested reverse header layout.
+        -- Roblox-origin messages intentionally keep their existing header style.
+        if tostring(message.origin or "Roblox") == "Arcsen" then
+            local function hereHeaderEscape(value)
+                value = tostring(value or "")
+                value = value:gsub("&", "&amp;")
+                value = value:gsub("<", "&lt;")
+                value = value:gsub(">", "&gt;")
+                value = value:gsub('"', "&quot;")
+                value = value:gsub("'", "&apos;")
+                return value
             end
-            loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
-                .. ' <font color="rgb(170,170,170)">• ' .. tostring(loc.API.HereChatTimestampText) .. '</font>'
-        end
-        if tostring(message.experienceName or ""):match("%S") then
-            loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
-                .. ' <font color="rgb(170,170,170)">• ' .. tostring(message.experienceName) .. '</font>'
-        elseif tonumber(message.placeId) then
-            loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
-                .. ' <font color="rgb(170,170,170)">• Place ' .. tostring(math.floor(tonumber(message.placeId))) .. '</font>'
+            local headerParts = {}
+            local experienceName = tostring(message.experienceName or "")
+            if experienceName:match("%S") then
+                -- experienceName was escaped when the message record was created.
+                table.insert(headerParts, "<b>" .. experienceName .. "</b>")
+            elseif tonumber(message.placeId) then
+                table.insert(headerParts, "<b>Place " .. tostring(math.floor(tonumber(message.placeId))) .. "</b>")
+            end
+            if tonumber(message.timestamp) then
+                if tostring(loc.API.DisplayTimeFormat) == "12Hours (AM/PM)" then
+                    loc.API.HereChatTimestampText = os.date("%I:%M %p", tonumber(message.timestamp))
+                else
+                    loc.API.HereChatTimestampText = os.date("%H:%M", tonumber(message.timestamp))
+                end
+                table.insert(headerParts, '<font color="rgb(170,170,170)">' .. tostring(loc.API.HereChatTimestampText) .. '</font>')
+            end
+            local teamName = tostring(message.teamName or "")
+            if teamName:match("%S") then
+                local tr = math.clamp(tonumber(message.teamR) or 255, 0, 255)
+                local tg = math.clamp(tonumber(message.teamG) or 255, 0, 255)
+                local tb = math.clamp(tonumber(message.teamB) or 255, 0, 255)
+                table.insert(headerParts, '<font color="rgb(' .. math.floor(tr) .. ',' .. math.floor(tg) .. ',' .. math.floor(tb) .. ')">[ <b><i>' .. hereHeaderEscape(teamName) .. '</i></b> ]</font>')
+            end
+            local accountPart = ""
+            if tonumber(message.userId) then
+                accountPart = "[" .. tostring(math.floor(tonumber(message.userId))) .. "]"
+            end
+            local username = tostring(message.username or "")
+            if username:match("%S") then
+                accountPart = accountPart .. (accountPart ~= "" and " " or "") .. "[@" .. hereHeaderEscape(username) .. "]"
+            end
+            if accountPart ~= "" then
+                table.insert(headerParts, accountPart)
+            end
+            table.insert(headerParts, "<b>" .. hereHeaderEscape(message.displayName or message.username or "Unknown") .. "</b>")
+            loc.API.HereChatRenderHeader = table.concat(headerParts, ' <font color="rgb(170,170,170)">•</font> ')
+        else
+            loc.API.HereChatRenderHeader = tostring(message.header or message.displayName or message.username or "Unknown")
+            if tonumber(message.timestamp) then
+                if tostring(loc.API.DisplayTimeFormat) == "12Hours (AM/PM)" then
+                    loc.API.HereChatTimestampText = os.date("%I:%M %p", tonumber(message.timestamp))
+                else
+                    loc.API.HereChatTimestampText = os.date("%H:%M", tonumber(message.timestamp))
+                end
+                loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
+                    .. ' <font color="rgb(170,170,170)">• ' .. tostring(loc.API.HereChatTimestampText) .. '</font>'
+            end
+            if tostring(message.experienceName or ""):match("%S") then
+                loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
+                    .. ' <font color="rgb(170,170,170)">• ' .. tostring(message.experienceName) .. '</font>'
+            elseif tonumber(message.placeId) then
+                loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
+                    .. ' <font color="rgb(170,170,170)">• Place ' .. tostring(math.floor(tonumber(message.placeId))) .. '</font>'
+            end
         end
         return meg(
             tostring(message.text or ""),
