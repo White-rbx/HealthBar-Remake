@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.15 Remake ",
+	sion = " UIs 7.2.2 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -71,7 +71,8 @@ local ver = {
 (:24/10/2026 | Cache downloads: add AI file-download markers, arbitrary binary download handling, source/license sidecars, and approval buttons independent from Lua execution.)
 (:23/10/2026 | 8:32 am: A) Added hierarchical workspace file permissions under Allow AI (Create Lua Script / Modify File / All File access).
 (:23/10/2026: A) Restored daily total-token tracking with date rollover and added HereChat experience-name metadata (Module v0.5.2).
-(:24/10/2026: F) Neutral game-name header; single expiring New message marker; plain-text AI tab-title validation.]],
+(:24/10/2026: F) Neutral game-name header; single expiring New message marker; plain-text AI tab-title validation.
+(:25/10/2026: F) Gemini response diagnostics (promptFeedback / finishReason); bounded retry for transient HTTP 429/5xx; preserves manual message Retry.]],
 }
 
 ------------------------------------------------------------------------------------------
@@ -4155,6 +4156,54 @@ loc.API.ContentText = function(value)
     return ""
 end
 
+-- Gemini can return a successful HTTP response without a text candidate.
+-- Surface the API's actual reason instead of assuming the model or key is wrong.
+-- All Gemini API keys configured here share the same generateContent response path.
+loc.API.ReadGeminiResponse = function(data)
+    if type(data) ~= "table" then
+        return "", "Gemini returned a response that was not a JSON object."
+    end
+    if type(data.error) == "table" then
+        return "", "Gemini API error: " .. tostring(data.error.message or data.error.status or "Unknown error"):sub(1, 300)
+    end
+    local feedback = type(data.promptFeedback) == "table" and data.promptFeedback or {}
+    local block = tostring(feedback.blockReason or "")
+    if block ~= "" and block ~= "BLOCK_REASON_UNSPECIFIED" then
+        return "", "Gemini blocked the request (promptFeedback.blockReason=" .. block .. "). "
+            .. tostring(feedback.blockReasonMessage or "Try adjusting the request or its attachments."):sub(1, 220)
+    end
+    local candidate = type(data.candidates) == "table" and data.candidates[1] or nil
+    if type(candidate) ~= "table" then
+        return "", "Gemini returned no candidates. Check promptFeedback, request settings, and model access."
+    end
+    local result = {}
+    local parts = type(candidate.content) == "table" and candidate.content.parts or nil
+    local hasNonTextPart = false
+    if type(parts) == "table" then
+        for _, part in ipairs(parts) do
+            if type(part) == "table" then
+                if type(part.text) == "string" then
+                    result[#result + 1] = part.text
+                elseif part.functionCall or part.inlineData or part.inline_data or part.executableCode then
+                    hasNonTextPart = true
+                end
+            end
+        end
+    end
+    local answer = table.concat(result)
+    if answer:match("%S") then return answer, nil end
+    local reason = tostring(candidate.finishReason or "UNSPECIFIED")
+    if reason == "MAX_TOKENS" then
+        return "", "Gemini reached MAX_TOKENS before returning visible text. Increase the output token limit or simplify the request."
+    elseif reason == "SAFETY" or reason == "RECITATION" or reason == "BLOCKLIST"
+        or reason == "PROHIBITED_CONTENT" or reason == "SPII" then
+        return "", "Gemini did not return text because the response was blocked (finishReason=" .. reason .. "). Revise the prompt or attachments."
+    elseif reason == "MALFORMED_FUNCTION_CALL" or hasNonTextPart then
+        return "", "Gemini returned a non-text/tool-call response that this Arcsen chat adapter cannot display (finishReason=" .. reason .. ")."
+    end
+    return "", "Gemini returned no text (finishReason=" .. reason .. "). The response may be temporary; use Retry on your message."
+end
+
 loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
     config = config or loc.API.Active
     loc.API.RequestModel = tostring(config.Model or "")
@@ -4245,15 +4294,35 @@ loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
         loc.API.RequestURL = "https://generativelanguage.googleapis.com/v1beta/models/" .. s.HttpService:UrlEncode(loc.API.RequestModel) .. ":generateContent?key=" .. s.HttpService:UrlEncode(loc.API.RequestKey)
     end
 
-    loc.API.ResponseBody = loc.API.SendHTTP(loc.API.RequestURL, "POST", loc.API.RequestHeaders, s.HttpService:JSONEncode(loc.API.RequestBody), requestMeta)
-    loc.API.ResponseData = s.HttpService:JSONDecode(loc.API.ResponseBody)
+    -- Retry only transient Gemini HTTP failures; a blocked/empty 2xx response
+    -- is NOT automatically resent. The existing per-message Retry handles that.
     if loc.API.RequestProvider == "Gemini" then
-        loc.API.ResponseText = ""
-        pcall(function()
-            for _, part in ipairs(loc.API.ResponseData.candidates[1].content.parts) do
-                if type(part.text) == "string" then loc.API.ResponseText = loc.API.ResponseText .. part.text end
+        for attempt = 1, 3 do
+            if type(requestMeta) == "table" and requestMeta.Cancelled then
+                error("Request cancelled before sending.", 0)
             end
-        end)
+            loc.API.HTTPStatus = nil
+            loc.API.SendAttemptOK, loc.API.SendAttemptResult = pcall(function()
+                return loc.API.SendHTTP(loc.API.RequestURL, "POST", loc.API.RequestHeaders,
+                    s.HttpService:JSONEncode(loc.API.RequestBody), requestMeta)
+            end)
+            if loc.API.SendAttemptOK then
+                loc.API.ResponseBody = loc.API.SendAttemptResult
+                break
+            end
+            if attempt >= 3 or not (loc.API.HTTPStatus == 429 or loc.API.HTTPStatus == 500
+                or loc.API.HTTPStatus == 502 or loc.API.HTTPStatus == 503 or loc.API.HTTPStatus == 504) then
+                error(tostring(loc.API.SendAttemptResult), 0)
+            end
+            task.wait(1.5 * attempt)
+        end
+    else
+        loc.API.ResponseBody = loc.API.SendHTTP(loc.API.RequestURL, "POST", loc.API.RequestHeaders, s.HttpService:JSONEncode(loc.API.RequestBody), requestMeta)
+    end
+    loc.API.ResponseData = s.HttpService:JSONDecode(loc.API.ResponseBody)
+    loc.API.EmptyResponseReason = nil
+    if loc.API.RequestProvider == "Gemini" then
+        loc.API.ResponseText, loc.API.EmptyResponseReason = loc.API.ReadGeminiResponse(loc.API.ResponseData)
     elseif loc.API.RequestProvider == "Claude" then
         loc.API.ResponseText = loc.API.ContentText(loc.API.ResponseData.content)
     else
@@ -4270,7 +4339,8 @@ loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
         loc.API.ResponseText
     )
     if not tostring(loc.API.ResponseText or ""):match("%S") then
-        error("The provider returned an empty response. Check whether the selected model name is supported by your API key.")
+        error(tostring(loc.API.EmptyResponseReason
+            or "The provider returned an empty text response. Check the selected model and the provider response."), 0)
     end
     return loc.API.ResponseText
 end
@@ -4292,7 +4362,7 @@ loc.API.Request = function(messages, systemPrompt, config, requestMeta)
         return loc.API.PerformRequest(messages, systemPrompt, config, requestMeta)
     end)
     loc.API.RequestBusy = false
-    if not loc.API.RequestCallOK then error(loc.API.RequestCallResult) end
+    if not loc.API.RequestCallOK then error(tostring(loc.API.RequestCallResult), 0) end
     return loc.API.RequestCallResult
 end
 
