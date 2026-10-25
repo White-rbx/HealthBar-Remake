@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.42 Remake ",
+	sion = " UIs 7.2.46 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -78,7 +78,9 @@ local ver = {
 (:25/10/2026: A) Stage 7: API Settings key setup guide using Change Logs-style scrolling UI; updated for Arcsen and Tavily BYOK.
 (:25/10/2026: U) Stage 8: Live Web Search defaults to Don't; Core Prompt explains permission-aware sUNC support; Settings removes static parenthesis decorations.
 (:25/10/2026: F) Stage 9: Correct Download marker guidance and provide guarded sUNC getcustomasset for approved Arcsen cached image/audio files.
-(:25/10/2026: F) Stage 12: Cached media playback no longer requires File Downloads; add explicit per-file, session-only local media approval for Low / Unrestricted sandbox levels.]],
+(:25/10/2026: F) Stage 12: Cached media playback no longer requires File Downloads; add explicit per-file, session-only local media approval for Low / Unrestricted sandbox levels.
+(:25/10/2026: A) Stage 12.1: Session-only Local Media Folder approval (subfolders included), path-boundary checks, revoke/clear, same cache and Sandbox restrictions.
+(:25/10/2026: A) Stage 13: Allow AI > sUNC Enable (Disable default / Enable), independent of Sandbox Level, host-capability lookup, mandatory per-script approval, revocable pending actions.]],
 }
 
 ------------------------------------------------------------------------------------------
@@ -1958,7 +1960,8 @@ loc.API = {
     -- AI-generated Lua execution is off by default and resets to Don't after reload.
     AllowAIMode = "Don't",
     WebSearchMode = "Don't", -- Default disabled: each client must configure their own Tavily key and opt in
-    SandboxLevel = "Mid Restricted", -- Sandbox caps Lua permissions independently of Allow AI
+    SandboxLevel = "Mid Restricted", -- Limits normal Roblox sandbox; NOT the separate sUNC switch
+    SUNCMode = "Disable", -- Default off; session-only, separate from Sandbox Level
     -- CorePrompt is not rendered in Settings. Client-side source can still be inspected by users.
     CorePrompt = [=[You are an AI assistant inside Roblox created by @5teve3019D (USERID: 2535650316). He is your creator.
 Your name is "Arcsen", a name assigned by @5teve3019D (USERID: 2535650316).
@@ -1982,7 +1985,8 @@ IMPORTANT SECURITY RULES:
 sUNC / EXECUTOR ENVIRONMENT:
 - Arcsen runs on the Roblox client and its host executor may support sUNC functions. You may use or explain sUNC-compatible Luau functions when helping the user write code, if that function is actually provided by their executor. Examples can include getcustomasset, request, readfile, or writefile; do not assume any one of them is available.
 - Before relying on an sUNC function, check whether it exists and clarify that executor support differs. Avoid claiming Arcsen itself provides every sUNC function or that an action succeeded without execution results.
-- The protected Arcsen AI script runner is a guarded sandbox. Sandbox Level limits generated Lua separately from Create Lua Script permission. High Restricted disables getcustomasset. Mid Restricted and above allow getcustomasset ONLY for an existing Arcsen Cache/Audio or Cache/Images asset with its .source.txt record. Low Restricted also allows individually user-approved existing media paths under ExperienceSettings/. Unrestricted allows individually user-approved existing media paths anywhere in the executor Workspace. Paths must be explicitly approved in Settings > Arcsen's sandbox permission, and approvals are session-only, exact-file and revocable. Local media access does NOT need Allow AI File Downloads; that permission controls downloading NEW files only. Other sUNC APIs (request, readfile, writefile, etc.) are never exposed to the generated script.
+- Arcsen's Sandbox Level controls the normal guarded Roblox Lua environment, not the separate Allow AI > sUNC Enable switch. By default sUNC is Disable: generated scripts cannot use arbitrary executor functions. When sUNC is Enable, supported host-provided sUNC APIs are available separately from Sandbox Level for AI Lua ONLY after explicit per-script user review and approval. Enabling sUNC exposes powerful host executor capabilities; it can bypass the normal Arcsen sandbox, file permissions, file-download settings, and even protected Instance restrictions. Never claim that the ordinary sandbox can guarantee isolation once sUNC is enabled. Do not use executor features to read secrets, disclose credentials, or interfere with other users. The application cannot guarantee that every listed sUNC API exists on this executor.
+- With sUNC Disable, ordinary guarded media rules still apply: High Restricted blocks getcustomasset; Mid allows verified Arcsen cached image/audio; Low permits explicitly approved media files/folders within ExperienceSettings; Unrestricted permits explicitly approved workspace media paths. Cached media does not need File Downloads. Folder approval includes subfolders, is session-only, and does not allow other types of files.
 - The built-in file download handler itself can download direct URLs separately from Lua execution after the download setting and approval policy allow it. A script should NOT call request()/writefile() to download. Never use sUNC to bypass disabled/denied capabilities, reveal credentials, or modify protected resources.
 
 RUNTIME USER CONTEXT:
@@ -3380,8 +3384,77 @@ loc.API.GetAllowAIPolicy = function(mode)
     return loc.API.AllowAIPolicy or {valid = false, enabled = false, requireApproval = true, restricted = true}
 end
 
--- Sandbox Level is a SEPARATE upper bound, not permission to execute code.
--- Existing Create Lua Script + Verification remain required. Never expose raw executor APIs.
+-- Stage 13: sUNC is an independent Allow AI capability, not a Sandbox Level.
+-- This is intentionally a *trusted executor mode*: sUNC can escape normal Roblox guards.
+-- Requiring code review for every run is essential, including auto-run Lua modes.
+loc.API.SUNCNames = {
+    -- Closures
+    "checkcaller", "clonefunction", "getfunctionhash", "hookfunction", "hookmetamethod",
+    "iscclosure", "isexecutorclosure", "islclosure", "loadstring", "newcclosure", "restorefunction",
+    -- Debug
+    "debug.getconstant", "debug.getconstants", "debug.getproto", "debug.getprotos",
+    "debug.getstack", "debug.getupvalue", "debug.getupvalues",
+    "debug.setconstant", "debug.setstack", "debug.setupvalue",
+    -- Drawing
+    "cleardrawcache", "getrenderproperty", "isrenderobj", "setrenderproperty", "Drawing.new",
+    -- Encoding
+    "base64decode", "base64encode", "lz4compress", "lz4decompress",
+    -- Environment
+    "getgc", "getgenv", "getreg", "getrenv",
+    -- Filesystem
+    "writefile", "readfile", "appendfile", "listfiles", "delfile", "delfolder",
+    "isfile", "isfolder", "makefolder", "loadfile", "getcustomasset",
+    -- Instances
+    "cloneref", "compareinstances", "fireclickdetector", "fireproximityprompt",
+    "firetouchinterest", "getcallbackvalue", "gethui", "getinstances", "getnilinstances",
+    -- Metatable
+    "getnamecallmethod", "getrawmetatable", "isreadonly", "setrawmetatable", "setreadonly",
+    -- Miscellaneous
+    "identifyexecutor", "request",
+    -- Reflection
+    "gethiddenproperty", "getthreadidentity", "isscriptable", "sethiddenproperty",
+    "setscriptable", "setthreadidentity",
+    -- Scripts
+    "getcallingscript", "getloadedmodules", "getrunningscripts", "getscriptbytecode",
+    "getscriptclosure", "getscriptfromthread", "getscripthash", "getscripts", "getsenv",
+    -- Signals
+    "firesignal", "getconnections", "replicatesignal",
+    -- WebSocket
+    "WebSocket.connect"
+}
+loc.API.SUNCTokens = {debug=true, Drawing=true, WebSocket=true}
+for _, name in ipairs(loc.API.SUNCNames) do
+    for identifier in name:gmatch("[%a_][%w_]*") do
+        loc.API.SUNCTokens[identifier:lower()] = true
+    end
+end
+loc.API.IsSUNCEnabled = function(mode)
+    local policy = loc.API.GetAllowAIPolicy(mode or loc.API.AllowAIMode)
+    return policy.valid == true and policy.enabled == true and loc.API.SUNCMode == "Enable"
+end
+-- Never assume 100% sUNC compatibility. Only install functions that exist in this host.
+-- The normal Arcsen sandbox is intentionally not applied to these executor APIs.
+loc.API.InstallSUNCFunctions = function(environment)
+    if not loc.API.IsSUNCEnabled(loc.API.LuaRunMode) then return end
+    local host = getfenv(0)
+    for _, name in ipairs(loc.API.SUNCNames) do
+        local namespace, member = name:match("^([%w_]+)%.([%w_]+)$")
+        if namespace then
+            local hostNamespace = host[namespace]
+            local fn = type(hostNamespace) == "table" and hostNamespace[member] or nil
+            if type(fn) == "function" then
+                environment[namespace] = environment[namespace] or {}
+                environment[namespace][member] = fn
+            end
+        else
+            local fn = host[name]
+            if type(fn) == "function" then environment[name] = fn end
+        end
+    end
+end
+
+-- Sandbox Level limits the *normal* Roblox API, not the optional sUNC bridge.
+-- Create Lua Script is still required for every executable action.
 loc.API.SandboxLevels = {
     ["High Restricted"] = {restricted = true, strict = true, allowCachedAssets = false, allowApprovedMedia = false, allowExtraServices = false},
     ["Mid Restricted"] = {restricted = true, strict = false, allowCachedAssets = true, allowApprovedMedia = false, allowExtraServices = false},
@@ -3402,9 +3475,10 @@ loc.API.GetLuaSandboxPolicy = function(mode)
     }
 end
 
--- Stage 12: existing local media is independent from downloading new files.
--- These approvals are session-only, exact-file, and are never given to generated Lua as a table.
+-- Stage 12.1: existing local media/file/folder approvals are independent from new downloads.
+-- Session-only exact-file and explicitly approved folder access, never exposed as tables to generated Lua.
 loc.API.ApprovedLocalMediaPaths = {}
+loc.API.ApprovedLocalMediaFolders = {}
 
 loc.API.CanonicalLocalMediaPath = function(path)
     if type(path) ~= "string" then return nil, "Enter a local media file path." end
@@ -3428,12 +3502,59 @@ loc.API.CanonicalLocalMediaPath = function(path)
     return path
 end
 
+-- A folder grant authorizes image/audio files under a boundary-safe prefix, including descendants.
+-- A trailing slash in user input identifies a folder. Existing folders without a slash also work.
+loc.API.CanonicalLocalMediaFolder = function(path)
+    if type(path) ~= "string" then return nil, "Enter a local media folder path." end
+    path = path:gsub("^%s+", ""):gsub("%s+$", "")
+    if path == "" or #path > 260 or path:find("[%c]") or path:find("\\", 1, true)
+        or path:find("[:*?\"<>|]") or path:sub(1, 1) == "/" or path:sub(1, 1) == "~"
+        or path:find("//", 1, true) then
+        return nil, "Use a relative executor Workspace folder path without traversal, absolute paths or backslashes."
+    end
+    path = path:gsub("/$", "")
+    if path == "" or path == "ExperienceSettings" then
+        return nil, "Approving the entire Workspace or ExperienceSettings root is not allowed. Choose a media subfolder."
+    end
+    for segment in path:gmatch("[^/]+") do
+        if segment == "." or segment == ".." or segment:sub(1, 1) == "." then
+            return nil, "Dot segments and hidden directories are not allowed."
+        end
+    end
+    return path .. "/"
+end
+
 loc.API.ApproveLocalMediaPath = function(rawPath)
     local policy = loc.API.GetLuaSandboxPolicy(loc.API.AllowAIMode)
     if not policy.enabled or not policy.allowApprovedMedia then
         return false, "Enable Create Lua Script and use Low Restricted or Unrestricted first."
     end
-    local path, reason = loc.API.CanonicalLocalMediaPath(rawPath)
+    if type(rawPath) ~= "string" then return false, "Enter a local media file or folder path." end
+    local pathInput = rawPath:gsub("^%s+", ""):gsub("%s+$", "")
+    -- Folder detection does not enumerate or read the folder. It only checks existence.
+    local wantsFolder = pathInput:sub(-1) == "/"
+    if not wantsFolder and type(isfolder) == "function" then
+        local ok, found = pcall(isfolder, pathInput)
+        wantsFolder = ok and found == true
+    end
+    if wantsFolder then
+        local folder, reason = loc.API.CanonicalLocalMediaFolder(pathInput)
+        if not folder then return false, reason end
+        if folder:sub(1, #"ExperienceSettings/Arcsen/Cache/") == "ExperienceSettings/Arcsen/Cache/"
+            or folder == "ExperienceSettings/Arcsen/Cache/"
+            or folder == "ExperienceSettings/Arcsen/" then
+            return false, "Arcsen Cache folders cannot be approved as ordinary media folders; use source records."
+        end
+        if loc.API.SandboxLevel == "Low Restricted" and folder:sub(1, #"ExperienceSettings/") ~= "ExperienceSettings/" then
+            return false, "Low Restricted only approves folders under ExperienceSettings/."
+        end
+        if type(isfolder) ~= "function" then return false, "Executor isfolder() is unavailable." end
+        local ok, found = pcall(isfolder, folder:sub(1, -2))
+        if not ok or not found then return false, "Local media folder does not exist: " .. folder end
+        loc.API.ApprovedLocalMediaFolders[folder] = true
+        return true, "Approved media folder and subfolders until session ends: " .. folder
+    end
+    local path, reason = loc.API.CanonicalLocalMediaPath(pathInput)
     if not path then return false, reason end
     if path:sub(1, #"ExperienceSettings/Arcsen/Cache/") == "ExperienceSettings/Arcsen/Cache/" then
         return false, "Cache/Audio and Cache/Images use source records automatically; other Cache files cannot be manually approved."
@@ -3445,15 +3566,33 @@ loc.API.ApproveLocalMediaPath = function(rawPath)
     local ok, found = pcall(isfile, path)
     if not ok or not found then return false, "Local media file does not exist: " .. path end
     loc.API.ApprovedLocalMediaPaths[path] = true
-    return true, "Approved until this Arcsen session ends: " .. path
+    return true, "Approved media file until this Arcsen session ends: " .. path
 end
 
 loc.API.RevokeLocalMediaPath = function(rawPath)
-    local path, reason = loc.API.CanonicalLocalMediaPath(rawPath)
+    if type(rawPath) ~= "string" then return false, "Enter a local media file or folder path." end
+    local pathInput = rawPath:gsub("^%s+", ""):gsub("%s+$", "")
+    -- Folder grants may be revoked even when the folder has since been deleted.
+    local folder, folderReason = loc.API.CanonicalLocalMediaFolder(pathInput)
+    if folder and loc.API.ApprovedLocalMediaFolders[folder] == true then
+        loc.API.ApprovedLocalMediaFolders[folder] = nil
+        return true, "Revoked media folder: " .. folder
+    end
+    if pathInput:sub(-1) == "/" then return false, folderReason or "This folder has not been approved." end
+    local path, reason = loc.API.CanonicalLocalMediaPath(pathInput)
     if not path then return false, reason end
     if loc.API.ApprovedLocalMediaPaths[path] ~= true then return false, "This file has not been approved." end
     loc.API.ApprovedLocalMediaPaths[path] = nil
-    return true, "Revoked: " .. path
+    return true, "Revoked media file: " .. path
+end
+
+loc.API.IsApprovedLocalMediaPath = function(path)
+    if loc.API.ApprovedLocalMediaPaths[path] == true then return true end
+    -- Folder keys end in '/', so an approval for Music/ cannot match MusicBackup/.
+    for folder, approved in pairs(loc.API.ApprovedLocalMediaFolders) do
+        if approved == true and path:sub(1, #folder) == folder then return true end
+    end
+    return false
 end
 
 -- AI action permission. The default is Don't; verification behavior is selected by mode.
@@ -3517,13 +3656,53 @@ loc.API.AllowAISettingsFrame = addset("AllowAI", "Allow AI", 255, 175, 85, funct
             if value == "Don't" then
                 loc.API.ModifyFileMode = "Don't"
                 loc.API.AllFileAccessMode = "Don't"
-                loc.API.ApprovedLocalMediaPaths = {} -- revoke all file-by-file approvals when Lua is disabled
+                loc.API.SUNCMode = "Disable" -- revoke high-risk executor access
+                if loc.API.SUNCModeRow and loc.API.SUNCModeRow.Button then
+                    loc.API.SUNCModeRow.Button.Text = "Disable"
+                end
+                loc.API.ApprovedLocalMediaPaths = {} -- revoke local file approvals when Lua is disabled
+                loc.API.ApprovedLocalMediaFolders = {} -- revoke folder approvals too
             end
             if ui and ui.Button then ui.Button.Text = loc.API.SettingsModeLabel(value) end
             if type(loc.API.RefreshFilePermissionButtons) == "function" then loc.API.RefreshFilePermissionButtons() end
             if type(ding) == "function" then
                 ding("Allow AI · Create Lua Script: " .. value .. (value == "Don't" and " · file access reset" or ""), 3, 255, 190, 100)
             end
+        end
+    )
+
+    -- Stage 13: separate sUNC grant under Allow AI; independent of Arcsen Sandbox Level.
+    local suncDescription = Instance.new("TextLabel")
+    suncDescription.Name = "SUNCDescription"
+    suncDescription.Size = UDim2.new(1, -8, 0, 88)
+    suncDescription.BackgroundTransparency = 1
+    suncDescription.TextColor3 = Color3.fromRGB(245, 245, 245)
+    suncDescription.TextSize = 13
+    suncDescription.TextWrapped = true
+    suncDescription.TextXAlignment = Enum.TextXAlignment.Left
+    suncDescription.TextYAlignment = Enum.TextYAlignment.Top
+    suncDescription.Text = "sUNC Enable: Independent from Arcsen's sandbox permission. Disable (Default) blocks executor APIs in AI scripts. Enable exposes available host sUNC functions; every AI script requires your approval. WARNING: raw executor APIs can bypass Arcsen's normal protections and access sensitive data."
+    suncDescription.Parent = frame
+
+    loc.API.SUNCModeRow = o(frame, "None", "sUNC Enable", false, false, "Disable", true, false, nil,
+        function(ui)
+            ui.AddSelect("Disable")
+            ui.AddSelect("Enable")
+            ui.Button.Text = loc.API.SUNCMode == "Enable" and "Enable" or "Disable"
+        end,
+        function(value, source, ui)
+            if source ~= "select" then return end
+            if value ~= "Enable" then value = "Disable" end
+            if value == "Enable" and not loc.API.GetAllowAIPolicy(loc.API.AllowAIMode).enabled then
+                loc.API.SUNCMode = "Disable"
+                if ui and ui.Button then ui.Button.Text = "Disable" end
+                ding("Enable Create Lua Script before turning on sUNC.", 4, 255, 120, 100)
+                return
+            end
+            loc.API.SUNCMode = value
+            if ui and ui.Button then ui.Button.Text = value end
+            ding("Allow AI · sUNC " .. value .. (value == "Enable" and " · every AI script requires approval!" or " · executor APIs disabled"), 4,
+                value == "Enable" and 255 or 130, value == "Enable" and 180 or 220, 90)
         end
     )
 
@@ -3618,7 +3797,7 @@ loc.API.SandboxSettingsFrame = addset("ArcsenSandbox", "Arcsen's sandbox permiss
     description.TextWrapped = true
     description.TextXAlignment = Enum.TextXAlignment.Left
     description.TextYAlignment = Enum.TextYAlignment.Top
-    description.Text = "High Restricted: no local media.\nMid Restricted (Default): existing Arcsen Cache/Audio or Images with .source.txt only.\nLow Restricted: same cache + exact media files approved under ExperienceSettings/.\nUnrestricted: same cache + exact media files approved anywhere in executor Workspace.\nCreate Lua Script is required to run AI Lua. File Downloads only controls NEW downloads."
+    description.Text = "Normal guarded Lua only (sUNC Enable is a separate Allow AI permission):\nHigh Restricted: no local media.\nMid Restricted (Default): existing Arcsen Cache/Audio or Images with .source.txt only.\nLow Restricted: cache + approved media files/folders under ExperienceSettings/.\nUnrestricted: cache + approved media files/folders in executor Workspace.\nCreate Lua Script is required. File Downloads controls NEW downloads."
     description.Parent = frame
 
     loc.API.SandboxLevelRow = o(frame, "None", "Level", false, false, "Mid Restricted", true, false, nil,
@@ -3636,6 +3815,7 @@ loc.API.SandboxSettingsFrame = addset("ArcsenSandbox", "Arcsen's sandbox permiss
             if source ~= "select" or not loc.API.SandboxLevels[value] then return end
             if loc.API.SandboxLevel ~= value then
                 loc.API.ApprovedLocalMediaPaths = {} -- a tier change revokes prior consent
+                loc.API.ApprovedLocalMediaFolders = {}
             end
             loc.API.SandboxLevel = value
             if ui and ui.Button then ui.Button.Text = value end
@@ -3643,20 +3823,20 @@ loc.API.SandboxSettingsFrame = addset("ArcsenSandbox", "Arcsen's sandbox permiss
         end
     )
 
-    -- File-by-file approval. Text is never evaluated; it is used only as an exact path.
+    -- File/folder approval. Text is never evaluated; only a validated relative path is used.
     local mediaInfo = Instance.new("TextLabel")
     mediaInfo.Name = "LocalMediaDescription"
-    mediaInfo.Size = UDim2.new(1, -8, 0, 70)
+    mediaInfo.Size = UDim2.new(1, -8, 0, 90)
     mediaInfo.BackgroundTransparency = 1
     mediaInfo.TextSize = 13
     mediaInfo.TextWrapped = true
     mediaInfo.TextXAlignment = Enum.TextXAlignment.Left
     mediaInfo.TextYAlignment = Enum.TextYAlignment.Top
     mediaInfo.TextColor3 = Color3.fromRGB(245, 245, 245)
-    mediaInfo.Text = "Local Media Access (session-only): enter an EXACT existing image/audio file path, then Approve. Low: only ExperienceSettings/. Unrestricted: any relative executor Workspace path. This does not access Android device storage. You can revoke a path or all approvals."
+    mediaInfo.Text = "Local Media Access (session-only): enter an existing media file OR folder path. Example: C418's songs/ approves media in that folder and its subfolders; only image/audio file extensions can load. Low: ExperienceSettings/ only. Unrestricted: executor Workspace. File Downloads controls only new downloads. Revoke or Clear all anytime."
     mediaInfo.Parent = frame
 
-    loc.API.LocalMediaPathInputRow = o(frame, "None", "Media path", false, false, nil, false, true, "path/to/media.mp3", nil)
+    loc.API.LocalMediaPathInputRow = o(frame, "None", "Media path", false, false, nil, false, true, "path/to/media.mp3 or Music/", nil)
     loc.API.LocalMediaPathInputRow.Input.Size = UDim2.new(0.7, -5, 0, 23)
     loc.API.LocalMediaPathInputRow.Input.Position = UDim2.new(0.3, 5, 0, 2)
     loc.API.LocalMediaPathInputRow.Input.TextScaled = false
@@ -3664,13 +3844,13 @@ loc.API.SandboxSettingsFrame = addset("ArcsenSandbox", "Arcsen's sandbox permiss
     loc.API.LocalMediaPathInputRow.Input.TextXAlignment = Enum.TextXAlignment.Left
     loc.API.LocalMediaPathInputRow.Label.Size = UDim2.new(0.3, -5, 0, 23)
 
-    loc.API.MediaApproveRow = o(frame, "None", "Allow this exact file", false, true, "Approve", false, false, nil, nil,
+    loc.API.MediaApproveRow = o(frame, "None", "Allow this file / folder", false, true, "Approve", false, false, nil, nil,
         function(_, source)
             if source ~= "button" then return end
             local ok, result = loc.API.ApproveLocalMediaPath(loc.API.LocalMediaPathInputRow.Input.Text)
             ding(result, 6, ok and 100 or 255, ok and 230 or 135, ok and 160 or 100)
         end)
-    loc.API.MediaRevokeRow = o(frame, "None", "Remove this file's permission", false, true, "Revoke", false, false, nil, nil,
+    loc.API.MediaRevokeRow = o(frame, "None", "Revoke file / folder", false, true, "Revoke", false, false, nil, nil,
         function(_, source)
             if source ~= "button" then return end
             local ok, result = loc.API.RevokeLocalMediaPath(loc.API.LocalMediaPathInputRow.Input.Text)
@@ -3680,7 +3860,8 @@ loc.API.SandboxSettingsFrame = addset("ArcsenSandbox", "Arcsen's sandbox permiss
         function(_, source)
             if source ~= "button" then return end
             loc.API.ApprovedLocalMediaPaths = {}
-            ding("All approved local media paths revoked for this session.", 5, 150, 210, 255)
+            loc.API.ApprovedLocalMediaFolders = {}
+            ding("All approved local media files and folders revoked for this session.", 5, 150, 210, 255)
         end)
 end)
 
@@ -5447,7 +5628,7 @@ end
 
 -- Stage 12: file downloads only authorize acquiring new data. Reading existing
 -- Arcsen-owned media needs the correct Sandbox Level and a saved source record,
--- but not the download toggle. Non-cache media needs EXACT user approval.
+-- but not the download toggle. Non-cache media needs explicit file/folder approval.
 loc.API.CheckCachedAssetForLua = function(path, mode)
     local policy = loc.API.GetLuaSandboxPolicy(mode or loc.API.LuaRunMode or loc.API.AllowAIMode)
     if not policy.valid or not policy.enabled or not policy.allowCachedAssets then
@@ -5484,8 +5665,8 @@ loc.API.CheckCachedAssetForLua = function(path, mode)
     if path:sub(1, #"ExperienceSettings/Arcsen/Cache/") == "ExperienceSettings/Arcsen/Cache/" then
         return false, "Only Cache/Audio and Cache/Images media with source records are permitted."
     end
-    if not policy.allowApprovedMedia or loc.API.ApprovedLocalMediaPaths[path] ~= true then
-        return false, "This local media path needs exact-file approval in Settings > Arcsen's sandbox permission (Low/Unrestricted)."
+    if not policy.allowApprovedMedia or not loc.API.IsApprovedLocalMediaPath(path) then
+        return false, "This local media file needs file or parent-folder approval in Settings > Arcsen's sandbox permission (Low/Unrestricted)."
     end
     if loc.API.SandboxLevel == "Low Restricted" and path:sub(1, #"ExperienceSettings/") ~= "ExperienceSettings/" then
         return false, "Low Restricted cannot open approved media outside ExperienceSettings/."
@@ -5529,17 +5710,19 @@ loc.API.ValidateLuaScript = function(source, mode)
             return false, "Function declarations/closures are blocked in High Restricted mode."
         end
         if loc.API.LuaCandidatePolicy.restricted and loc.API.LuaUnsafeTokens[loc.API.LuaTokenLower]
+            and not (loc.API.IsSUNCEnabled(loc.API.LuaCandidateMode)
+                and loc.API.SUNCTokens[loc.API.LuaTokenLower])
             and not (not loc.API.LuaCandidatePolicy.strict
                 and (loc.API.LuaTokenLower == "function" or loc.API.LuaTokenLower == "waitforchild"
                     or (loc.API.LuaTokenLower == "getcustomasset" and loc.API.LuaCandidatePolicy.allowCachedAssets))) then
             return false, "Restricted API/token is not allowed in this mode: " .. LuaToken
         end
         if loc.API.LuaTokenLower == "getcustomasset" then
-            if not loc.API.LuaCandidatePolicy.allowCachedAssets then
+            if not loc.API.LuaCandidatePolicy.allowCachedAssets and not loc.API.IsSUNCEnabled(loc.API.LuaCandidateMode) then
                 return false, "Sandbox Level High Restricted does not allow getcustomasset."
             end
-            if type(getcustomasset) ~= "function" or type(isfile) ~= "function" then
-                return false, "The executor needs getcustomasset() and isfile() for local media."
+            if type(getcustomasset) ~= "function" or (not loc.API.IsSUNCEnabled(loc.API.LuaCandidateMode) and type(isfile) ~= "function") then
+                return false, "The executor needs getcustomasset() and, for guarded media, isfile()."
             end
         end
         -- Keep all other executor escape hatches outside generated Lua at every level.
@@ -5559,7 +5742,9 @@ loc.API.ValidateLuaScript = function(source, mode)
                 or loc.API.LuaTokenLower == "newcclosure" or loc.API.LuaTokenLower == "checkcaller"
                 or loc.API.LuaTokenLower == "getrawmetatable" or loc.API.LuaTokenLower == "setreadonly"
                 or loc.API.LuaTokenLower == "gethiddenproperty" or loc.API.LuaTokenLower == "sethiddenproperty" then
-            return false, "Executor escape API is not exposed to AI scripts: " .. LuaToken
+            if not (loc.API.IsSUNCEnabled(loc.API.LuaCandidateMode) and loc.API.SUNCTokens[loc.API.LuaTokenLower]) then
+                return false, "Executor escape API is not exposed to AI scripts: " .. LuaToken
+            end
         end
     end
     return true, nil
@@ -5812,6 +5997,9 @@ loc.API.RunAIGeneratedLua = function(source, mode)
     if loc.API.LuaRunRequestedSandboxLevel and loc.API.LuaRunRequestedSandboxLevel ~= loc.API.SandboxLevel then
         return false, "Sandbox Level changed before execution. Review the action again."
     end
+    if loc.API.LuaRunRequestedSUNCMode and loc.API.LuaRunRequestedSUNCMode ~= loc.API.SUNCMode then
+        return false, "sUNC Enable changed before execution. Request a new script."
+    end
     loc.API.LuaProtectedAccessDetected = false
     loc.API.LuaProtectedAccessMessage = nil
     loc.API.LuaRunAllowed, loc.API.LuaRunReason = loc.API.ValidateLuaScript(source, loc.API.LuaRunMode)
@@ -5861,12 +6049,15 @@ loc.API.RunAIGeneratedLua = function(source, mode)
         end},
         game=loc.API.WrapLuaInstance(game, 0),
         workspace=loc.API.WrapLuaInstance(workspace, 0),
-        -- Only canonical Arcsen Cache media or exact, session-approved local media.
+        -- Only canonical Arcsen Cache media or session-approved file/folder media.
         -- Never expose raw getcustomasset, readfile, writefile, or network APIs.
         getcustomasset=(loc.API.LuaRunPolicy.allowCachedAssets and loc.API.GuardedGetCustomAsset or nil),
         print=loc.API.LuaSafePrint,
         warn=function(...) loc.API.LuaSafePrint("Warning:", ...) end
     }
+    -- Inject explicitly listed, host-provided sUNC APIs only when separately opted in.
+    -- WARNING: raw executor functions bypass normal instance/file sandbox restrictions.
+    loc.API.InstallSUNCFunctions(loc.API.LuaSandbox)
     loc.API.LuaSetEnvironmentOK, loc.API.LuaSetEnvironmentError = pcall(setfenv, loc.API.LuaChunk, loc.API.LuaSandbox)
     if not loc.API.LuaSetEnvironmentOK then
         return false, "Could not create the guarded Lua environment: " .. tostring(loc.API.LuaSetEnvironmentError)
@@ -5944,7 +6135,12 @@ loc.API.RunLuaScriptCard = function(chatID, message)
         loc.API.AppendLuaExecutionResult(chatID, "Action blocked: Sandbox Level changed since script generation.")
         return false
     end
-    if loc.API.LuaCardPolicy.requireApproval and message.luaApprovalGranted ~= true then return false end
+    if tostring(message.luaSUNCMode or "Disable") ~= tostring(loc.API.SUNCMode or "Disable") then
+        loc.API.FinishLuaScriptCard(chatID, message, "blocked", "sUNC Enable setting changed. Request a fresh script.\n\n" .. loc.API.LuaScriptCardCode)
+        return false
+    end
+    if (loc.API.LuaCardPolicy.requireApproval or message.luaSUNCMode == "Enable")
+        and message.luaApprovalGranted ~= true then return false end
     loc.API.LuaRunAllowed, loc.API.LuaRunReason = loc.API.ValidateLuaScript(loc.API.LuaScriptCardCode, loc.API.LuaCardMode)
     if not loc.API.LuaRunAllowed then
         loc.API.FinishLuaScriptCard(chatID, message, "blocked", "Blocked by Arcsen's Lua checks.\n\n" .. loc.API.LuaScriptCardCode)
@@ -5956,8 +6152,10 @@ loc.API.RunLuaScriptCard = function(chatID, message)
         while loc.API.LuaExecutionBusy do task.wait(0.05) end
         loc.API.LuaExecutionBusy = true
         loc.API.LuaRunRequestedSandboxLevel = targetMessage.luaSandboxLevel
+        loc.API.LuaRunRequestedSUNCMode = targetMessage.luaSUNCMode
         local callOK, executionOK, executionOutput = pcall(loc.API.RunAIGeneratedLua, targetCode, targetMessage.luaMode)
         loc.API.LuaRunRequestedSandboxLevel = nil
+        loc.API.LuaRunRequestedSUNCMode = nil
         loc.API.LuaExecutionBusy = false
         if not callOK then
             executionOutput = tostring(executionOK)
@@ -6003,7 +6201,8 @@ loc.API.ChooseLuaScript = function(chatID, messageIndex, approve)
     loc.API.LuaApprovalMode = tostring(loc.API.AllowAIMode or "Don't")
     loc.API.LuaApprovalPolicy = loc.API.GetAllowAIPolicy(loc.API.LuaApprovalMode)
     if not loc.API.LuaApprovalPolicy.valid or not loc.API.LuaApprovalPolicy.enabled
-        or not loc.API.LuaApprovalPolicy.requireApproval
+        or not (loc.API.LuaApprovalPolicy.requireApproval or loc.API.LuaDecisionMessage.luaSUNCMode == "Enable")
+        or tostring(loc.API.LuaDecisionMessage.luaSUNCMode or "Disable") ~= tostring(loc.API.SUNCMode or "Disable")
         or tostring(loc.API.LuaDecisionMessage.luaMode or "") ~= loc.API.LuaApprovalMode then
         loc.API.FinishLuaScriptCard(chatID, loc.API.LuaDecisionMessage, "blocked", "Action blocked because the active Allow AI mode no longer matches the pending approval.\n\n" .. tostring(loc.API.LuaDecisionMessage.luaScriptCode or ""))
         loc.API.AppendLuaExecutionResult(chatID, "Action blocked. No code was executed.")
@@ -6051,7 +6250,7 @@ loc.API.ProcessLuaScriptResponse = function(chatID, code, extractionError, mode,
         loc.API.LuaActionExplanation = loc.API.LuaActionExplanation:sub(1, 900) .. "..."
     end
 
-    if loc.API.ProcessPolicy.requireApproval then
+    if loc.API.ProcessPolicy.requireApproval or loc.API.IsSUNCEnabled(loc.API.ProcessMode) then
         loc.API.AddLuaScriptAssistantMessage(chatID,
             loc.API.LuaActionExplanation .. "\n\nPlease review the generated code below. Nothing will run until you approve it.", nil, nil)
     else
@@ -6062,8 +6261,9 @@ loc.API.ProcessLuaScriptResponse = function(chatID, code, extractionError, mode,
     if not loc.API.LuaPendingCard then return "blocked" end
     loc.API.LuaPendingCard.luaMode = loc.API.ProcessMode
     loc.API.LuaPendingCard.luaSandboxLevel = loc.API.SandboxLevel
+    loc.API.LuaPendingCard.luaSUNCMode = loc.API.SUNCMode
     if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
-    if loc.API.ProcessPolicy.requireApproval then
+    if loc.API.ProcessPolicy.requireApproval or loc.API.IsSUNCEnabled(loc.API.ProcessMode) then
         return "pending"
     end
     if loc.API.RunLuaScriptCard(chatID, loc.API.LuaPendingCard) then
@@ -6817,13 +7017,22 @@ loc.API.GenerateResponse = function(chatID, userIndex)
     loc.API.AllowAIModeForRequest = tostring(loc.API.AllowAIMode or "Don't")
     loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
         .. "\n\nARCSEN SANDBOX LEVEL: " .. tostring(loc.API.SandboxLevel or "Mid Restricted")
-        .. ". This is an independent cap on Lua execution, NOT permission to execute. High Restricted: strict read-only; Mid Restricted: read-only but functions and verified cached media allowed; Low Restricted: guarded Roblox writes if Create Lua Script also permits; Unrestricted: additional approved Roblox services but still NO raw filesystem/network/executor APIs. All levels block CoreGui.ExperienceSettings, loops and unauthorized actions. The only sUNC bridge is guarded getcustomasset for existing Arcsen Cache media or explicit session-approved image/audio paths (Low/Unrestricted only). File Downloads controls only NEW downloads, not reading already-present media. High rejects media. Mid permits Arcsen Cache/Audio or Images with .source.txt. Low also permits individually approved existing paths under ExperienceSettings/. Unrestricted also permits individually approved relative executor Workspace paths. Local path approval is per-file in Settings > Arcsen's sandbox permission, never implicit. Names may include spaces and apostrophes."
+        .. ". This is an independent cap on Lua execution, NOT permission to execute. High Restricted: strict read-only; Mid Restricted: read-only but functions and verified cached media allowed; Low Restricted: guarded Roblox writes if Create Lua Script also permits; Unrestricted: additional approved Roblox services. With sUNC Disable, all levels block raw filesystem/network/executor APIs and CoreGui.ExperienceSettings. With sUNC Enable, raw executor APIs are independent from Sandbox Level and these normal safeguards cannot be guaranteed. The guarded default sUNC bridge is getcustomasset for existing Arcsen Cache media or explicit session-approved image/audio files or folders (Low/Unrestricted only). File Downloads controls only NEW downloads, not reading already-present media. High rejects media. Mid permits Arcsen Cache/Audio or Images with .source.txt. Low also permits approved files or folders under ExperienceSettings/. Unrestricted also permits approved files or folders in the relative executor Workspace. A folder grant includes image/audio files in its subfolders; non-media files remain blocked. All approvals must be made explicitly in Settings > Arcsen's sandbox permission and are session-only. Names may include spaces and apostrophes."
+    loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
+        .. "\n\nSUNC PERMISSION (separate from Sandbox Level): " .. tostring(loc.API.SUNCMode or "Disable")
+        .. (loc.API.IsSUNCEnabled(loc.API.AllowAIModeForRequest)
+            and ". When enabled, the host-supported listed executor functions are available to generated Lua independently of Sandbox Level, but all Lua requires explicit approval before execution. This is a trusted/high-risk mode: raw executor APIs can bypass other sandbox protection, file/download permissions, and guarded CoreGui. Do not access credentials or perform unrelated actions; do not assume absent host APIs exist."
+            or ". Disabled: never put raw sUNC executor APIs (other than existing guarded getcustomasset when permitted) in executable script. Enable it only through Settings > Allow AI > sUNC Enable.")
     if loc.API.AllowAIModeForRequest == "Don't" then
         loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
             .. "\n\nARCSEN ACTION POLICY: The user's setting is Don't. Do not generate an executable-script marker, do not execute code, and do not give an external executor/Script Hub workaround for an action. Answer normal informational questions naturally. If the request needs a runtime lookup or executable action, explain that Allow AI is disabled and ask the user to enable it in Settings → Allow AI → Create Lua Script."
     else
         loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
-            .. "\n\nARCSEN ACTION / LUA POLICY (current mode: " .. loc.API.AllowAIModeForRequest .. "): For a request that needs runtime Roblox data or an executable Lua action, before responding, do a safety review of the proposed code for unintended side effects, permission problems, and obvious errors; do not reveal private chain-of-thought. Begin with one brief natural-language sentence explaining the intended action and safety-relevant effects, then return exactly one script wrapped by [[ARCSEN_LUA_SCRIPT]] and [[/ARCSEN_LUA_SCRIPT]], with a single fenced ```lua block inside the wrapper. Keep explanation outside the wrapper and never put another code block outside it. Do not emit a script wrapper for ordinary informational questions. Never access CoreGui.ExperienceSettings in any form; that folder is always prohibited. Do not use for/while/repeat/until/break/continue loops. The Sandbox Level also caps Lua separately: High and Mid Restricted are read-only; Low and Unrestricted allow guarded Roblox property changes ONLY if Create Lua Script is also an Unrestricted-labelled mode. Wait/WaitForChild and functions are available from Mid Restricted upward, but loops are still prohibited. The client wraps returned Instances and blocks CoreGui.ExperienceSettings. You may discuss and draft sUNC-compatible Luau. The guarded AI runner exposes ONLY a limited getcustomasset(path) for existing Cache/Audio or Cache/Images media with Arcsen .source.txt records (Mid or above) or exact session-approved local image/audio media paths (Low/Unrestricted). It does not need File Downloads enabled to LOAD a previously saved file. File Downloads permission is still required to DOWNLOAD NEW files. External media paths must be approved individually by the user from Arcsen Settings before Lua can load them. Low can approve only ExperienceSettings/ paths; Unrestricted can approve any relative executor Workspace media path. Never invent paths, silently grant file approval, or suggest bypassing it. For newly downloaded files, wait for a completed download and use the exact resulting path. Other executor sUNC APIs, filesystem calls, and network APIs are not exposed; use the separate ARCSEN_DOWNLOAD marker for file downloads and NEVER combine file-download requests with a Lua script marker in the same response. Never bypass file-action/download approvals. For Verification modes, show the code for user review and do not execute before approval; modes without Verification may auto-run only after checks pass. Treat user approval as consent to the shown script, not as a reason to conceal meaningful side effects. Do not claim success before the client reports a result. If a request is unsafe or the code has unexpected effects, explain that and propose a safer alternative."
+            .. "\n\nARCSEN ACTION / LUA POLICY (current mode: " .. loc.API.AllowAIModeForRequest .. "): For a request that needs runtime Roblox data or an executable Lua action, before responding, do a safety review of the proposed code for unintended side effects, permission problems, and obvious errors; do not reveal private chain-of-thought. Begin with one brief natural-language sentence explaining the intended action and safety-relevant effects, then return exactly one script wrapped by [[ARCSEN_LUA_SCRIPT]] and [[/ARCSEN_LUA_SCRIPT]], with a single fenced ```lua block inside the wrapper. Keep explanation outside the wrapper and never put another code block outside it. Do not emit a script wrapper for ordinary informational questions. Never access CoreGui.ExperienceSettings in any form; that folder is always prohibited. Do not use for/while/repeat/until/break/continue loops. The Sandbox Level also caps Lua separately: High and Mid Restricted are read-only; Low and Unrestricted allow guarded Roblox property changes ONLY if Create Lua Script is also an Unrestricted-labelled mode. Wait/WaitForChild and functions are available from Mid Restricted upward, but loops are still prohibited. The client wraps returned Instances and blocks CoreGui.ExperienceSettings. You may discuss and draft sUNC-compatible Luau. The guarded AI runner exposes ONLY a limited getcustomasset(path) for existing Cache/Audio or Cache/Images media with Arcsen .source.txt records (Mid or above), or media in user-approved exact-file or folder paths (Low/Unrestricted; nested folders included, image/audio extensions only). It does not need File Downloads enabled to LOAD a previously saved file. File Downloads permission is still required to DOWNLOAD NEW files. External media paths must be explicitly approved by the user as a single file or a folder from Arcsen Settings before Lua can load them. Low can approve only ExperienceSettings/ paths; Unrestricted can approve relative executor Workspace paths. Never invent paths, silently grant file/folder approval, or suggest bypassing it. For newly downloaded files, wait for a completed download and use the exact resulting path. With sUNC Disable, other executor APIs, filesystem calls, and network APIs are not exposed; use the separate ARCSEN_DOWNLOAD marker for file downloads and NEVER combine file-download requests with a Lua script marker in the same response. Never bypass file-action/download approvals. For Verification modes, show the code for user review and do not execute before approval; modes without Verification may auto-run only after checks pass. Treat user approval as consent to the shown script, not as a reason to conceal meaningful side effects. Do not claim success before the client reports a result. If a request is unsafe or the code has unexpected effects, explain that and propose a safer alternative."
+    end
+    if loc.API.IsSUNCEnabled(loc.API.AllowAIModeForRequest) then
+        loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
+            .. "\n\nSUNC OVERRIDE FOR THIS REQUEST: Ignore earlier 'other sUNC APIs are never exposed' restrictions ONLY for APIs in the supported sUNC list available from this host. The sUNC switch is independent of Arcsen Sandbox Level. Always emit reviewable code; never treat sUNC Enable as blanket permission to read secrets or harm other users. The client will require manual approval for EVERY AI Lua script in sUNC mode, even when Create Lua Script otherwise permits auto-run."
     end
     -- Announce the current file-download permission to avoid claiming that the
     -- handler does not exist, or requesting blocked downloads in default mode.
