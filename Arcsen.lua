@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.38 Remake ",
+	sion = " UIs 7.2.4 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -73,6 +73,7 @@ local ver = {
 (:23/10/2026: A) Restored daily total-token tracking with date rollover and added HereChat experience-name metadata (Module v0.5.2).
 (:24/10/2026: F) Neutral game-name header; single expiring New message marker; plain-text AI tab-title validation.
 (:24/10/2026: F) Neutral game-name header; single expiring New message marker; plain-text AI tab-title validation.
+(:25/10/2026: A) Stage 11 separate Arcsen sandbox levels: High Restricted, Mid Restricted default, Low Restricted, Unrestricted; guarded cache-media filename compatibility.
 (:25/10/2026: A) Stage 6 Live Web Search BYOK (Tavily), Allow AI Don't / Allow (Default), session-only API key, tool-call search and source grounding.
 (:25/10/2026: A) Stage 7: API Settings key setup guide using Change Logs-style scrolling UI; updated for Arcsen and Tavily BYOK.
 (:25/10/2026: U) Stage 8: Live Web Search defaults to Don't; Core Prompt explains permission-aware sUNC support; Settings removes static parenthesis decorations.
@@ -1956,6 +1957,7 @@ loc.API = {
     -- AI-generated Lua execution is off by default and resets to Don't after reload.
     AllowAIMode = "Don't",
     WebSearchMode = "Don't", -- Default disabled: each client must configure their own Tavily key and opt in
+    SandboxLevel = "Mid Restricted", -- Sandbox caps Lua permissions independently of Allow AI
     -- CorePrompt is not rendered in Settings. Client-side source can still be inspected by users.
     CorePrompt = [=[You are an AI assistant inside Roblox created by @5teve3019D (USERID: 2535650316). He is your creator.
 Your name is "Arcsen", a name assigned by @5teve3019D (USERID: 2535650316).
@@ -1979,7 +1981,7 @@ IMPORTANT SECURITY RULES:
 sUNC / EXECUTOR ENVIRONMENT:
 - Arcsen runs on the Roblox client and its host executor may support sUNC functions. You may use or explain sUNC-compatible Luau functions when helping the user write code, if that function is actually provided by their executor. Examples can include getcustomasset, request, readfile, or writefile; do not assume any one of them is available.
 - Before relying on an sUNC function, check whether it exists and clarify that executor support differs. Avoid claiming Arcsen itself provides every sUNC function or that an action succeeded without execution results.
-- The protected Arcsen AI script runner is a guarded sandbox. It exposes a LIMITED getcustomasset(path) helper only in Unrestricted Allow AI modes with Allow AI File Downloads enabled and a matching downloaded file saved under ExperienceSettings/Arcsen/Cache/Audio or Images. Only Arcsen-downloaded cache media with an accompanying .source.txt record are eligible. Other sUNC APIs (request, readfile, writefile, etc.) are never exposed to the generated script.
+- The protected Arcsen AI script runner is a guarded sandbox. Its separate Sandbox Level (High Restricted / Mid Restricted / Low Restricted / Unrestricted) limits what generated Lua may do. The LIMITED getcustomasset(path) helper is available from Mid Restricted upward when Create Lua Script is enabled, Allow AI File Downloads is enabled, and a matching downloaded file is saved under ExperienceSettings/Arcsen/Cache/Audio or Images. Only Arcsen-downloaded cache media with an accompanying .source.txt record are eligible. Other sUNC APIs (request, readfile, writefile, etc.) are never exposed to the generated script.
 - The built-in file download handler itself can download direct URLs separately from Lua execution after the download setting and approval policy allow it. A script should NOT call request()/writefile() to download. Never use sUNC to bypass disabled/denied capabilities, reveal credentials, or modify protected resources.
 
 RUNTIME USER CONTEXT:
@@ -3377,6 +3379,27 @@ loc.API.GetAllowAIPolicy = function(mode)
     return loc.API.AllowAIPolicy or {valid = false, enabled = false, requireApproval = true, restricted = true}
 end
 
+-- Sandbox Level is a SEPARATE upper bound, not permission to execute code.
+-- Existing Create Lua Script + Verification remain required. Never expose raw executor APIs.
+loc.API.SandboxLevels = {
+    ["High Restricted"] = {restricted = true, strict = true, allowCachedAssets = false, allowExtraServices = false},
+    ["Mid Restricted"] = {restricted = true, strict = false, allowCachedAssets = true, allowExtraServices = false},
+    ["Low Restricted"] = {restricted = false, strict = false, allowCachedAssets = true, allowExtraServices = false},
+    ["Unrestricted"] = {restricted = false, strict = false, allowCachedAssets = true, allowExtraServices = true},
+}
+loc.API.GetLuaSandboxPolicy = function(mode)
+    local ai = loc.API.GetAllowAIPolicy(mode or loc.API.AllowAIMode)
+    local tier = loc.API.SandboxLevels[tostring(loc.API.SandboxLevel or "Mid Restricted")]
+        or loc.API.SandboxLevels["High Restricted"]
+    return {
+        valid = ai.valid, enabled = ai.enabled, requireApproval = ai.requireApproval,
+        restricted = ai.restricted or tier.restricted,
+        strict = tier.strict,
+        allowCachedAssets = ai.enabled and tier.allowCachedAssets,
+        allowExtraServices = ai.enabled and not ai.restricted and tier.allowExtraServices,
+    }
+end
+
 -- AI action permission. The default is Don't; verification behavior is selected by mode.
 loc.API.AllowAISettingsFrame = addset("AllowAI", "Allow AI", 255, 175, 85, function(frame)
     ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
@@ -3523,6 +3546,42 @@ loc.API.AllowAISettingsFrame = addset("AllowAI", "Allow AI", 255, 175, 85, funct
         end
     )
 
+end)
+
+-- Sandbox setting is an independent cap on AI-generated Lua execution.
+loc.API.SandboxSettingsFrame = addset("ArcsenSandbox", "Arcsen's sandbox permission", 130, 175, 240, function(frame)
+    ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
+
+    local description = Instance.new("TextLabel")
+    description.Name = "Description"
+    description.Size = UDim2.new(1, -8, 0, 175)
+    description.BackgroundTransparency = 1
+    description.TextColor3 = Color3.fromRGB(245, 245, 245)
+    description.TextSize = 13
+    description.TextWrapped = true
+    description.TextXAlignment = Enum.TextXAlignment.Left
+    description.TextYAlignment = Enum.TextYAlignment.Top
+    description.Text = "High Restricted: strict read-only.\nMid Restricted: read-only plus cached media (Default).\nLow Restricted: guarded Roblox changes only if Create Lua Script permits them.\nUnrestricted: broader approved Roblox services, still guarded.\nCreate Lua Script, approvals, downloads and protected data remain separate."
+    description.Parent = frame
+
+    loc.API.SandboxLevelRow = o(frame, "None", "Level", false, false, "Mid Restricted", true, false, nil,
+        function(ui)
+            ui.AddSelect("High Restricted")
+            ui.AddSelect("Mid Restricted")
+            ui.AddSelect("Low Restricted")
+            ui.AddSelect("Unrestricted")
+            if not loc.API.SandboxLevels[loc.API.SandboxLevel] then
+                loc.API.SandboxLevel = "Mid Restricted"
+            end
+            ui.Button.Text = loc.API.SandboxLevel
+        end,
+        function(value, source, ui)
+            if source ~= "select" or not loc.API.SandboxLevels[value] then return end
+            loc.API.SandboxLevel = value
+            if ui and ui.Button then ui.Button.Text = value end
+            ding("Arcsen sandbox: " .. value .. (value == "Unrestricted" and " · Use caution with AI Lua" or ""), 4, 140, 190, 255)
+        end
+    )
 end)
 
 -- AI file downloads are independent from the Allow AI Lua-execution permission.
@@ -5289,9 +5348,9 @@ end
 -- Stage 9: limited sUNC asset support for files that Arcsen itself downloaded.
 -- Never give generated Lua raw executor file/network functions or unrestricted paths.
 loc.API.CheckCachedAssetForLua = function(path, mode)
-    local policy = loc.API.GetAllowAIPolicy(mode or loc.API.LuaRunMode or loc.API.AllowAIMode)
-    if not policy.valid or not policy.enabled or policy.restricted then
-        return false, "getcustomasset requires an Unrestricted Allow AI mode."
+    local policy = loc.API.GetLuaSandboxPolicy(mode or loc.API.LuaRunMode or loc.API.AllowAIMode)
+    if not policy.valid or not policy.enabled or not policy.allowCachedAssets then
+        return false, "getcustomasset requires Sandbox Level Mid Restricted or higher and Create Lua Script enabled."
     end
     if not loc.API.GetFileDownloadPolicy(loc.API.FileDownloadMode).enabled then
         return false, "getcustomasset for cached media requires Allow AI File Downloads to be enabled."
@@ -5302,12 +5361,13 @@ loc.API.CheckCachedAssetForLua = function(path, mode)
     if type(isfile) ~= "function" then
         return false, "The executor does not provide isfile() to verify cached media."
     end
-    if type(path) ~= "string" or #path > 260 or path:find("[%c%s]") or path:find("\\", 1, true) then
-        return false, "Cached asset path must be a short canonical path without spaces or backslashes."
+    if type(path) ~= "string" or #path > 260 or path:find("[%c]") or path:find("\\", 1, true) then
+        return false, "Cached asset path must be a short canonical path without control characters or backslashes."
     end
-    local folder, filename = path:match("^ExperienceSettings/Arcsen/Cache/([%a]+)/([%w_.%-]+)$")
+    local folder, filename = path:match("^ExperienceSettings/Arcsen/Cache/([%a]+)/([^/]+)$")
     if (folder ~= "Audio" and folder ~= "Images") or not filename
-        or filename:find("..", 1, true) or filename:sub(1, 1) == "." then
+        or filename:find("..", 1, true) or filename:sub(1, 1) == "."
+        or filename:find("[:*?\"<>|]") then
         return false, "Only Arcsen cached Audio/Images are allowed for getcustomasset."
     end
     local extension = (filename:match("%.([%w]+)$") or ""):lower()
@@ -5335,7 +5395,7 @@ end
 loc.API.ValidateLuaScript = function(source, mode)
     loc.API.LuaCandidate = tostring(source or "")
     loc.API.LuaCandidateMode = tostring(mode or loc.API.AllowAIMode or "Don't")
-    loc.API.LuaCandidatePolicy = loc.API.GetAllowAIPolicy(loc.API.LuaCandidateMode)
+    loc.API.LuaCandidatePolicy = loc.API.GetLuaSandboxPolicy(loc.API.LuaCandidateMode)
     if not loc.API.LuaCandidatePolicy.valid then return false, "Unknown Allow AI mode." end
     if loc.API.HasProtectedSourceAccess(loc.API.LuaCandidate) then
         loc.API.MarkProtectedAccess()
@@ -5352,24 +5412,28 @@ loc.API.ValidateLuaScript = function(source, mode)
             or loc.API.LuaTokenLower == "break" or loc.API.LuaTokenLower == "continue" then
             return false, "Loop syntax is not allowed (found '" .. LuaToken .. "')."
         end
-        if loc.API.LuaTokenLower == "function" and loc.API.LuaCandidatePolicy.restricted then
-            return false, "Function declarations/closures are blocked in Restricted mode."
+        if loc.API.LuaTokenLower == "function" and loc.API.LuaCandidatePolicy.strict then
+            return false, "Function declarations/closures are blocked in High Restricted mode."
         end
-        if loc.API.LuaCandidatePolicy.restricted and loc.API.LuaUnsafeTokens[loc.API.LuaTokenLower] then
+        if loc.API.LuaCandidatePolicy.restricted and loc.API.LuaUnsafeTokens[loc.API.LuaTokenLower]
+            and not (not loc.API.LuaCandidatePolicy.strict
+                and (loc.API.LuaTokenLower == "function" or loc.API.LuaTokenLower == "waitforchild"
+                    or (loc.API.LuaTokenLower == "getcustomasset" and loc.API.LuaCandidatePolicy.allowCachedAssets))) then
             return false, "Restricted API/token is not allowed in this mode: " .. LuaToken
         end
-        if not loc.API.LuaCandidatePolicy.restricted then
-            -- Expose getcustomasset only through an Arcsen-cache-only guarded wrapper.
-            if loc.API.LuaTokenLower == "getcustomasset" then
-                if not loc.API.GetFileDownloadPolicy(loc.API.FileDownloadMode).enabled then
-                    return false, "getcustomasset requires Allow AI File Downloads to be enabled; only cached media may be loaded."
-                end
-                if type(getcustomasset) ~= "function" or type(isfile) ~= "function" then
-                    return false, "The executor needs getcustomasset() and isfile() for cached assets."
-                end
+        if loc.API.LuaTokenLower == "getcustomasset" then
+            if not loc.API.LuaCandidatePolicy.allowCachedAssets then
+                return false, "Sandbox Level High Restricted does not allow getcustomasset."
             end
-            -- Keep all other executor escape hatches outside generated Lua.
-            if loc.API.LuaTokenLower == "loadstring" or loc.API.LuaTokenLower == "require"
+            if not loc.API.GetFileDownloadPolicy(loc.API.FileDownloadMode).enabled then
+                return false, "getcustomasset requires Allow AI File Downloads to be enabled; only cached media may be loaded."
+            end
+            if type(getcustomasset) ~= "function" or type(isfile) ~= "function" then
+                return false, "The executor needs getcustomasset() and isfile() for cached assets."
+            end
+        end
+        -- Keep all other executor escape hatches outside generated Lua at every level.
+        if loc.API.LuaTokenLower == "loadstring" or loc.API.LuaTokenLower == "require"
                 or loc.API.LuaTokenLower == "getfenv" or loc.API.LuaTokenLower == "setfenv"
                 or loc.API.LuaTokenLower == "getgenv" or loc.API.LuaTokenLower == "getrenv"
                 or loc.API.LuaTokenLower == "getreg" or loc.API.LuaTokenLower == "debug"
@@ -5385,8 +5449,7 @@ loc.API.ValidateLuaScript = function(source, mode)
                 or loc.API.LuaTokenLower == "newcclosure" or loc.API.LuaTokenLower == "checkcaller"
                 or loc.API.LuaTokenLower == "getrawmetatable" or loc.API.LuaTokenLower == "setreadonly"
                 or loc.API.LuaTokenLower == "gethiddenproperty" or loc.API.LuaTokenLower == "sethiddenproperty" then
-                return false, "Executor escape API is not exposed to AI scripts: " .. LuaToken
-            end
+            return false, "Executor escape API is not exposed to AI scripts: " .. LuaToken
         end
     end
     return true, nil
@@ -5435,7 +5498,7 @@ loc.API.WrapLuaSignal = function(signal, depth)
         __metatable = "Arcsen guarded signal",
         __index = function(_, key)
             if key ~= "Wait" then
-                local policy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
+                local policy = loc.API.GetLuaSandboxPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
                 if not (policy and not policy.restricted and (key == "Connect" or key == "Once")) then return nil end
             end
             if key == "Wait" then
@@ -5491,7 +5554,7 @@ loc.API.WrapLuaInstance = function(instance, depth)
         end,
         __newindex = function(_, key, value)
             if type(key) ~= "string" then error("Invalid Roblox property name.", 2) end
-            local policy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
+            local policy = loc.API.GetLuaSandboxPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
             if not policy or policy.restricted then
                 error("Arcsen Restricted mode is read-only. Choose Verification + Unrestricted to allow instance changes.", 2)
             end
@@ -5528,15 +5591,15 @@ loc.API.WrapLuaInstance = function(instance, depth)
                 loc.API.MarkProtectedAccess()
                 error("Blocked protected instance: CoreGui.ExperienceSettings", 2)
             end
-            local policy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
+            local policy = loc.API.GetLuaSandboxPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
             local unrestricted = policy and not policy.restricted
             if key == "GetService" and instance == game then
                 return function(_, serviceName)
                     serviceName = tostring(serviceName or "")
-                    loc.API.ActiveLuaPolicy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
-                    loc.API.ActiveServiceAllowList = loc.API.ActiveLuaPolicy.restricted and loc.API.LuaSafeServices or loc.API.LuaSafeServicesMidRisk
-                    if loc.API.ActiveLuaPolicy.restricted and not loc.API.ActiveServiceAllowList[serviceName] then
-                        error("This Roblox service is not exposed in Restricted mode: " .. serviceName, 2)
+                    loc.API.ActiveLuaPolicy = loc.API.GetLuaSandboxPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
+                    loc.API.ActiveServiceAllowList = loc.API.ActiveLuaPolicy.allowExtraServices and loc.API.LuaSafeServicesMidRisk or loc.API.LuaSafeServices
+                    if not loc.API.ActiveServiceAllowList[serviceName] then
+                        error("This Roblox service is not exposed at the current Sandbox Level: " .. serviceName, 2)
                     end
                     local ok, service = pcall(function() return game:GetService(serviceName) end)
                     if not ok or not service then error("Unable to get Roblox service: " .. serviceName, 2) end
@@ -5629,12 +5692,15 @@ end
 
 loc.API.RunAIGeneratedLua = function(source, mode)
     loc.API.LuaRunMode = tostring(mode or loc.API.AllowAIMode or "Don't")
-    loc.API.LuaRunPolicy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode)
+    loc.API.LuaRunPolicy = loc.API.GetLuaSandboxPolicy(loc.API.LuaRunMode)
     if not loc.API.LuaRunPolicy.valid or not loc.API.LuaRunPolicy.enabled then
         return false, "Allow AI is disabled or the selected mode is invalid."
     end
     if tostring(loc.API.AllowAIMode or "Don't") ~= loc.API.LuaRunMode then
         return false, "Allow AI mode changed before execution; the old permission was revoked."
+    end
+    if loc.API.LuaRunRequestedSandboxLevel and loc.API.LuaRunRequestedSandboxLevel ~= loc.API.SandboxLevel then
+        return false, "Sandbox Level changed before execution. Review the action again."
     end
     loc.API.LuaProtectedAccessDetected = false
     loc.API.LuaProtectedAccessMessage = nil
@@ -5679,7 +5745,7 @@ loc.API.RunAIGeneratedLua = function(source, mode)
         UDim=UDim, UDim2=UDim2, Color3=Color3, BrickColor=BrickColor,
         TweenInfo=TweenInfo, RaycastParams=RaycastParams,
         Instance={new=function(className)
-            local policy = loc.API.GetAllowAIPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
+            local policy = loc.API.GetLuaSandboxPolicy(loc.API.LuaRunMode or loc.API.AllowAIMode)
             if not policy or policy.restricted then error("Instance.new is available only in Unrestricted mode.", 2) end
             return loc.API.WrapLuaInstance(Instance.new(tostring(className or "")), 0)
         end},
@@ -5687,7 +5753,7 @@ loc.API.RunAIGeneratedLua = function(source, mode)
         workspace=loc.API.WrapLuaInstance(workspace, 0),
         -- A narrow sUNC bridge for previously downloaded Arcsen audio/image assets.
         -- Never expose the raw getcustomasset or arbitrary filesystem access.
-        getcustomasset=(not loc.API.LuaRunPolicy.restricted and loc.API.GuardedGetCustomAsset or nil),
+        getcustomasset=(loc.API.LuaRunPolicy.allowCachedAssets and loc.API.GuardedGetCustomAsset or nil),
         print=loc.API.LuaSafePrint,
         warn=function(...) loc.API.LuaSafePrint("Warning:", ...) end
     }
@@ -5763,6 +5829,11 @@ loc.API.RunLuaScriptCard = function(chatID, message)
         loc.API.AppendLuaExecutionResult(chatID, "Action blocked. Allow AI mode changed before execution; no code was run.")
         return false
     end
+    if tostring(message.luaSandboxLevel or "") ~= tostring(loc.API.SandboxLevel or "Mid Restricted") then
+        loc.API.FinishLuaScriptCard(chatID, message, "blocked", "Sandbox Level changed. Please request a new Lua action.\n\n" .. loc.API.LuaScriptCardCode)
+        loc.API.AppendLuaExecutionResult(chatID, "Action blocked: Sandbox Level changed since script generation.")
+        return false
+    end
     if loc.API.LuaCardPolicy.requireApproval and message.luaApprovalGranted ~= true then return false end
     loc.API.LuaRunAllowed, loc.API.LuaRunReason = loc.API.ValidateLuaScript(loc.API.LuaScriptCardCode, loc.API.LuaCardMode)
     if not loc.API.LuaRunAllowed then
@@ -5774,7 +5845,9 @@ loc.API.RunLuaScriptCard = function(chatID, message)
     task.spawn(function(targetChatID, targetMessage, targetCode)
         while loc.API.LuaExecutionBusy do task.wait(0.05) end
         loc.API.LuaExecutionBusy = true
+        loc.API.LuaRunRequestedSandboxLevel = targetMessage.luaSandboxLevel
         local callOK, executionOK, executionOutput = pcall(loc.API.RunAIGeneratedLua, targetCode, targetMessage.luaMode)
+        loc.API.LuaRunRequestedSandboxLevel = nil
         loc.API.LuaExecutionBusy = false
         if not callOK then
             executionOutput = tostring(executionOK)
@@ -5878,6 +5951,7 @@ loc.API.ProcessLuaScriptResponse = function(chatID, code, extractionError, mode,
     loc.API.LuaPendingCard = loc.API.AddLuaScriptAssistantMessage(chatID, code, code, "pending", loc.API.LuaActionExplanation)
     if not loc.API.LuaPendingCard then return "blocked" end
     loc.API.LuaPendingCard.luaMode = loc.API.ProcessMode
+    loc.API.LuaPendingCard.luaSandboxLevel = loc.API.SandboxLevel
     if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
     if loc.API.ProcessPolicy.requireApproval then
         return "pending"
@@ -6631,12 +6705,15 @@ loc.API.GenerateResponse = function(chatID, userIndex)
         loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt .. "\n\nADDITIONAL THINK-HARDER REQUEST (apply to this response only):\n" .. loc.API.ChatData[chatID].ThinkHarderInstruction .. "\nAnalyze carefully, check assumptions and edge cases, verify the result before answering, and provide a concise explanation of conclusions without revealing private chain-of-thought."
     end
     loc.API.AllowAIModeForRequest = tostring(loc.API.AllowAIMode or "Don't")
+    loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
+        .. "\n\nARCSEN SANDBOX LEVEL: " .. tostring(loc.API.SandboxLevel or "Mid Restricted")
+        .. ". This is an independent cap on Lua execution, NOT permission to execute. High Restricted: strict read-only; Mid Restricted: read-only but functions and verified cached media allowed; Low Restricted: guarded Roblox writes if Create Lua Script also permits; Unrestricted: additional approved Roblox services but still NO raw filesystem/network/executor APIs. All levels block CoreGui.ExperienceSettings, loops and unauthorized actions. The only sUNC bridge is getcustomasset for downloaded cache media when File Downloads is enabled. Names of local files may include spaces and apostrophes, but arbitrary paths are never allowed."
     if loc.API.AllowAIModeForRequest == "Don't" then
         loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
             .. "\n\nARCSEN ACTION POLICY: The user's setting is Don't. Do not generate an executable-script marker, do not execute code, and do not give an external executor/Script Hub workaround for an action. Answer normal informational questions naturally. If the request needs a runtime lookup or executable action, explain that Allow AI is disabled and ask the user to enable it in Settings → Allow AI → Create Lua Script."
     else
         loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
-            .. "\n\nARCSEN ACTION / LUA POLICY (current mode: " .. loc.API.AllowAIModeForRequest .. "): For a request that needs runtime Roblox data or an executable Lua action, before responding, do a safety review of the proposed code for unintended side effects, permission problems, and obvious errors; do not reveal private chain-of-thought. Begin with one brief natural-language sentence explaining the intended action and safety-relevant effects, then return exactly one script wrapped by [[ARCSEN_LUA_SCRIPT]] and [[/ARCSEN_LUA_SCRIPT]], with a single fenced ```lua block inside the wrapper. Keep explanation outside the wrapper and never put another code block outside it. Do not emit a script wrapper for ordinary informational questions. Never access CoreGui.ExperienceSettings in any form; that folder is always prohibited. Do not use for/while/repeat/until/break/continue loops. Restricted modes use the read-only restricted API and its stricter token checks. Unrestricted-labelled modes may use normal Roblox APIs, Wait/WaitForChild, and Instance property changes; the client still wraps returned Instances and blocks CoreGui.ExperienceSettings. You may discuss and draft sUNC-compatible Luau. The guarded AI runner exposes ONLY a limited getcustomasset(path) function for verified Arcsen-downloaded Cache/Audio or Cache/Images items when Create Lua Script is Unrestricted and Allow AI File Downloads is enabled. Never call getcustomasset on any other path. Wait for a completed file download and use the exact cache path from the app's download result before generating a playback/display script. Other executor sUNC APIs, filesystem calls, and network APIs are not exposed; use the separate ARCSEN_DOWNLOAD marker for file downloads and NEVER combine file-download requests with a Lua script marker in the same response. Never bypass file-action/download approvals. For Verification modes, show the code for user review and do not execute before approval; modes without Verification may auto-run only after checks pass. Treat user approval as consent to the shown script, not as a reason to conceal meaningful side effects. Do not claim success before the client reports a result. If a request is unsafe or the code has unexpected effects, explain that and propose a safer alternative."
+            .. "\n\nARCSEN ACTION / LUA POLICY (current mode: " .. loc.API.AllowAIModeForRequest .. "): For a request that needs runtime Roblox data or an executable Lua action, before responding, do a safety review of the proposed code for unintended side effects, permission problems, and obvious errors; do not reveal private chain-of-thought. Begin with one brief natural-language sentence explaining the intended action and safety-relevant effects, then return exactly one script wrapped by [[ARCSEN_LUA_SCRIPT]] and [[/ARCSEN_LUA_SCRIPT]], with a single fenced ```lua block inside the wrapper. Keep explanation outside the wrapper and never put another code block outside it. Do not emit a script wrapper for ordinary informational questions. Never access CoreGui.ExperienceSettings in any form; that folder is always prohibited. Do not use for/while/repeat/until/break/continue loops. The Sandbox Level also caps Lua separately: High and Mid Restricted are read-only; Low and Unrestricted allow guarded Roblox property changes ONLY if Create Lua Script is also an Unrestricted-labelled mode. Wait/WaitForChild and functions are available from Mid Restricted upward, but loops are still prohibited. The client wraps returned Instances and blocks CoreGui.ExperienceSettings. You may discuss and draft sUNC-compatible Luau. The guarded AI runner exposes ONLY a limited getcustomasset(path) function for verified Arcsen-downloaded Cache/Audio or Cache/Images items when the Sandbox Level is Mid Restricted or higher, Create Lua Script is enabled, and Allow AI File Downloads is enabled. Never call getcustomasset on any other path. Wait for a completed file download and use the exact cache path from the app's download result before generating a playback/display script. Other executor sUNC APIs, filesystem calls, and network APIs are not exposed; use the separate ARCSEN_DOWNLOAD marker for file downloads and NEVER combine file-download requests with a Lua script marker in the same response. Never bypass file-action/download approvals. For Verification modes, show the code for user review and do not execute before approval; modes without Verification may auto-run only after checks pass. Treat user approval as consent to the shown script, not as a reason to conceal meaningful side effects. Do not claim success before the client reports a result. If a request is unsafe or the code has unexpected effects, explain that and propose a safer alternative."
     end
     -- Announce the current file-download permission to avoid claiming that the
     -- handler does not exist, or requesting blocked downloads in default mode.
