@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.35 Remake ",
+	sion = " UIs 7.2.38 Remake ",
 	logs = [[
 # -- Update logs --
 (:8/1/2026 | 5:55 pm: !) Fixed bug
@@ -465,14 +465,23 @@ do
     end
 
     gpt:GetPropertyChangedSignal("Position"):Connect(function()
-        if loc.IsArcsenChatOpen() then
+        local isOpen = loc.IsArcsenChatOpen()
+        if isOpen then
             loc.ResetMessageCounter()
-            if type(loc.API.ClearNewMessageMarker) == "function" then
-                loc.API.ClearNewMessageMarker(tostring(loc.API.ActiveChatID or ""))
+            -- Preserve unread dividers until they have actually been drawn.
+            -- The Position tween fires repeatedly; render only on the closed -> open edge.
+            if not loc.ChatWasOpen and loc.API and type(loc.API.RenderChat) == "function"
+                and loc.API.ActiveChatID and loc.API.PendingNewMessageMarkers
+                and loc.API.PendingNewMessageMarkers[tostring(loc.API.ActiveChatID)] then
+                loc.API.RenderChat(tostring(loc.API.ActiveChatID))
+            end
+            if loc.API and type(loc.API.AcknowledgeChatNotifications) == "function" then
+                loc.API.AcknowledgeChatNotifications(tostring(loc.API.ActiveChatID or ""))
             end
         else
             loc.UpdateMessageCounter()
         end
+        loc.ChatWasOpen = isOpen
     end)
 
     loc.ResetMessageCounter()
@@ -3899,7 +3908,8 @@ local function addchat(file, gen, nchat)
   Corner(0,3,more)
 
   Stroke(btn, ASMBorder, 255,255,255, LJMRound, 1, 0)
-  local btn_b =Gradient(new, 45,0,0,{Color3.new(1,1,1),Color3.new(1,1,1),},{0,1,0})
+  local btn_b = Gradient(btn.UIStroke, 45,0,0,{Color3.new(1,1,1),Color3.new(1,1,1)},{0,0})
+  btn_b.Transparency = NumberSequence.new(0)
   btn_b.Parent = btn.UIStroke
   local btn_s = Gradient(new, 45,0,0,{Color3.new(1,1,1),Color3.new(1,1,1),},{0,0.8,0})
   btn_s.Parent = btn
@@ -4077,9 +4087,8 @@ local function addchat(file, gen, nchat)
       loc.API.CancelMessageEdit(nil, nil, nil, true)
     end
     if loc.API and loc.API.ChatData and loc.API.ChatData[tostring(nchat)] then
-      if type(loc.API.StopChatTabBlink) == "function" then
-        loc.API.StopChatTabBlink(tostring(nchat))
-      end
+      -- Only opening/reading a chat should acknowledge unread notifications.
+      -- Selecting a tab while Arcsen itself is closed must not stop its pulse.
       loc.API.ActiveChatID = tostring(nchat)
       if type(loc.API.RenderChat) == "function" then loc.API.RenderChat(tostring(nchat)) end
     end
@@ -4130,6 +4139,11 @@ loc.API.StopChatTabBlink = function(chatID)
     if state.Stroke and state.Stroke.Parent then
         state.Stroke.Transparency = state.OriginalTransparency or 0
         state.Stroke.Thickness = state.OriginalThickness or 1
+        if state.OriginalColor then state.Stroke.Color = state.OriginalColor end
+        if state.OriginalEnabled ~= nil then state.Stroke.Enabled = state.OriginalEnabled end
+    end
+    if state.Gradient and state.Gradient.Parent then
+        state.Gradient.Transparency = state.GradientTransparency
     end
     loc.API.ChatTabBlinkStates[tab] = nil
     return true
@@ -4140,78 +4154,71 @@ loc.API.BlinkChatTab = function(chatID)
     local chatData = loc.API.ChatData and loc.API.ChatData[chatID]
     local tab = chatData and chatData.Tab
     if not tab or not tab.Parent then return false end
-    -- The selected chat should never keep blinking, even while the main window is open.
-    if tostring(loc.API.ActiveChatID or "") == chatID then
+    -- A selected tab is unread while the Arcsen window is closed.
+    if tostring(loc.API.ActiveChatID or "") == chatID
+        and type(loc.IsArcsenChatOpen) == "function" and loc.IsArcsenChatOpen() then
         loc.API.StopChatTabBlink(chatID)
         return false
     end
-
     local stroke = tab:FindFirstChildOfClass("UIStroke")
-    if not stroke then return false end
-
-    local activeState = loc.API.ChatTabBlinkStates[tab]
-    if activeState then
-        activeState.RepeatRequested = true
-        return true
+    if not stroke then
+        stroke = Stroke(tab, "ASMBorder", 255, 255, 255, "LJMRound", 2, 0)
     end
+    local activeState = loc.API.ChatTabBlinkStates[tab]
+    if activeState then return true end
 
     local state = {
-        RepeatRequested = false,
         Stopped = false,
         Stroke = stroke,
         OriginalTransparency = stroke.Transparency,
         OriginalThickness = stroke.Thickness,
+        OriginalColor = stroke.Color,
+        OriginalEnabled = stroke.Enabled,
     }
     loc.API.ChatTabBlinkStates[tab] = state
+    stroke.Enabled = true
+    -- Disable the old transparency gradient while the indicator is animated.
+    local grad = stroke:FindFirstChildOfClass("UIGradient")
+    if grad then
+        state.Gradient = grad
+        state.GradientTransparency = grad.Transparency
+        grad.Transparency = NumberSequence.new(0)
+    end
     task.spawn(function()
-        local originalTransparency = state.OriginalTransparency
-        local originalThickness = state.OriginalThickness
-        local pulseTransparency = math.clamp(originalTransparency + 0.55, 0, 1)
-        local pulseThickness = math.max(originalThickness + 2, 3)
-        local batchCount = 0
-
-        repeat
-            state.RepeatRequested = false
-            for pulseIndex = 1, 3 do
-                if state.Stopped or not tab.Parent or not stroke.Parent
-                    or tostring(loc.API.ActiveChatID or "") == chatID then
-                    state.Stopped = true
-                    break
-                end
-                local pulseIn = s.TweenService:Create(
-                    stroke,
-                    TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                    {Transparency = pulseTransparency, Thickness = pulseThickness}
-                )
-                state.Tween = pulseIn
-                pulseIn:Play()
-                pulseIn.Completed:Wait()
-                state.Tween = nil
-                if state.Stopped or not tab.Parent or not stroke.Parent
-                    or tostring(loc.API.ActiveChatID or "") == chatID then
-                    state.Stopped = true
-                    break
-                end
-
-                local pulseOut = s.TweenService:Create(
-                    stroke,
-                    TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                    {Transparency = originalTransparency, Thickness = originalThickness}
-                )
-                state.Tween = pulseOut
-                pulseOut:Play()
-                pulseOut.Completed:Wait()
-                state.Tween = nil
+        local pulseColor = Color3.fromRGB(255, 195, 65)
+        while not state.Stopped and tab.Parent and stroke.Parent do
+            if tostring(loc.API.ActiveChatID or "") == chatID
+                and type(loc.IsArcsenChatOpen) == "function" and loc.IsArcsenChatOpen() then
+                break
             end
+            -- Continue blinking gently until the actual unread chat is opened.
+            local pulseIn = s.TweenService:Create(stroke,
+                TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+                {Transparency = 0, Thickness = math.max(state.OriginalThickness + 2, 3), Color = pulseColor})
+            state.Tween = pulseIn
+            pulseIn:Play()
+            pulseIn.Completed:Wait()
             if state.Stopped then break end
-            batchCount += 1
-        until not state.RepeatRequested or batchCount >= 2
-
-        if stroke.Parent then
-            stroke.Transparency = originalTransparency
-            stroke.Thickness = originalThickness
+            local pulseOut = s.TweenService:Create(stroke,
+                TweenInfo.new(0.35, Enum.EasingStyle.Sine, Enum.EasingDirection.In),
+                {Transparency = 0.6, Thickness = state.OriginalThickness, Color = state.OriginalColor})
+            state.Tween = pulseOut
+            pulseOut:Play()
+            pulseOut.Completed:Wait()
+            if state.Stopped then break end
+            task.wait(0.55)
         end
+        -- Do not overwrite a newer pulse if another message restarted blinking.
         if loc.API.ChatTabBlinkStates[tab] == state then
+            if stroke.Parent then
+                stroke.Transparency = state.OriginalTransparency
+                stroke.Thickness = state.OriginalThickness
+                stroke.Color = state.OriginalColor
+                stroke.Enabled = state.OriginalEnabled
+            end
+            if state.Gradient and state.Gradient.Parent then
+                state.Gradient.Transparency = state.GradientTransparency
+            end
             loc.API.ChatTabBlinkStates[tab] = nil
         end
     end)
@@ -4231,42 +4238,44 @@ loc.API.NotifyNewChatMessage = function(chatID, firstMessageIndex)
     -- regardless of whether the Arcsen window itself is currently open.
     if isVisible then return false end
 
-    -- Blink for EVERY newly appended message on a different tab, even when the
-    -- one-per-unread-burst divider already exists. A repeated message requests
-    -- another short pulse batch instead of creating stacked tweens.
-    if not isSelected and type(loc.API.BlinkChatTab) == "function" then
+    if type(loc.API.BlinkChatTab) == "function" then
         loc.API.BlinkChatTab(chatID)
     end
 
-    -- One unread burst gets one divider. Further messages within its 10-second
-    -- lifetime do not add another divider, but the tab still blinks above.
+    -- Keep ONE unread divider per burst until the user actually opens the chat.
+    -- It will remain visible for 10 seconds after the first read, not expire unseen.
     local markerState = loc.API.NewMessageMarkerStates[chatID]
-    if markerState and tonumber(markerState.ExpiresAt) and os.clock() < markerState.ExpiresAt then
-        return true
-    end
+    if markerState and not markerState.ReadAt then return true end
+    if markerState then loc.API.ClearNewMessageMarker(chatID) end
 
     markerState = {
-        ExpiresAt = os.clock() + 10,
-        FirstMessageIndex = math.max(
-            1,
-            math.floor(tonumber(firstMessageIndex) or #(chatData.Messages or {}))
-        ),
+        ExpiresAt = math.huge,
+        FirstMessageIndex = math.max(1, math.floor(tonumber(firstMessageIndex) or #(chatData.Messages or {}))),
         Shown = false,
         Frame = nil,
     }
     loc.API.NewMessageMarkerStates[chatID] = markerState
     loc.API.PendingNewMessageMarkers[chatID] = markerState.FirstMessageIndex
+    return true
+end
 
+loc.API.AcknowledgeChatNotifications = function(chatID)
+    chatID = tostring(chatID or "")
+    if chatID == "" or tostring(loc.API.ActiveChatID or "") ~= chatID
+        or type(loc.IsArcsenChatOpen) ~= "function" or not loc.IsArcsenChatOpen() then
+        return false
+    end
+    loc.API.StopChatTabBlink(chatID)
+    local state = loc.API.NewMessageMarkerStates[chatID]
+    if not state or state.ReadAt then return true end
+    state.ReadAt = os.clock()
+    state.ExpiresAt = state.ReadAt + 10
+    -- Remove only after the reader has had a chance to see it.
     task.delay(10, function()
-        if loc.API.NewMessageMarkerStates[chatID] ~= markerState then return end
-        loc.API.PendingNewMessageMarkers[chatID] = nil
-        if markerState.Frame and markerState.Frame.Parent then
-            markerState.Frame:Destroy()
+        if loc.API.NewMessageMarkerStates[chatID] == state then
+            loc.API.ClearNewMessageMarker(chatID)
         end
-        markerState.Frame = nil
-        loc.API.NewMessageMarkerStates[chatID] = nil
     end)
-
     return true
 end
 
@@ -4860,10 +4869,10 @@ loc.API.DrawMessage = function(chatID, index, message)
             end
             if tostring(message.experienceName or ""):match("%S") then
                 loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
-                    .. ' <font color="rgb(170,170,170)">• ' .. tostring(message.experienceName) .. '</font>'
+                    .. ' <font color="rgb(170,170,170)">• <b>' .. tostring(message.experienceName) .. '</b></font>'
             elseif tonumber(message.placeId) then
                 loc.API.HereChatRenderHeader = loc.API.HereChatRenderHeader
-                    .. ' <font color="rgb(170,170,170)">• Place ' .. tostring(math.floor(tonumber(message.placeId))) .. '</font>'
+                    .. ' <font color="rgb(170,170,170)">• <b>Place ' .. tostring(math.floor(tonumber(message.placeId))) .. '</b></font>'
             end
         end
         return meg(
@@ -5030,9 +5039,9 @@ loc.API.RenderChat = function(chatID, scrollToBottom)
         loc.API.RenderTimeMarkersAt(loc.API.ActiveChatID, 0)
     end
     loc.API.RenderChatWindowVisible = type(loc.IsArcsenChatOpen) == "function" and loc.IsArcsenChatOpen()
-    if loc.API.RenderChatWindowVisible and type(loc.API.ClearNewMessageMarker) == "function" then
-        -- Selecting/opening a chat marks its pending unread divider as read.
-        loc.API.ClearNewMessageMarker(loc.API.ActiveChatID)
+    -- Mark the chat as read but keep its visual divider for 10 seconds.
+    if loc.API.RenderChatWindowVisible and type(loc.API.AcknowledgeChatNotifications) == "function" then
+        loc.API.AcknowledgeChatNotifications(loc.API.ActiveChatID)
     end
     for renderIndex, renderMessage in ipairs(loc.API.ChatData[loc.API.ActiveChatID].Messages) do
         loc.API.NewMessageMarkerState = loc.API.NewMessageMarkerStates[loc.API.ActiveChatID]
@@ -7142,7 +7151,11 @@ end
 
 loc.API.UpdateSendButton = function()
     loc.API.SendButtonChat = loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)] or nil
-    loc.API.DefaultChatPlaceholder = loc.API.DefaultChatPlaceholder or c_box.PlaceholderText
+    loc.API.DefaultChatPlaceholder = "Say something..."
+    if loc.API.ChatTipLastChatID ~= tostring(loc.API.ActiveChatID or "") then
+        loc.API.ChatTipLastChatID = tostring(loc.API.ActiveChatID or "")
+        loc.API.ChatTipRunID = (tonumber(loc.API.ChatTipRunID) or 0) + 1
+    end
     if loc.API.SendButtonChat and loc.API.SendButtonChat.IsHereChat then
         c_box.TextEditable = true
         c_box.PlaceholderText = "Message Roblox chat..."
@@ -7160,6 +7173,87 @@ loc.API.UpdateSendButton = function()
         c_b_send.TextColor3 = Color3.new(0,1,0)
     end
 end
+
+-- Context-sensitive chat-tip typewriter. This never replaces HereChat's placeholder.
+-- TweenService animates a NumberValue character counter; Completed:Wait() sequences
+-- typing -> 3 seconds of display -> deleting. TextService only measures text,
+-- it cannot tween PlaceholderText directly.
+loc.API.ChatTips = {
+    "Say something...",
+    "Could you send a cat picture?",
+    "Could you make me walking fast by using Lua?",
+    "How do I attach a file?",
+    "What's 9 + 10?",
+    "Could you search information about Albert Einstein?",
+    "How do the principles of physics work?",
+    "Why are doctors afraid of apples?",
+}
+loc.API.ChatTipRunID = 0
+loc.API.ChatTipIndex = 1
+loc.API.CanShowChatTips = function()
+    if not c_box or not c_box.Parent or c_box:IsFocused() or c_box.Text ~= "" then return false end
+    local active = loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)] or nil
+    return not active or (active.IsHereChat ~= true and #(active.Messages or {}) == 0)
+end
+
+loc.API.PlayChatTipTween = function(fullText, startCount, endCount, duration, runID)
+    if not loc.API.CanShowChatTips() or loc.API.ChatTipRunID ~= runID then return false end
+    local number = Instance.new("NumberValue")
+    number.Value = startCount
+    local connection = number:GetPropertyChangedSignal("Value"):Connect(function()
+        if loc.API.ChatTipRunID == runID and loc.API.CanShowChatTips() then
+            c_box.PlaceholderText = fullText:sub(1, math.clamp(math.floor(number.Value + 0.5), 0, #fullText))
+        end
+    end)
+    local tween = s.TweenService:Create(number, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Value = endCount})
+    tween:Play()
+    tween.Completed:Wait()
+    connection:Disconnect()
+    number:Destroy()
+    if loc.API.ChatTipRunID ~= runID or not loc.API.CanShowChatTips() then return false end
+    c_box.PlaceholderText = fullText:sub(1, endCount)
+    return true
+end
+
+c_box.Focused:Connect(function()
+    loc.API.ChatTipRunID += 1
+    if not (loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)]
+        and loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsHereChat) then
+        c_box.PlaceholderText = "Say something..."
+    end
+end)
+c_box.FocusLost:Connect(function()
+    loc.API.ChatTipRunID += 1
+end)
+
+-- Only one loop per Arcsen UI; it sleeps while the active chat has messages.
+task.spawn(function()
+    while c_box and c_box.Parent and gpt and gpt.Parent do
+        if not loc.API.CanShowChatTips() then
+            if loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)]
+                and loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsHereChat then
+                c_box.PlaceholderText = "Message Roblox chat..."
+            else
+                c_box.PlaceholderText = "Say something..."
+            end
+            task.wait(0.25)
+        else
+            local runID = loc.API.ChatTipRunID
+            local tip = loc.API.ChatTips[loc.API.ChatTipIndex]
+            if loc.API.PlayChatTipTween(tip, 0, #tip, math.max(0.2, #tip * 0.045), runID) then
+                task.wait(3)
+                if loc.API.ChatTipRunID == runID and loc.API.CanShowChatTips() then
+                    loc.API.PlayChatTipTween(tip, #tip, 0, math.max(0.15, #tip * 0.025), runID)
+                    if loc.API.ChatTipRunID == runID then
+                        loc.API.ChatTipIndex = (loc.API.ChatTipIndex % #loc.API.ChatTips) + 1
+                    end
+                end
+            else
+                task.wait(0.15)
+            end
+        end
+    end
+end)
 
 loc.API.CancelGeneration = function(chatID)
     chatID = tostring(chatID or "")
@@ -8365,7 +8459,9 @@ do
                 likedByAI = false,
             }
             table.insert(chatData.Messages, record)
-            if record.origin == "Roblox" and type(loc.API.NotifyNewChatMessage) == "function" then
+            -- The HereChat tab participates in unread notifications for both sources.
+            -- Messages in the currently visible tab are never marked unread.
+            if type(loc.API.NotifyNewChatMessage) == "function" then
                 loc.API.NotifyNewChatMessage(chatID, #chatData.Messages)
             end
             -- Count a newly received/sent HereChat message once, at append time only.
