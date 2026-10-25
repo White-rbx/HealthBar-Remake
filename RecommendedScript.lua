@@ -1,4 +1,4 @@
-local v_ver = [[Recommanded Script 2.32 Yes]]
+local v_ver = [[Recommanded Script 2.33 Yes]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -413,6 +413,7 @@ add("ExperienceSettings Executor Legacy (@5teve3019D)", "ExperienceSettings Exec
 add("RoChip (@83937293938381929383)", "Universal script allows you to tp to players, also lets you fling them and many more.", "https://rawscripts.net/raw/Universal-Script-rochips-universal-18294",155,155,0)
 add("ConsoleCopyButton (@Lordi_scripts)", "lets you copy everything right in the native console interface (/console OR F9)", "https://rawscripts.net/raw/Universal-Script-Richie-panel-upd-v1-0-4-18440",150,0,150)
 add("YouTube Music Player V8 (@Turmux404)", "Take your Roblox experience to the next level by listening to your favorite  music or watching YouTube videos while you play.", "https://raw.githubusercontent.com/Dan41/Roblox-Scripts/refs/heads/main/Youtube%20Music%20Player/YoutubeMusicPlayer.lua",220,0,0)
+add("DevPlay Music (@DevAuroraCode)","Use the search engine, type in any song and you can listen to it.","https://api.luarmor.net/files/v4/loaders/40376d3a68c7373d1d2b6a1742148927.lua",255,0,255)
 add("YARHM - MM2, FTF, Forsaken, CNA Sim, etc. (@Imperial)" ,"yet another random hub menu.", "https://rawscripts.net/raw/Universal-Script-YARHM-12403",200,0,200)
 add("AFEM MAX - 40K EMOTES SCRIPT BEST (@Imperial)", "Introducing AFEM Max, the powerful AFEM you know and love and now EVEN MORE supercharged!", "https://rawscripts.net/raw/Universal-Script-AFEM-Max-Open-Alpha-50210",0,150,200)
 add("Ketamine (@Kawi)", "The best Remote Spy (and not only) in Roblox's history after being developed for.", "https://raw.githubusercontent.com/InfernusScripts/Ketamine/refs/heads/main/Ketamine.lua",30,30,30)
