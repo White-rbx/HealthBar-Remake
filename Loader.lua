@@ -1,4 +1,4 @@
--- Loader script 7.331
+-- Loader script 7.34
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -1143,10 +1143,21 @@ loc.applyBackgroundColor = function(color)
     end
 end
 
-loc.applyBackgroundTransparency = function(value)
+loc.clampBackgroundTransparency = function(value)
     value = tonumber(value)
-    if not value then return false end
-    loc.CURRENT_BG_TRANSPARENCY = math.clamp(value, 0, 1)
+    if value == nil then return nil end
+
+    -- Default allows the full 0–1 range. Image themes keep at least 0.1 transparency
+    -- so the ImageBackground remains visible through the ExperienceSettings panels.
+    local minimum = Data.UI.Theme == "Default" and 0 or 0.1
+    return math.clamp(value, minimum, 1)
+end
+
+loc.applyBackgroundTransparency = function(value)
+    value = loc.clampBackgroundTransparency(value)
+    if value == nil then return false end
+    Data.UI.MenuBackgroundTransparency = value
+    loc.CURRENT_BG_TRANSPARENCY = value
     if #loc.CACHED_BGS == 0 then loc.refreshThemeTargets() end
     for _, inst in ipairs(loc.CACHED_BGS) do
         if inst and inst.Parent then
@@ -1193,7 +1204,10 @@ loc.applyTheme = function()
     loc.CURRENT_BG_COLOR = Data.UI.Theme == "Default"
         and loc.rgbArrayToColor(Data.UI.BackgroundRGB, {18, 18, 21})
         or Color3.fromRGB(150, 150, 150)
-    loc.CURRENT_BG_TRANSPARENCY = math.clamp(tonumber(Data.UI.MenuBackgroundTransparency) or 0.08, 0, 1)
+    local savedTransparency = tonumber(Data.UI.MenuBackgroundTransparency)
+    if savedTransparency == nil then savedTransparency = 0.08 end
+    loc.CURRENT_BG_TRANSPARENCY = loc.clampBackgroundTransparency(savedTransparency)
+    Data.UI.MenuBackgroundTransparency = loc.CURRENT_BG_TRANSPARENCY
 
     for _, inst in ipairs(loc.CACHED_BGS) do
         if inst and inst.Parent then
@@ -1242,8 +1256,10 @@ loc.applyTheme = function()
     end
 end
 
--- Apply saved theme once, then keep newly-created menu parents in sync.
+-- Apply saved theme once, persist any theme-specific transparency correction,
+-- then keep newly-created menu parents in sync.
 loc.applyTheme()
+loc.saveData(Data)
 
 --// =====================================================
 --// THEME SETTINGS UI
@@ -1297,6 +1313,9 @@ loc.ThemeSelectUI = loc.o(
         Data.UI.Theme = value
         loc.updateThemeCustomRows()
         loc.applyTheme()
+        if loc.BackgroundTransparencyUI and loc.BackgroundTransparencyUI.Input then
+            loc.BackgroundTransparencyUI.Input.Text = tostring(Data.UI.MenuBackgroundTransparency)
+        end
         loc.saveData(Data)
         if ui and ui.SelectButton then ui.SelectButton.Text = value end
     end,
@@ -1534,17 +1553,17 @@ loc.BackgroundTransparencyUI = loc.o(
     true, tostring(Data.UI.MenuBackgroundTransparency or 0.08),
     true, "Save",
     function(box)
-        local value = tonumber(box.Text)
-        if value then
-            Data.UI.MenuBackgroundTransparency = math.clamp(value, 0, 1)
-            loc.applyBackgroundTransparency(Data.UI.MenuBackgroundTransparency)
+        local value = loc.clampBackgroundTransparency(box.Text)
+        if value ~= nil then
+            Data.UI.MenuBackgroundTransparency = value
+            loc.applyBackgroundTransparency(value)
         end
     end,
     function(box, btn)
-        local value = tonumber(box.Text)
-        if not value then return end
-        value = math.clamp(value, 0, 1)
+        local value = loc.clampBackgroundTransparency(box.Text)
+        if value == nil then return end
         Data.UI.MenuBackgroundTransparency = value
+        box.Text = tostring(value)
         loc.saveData(Data)
         loc.applyBackgroundTransparency(value)
         btn.TextColor3 = Color3.fromRGB(0, 255, 0)
