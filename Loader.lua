@@ -1,4 +1,4 @@
--- Loader script 7.258
+-- Loader script 7.26
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -535,16 +535,19 @@ end
 
 -- New
 loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
-    -- Supports both APIs:
-    -- New: o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback)
-    -- Legacy bridge: o(option_, R, G, B, hasBox, placeholder, hasButton, buttonText, livePreview, callback, status, parent)
+    -- New API:
+    -- o(parent, fill, option_, isrt, isb, nbtnText, isselect, isi, tih,
+    --   scriptFN, callback, selectedText)
+    -- When isselect and isb are both true, the row gets:
+    -- [Select dropdown] [nbtn/action button].
+    -- Legacy API remains supported below.
     local modern = typeof(a) == "Instance"
     local parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback
-    local status, livePreview, labelColor
+    local status, livePreview, labelColor, selectedText
 
     if modern then
-        parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback =
-            a, b, c, d, e, f, g, h, i, j, k
+        parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback, selectedText =
+            a, b, c, d, e, f, g, h, i, j, k, l
         labelColor = Color3.new(1, 1, 1)
     else
         option_ = a
@@ -562,9 +565,11 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         autoSize = Enum.AutomaticSize[fill] or Enum.AutomaticSize.None
     end
 
-    local hasButton = isb == true or isselect == true
+    local hasSelect = isselect == true
+    local hasButton = isb == true -- nbtn/action button; not the dropdown trigger
     local hasInput = isi == true
-    local reserve = (hasButton and hasInput) and 210 or ((hasButton or hasInput) and 105 or 0)
+    local reserve = (hasSelect and hasButton) and 205
+        or ((hasSelect or hasButton or hasInput) and 105 or 0)
 
     local frame = Instance.new("Frame")
     frame.Name = "Body"
@@ -593,9 +598,9 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
     local button
     if hasButton then
         button = Instance.new("TextButton")
-        button.Name = "Button"
-        button.Size = UDim2.new(0, 100, 0, 24)
-        button.Position = UDim2.new(1, -102, 0, 3)
+        button.Name = "Button" -- nbtn
+        button.Size = UDim2.new(0, hasSelect and 82 or 100, 0, 24)
+        button.Position = UDim2.new(1, hasSelect and -82 or -102, 0, 3)
         button.BackgroundColor3 = Color3.fromRGB(55, 62, 76)
         button.BackgroundTransparency = 0.12
         button.TextScaled = true
@@ -605,6 +610,23 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         button.ClipsDescendants = false
         button.Parent = frame
         Corner(0, 4, button)
+    end
+
+    local selectButton
+    if hasSelect then
+        selectButton = Instance.new("TextButton")
+        selectButton.Name = "SelectButton"
+        selectButton.Size = UDim2.new(0, hasButton and 110 or 100, 0, 24)
+        selectButton.Position = UDim2.new(1, hasButton and -198 or -102, 0, 3)
+        selectButton.BackgroundColor3 = Color3.fromRGB(55, 62, 76)
+        selectButton.BackgroundTransparency = 0.12
+        selectButton.TextScaled = true
+        selectButton.TextColor3 = Color3.new(1, 1, 1)
+        selectButton.Text = tostring(selectedText or (hasButton and "Select" or tb) or "Select")
+        selectButton.Visible = true
+        selectButton.ClipsDescendants = false
+        selectButton.Parent = frame
+        Corner(0, 4, selectButton)
     end
 
     local input
@@ -627,7 +649,7 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         Corner(0, 4, input)
     end
 
-    -- Compact legacy proportions; modern o() uses fixed-width controls.
+    -- Compact legacy proportions; modern controls use fixed-width fields.
     if not modern then
         if hasButton and hasInput then
             label.Size = UDim2.new(1/3, 0, 1, 0)
@@ -644,16 +666,30 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
             button.Size = UDim2.new(0.4, 0, 0, 24)
             button.Position = UDim2.new(0.59, 0, 0, 3)
         end
-    elseif hasButton and hasInput then
+    elseif hasButton and hasInput and not hasSelect then
         input.Position = UDim2.new(1, -207, 0, 3)
     end
 
     local selectFrame
-    if isselect then
+    local ui = {
+        Parent = rowParent,
+        Frame = frame,
+        Label = label,
+        Button = button, -- compatibility alias for the nbtn
+        NButton = button,
+        SelectButton = selectButton,
+        Input = input,
+        Box = input,
+        Select = nil,
+        SelectOptions = {},
+        SelectedValue = selectedText or (hasSelect and not hasButton and tb or nil),
+    }
+
+    if hasSelect then
         selectFrame = Instance.new("ScrollingFrame")
         selectFrame.Name = "Select"
         selectFrame.Size = UDim2.new(0, 200, 0, 220)
-        selectFrame.Position = UDim2.new(0, -100, 0, 27)
+        selectFrame.Position = UDim2.new(0, hasButton and -90 or -100, 0, 27)
         selectFrame.BackgroundColor3 = Color3.fromRGB(28, 30, 36)
         selectFrame.BackgroundTransparency = 0
         selectFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -664,23 +700,27 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         selectFrame.BorderSizePixel = 1
         selectFrame.Visible = false
         selectFrame.ClipsDescendants = true
-        selectFrame.Parent = button
+        selectFrame.Parent = selectButton
         selectFrame.ZIndex = 5
         Corner(0, 4, selectFrame)
         ListLayout(selectFrame, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
+        ui.Select = selectFrame
     end
 
-    local ui = {
-        Parent = rowParent,
-        Frame = frame,
-        Label = label,
-        Button = button,
-        Input = input,
-        Box = input,
-        Select = selectFrame
-    }
+    local function setOptionDisabled(optionButton, disabled)
+        if not optionButton then return end
+        disabled = disabled == true
+        optionButton:SetAttribute("Disabled", disabled)
+        optionButton.Active = not disabled
+        optionButton.Selectable = not disabled
+        optionButton.AutoButtonColor = not disabled
+        optionButton.TextColor3 = disabled
+            and Color3.fromRGB(115, 120, 130)
+            or Color3.new(1, 1, 1)
+        optionButton.BackgroundTransparency = disabled and 0.65 or 0.35
+    end
 
-    local function addSelect(child)
+    local function addSelect(child, disabled)
         if not selectFrame then return nil end
         local value = tostring(child or "UnknownChild")
         local optionButton = Instance.new("TextButton")
@@ -694,8 +734,13 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         optionButton.Parent = selectFrame
         optionButton.ZIndex = 6
         Corner(0, 3, optionButton)
+        setOptionDisabled(optionButton, disabled)
+        ui.SelectOptions[value] = optionButton
+
         optionButton.MouseButton1Click:Connect(function()
-            button.Text = value
+            if optionButton:GetAttribute("Disabled") then return end
+            ui.SelectedValue = value
+            selectButton.Text = value
             selectFrame.Visible = false
             if type(callback) == "function" then
                 callback(value, "select", ui)
@@ -703,23 +748,32 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         end)
         return optionButton
     end
+
     ui.AddSelect = addSelect
+    ui.SetOptionDisabled = setOptionDisabled
+
+    if selectButton then
+        selectButton.MouseButton1Click:Connect(function()
+            if selectButton.Active then
+                selectFrame.Visible = not selectFrame.Visible
+            end
+        end)
+    end
 
     if button then
         if status ~= nil then
             loc.updateToggle(button, status)
         end
         button.MouseButton1Click:Connect(function()
-            if isselect then
-                selectFrame.Visible = not selectFrame.Visible
-            elseif not modern and status ~= nil then
+            if not button.Active then return end
+            if not modern and status ~= nil then
                 status = not status
                 loc.updateToggle(button, status)
                 if type(livePreview) == "function" then livePreview(status) end
                 if type(callback) == "function" then callback(status) end
             elseif type(callback) == "function" then
                 if modern then
-                    callback(button.Text, "button", ui)
+                    callback(hasSelect and ui.SelectedValue or button.Text, "button", ui)
                 else
                     callback(input, button, ui)
                 end
@@ -748,10 +802,8 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
     return ui
 end
 
--- New API: loc.o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback)
+-- New API: loc.o(parent, fill, option_, isrt, isb, nbtnText, isselect, isi, tih, scriptFN, callback, selectedText)
 -- Legacy UI callsites are also routed through loc.o until they are migrated.
-
--- loc.o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback)
 
 --// =====================================================
 --// USAGE
@@ -1470,52 +1522,154 @@ end)
 local player = s.Players.LocalPlayer
 local placeId = game.PlaceId
 
-------------------------------------------------------------
+-- Server selector: choose a player-count range, then press the nbtn to join.
+local SERVER_OPTIONS = {
+    { Label = "Rejoin (Default)", Key = "Rejoin", MinPlayers = 0 },
+    { Label = "Few Players (<2)", Key = "Few", MinPlayers = 2 },
+    { Label = "Less Players (<5)", Key = "Less", MinPlayers = 5 },
+    { Label = "Many Players (<10)", Key = "Many", MinPlayers = 10 },
+    { Label = "A Lot Of Players (10+)", Key = "A lot", MinPlayers = 10 },
+}
 
-local rejoinUI = loc.o(
-    "Rejoin",
-    255,255,255,
-    false, nil,
-    true, "Confirm",
-    nil,
-    function(box, btn)
-        btn.Text = "Rejoining..."
-        btn.TextColor3 = Color3.fromRGB(150,255,150)
+local SERVER_OPTION_BY_LABEL = {}
+for _, option in ipairs(SERVER_OPTIONS) do
+    SERVER_OPTION_BY_LABEL[option.Label] = option
+end
 
-        task.spawn(function()
-            task.wait(0.5)
-            s.TeleportService:Teleport(placeId, player)
-        end)
+local SERVER_PLAYER_COUNT = #s.Players:GetPlayers()
+local SERVER_SIZE = tonumber(s.Players.MaxPlayers)
+if not SERVER_SIZE or SERVER_SIZE <= 0 then
+    SERVER_SIZE = SERVER_PLAYER_COUNT
+end
+local SERVER_SELECT_UI
+
+loc.UpdateServerSelector = function()
+    SERVER_PLAYER_COUNT = #s.Players:GetPlayers()
+    SERVER_SIZE = tonumber(s.Players.MaxPlayers)
+    if not SERVER_SIZE or SERVER_SIZE <= 0 then
+        SERVER_SIZE = SERVER_PLAYER_COUNT
     end
-)
 
-------------------------------------------------------------
+    if SERVER_SELECT_UI and SERVER_SELECT_UI.Label then
+        SERVER_SELECT_UI.Label.Text = string.format(
+            "Server (%d/%d)",
+            SERVER_PLAYER_COUNT,
+            SERVER_SIZE
+        )
+    end
 
-local switchUI = loc.o(
-    "Switch Server",
-    255,255,255,
-    false, nil,
-    true, "Confirm",
+    if not SERVER_SELECT_UI then return end
+
+    for _, option in ipairs(SERVER_OPTIONS) do
+        local optionButton = SERVER_SELECT_UI.SelectOptions[option.Label]
+        if optionButton then
+            -- A category cannot be selected when the current server has
+            -- fewer players/capacity than that category's numeric threshold.
+            local disabled = option.MinPlayers > 0
+                and (SERVER_PLAYER_COUNT < option.MinPlayers
+                    or SERVER_SIZE < option.MinPlayers)
+            SERVER_SELECT_UI.SetOptionDisabled(optionButton, disabled)
+        end
+    end
+
+    local selectedOption = SERVER_OPTION_BY_LABEL[SERVER_SELECT_UI.SelectedValue]
+    if selectedOption and selectedOption.MinPlayers > 0
+        and (SERVER_PLAYER_COUNT < selectedOption.MinPlayers
+            or SERVER_SIZE < selectedOption.MinPlayers) then
+        SERVER_SELECT_UI.SelectedValue = SERVER_OPTIONS[1].Label
+        SERVER_SELECT_UI.SelectButton.Text = SERVER_OPTIONS[1].Label
+    end
+end
+
+SERVER_SELECT_UI = loc.o(
+    scr,
     nil,
-    function(box, btn)
-        btn.Text = "Finding Server..."
-        btn.TextColor3 = Color3.fromRGB(255,255,0)
+    "Server (0/0)",
+    false,
+    true,
+    "Go",
+    true,
+    false,
+    nil,
+    nil,
+    function(value, action, ui)
+        if action == "select" then
+            -- The dropdown only changes the pending selection.
+            return
+        end
 
+        if action ~= "button" then return end
+
+        local selected = SERVER_OPTION_BY_LABEL[value]
+        if not selected then return end
+
+        if selected.MinPlayers > 0
+            and (SERVER_PLAYER_COUNT < selected.MinPlayers
+                or SERVER_SIZE < selected.MinPlayers) then
+            loc.UpdateServerSelector()
+            return
+        end
+
+        ui.Button.TextColor3 = Color3.fromRGB(255, 220, 100)
+
+        if selected.Key == "Rejoin" then
+            ui.Button.Text = "Rejoining..."
+            task.spawn(function()
+                task.wait(0.5)
+                s.TeleportService:Teleport(placeId, player)
+            end)
+            return
+        end
+
+        ui.Button.Text = "Searching..."
         task.spawn(function()
-            local start = tick()
+            local start = os.clock()
             local found = false
+            local filter
 
-            while tick() - start < 5 do
-                local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
+            if selected.Key == "Few" then
+                filter = function(playing)
+                    return playing < 2
+                end
+            elseif selected.Key == "Less" then
+                filter = function(playing)
+                    return playing >= 2 and playing < 5
+                end
+            elseif selected.Key == "Many" then
+                filter = function(playing)
+                    return playing >= 5 and playing < 10
+                end
+            else
+                filter = function(playing)
+                    return playing >= 10
+                end
+            end
+
+            while os.clock() - start < 5 do
+                local url = "https://games.roblox.com/v1/games/"
+                    .. placeId
+                    .. "/servers/Public?sortOrder=Asc&limit=100"
+
                 local success, result = pcall(function()
                     return s.HttpService:JSONDecode(game:HttpGet(url))
                 end)
 
-                if success and result and result.data then
+                if success and result and type(result.data) == "table" then
                     for _, server in ipairs(result.data) do
-                        if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                        local playing = tonumber(server.playing)
+                        local capacity = tonumber(server.maxPlayers)
+                        if server.id ~= game.JobId
+                            and playing ~= nil
+                            and capacity ~= nil
+                            and playing < capacity
+                            and filter(playing) then
                             found = true
-                            s.TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
+                            ui.Button.Text = "Joining..."
+                            s.TeleportService:TeleportToPlaceInstance(
+                                placeId,
+                                server.id,
+                                player
+                            )
                             return
                         end
                     end
@@ -1524,54 +1678,32 @@ local switchUI = loc.o(
                 task.wait(1)
             end
 
-            if not found then
-                btn.Text = "Server not found or full"
-                btn.TextColor3 = Color3.fromRGB(255,150,0)
+            if not found and ui.Button and ui.Button.Parent then
+                ui.Button.Text = "No server found"
+                ui.Button.TextColor3 = Color3.fromRGB(255, 150, 0)
+                task.delay(2, function()
+                    if ui.Button and ui.Button.Parent then
+                        ui.Button.Text = "Go"
+                        ui.Button.TextColor3 = Color3.new(1, 1, 1)
+                    end
+                end)
             end
         end)
-    end
+    end,
+    "Rejoin (Default)"
 )
 
-------------------------------------------------------------
+for _, option in ipairs(SERVER_OPTIONS) do
+    SERVER_SELECT_UI.AddSelect(option.Label)
+end
 
-local lowSwitchUI = loc.o(
-    "Switch to Low Players Server",
-    255,255,255,
-    false, nil,
-    true, "Confirm",
-    nil,
-    function(box, btn)
-        btn.Text = "Finding Low Players Server..."
-        btn.TextColor3 = Color3.fromRGB(255,255,0)
-
-        local start = tick()
-        local found = false
-
-        while tick() - start < 5 do
-            local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
-            local success, result = pcall(function()
-                return s.HttpService:JSONDecode(game:HttpGet(url))
-            end)
-
-            if success and result and result.data then
-                for _, server in ipairs(result.data) do
-                    if server.playing >= 3 and server.playing <= 5 and server.id ~= game.JobId then
-                        found = true
-                        s.TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
-                        return
-                    end
-                end
-            end
-
-            task.wait(1)
-        end
-
-        if not found then
-            btn.Text = "Server not found, please try again later."
-            btn.TextColor3 = Color3.fromRGB(255,170,0)
-        end
-    end
-)
+loc.UpdateServerSelector()
+s.Players.PlayerAdded:Connect(function()
+    task.defer(loc.UpdateServerSelector)
+end)
+s.Players.PlayerRemoving:Connect(function()
+    task.defer(loc.UpdateServerSelector)
+end)
 
 ------------------------------------------------------------
 
@@ -5645,6 +5777,7 @@ loc.ChangeLanguage = function(language)
     end
 
     L.latestClick = language
+    L.PendingLanguage = language
     L.SelectedLanguage = language
     L.Busy = true
     L.LanguageButtonStatus = "Working"
@@ -5681,6 +5814,7 @@ loc.ChangeLanguage = function(language)
             L.WorkingSeconds = math.max(0, math.floor(os.clock() - started))
             L.Busy = false
             L.SelectedLanguage = L.CurrentLanguage
+            L.PendingLanguage = L.CurrentLanguage
 
             -- Show Done! (final WorkingSeconds), wait PauseSeconds, then Selected.
             L.LanguageButtonStatus = "Done"
@@ -5715,9 +5849,16 @@ loc.ChangeLanguage = function(language)
 end
 
 SetLanguageButtonsLocked = function(locked)
-    if L.LanguageSelect and L.LanguageSelect.Button then
-        L.LanguageSelect.Button.Active = not locked
-        L.LanguageSelect.Button.AutoButtonColor = not locked
+    if L.LanguageSelect then
+        for _, control in ipairs({L.LanguageSelect.SelectButton, L.LanguageSelect.Button}) do
+            if control then
+                control.Active = not locked
+                control.AutoButtonColor = not locked
+            end
+        end
+        if locked and L.LanguageSelect.Select then
+            L.LanguageSelect.Select.Visible = false
+        end
     end
 
     for _, button in pairs(L.LanguageButtons) do
@@ -5769,29 +5910,38 @@ L.LanguageHeader = loc.o(
     false,nil,false,nil,nil,nil,nil,ins2
 ).Label
 
+L.PendingLanguage = L.CurrentLanguage
 L.LanguageSelect = loc.o(
-    ins2,
+    typeof(ins2) == "Instance" and ins2 or scr,
     nil,
-    "Language",
+    "Switch Language",
     false,
     true,
-    "🇺🇸 English",
+    "Switch",
     true,
     false,
     nil,
     nil,
-    function(value, action)
+    function(value, action, ui)
         if action == "select" then
-            local language = L.LanguageValueToCode[value]
+            L.PendingLanguage = L.LanguageValueToCode[value]
+            L.LanguageButtonStatus = nil
+            if L.RefreshLanguageButtons then
+                L.RefreshLanguageButtons()
+            elseif ui and ui.Button then
+                ui.Button.Text = "Switch"
+            end
+        elseif action == "button" then
+            local language = L.PendingLanguage
             if language then
                 loc.ChangeLanguage(language)
             end
         end
-    end
+    end,
+    L.LanguageOptionLabels[L.CurrentLanguage]
 )
 
--- Build one dropdown instead of seven separate language buttons.
--- Keep the language code -> option button map for locking/highlighting.
+-- Build the language dropdown; the adjacent nbtn applies the selected language.
 for _, language in ipairs(L.LanguageOrder) do
     L.LanguageValueToCode[L.LanguageOptionLabels[language]] = language
     L.LanguageButtonDefaultText[language] = L.LanguageOptionLabels[language]
@@ -5801,27 +5951,32 @@ for _, language in ipairs(L.LanguageOrder) do
 end
 
 L.RefreshLanguageButtons = function()
-    local selected = L.SelectedLanguage
+    local selected = L.PendingLanguage or L.SelectedLanguage
     local status = L.LanguageButtonStatus
-    local selector = L.LanguageSelect and L.LanguageSelect.Button
+    local selector = L.LanguageSelect and L.LanguageSelect.SelectButton
+    local actionButton = L.LanguageSelect and L.LanguageSelect.Button
 
     if selector then
+        selector.Text = L.LanguageButtonDefaultText[selected]
+            or L.LanguageOptionLabels[selected]
+            or "Language"
+    end
+
+    if actionButton then
         if status == "Working" then
-            selector.Text = string.format(
+            actionButton.Text = string.format(
                 "Working... (%ds)",
                 tonumber(L.WorkingSeconds) or 0
             )
         elseif status == "Done" then
-            selector.Text = string.format(
+            actionButton.Text = string.format(
                 "Done! (%ds)",
                 tonumber(L.WorkingSeconds) or 0
             )
         elseif status == "Selected" then
-            selector.Text = "Selected"
+            actionButton.Text = "Selected"
         else
-            selector.Text = L.LanguageButtonDefaultText[selected]
-                or L.LanguageOptionLabels[selected]
-                or "Language"
+            actionButton.Text = "Switch"
         end
     end
 
@@ -5836,7 +5991,7 @@ L.RefreshLanguageButtons = function()
     end
 
     if L.LanguageHeader then
-        local missing = L.MissingTranslationCountByLanguage[selected]
+        local missing = L.MissingTranslationCountByLanguage[L.SelectedLanguage]
         if missing ~= nil then
             L.LanguageHeader.Text = string.format(
                 "« Languages · Missing: %d »",
@@ -5879,37 +6034,54 @@ for i, state in ipairs(screenInsetStates) do
     end
 end
 
-loc.o(
-    "Set ExperienceSetting's ScreenGui",
-    255,255,255,
-
-    false, nil,
-
-    true,
-    screenInsetStates[screenInsetCurrent].Name,
-
+local screenInsetPending = screenInsetStates[screenInsetCurrent].Name
+local screenInsetUI = loc.o(
+    typeof(ins2) == "Instance" and ins2 or scr,
     nil,
-
-    function(box, btn)
-        screenInsetCurrent =
-            screenInsetCurrent % #screenInsetStates + 1
-
-        local state = screenInsetStates[screenInsetCurrent]
-
-        Data.UI.ScreenInsets = state.Name
-
-        if MENU_INSTANCE then
-            MENU_INSTANCE.ScreenInsets = state.Enum
+    "Set ExperienceSetting's ScreenGui",
+    false,
+    true,
+    "Apply",
+    true,
+    false,
+    nil,
+    nil,
+    function(value, action, ui)
+        if action == "select" then
+            screenInsetPending = value
+            return
         end
 
-        btn.Text = state.Name
+        if action == "button" then
+            for index, state in ipairs(screenInsetStates) do
+                if state.Name == screenInsetPending then
+                    screenInsetCurrent = index
+                    Data.UI.ScreenInsets = state.Name
 
-        loc.saveData(Data)
+                    if MENU_INSTANCE then
+                        MENU_INSTANCE.ScreenInsets = state.Enum
+                    end
+
+                    loc.saveData(Data)
+                    ui.Button.Text = "Saved"
+                    ui.Button.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    task.delay(1, function()
+                        if ui.Button and ui.Button.Parent then
+                            ui.Button.Text = "Apply"
+                            ui.Button.TextColor3 = Color3.new(1, 1, 1)
+                        end
+                    end)
+                    break
+                end
+            end
+        end
     end,
-
-    nil,
-    ins2
+    screenInsetPending
 )
+
+for _, state in ipairs(screenInsetStates) do
+    screenInsetUI.AddSelect(state.Name)
+end
 
 -- Apply saved state when Menu exists
 task.spawn(function()
