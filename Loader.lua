@@ -1,4 +1,4 @@
--- Loader script 7.33
+-- Loader script 7.331
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -1421,11 +1421,9 @@ loc.rebuildThemeGradientRows = function()
                 local rowIndex = rowData and rowData.Frame and rowData.Frame:GetAttribute("GradientIndex") or i
                 local draft, err = loc.collectThemeGradientDraft(rowIndex)
                 if not draft then
-                    ding(err or "Invalid Gradient Color", 3, 255, 100, 100)
                     return
                 end
                 if #draft < 2 then
-                    ding("Gradient needs at least 2 colors.", 3, 255, 150, 80)
                     return
                 end
                 loc.ThemeGradientDraftStops = draft
@@ -1474,12 +1472,10 @@ loc.ThemeGradientAddUI = loc.o(
     nil,
     function(box, btn)
         if #loc.ThemeGradientDraftStops >= 20 then
-            ding("Maximum 20 Gradient Colors.", 3, 255, 150, 80)
             return
         end
         local draft, err = loc.collectThemeGradientDraft()
         if not draft then
-            ding(err or "Fix invalid Gradient Colors first.", 3, 255, 100, 100)
             return
         end
         table.insert(draft, { RGB = {255, 255, 255}, Transparency = 0 })
@@ -1502,17 +1498,14 @@ loc.ThemeGradientSaveUI = loc.o(
     function(box, btn)
         local draft, err = loc.collectThemeGradientDraft()
         if not draft then
-            ding(err or "Invalid Gradient Colors.", 4, 255, 100, 100)
             return
         end
         if #draft < 2 or #draft > 20 then
-            ding("Gradient requires 2–20 colors.", 4, 255, 150, 80)
             return
         end
         local rotation = tonumber(loc.ThemeGradientRotationUI and loc.ThemeGradientRotationUI.Input
             and loc.ThemeGradientRotationUI.Input.Text or "")
         if not rotation or rotation < 0 or rotation > 360 then
-            ding("Gradient Rotation must be between 0 and 360.", 4, 255, 100, 100)
             return
         end
         Data.UI.ThemeGradientColors = draft
@@ -1523,7 +1516,6 @@ loc.ThemeGradientSaveUI = loc.o(
         loc.applyTheme()
         btn.TextColor3 = Color3.fromRGB(0, 255, 0)
         task.delay(0.5, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
-        ding("Custom Gradient saved.", 3, 120, 255, 150)
     end,
     nil,
     loc.ThemeGradientEditorFrame
