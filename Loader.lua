@@ -1,55 +1,64 @@
--- Loader script 6.276
+-- Loader script 7.2
+
+--[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
+
+-- Shared function/state table.
+local loc = {}
 
 ------------------------------------------------------------------------------------------
 
 -- =====>> Saved Functions <<=====
--- ====FUNCTION CORNER=====
-local function Corner(Scale, Offset, Parent)
-  local Corner = Instance.new("UICorner")
-  Corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
-  Corner.Parent = Parent
-  return Corner
+-- ====FUNCTION CORNER===== Example: Corner(Scale, Offset, Parent)
+loc.Corner = function(Scale, Offset, Parent)
+  local corner = Instance.new("UICorner")
+  corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
+  corner.Parent = Parent
+  return corner
 end
 -- =====END FUNCTION CORNER====
 
--- =====FUNCTION UILISTLAYOUT=====
-local HCenter = Enum.HorizontalAlignment.Center
-local VCenter = Enum.VerticalAlignment.Center
-local HLeft = Enum.HorizontalAlignment.Left
-local VTop = Enum.VerticalAlignment.Top
-local HRight = Enum.HorizontalAlignment.Right
-local VBottom = Enum.VerticalAlignment.Bottom
-local FillH = Enum.FillDirection.Horizontal
-local FillV = Enum.FillDirection.Vertical
-local SCustom = Enum.SortOrder.Custom
-local SLayout = Enum.SortOrder.LayoutOrder
-local SName = Enum.SortOrder.Name
+-- =====FUNCTION UILISTLAYOUT===== Example: ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+local ListUI = {
+ HCenter = Enum.HorizontalAlignment.Center,
+ VCenter = Enum.VerticalAlignment.Center,
+ HLeft = Enum.HorizontalAlignment.Left,
+ VTop = Enum.VerticalAlignment.Top,
+ HRight = Enum.HorizontalAlignment.Right,
+ VBottom = Enum.VerticalAlignment.Bottom,
+ FillH = Enum.FillDirection.Horizontal,
+ FillV = Enum.FillDirection.Vertical,
+ SCustom = Enum.SortOrder.Custom,
+ SLayout = Enum.SortOrder.LayoutOrder,
+ SName = Enum.SortOrder.Name
+}
 
-local function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+loc.ListLayout = function(parent, scale, offset, HZ, VT, SO, FILL)
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
-    list.FillDirection = FILL or FillH
-    list.HorizontalAlignment = HZ or HCenter
-    list.VerticalAlignment = VT or VCenter
-    list.SortOrder = SO or SName
+    list.FillDirection = ListUI[FILL] or ListUI.FillH
+    list.HorizontalAlignment = ListUI[HZ] or ListUI.HCenter
+    list.VerticalAlignment = ListUI[VT] or ListUI.VCenter
+    list.SortOrder = ListUI[SO] or ListUI.SName
     list.Parent = parent
     return list
 end
 -- =====END FUNCTION UILISTLAYOUT=====
 
--- ====FUNCTION UISTROKE=====
-local ASMBorder = Enum.ApplyStrokeMode.Border
-local ASMContextual = Enum.ApplyStrokeMode.Contextual
+-- ====FUNCTION UISTROKE===== Example: Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+local StrokeUI = {
+ ASMBorder = Enum.ApplyStrokeMode.Border,
+ ASMContextual = Enum.ApplyStrokeMode.Contextual,
 
-local LJMBevel = Enum.LineJoinMode.Bevel
-local LJMMiter = Enum.LineJoinMode.Miter
-local LJMRound = Enum.LineJoinMode.Round
+ LJMBevel = Enum.LineJoinMode.Bevel,
+ LJMMiter = Enum.LineJoinMode.Miter,
+ LJMRound = Enum.LineJoinMode.Round
+}
 
-local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+loc.Stroke = function(parent, ASM, R, G, B, LJM, Tn, Transy)
     local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
-    stroke.ApplyStrokeMode = ASM or ASMBorder
+    stroke.ApplyStrokeMode = StrokeUI[ASM] or StrokeUI.ASMBorder
     stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
-    stroke.LineJoinMode = LJM or LJMRound
+    stroke.LineJoinMode = StrokeUI[LJM] or StrokeUI.LJMRound
     stroke.Thickness = Tn or 1
     stroke.Transparency = Transy or 0
     stroke.Parent = parent
@@ -57,34 +66,68 @@ local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
 end
 -- =====END FUNCTION UISTROKE=====
 
--- ====FUNCTION UIGRADIENT=====
-local function Gradient(parent, rotation, offsetX, offsetY, ...)
+-- ====FUNCTION UIGRADIENT===== Example: Gradient(parent, rotation, offsetX, offsetY, {...}, {...})
+loc.Gradient = function(parent, rotation, offsetX, offsetY, colors, transparencies)
     local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+
     grad.Rotation = rotation or 0
     grad.Offset = Vector2.new(offsetX or 0, offsetY or 0)
 
-    local colors = {...}
-    local keypoints = {}
+    -- Color
+    local colorKeypoints = {}
 
-    if #colors == 0 then
-        keypoints = { ColorSequenceKeypoint.new(0, Color3.new(1,1,1)), ColorSequenceKeypoint.new(1, Color3.new(1,1,1)) }
+    if not colors or #colors == 0 then
+        colorKeypoints = {
+            ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+            ColorSequenceKeypoint.new(1, Color3.new(1,1,1))
+        }
     elseif #colors == 1 then
-        keypoints = { ColorSequenceKeypoint.new(0, colors[1]), ColorSequenceKeypoint.new(1, colors[1]) }
+        colorKeypoints = {
+            ColorSequenceKeypoint.new(0, colors[1]),
+            ColorSequenceKeypoint.new(1, colors[1])
+        }
     else
         for i, c in ipairs(colors) do
             local t = (i-1) / (#colors-1)
-            table.insert(keypoints, ColorSequenceKeypoint.new(t, c))
+            table.insert(colorKeypoints, ColorSequenceKeypoint.new(t, c))
         end
     end
 
-    grad.Color = ColorSequence.new(keypoints)
+    grad.Color = ColorSequence.new(colorKeypoints)
+
+
+    -- Transparency
+    local transparencyKeypoints = {}
+
+    if not transparencies or #transparencies == 0 then
+        transparencyKeypoints = {
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(1, 0)
+        }
+    elseif #transparencies == 1 then
+        transparencyKeypoints = {
+            NumberSequenceKeypoint.new(0, transparencies[1]),
+            NumberSequenceKeypoint.new(1, transparencies[1])
+        }
+    else
+        for i, tValue in ipairs(transparencies) do
+            local t = (i-1) / (#transparencies-1)
+            table.insert(
+                transparencyKeypoints,
+                NumberSequenceKeypoint.new(t, tValue)
+            )
+        end
+    end
+
+    grad.Transparency = NumberSequence.new(transparencyKeypoints)
+
     grad.Parent = parent
     return grad
 end
 -- =====END FUNCTION UIGRADIENT=====
 
--- ====FUNCTION UIPADDING (ตามลำดับ Roblox)=====
-local function Padding(parent, bottom, left, right, top)
+-- ====FUNCTION UIPADDING ===== Example: Padding(parent, {X, Y}, {X, Y}, {X, Y}, {X, Y})
+loc.Padding = function(parent, bottom, left, right, top)
     local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
     local function toUDim(value)
         if typeof(value) == "UDim" then
@@ -106,15 +149,76 @@ local function Padding(parent, bottom, left, right, top)
     pad.Parent = parent
     return pad
 end
--- =====END FUNCTION UIPADDING======
 
---====== CLIENT SERVICES ======--
+-- =====FUNCTION UIASPECTRATIONCONSTRAINT==== Example: Aspect(parent, ratio, aspectType, dominantAxis)
+
+--// ENUM SHORTCUTS
+local Axis = Enum.DominantAxis
+local Type = Enum.AspectType
+
+local AspectUI = {
+ Axis = Enum.DominantAxis,
+ Type = Enum.AspectType,
+
+-- optional ultra-short aliases
+ Width = Axis.Width,
+ Height = Axis.Height,
+
+ Fit = Type.FitWithinMaxSize,
+ Scale = Type.ScaleWithParentSize
+}
+
+
+--// ASPECT FUNCTION
+loc.Aspect = function(parent, ratio, aspectType, dominantAxis)
+	if not parent then return end
+	
+	-- prevent duplicates
+	local existing = parent:FindFirstChildOfClass("UIAspectRatioConstraint")
+	if existing then
+		-- update instead
+		existing.AspectRatio = AspectUI[ratio] or existing.AspectRatio
+		existing.AspectType = AspectUI[aspectType] or existing.AspectType
+		existing.DominantAxis = AspectUI[dominantAxis] or existing.DominantAxis
+		return existing
+	end
+	
+	-- create new
+	local constraint = Instance.new("UIAspectRatioConstraint")
+	constraint.Parent = parent
+	
+	constraint.AspectRatio = AspectUI[ratio] or 1
+	constraint.AspectType = AspectUI[aspectType] or AspectUI.Fit
+	constraint.DominantAxis = AspectUI[dominantAxis] or AspectUI.Width
+	
+	return constraint
+end
+
+-- =====END FUNCTION UIASPECTRATIONCONSTRAINT=====
+
+--[[
+====== CLIENT SERVICES ( OLD ) ======
 
 -- UI / Player Interface
 local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
+
+-- 3D/2D Destroy
+local Debris = game:GetService("Debris")
+
+-- 3D Wprkspace
+local Workspace = game:GetService("Workspace")
+local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
+local Camera = Workspace.CurrentCamera
+
+-- Storage
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Third Party
+local HttpService = game:GetService("HttpService")
 
 -- Audio / Feedback
 local SoundService = game:GetService("SoundService")
@@ -124,149 +228,187 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 -- Runtime / Frame Updates
 local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
+local TextChatService = game:GetService("TextChatService")
 
 -- Animation / Transitions
 local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
 
 -- Input (Desktop / Mobile)
 local UserInputService = game:GetService("UserInputService")
 local TouchInputService = game:GetService("TouchInputService")
+]]
 
-------------------------------------------------------------------------------------------
+--====== CLIENT SERVICES ( TABLE ); Use like this 'Service.Example' ======--
+
+local s = {
+-- UI / Player Interface
+ CoreGui = game:GetService("CoreGui"),
+ StarterGui = game:GetService("StarterGui"),
+ GuiService = game:GetService("GuiService"),
+ Players = game:GetService("Players"),
+
+-- 3D/2D Destroy
+ Debris = game:GetService("Debris"),
+
+-- 3D Wprkspace
+ Workspace = game:GetService("Workspace"),
+ TeleportService = game:GetService("TeleportService"),
+ Lighting = game:GetService("Lighting"),
+ Camera = game:GetService("Workspace").CurrentCamera,
+
+-- Storage
+ ReplicatedStorage = game:GetService("ReplicatedStorage"),
+
+-- Third Party
+ HttpService = game:GetService("HttpService"),
+
+-- Audio / Feedback
+ SoundService = game:GetService("SoundService"),
+
+-- Commerce / Monetization
+ MarketplaceService = game:GetService("MarketplaceService"),
+
+-- Runtime / Frame Updates
+ RunService = game:GetService("RunService"),
+ TextService = game:GetService("TextService"),
+ TextChatService = game:GetService("TextChatService"),
+ LocalizationService = game:GetService("LocalizationService"),
+
+-- Animation / Transitions
+ TweenService = game:GetService("TweenService"),
+ ContentProvider = game:GetService("ContentProvider"),
+
+-- Input (Desktop / Mobile)
+ UserInputService = game:GetService("UserInputService"),
+ TouchInputService = game:GetService("TouchInputService"),
+
+}
+
+-- Shared loc table was initialized near the top of this file.
+
+local tweenStyle = {
+    Linear = Enum.EasingStyle.Linear,
+    Sine = Enum.EasingStyle.Sine,
+    Back = Enum.EasingStyle.Back,
+    Quad = Enum.EasingStyle.Quad,
+    Quart = Enum.EasingStyle.Quart,
+    Quint = Enum.EasingStyle.Quint,
+    Bounce = Enum.EasingStyle.Bounce,
+    Elastic = Enum.EasingStyle.Elastic,
+    Exponential = Enum.EasingStyle.Exponential,
+    Circular = Enum.EasingStyle.Circular,
+    Cubic = Enum.EasingStyle.Cubic
+}
+
+loc.Tween = function(obj, propertie, time, style)
+    local properties = propertie or {}
+
+    local selectedStyle = tweenStyle[style] or style or Enum.EasingStyle.Quad
+
+    local tweenInfo = TweenInfo.new(
+        time or 0.5,
+        selectedStyle,
+        Enum.EasingDirection.Out
+    )
+
+    local tween = s.TweenService:Create(obj, tweenInfo, properties)
+    tween:Play()
+    return tween
+end
+
+---------------------------------------------------------------------------------------
+
+
 
 -- ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.Name = "LoaderSettings"
 gui.DisplayOrder = 2147483646
-gui.Parent = CoreGui
+-- gui.ScreenInsets = Enum.ScreenInsets.None
+gui.Parent = s.CoreGui
 
--- Frame
 local hr = Instance.new("Frame")
 hr.Name = "Holder"
 hr.Size = UDim2.new(0.3,0,1,0)
-hr.Position = UDim2.new(-0.3,0,0,0)
-hr.BackgroundTransparency = 0.3
-hr.BorderSizePixel = 0
 hr.BackgroundColor3 = Color3.fromRGB(18,18,21)
+hr.Position = UDim2.new(-0.4,0,0,0)
+hr.BackgroundTransparency = 0.08
 hr.Active = false
+hr.BorderSizePixel = 0
 hr.Parent = gui
+loc.Corner(0,8,hr)
 
--- Button
-local oc = Instance.new("TextButton")
-oc.Name = "OPEN/CLOSE"
-oc.Size = UDim2.new(0.1,0,0.1,0)
-oc.Position = UDim2.new(1,0,0,0)
-oc.BackgroundTransparency = 0.3
-oc.BorderSizePixel = 0
+local oc = Instance.new("ImageButton")
+oc.Name = "Open/Close"
+oc.Size = UDim2.new(0,40,0,40)
+oc.Position = UDim2.new(1,5,0.5,-25)
 oc.BackgroundColor3 = Color3.fromRGB(18,18,21)
-oc.TextColor3 = Color3.fromRGB(255,255,255)
-oc.TextSize = 18
-oc.Text = "‹›"
+oc.BackgroundTransparency = 0.08
+oc.ScaleType = Enum.ScaleType.Fit
+oc.Image = "rbxassetid://132003718727838"
 oc.Parent = hr
+loc.Corner(1,0,oc)
 
--- Frame
-local ins = Instance.new("Frame")
-ins.Name = "Inside"
-ins.Size = UDim2.new(0.92,0,0.96,0)
-ins.Position = UDim2.new(0.04,0,0.02,0)
-ins.BackgroundTransparency = 1
-ins.Active = false
-ins.Parent = hr
-ListLayout(ins, 0, 5, HCenter, VTop, SLayout, FillV)
+local h_si = Instance.new("Frame")
+h_si.Name = "Inside"
+h_si.Size = UDim2.new(1,0,1,0)
+h_si.Position = UDim2.new(0,0,0,0)
+h_si.BackgroundTransparency = 1
+h_si.Active = false
+h_si.BorderMode = Enum.BorderMode.Inset
+h_si.BorderSizePixel = 10
+h_si.Parent = hr
 
--- Holder
-local top = Instance.new("TextLabel")
-top.Name = "Topic"
-top.Size = UDim2.new(1,0,0.05,0)
-top.BackgroundTransparency = 1
-top.TextScaled = true
-top.Text = "Settings - Loader Rejoiner"
-top.TextColor3 = Color3.fromRGB(255,255,255)
-top.Parent = ins
-Corner(0, 8, top)
-Stroke(top, ASMBorder, 255,255,255, LJMRound, 1, 0)
+local topic = Instance.new("TextLabel")
+topic.Name = "Topic"
+topic.Size = UDim2.new(1,0,0,50)
+topic.BackgroundColor3 = Color3.fromRGB(0,85,255)
+topic.RichText = true
+topic.TextScaled = true
+topic.BorderMode = Enum.BorderMode.Inset
+topic.BorderSizePixel = 13
+topic.Text = "<b>Settings - Loader Rejoiner</b>"
+topic.TextColor3 = Color3.new(1,1,1)
+topic.Parent = h_si
+loc.Corner(0,8,topic)
 
--- Holder 2
-local hr2 = Instance.new("Frame")
-hr2.Name = "Holder"
-hr2.Size = UDim2.new(1,0,1,0)
-hr2.Position = UDim2.new(-1,0,0,0)
-hr2.BackgroundTransparency = 0.3
-hr2.BorderSizePixel = 0
-hr2.BackgroundColor3 = Color3.fromRGB(18,18,21)
-hr2.Active = false
-hr2.Parent = hr -- original frame 
+local scr = Instance.new("ScrollingFrame")
+scr.Name = "Settings"
+scr.Size = UDim2.new(1,0,1,-55)
+scr.Position = UDim2.new(0,0,0,55)
+scr.BackgroundTransparency = 1
+scr.BorderMode = Enum.BorderMode.Inset
+scr.BorderSizePixel = 5
+scr.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scr.ScrollingDirection = Enum.ScrollingDirection.Y
+scr.ScrollBarThickness = 0
+scr.CanvasSize = UDim2.new(0,0,0,0)
+scr.Parent = h_si
+loc.Corner(0,8,scr)
+loc.ListLayout(scr, 0, 5, "HCenter","VTop","SLayout","FillV")
 
--- Inside 2
-local ins2 = Instance.new("Frame")
-ins2.Name = "Inside"
-ins2.Size = UDim2.new(0.92,0,0.96,0)
-ins2.Position = UDim2.new(0.04,0,0.02,0)
-ins2.BackgroundTransparency = 1
-ins2.Active = false
-ins2.Parent = hr2
-ListLayout(ins2, 0, 5, HCenter, VTop, SLayout, FillV)
-
--- Holder
-local top2 = Instance.new("TextLabel")
-top2.Name = "Topic"
-top2.Size = UDim2.new(1,0,0.05,0)
-top2.BackgroundTransparency = 1
-top2.TextScaled = true
-top2.Text = "Settings - 2"
-top2.TextColor3 = Color3.fromRGB(255,255,255)
-top2.Parent = ins2
-Corner(0, 8, top2)
-Stroke(top2, ASMBorder, 255,255,255, LJMRound, 1, 0)
-
-
--- Toggle for holder
--- ตัวแปรที่มีอยู่แล้ว
--- hr : Frame
--- oc : TextButton
-
-local POSITIONS = {
-    -0.3, -- OFF
-    0,    -- OPEN 1
-    0.3   -- OPEN 2
-}
-
-local state = 1 -- เริ่มที่ OFF
-
-local tweenInfo = TweenInfo.new(
-    0.25,
-    Enum.EasingStyle.Quad,
-    Enum.EasingDirection.Out
-)
-
-local function tweenHR(xScale)
-    local goal = {
-        Position = UDim2.new(
-            xScale,
-            0,
-            hr.Position.Y.Scale,
-            hr.Position.Y.Offset
-        )
-    }
-
-    TweenService:Create(hr, tweenInfo, goal):Play()
-end
-
+local ocstate = false
 oc.MouseButton1Click:Connect(function()
-    -- เปลี่ยนสถานะ
-    state += 1
-    if state > #POSITIONS then
-        state = 1
-    end
-
-    tweenHR(POSITIONS[state])
+  if ocstate == false then
+    ocstate = true
+    oc.Image = "rbxassetid://111119256032094"
+    loc.Tween(hr, {Position = UDim2.new(0,0,0,0)}, 0.4)
+    loc.Tween(oc, {Position = UDim2.new(1,5,0.5,-50),Size = UDim2.new(0.1,-10,0,100)}, 0.4)
+    else
+    ocstate = false
+    oc.Image = "rbxassetid://132003718727838"
+    loc.Tween(hr, {Position = UDim2.new(-0.3,0,0,0)}, 0.4)
+    loc.Tween(oc, {Position = UDim2.new(1,5,0.5,-25),Size = UDim2.new(0,40,0,40)}, 0.4)
+  end
 end)
 
 --// =====================================================
 --// SERVICES
 --// =====================================================
 
-local HttpService = game:GetService("HttpService")
+-- HttpService uses the shared s.HttpService service reference.
 
 --// =====================================================
 --// SAVE PATH
@@ -279,7 +421,7 @@ local SAVE_FILE   = ROOT_FOLDER .. "/config.json"
 --// FILE UTILS (EXECUTOR ONLY)
 --// =====================================================
 
-local function ensureFolder()
+loc.ensureFolder = function()
     if not isfolder(ROOT_FOLDER) then
         makefolder(ROOT_FOLDER)
     end
@@ -313,11 +455,11 @@ local DEFAULT_DATA = {
 --// DEEP MERGE (เติมค่า default ที่หายไป)
 --// =====================================================
 
-local function deepMerge(data, defaults)
+loc.deepMerge = function(data, defaults)
     for k, v in pairs(defaults) do
         if type(v) == "table" then
             data[k] = type(data[k]) == "table" and data[k] or {}
-            deepMerge(data[k], v)
+            loc.deepMerge(data[k], v)
         elseif data[k] == nil then
             data[k] = v
         end
@@ -328,11 +470,11 @@ end
 --// SAVE DATA  <<<<<< สำคัญ (ตัวนี้ที่เคย NIL)
 --// =====================================================
 
-local function saveData(data)
-    ensureFolder()
+loc.saveData = function(data)
+    loc.ensureFolder()
 
     local ok, encoded = pcall(function()
-        return HttpService:JSONEncode(data)
+        return s.HttpService:JSONEncode(data)
     end)
 
     if ok then
@@ -347,14 +489,14 @@ end
 --// LOAD DATA
 --// =====================================================
 
-local function loadData()
-    ensureFolder()
+loc.loadData = function()
+    loc.ensureFolder()
 
     local data = {}
 
     if isfile(SAVE_FILE) then
         local ok, decoded = pcall(function()
-            return HttpService:JSONDecode(readfile(SAVE_FILE))
+            return s.HttpService:JSONDecode(readfile(SAVE_FILE))
         end)
 
         if ok and type(decoded) == "table" then
@@ -363,10 +505,10 @@ local function loadData()
     end
 
     -- เติม default ที่ขาด
-    deepMerge(data, DEFAULT_DATA)
+    loc.deepMerge(data, DEFAULT_DATA)
 
     -- save กลับทันที (กัน key หาย)
-    saveData(data)
+    loc.saveData(data)
 
     return data
 end
@@ -377,7 +519,7 @@ end
 --// UI HELPER
 --// =====================================================
 
-local function updateToggle(btn, status)
+loc.updateToggle = function(btn, status)
     btn.Text = status and "ON" or "OFF"
     btn.TextColor3 = status
         and Color3.fromRGB(0,255,0)
@@ -388,113 +530,228 @@ end
 --// TXT FUNCTION (FIXED)
 --// =====================================================
 
-local function Txt(
-    txt, R, G, B,
-    hasBox, ptxt,
-    hasButton, btxt,
-    work, callback, status,
-    parent
-)
-    -- Frame
-    local b = Instance.new("Frame")
-    b.Name = "Handle"
-    b.Size = UDim2.new(1, 0, 0.05, 0)
-    b.BackgroundTransparency = 1
-    b.Parent = parent or ins
+-- Legacy Txt builder removed; all UI rows use loc.o().
 
-    -- Label
-    local a = Instance.new("TextLabel")
-    a.BackgroundTransparency = 1
-    a.Text = tostring(txt)
-    a.TextScaled = true
-    a.TextColor3 = Color3.fromRGB(R, G, B)
-    a.TextXAlignment = Enum.TextXAlignment.Left
-    a.Size = UDim2.new(1,0,1,0)
-    a.Parent = b
 
-    if hasBox and hasButton then
-        a.Size = UDim2.new(1/3,0,1,0)
-    elseif hasBox then
-        a.Size = UDim2.new(0.4,0,1,0)
-    elseif hasButton then
-        a.Size = UDim2.new(0.58,0,1,0)
+-- New
+loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
+    -- Supports both APIs:
+    -- New: o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback)
+    -- Legacy bridge: o(option_, R, G, B, hasBox, placeholder, hasButton, buttonText, livePreview, callback, status, parent)
+    local modern = typeof(a) == "Instance"
+    local parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback
+    local status, livePreview, labelColor
+
+    if modern then
+        parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback =
+            a, b, c, d, e, f, g, h, i, j, k
+        labelColor = Color3.new(1, 1, 1)
+    else
+        option_ = a
+        labelColor = Color3.fromRGB(b or 255, c or 255, d or 255)
+        isi, tih, isb, tb = e == true, f, g == true, h
+        livePreview, callback, status, parent = i, j, k, l
+        fill = nil
+        isrt = false
+        isselect = false
     end
 
-    -- TextBox
-    local box
-    if hasBox then
-        box = Instance.new("TextBox")
-        box.BackgroundTransparency = 1
-        box.PlaceholderText = tostring(ptxt or "")
-        box.Text = ""
-        box.TextScaled = true
-        box.TextColor3 = Color3.fromRGB(0,255,0)
-        box.Parent = b
+    local rowParent = typeof(parent) == "Instance" and parent or scr or h_si
+    local autoSize = Enum.AutomaticSize.None
+    if type(fill) == "string" then
+        autoSize = Enum.AutomaticSize[fill] or Enum.AutomaticSize.None
+    end
 
-        box.Size = UDim2.new(0.49,0,1,0)
-        box.Position = UDim2.new(0.41,0,0,0)
+    local hasButton = isb == true or isselect == true
+    local hasInput = isi == true
+    local reserve = (hasButton and hasInput) and 210 or ((hasButton or hasInput) and 105 or 0)
 
-        if hasButton then
-            box.Size = UDim2.new(1/3,0,1,0)
-            box.Position = UDim2.new(0.343,0,0,0)
+    local frame = Instance.new("Frame")
+    frame.Name = "Body"
+    frame.Size = UDim2.new(1, 0, 0, 30)
+    frame.AutomaticSize = autoSize
+    frame.BorderMode = Enum.BorderMode.Inset
+    frame.BorderSizePixel = 1
+    frame.BackgroundColor3 = Color3.fromRGB(28, 30, 36)
+    frame.BackgroundTransparency = 0.45
+    frame.Active = false
+    frame.ClipsDescendants = false
+    frame.Parent = rowParent
+    loc.Corner(0, 5, frame)
+
+    local label = Instance.new("TextLabel")
+    label.Name = "Name"
+    label.Size = UDim2.new(1, -reserve, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextScaled = true
+    label.RichText = isrt == true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextColor3 = labelColor
+    label.Text = tostring(option_ or "Unknown")
+    label.Parent = frame
+
+    local button
+    if hasButton then
+        button = Instance.new("TextButton")
+        button.Name = "Button"
+        button.Size = UDim2.new(0, 100, 0, 24)
+        button.Position = UDim2.new(1, -102, 0, 3)
+        button.BackgroundColor3 = Color3.fromRGB(55, 62, 76)
+        button.BackgroundTransparency = 0.12
+        button.TextScaled = true
+        button.TextColor3 = Color3.new(1, 1, 1)
+        button.Text = tostring(tb or "OK")
+        button.Visible = true
+        button.ClipsDescendants = false
+        button.Parent = frame
+        loc.Corner(0, 4, button)
+    end
+
+    local input
+    if hasInput then
+        input = Instance.new("TextBox")
+        input.Name = "Input"
+        input.Size = UDim2.new(0, 100, 0, 24)
+        input.Position = UDim2.new(1, -102, 0, 3)
+        input.BackgroundColor3 = Color3.fromRGB(42, 45, 53)
+        input.BackgroundTransparency = 0.1
+        input.TextSize = 16
+        input.TextColor3 = Color3.new(1, 1, 1)
+        input.PlaceholderColor3 = Color3.fromRGB(175, 180, 190)
+        input.TextScaled = true
+        input.Text = ""
+        input.ClearTextOnFocus = false
+        input.PlaceholderText = tostring(tih or "Input")
+        input.Visible = true
+        input.Parent = frame
+        loc.Corner(0, 4, input)
+    end
+
+    -- Compact legacy proportions; modern o() uses fixed-width controls.
+    if not modern then
+        if hasButton and hasInput then
+            label.Size = UDim2.new(1/3, 0, 1, 0)
+            input.Size = UDim2.new(1/3, -2, 0, 24)
+            input.Position = UDim2.new(0.343, 0, 0, 3)
+            button.Size = UDim2.new(1/3, -2, 0, 24)
+            button.Position = UDim2.new(0.696, 0, 0, 3)
+        elseif hasInput then
+            label.Size = UDim2.new(0.4, 0, 1, 0)
+            input.Size = UDim2.new(0.49, 0, 0, 24)
+            input.Position = UDim2.new(0.41, 0, 0, 3)
+        elseif hasButton then
+            label.Size = UDim2.new(0.58, 0, 1, 0)
+            button.Size = UDim2.new(0.4, 0, 0, 24)
+            button.Position = UDim2.new(0.59, 0, 0, 3)
         end
+    elseif hasButton and hasInput then
+        input.Position = UDim2.new(1, -207, 0, 3)
+    end
 
-        -- ✅ LIVE PREVIEW
-        if work then
-            box:GetPropertyChangedSignal("Text"):Connect(function()
-                work(box)
+    local selectFrame
+    if isselect then
+        selectFrame = Instance.new("ScrollingFrame")
+        selectFrame.Name = "Select"
+        selectFrame.Size = UDim2.new(0, 200, 0, 220)
+        selectFrame.Position = UDim2.new(0, -100, 0, 27)
+        selectFrame.BackgroundColor3 = Color3.fromRGB(28, 30, 36)
+        selectFrame.BackgroundTransparency = 0
+        selectFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        selectFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        selectFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+        selectFrame.ScrollBarThickness = 3
+        selectFrame.BorderMode = Enum.BorderMode.Inset
+        selectFrame.BorderSizePixel = 1
+        selectFrame.Visible = false
+        selectFrame.ClipsDescendants = true
+        selectFrame.Parent = button
+        selectFrame.ZIndex = 5
+        loc.Corner(0, 4, selectFrame)
+        loc.ListLayout(selectFrame, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
+    end
+
+    local ui = {
+        Parent = rowParent,
+        Frame = frame,
+        Label = label,
+        Button = button,
+        Input = input,
+        Box = input,
+        Select = selectFrame
+    }
+
+    local function addSelect(child)
+        if not selectFrame then return nil end
+        local value = tostring(child or "UnknownChild")
+        local optionButton = Instance.new("TextButton")
+        optionButton.Name = value
+        optionButton.Size = UDim2.new(1, 0, 0, 24)
+        optionButton.BackgroundTransparency = 0.35
+        optionButton.BackgroundColor3 = Color3.fromRGB(12, 14, 18)
+        optionButton.TextScaled = true
+        optionButton.TextColor3 = Color3.new(1, 1, 1)
+        optionButton.Text = value
+        optionButton.Parent = selectFrame
+        optionButton.ZIndex = 6
+        loc.Corner(0, 3, optionButton)
+        optionButton.MouseButton1Click:Connect(function()
+            button.Text = value
+            selectFrame.Visible = false
+            if type(callback) == "function" then
+                callback(value, "select", ui)
+            end
+        end)
+        return optionButton
+    end
+    ui.AddSelect = addSelect
+
+    if button then
+        if status ~= nil then
+            loc.updateToggle(button, status)
+        end
+        button.MouseButton1Click:Connect(function()
+            if isselect then
+                selectFrame.Visible = not selectFrame.Visible
+            elseif not modern and status ~= nil then
+                status = not status
+                loc.updateToggle(button, status)
+                if type(livePreview) == "function" then livePreview(status) end
+                if type(callback) == "function" then callback(status) end
+            elseif type(callback) == "function" then
+                if modern then
+                    callback(button.Text, "button", ui)
+                else
+                    callback(input, button, ui)
+                end
+            end
+        end)
+    end
+
+    if input then
+        if not modern and type(livePreview) == "function" then
+            input:GetPropertyChangedSignal("Text"):Connect(function()
+                livePreview(input)
+            end)
+        elseif modern then
+            input.FocusLost:Connect(function(enterPressed)
+                if type(callback) == "function" then
+                    callback(input.Text, "input", ui, enterPressed)
+                end
             end)
         end
     end
 
-    -- Button
-    local btn
-    if hasButton then
-        btn = Instance.new("TextButton")
-        btn.BackgroundTransparency = 0.5
-        btn.TextScaled = true
-        btn.Size = UDim2.new(0.44,0,1,0)
-        btn.Position = UDim2.new(0.59,0,0,0)
-        btn.Parent = b
-        Corner(0,8,btn)
-        Stroke(btn, ASMBorder, 255,255,255, LJMRound, 1, 0)
-
-        if hasBox then
-            btn.Size = UDim2.new(1/3,0,1,0)
-            btn.Position = UDim2.new(0.696,0,0,0)
-        end
-
-        -- INIT
-        if status ~= nil then
-            updateToggle(btn, status)
-        else
-            btn.Text = tostring(btxt or "OK")
-            btn.TextColor3 = Color3.fromRGB(255,255,255)
-        end
-
-        btn.MouseButton1Click:Connect(function()
-    task.spawn(function()
-        if status ~= nil then
-            status = not status
-            updateToggle(btn, status)
-            if work then work(status) end
-            if callback then callback(status) end
-        else
-            if callback then
-                callback(box, btn)
-            end
-        end
-    end)
-end)
+    if modern and type(scriptFN) == "function" then
+        scriptFN(ui)
     end
 
-    return {
-        Frame = b,
-        Label = a,
-        Box = box,
-        Button = btn
-    }
+    return ui
 end
+
+-- New API: loc.o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback)
+-- Legacy UI callsites are also routed through loc.o until they are migrated.
+
+-- loc.o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback)
 
 --// =====================================================
 --// USAGE
@@ -503,21 +760,21 @@ end
 -- =====================================================
 -- LOAD DATA
 -- =====================================================
-local Data = loadData()
+local Data = loc.loadData()
 
-local CoreGui = game:GetService("CoreGui")
+-- CoreGui uses the shared s.CoreGui service reference.
 
 local MENU_INSTANCE = nil
 local HIDE_MENU_STATUS = Data.UI.HideMenu -- อ่านจาก json ครั้งเดียว
 
-local function applyHideMenu()
+loc.applyHideMenu = function()
     if MENU_INSTANCE then
         MENU_INSTANCE.Enabled = not HIDE_MENU_STATUS
     end
 end
 
 -- 🔎 หา Menu (ใช้ชื่อ + parent เท่านั้น)
-local function isTargetMenu(inst)
+loc.isTargetMenu = function(inst)
     return inst:IsA("ScreenGui")
         and inst.Name == "Menu"
         and inst.Parent
@@ -525,21 +782,21 @@ local function isTargetMenu(inst)
 end
 
 -- 1️⃣ เช็คของที่มีอยู่แล้ว
-for _, inst in ipairs(CoreGui:GetDescendants()) do
-    if isTargetMenu(inst) then
+for _, inst in ipairs(s.CoreGui:GetDescendants()) do
+    if loc.isTargetMenu(inst) then
         MENU_INSTANCE = inst
-        applyHideMenu() -- ✅ apply ตาม json ทันที
+        loc.applyHideMenu() -- ✅ apply ตาม json ทันที
         break
     end
 end
 
 -- 2️⃣ รอของที่โผล่มาทีหลัง
-CoreGui.DescendantAdded:Connect(function(inst)
+s.CoreGui.DescendantAdded:Connect(function(inst)
     if MENU_INSTANCE then return end
 
-    if isTargetMenu(inst) then
+    if loc.isTargetMenu(inst) then
         MENU_INSTANCE = inst
-        applyHideMenu() -- ✅ apply ตาม json ทันที
+        loc.applyHideMenu() -- ✅ apply ตาม json ทันที
     end
 end)
 
@@ -552,7 +809,7 @@ end
 ------------------------------------------------------------
 
 -- Continue (ONE TIME)
-local continueUI = Txt(
+local continueUI = loc.o(
     "Continue loadstring main ExperienceSettings",
     255,255,255,
     false, nil,
@@ -561,11 +818,11 @@ local continueUI = Txt(
     function(box, btn)
 
         -- safety check
-        local player = game.Players.LocalPlayer
+        local player = s.Players.LocalPlayer
         local char = player.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-        local healthEnabled = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+        local healthEnabled = s.StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
 
         if not hrp or not healthEnabled then
             -- temporary warning
@@ -610,7 +867,7 @@ task.spawn(function()
                 and Color3.fromRGB(0,255,0)
                 or Color3.fromRGB(255,255,255)
 
-            local tween = TweenService:Create(
+            local tween = s.TweenService:Create(
                 btn,
                 TweenInfo.new(0.3, Enum.EasingStyle.Linear),
                 { TextColor3 = color }
@@ -625,14 +882,14 @@ task.spawn(function()
 end)
 
 -- Always Load (SAVE) ------------------------------
-local alwaysUI = Txt(  
+local alwaysUI = loc.o(  
     "Always Load main ExperienceSettings",  
     255,255,255,  
     false, nil,  
     true, nil,  
     function(newStatus)  
         Data.Loader.AlwaysLoad = newStatus  
-        saveData(Data)  
+        loc.saveData(Data)  
     end,  
     nil,  
     Data.Loader.AlwaysLoad  
@@ -642,14 +899,14 @@ local continueBtn = continueUI.Button
 local alwaysBtn = alwaysUI.Button
 
 -- function ตรวจสถานะโหลดได้หรือไม่
-local function canLoad()
-    local player = game.Players.LocalPlayer
+loc.canLoad = function()
+    local player = s.Players.LocalPlayer
     local char = player.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
     local healthOn = false
     pcall(function()
-        healthOn = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+        healthOn = s.StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
     end)
 
     return hrp and healthOn
@@ -659,7 +916,7 @@ end
 task.spawn(function()
     while continueBtn and continueBtn.Parent do
         local alwaysOn = alwaysBtn.Text == "ON"
-        local ok = canLoad()
+        local ok = loc.canLoad()
 
         if alwaysOn and not ok then
             -- show warning
@@ -686,11 +943,11 @@ end)
 --// BACKGROUND APPLY SYSTEM (WAIT UNTIL READY)
 --// =====================================================
 
-local CoreGui = game:GetService("CoreGui")
+-- CoreGui uses the shared s.CoreGui service reference.
 
 -- Path ที่ต้องครบทุกอันก่อน
 local BG_PATHS = {
-    "ExperienceSettings.Menu.AIOpenSource",
+    "ExperienceSettings.Menu.Arcsen",
     "ExperienceSettings.Menu.About_Background",
     "ExperienceSettings.Menu.Background",
     "ExperienceSettings.Menu.Load_Background",
@@ -701,13 +958,17 @@ local BG_PATHS = {
     "ExperienceSettings.Menu.TopBar.TopButtons",
     "ExperienceSettings.Menu.Background.Inner_Background",
     "ExperienceSettings.Menu.Background.Inner2_Background",
-    "ExperienceSettings.Menu.HolderScreen.Shift_Lock"
+    "ExperienceSettings.Menu.HolderScreen.Shift_Lock",
+    "ExperienceSettings.Menu.Editor.BottmBar",
+    "ExperienceSettings.Menu.Editor.Page",
+    "ExperienceSettings.Menu.Editor.Page.Icon",
+    "ExperienceSettings.Menu.Editor.Page.Topic"
 }
 
 -- ================================
 -- หา Instance จาก path
 -- ================================
-local function findByPath(root, path)
+loc.findByPath = function(root, path)
     local current = root
     for part in string.gmatch(path, "[^%.]+") do
         current = current:FindFirstChild(part)
@@ -721,11 +982,11 @@ end
 -- ================================
 -- ตรวจว่าครบทุก BG_PATHS ไหม
 -- ================================
-local function getAllBGInstances()
+loc.getAllBGInstances = function()
     local result = {}
 
     for _, path in ipairs(BG_PATHS) do
-        local inst = findByPath(CoreGui, path)
+        local inst = loc.findByPath(s.CoreGui, path)
         if not inst or not inst:IsA("GuiObject") then
             return nil -- ❌ ยังไม่ครบ
         end
@@ -748,13 +1009,13 @@ local CURRENT_BG_COLOR = nil
 task.spawn(function()
     while not READY do
         -- Stage 1
-        if not CoreGui:FindFirstChild("ExperienceSettings", true) then
+        if not s.CoreGui:FindFirstChild("ExperienceSettings", true) then
             task.wait(0.2)
             continue
         end
 
         -- Stage 2
-        local list = getAllBGInstances()
+        local list = loc.getAllBGInstances()
         if not list then
             task.wait(0.2)
             continue
@@ -776,7 +1037,7 @@ end)
 -- ================================
 -- API สำหรับเปลี่ยนสี
 -- ================================
-local function applyBackgroundColor(color)
+loc.applyBackgroundColor = function(color)
     if not color then return end
 
     CURRENT_BG_COLOR = color
@@ -794,7 +1055,7 @@ end
 --// RGB PARSER
 --// =====================================================
 
-local function parseRGB(text)
+loc.parseRGB = function(text)
     if not text then return nil end
 
     local r, g, b = text:match("(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
@@ -813,7 +1074,7 @@ end
 --// APPLY SAVED COLOR ON LOAD
 --// =====================================================
 
-applyBackgroundColor(Color3.fromRGB(
+loc.applyBackgroundColor(Color3.fromRGB(
     Data.UI.BackgroundRGB[1],
     Data.UI.BackgroundRGB[2],
     Data.UI.BackgroundRGB[3]
@@ -823,14 +1084,14 @@ applyBackgroundColor(Color3.fromRGB(
 --// CUSTOM BACKGROUND UI
 --// =====================================================
 
-local function setBGFromData()
+loc.setBGFromData = function()
     local rgb = Data.UI.BackgroundRGB
     CURRENT_BG_COLOR = Color3.fromRGB(rgb[1], rgb[2], rgb[3])
 end
 
-setBGFromData()
+loc.setBGFromData()
 
-Txt(
+loc.o(
     "Custom Background (R,G,B)",
     255,255,255,
     true, "18,18,21",
@@ -838,20 +1099,20 @@ Txt(
 
     -- LIVE PREVIEW
     function(box)
-        local color = select(1, parseRGB(box.Text))
+        local color = select(1, loc.parseRGB(box.Text))
         if color then
-            applyBackgroundColor(color)
+            loc.applyBackgroundColor(color)
         end
     end,
 
     -- CONFIRM + SAVE
     function(box, btn)
-        local color, raw = parseRGB(box.Text)
+        local color, raw = loc.parseRGB(box.Text)
         if not color then return end
 
         Data.UI.BackgroundRGB = raw
-        saveData(Data)
-        applyBackgroundColor(color)
+        loc.saveData(Data)
+        loc.applyBackgroundColor(color)
 
         -- visual confirm
         btn.TextColor3 = Color3.fromRGB(0,255,0)
@@ -866,21 +1127,21 @@ task.spawn(function()
 	while true do
 		if not MENU_INSTANCE then
 			local menu =
-				findByPath(
-					CoreGui,
+				loc.findByPath(
+					s.CoreGui,
 					"ExperienceSettings.Menu"
 				)
 			if menu
 			and menu:IsA("ScreenGui") then
 				MENU_INSTANCE = menu
-				applyHideMenu()
+				loc.applyHideMenu()
 			end
 			end
 		task.wait(0.25)
 	end
 end)
 
-Txt(
+loc.o(
     "Hide ExperienceSettings",
     255,255,255,
     false, nil,
@@ -889,8 +1150,8 @@ Txt(
     function(newStatus)
         HIDE_MENU_STATUS = newStatus
         Data.UI.HideMenu = newStatus
-        saveData(Data)
-        applyHideMenu()
+        loc.saveData(Data)
+        loc.applyHideMenu()
     end,
 
     nil,
@@ -901,11 +1162,11 @@ Txt(
 --// FOUND HUMANOIDROOTPART STATUS
 --// =====================================================
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+-- Players uses the shared s.Players service reference.
+local LocalPlayer = s.Players.LocalPlayer
 
 -- สร้าง Text อย่างเดียว (ไม่มี box / ไม่มีปุ่ม)
-local ui = Txt(
+local ui = loc.o(
     "FoundHumanoidRootPart: NO",
     255,255,255,
     false, nil,
@@ -915,7 +1176,7 @@ local ui = Txt(
 local label = ui.Label
 
 -- ฟังก์ชันเช็ค HRP
-local function updateHRPStatus()
+loc.updateHRPStatus = function()
     local char = LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
@@ -929,16 +1190,16 @@ local function updateHRPStatus()
 end
 
 -- เช็คตอนแรก
-updateHRPStatus()
+loc.updateHRPStatus()
 
 -- เช็คเมื่อ character โหลดใหม่
 LocalPlayer.CharacterAdded:Connect(function(char)
-    updateHRPStatus()
+    loc.updateHRPStatus()
 
     -- เผื่อ HRP โผล่ช้า
     char.ChildAdded:Connect(function(child)
         if child.Name == "HumanoidRootPart" then
-            updateHRPStatus()
+            loc.updateHRPStatus()
         end
     end)
 end)
@@ -946,7 +1207,7 @@ end)
 -- fallback: loop กันพลาด
 task.spawn(function()
     while true do
-        updateHRPStatus()
+        loc.updateHRPStatus()
         task.wait(0.5)
     end
 end)
@@ -955,7 +1216,7 @@ end)
 --// SETTINGS TRANSPARENCY SYSTEM
 --// =====================================================
 
-local CoreGui = game:GetService("CoreGui")
+-- CoreGui uses the shared s.CoreGui service reference.
 
 local SETTINGS_INSTANCES = {}
 local CURRENT_TRANSPARENCY = Data.UI.SettingsTransparency or 0.5
@@ -968,7 +1229,7 @@ local SETTINGS_PATHS = {
 }
 
 -- find by path
-local function findByPath(root, path)
+loc.findByPath = function(root, path)
     local cur = root
     for part in string.gmatch(path, "[^%.]+") do
         cur = cur:FindFirstChild(part)
@@ -978,7 +1239,7 @@ local function findByPath(root, path)
 end
 
 -- apply transparency
-local function applyTransparency(value)
+loc.applyTransparency = function(value)
     CURRENT_TRANSPARENCY = math.clamp(value, 0, 1)
 
     for _, inst in ipairs(SETTINGS_INSTANCES) do
@@ -994,7 +1255,7 @@ task.spawn(function()
         SETTINGS_INSTANCES = {}
 
         for _, path in ipairs(SETTINGS_PATHS) do
-            local inst = findByPath(CoreGui, path)
+            local inst = loc.findByPath(s.CoreGui, path)
             if inst and inst:IsA("GuiObject") then
                 table.insert(SETTINGS_INSTANCES, inst)
             end
@@ -1004,10 +1265,10 @@ task.spawn(function()
     end
 
     -- เจอครบ → apply ตาม data
-    applyTransparency(CURRENT_TRANSPARENCY)
+    loc.applyTransparency(CURRENT_TRANSPARENCY)
 end)
 
-Txt(
+loc.o(
     "Settings Transparency",
     255,255,255,
     true, "0.3",
@@ -1017,7 +1278,7 @@ Txt(
     function(box)
         local v = tonumber(box.Text)
         if v then
-            applyTransparency(v)
+            loc.applyTransparency(v)
         end
     end,
 
@@ -1028,8 +1289,8 @@ Txt(
 
         v = math.clamp(v, 0, 1)
         Data.UI.SettingsTransparency = v
-        saveData(Data)
-        applyTransparency(v)
+        loc.saveData(Data)
+        loc.applyTransparency(v)
 
         btn.TextColor3 = Color3.fromRGB(0,255,0)
         task.delay(0.35, function()
@@ -1041,14 +1302,14 @@ Txt(
 -- =====================================================
 -- LOAD DATA
 -- =====================================================
-local Data = loadData()
+Data = loc.loadData()
 Data.UI = Data.UI or {}
 Data.UI.UIScale = tonumber(Data.UI.UIScale) or 1
 
 -- =====================================================
 -- SERVICES
 -- =====================================================
-local CoreGui = game:GetService("CoreGui")
+-- CoreGui uses the shared s.CoreGui service reference.
 
 -- =====================================================
 -- STATE
@@ -1060,8 +1321,8 @@ local CURRENT_SCALE = Data.UI.UIScale
 -- =====================================================
 -- FIND MENU (CoreGui.ExperienceSettings.Menu)
 -- =====================================================
-local function tryFindMenu()
-    local root = CoreGui:FindFirstChild("ExperienceSettings")
+loc.tryFindMenu = function()
+    local root = s.CoreGui:FindFirstChild("ExperienceSettings")
     if not root then return nil end
     return root:FindFirstChild("Menu")
 end
@@ -1069,7 +1330,7 @@ end
 -- =====================================================
 -- APPLY UI SCALE
 -- =====================================================
-local function applyUIScale(scale)
+loc.applyUIScale = function(scale)
     if not MENU_INSTANCE then return end
 
     CURRENT_SCALE = math.clamp(scale or CURRENT_SCALE, 0.5, 2)
@@ -1097,11 +1358,11 @@ end
 -- =====================================================
 task.spawn(function()
     while true do
-        local menu = tryFindMenu()
+        local menu = loc.tryFindMenu()
         if menu and menu ~= MENU_INSTANCE then
             MENU_INSTANCE = menu
             UISCALE_INSTANCE = nil
-            applyUIScale(CURRENT_SCALE) -- apply จาก data ทันที
+            loc.applyUIScale(CURRENT_SCALE) -- apply จาก data ทันที
         end
         task.wait(0.25)
     end
@@ -1110,7 +1371,7 @@ end)
 -- =====================================================
 -- UI (Txt)
 -- =====================================================
-Txt(
+loc.o(
     "Set UIScaled",
     255,255,255,
     true, tostring(Data.UI.UIScale),
@@ -1120,7 +1381,7 @@ Txt(
     function(box)
         local v = tonumber(box.Text)
         if v then
-            applyUIScale(v)
+            loc.applyUIScale(v)
         end
     end,
 
@@ -1131,8 +1392,8 @@ Txt(
 
         v = math.clamp(v, 0.5, 2)
         Data.UI.UIScale = v
-        saveData(Data)
-        applyUIScale(v)
+        loc.saveData(Data)
+        loc.applyUIScale(v)
 
         -- feedback
         btn.TextColor3 = Color3.fromRGB(0,255,0)
@@ -1142,21 +1403,21 @@ Txt(
     end
 )
 
-local StarterGui = game:GetService("StarterGui")
+-- StarterGui uses the shared s.StarterGui service reference.
 
-local function isHealthEnabled()
+loc.isHealthEnabled = function()
     local ok, res = pcall(function()
-        return StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+        return s.StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
     end)
     return ok and res or false
 end
 
-local function setHealth(state)
-    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, state)
+loc.setHealth = function(state)
+    s.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, state)
 end
 
 -- TXT: Status
-local healthTxt = Txt(
+local healthTxt = loc.o(
     "IsHealthOn: ...",
     0,255,0,
     false,nil,
@@ -1164,25 +1425,25 @@ local healthTxt = Txt(
 )
 
 -- TXT: Toggle
-local HealthToggle = Txt(
+local HealthToggle = loc.o(
     "HealthBarToggle",
     255,255,255,
     false,nil,
     true,"",
     function(status)
-        setHealth(status)
+        loc.setHealth(status)
     end,
     function(status)
-        setHealth(status)
+        loc.setHealth(status)
     end,
-    isHealthEnabled()
+    loc.isHealthEnabled()
 )
 
 -- 🔁 Unified watcher
 task.spawn(function()
     local last
     while true do
-        local on = isHealthEnabled()
+        local on = loc.isHealthEnabled()
         if on ~= last then
             -- update text
             healthTxt.Label.Text = "IsHealthOn: " .. (on and "YES" or "NO")
@@ -1191,7 +1452,7 @@ task.spawn(function()
                 or Color3.fromRGB(255,0,0)
 
             -- update button
-            updateToggle(HealthToggle.Button, on)
+            loc.updateToggle(HealthToggle.Button, on)
 
             last = on
         end
@@ -1199,16 +1460,16 @@ task.spawn(function()
     end
 end)
 
-local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
+-- TeleportService uses the shared s.TeleportService service reference.
+-- HttpService uses the shared s.HttpService service reference.
+-- Players uses the shared s.Players service reference.
 
-local player = Players.LocalPlayer
+local player = s.Players.LocalPlayer
 local placeId = game.PlaceId
 
 ------------------------------------------------------------
 
-local rejoinUI = Txt(
+local rejoinUI = loc.o(
     "Rejoin",
     255,255,255,
     false, nil,
@@ -1220,14 +1481,14 @@ local rejoinUI = Txt(
 
         task.spawn(function()
             task.wait(0.5)
-            TeleportService:Teleport(placeId, player)
+            s.TeleportService:Teleport(placeId, player)
         end)
     end
 )
 
 ------------------------------------------------------------
 
-local switchUI = Txt(
+local switchUI = loc.o(
     "Switch Server",
     255,255,255,
     false, nil,
@@ -1244,14 +1505,14 @@ local switchUI = Txt(
             while tick() - start < 5 do
                 local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
                 local success, result = pcall(function()
-                    return HttpService:JSONDecode(game:HttpGet(url))
+                    return s.HttpService:JSONDecode(game:HttpGet(url))
                 end)
 
                 if success and result and result.data then
                     for _, server in ipairs(result.data) do
                         if server.playing < server.maxPlayers and server.id ~= game.JobId then
                             found = true
-                            TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
+                            s.TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
                             return
                         end
                     end
@@ -1270,7 +1531,7 @@ local switchUI = Txt(
 
 ------------------------------------------------------------
 
-local lowSwitchUI = Txt(
+local lowSwitchUI = loc.o(
     "Switch to Low Players Server",
     255,255,255,
     false, nil,
@@ -1286,14 +1547,14 @@ local lowSwitchUI = Txt(
         while tick() - start < 5 do
             local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?sortOrder=Asc&limit=100"
             local success, result = pcall(function()
-                return HttpService:JSONDecode(game:HttpGet(url))
+                return s.HttpService:JSONDecode(game:HttpGet(url))
             end)
 
             if success and result and result.data then
                 for _, server in ipairs(result.data) do
                     if server.playing >= 3 and server.playing <= 5 and server.id ~= game.JobId then
                         found = true
-                        TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
+                        s.TeleportService:TeleportToPlaceInstance(placeId, server.id, player)
                         return
                     end
                 end
@@ -1331,7 +1592,7 @@ local TBFrames = {
 local DragState = false
 local DragLoopStarted = false
 
-local function applyDraggableUI(state)
+loc.applyDraggableUI = function(state)
 
     DragState = state
 
@@ -1346,7 +1607,7 @@ local function applyDraggableUI(state)
         while true do
 
             -- ExperienceSettings
-            local vES = CoreGui:FindFirstChild("ExperienceSettings")
+            local vES = s.CoreGui:FindFirstChild("ExperienceSettings")
             if vES then
                 for _,name in ipairs(ESFrames) do
                     local ui = vES:FindFirstChild(name, true)
@@ -1358,7 +1619,7 @@ local function applyDraggableUI(state)
             end
 
             -- TopBarApp
-            local vTopBar = CoreGui:FindFirstChild("TopBarApp")
+            local vTopBar = s.CoreGui:FindFirstChild("TopBarApp")
             if vTopBar then
                 for _,name in ipairs(TBFrames) do
                     local ui = vTopBar:FindFirstChild(name, true)
@@ -1379,8 +1640,8 @@ end
 
 
 
-local function DragUItweenColor(obj,color)
-    TweenService:Create(
+loc.DragUItweenColor = function(obj,color)
+    s.TweenService:Create(
         obj,
         TweenInfo.new(0.25),
         {TextColor3 = color}
@@ -1388,7 +1649,7 @@ local function DragUItweenColor(obj,color)
 end
 
 -- toggle UI
-local DraUI = Txt(
+local DraUI = loc.o(
     "Draggable UI",
     255,255,255,
     false,nil,
@@ -1397,9 +1658,9 @@ local DraUI = Txt(
     function(state)
 
         Data.UI.DraggableUI = state
-        saveData(Data)
+        loc.saveData(Data)
 
-        applyDraggableUI(state)
+        loc.applyDraggableUI(state)
 
     end,
 
@@ -1412,26 +1673,26 @@ local DraUI = Txt(
 if DraUI.Button then
     if Data.UI.DraggableUI then
         DraUI.Button.Text = "ON"
-        DragUItweenColor(DraUI.Button, Color3.fromRGB(0,255,0))
+        loc.DragUItweenColor(DraUI.Button, Color3.fromRGB(0,255,0))
     else
         DraUI.Button.Text = "OFF"
-        DragUItweenColor(DraUI.Button, Color3.fromRGB(255,0,0))
+        loc.DragUItweenColor(DraUI.Button, Color3.fromRGB(255,0,0))
     end
 end
 
 -- apply ตอนโหลด
 task.spawn(function()
-    applyDraggableUI(Data.UI.DraggableUI)
+    loc.applyDraggableUI(Data.UI.DraggableUI)
 end)
 
 --// =====================================================
 --// CROSSHAIR SYSTEM (FIXED)
 --// =====================================================
 
-local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
+-- Players uses the shared s.Players service reference.
+-- CoreGui uses the shared s.CoreGui service reference.
 
-local player = Players.LocalPlayer
+local player = s.Players.LocalPlayer
 
 local DEFAULT_CROSSHAIR =
 	"rbxassetid://118624373632520"
@@ -1445,7 +1706,7 @@ local TARGET_SHIFT = nil
 -- GET IMAGE FROM DATA
 --====================================================--
 
-local function getNormalCrosshair()
+loc.getNormalCrosshair = function()
 
 	local id = Data.UI.CrosshairID
 
@@ -1459,7 +1720,7 @@ local function getNormalCrosshair()
 	return id
 end
 
-local function getToolCrosshair()
+loc.getToolCrosshair = function()
 
 	local id = Data.UI.ToolCrosshairID
 
@@ -1477,7 +1738,7 @@ end
 -- TOOL CHECK
 --====================================================--
 
-local function isToolEnabled()
+loc.isToolEnabled = function()
 
 	local char = player.Character
 
@@ -1498,7 +1759,7 @@ end
 -- APPLY CROSSHAIR
 --====================================================--
 
-local function applyCrosshair()
+loc.applyCrosshair = function()
 
 	if not TARGET_SHIFT then
 		return
@@ -1511,10 +1772,10 @@ local function applyCrosshair()
 	-- TOOL MODE
 	--================================================--
 
-	if isToolEnabled() then
+	if loc.isToolEnabled() then
 
 		local newTool =
-			getToolCrosshair()
+			loc.getToolCrosshair()
 
 		-- ถ้าปัจจุบันยังเป็น default
 		-- หรือเป็นค่าว่าง
@@ -1545,7 +1806,7 @@ local function applyCrosshair()
 	else
 
 		local newNormal =
-			getNormalCrosshair()
+			loc.getNormalCrosshair()
 
 		if current == DEFAULT_CROSSHAIR
 		or current == ""
@@ -1574,7 +1835,7 @@ task.spawn(function()
 	while true do
 
 		local target =
-			CoreGui:FindFirstChild(
+			s.CoreGui:FindFirstChild(
 				"TargetShift",
 				true
 			)
@@ -1585,7 +1846,7 @@ task.spawn(function()
 			TARGET_SHIFT = target
 
 			-- APPLY ล่าสุดจาก DATA ทันที
-			applyCrosshair()
+			loc.applyCrosshair()
 
 			break
 		end
@@ -1607,7 +1868,7 @@ task.spawn(function()
 
 			if v:IsA("Tool") then
 				task.wait()
-				applyCrosshair()
+				loc.applyCrosshair()
 			end
 
 		end)
@@ -1616,13 +1877,13 @@ task.spawn(function()
 
 			if v:IsA("Tool") then
 				task.wait()
-				applyCrosshair()
+				loc.applyCrosshair()
 			end
 
 		end)
 
 		task.wait()
-		applyCrosshair()
+		loc.applyCrosshair()
 
 	end
 
@@ -1649,10 +1910,10 @@ task.spawn(function()
 				TARGET_SHIFT.Image
 
 			-- TOOL MODE
-			if isToolEnabled() then
+			if loc.isToolEnabled() then
 
 				local wanted =
-					getToolCrosshair()
+					loc.getToolCrosshair()
 
 				if current == DEFAULT_TOOL_CROSSHAIR
 				and wanted ~= DEFAULT_TOOL_CROSSHAIR then
@@ -1665,7 +1926,7 @@ task.spawn(function()
 			else
 
 				local wanted =
-					getNormalCrosshair()
+					loc.getNormalCrosshair()
 
 				if current == DEFAULT_CROSSHAIR
 				and wanted ~= DEFAULT_CROSSHAIR then
@@ -1688,7 +1949,7 @@ end)
 -- CUSTOM CROSSHAIR ID
 --====================================================--
 
-Txt(
+loc.o(
 	"Custom Crosshair ID",
 
 	255,255,255,
@@ -1724,10 +1985,10 @@ Txt(
 
 		end
 
-		saveData(Data)
+		loc.saveData(Data)
 
 		-- APPLY NOW
-		applyCrosshair()
+		loc.applyCrosshair()
 
 		-- VISUAL
 		btn.TextColor3 =
@@ -1751,7 +2012,7 @@ Txt(
 -- CUSTOM TOOL CROSSHAIR ID
 --====================================================--
 
-Txt(
+loc.o(
 	"Custom Tool Crosshair ID",
 
 	255,255,255,
@@ -1787,10 +2048,10 @@ Txt(
 
 		end
 
-		saveData(Data)
+		loc.saveData(Data)
 
 		-- APPLY NOW
-		applyCrosshair()
+		loc.applyCrosshair()
 
 		-- VISUAL
 		btn.TextColor3 =
@@ -1816,7 +2077,7 @@ local PainSoundId = "rbxassetid://126351915401997"
 local painui
 
 
-local function UpdatePainSound(state)
+loc.UpdatePainSound = function(state)
 
     SoundState = state
 
@@ -1891,7 +2152,7 @@ end
 
 
 
-painui = Txt(
+painui = loc.o(
     "Pain Sound (DamageOverlay)",
     255,255,255,
 
@@ -1902,7 +2163,7 @@ painui = Txt(
     nil,
 
     function(state)
-        UpdatePainSound(state)
+        loc.UpdatePainSound(state)
     end,
 
     SoundState,
@@ -1912,7 +2173,7 @@ painui = Txt(
 
 
 
-local function WatchPainSound(char)
+loc.WatchPainSound = function(char)
 
     local hrp = char:WaitForChild("HumanoidRootPart")
 
@@ -1922,7 +2183,7 @@ local function WatchPainSound(char)
         local sound = hrp:WaitForChild("PainNoise", 5)
 
         if sound then
-            UpdatePainSound(SoundState)
+            loc.UpdatePainSound(SoundState)
         end
     end)
 
@@ -1934,7 +2195,7 @@ local function WatchPainSound(char)
 
             task.wait()
 
-            UpdatePainSound(SoundState)
+            loc.UpdatePainSound(SoundState)
 
         end
 
@@ -1946,14 +2207,14 @@ end
 
 -- First spawn
 if player.Character then
-    WatchPainSound(player.Character)
+    loc.WatchPainSound(player.Character)
 end
 
 
 -- Respawn
 player.CharacterAdded:Connect(function(char)
 
-    WatchPainSound(char)
+    loc.WatchPainSound(char)
 
 end)
 
@@ -1988,9 +2249,9 @@ end)
 --// Path-based translation: full Device export is the primary source.
 --// =====================================================
 
-local HttpService = game:GetService("HttpService")
-local CoreGui = game:GetService("CoreGui")
-local LocalizationService = game:GetService("LocalizationService")
+-- HttpService uses the shared s.HttpService service reference.
+-- CoreGui uses the shared s.CoreGui service reference.
+-- LocalizationService uses the shared s.LocalizationService service reference.
 
 local L = {}
 
@@ -2021,6 +2282,25 @@ L.LanguageButtons = {}
 L.LanguageButtonDefaultText = {}
 L.LanguageButtonStatus = nil
 L.RefreshLanguageButtons = nil
+L.LanguageSelect = nil
+L.LanguageHeader = nil
+L.LanguageOptionLabels = {
+    EN = "🇺🇸 English",
+    ES = "🇪🇸 Español",
+    TH = "🇹🇭 ไทย",
+    ["PT-BR"] = "🇧🇷 Português (Brasil)",
+    ["PT-PT"] = "🇵🇹 Português (Portugal)",
+    RU = "🇷🇺 Русский",
+    KO = "🇰🇷 한국어 (대한민국)",
+}
+L.LanguageValueToCode = {}
+L.LanguageOrder = {"EN", "ES", "TH", "PT-BR", "PT-PT", "RU", "KO"}
+
+-- Missing local translations are kept by language so they can be completed
+-- without guessing which UI strings were skipped.
+L.MissingTranslations = {}
+L.MissingTranslationCountByLanguage = {}
+L.LastMissingTranslationCount = 0
 
 -- Language selector timing UI.
 -- Working... shows elapsed whole seconds while translation is running.
@@ -2879,15 +3159,15 @@ L.Candidates = {
     "Ask anything..."
 }
 
-local function StripRichText(text)
+loc.StripRichText = function(text)
     return tostring(text or ""):gsub("<[^>]->", "")
 end
 
-local function PlainCacheKey(text)
+loc.PlainCacheKey = function(text)
     return "__PLAIN_RICHTEXT__" .. StripRichText(text)
 end
 
-local function NormalizeSimilarityText(text)
+loc.NormalizeSimilarityText = function(text)
     text = tostring(text or "")
     text = text:gsub("\r\n", "\n")
     text = text:gsub("\r", "\n")
@@ -2903,11 +3183,11 @@ local function NormalizeSimilarityText(text)
     return text:lower()
 end
 
-local function SimilarityTextWithoutRichText(text)
-    return NormalizeSimilarityText(tostring(text or ""):gsub("<[^>]->", ""))
+loc.SimilarityTextWithoutRichText = function(text)
+    return loc.NormalizeSimilarityText(tostring(text or ""):gsub("<[^>]->", ""))
 end
 
-local function CommonPrefixRatio(a, b)
+loc.CommonPrefixRatio = function(a, b)
     local length = math.min(#a, #b)
     if length == 0 then
         return 1
@@ -2924,7 +3204,7 @@ local function CommonPrefixRatio(a, b)
     return same / math.max(#a, #b)
 end
 
-local function TokenSimilarity(a, b)
+loc.TokenSimilarity = function(a, b)
     local function makeTokens(value)
         local tokens = {}
         for token in value:gmatch("[%w@#%%_%-]+") do
@@ -2960,7 +3240,7 @@ end
 
 local SelectTextToTranslateOnly
 
-local function FindSimilarLocalizationSource(sourceText, language)
+loc.FindSimilarLocalizationSource = function(sourceText, language)
     local source = tostring(sourceText or "")
     if source == "" then
         return nil
@@ -2978,9 +3258,9 @@ local function FindSimilarLocalizationSource(sourceText, language)
         return languageCache.Resolved
     end
 
-    local normalized = NormalizeSimilarityText(source)
+    local normalized = loc.NormalizeSimilarityText(source)
     local plainNormalized =
-        SimilarityTextWithoutRichText(source)
+        loc.SimilarityTextWithoutRichText(source)
 
     local function hasTranslation(candidate)
         if not cache then
@@ -2991,7 +3271,7 @@ local function FindSimilarLocalizationSource(sourceText, language)
             return true
         end
 
-        local plainKey = PlainCacheKey(candidate)
+        local plainKey = loc.PlainCacheKey(candidate)
         if cache[plainKey] then
             return true
         end
@@ -2999,7 +3279,7 @@ local function FindSimilarLocalizationSource(sourceText, language)
         local template = SelectTextToTranslateOnly(candidate)
         if template and template ~= "" then
             if cache[template]
-                or cache[PlainCacheKey(template)] then
+                or cache[loc.PlainCacheKey(template)] then
                 return true
             end
         end
@@ -3017,7 +3297,7 @@ local function FindSimilarLocalizationSource(sourceText, language)
 
     -- First pass: exact normalized match WITH a translation for this language.
     for _, candidate in ipairs(L.Candidates) do
-        if NormalizeSimilarityText(candidate) == normalized
+        if loc.NormalizeSimilarityText(candidate) == normalized
             and (not language or hasTranslation(candidate)) then
             return remember(candidate, 1)
         end
@@ -3026,7 +3306,7 @@ local function FindSimilarLocalizationSource(sourceText, language)
     -- Second pass: canonical sources from the translation DB.
     for _, entries in pairs(L.DB) do
         for candidate in pairs(entries) do
-            if NormalizeSimilarityText(candidate) == normalized
+            if loc.NormalizeSimilarityText(candidate) == normalized
                 and (not language or hasTranslation(candidate)) then
                 return remember(candidate, 1)
             end
@@ -3055,10 +3335,10 @@ local function FindSimilarLocalizationSource(sourceText, language)
         end
 
         local candidateNormalized =
-            NormalizeSimilarityText(candidate)
+            loc.NormalizeSimilarityText(candidate)
 
         local candidatePlain =
-            SimilarityTextWithoutRichText(candidate)
+            loc.SimilarityTextWithoutRichText(candidate)
 
         local lengthRatio =
             math.min(#normalized, #candidateNormalized)
@@ -3069,13 +3349,13 @@ local function FindSimilarLocalizationSource(sourceText, language)
         end
 
         local scoreA =
-            TokenSimilarity(normalized, candidateNormalized)
+            loc.TokenSimilarity(normalized, candidateNormalized)
 
         local scoreB =
-            TokenSimilarity(plainNormalized, candidatePlain)
+            loc.TokenSimilarity(plainNormalized, candidatePlain)
 
         local scoreC =
-            CommonPrefixRatio(
+            loc.CommonPrefixRatio(
                 normalized,
                 candidateNormalized
             )
@@ -3485,14 +3765,14 @@ for language, entries in pairs(L.DB) do
     for sourceText, translatedText in pairs(entries) do
         L.Cache[language][sourceText] = translatedText
 
-        local plainKey = PlainCacheKey(sourceText)
-        if plainKey ~= PlainCacheKey("") then
+        local plainKey = loc.PlainCacheKey(sourceText)
+        if plainKey ~= loc.PlainCacheKey("") then
             L.Cache[language][plainKey] = translatedText
         end
     end
 end
 
-local function IsTranslationSkipped(obj)
+loc.IsTranslationSkipped = function(obj)
     local current = obj
 
     while current do
@@ -3510,7 +3790,7 @@ local function IsTranslationSkipped(obj)
     return false
 end
 
-local function SaveTranslationCache(language)
+loc.SaveTranslationCache = function(language)
     if not writefile then
         return false
     end
@@ -3523,7 +3803,7 @@ local function SaveTranslationCache(language)
 
     -- Persist only the selected language, not stale entries for every language.
     local ok, encoded = pcall(function()
-        return HttpService:JSONEncode({
+        return s.HttpService:JSONEncode({
             Version = 2,
             Language = language,
             Languages = {
@@ -3546,7 +3826,7 @@ local function SaveTranslationCache(language)
     return saveOk
 end
 
-local function LoadTranslationCache()
+loc.LoadTranslationCache = function()
     if not readfile or not isfile or not isfile(L.CacheFile) then
         return
     end
@@ -3560,7 +3840,7 @@ local function LoadTranslationCache()
     end
 
     local ok, decoded = pcall(function()
-        return HttpService:JSONDecode(rawCache)
+        return s.HttpService:JSONDecode(rawCache)
     end)
     if not ok or type(decoded) ~= "table"
         or type(decoded.Languages) ~= "table" then
@@ -3596,11 +3876,11 @@ local function LoadTranslationCache()
                 writefile(backupFile, rawCache)
             end
         end)
-        SaveTranslationCache(language)
+        loc.SaveTranslationCache(language)
     end
 end
 
-LoadTranslationCache()
+loc.LoadTranslationCache()
 
 -- Protect only the dynamic parts.
 -- Example:
@@ -3643,7 +3923,7 @@ SelectTextToTranslateOnly = function(text)
     return source, protected
 end
 
-local function RestoreSelectedText(text, protected)
+loc.RestoreSelectedText = function(text, protected)
     local result = tostring(text or "")
 
     for index = #protected, 1, -1 do
@@ -3675,13 +3955,13 @@ for language, entries in pairs(L.DB) do
                 end
             end
             L.Cache[language][template] = translatedTemplate
-            L.Cache[language][PlainCacheKey(template)] = translatedTemplate
+            L.Cache[language][loc.PlainCacheKey(template)] = translatedTemplate
         end
     end
 end
 
 
-local function GetLocalizationTranslator(language)
+loc.GetLocalizationTranslator = function(language)
     if language == "EN" then
         return nil
     end
@@ -3697,7 +3977,7 @@ local function GetLocalizationTranslator(language)
     end
 
     local ok, translator = pcall(function()
-        return LocalizationService:GetTranslatorForLocaleAsync(localeId)
+        return s.LocalizationService:GetTranslatorForLocaleAsync(localeId)
     end)
 
     if ok and translator then
@@ -3711,12 +3991,12 @@ local function GetLocalizationTranslator(language)
 end
 
 -- Localizate: Roblox LocalizationService / Localization Table only.
-local function Localizate(obj, sourceText, language, preferredSource)
+loc.Localizate = function(obj, sourceText, language, preferredSource)
     if language == "EN" or not obj or sourceText == "" then
         return nil
     end
 
-    local translator = GetLocalizationTranslator(language)
+    local translator = loc.GetLocalizationTranslator(language)
     if not translator then
         return nil
     end
@@ -3781,7 +4061,7 @@ local function Localizate(obj, sourceText, language, preferredSource)
 
     -- 3. Find the closest known canonical source.
     local similarSource =
-        FindSimilarLocalizationSource(sourceText, language)
+        loc.FindSimilarLocalizationSource(sourceText, language)
 
     if similarSource and similarSource ~= sourceText then
         translated = trySource(similarSource)
@@ -3793,7 +4073,7 @@ local function Localizate(obj, sourceText, language, preferredSource)
     return nil
 end
 
-local function GetCachedTranslation(sourceText, language)
+loc.GetCachedTranslation = function(sourceText, language)
     if language == "EN" then
         return sourceText
     end
@@ -3808,7 +4088,7 @@ local function GetCachedTranslation(sourceText, language)
         return exact
     end
 
-    local plain = cache[PlainCacheKey(sourceText)]
+    local plain = cache[loc.PlainCacheKey(sourceText)]
     if plain then
         return plain
     end
@@ -3818,12 +4098,12 @@ local function GetCachedTranslation(sourceText, language)
 
     local cachedTemplate = cache[template]
     if cachedTemplate then
-        return RestoreSelectedText(cachedTemplate, protected)
+        return loc.RestoreSelectedText(cachedTemplate, protected)
     end
 
-    local cachedPlainTemplate = cache[PlainCacheKey(template)]
+    local cachedPlainTemplate = cache[loc.PlainCacheKey(template)]
     if cachedPlainTemplate then
-        return RestoreSelectedText(cachedPlainTemplate, protected)
+        return loc.RestoreSelectedText(cachedPlainTemplate, protected)
     end
 
     return nil, template, protected
@@ -3837,7 +4117,7 @@ L.State =
 L.LocalizationWrite =
     setmetatable({}, {__mode = "k"})
 
-local function EscapeLuaPattern(value)
+loc.EscapeLuaPattern = function(value)
     return tostring(value or ""):gsub("([%%%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
 end
 
@@ -3846,7 +4126,7 @@ end
 --   "Health: __DYNAMIC_1__"
 --   "Health: 100"
 -- -> { [1] = "100" }
-local function MatchDynamicTemplate(template, text)
+loc.MatchDynamicTemplate = function(template, text)
     template = tostring(template or "")
     text = tostring(text or "")
 
@@ -3861,7 +4141,7 @@ local function MatchDynamicTemplate(template, text)
         if not startPos then
             local tail = template:sub(cursor)
             if tail ~= "" then
-                patternParts[#patternParts + 1] = EscapeLuaPattern(tail)
+                patternParts[#patternParts + 1] = loc.EscapeLuaPattern(tail)
             end
             break
         end
@@ -3869,7 +4149,7 @@ local function MatchDynamicTemplate(template, text)
         local permanent = template:sub(cursor, startPos - 1)
 
         if permanent ~= "" then
-            patternParts[#patternParts + 1] = EscapeLuaPattern(permanent)
+            patternParts[#patternParts + 1] = loc.EscapeLuaPattern(permanent)
         end
 
         patternParts[#patternParts + 1] = "(.-)"
@@ -3904,7 +4184,7 @@ local function MatchDynamicTemplate(template, text)
     return values
 end
 
-local function FormatPathName(name)
+loc.FormatPathName = function(name)
     name = tostring(name or "")
 
     if name:match("^[A-Za-z_][A-Za-z0-9_]*$") then
@@ -3914,7 +4194,7 @@ local function FormatPathName(name)
     return "[" .. string.format("%q", name) .. "]"
 end
 
-local function GetObjectPath(obj)
+loc.GetObjectPath = function(obj)
     if not obj then
         return nil
     end
@@ -3922,7 +4202,7 @@ local function GetObjectPath(obj)
     local parts = {}
     local current = obj
 
-    while current and current ~= CoreGui do
+    while current and current ~= s.CoreGui do
         local parent = current.Parent
 
         if not parent then
@@ -3953,14 +4233,14 @@ local function GetObjectPath(obj)
             table.insert(
                 parts,
                 1,
-                FormatPathName(current.Name)
+                loc.FormatPathName(current.Name)
             )
         end
 
         current = parent
     end
 
-    if current == CoreGui then
+    if current == s.CoreGui then
         return 'game:GetService("CoreGui")' .. table.concat(parts)
     end
 
@@ -4005,12 +4285,12 @@ L.LocalizationExcluded = {
     ] = true,
 }
 
-local function IsLocalizationExcluded(obj, property)
+loc.IsLocalizationExcluded = function(obj, property)
     if not obj or not property then
         return false
     end
 
-    local path = GetObjectPath(obj)
+    local path = loc.GetObjectPath(obj)
     if not path then
         return false
     end
@@ -4020,8 +4300,8 @@ local function IsLocalizationExcluded(obj, property)
     ] == true
 end
 
-local function GetPathSource(obj, property)
-    local path = GetObjectPath(obj)
+loc.GetPathSource = function(obj, property)
+    local path = loc.GetObjectPath(obj)
     if not path then
         return nil, nil
     end
@@ -4030,7 +4310,7 @@ local function GetPathSource(obj, property)
         L.PathSources[path .. "|" .. tostring(property)]
 end
 
-local function RestoreDynamicValuesFromSource(
+loc.RestoreDynamicValuesFromSource = function(
     translatedText,
     canonicalSource,
     currentTemplate,
@@ -4072,7 +4352,7 @@ local function RestoreDynamicValuesFromSource(
     return result
 end
 
-local function GetState(obj, property)
+loc.GetState = function(obj, property)
     L.State[obj] =
         L.State[obj] or {}
 
@@ -4082,9 +4362,9 @@ local function GetState(obj, property)
     return L.State[obj][property]
 end
 
-local function BuildSourceState(obj, property, sourceText)
-    local state = GetState(obj, property)
-    local path, pathSource = GetPathSource(obj, property)
+loc.BuildSourceState = function(obj, property, sourceText)
+    local state = loc.GetState(obj, property)
+    local path, pathSource = loc.GetPathSource(obj, property)
 
     L.Canonical[obj] = L.Canonical[obj] or {}
     L.CanonicalTemplate[obj] = L.CanonicalTemplate[obj] or {}
@@ -4124,7 +4404,7 @@ local function BuildSourceState(obj, property, sourceText)
 end
 
 
-local function Directly(sourceText, language, pathSource)
+loc.Directly = function(sourceText, language, pathSource)
     if language == "EN" then
         return tostring(sourceText or "")
     end
@@ -4154,10 +4434,10 @@ local function Directly(sourceText, language, pathSource)
 
         if template == currentTemplate then
             translated = cache[template]
-                or cache[PlainCacheKey(template)]
+                or cache[loc.PlainCacheKey(template)]
 
             if translated then
-                return RestoreSelectedText(
+                return loc.RestoreSelectedText(
                     translated,
                     currentProtected
                 ), pathSource
@@ -4166,7 +4446,7 @@ local function Directly(sourceText, language, pathSource)
     end
 
     -- 2. Exact/local cache and static DB.
-    local translated = GetCachedTranslation(
+    local translated = loc.GetCachedTranslation(
         sourceRendered,
         language
     )
@@ -4179,18 +4459,18 @@ local function Directly(sourceText, language, pathSource)
     -- language-aware, so it never locks onto a canonical source that has no
     -- translation for the currently selected language.
     local similarSource =
-        FindSimilarLocalizationSource(sourceRendered, language)
+        loc.FindSimilarLocalizationSource(sourceRendered, language)
 
     if similarSource and similarSource ~= sourceRendered then
         translated = cache[similarSource]
-            or cache[PlainCacheKey(similarSource)]
+            or cache[loc.PlainCacheKey(similarSource)]
 
         if not translated then
             local similarTemplate =
                 SelectTextToTranslateOnly(similarSource)
 
             translated = cache[similarTemplate]
-                or cache[PlainCacheKey(similarTemplate)]
+                or cache[loc.PlainCacheKey(similarTemplate)]
         end
 
         if translated then
@@ -4201,7 +4481,7 @@ local function Directly(sourceText, language, pathSource)
                 SelectTextToTranslateOnly(similarSource)
 
             if currentTemplate == similarTemplate then
-                return RestoreSelectedText(
+                return loc.RestoreSelectedText(
                     translated,
                     currentProtected
                 ), similarSource
@@ -4227,7 +4507,7 @@ end
 -- 3) Static:
 --    Everything else follows the normal Directly() path.
 
-local function HasAncestorNamed(obj, targetName)
+loc.HasAncestorNamed = function(obj, targetName)
     if not obj then
         return false
     end
@@ -4253,7 +4533,7 @@ local function HasAncestorNamed(obj, targetName)
     return false
 end
 
-local function FindControllerRelation(obj, controllerName)
+loc.FindControllerRelation = function(obj, controllerName)
     if not obj then
         return nil
     end
@@ -4341,7 +4621,7 @@ local DynamicTranslateListSkip = {
     Creator = true,
 }
 
-local function IsValueChangerTranslateListSkip(obj)
+loc.IsValueChangerTranslateListSkip = function(obj)
     if not obj then
         return false
     end
@@ -4377,7 +4657,7 @@ local function IsValueChangerTranslateListSkip(obj)
     return false
 end
 
-local function IsValueChangerDynamic(obj, property)
+loc.IsValueChangerDynamic = function(obj, property)
     if not obj or not property then
         return false
     end
@@ -4391,20 +4671,20 @@ local function IsValueChangerDynamic(obj, property)
 
     -- FIRST: remove known ValueChanger-driven runtime fields from the
     -- Translate List before any translation state/cache/listener is created.
-    if IsValueChangerTranslateListSkip(obj) then
+    if loc.IsValueChangerTranslateListSkip(obj) then
         return true
     end
 
     -- SECOND: detect an actual runtime ValueChanger controller relation.
-    return FindControllerRelation(obj, "ValueChanger") ~= nil
+    return loc.FindControllerRelation(obj, "ValueChanger") ~= nil
 end
 
-local function IsTextChangeOnlyWhenClick(obj, property)
+loc.IsTextChangeOnlyWhenClick = function(obj, property)
     if not obj or not property then
         return false
     end
 
-    if HasAncestorNamed(obj, "TextChangeOnlyWhenClick") then
+    if loc.HasAncestorNamed(obj, "TextChangeOnlyWhenClick") then
         return true
     end
 
@@ -4422,23 +4702,23 @@ local function IsTextChangeOnlyWhenClick(obj, property)
     return false
 end
 
-local function GetDynamicTranslationMode(obj, property)
-    if IsValueChangerDynamic(obj, property) then
+loc.GetDynamicTranslationMode = function(obj, property)
+    if loc.IsValueChangerDynamic(obj, property) then
         return "LIVE"
     end
 
-    if IsTextChangeOnlyWhenClick(obj, property) then
+    if loc.IsTextChangeOnlyWhenClick(obj, property) then
         return "CLICK"
     end
 
     return "STATIC"
 end
 
-local function IsDynamicTranslationTarget(obj, state, property)
-    return IsValueChangerDynamic(obj, property)
+loc.IsDynamicTranslationTarget = function(obj, state, property)
+    return loc.IsValueChangerDynamic(obj, property)
 end
 
-local function IsLocalizationDirectOnlyProperty(obj, property, state)
+loc.IsLocalizationDirectOnlyProperty = function(obj, property, state)
     if not obj or not property or not state then
         return false
     end
@@ -4460,28 +4740,28 @@ local function IsLocalizationDirectOnlyProperty(obj, property, state)
     end
 
     if obj:IsA("TextButton") then
-        return not IsDynamicTranslationTarget(obj, state, property)
-            and not IsTextChangeOnlyWhenClick(obj, property)
+        return not loc.IsDynamicTranslationTarget(obj, state, property)
+            and not loc.IsTextChangeOnlyWhenClick(obj, property)
     end
 
-    if IsTextChangeOnlyWhenClick(obj, property) then
+    if loc.IsTextChangeOnlyWhenClick(obj, property) then
         return false
     end
 
     return false
 end
 
-local function GetStateTranslation(obj, state, property, language)
+loc.GetStateTranslation = function(obj, state, property, language)
     if not obj or not property or not state then
         return nil
     end
 
-    if IsLocalizationExcluded(obj, property) then
+    if loc.IsLocalizationExcluded(obj, property) then
         return nil
     end
 
     -- Live/ValueChanger dynamic text is never translated.
-    if IsDynamicTranslationTarget(obj, state, property) then
+    if loc.IsDynamicTranslationTarget(obj, state, property) then
         return nil
     end
 
@@ -4492,7 +4772,7 @@ local function GetStateTranslation(obj, state, property, language)
     end
 
     local okRestore, sourceRendered = pcall(
-        RestoreSelectedText,
+        loc.RestoreSelectedText,
         state.SourceTemplate,
         state.DynamicValues or {}
     )
@@ -4512,9 +4792,9 @@ local function GetStateTranslation(obj, state, property, language)
 
     -- Click/state dynamic text MUST use Roblox LocalizationService only.
     -- Directly() is intentionally forbidden for this class.
-    if IsTextChangeOnlyWhenClick(obj, property) then
+    if loc.IsTextChangeOnlyWhenClick(obj, property) then
         local okLocalize, localized, localizedSource = pcall(
-            Localizate,
+            loc.Localizate,
             obj,
             sourceRendered,
             language,
@@ -4542,9 +4822,9 @@ local function GetStateTranslation(obj, state, property, language)
 
     -- Static UI is Directly-only now. This includes TextLabel,
     -- non-editable TextBox.Text, TextBox.PlaceholderText, and static TextButton.
-    if IsLocalizationDirectOnlyProperty(obj, property, state) then
+    if loc.IsLocalizationDirectOnlyProperty(obj, property, state) then
         local okDirect, direct, directSource = pcall(
-            Directly,
+            loc.Directly,
             sourceRendered,
             language,
             state.PathSource
@@ -4564,7 +4844,7 @@ local function GetStateTranslation(obj, state, property, language)
             if directSource
                 and state.PathSource
                 and directSource == state.PathSource then
-                direct = RestoreDynamicValuesFromSource(
+                direct = loc.RestoreDynamicValuesFromSource(
                     direct,
                     state.PathSource,
                     state.SourceTemplate,
@@ -4581,20 +4861,20 @@ local function GetStateTranslation(obj, state, property, language)
     return nil
 end
 
-local function NeedsTranslation(obj, property, state, language)
+loc.NeedsTranslation = function(obj, property, state, language)
     if not obj
         or not property
         or not state
-        or IsLocalizationExcluded(obj, property) then
+        or loc.IsLocalizationExcluded(obj, property) then
         return false
     end
 
     if not obj.Parent
-        or IsTranslationSkipped(obj) then
+        or loc.IsTranslationSkipped(obj) then
         return false
     end
 
-    if IsDynamicTranslationTarget(obj, state, property) then
+    if loc.IsDynamicTranslationTarget(obj, state, property) then
         return false
     end
 
@@ -4608,7 +4888,7 @@ local function NeedsTranslation(obj, property, state, language)
         tostring(obj[property] or "")
 
     local sourceRendered =
-        RestoreSelectedText(
+        loc.RestoreSelectedText(
             state.SourceTemplate or "",
             state.DynamicValues or {}
         )
@@ -4642,7 +4922,7 @@ local function NeedsTranslation(obj, property, state, language)
     -- A cached translation may already be present even when this object was
     -- created after the previous scan. Do not call LocalizationService again.
     local cached =
-        GetCachedTranslation(sourceRendered, language)
+        loc.GetCachedTranslation(sourceRendered, language)
 
     if cached then
         return currentValue ~= cached
@@ -4655,7 +4935,7 @@ local function NeedsTranslation(obj, property, state, language)
 
         if pathCache then
             local restored =
-                RestoreDynamicValuesFromSource(
+                loc.RestoreDynamicValuesFromSource(
                     pathCache,
                     state.PathSource,
                     state.SourceTemplate,
@@ -4669,14 +4949,14 @@ local function NeedsTranslation(obj, property, state, language)
     return true
 end
 
-local function ApplyStateToObject(obj, property, language)
-    if IsLocalizationExcluded(obj, property) then
+loc.ApplyStateToObject = function(obj, property, language)
+    if loc.IsLocalizationExcluded(obj, property) then
         return false
     end
 
     if not obj
         or not obj.Parent
-        or IsTranslationSkipped(obj) then
+        or loc.IsTranslationSkipped(obj) then
         return false
     end
 
@@ -4688,12 +4968,12 @@ local function ApplyStateToObject(obj, property, language)
         return false
     end
 
-    if IsDynamicTranslationTarget(obj, state, property) then
+    if loc.IsDynamicTranslationTarget(obj, state, property) then
         return false
     end
 
     local rendered =
-        GetStateTranslation(
+        loc.GetStateTranslation(
             obj,
             state,
             property,
@@ -4732,7 +5012,7 @@ local function ApplyStateToObject(obj, property, language)
     return ok
 end
 
-local function UpdateDynamicState(obj, property, currentValue)
+loc.UpdateDynamicState = function(obj, property, currentValue)
     local state =
         L.State[obj]
         and L.State[obj][property]
@@ -4750,7 +5030,7 @@ local function UpdateDynamicState(obj, property, currentValue)
 
         if translatedTemplate then
             local translatedDynamic =
-                MatchDynamicTemplate(
+                loc.MatchDynamicTemplate(
                     translatedTemplate,
                     currentValue
                 )
@@ -4766,7 +5046,7 @@ local function UpdateDynamicState(obj, property, currentValue)
 
     -- 2. The GUI may have restored/changed the English text.
     local sourceDynamic =
-        MatchDynamicTemplate(
+        loc.MatchDynamicTemplate(
             state.SourceTemplate,
             currentValue
         )
@@ -4776,7 +5056,7 @@ local function UpdateDynamicState(obj, property, currentValue)
             sourceDynamic
 
         state.SourceText =
-            RestoreSelectedText(
+            loc.RestoreSelectedText(
                 state.SourceTemplate,
                 sourceDynamic
             )
@@ -4787,10 +5067,10 @@ local function UpdateDynamicState(obj, property, currentValue)
     return false
 end
 
-local function BindProperty(obj, property)
+loc.BindProperty = function(obj, property)
     if not obj
         or not obj.Parent
-        or IsTranslationSkipped(obj) then
+        or loc.IsTranslationSkipped(obj) then
         return
     end
 
@@ -4816,7 +5096,7 @@ local function BindProperty(obj, property)
     -- HARD RULE: ValueChanger-controlled text is NEVER translated.
     -- Do not create translation state, cache, Localization listeners, or
     -- Directly work for it. This prevents ValueChanger feedback loops.
-    if IsValueChangerDynamic(obj, property) then
+    if loc.IsValueChangerDynamic(obj, property) then
         return
     end
 
@@ -4824,7 +5104,7 @@ local function BindProperty(obj, property)
         tostring(obj[property] or "")
 
     local state =
-        BuildSourceState(
+        loc.BuildSourceState(
             obj,
             property,
             currentValue
@@ -4840,14 +5120,14 @@ local function BindProperty(obj, property)
     -- It can change at any time, so it must never trigger translation work.
     -- Click-state text is different: it changes because the user interacts
     -- with it, and it is explicitly allowed to use LocalizationService.
-    if IsTextChangeOnlyWhenClick(obj, property) then
+    if loc.IsTextChangeOnlyWhenClick(obj, property) then
         local signal = obj:GetPropertyChangedSignal(property)
 
         L.Connections[obj][property] = signal:Connect(function()
             if not obj.Parent
-                or IsTranslationSkipped(obj)
-                or IsLocalizationExcluded(obj, property)
-                or IsValueChangerDynamic(obj, property) then
+                or loc.IsTranslationSkipped(obj)
+                or loc.IsLocalizationExcluded(obj, property)
+                or loc.IsValueChangerDynamic(obj, property) then
                 return
             end
 
@@ -4887,7 +5167,7 @@ local function BindProperty(obj, property)
 
             task.spawn(function()
                 local okLocalize, localized = pcall(
-                    Localizate,
+                    loc.Localizate,
                     obj,
                     currentValue,
                     L.CurrentLanguage,
@@ -4931,7 +5211,7 @@ local function BindProperty(obj, property)
 
 end
 
-local function BindTextBoxEditable(obj)
+loc.BindTextBoxEditable = function(obj)
     if not obj:IsA("TextBox")
         or not obj.Parent then
         return
@@ -4966,42 +5246,42 @@ local function BindTextBoxEditable(obj)
                 return
             end
 
-            BindProperty(obj, "Text")
+            loc.BindProperty(obj, "Text")
         end)
 end
 
-local function ScanInstance(obj)
+loc.ScanInstance = function(obj)
     -- Process only this instance. DescendantAdded calls this once per new object.
-    if not obj or not obj.Parent or IsTranslationSkipped(obj) then
+    if not obj or not obj.Parent or loc.IsTranslationSkipped(obj) then
         return
     end
 
     if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-        BindProperty(obj, "Text")
+        loc.BindProperty(obj, "Text")
     elseif obj:IsA("TextBox") then
-        BindProperty(obj, "PlaceholderText")
-        BindTextBoxEditable(obj)
+        loc.BindProperty(obj, "PlaceholderText")
+        loc.BindTextBoxEditable(obj)
         if not obj.TextEditable then
-            BindProperty(obj, "Text")
+            loc.BindProperty(obj, "Text")
         end
     end
 end
 
-local function ScanTree(root)
+loc.ScanTree = function(root)
     if not root then
         return
     end
 
-    ScanInstance(root)
+    loc.ScanInstance(root)
     for index, child in ipairs(root:GetDescendants()) do
-        ScanInstance(child)
+        loc.ScanInstance(child)
         if index % 40 == 0 then
             task.wait()
         end
     end
 end
 
-local function EnsureCanonicalState()
+loc.EnsureCanonicalState = function()
     for obj, properties in pairs(L.State) do
         if obj and obj.Parent and properties then
             for property, state in pairs(properties) do
@@ -5039,8 +5319,10 @@ local function EnsureCanonicalState()
     end
 end
 
-local function ApplyCachedLanguage(language, onComplete)
+loc.ApplyCachedLanguage = function(language, onComplete)
     L.CurrentLanguage = language
+    L.MissingTranslations[language] = {}
+    L.MissingTranslationCountByLanguage[language] = nil
 
     -- Every language change starts from a clean applied-state.
     L.AppliedMeta = setmetatable({}, {__mode = "k"})
@@ -5088,9 +5370,9 @@ local function ApplyCachedLanguage(language, onComplete)
             -- Re-scan before every pass. BuildSourceState is source-safe below,
             -- so already-translated text cannot replace the canonical source.
             if pass == 1 then
-                ScanTree(ExperienceSettings)
+                loc.ScanTree(ExperienceSettings)
             end
-            EnsureCanonicalState()
+            loc.EnsureCanonicalState()
 
             local queue = {}
             local skipped = 0
@@ -5098,17 +5380,17 @@ local function ApplyCachedLanguage(language, onComplete)
             for obj, properties in pairs(L.State) do
                 if obj
                     and obj.Parent
-                    and not IsTranslationSkipped(obj) then
+                    and not loc.IsTranslationSkipped(obj) then
 
                     for property, state in pairs(properties) do
                         -- ValueChanger is an absolute exclusion. If a controller
                         -- appeared after the initial scan, remove this state so
                         -- no translation path can touch it.
-                        if IsValueChangerDynamic(obj, property) then
+                        if loc.IsValueChangerDynamic(obj, property) then
                             -- Absolute Translate List removal: do not queue it.
                             properties[property] = nil
-                        elseif not IsLocalizationExcluded(obj, property)
-                            and not IsDynamicTranslationTarget(obj, state, property)
+                        elseif not loc.IsLocalizationExcluded(obj, property)
+                            and not loc.IsDynamicTranslationTarget(obj, state, property)
                             and not (
                                 property == "Text"
                                 and obj:IsA("TextBox")
@@ -5119,7 +5401,7 @@ local function ApplyCachedLanguage(language, onComplete)
 
                             local needs = false
                             local okNeeds, resultNeeds = pcall(
-                                NeedsTranslation,
+                                loc.NeedsTranslation,
                                 obj,
                                 property,
                                 state,
@@ -5169,7 +5451,7 @@ local function ApplyCachedLanguage(language, onComplete)
 
                 local shouldApply = false
                 local okNeeds, resultNeeds = pcall(
-                    NeedsTranslation,
+                    loc.NeedsTranslation,
                     obj,
                     property,
                     state,
@@ -5190,16 +5472,16 @@ local function ApplyCachedLanguage(language, onComplete)
                 if shouldApply
                     and obj
                     and obj.Parent
-                    and not IsTranslationSkipped(obj)
-                    and not IsLocalizationExcluded(obj, property)
-                    and not IsValueChangerDynamic(obj, property)
-                    and not IsDynamicTranslationTarget(obj, state, property) then
+                    and not loc.IsTranslationSkipped(obj)
+                    and not loc.IsLocalizationExcluded(obj, property)
+                    and not loc.IsValueChangerDynamic(obj, property)
+                    and not loc.IsDynamicTranslationTarget(obj, state, property) then
 
                     local before = tostring(obj[property] or "")
 
 
                     local okRender, rendered = pcall(
-                        GetStateTranslation,
+                        loc.GetStateTranslation,
                         obj,
                         state,
                         property,
@@ -5243,6 +5525,18 @@ local function ApplyCachedLanguage(language, onComplete)
                                 tostring(appliedErr)
                             )
                         end
+                    elseif rendered == nil or rendered == "" then
+                        L.MissingTranslations[language] =
+                            L.MissingTranslations[language] or {}
+
+                        L.MissingTranslations[language][
+                            state.SourceTemplate
+                            or state.SourceText
+                            or (tostring(state.Path or obj:GetFullName()) .. "|" .. property)
+                        ] = {
+                            Path = state.Path or obj:GetFullName(),
+                            Property = property,
+                        }
                     else
                     end
                 end
@@ -5268,22 +5562,28 @@ local function ApplyCachedLanguage(language, onComplete)
             task.wait()
         end
 
-        -- IMPORTANT: release the language buttons after the worker really
-        -- finishes. 6.15 defined finish(), but never called it, so L.Busy
-        -- stayed true forever after the first language change.
+        -- Count unique source templates that do not have a local translation.
+        L.MissingTranslationCountByLanguage[language] = 0
+        for _ in pairs(L.MissingTranslations[language] or {}) do
+            L.MissingTranslationCountByLanguage[language] += 1
+        end
+        L.LastMissingTranslationCount =
+            L.MissingTranslationCountByLanguage[language]
+
+        -- IMPORTANT: release the selector after the worker really finishes.
         finish()
     end
 
     task.spawn(worker)
 end
 
-local function SetPermanentTranslationSource(
+loc.SetPermanentTranslationSource = function(
     obj,
     property,
     sourceText
 )
     local state =
-        BuildSourceState(
+        loc.BuildSourceState(
             obj,
             property,
             sourceText
@@ -5298,7 +5598,7 @@ end
 
 local SetLanguageButtonsLocked
 
-local function ChangeLanguage(language)
+loc.ChangeLanguage = function(language)
     if not ExperienceSettings then
         return
     end
@@ -5338,7 +5638,7 @@ local function ChangeLanguage(language)
     end)
 
     task.spawn(function()
-        EnsureCanonicalState()
+        loc.EnsureCanonicalState()
 
         local function complete()
             if timerGeneration ~= L.LanguageButtonTimerGeneration then
@@ -5368,21 +5668,26 @@ local function ChangeLanguage(language)
         end
 
         if language == "EN" then
-            ApplyCachedLanguage("EN", function()
-                SaveTranslationCache("EN")
+            loc.ApplyCachedLanguage("EN", function()
+                loc.SaveTranslationCache("EN")
                 complete()
             end)
             return
         end
 
-        ApplyCachedLanguage(language, function()
-            SaveTranslationCache(language)
+        loc.ApplyCachedLanguage(language, function()
+            loc.SaveTranslationCache(language)
             complete()
         end)
     end)
 end
 
 SetLanguageButtonsLocked = function(locked)
+    if L.LanguageSelect and L.LanguageSelect.Button then
+        L.LanguageSelect.Button.Active = not locked
+        L.LanguageSelect.Button.AutoButtonColor = not locked
+    end
+
     for _, button in pairs(L.LanguageButtons) do
         if button and button.Parent then
             button.Active = not locked
@@ -5392,30 +5697,32 @@ SetLanguageButtonsLocked = function(locked)
 end
 
 -- Never translate the language selector itself.
-ins2:SetAttribute("SkipAutoTranslate", true)
+if typeof(ins2) == "Instance" then
+    ins2:SetAttribute("SkipAutoTranslate", true)
+end
 
 -- ExperienceSettings may be created/moved into CoreGui later.
 -- Wait for it in a separate thread so the rest of Loader.lua keeps running.
 task.spawn(function()
-    ExperienceSettings = CoreGui:WaitForChild("ExperienceSettings")
+    ExperienceSettings = s.CoreGui:WaitForChild("ExperienceSettings")
 
     -- Initial scan; yield periodically to avoid freezing large UI trees.
-    ScanTree(ExperienceSettings)
+    loc.ScanTree(ExperienceSettings)
 
     -- New GUI objects are picked up automatically.
     ExperienceSettings.DescendantAdded:Connect(function(obj)
         task.defer(function()
             if not obj
                 or not obj.Parent
-                or IsTranslationSkipped(obj) then
+                or loc.IsTranslationSkipped(obj) then
                 return
             end
 
-            ScanInstance(obj)
+            loc.ScanInstance(obj)
 
             if L.CurrentLanguage ~= "EN" and not L.Busy then
-                ApplyStateToObject(obj, "Text", L.CurrentLanguage)
-                ApplyStateToObject(obj, "PlaceholderText", L.CurrentLanguage)
+                loc.ApplyStateToObject(obj, "Text", L.CurrentLanguage)
+                loc.ApplyStateToObject(obj, "PlaceholderText", L.CurrentLanguage)
             end
         end)
     end)
@@ -5424,149 +5731,94 @@ end)
 -- One-shot translation only. Dynamic text is not re-translated on a timer.
 -- New GUI objects are handled by DescendantAdded.
 
-Txt("« Languages (Not 100%) »", 255,255,255, false,nil,false,nil,nil,nil,nil,ins2)
+L.LanguageHeader = loc.o(
+    "« Languages (Not 100%) »",
+    255,255,255,
+    false,nil,false,nil,nil,nil,nil,ins2
+).Label
 
-local EngBtn = Txt(
+L.LanguageSelect = loc.o(
+    ins2,
+    nil,
+    "Language",
+    false,
+    true,
     "🇺🇸 English",
-    255,255,255,
-    false,nil,
-    true,"Select",
+    true,
+    false,
     nil,
-    function()
-        ChangeLanguage("EN")
-    end,
     nil,
-    ins2
-).Button
-
-local SpaBtn = Txt(
-    "🇪🇸 Español",
-    255,255,255,
-    false,nil,
-    true,"Select",
-    nil,
-    function()
-        ChangeLanguage("ES")
-    end,
-    nil,
-    ins2
-).Button
-
-local ThaBtn = Txt(
-    "🇹🇭 ไทย",
-    255,255,255,
-    false,nil,
-    true,"เลือก",
-    nil,
-    function()
-        ChangeLanguage("TH")
-    end,
-    nil,
-    ins2
-).Button
-
-local BraBtn = Txt(
-    "🇧🇷 Português (Brasil)",
-    255,255,255,
-    false,nil,
-    true,"Selecionar",
-    nil,
-    function()
-        ChangeLanguage("PT-BR")
-    end,
-    nil,
-    ins2
-).Button
-
-local PorBtn = Txt(
-    "🇵🇹 Português (Portugal)",
-    255,255,255,
-    false,nil,
-    true,"Selecionar",
-    nil,
-    function()
-        ChangeLanguage("PT-PT")
-    end,
-    nil,
-    ins2
-).Button
-
-local RusBtn = Txt(
-    "🇷🇺 Русский",
-    255,255,255,
-    false,nil,
-    true,"Выбрать",
-    nil,
-    function()
-        ChangeLanguage("RU")
-    end,
-    nil,
-    ins2
-).Button
-
-local KorBtn = Txt(
-    "🇰🇷 한국어 (대한민국)",
-    255,255,255,
-    false,nil,
-    true,"선택",
-    nil,
-    function()
-        ChangeLanguage("KO")
-    end,
-    nil,
-    ins2
-).Button
-
-L.LanguageButtons = {
-    EN = EngBtn,
-    ES = SpaBtn,
-    TH = ThaBtn,
-    ["PT-BR"] = BraBtn,
-    ["PT-PT"] = PorBtn,
-    RU = RusBtn,
-    KO = KorBtn
-}
-
--- Preserve the original label so Working... / Selected can be temporary.
-for language, button in pairs(L.LanguageButtons) do
-    if button then
-        L.LanguageButtonDefaultText[language] = button.Text
+    function(value, action)
+        if action == "select" then
+            local language = L.LanguageValueToCode[value]
+            if language then
+                loc.ChangeLanguage(language)
+            end
+        end
     end
+)
+
+-- Build one dropdown instead of seven separate language buttons.
+-- Keep the language code -> option button map for locking/highlighting.
+for _, language in ipairs(L.LanguageOrder) do
+    L.LanguageValueToCode[L.LanguageOptionLabels[language]] = language
+    L.LanguageButtonDefaultText[language] = L.LanguageOptionLabels[language]
+    L.LanguageButtons[language] = L.LanguageSelect.AddSelect(
+        L.LanguageOptionLabels[language]
+    )
 end
 
 L.RefreshLanguageButtons = function()
-    for language, button in pairs(L.LanguageButtons) do
-        if button and button.Parent then
-            local selected = (L.SelectedLanguage == language)
-            local status = L.LanguageButtonStatus
+    local selected = L.SelectedLanguage
+    local status = L.LanguageButtonStatus
+    local selector = L.LanguageSelect and L.LanguageSelect.Button
 
-            if selected and status == "Working" then
-                button.Text = string.format(
-                    "Working... (%ds)",
-                    tonumber(L.WorkingSeconds) or 0
-                )
-            elseif selected and status == "Done" then
-                button.Text = string.format(
-                    "Done! (%ds)",
-                    tonumber(L.WorkingSeconds) or 0
-                )
-            elseif selected and status == "Selected" then
-                button.Text = "Selected"
-            else
-                button.Text = L.LanguageButtonDefaultText[language] or button.Text
-            end
+    if selector then
+        if status == "Working" then
+            selector.Text = string.format(
+                "Working... (%ds)",
+                tonumber(L.WorkingSeconds) or 0
+            )
+        elseif status == "Done" then
+            selector.Text = string.format(
+                "Done! (%ds)",
+                tonumber(L.WorkingSeconds) or 0
+            )
+        elseif status == "Selected" then
+            selector.Text = "Selected"
+        else
+            selector.Text = L.LanguageButtonDefaultText[selected]
+                or L.LanguageOptionLabels[selected]
+                or "Language"
+        end
+    end
 
-            button.TextColor3 = selected
+    for language, optionButton in pairs(L.LanguageButtons) do
+        if optionButton and optionButton.Parent then
+            local isSelected = selected == language
+            optionButton.TextColor3 = isSelected
                 and Color3.fromRGB(0,255,0)
                 or Color3.fromRGB(255,255,255)
-            button.BackgroundTransparency = selected and 0.15 or 1
+            optionButton.BackgroundTransparency = isSelected and 0.15 or 0.35
+        end
+    end
+
+    if L.LanguageHeader then
+        local missing = L.MissingTranslationCountByLanguage[selected]
+        if missing ~= nil then
+            L.LanguageHeader.Text = string.format(
+                "« Languages · Missing: %d »",
+                missing
+            )
+        else
+            L.LanguageHeader.Text = "« Languages (Not 100%) »"
         end
     end
 end
 
 L.RefreshLanguageButtons()
 
-Txt("« Debug »", 255,255,255, false,nil,false,nil,nil,nil,nil,ins2)
+loc.o("« Debug »", 255,255,255, false,nil,false,nil,nil,nil,nil,ins2)
 
 
 -- Set ExperienceSetting's ScreenGui ScreenInsets
@@ -5595,7 +5847,7 @@ for i, state in ipairs(screenInsetStates) do
     end
 end
 
-Txt(
+loc.o(
     "Set ExperienceSetting's ScreenGui",
     255,255,255,
 
@@ -5620,7 +5872,7 @@ Txt(
 
         btn.Text = state.Name
 
-        saveData(Data)
+        loc.saveData(Data)
     end,
 
     nil,
@@ -5641,7 +5893,7 @@ end)
 
 local DEFAULT_DISPLAY_ORDER = 2147483646
 
-local function parseDisplayOrder(value)
+loc.parseDisplayOrder = function(value)
     if type(value) == "number" then
         return value
     end
@@ -5661,7 +5913,7 @@ local function parseDisplayOrder(value)
     return tonumber(value)
 end
 
-local function displayOrderText(value)
+loc.displayOrderText = function(value)
     if value == DEFAULT_DISPLAY_ORDER then
         return "Default"
     elseif value == math.huge then
@@ -5675,19 +5927,19 @@ local function displayOrderText(value)
     return tostring(value)
 end
 
-Txt(
+loc.o(
     "Screen.DisplayOrder",
     255,255,255,
 
     true,
-    displayOrderText(Data.UI.DisplayOrder or DEFAULT_DISPLAY_ORDER),
+    loc.displayOrderText(Data.UI.DisplayOrder or DEFAULT_DISPLAY_ORDER),
 
     true,
     "Save",
 
     -- LIVE PREVIEW
     function(box)
-        local value = parseDisplayOrder(box.Text)
+        local value = loc.parseDisplayOrder(box.Text)
 
         if value ~= nil and MENU_INSTANCE then
             MENU_INSTANCE.DisplayOrder = value
@@ -5696,10 +5948,10 @@ Txt(
 
     -- SAVE
     function(box, btn)
-        local value = parseDisplayOrder(box.Text)
+        local value = loc.parseDisplayOrder(box.Text)
 
         if value == nil then
-            box.Text = displayOrderText(
+            box.Text = loc.displayOrderText(
                 Data.UI.DisplayOrder or DEFAULT_DISPLAY_ORDER
             )
             return
@@ -5711,7 +5963,7 @@ Txt(
             MENU_INSTANCE.DisplayOrder = value
         end
 
-        saveData(Data)
+        loc.saveData(Data)
 
         btn.TextColor3 = Color3.fromRGB(0,255,0)
 
@@ -5748,9 +6000,9 @@ Txt(
 
 
 -- This only way the last toggle
-local StarterGui = game:GetService("StarterGui")
+-- StarterGui uses the shared s.StarterGui service reference.
 
-Txt(
+loc.o(
     "Console shortcut",
     255,255,255,
     false,nil,
@@ -5758,12 +6010,12 @@ Txt(
     nil,
     function()
         pcall(function()
-            StarterGui:SetCore("DevConsoleVisible", true)
+            s.StarterGui:SetCore("DevConsoleVisible", true)
         end)
     end
 )
 
-local kill = Txt(
+local kill = loc.o(
     "Kill Gui - This Settings only",
     255,80,80,
     false, nil,
