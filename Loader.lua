@@ -1,4 +1,4 @@
--- Loader script 7.31
+-- Loader script 7.33
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -439,11 +439,13 @@ local DEFAULT_DATA = {
     },
 
     UI = {
-        BackgroundRGB = { 150, 150, 150 },
+        BackgroundRGB = { 18, 18, 21 },
+        BackgroundRGBCustom = false,
         Theme = "Default",
         ThemeImage = "",
         ThemeGradient1 = { 255, 255, 255 },
         ThemeGradient2 = { 255, 255, 255 },
+        ThemeGradientRotation = 90,
         MenuBackgroundTransparency = 0.08,
         HideMenu = false,
         SettingsTransparency = 0.3,
@@ -507,15 +509,6 @@ loc.loadData = function()
         if ok and type(decoded) == "table" then
             data = decoded
         end
-    end
-
-    -- Migrate the previous built-in dark RGB value to the neutral default.
-    -- Only the exact old default (18,18,21) is migrated; other saved custom colors remain intact.
-    if type(data.UI) == "table" and type(data.UI.BackgroundRGB) == "table"
-        and tonumber(data.UI.BackgroundRGB[1]) == 18
-        and tonumber(data.UI.BackgroundRGB[2]) == 18
-        and tonumber(data.UI.BackgroundRGB[3]) == 21 then
-        data.UI.BackgroundRGB = {150, 150, 150}
     end
 
     -- เติม default ที่ขาด
@@ -1049,11 +1042,49 @@ loc.IMAGE_BG_PATHS = {
 loc.CACHED_BGS = {}
 loc.PROFILE_STATUS_INNER = nil
 loc.PROFILE_STATUS_INNER_PATH = "ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus"
-loc.CURRENT_BG_COLOR = Color3.fromRGB(150, 150, 150)
+loc.CURRENT_BG_COLOR = Color3.fromRGB(18, 18, 21)
 loc.CURRENT_BG_TRANSPARENCY = tonumber(Data.UI.MenuBackgroundTransparency) or 0.08
-if type(Data.UI.BackgroundRGB) ~= "table" or #Data.UI.BackgroundRGB < 3 then Data.UI.BackgroundRGB = {150, 150, 150} end
+if type(Data.UI.BackgroundRGB) ~= "table" or #Data.UI.BackgroundRGB < 3 then
+    Data.UI.BackgroundRGB = {18, 18, 21}
+end
+-- 150,150,150 was the previous automatic default. Migrate that legacy fallback
+-- to the actual ExperienceSettings default unless an explicit custom flag exists.
+if Data.UI.BackgroundRGBCustom ~= true
+    and tonumber(Data.UI.BackgroundRGB[1]) == 150
+    and tonumber(Data.UI.BackgroundRGB[2]) == 150
+    and tonumber(Data.UI.BackgroundRGB[3]) == 150 then
+    Data.UI.BackgroundRGB = {18, 18, 21}
+end
+Data.UI.BackgroundRGBCustom = Data.UI.BackgroundRGBCustom == true
 if type(Data.UI.ThemeGradient1) ~= "table" or #Data.UI.ThemeGradient1 < 3 then Data.UI.ThemeGradient1 = {255, 255, 255} end
 if type(Data.UI.ThemeGradient2) ~= "table" or #Data.UI.ThemeGradient2 < 3 then Data.UI.ThemeGradient2 = {255, 255, 255} end
+Data.UI.ThemeGradientRotation = math.clamp(tonumber(Data.UI.ThemeGradientRotation) or 90, 0, 360)
+
+-- Migrate the previous two-color Custom Gradient to the new multi-stop format.
+if type(Data.UI.ThemeGradientColors) ~= "table" or #Data.UI.ThemeGradientColors < 2 then
+    Data.UI.ThemeGradientColors = {
+        { RGB = {tonumber(Data.UI.ThemeGradient1[1]) or 255, tonumber(Data.UI.ThemeGradient1[2]) or 255, tonumber(Data.UI.ThemeGradient1[3]) or 255}, Transparency = 0 },
+        { RGB = {tonumber(Data.UI.ThemeGradient2[1]) or 255, tonumber(Data.UI.ThemeGradient2[2]) or 255, tonumber(Data.UI.ThemeGradient2[3]) or 255}, Transparency = 0 }
+    }
+end
+while #Data.UI.ThemeGradientColors > 20 do table.remove(Data.UI.ThemeGradientColors) end
+while #Data.UI.ThemeGradientColors < 2 do
+    table.insert(Data.UI.ThemeGradientColors, { RGB = {255, 255, 255}, Transparency = 0 })
+end
+for i, stop in ipairs(Data.UI.ThemeGradientColors) do
+    if type(stop) ~= "table" then stop = {}; Data.UI.ThemeGradientColors[i] = stop end
+    local rgb = type(stop.RGB) == "table" and stop.RGB or {255, 255, 255}
+    stop.RGB = {
+        math.clamp(math.floor(tonumber(rgb[1]) or 255), 0, 255),
+        math.clamp(math.floor(tonumber(rgb[2]) or 255), 0, 255),
+        math.clamp(math.floor(tonumber(rgb[3]) or 255), 0, 255)
+    }
+    if stop.Transparency == nil or tostring(stop.Transparency) == "" or string.lower(tostring(stop.Transparency)) == "nil" then
+        stop.Transparency = nil
+    else
+        stop.Transparency = math.clamp(tonumber(stop.Transparency) or 0, 0, 1)
+    end
+end
 
 loc.findByPath = function(root, path)
     local current = root
@@ -1132,23 +1163,35 @@ loc.applyTheme = function()
     loc.refreshThemeTargets()
     Data.UI.Theme = (Data.UI.Theme == "Default" or Data.UI.Theme == "Anniversary" or Data.UI.Theme == "Halloween" or Data.UI.Theme == "Custom") and Data.UI.Theme or "Default"
 
-    if Data.UI.Theme == "Default" then
-        loc.ThemeGradient1 = Color3.fromRGB(255, 255, 255)
-        loc.ThemeGradient2 = Color3.fromRGB(255, 255, 255)
-    elseif Data.UI.Theme == "Anniversary" then
-        loc.ThemeGradient1 = Color3.fromRGB(255, 255, 0)
-        loc.ThemeGradient2 = Color3.fromRGB(0, 255, 255)
-    elseif Data.UI.Theme == "Halloween" then
-        loc.ThemeGradient1 = Color3.fromRGB(255, 255, 0)
-        loc.ThemeGradient2 = Color3.fromRGB(255, 150, 0)
+    loc.ThemeGradientColors = {}
+    loc.ThemeGradientTransparency = {}
+    loc.ThemeGradientRotation = Data.UI.Theme == "Custom"
+        and math.clamp(tonumber(Data.UI.ThemeGradientRotation) or 90, 0, 360)
+        or 90
+
+    if Data.UI.Theme == "Custom" then
+        for _, stop in ipairs(Data.UI.ThemeGradientColors or {}) do
+            local rgb = type(stop) == "table" and stop.RGB or nil
+            table.insert(loc.ThemeGradientColors, loc.rgbArrayToColor(rgb, {255, 255, 255}))
+            table.insert(loc.ThemeGradientTransparency,
+                math.clamp(tonumber(type(stop) == "table" and stop.Transparency) or 0, 0, 1))
+        end
     else
-        loc.ThemeGradient1 = loc.rgbArrayToColor(Data.UI.ThemeGradient1, {255, 255, 255})
-        loc.ThemeGradient2 = loc.rgbArrayToColor(Data.UI.ThemeGradient2, {255, 255, 255})
+        local first, second
+        if Data.UI.Theme == "Anniversary" then
+            first, second = Color3.fromRGB(255, 255, 0), Color3.fromRGB(0, 255, 255)
+        elseif Data.UI.Theme == "Halloween" then
+            first, second = Color3.fromRGB(255, 255, 0), Color3.fromRGB(255, 150, 0)
+        else
+            first, second = Color3.new(1, 1, 1), Color3.new(1, 1, 1)
+        end
+        loc.ThemeGradientColors = {first, second}
+        loc.ThemeGradientTransparency = {0, 0}
     end
 
-    -- BackgroundColor3 is editable only under Default. Other themes always use neutral gray.
+    -- Color3 is user-configurable only for Default. All other themes use neutral gray.
     loc.CURRENT_BG_COLOR = Data.UI.Theme == "Default"
-        and loc.rgbArrayToColor(Data.UI.BackgroundRGB, {150, 150, 150})
+        and loc.rgbArrayToColor(Data.UI.BackgroundRGB, {18, 18, 21})
         or Color3.fromRGB(150, 150, 150)
     loc.CURRENT_BG_TRANSPARENCY = math.clamp(tonumber(Data.UI.MenuBackgroundTransparency) or 0.08, 0, 1)
 
@@ -1156,11 +1199,10 @@ loc.applyTheme = function()
         if inst and inst.Parent then
             inst.BackgroundColor3 = loc.CURRENT_BG_COLOR
             -- Preserve transparency = 1 only for ProfileStatus.InsideProfileStatus.
-            -- Every other target follows the user-selected ExperienceSettings value.
             inst.BackgroundTransparency = inst == loc.PROFILE_STATUS_INNER
                 and 1
                 or loc.CURRENT_BG_TRANSPARENCY
-            Gradient(inst, 90, 0, 0, {loc.ThemeGradient1, loc.ThemeGradient2})
+            Gradient(inst, loc.ThemeGradientRotation, 0, 0, loc.ThemeGradientColors, loc.ThemeGradientTransparency)
         end
     end
 
@@ -1178,7 +1220,7 @@ loc.applyTheme = function()
         loc.ThemeImageParent = loc.findByPath(s.CoreGui, path)
         if loc.ThemeImageParent and loc.ThemeImageParent:IsA("GuiObject") then
             loc.ThemeImage = loc.ThemeImageParent:FindFirstChild("ImageBackground")
-            if loc.ThemeImageID and loc.ThemeImageID ~= "" then
+            if loc.ThemeImageID ~= "" then
                 if not loc.ThemeImage or not loc.ThemeImage:IsA("ImageLabel") then
                     if loc.ThemeImage then loc.ThemeImage:Destroy() end
                     loc.ThemeImage = Instance.new("ImageLabel")
@@ -1225,6 +1267,7 @@ loc.BackgroundColorUI = loc.o(
         local color, raw = loc.parseRGB(box.Text)
         if not color then return end
         Data.UI.BackgroundRGB = raw
+        Data.UI.BackgroundRGBCustom = true
         loc.saveData(Data)
         loc.applyTheme()
         btn.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -1233,6 +1276,10 @@ loc.BackgroundColorUI = loc.o(
         end)
     end
 )
+
+if loc.BackgroundColorUI and loc.BackgroundColorUI.Input then
+    loc.BackgroundColorUI.Input.Text = table.concat(Data.UI.BackgroundRGB, ",")
+end
 
 loc.ThemeSelectUI = loc.o(
     scr, nil, "Theme", false, false, nil, true, false, nil,
@@ -1259,8 +1306,7 @@ loc.ThemeSelectUI = loc.o(
 loc.updateThemeCustomRows = function()
     loc.ThemeRowsVisible = Data.UI.Theme == "Custom"
     if loc.ThemeImageUI and loc.ThemeImageUI.Frame then loc.ThemeImageUI.Frame.Visible = loc.ThemeRowsVisible end
-    if loc.ThemeGradient1UI and loc.ThemeGradient1UI.Frame then loc.ThemeGradient1UI.Frame.Visible = loc.ThemeRowsVisible end
-    if loc.ThemeGradient2UI and loc.ThemeGradient2UI.Frame then loc.ThemeGradient2UI.Frame.Visible = loc.ThemeRowsVisible end
+    if loc.ThemeGradientEditorFrame then loc.ThemeGradientEditorFrame.Visible = loc.ThemeRowsVisible end
 
     -- BackgroundColor3 can only be edited while the Default theme is selected.
     loc.BackgroundColorEditable = Data.UI.Theme == "Default"
@@ -1303,48 +1349,192 @@ loc.ThemeImageUI = loc.o(
         task.delay(0.35, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
     end
 )
+if loc.ThemeImageUI and loc.ThemeImageUI.Input then
+    loc.ThemeImageUI.Input.Text = tostring(Data.UI.ThemeImage or "")
+end
 
-loc.ThemeGradient1UI = loc.o(
-    "Gradient Color1 (R,G,B)",
+-- Dynamic Multi-Stop Gradient Editor (2–20 stops).
+loc.ThemeGradientEditorFrame = Instance.new("Frame")
+loc.ThemeGradientEditorFrame.Name = "CustomGradientEditor"
+loc.ThemeGradientEditorFrame.Size = UDim2.new(1, 0, 0, 0)
+loc.ThemeGradientEditorFrame.AutomaticSize = Enum.AutomaticSize.Y
+loc.ThemeGradientEditorFrame.BackgroundTransparency = 1
+loc.ThemeGradientEditorFrame.Visible = false
+loc.ThemeGradientEditorFrame.Parent = scr
+ListLayout(loc.ThemeGradientEditorFrame, 0, 4, "HCenter", "VTop", "SLayout", "FillV")
+
+loc.ThemeGradientRowUIs = {}
+loc.copyThemeGradientStops = function(stops)
+    local copy = {}
+    for _, stop in ipairs(stops or {}) do
+        local rgb = type(stop) == "table" and stop.RGB or nil
+        table.insert(copy, {
+            RGB = {
+                math.clamp(math.floor(tonumber(rgb and rgb[1]) or 255), 0, 255),
+                math.clamp(math.floor(tonumber(rgb and rgb[2]) or 255), 0, 255),
+                math.clamp(math.floor(tonumber(rgb and rgb[3]) or 255), 0, 255)
+            },
+            Transparency = type(stop) == "table" and stop.Transparency or nil
+        })
+    end
+    return copy
+end
+loc.ThemeGradientDraftStops = loc.copyThemeGradientStops(Data.UI.ThemeGradientColors)
+loc.collectThemeGradientDraft = function(skipIndex)
+    local result = {}
+    for i, rowUI in ipairs(loc.ThemeGradientRowUIs) do
+        if i ~= skipIndex then
+            local raw = rowUI.Input and rowUI.Input.Text or ""
+            local rgbText, transparencyText = tostring(raw):match("^%s*(.-)%s*;%s*(.-)%s*$")
+            if not rgbText then rgbText = tostring(raw) end
+            local color, rgb = loc.parseRGB(rgbText)
+            if not color then return nil, "Color" .. i .. " must use R,G,B;Transparency." end
+            local transparency = nil
+            if transparencyText ~= nil and transparencyText ~= ""
+                and string.lower(transparencyText) ~= "nil" then
+                transparency = tonumber(transparencyText)
+                if not transparency or transparency < 0 or transparency > 1 then
+                    return nil, "Color" .. i .. " transparency must be 0–1 or nil."
+                end
+            end
+            table.insert(result, { RGB = rgb, Transparency = transparency })
+        end
+    end
+    return result
+end
+
+loc.rebuildThemeGradientRows = function()
+    for _, rowUI in ipairs(loc.ThemeGradientRowUIs) do
+        if rowUI.Frame then rowUI.Frame:Destroy() end
+    end
+    loc.ThemeGradientRowUIs = {}
+    for i, stop in ipairs(loc.ThemeGradientDraftStops) do
+        local rgb = type(stop.RGB) == "table" and stop.RGB or {255, 255, 255}
+        local transparencyText = stop.Transparency == nil and "" or tostring(stop.Transparency)
+        local ui = loc.o(
+            "Color" .. i,
+            255, 255, 255,
+            true, "R,G,B;Transparency (or nil)",
+            true, "Delete",
+            nil,
+            function(box, btn, rowData)
+                local rowIndex = rowData and rowData.Frame and rowData.Frame:GetAttribute("GradientIndex") or i
+                local draft, err = loc.collectThemeGradientDraft(rowIndex)
+                if not draft then
+                    ding(err or "Invalid Gradient Color", 3, 255, 100, 100)
+                    return
+                end
+                if #draft < 2 then
+                    ding("Gradient needs at least 2 colors.", 3, 255, 150, 80)
+                    return
+                end
+                loc.ThemeGradientDraftStops = draft
+                loc.rebuildThemeGradientRows()
+            end,
+            nil,
+            loc.ThemeGradientEditorFrame
+        )
+        if ui and ui.Input then
+            ui.Frame.LayoutOrder = i
+            ui.Frame:SetAttribute("GradientIndex", i)
+            ui.Input.Text = table.concat(rgb, ",") .. ";" .. transparencyText
+            ui.Input.PlaceholderText = "R,G,B;Transparency (or nil)"
+            ui.Input.TextSize = 13
+            ui.Input.TextScaled = false
+            ui.Label.Size = UDim2.new(0.2, -2, 1, 0)
+            ui.Input.Size = UDim2.new(0.58, -4, 0, 24)
+            ui.Input.Position = UDim2.new(0.21, 2, 0, 3)
+            ui.Button.Size = UDim2.new(0.19, -2, 0, 24)
+            ui.Button.Position = UDim2.new(0.80, 0, 0, 3)
+        end
+        table.insert(loc.ThemeGradientRowUIs, ui)
+    end
+end
+
+loc.ThemeGradientRotationUI = loc.o(
+    "Gradient Rotation (0–360)",
     255, 255, 255,
-    true, table.concat(Data.UI.ThemeGradient1, ","),
-    true, "Save",
-    function(box)
-        local color, raw = loc.parseRGB(box.Text)
-        if color then Data.UI.ThemeGradient1 = raw; loc.applyTheme() end
-    end,
+    true, tostring(Data.UI.ThemeGradientRotation or 90),
+    false, nil,
+    nil, nil, nil,
+    loc.ThemeGradientEditorFrame
+)
+if loc.ThemeGradientRotationUI and loc.ThemeGradientRotationUI.Input then
+    loc.ThemeGradientRotationUI.Input.Text = tostring(Data.UI.ThemeGradientRotation or 90)
+    loc.ThemeGradientRotationUI.Input.TextSize = 14
+    loc.ThemeGradientRotationUI.Input.TextScaled = false
+    loc.ThemeGradientRotationUI.Frame.LayoutOrder = 0
+end
+
+loc.ThemeGradientAddUI = loc.o(
+    "Add Color",
+    255, 255, 255,
+    false, nil,
+    true, "Add",
+    nil,
     function(box, btn)
-        local color, raw = loc.parseRGB(box.Text)
-        if not color then return end
-        Data.UI.ThemeGradient1 = raw
+        if #loc.ThemeGradientDraftStops >= 20 then
+            ding("Maximum 20 Gradient Colors.", 3, 255, 150, 80)
+            return
+        end
+        local draft, err = loc.collectThemeGradientDraft()
+        if not draft then
+            ding(err or "Fix invalid Gradient Colors first.", 3, 255, 100, 100)
+            return
+        end
+        table.insert(draft, { RGB = {255, 255, 255}, Transparency = 0 })
+        loc.ThemeGradientDraftStops = draft
+        loc.rebuildThemeGradientRows()
+    end,
+    nil,
+    loc.ThemeGradientEditorFrame
+)
+if loc.ThemeGradientAddUI and loc.ThemeGradientAddUI.Frame then
+    loc.ThemeGradientAddUI.Frame.LayoutOrder = 21
+end
+
+loc.ThemeGradientSaveUI = loc.o(
+    "Gradient Settings",
+    255, 255, 255,
+    false, nil,
+    true, "Submit and Save",
+    nil,
+    function(box, btn)
+        local draft, err = loc.collectThemeGradientDraft()
+        if not draft then
+            ding(err or "Invalid Gradient Colors.", 4, 255, 100, 100)
+            return
+        end
+        if #draft < 2 or #draft > 20 then
+            ding("Gradient requires 2–20 colors.", 4, 255, 150, 80)
+            return
+        end
+        local rotation = tonumber(loc.ThemeGradientRotationUI and loc.ThemeGradientRotationUI.Input
+            and loc.ThemeGradientRotationUI.Input.Text or "")
+        if not rotation or rotation < 0 or rotation > 360 then
+            ding("Gradient Rotation must be between 0 and 360.", 4, 255, 100, 100)
+            return
+        end
+        Data.UI.ThemeGradientColors = draft
+        Data.UI.ThemeGradientRotation = rotation
+        loc.ThemeGradientDraftStops = loc.copyThemeGradientStops(draft)
         loc.saveData(Data)
+        loc.rebuildThemeGradientRows()
         loc.applyTheme()
         btn.TextColor3 = Color3.fromRGB(0, 255, 0)
-        task.delay(0.35, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
-    end
-)
-
-loc.ThemeGradient2UI = loc.o(
-    "Gradient Color2 (R,G,B)",
-    255, 255, 255,
-    true, table.concat(Data.UI.ThemeGradient2, ","),
-    true, "Save",
-    function(box)
-        local color, raw = loc.parseRGB(box.Text)
-        if color then Data.UI.ThemeGradient2 = raw; loc.applyTheme() end
+        task.delay(0.5, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
+        ding("Custom Gradient saved.", 3, 120, 255, 150)
     end,
-    function(box, btn)
-        local color, raw = loc.parseRGB(box.Text)
-        if not color then return end
-        Data.UI.ThemeGradient2 = raw
-        loc.saveData(Data)
-        loc.applyTheme()
-        btn.TextColor3 = Color3.fromRGB(0, 255, 0)
-        task.delay(0.35, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
-    end
+    nil,
+    loc.ThemeGradientEditorFrame
 )
+if loc.ThemeGradientSaveUI and loc.ThemeGradientSaveUI.Frame then
+    loc.ThemeGradientSaveUI.Frame.LayoutOrder = 22
+end
 
+loc.rebuildThemeGradientRows()
 loc.updateThemeCustomRows()
+loc.saveData(Data)
 
 loc.BackgroundTransparencyUI = loc.o(
     "Set BackgroundTransparency",
@@ -6554,7 +6744,8 @@ print[[------------------------------------------------------------
 >> for Information
   - Continue loadstring = Load ExperienceSettings
   - Always Load = Auto load ExperienceSettings
-  - Custom Background (R,G,B) = Custom ExperienceSettings Background
+  - Set BackgroundColor3 (R,G,B) = ExperienceSettings BackgroundColor3 (Default theme only)
+  - Custom Theme = Image + Multi-Stop Gradient (2–20 colors, rotation and transparency)
   - FoundHumanoidRootPart: State = If there HumanoidRootPart or not
   - Hide ExperienceSettings = Hide TopBar and another frames
   - Set BackgroundTransparency = ExperienceSettings Menu backgrounds
