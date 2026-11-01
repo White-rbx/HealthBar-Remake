@@ -1047,6 +1047,8 @@ loc.IMAGE_BG_PATHS = {
 }
 
 loc.CACHED_BGS = {}
+loc.PROFILE_STATUS_INNER = nil
+loc.PROFILE_STATUS_INNER_PATH = "ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus"
 loc.CURRENT_BG_COLOR = Color3.fromRGB(150, 150, 150)
 loc.CURRENT_BG_TRANSPARENCY = tonumber(Data.UI.MenuBackgroundTransparency) or 0.08
 if type(Data.UI.BackgroundRGB) ~= "table" or #Data.UI.BackgroundRGB < 3 then Data.UI.BackgroundRGB = {150, 150, 150} end
@@ -1064,6 +1066,7 @@ end
 
 loc.refreshThemeTargets = function()
     loc.CACHED_BGS = {}
+    loc.PROFILE_STATUS_INNER = loc.findByPath(s.CoreGui, loc.PROFILE_STATUS_INNER_PATH)
     for _, path in ipairs(loc.BG_COLOR_PATHS) do
         local inst = loc.findByPath(s.CoreGui, path)
         if inst and inst:IsA("GuiObject") then
@@ -1115,7 +1118,12 @@ loc.applyBackgroundTransparency = function(value)
     loc.CURRENT_BG_TRANSPARENCY = math.clamp(value, 0, 1)
     if #loc.CACHED_BGS == 0 then loc.refreshThemeTargets() end
     for _, inst in ipairs(loc.CACHED_BGS) do
-        if inst and inst.Parent then inst.BackgroundTransparency = loc.CURRENT_BG_TRANSPARENCY end
+        if inst and inst.Parent then
+            -- This is the only ExperienceSettings background kept fully transparent.
+            inst.BackgroundTransparency = inst == loc.PROFILE_STATUS_INNER
+                and 1
+                or loc.CURRENT_BG_TRANSPARENCY
+        end
     end
     return true
 end
@@ -1147,7 +1155,11 @@ loc.applyTheme = function()
     for _, inst in ipairs(loc.CACHED_BGS) do
         if inst and inst.Parent then
             inst.BackgroundColor3 = loc.CURRENT_BG_COLOR
-            inst.BackgroundTransparency = loc.CURRENT_BG_TRANSPARENCY
+            -- Preserve transparency = 1 only for ProfileStatus.InsideProfileStatus.
+            -- Every other target follows the user-selected ExperienceSettings value.
+            inst.BackgroundTransparency = inst == loc.PROFILE_STATUS_INNER
+                and 1
+                or loc.CURRENT_BG_TRANSPARENCY
             Gradient(inst, 90, 0, 0, {loc.ThemeGradient1, loc.ThemeGradient2})
         end
     end
