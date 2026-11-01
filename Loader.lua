@@ -1,4 +1,4 @@
--- Loader script 7.34
+-- Loader script 7.35
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -1042,6 +1042,10 @@ loc.IMAGE_BG_PATHS = {
 loc.CACHED_BGS = {}
 loc.PROFILE_STATUS_INNER = nil
 loc.PROFILE_STATUS_INNER_PATH = "ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus"
+loc.SEARCH_LIST = nil
+loc.SEARCH_PAGE = nil
+loc.SEARCH_LIST_PATH = "ExperienceSettings.Menu.Search.List"
+loc.SEARCH_PAGE_PATH = "ExperienceSettings.Menu.Search.Page"
 loc.CURRENT_BG_COLOR = Color3.fromRGB(18, 18, 21)
 loc.CURRENT_BG_TRANSPARENCY = tonumber(Data.UI.MenuBackgroundTransparency) or 0.08
 if type(Data.UI.BackgroundRGB) ~= "table" or #Data.UI.BackgroundRGB < 3 then
@@ -1098,6 +1102,8 @@ end
 loc.refreshThemeTargets = function()
     loc.CACHED_BGS = {}
     loc.PROFILE_STATUS_INNER = loc.findByPath(s.CoreGui, loc.PROFILE_STATUS_INNER_PATH)
+    loc.SEARCH_LIST = loc.findByPath(s.CoreGui, loc.SEARCH_LIST_PATH)
+    loc.SEARCH_PAGE = loc.findByPath(s.CoreGui, loc.SEARCH_PAGE_PATH)
     for _, path in ipairs(loc.BG_COLOR_PATHS) do
         local inst = loc.findByPath(s.CoreGui, path)
         if inst and inst:IsA("GuiObject") then
@@ -1153,6 +1159,13 @@ loc.clampBackgroundTransparency = function(value)
     return math.clamp(value, minimum, 1)
 end
 
+-- These ExperienceSettings containers must always remain fully transparent.
+loc.isForcedTransparentBackground = function(inst)
+    return inst == loc.PROFILE_STATUS_INNER
+        or inst == loc.SEARCH_LIST
+        or inst == loc.SEARCH_PAGE
+end
+
 loc.applyBackgroundTransparency = function(value)
     value = loc.clampBackgroundTransparency(value)
     if value == nil then return false end
@@ -1161,8 +1174,8 @@ loc.applyBackgroundTransparency = function(value)
     if #loc.CACHED_BGS == 0 then loc.refreshThemeTargets() end
     for _, inst in ipairs(loc.CACHED_BGS) do
         if inst and inst.Parent then
-            -- This is the only ExperienceSettings background kept fully transparent.
-            inst.BackgroundTransparency = inst == loc.PROFILE_STATUS_INNER
+            -- ProfileStatus.InsideProfileStatus, Search.List and Search.Page are fixed at 1.
+            inst.BackgroundTransparency = loc.isForcedTransparentBackground(inst)
                 and 1
                 or loc.CURRENT_BG_TRANSPARENCY
         end
@@ -1212,8 +1225,8 @@ loc.applyTheme = function()
     for _, inst in ipairs(loc.CACHED_BGS) do
         if inst and inst.Parent then
             inst.BackgroundColor3 = loc.CURRENT_BG_COLOR
-            -- Preserve transparency = 1 only for ProfileStatus.InsideProfileStatus.
-            inst.BackgroundTransparency = inst == loc.PROFILE_STATUS_INNER
+            -- Keep the protected ExperienceSettings containers at BackgroundTransparency = 1.
+            inst.BackgroundTransparency = loc.isForcedTransparentBackground(inst)
                 and 1
                 or loc.CURRENT_BG_TRANSPARENCY
             Gradient(inst, loc.ThemeGradientRotation, 0, 0, loc.ThemeGradientColors, loc.ThemeGradientTransparency)
