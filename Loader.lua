@@ -1,4 +1,4 @@
--- Loader script 7.265
+-- Loader script 7.267
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -343,7 +343,7 @@ Corner(0,8,hr)
 local oc = Instance.new("ImageButton")
 oc.Name = "Open/Close"
 oc.Size = UDim2.new(0,40,0,40)
-oc.Position = UDim2.new(1,5,0.5,-25)
+oc.Position = UDim2.new(1,5,0,0)
 oc.BackgroundColor3 = Color3.fromRGB(18,18,21)
 oc.BackgroundTransparency = 0.08
 oc.ScaleType = Enum.ScaleType.Fit
@@ -1525,6 +1525,7 @@ local placeId = game.PlaceId
 -- Server selector: choose a player-count range, then press the nbtn to join.
 local SERVER_OPTIONS = {
     { Label = "Rejoin (Default)", Key = "Rejoin" },
+    { Label = "Hop", Key = "Hop" },
     { Label = "Few Players (<2)", Key = "Few" },
     { Label = "Less Players (<5)", Key = "Less" },
     { Label = "Many Players (<10)", Key = "Many" },
@@ -1596,12 +1597,13 @@ SERVER_SELECT_UI = loc.o(
             return
         end
 
-        ui.Button.Text = "Searching..."
+        ui.Button.Text = selected.Key == "Hop" and "Hopping..." or "Searching..."
         task.spawn(function()
             local start = os.clock()
             local found = false
             local filter
 
+            -- Hop intentionally has no PlayerCount filter.
             if selected.Key == "Few" then
                 filter = function(playing)
                     return playing < 2
@@ -1614,7 +1616,7 @@ SERVER_SELECT_UI = loc.o(
                 filter = function(playing)
                     return playing >= 5 and playing < 10
                 end
-            else
+            elseif selected.Key == "A lot" then
                 filter = function(playing)
                     return playing >= 10
                 end
@@ -1629,6 +1631,7 @@ SERVER_SELECT_UI = loc.o(
                     return s.HttpService:JSONDecode(game:HttpGet(url))
                 end)
 
+                local candidates = {}
                 if success and result and type(result.data) == "table" then
                     for _, server in ipairs(result.data) do
                         local playing = tonumber(server.playing)
@@ -1637,17 +1640,21 @@ SERVER_SELECT_UI = loc.o(
                             and playing ~= nil
                             and capacity ~= nil
                             and playing < capacity
-                            and filter(playing) then
-                            found = true
-                            ui.Button.Text = "Joining..."
-                            s.TeleportService:TeleportToPlaceInstance(
-                                placeId,
-                                server.id,
-                                player
-                            )
-                            return
+                            and (not filter or filter(playing)) then
+                            table.insert(candidates, server.id)
                         end
                     end
+                end
+
+                if #candidates > 0 then
+                    found = true
+                    ui.Button.Text = selected.Key == "Hop" and "Hopping..." or "Joining..."
+                    s.TeleportService:TeleportToPlaceInstance(
+                        placeId,
+                        candidates[math.random(1, #candidates)],
+                        player
+                    )
+                    return
                 end
 
                 task.wait(1)
