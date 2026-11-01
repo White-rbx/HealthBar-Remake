@@ -1,4 +1,4 @@
--- Loader script 7.267
+-- Loader script 7.27
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -1522,14 +1522,15 @@ end)
 local player = s.Players.LocalPlayer
 local placeId = game.PlaceId
 
--- Server selector: choose a player-count range, then press the nbtn to join.
+-- Server selector: filters public servers by ServerSize (maxPlayers), not current PlayerCount.
 local SERVER_OPTIONS = {
     { Label = "Rejoin (Default)", Key = "Rejoin" },
     { Label = "Hop", Key = "Hop" },
-    { Label = "Few Players (<2)", Key = "Few" },
-    { Label = "Less Players (<5)", Key = "Less" },
-    { Label = "Many Players (<10)", Key = "Many" },
-    { Label = "A Lot Of Players (10+)", Key = "A lot" },
+    { Label = "Few Players (<2)", Key = "Few", MinSize = 1 },
+    { Label = "Less Players (<5)", Key = "Less", MinSize = 2 },
+    { Label = "Many Players (<10)", Key = "Many", MinSize = 5 },
+    { Label = "A Lot Of Players (10+)", Key = "A lot", MinSize = 10 },
+    { Label = "Custom", Key = "Custom", MinSize = 2 },
 }
 
 local SERVER_OPTION_BY_LABEL = {}
@@ -1543,6 +1544,56 @@ if not SERVER_SIZE or SERVER_SIZE <= 0 then
     SERVER_SIZE = SERVER_PLAYER_COUNT
 end
 local SERVER_SELECT_UI
+
+-- Resolve the custom target against this server's capacity.
+-- The target must always be at least one slot below the current ServerSize.
+loc.CustomServerTarget = nil
+loc.UpdateCustomServerTarget = function(raw, commit)
+    if raw == nil or tostring(raw):match("^%s*$") then
+        loc.CustomServerTarget = nil
+        if loc.CustomServerUI and loc.CustomServerUI.Label then
+            loc.CustomServerUI.Label.Text = "Custom ServerSize"
+        end
+        return nil
+    end
+
+    local entered = tonumber(raw)
+    if not entered or entered ~= entered or entered == math.huge or entered < 1 then
+        loc.CustomServerTarget = nil
+        if loc.CustomServerUI and loc.CustomServerUI.Label then
+            loc.CustomServerUI.Label.Text = "Custom ServerSize (Invalid)"
+        end
+        return nil
+    end
+
+    entered = math.floor(entered)
+    local maxAllowed = SERVER_SIZE - 1
+    if maxAllowed < 1 then
+        loc.CustomServerTarget = nil
+        if loc.CustomServerUI and loc.CustomServerUI.Label then
+            loc.CustomServerUI.Label.Text = "Custom ServerSize (Unavailable)"
+        end
+        return nil
+    end
+
+    local adjusted = math.min(entered, maxAllowed)
+    loc.CustomServerTarget = adjusted
+
+    if loc.CustomServerUI then
+        if loc.CustomServerUI.Label then
+            loc.CustomServerUI.Label.Text = string.format(
+                "Custom ServerSize (%d/%d)",
+                adjusted,
+                SERVER_SIZE
+            )
+        end
+        if commit and loc.CustomServerUI.Input then
+            loc.CustomServerUI.Input.Text = tostring(adjusted)
+        end
+    end
+
+    return adjusted
+end
 
 loc.UpdateServerSelector = function()
     SERVER_PLAYER_COUNT = #s.Players:GetPlayers()
@@ -1559,9 +1610,23 @@ loc.UpdateServerSelector = function()
         )
     end
 
-    -- All server categories remain selectable regardless of the current
-    -- server's player count or maximum capacity. Only the search filter
-    -- determines which public server category is requested.
+    -- Disable size ranges that cannot exist below the current ServerSize.
+    if SERVER_SELECT_UI and SERVER_SELECT_UI.SelectOptions then
+        for _, option in ipairs(SERVER_OPTIONS) do
+            if option.MinSize then
+                SERVER_SELECT_UI.SetOptionDisabled(
+                    SERVER_SELECT_UI.SelectOptions[option.Label],
+                    SERVER_SIZE < option.MinSize
+                )
+            end
+        end
+    end
+
+    -- Refresh the displayed custom result when the current server size changes.
+    if loc.CustomServerUI and loc.CustomServerUI.Input
+        and loc.CustomServerUI.Input.Text ~= "" then
+        loc.UpdateCustomServerTarget(loc.CustomServerUI.Input.Text, false)
+    end
 end
 
 SERVER_SELECT_UI = loc.o(
@@ -1577,7 +1642,14 @@ SERVER_SELECT_UI = loc.o(
     nil,
     function(value, action, ui)
         if action == "select" then
-            -- The dropdown only changes the pending selection.
+            local selected = SERVER_OPTION_BY_LABEL[value]
+            if loc.CustomServerUI and loc.CustomServerUI.Frame then
+                loc.CustomServerUI.Frame.Visible = selected and selected.Key == "Custom" or false
+            end
+            if selected and selected.Key == "Custom" and loc.CustomServerUI
+                and loc.CustomServerUI.Input then
+                loc.UpdateCustomServerTarget(loc.CustomServerUI.Input.Text, false)
+            end
             return
         end
 
@@ -1585,6 +1657,26 @@ SERVER_SELECT_UI = loc.o(
 
         local selected = SERVER_OPTION_BY_LABEL[value]
         if not selected then return end
+
+        local customTarget
+        if selected.Key == "Custom" then
+            customTarget = loc.UpdateCustomServerTarget(
+                loc.CustomServerUI and loc.CustomServerUI.Input
+                    and loc.CustomServerUI.Input.Text or "",
+                true
+            )
+            if not customTarget then
+                ui.Button.Text = "Invalid Size"
+                ui.Button.TextColor3 = Color3.fromRGB(255, 150, 0)
+                task.delay(2, function()
+                    if ui.Button and ui.Button.Parent then
+                        ui.Button.Text = "Go"
+                        ui.Button.TextColor3 = Color3.new(1, 1, 1)
+                    end
+                end)
+                return
+            end
+        end
 
         ui.Button.TextColor3 = Color3.fromRGB(255, 220, 100)
 
@@ -1603,24 +1695,29 @@ SERVER_SELECT_UI = loc.o(
             local found = false
             local filter
 
-            -- Hop intentionally has no PlayerCount filter.
+            -- Preset filters use server.maxPlayers (ServerSize), not server.playing.
             if selected.Key == "Few" then
-                filter = function(playing)
-                    return playing < 2
+                filter = function(capacity)
+                    return capacity < 2
                 end
             elseif selected.Key == "Less" then
-                filter = function(playing)
-                    return playing >= 2 and playing < 5
+                filter = function(capacity)
+                    return capacity >= 2 and capacity < 5
                 end
             elseif selected.Key == "Many" then
-                filter = function(playing)
-                    return playing >= 5 and playing < 10
+                filter = function(capacity)
+                    return capacity >= 5 and capacity < 10
                 end
             elseif selected.Key == "A lot" then
-                filter = function(playing)
-                    return playing >= 10
+                filter = function(capacity)
+                    return capacity >= 10
+                end
+            elseif selected.Key == "Custom" then
+                filter = function(capacity)
+                    return capacity == customTarget
                 end
             end
+            -- Hop intentionally has no ServerSize filter.
 
             while os.clock() - start < 5 do
                 local url = "https://games.roblox.com/v1/games/"
@@ -1640,7 +1737,7 @@ SERVER_SELECT_UI = loc.o(
                             and playing ~= nil
                             and capacity ~= nil
                             and playing < capacity
-                            and (not filter or filter(playing)) then
+                            and (not filter or filter(capacity)) then
                             table.insert(candidates, server.id)
                         end
                     end
@@ -1678,6 +1775,26 @@ SERVER_SELECT_UI = loc.o(
 for _, option in ipairs(SERVER_OPTIONS) do
     SERVER_SELECT_UI.AddSelect(option.Label)
 end
+
+-- A separate row keeps the nbox from overlapping the Select and Go controls.
+loc.CustomServerUI = loc.o(
+    scr,
+    nil,
+    "Custom ServerSize",
+    false,
+    false,
+    nil,
+    false,
+    true,
+    "Max players",
+    nil,
+    function(value, action)
+        if action == "input" then
+            loc.UpdateCustomServerTarget(value, true)
+        end
+    end
+)
+loc.CustomServerUI.Frame.Visible = false
 
 loc.UpdateServerSelector()
 s.Players.PlayerAdded:Connect(function()
