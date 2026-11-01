@@ -1,4 +1,4 @@
--- Loader script 7.25
+-- Loader script 7.252
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -333,7 +333,7 @@ local hr = Instance.new("Frame")
 hr.Name = "Holder"
 hr.Size = UDim2.new(0.3,0,1,0)
 hr.BackgroundColor3 = Color3.fromRGB(18,18,21)
-hr.Position = UDim2.new(-0.4,0,0,0)
+hr.Position = UDim2.new(-0.3,0,0,0)
 hr.BackgroundTransparency = 0.08
 hr.Active = false
 hr.BorderSizePixel = 0
