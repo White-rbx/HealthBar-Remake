@@ -1,4 +1,4 @@
--- Loader script 7.30
+-- Loader script 7.31
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -1019,6 +1019,7 @@ loc.BG_COLOR_PATHS = {
     "ExperienceSettings.Menu.Background.Inner_Background",
     "ExperienceSettings.Menu.Background.Inner2_Background",
     "ExperienceSettings.Menu.Editor.Page",
+    "ExperienceSettings.Menu.Editor.BottmBar",
     "ExperienceSettings.Menu.Load_Background",
     "ExperienceSettings.Menu.Search",
     "ExperienceSettings.Menu.Search.List",
@@ -1042,7 +1043,7 @@ loc.IMAGE_BG_PATHS = {
     "ExperienceSettings.Menu.Load_Background",
     "ExperienceSettings.Menu.Search.List",
     "ExperienceSettings.Menu.Search.Page",
-    "ExperienceSettings.Menu.ProfileStatus"
+    "ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus"
 }
 
 loc.CACHED_BGS = {}
@@ -1465,60 +1466,32 @@ end)
 
 -- CoreGui uses the shared s.CoreGui service reference.
 
-local SETTINGS_INSTANCES = {}
-local CURRENT_TRANSPARENCY = Data.UI.SettingsTransparency or 0.5
+-- Settings Only transparency controls the Loader Rejoiner holder (hr) only.
+-- It is intentionally separate from MenuBackgroundTransparency, which targets ExperienceSettings.
+local SETTINGS_INSTANCES = { hr }
+local CURRENT_TRANSPARENCY = tonumber(Data.UI.SettingsTransparency) or 0.3
 
--- path ที่ต้องใช้
-local SETTINGS_PATHS = {
-    "LoaderSettings.Holder",
-    "LoaderSettings.Holder.OPEN/CLOSE",
-    "LoaderSettings.Holder.Holder"
-}
-
--- find by path
-loc.findByPath = function(root, path)
-    local cur = root
-    for part in string.gmatch(path, "[^%.]+") do
-        cur = cur:FindFirstChild(part)
-        if not cur then return nil end
-    end
-    return cur
-end
-
--- apply transparency
+-- apply transparency to Loader Rejoiner only.
 loc.applyTransparency = function(value)
+    value = tonumber(value)
+    if not value then return false end
     CURRENT_TRANSPARENCY = math.clamp(value, 0, 1)
 
     for _, inst in ipairs(SETTINGS_INSTANCES) do
-        if inst:IsA("GuiObject") then
+        if inst and inst.Parent and inst:IsA("GuiObject") then
             inst.BackgroundTransparency = CURRENT_TRANSPARENCY
         end
     end
+    return true
 end
 
--- watcher (ไม่บล็อก)
-task.spawn(function()
-    while #SETTINGS_INSTANCES < #SETTINGS_PATHS do
-        SETTINGS_INSTANCES = {}
-
-        for _, path in ipairs(SETTINGS_PATHS) do
-            local inst = loc.findByPath(s.CoreGui, path)
-            if inst and inst:IsA("GuiObject") then
-                table.insert(SETTINGS_INSTANCES, inst)
-            end
-        end
-
-        task.wait(0.25)
-    end
-
-    -- เจอครบ → apply ตาม data
-    loc.applyTransparency(CURRENT_TRANSPARENCY)
-end)
+-- Apply saved Settings Only value immediately to hr.
+loc.applyTransparency(CURRENT_TRANSPARENCY)
 
 loc.o(
-    "Settings Transparency",
+    "Set BackgroundTransparency (Settings Only)",
     255,255,255,
-    true, "0.3",
+    true, tostring(Data.UI.SettingsTransparency or 0.3),
     true, "Save",
 
     -- LIVE PREVIEW
@@ -6572,7 +6545,8 @@ print[[------------------------------------------------------------
   - Custom Background (R,G,B) = Custom ExperienceSettings Background
   - FoundHumanoidRootPart: State = If there HumanoidRootPart or not
   - Hide ExperienceSettings = Hide TopBar and another frames
-  - Settings Transparency = Set Transparency this Settings - Loader Rejoiner 
+  - Set BackgroundTransparency = ExperienceSettings Menu backgrounds
+  - Set BackgroundTransparency (Settings Only) = Loader Rejoiner holder (hr)
   - Set UIScale = Set UIScale of ExperienceSettings
   - IsHealthOn: State = Always checking HealthBar is on or not
   - HealthBarToggle = ON/OFF HealthBar
