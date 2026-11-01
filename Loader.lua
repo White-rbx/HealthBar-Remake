@@ -1,4 +1,4 @@
--- Loader script 7.252
+-- Loader script 7.258
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -3196,7 +3196,7 @@ loc.StripRichText = function(text)
 end
 
 loc.PlainCacheKey = function(text)
-    return "__PLAIN_RICHTEXT__" .. StripRichText(text)
+    return "__PLAIN_RICHTEXT__" .. loc.StripRichText(text)
 end
 
 loc.NormalizeSimilarityText = function(text)
