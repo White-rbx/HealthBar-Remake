@@ -1,4 +1,4 @@
--- Loader script 7.263
+-- Loader script 7.265
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -400,7 +400,7 @@ oc.MouseButton1Click:Connect(function()
     ocstate = false
     oc.Image = "rbxassetid://132003718727838"
     Tween(hr, {Position = UDim2.new(-0.3,0,0,0)}, 0.4)
-    Tween(oc, {Position = UDim2.new(1,5,0.5,-25),Size = UDim2.new(0,40,0,40)}, 0.4)
+    Tween(oc, {Position = UDim2.new(1,5,0,0),Size = UDim2.new(0,40,0,40)}, 0.4)
   end
 end)
 
