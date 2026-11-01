@@ -1,4 +1,4 @@
--- Loader script 7.26
+-- Loader script 7.263
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -1524,11 +1524,11 @@ local placeId = game.PlaceId
 
 -- Server selector: choose a player-count range, then press the nbtn to join.
 local SERVER_OPTIONS = {
-    { Label = "Rejoin (Default)", Key = "Rejoin", MinPlayers = 0 },
-    { Label = "Few Players (<2)", Key = "Few", MinPlayers = 2 },
-    { Label = "Less Players (<5)", Key = "Less", MinPlayers = 5 },
-    { Label = "Many Players (<10)", Key = "Many", MinPlayers = 10 },
-    { Label = "A Lot Of Players (10+)", Key = "A lot", MinPlayers = 10 },
+    { Label = "Rejoin (Default)", Key = "Rejoin" },
+    { Label = "Few Players (<2)", Key = "Few" },
+    { Label = "Less Players (<5)", Key = "Less" },
+    { Label = "Many Players (<10)", Key = "Many" },
+    { Label = "A Lot Of Players (10+)", Key = "A lot" },
 }
 
 local SERVER_OPTION_BY_LABEL = {}
@@ -1558,27 +1558,9 @@ loc.UpdateServerSelector = function()
         )
     end
 
-    if not SERVER_SELECT_UI then return end
-
-    for _, option in ipairs(SERVER_OPTIONS) do
-        local optionButton = SERVER_SELECT_UI.SelectOptions[option.Label]
-        if optionButton then
-            -- A category cannot be selected when the current server has
-            -- fewer players/capacity than that category's numeric threshold.
-            local disabled = option.MinPlayers > 0
-                and (SERVER_PLAYER_COUNT < option.MinPlayers
-                    or SERVER_SIZE < option.MinPlayers)
-            SERVER_SELECT_UI.SetOptionDisabled(optionButton, disabled)
-        end
-    end
-
-    local selectedOption = SERVER_OPTION_BY_LABEL[SERVER_SELECT_UI.SelectedValue]
-    if selectedOption and selectedOption.MinPlayers > 0
-        and (SERVER_PLAYER_COUNT < selectedOption.MinPlayers
-            or SERVER_SIZE < selectedOption.MinPlayers) then
-        SERVER_SELECT_UI.SelectedValue = SERVER_OPTIONS[1].Label
-        SERVER_SELECT_UI.SelectButton.Text = SERVER_OPTIONS[1].Label
-    end
+    -- All server categories remain selectable regardless of the current
+    -- server's player count or maximum capacity. Only the search filter
+    -- determines which public server category is requested.
 end
 
 SERVER_SELECT_UI = loc.o(
@@ -1602,13 +1584,6 @@ SERVER_SELECT_UI = loc.o(
 
         local selected = SERVER_OPTION_BY_LABEL[value]
         if not selected then return end
-
-        if selected.MinPlayers > 0
-            and (SERVER_PLAYER_COUNT < selected.MinPlayers
-                or SERVER_SIZE < selected.MinPlayers) then
-            loc.UpdateServerSelector()
-            return
-        end
 
         ui.Button.TextColor3 = Color3.fromRGB(255, 220, 100)
 
