@@ -1,4 +1,4 @@
--- Loader script 7.29
+-- Loader script 7.30
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -509,9 +509,9 @@ loc.loadData = function()
         end
     end
 
-    -- Migrate the previous built-in dark background to the new neutral default.
-    -- Preserve any RGB value that the user had customized.
-    if type(data.UI) == "table" and data.UI.Theme == nil and type(data.UI.BackgroundRGB) == "table"
+    -- Migrate the previous built-in dark RGB value to the neutral default.
+    -- Only the exact old default (18,18,21) is migrated; other saved custom colors remain intact.
+    if type(data.UI) == "table" and type(data.UI.BackgroundRGB) == "table"
         and tonumber(data.UI.BackgroundRGB[1]) == 18
         and tonumber(data.UI.BackgroundRGB[2]) == 18
         and tonumber(data.UI.BackgroundRGB[3]) == 21 then
@@ -1010,9 +1010,29 @@ end)
 --// EXPERIENCESETTINGS THEME / BACKGROUND SYSTEM
 --// =====================================================
 
--- All listed parents receive the base BackgroundColor3, Gradient and transparency.
--- ImageBackground is intentionally limited to the paths that support images.
+-- All listed parents receive BackgroundColor3, Gradient and BackgroundTransparency.
+-- ImageTransparency is never modified; ImageBackground is limited to supported paths.
 loc.BG_COLOR_PATHS = {
+    "ExperienceSettings.Menu.About_Background",
+    "ExperienceSettings.Menu.Arcsen",
+    "ExperienceSettings.Menu.Background",
+    "ExperienceSettings.Menu.Background.Inner_Background",
+    "ExperienceSettings.Menu.Background.Inner2_Background",
+    "ExperienceSettings.Menu.Editor.Page",
+    "ExperienceSettings.Menu.Load_Background",
+    "ExperienceSettings.Menu.Search",
+    "ExperienceSettings.Menu.Search.List",
+    "ExperienceSettings.Menu.Search.Page",
+    "ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus",
+    "ExperienceSettings.Menu.ProfileStatus",
+    "ExperienceSettings.Menu.TopBar.Holder",
+    "ExperienceSettings.Menu.TopBar.TopButtons",
+    "ExperienceSettings.Menu.Editor.Page.Icon",
+    "ExperienceSettings.Menu.Editor.Page.Topic"
+}
+
+-- These parents support a tiled ImageBackground. The omitted paths are intentionally no-image targets.
+loc.IMAGE_BG_PATHS = {
     "ExperienceSettings.Menu.About_Background",
     "ExperienceSettings.Menu.Arcsen",
     "ExperienceSettings.Menu.Background",
@@ -1022,23 +1042,7 @@ loc.BG_COLOR_PATHS = {
     "ExperienceSettings.Menu.Load_Background",
     "ExperienceSettings.Menu.Search.List",
     "ExperienceSettings.Menu.Search.Page",
-    "ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus",
-    "ExperienceSettings.Menu.TopBar.Holder",
-    "ExperienceSettings.Menu.TopBar.TopButtons",
-    "ExperienceSettings.Menu.Editor.Page.Icon",
-    "ExperienceSettings.Menu.Editor.Page.Topic"
-}
-
-loc.IMAGE_BG_PATHS = {
-    "ExperienceSettings.Menu.About_Background",
-    "ExperienceSettings.Menu.Arcsen",
-    "ExperienceSettings.Menu.Background",
-    "ExperienceSettings.Menu.Background.Inner_Background",
-    "ExperienceSettings.Menu.Background.Inner2_Background",
-    "ExperienceSettings.Menu.Editor.Page",
-    "ExperienceSettings.Menu.Load_Background",
-    "ExperienceSettings.Menu.Search.Page",
-    "ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus"
+    "ExperienceSettings.Menu.ProfileStatus"
 }
 
 loc.CACHED_BGS = {}
@@ -1133,7 +1137,10 @@ loc.applyTheme = function()
         loc.ThemeGradient2 = loc.rgbArrayToColor(Data.UI.ThemeGradient2, {255, 255, 255})
     end
 
-    loc.CURRENT_BG_COLOR = loc.rgbArrayToColor(Data.UI.BackgroundRGB, {150, 150, 150})
+    -- BackgroundColor3 is editable only under Default. Other themes always use neutral gray.
+    loc.CURRENT_BG_COLOR = Data.UI.Theme == "Default"
+        and loc.rgbArrayToColor(Data.UI.BackgroundRGB, {150, 150, 150})
+        or Color3.fromRGB(150, 150, 150)
     loc.CURRENT_BG_TRANSPARENCY = math.clamp(tonumber(Data.UI.MenuBackgroundTransparency) or 0.08, 0, 1)
 
     for _, inst in ipairs(loc.CACHED_BGS) do
@@ -1188,11 +1195,12 @@ loc.applyTheme()
 --// =====================================================
 
 loc.BackgroundColorUI = loc.o(
-    "BackgroundColor3 (R,G,B)",
+    "Set BackgroundColor3 (R,G,B)",
     255, 255, 255,
     true, table.concat(Data.UI.BackgroundRGB, ","),
     true, "Save",
     function(box)
+        if Data.UI.Theme ~= "Default" then return end
         local color, raw = loc.parseRGB(box.Text)
         if color then
             Data.UI.BackgroundRGB = raw
@@ -1200,6 +1208,7 @@ loc.BackgroundColorUI = loc.o(
         end
     end,
     function(box, btn)
+        if Data.UI.Theme ~= "Default" then return end
         local color, raw = loc.parseRGB(box.Text)
         if not color then return end
         Data.UI.BackgroundRGB = raw
@@ -1239,6 +1248,24 @@ loc.updateThemeCustomRows = function()
     if loc.ThemeImageUI and loc.ThemeImageUI.Frame then loc.ThemeImageUI.Frame.Visible = loc.ThemeRowsVisible end
     if loc.ThemeGradient1UI and loc.ThemeGradient1UI.Frame then loc.ThemeGradient1UI.Frame.Visible = loc.ThemeRowsVisible end
     if loc.ThemeGradient2UI and loc.ThemeGradient2UI.Frame then loc.ThemeGradient2UI.Frame.Visible = loc.ThemeRowsVisible end
+
+    -- BackgroundColor3 can only be edited while the Default theme is selected.
+    loc.BackgroundColorEditable = Data.UI.Theme == "Default"
+    if loc.BackgroundColorUI then
+        if loc.BackgroundColorUI.Input then
+            loc.BackgroundColorUI.Input.TextEditable = loc.BackgroundColorEditable
+            loc.BackgroundColorUI.Input.Active = loc.BackgroundColorEditable
+            loc.BackgroundColorUI.Input.Selectable = loc.BackgroundColorEditable
+            loc.BackgroundColorUI.Input.BackgroundTransparency = loc.BackgroundColorEditable and 0.1 or 0.55
+        end
+        if loc.BackgroundColorUI.Button then
+            loc.BackgroundColorUI.Button.Active = loc.BackgroundColorEditable
+            loc.BackgroundColorUI.Button.Selectable = loc.BackgroundColorEditable
+            loc.BackgroundColorUI.Button.AutoButtonColor = loc.BackgroundColorEditable
+            loc.BackgroundColorUI.Button.Text = loc.BackgroundColorEditable and "Save" or "Locked"
+            loc.BackgroundColorUI.Button.BackgroundTransparency = loc.BackgroundColorEditable and 0.12 or 0.6
+        end
+    end
 end
 
 loc.ThemeImageUI = loc.o(
