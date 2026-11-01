@@ -1,4 +1,4 @@
--- Loader script 7.2
+-- Loader script 7.23
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -7,9 +7,9 @@ local loc = {}
 
 ------------------------------------------------------------------------------------------
 
--- =====>> Saved Functions <<=====
+-- =====>> UI Instance Helpers (standalone functions) <<=====
 -- ====FUNCTION CORNER===== Example: Corner(Scale, Offset, Parent)
-loc.Corner = function(Scale, Offset, Parent)
+function Corner(Scale, Offset, Parent)
   local corner = Instance.new("UICorner")
   corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
   corner.Parent = Parent
@@ -32,7 +32,7 @@ local ListUI = {
  SName = Enum.SortOrder.Name
 }
 
-loc.ListLayout = function(parent, scale, offset, HZ, VT, SO, FILL)
+function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
     list.FillDirection = ListUI[FILL] or ListUI.FillH
@@ -54,7 +54,7 @@ local StrokeUI = {
  LJMRound = Enum.LineJoinMode.Round
 }
 
-loc.Stroke = function(parent, ASM, R, G, B, LJM, Tn, Transy)
+function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
     local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
     stroke.ApplyStrokeMode = StrokeUI[ASM] or StrokeUI.ASMBorder
     stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
@@ -67,7 +67,7 @@ end
 -- =====END FUNCTION UISTROKE=====
 
 -- ====FUNCTION UIGRADIENT===== Example: Gradient(parent, rotation, offsetX, offsetY, {...}, {...})
-loc.Gradient = function(parent, rotation, offsetX, offsetY, colors, transparencies)
+function Gradient(parent, rotation, offsetX, offsetY, colors, transparencies)
     local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
 
     grad.Rotation = rotation or 0
@@ -127,7 +127,7 @@ end
 -- =====END FUNCTION UIGRADIENT=====
 
 -- ====FUNCTION UIPADDING ===== Example: Padding(parent, {X, Y}, {X, Y}, {X, Y}, {X, Y})
-loc.Padding = function(parent, bottom, left, right, top)
+function Padding(parent, bottom, left, right, top)
     local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
     local function toUDim(value)
         if typeof(value) == "UDim" then
@@ -170,7 +170,7 @@ local AspectUI = {
 
 
 --// ASPECT FUNCTION
-loc.Aspect = function(parent, ratio, aspectType, dominantAxis)
+function Aspect(parent, ratio, aspectType, dominantAxis)
 	if not parent then return end
 	
 	-- prevent duplicates
@@ -302,7 +302,7 @@ local tweenStyle = {
     Cubic = Enum.EasingStyle.Cubic
 }
 
-loc.Tween = function(obj, propertie, time, style)
+function Tween(obj, propertie, time, style)
     local properties = propertie or {}
 
     local selectedStyle = tweenStyle[style] or style or Enum.EasingStyle.Quad
@@ -338,7 +338,7 @@ hr.BackgroundTransparency = 0.08
 hr.Active = false
 hr.BorderSizePixel = 0
 hr.Parent = gui
-loc.Corner(0,8,hr)
+Corner(0,8,hr)
 
 local oc = Instance.new("ImageButton")
 oc.Name = "Open/Close"
@@ -349,7 +349,7 @@ oc.BackgroundTransparency = 0.08
 oc.ScaleType = Enum.ScaleType.Fit
 oc.Image = "rbxassetid://132003718727838"
 oc.Parent = hr
-loc.Corner(1,0,oc)
+Corner(1,0,oc)
 
 local h_si = Instance.new("Frame")
 h_si.Name = "Inside"
@@ -372,7 +372,7 @@ topic.BorderSizePixel = 13
 topic.Text = "<b>Settings - Loader Rejoiner</b>"
 topic.TextColor3 = Color3.new(1,1,1)
 topic.Parent = h_si
-loc.Corner(0,8,topic)
+Corner(0,8,topic)
 
 local scr = Instance.new("ScrollingFrame")
 scr.Name = "Settings"
@@ -386,21 +386,21 @@ scr.ScrollingDirection = Enum.ScrollingDirection.Y
 scr.ScrollBarThickness = 0
 scr.CanvasSize = UDim2.new(0,0,0,0)
 scr.Parent = h_si
-loc.Corner(0,8,scr)
-loc.ListLayout(scr, 0, 5, "HCenter","VTop","SLayout","FillV")
+Corner(0,8,scr)
+ListLayout(scr, 0, 5, "HCenter","VTop","SLayout","FillV")
 
 local ocstate = false
 oc.MouseButton1Click:Connect(function()
   if ocstate == false then
     ocstate = true
     oc.Image = "rbxassetid://111119256032094"
-    loc.Tween(hr, {Position = UDim2.new(0,0,0,0)}, 0.4)
-    loc.Tween(oc, {Position = UDim2.new(1,5,0.5,-50),Size = UDim2.new(0.1,-10,0,100)}, 0.4)
-    else
+    Tween(hr, {Position = UDim2.new(0,0,0,0)}, 0.4)
+    Tween(oc, {Position = UDim2.new(1,5,0.5,-50),Size = UDim2.new(0.1,-10,0,100)}, 0.4)
+  else
     ocstate = false
     oc.Image = "rbxassetid://132003718727838"
-    loc.Tween(hr, {Position = UDim2.new(-0.3,0,0,0)}, 0.4)
-    loc.Tween(oc, {Position = UDim2.new(1,5,0.5,-25),Size = UDim2.new(0,40,0,40)}, 0.4)
+    Tween(hr, {Position = UDim2.new(-0.4,0,0,0)}, 0.4)
+    Tween(oc, {Position = UDim2.new(1,5,0.5,-25),Size = UDim2.new(0,40,0,40)}, 0.4)
   end
 end)
 
@@ -577,7 +577,7 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
     frame.Active = false
     frame.ClipsDescendants = false
     frame.Parent = rowParent
-    loc.Corner(0, 5, frame)
+    Corner(0, 5, frame)
 
     local label = Instance.new("TextLabel")
     label.Name = "Name"
@@ -604,7 +604,7 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         button.Visible = true
         button.ClipsDescendants = false
         button.Parent = frame
-        loc.Corner(0, 4, button)
+        Corner(0, 4, button)
     end
 
     local input
@@ -624,7 +624,7 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         input.PlaceholderText = tostring(tih or "Input")
         input.Visible = true
         input.Parent = frame
-        loc.Corner(0, 4, input)
+        Corner(0, 4, input)
     end
 
     -- Compact legacy proportions; modern o() uses fixed-width controls.
@@ -666,8 +666,8 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         selectFrame.ClipsDescendants = true
         selectFrame.Parent = button
         selectFrame.ZIndex = 5
-        loc.Corner(0, 4, selectFrame)
-        loc.ListLayout(selectFrame, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
+        Corner(0, 4, selectFrame)
+        ListLayout(selectFrame, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
     end
 
     local ui = {
@@ -693,7 +693,7 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         optionButton.Text = value
         optionButton.Parent = selectFrame
         optionButton.ZIndex = 6
-        loc.Corner(0, 3, optionButton)
+        Corner(0, 3, optionButton)
         optionButton.MouseButton1Click:Connect(function()
             button.Text = value
             selectFrame.Visible = false
@@ -2005,7 +2005,7 @@ loc.o(
 
 	nil,
 
-	ins2
+	scr
 )
 
 --====================================================--
@@ -2068,7 +2068,7 @@ loc.o(
 
 	nil,
 
-	ins2
+	scr
 )
 
 local SoundState = false
