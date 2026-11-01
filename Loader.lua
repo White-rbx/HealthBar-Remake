@@ -1,4 +1,4 @@
--- Loader script 7.27
+-- Loader script 7.29
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -439,7 +439,12 @@ local DEFAULT_DATA = {
     },
 
     UI = {
-        BackgroundRGB = { 18, 18, 21 },
+        BackgroundRGB = { 150, 150, 150 },
+        Theme = "Default",
+        ThemeImage = "",
+        ThemeGradient1 = { 255, 255, 255 },
+        ThemeGradient2 = { 255, 255, 255 },
+        MenuBackgroundTransparency = 0.08,
         HideMenu = false,
         SettingsTransparency = 0.3,
         UIScale = 1,
@@ -502,6 +507,15 @@ loc.loadData = function()
         if ok and type(decoded) == "table" then
             data = decoded
         end
+    end
+
+    -- Migrate the previous built-in dark background to the new neutral default.
+    -- Preserve any RGB value that the user had customized.
+    if type(data.UI) == "table" and data.UI.Theme == nil and type(data.UI.BackgroundRGB) == "table"
+        and tonumber(data.UI.BackgroundRGB[1]) == 18
+        and tonumber(data.UI.BackgroundRGB[2]) == 18
+        and tonumber(data.UI.BackgroundRGB[3]) == 21 then
+        data.UI.BackgroundRGB = {150, 150, 150}
     end
 
     -- เติม default ที่ขาด
@@ -993,187 +1007,339 @@ task.spawn(function()
 end)
 
 --// =====================================================
---// BACKGROUND APPLY SYSTEM (WAIT UNTIL READY)
+--// EXPERIENCESETTINGS THEME / BACKGROUND SYSTEM
 --// =====================================================
 
--- CoreGui uses the shared s.CoreGui service reference.
-
--- Path ที่ต้องครบทุกอันก่อน
-local BG_PATHS = {
-    "ExperienceSettings.Menu.Arcsen",
+-- All listed parents receive the base BackgroundColor3, Gradient and transparency.
+-- ImageBackground is intentionally limited to the paths that support images.
+loc.BG_COLOR_PATHS = {
     "ExperienceSettings.Menu.About_Background",
+    "ExperienceSettings.Menu.Arcsen",
     "ExperienceSettings.Menu.Background",
-    "ExperienceSettings.Menu.Load_Background",
-    "ExperienceSettings.Menu.MiddleScreen",
-    "ExperienceSettings.Menu.ProfileStatus",
-    "ExperienceSettings.Menu.Search",
-    "ExperienceSettings.Menu.TopBar.Holder",
-    "ExperienceSettings.Menu.TopBar.TopButtons",
     "ExperienceSettings.Menu.Background.Inner_Background",
     "ExperienceSettings.Menu.Background.Inner2_Background",
-    "ExperienceSettings.Menu.HolderScreen.Shift_Lock",
-    "ExperienceSettings.Menu.Editor.BottmBar",
     "ExperienceSettings.Menu.Editor.Page",
+    "ExperienceSettings.Menu.Load_Background",
+    "ExperienceSettings.Menu.Search.List",
+    "ExperienceSettings.Menu.Search.Page",
+    "ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus",
+    "ExperienceSettings.Menu.TopBar.Holder",
+    "ExperienceSettings.Menu.TopBar.TopButtons",
     "ExperienceSettings.Menu.Editor.Page.Icon",
     "ExperienceSettings.Menu.Editor.Page.Topic"
 }
 
--- ================================
--- หา Instance จาก path
--- ================================
+loc.IMAGE_BG_PATHS = {
+    "ExperienceSettings.Menu.About_Background",
+    "ExperienceSettings.Menu.Arcsen",
+    "ExperienceSettings.Menu.Background",
+    "ExperienceSettings.Menu.Background.Inner_Background",
+    "ExperienceSettings.Menu.Background.Inner2_Background",
+    "ExperienceSettings.Menu.Editor.Page",
+    "ExperienceSettings.Menu.Load_Background",
+    "ExperienceSettings.Menu.Search.Page",
+    "ExperienceSettings.Menu.ProfileStatus.InsideProfileStatus"
+}
+
+loc.CACHED_BGS = {}
+loc.CURRENT_BG_COLOR = Color3.fromRGB(150, 150, 150)
+loc.CURRENT_BG_TRANSPARENCY = tonumber(Data.UI.MenuBackgroundTransparency) or 0.08
+if type(Data.UI.BackgroundRGB) ~= "table" or #Data.UI.BackgroundRGB < 3 then Data.UI.BackgroundRGB = {150, 150, 150} end
+if type(Data.UI.ThemeGradient1) ~= "table" or #Data.UI.ThemeGradient1 < 3 then Data.UI.ThemeGradient1 = {255, 255, 255} end
+if type(Data.UI.ThemeGradient2) ~= "table" or #Data.UI.ThemeGradient2 < 3 then Data.UI.ThemeGradient2 = {255, 255, 255} end
+
 loc.findByPath = function(root, path)
     local current = root
     for part in string.gmatch(path, "[^%.]+") do
-        current = current:FindFirstChild(part)
-        if not current then
-            return nil
-        end
+        current = current and current:FindFirstChild(part)
+        if not current then return nil end
     end
     return current
 end
 
--- ================================
--- ตรวจว่าครบทุก BG_PATHS ไหม
--- ================================
-loc.getAllBGInstances = function()
-    local result = {}
-
-    for _, path in ipairs(BG_PATHS) do
+loc.refreshThemeTargets = function()
+    loc.CACHED_BGS = {}
+    for _, path in ipairs(loc.BG_COLOR_PATHS) do
         local inst = loc.findByPath(s.CoreGui, path)
-        if not inst or not inst:IsA("GuiObject") then
-            return nil -- ❌ ยังไม่ครบ
+        if inst and inst:IsA("GuiObject") then
+            table.insert(loc.CACHED_BGS, inst)
         end
-        table.insert(result, inst)
     end
-
-    return result -- ✅ ครบแล้ว
+    return #loc.CACHED_BGS
 end
-
--- ================================
--- STATE
--- ================================
-local READY = false
-local CACHED_BGS = {}
-local CURRENT_BG_COLOR = nil
-
--- ================================
--- WAIT SYSTEM (3 STAGES)
--- ================================
-task.spawn(function()
-    while not READY do
-        -- Stage 1
-        if not s.CoreGui:FindFirstChild("ExperienceSettings", true) then
-            task.wait(0.2)
-            continue
-        end
-
-        -- Stage 2
-        local list = loc.getAllBGInstances()
-        if not list then
-            task.wait(0.2)
-            continue
-        end
-
-        -- Stage 3
-        CACHED_BGS = list
-        READY = true
-
-        -- apply ถ้ามีสีรออยู่
-        if CURRENT_BG_COLOR then
-            for _, inst in ipairs(CACHED_BGS) do
-                inst.BackgroundColor3 = CURRENT_BG_COLOR
-            end
-        end
-    end
-end)
-
--- ================================
--- API สำหรับเปลี่ยนสี
--- ================================
-loc.applyBackgroundColor = function(color)
-    if not color then return end
-
-    CURRENT_BG_COLOR = color
-
-    -- ถ้า READY แล้ว → apply ทันที
-    if READY then
-        for _, inst in ipairs(CACHED_BGS) do
-            inst.BackgroundColor3 = color
-        end
-    end
-    -- ถ้ายังไม่ READY → เก็บค่าไว้เฉย ๆ
-end
-
---// =====================================================
---// RGB PARSER
---// =====================================================
 
 loc.parseRGB = function(text)
-    if not text then return nil end
-
+    if type(text) ~= "string" then return nil end
     local r, g, b = text:match("(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
     r, g, b = tonumber(r), tonumber(g), tonumber(b)
-
     if r and g and b then
-        r = math.clamp(r, 0, 255)
-        g = math.clamp(g, 0, 255)
-        b = math.clamp(b, 0, 255)
-
+        r, g, b = math.clamp(math.floor(r), 0, 255), math.clamp(math.floor(g), 0, 255), math.clamp(math.floor(b), 0, 255)
         return Color3.fromRGB(r, g, b), { r, g, b }
     end
 end
 
---// =====================================================
---// APPLY SAVED COLOR ON LOAD
---// =====================================================
-
-loc.applyBackgroundColor(Color3.fromRGB(
-    Data.UI.BackgroundRGB[1],
-    Data.UI.BackgroundRGB[2],
-    Data.UI.BackgroundRGB[3]
-))
-
---// =====================================================
---// CUSTOM BACKGROUND UI
---// =====================================================
-
-loc.setBGFromData = function()
-    local rgb = Data.UI.BackgroundRGB
-    CURRENT_BG_COLOR = Color3.fromRGB(rgb[1], rgb[2], rgb[3])
+loc.rgbArrayToColor = function(value, fallback)
+    if type(value) ~= "table" or #value < 3 then value = fallback end
+    return Color3.fromRGB(
+        math.clamp(math.floor(tonumber(value[1]) or 150), 0, 255),
+        math.clamp(math.floor(tonumber(value[2]) or 150), 0, 255),
+        math.clamp(math.floor(tonumber(value[3]) or 150), 0, 255)
+    )
 end
 
-loc.setBGFromData()
+loc.normalizeImageId = function(raw)
+    raw = tostring(raw or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if raw == "" then return "" end
+    if raw:match("^rbxassetid://%d+$") then return raw end
+    if raw:match("^%d+$") then return "rbxassetid://" .. raw end
+    return nil
+end
 
-loc.o(
-    "Custom Background (R,G,B)",
-    255,255,255,
-    true, "18,18,21",
+loc.applyBackgroundColor = function(color)
+    if typeof(color) ~= "Color3" then return end
+    loc.CURRENT_BG_COLOR = color
+    if #loc.CACHED_BGS == 0 then loc.refreshThemeTargets() end
+    for _, inst in ipairs(loc.CACHED_BGS) do
+        if inst and inst.Parent then inst.BackgroundColor3 = color end
+    end
+end
+
+loc.applyBackgroundTransparency = function(value)
+    value = tonumber(value)
+    if not value then return false end
+    loc.CURRENT_BG_TRANSPARENCY = math.clamp(value, 0, 1)
+    if #loc.CACHED_BGS == 0 then loc.refreshThemeTargets() end
+    for _, inst in ipairs(loc.CACHED_BGS) do
+        if inst and inst.Parent then inst.BackgroundTransparency = loc.CURRENT_BG_TRANSPARENCY end
+    end
+    return true
+end
+
+loc.applyTheme = function()
+    loc.refreshThemeTargets()
+    Data.UI.Theme = (Data.UI.Theme == "Default" or Data.UI.Theme == "Anniversary" or Data.UI.Theme == "Halloween" or Data.UI.Theme == "Custom") and Data.UI.Theme or "Default"
+
+    if Data.UI.Theme == "Default" then
+        loc.ThemeGradient1 = Color3.fromRGB(255, 255, 255)
+        loc.ThemeGradient2 = Color3.fromRGB(255, 255, 255)
+    elseif Data.UI.Theme == "Anniversary" then
+        loc.ThemeGradient1 = Color3.fromRGB(255, 255, 0)
+        loc.ThemeGradient2 = Color3.fromRGB(0, 255, 255)
+    elseif Data.UI.Theme == "Halloween" then
+        loc.ThemeGradient1 = Color3.fromRGB(255, 255, 0)
+        loc.ThemeGradient2 = Color3.fromRGB(255, 150, 0)
+    else
+        loc.ThemeGradient1 = loc.rgbArrayToColor(Data.UI.ThemeGradient1, {255, 255, 255})
+        loc.ThemeGradient2 = loc.rgbArrayToColor(Data.UI.ThemeGradient2, {255, 255, 255})
+    end
+
+    loc.CURRENT_BG_COLOR = loc.rgbArrayToColor(Data.UI.BackgroundRGB, {150, 150, 150})
+    loc.CURRENT_BG_TRANSPARENCY = math.clamp(tonumber(Data.UI.MenuBackgroundTransparency) or 0.08, 0, 1)
+
+    for _, inst in ipairs(loc.CACHED_BGS) do
+        if inst and inst.Parent then
+            inst.BackgroundColor3 = loc.CURRENT_BG_COLOR
+            inst.BackgroundTransparency = loc.CURRENT_BG_TRANSPARENCY
+            Gradient(inst, 90, 0, 0, {loc.ThemeGradient1, loc.ThemeGradient2})
+        end
+    end
+
+    if Data.UI.Theme == "Anniversary" then
+        loc.ThemeImageID = "rbxassetid://115277364630066"
+    elseif Data.UI.Theme == "Halloween" then
+        loc.ThemeImageID = "rbxassetid://135302639900234"
+    elseif Data.UI.Theme == "Custom" then
+        loc.ThemeImageID = loc.normalizeImageId(Data.UI.ThemeImage) or ""
+    else
+        -- Default theme removes any existing ImageBackground asset.
+        loc.ThemeImageID = ""
+    end
+    for _, path in ipairs(loc.IMAGE_BG_PATHS) do
+        loc.ThemeImageParent = loc.findByPath(s.CoreGui, path)
+        if loc.ThemeImageParent and loc.ThemeImageParent:IsA("GuiObject") then
+            loc.ThemeImage = loc.ThemeImageParent:FindFirstChild("ImageBackground")
+            if loc.ThemeImageID and loc.ThemeImageID ~= "" then
+                if not loc.ThemeImage or not loc.ThemeImage:IsA("ImageLabel") then
+                    if loc.ThemeImage then loc.ThemeImage:Destroy() end
+                    loc.ThemeImage = Instance.new("ImageLabel")
+                end
+                loc.ThemeImage.Name = "ImageBackground"
+                loc.ThemeImage.Size = UDim2.new(1, 0, 1, 0)
+                loc.ThemeImage.Position = UDim2.new(0, 0, 0, 0)
+                loc.ThemeImage.BackgroundTransparency = 1
+                loc.ThemeImage.Image = loc.ThemeImageID
+                loc.ThemeImage.ScaleType = Enum.ScaleType.Tile
+                loc.ThemeImage.TileSize = UDim2.new(0, 64, 0, 64)
+                loc.ThemeImage.ZIndex = math.max(0, (tonumber(loc.ThemeImageParent.ZIndex) or 1) - 1)
+                loc.ThemeImage.Active = false
+                loc.ThemeImage.Parent = loc.ThemeImageParent
+            elseif loc.ThemeImage then
+                loc.ThemeImage:Destroy()
+            end
+        end
+    end
+end
+
+-- Apply saved theme once, then keep newly-created menu parents in sync.
+loc.applyTheme()
+
+--// =====================================================
+--// THEME SETTINGS UI
+--// =====================================================
+
+loc.BackgroundColorUI = loc.o(
+    "BackgroundColor3 (R,G,B)",
+    255, 255, 255,
+    true, table.concat(Data.UI.BackgroundRGB, ","),
     true, "Save",
-
-    -- LIVE PREVIEW
     function(box)
-        local color = select(1, loc.parseRGB(box.Text))
+        local color, raw = loc.parseRGB(box.Text)
         if color then
-            loc.applyBackgroundColor(color)
+            Data.UI.BackgroundRGB = raw
+            loc.applyTheme()
         end
     end,
-
-    -- CONFIRM + SAVE
     function(box, btn)
         local color, raw = loc.parseRGB(box.Text)
         if not color then return end
-
         Data.UI.BackgroundRGB = raw
         loc.saveData(Data)
-        loc.applyBackgroundColor(color)
-
-        -- visual confirm
-        btn.TextColor3 = Color3.fromRGB(0,255,0)
+        loc.applyTheme()
+        btn.TextColor3 = Color3.fromRGB(0, 255, 0)
         task.delay(0.35, function()
-            btn.TextColor3 = Color3.fromRGB(255,255,255)
+            if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end
         end)
     end
 )
+
+loc.ThemeSelectUI = loc.o(
+    scr, nil, "Theme", false, false, nil, true, false, nil,
+    function(ui)
+        ui.AddSelect("Default")
+        ui.AddSelect("Anniversary")
+        ui.AddSelect("Halloween")
+        ui.AddSelect("Custom")
+        ui.SelectedValue = Data.UI.Theme
+        ui.SelectButton.Text = Data.UI.Theme
+    end,
+    function(value, action, ui)
+        if action ~= "select" then return end
+        if value ~= "Default" and value ~= "Anniversary" and value ~= "Halloween" and value ~= "Custom" then return end
+        Data.UI.Theme = value
+        loc.updateThemeCustomRows()
+        loc.applyTheme()
+        loc.saveData(Data)
+        if ui and ui.SelectButton then ui.SelectButton.Text = value end
+    end,
+    Data.UI.Theme
+)
+
+loc.updateThemeCustomRows = function()
+    loc.ThemeRowsVisible = Data.UI.Theme == "Custom"
+    if loc.ThemeImageUI and loc.ThemeImageUI.Frame then loc.ThemeImageUI.Frame.Visible = loc.ThemeRowsVisible end
+    if loc.ThemeGradient1UI and loc.ThemeGradient1UI.Frame then loc.ThemeGradient1UI.Frame.Visible = loc.ThemeRowsVisible end
+    if loc.ThemeGradient2UI and loc.ThemeGradient2UI.Frame then loc.ThemeGradient2UI.Frame.Visible = loc.ThemeRowsVisible end
+end
+
+loc.ThemeImageUI = loc.o(
+    "Set Image (Asset ID)",
+    255, 255, 255,
+    true, tostring(Data.UI.ThemeImage or ""),
+    true, "Save",
+    function(box)
+        loc.ThemeImageValue = loc.normalizeImageId(box.Text)
+        if loc.ThemeImageValue ~= nil then
+            Data.UI.ThemeImage = loc.ThemeImageValue
+            loc.applyTheme()
+        end
+    end,
+    function(box, btn)
+        loc.ThemeImageValue = loc.normalizeImageId(box.Text)
+        if loc.ThemeImageValue == nil then return end
+        Data.UI.ThemeImage = loc.ThemeImageValue
+        loc.saveData(Data)
+        loc.applyTheme()
+        btn.TextColor3 = Color3.fromRGB(0, 255, 0)
+        task.delay(0.35, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
+    end
+)
+
+loc.ThemeGradient1UI = loc.o(
+    "Gradient Color1 (R,G,B)",
+    255, 255, 255,
+    true, table.concat(Data.UI.ThemeGradient1, ","),
+    true, "Save",
+    function(box)
+        local color, raw = loc.parseRGB(box.Text)
+        if color then Data.UI.ThemeGradient1 = raw; loc.applyTheme() end
+    end,
+    function(box, btn)
+        local color, raw = loc.parseRGB(box.Text)
+        if not color then return end
+        Data.UI.ThemeGradient1 = raw
+        loc.saveData(Data)
+        loc.applyTheme()
+        btn.TextColor3 = Color3.fromRGB(0, 255, 0)
+        task.delay(0.35, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
+    end
+)
+
+loc.ThemeGradient2UI = loc.o(
+    "Gradient Color2 (R,G,B)",
+    255, 255, 255,
+    true, table.concat(Data.UI.ThemeGradient2, ","),
+    true, "Save",
+    function(box)
+        local color, raw = loc.parseRGB(box.Text)
+        if color then Data.UI.ThemeGradient2 = raw; loc.applyTheme() end
+    end,
+    function(box, btn)
+        local color, raw = loc.parseRGB(box.Text)
+        if not color then return end
+        Data.UI.ThemeGradient2 = raw
+        loc.saveData(Data)
+        loc.applyTheme()
+        btn.TextColor3 = Color3.fromRGB(0, 255, 0)
+        task.delay(0.35, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
+    end
+)
+
+loc.updateThemeCustomRows()
+
+loc.BackgroundTransparencyUI = loc.o(
+    "Set BackgroundTransparency",
+    255, 255, 255,
+    true, tostring(Data.UI.MenuBackgroundTransparency or 0.08),
+    true, "Save",
+    function(box)
+        local value = tonumber(box.Text)
+        if value then
+            Data.UI.MenuBackgroundTransparency = math.clamp(value, 0, 1)
+            loc.applyBackgroundTransparency(Data.UI.MenuBackgroundTransparency)
+        end
+    end,
+    function(box, btn)
+        local value = tonumber(box.Text)
+        if not value then return end
+        value = math.clamp(value, 0, 1)
+        Data.UI.MenuBackgroundTransparency = value
+        loc.saveData(Data)
+        loc.applyBackgroundTransparency(value)
+        btn.TextColor3 = Color3.fromRGB(0, 255, 0)
+        task.delay(0.35, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
+    end
+)
+if loc.BackgroundTransparencyUI and loc.BackgroundTransparencyUI.Input then
+    loc.BackgroundTransparencyUI.Input.Text = tostring(Data.UI.MenuBackgroundTransparency or 0.08)
+end
+
+-- Keep the current theme applied as delayed ExperienceSettings descendants appear.
+task.spawn(function()
+    while true do
+        loc.applyTheme()
+        task.wait(1)
+    end
+end)
 
 -- background watcher (ไม่บล็อก)
 task.spawn(function()
