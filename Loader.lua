@@ -1,4 +1,4 @@
--- Loader script 7.23
+-- Loader script 7.25
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -9,7 +9,7 @@ local loc = {}
 
 -- =====>> UI Instance Helpers (standalone functions) <<=====
 -- ====FUNCTION CORNER===== Example: Corner(Scale, Offset, Parent)
-function Corner(Scale, Offset, Parent)
+local function Corner(Scale, Offset, Parent)
   local corner = Instance.new("UICorner")
   corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
   corner.Parent = Parent
@@ -32,7 +32,7 @@ local ListUI = {
  SName = Enum.SortOrder.Name
 }
 
-function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+local function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
     list.FillDirection = ListUI[FILL] or ListUI.FillH
@@ -54,7 +54,7 @@ local StrokeUI = {
  LJMRound = Enum.LineJoinMode.Round
 }
 
-function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
     local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
     stroke.ApplyStrokeMode = StrokeUI[ASM] or StrokeUI.ASMBorder
     stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
@@ -67,7 +67,7 @@ end
 -- =====END FUNCTION UISTROKE=====
 
 -- ====FUNCTION UIGRADIENT===== Example: Gradient(parent, rotation, offsetX, offsetY, {...}, {...})
-function Gradient(parent, rotation, offsetX, offsetY, colors, transparencies)
+local function Gradient(parent, rotation, offsetX, offsetY, colors, transparencies)
     local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
 
     grad.Rotation = rotation or 0
@@ -127,7 +127,7 @@ end
 -- =====END FUNCTION UIGRADIENT=====
 
 -- ====FUNCTION UIPADDING ===== Example: Padding(parent, {X, Y}, {X, Y}, {X, Y}, {X, Y})
-function Padding(parent, bottom, left, right, top)
+local function Padding(parent, bottom, left, right, top)
     local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
     local function toUDim(value)
         if typeof(value) == "UDim" then
@@ -170,7 +170,7 @@ local AspectUI = {
 
 
 --// ASPECT FUNCTION
-function Aspect(parent, ratio, aspectType, dominantAxis)
+local function Aspect(parent, ratio, aspectType, dominantAxis)
 	if not parent then return end
 	
 	-- prevent duplicates
@@ -302,7 +302,7 @@ local tweenStyle = {
     Cubic = Enum.EasingStyle.Cubic
 }
 
-function Tween(obj, propertie, time, style)
+local function Tween(obj, propertie, time, style)
     local properties = propertie or {}
 
     local selectedStyle = tweenStyle[style] or style or Enum.EasingStyle.Quad
@@ -399,7 +399,7 @@ oc.MouseButton1Click:Connect(function()
   else
     ocstate = false
     oc.Image = "rbxassetid://132003718727838"
-    Tween(hr, {Position = UDim2.new(-0.4,0,0,0)}, 0.4)
+    Tween(hr, {Position = UDim2.new(-0.3,0,0,0)}, 0.4)
     Tween(oc, {Position = UDim2.new(1,5,0.5,-25),Size = UDim2.new(0,40,0,40)}, 0.4)
   end
 end)
@@ -892,7 +892,8 @@ local alwaysUI = loc.o(
         loc.saveData(Data)  
     end,  
     nil,  
-    Data.Loader.AlwaysLoad  
+    Data.Loader.AlwaysLoad,
+    scr
 ) 
 
 local continueBtn = continueUI.Button
@@ -1155,7 +1156,8 @@ loc.o(
     end,
 
     nil,
-    Data.UI.HideMenu
+    Data.UI.HideMenu,
+    scr
 )
 
 --// =====================================================
@@ -1436,7 +1438,8 @@ local HealthToggle = loc.o(
     function(status)
         loc.setHealth(status)
     end,
-    loc.isHealthEnabled()
+    loc.isHealthEnabled(),
+    scr
 )
 
 -- 🔁 Unified watcher
@@ -1666,7 +1669,8 @@ local DraUI = loc.o(
 
     nil,
 
-    Data.UI.DraggableUI
+    Data.UI.DraggableUI,
+    scr
 )
 
 -- apply color when UI created
@@ -2168,7 +2172,7 @@ painui = loc.o(
 
     SoundState,
 
-    ins
+    scr
 )
 
 
@@ -2692,6 +2696,11 @@ L.DB = {
         ["ESP Highlight Players & Non-Players"] = "ESP resalta jugadores y no jugadores",
         ["Shift Lock (Mobile)"] = "Shift Lock (Móvil)",
         ["Hitbox Shower"] = "Lluvia de hitboxes",
+        ["Shaders - Sunset"] = "Shaders - Atardecer",
+        ["ESP"] = "ESP",
+        ["HealthBar"] = "HealthBar",
+        ["Flashlight"] = "Linterna",
+        ["Relax / Gif Animation Editor"] = "Editor de animaciones Relax / Gif",
         ["Close fuc#king annoying load bar"] = "Cerrar barra de carga molesta",
         ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Creador por @5teve3019D en ScriptBlox/HaxHell",
         ["Loading"] = "Cargando",
@@ -2745,6 +2754,9 @@ L.DB = {
         ["ESP Highlight Players & Non-Players"] = "ESP ไฮไลต์ผู้เล่นและสิ่งที่ไม่ใช่ผู้เล่น",
         ["Shift Lock (Mobile)"] = "Shift Lock (มือถือ)",
         ["Hitbox Shower"] = "Hitbox Shower",
+        ["ESP"] = "ESP",
+        ["HealthBar"] = "HealthBar",
+        ["Flashlight"] = "ไฟฉาย",
         ["Close fuc#king annoying load bar"] = "ปิดแถบโหลดน่ารำคาญ",
         ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "ผู้สร้างโดย @5teve3019D บน ScriptBlox/HaxHell",
         ["Loading"] = "กำลังโหลด",
@@ -2780,7 +2792,7 @@ L.DB = {
         ["<b><u>HealthBar</u></b>\nShow HealthBar at the Top Right."] = "<b><u>HealthBar</u></b>\nแสดง HealthBar ที่มุมขวาบน",
         ["<b><u>Global Physics</u></b>\nSame as Show Physics Toggle, but you're just seeing the physics of other players and objects too."] = "<b><u>Global Physics</u></b>\nเหมือน Show Physics แต่จะแสดงฟิสิกส์ของผู้เล่นและวัตถุอื่น ๆ ด้วย",
         ["<b><u>Death Sound</u></b>\nPlay sound after character dead."] = "<b><u>Death Sound</u></b>\nเล่นเสียงหลังจากตัวละครตาย",
-        ["Relax / Gif Animation Predictor"] = "ตัวคาดการณ์ Relax / Gif Animation",
+        ["Relax / Gif Animation Editor"] = "ตัวแก้ไขแอนิเมชัน Relax / Gif",
         ["<b><u>Gif Animation Editor</u></b> Show or hide the Gif Animation Editor window."] = "<b><u>Gif Animation Editor</u></b> แสดงหรือซ่อนหน้าต่าง Gif Animation Editor",
         ["<b><u>FreeCam</u></b>\n\tExplore around the world with FreeCam! (Mobile Only)"] = "<b><u>FreeCam</u></b>\n\tสำรวจโลกไปรอบ ๆ ด้วย FreeCam! (มือถือเท่านั้น)",
         ["<b><u>Almost Endless Fallen</u></b>\nSet FallenPartDestroyHeight at -50000."] = "<b><u>Almost Endless Fallen</u></b>\nตั้งค่า FallenPartDestroyHeight เป็น -50000",
@@ -2839,6 +2851,11 @@ L.DB = {
         ["ESP Highlight Players & Non-Players"] = "ESP destaca jogadores e não jogadores",
         ["Shift Lock (Mobile)"] = "Shift Lock (Mobile)",
         ["Hitbox Shower"] = "Chuva de hitboxes",
+        ["Shaders - Sunset"] = "Shaders - Pôr do sol",
+        ["ESP"] = "ESP",
+        ["HealthBar"] = "HealthBar",
+        ["Flashlight"] = "Lanterna",
+        ["Relax / Gif Animation Editor"] = "Editor de animação Relax / Gif",
         ["Close fuc#king annoying load bar"] = "Fechar a barra de carregamento irritante",
         ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Criado por @5teve3019D no ScriptBlox/HaxHell",
         ["Loading"] = "Carregando",
@@ -2891,6 +2908,11 @@ L.DB = {
         ["ESP Highlight Players & Non-Players"] = "ESP destaca jogadores e não jogadores",
         ["Shift Lock (Mobile)"] = "Shift Lock (Telemóvel)",
         ["Hitbox Shower"] = "Chuva de hitboxes",
+        ["Shaders - Sunset"] = "Shaders - Pôr do sol",
+        ["ESP"] = "ESP",
+        ["HealthBar"] = "HealthBar",
+        ["Flashlight"] = "Lanterna",
+        ["Relax / Gif Animation Editor"] = "Editor de animação Relax / Gif",
         ["Close fuc#king annoying load bar"] = "Fechar a barra de carregamento irritante",
         ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Criado por @5teve3019D no ScriptBlox/HaxHell",
         ["Loading"] = "A carregar",
@@ -2943,6 +2965,11 @@ L.DB = {
         ["ESP Highlight Players & Non-Players"] = "ESP выделяет игроков и неигроков",
         ["Shift Lock (Mobile)"] = "Shift Lock (Mobile)",
         ["Hitbox Shower"] = "Дождь хитбоксов",
+        ["Shaders - Sunset"] = "Шейдеры — закат",
+        ["ESP"] = "ESP",
+        ["HealthBar"] = "HealthBar",
+        ["Flashlight"] = "Фонарик",
+        ["Relax / Gif Animation Editor"] = "Редактор GIF-анимации Relax",
         ["Close fuc#king annoying load bar"] = "Закрыть бесящую полосу загрузки",
         ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "Создатель: @5teve3019D на ScriptBlox/HaxHell",
         ["Loading"] = "Загрузка",
@@ -2995,6 +3022,11 @@ L.DB = {
         ["ESP Highlight Players & Non-Players"] = "플레이어와 비플레이어 ESP 강조",
         ["Shift Lock (Mobile)"] = "Shift Lock (모바일)",
         ["Hitbox Shower"] = "히트박스 샤워",
+        ["Shaders - Sunset"] = "셰이더 - 석양",
+        ["ESP"] = "ESP",
+        ["HealthBar"] = "HealthBar",
+        ["Flashlight"] = "손전등",
+        ["Relax / Gif Animation Editor"] = "Relax / Gif 애니메이션 편집기",
         ["Close fuc#king annoying load bar"] = "짜증나는 로딩 바 닫기",
         ["Creator by @5teve3019D on ScriptBlox/HaxHell"] = "ScriptBlox/HaxHell의 @5teve3019D 제작",
         ["Loading"] = "로딩 중",
@@ -3066,7 +3098,7 @@ L.Candidates = {
     "<b><u>Global Physics</u></b> Same as Show Physics Toggle, but you're just seeing the physics of other players and objects too.",
     "Disable Death Sound",
     "<b><u>Death Sound</u></b> Play sound after character dead.",
-    "Relax / Gif Animation Predictor",
+    "Relax / Gif Animation Editor",
     "<b><u>Gif Animation Editor</u></b> Show or hide the Gif Animation Editor window.",
     "FreeCam (Mobile)",
     "<b><u>FreeCam</u></b> \tExplore around the world with FreeCam! (Mobile Only)",
