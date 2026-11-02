@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.83 Adaptive Auto X + Wrapped TextBounds Y ",
+	sion = " UIs 7.2.84 meg AutomaticSize XY Restore ",
 	logs = [[
 # -- Update logs --
 (:1/11/2026: A) Added Interactive UI Engine: child-property type conversion, UI events, state bindings, reusable action functions, conditions, Tween actions, and connection cleanup. Root Frame and Parent remain system-controlled.
@@ -91,7 +91,8 @@ local ver = {
 (:2/11/2026: F) Stage 16.3: Harden current-chat GenerativeUI scope, revoke stale UI proxies, clean Restore/Body connections, and expand the Core Prompt function/expression guide.
 (:2/11/2026: A) Stage 16.4: Add Root Y-offset layout control, TextBox PlaceholderText fallback, clearer UI-generation workflow guidance, and conditional Restore UI only when the generated Root disappears.
 (:2/11/2026: F&A) Stage 16.5: Prevent incomplete ARCSEN_UI markers/JSON from leaking into chat; add TextBounds-aware Text Y anchoring and pixel offsets for generated text elements. Stage 16.6: Cap generated Chat UI height at 700px and document the limit in Core/Request prompts. Stage 16.7: Isolate TextBounds anchor rendering from the Chat UI build pipeline so anchor measurement or signal failures cannot prevent UI creation. Stage 16.8: Add user-selectable UI Creation Height Limit (300/500/700/1000px/No Height Limit), enforce it in validation/building and provide the active cap to Core/Request prompts. Stage 16.9: Rework meg() message TextBox to fill available width and resize its height from TextBounds.Y, including dynamic UpdateMegText changes.
-(:2/11/2026: F) Stage 16.10: Keep meg() AutoSize.X for short lines; switch overflowing content to bounded full-width wrapping and TextBounds.Y height. Stage 16.11: Refresh meg() horizontal/vertical sizing after Text/RichText/TextSize updates and reduce graph UI descriptor complexity to prevent truncated output.)]],
+(:2/11/2026: F) Stage 16.10: Keep meg() AutoSize.X for short lines; switch overflowing content to bounded full-width wrapping and TextBounds.Y height. Stage 16.11: Refresh meg() horizontal/vertical sizing after Text/RichText/TextSize updates and reduce graph UI descriptor complexity to prevent truncated output.
+(:2/11/2026: F) Stage 16.12: Revert meg() message sizing to Roblox AutomaticSize.XY with TextWrapped; remove TextBounds-based message resizing callbacks to restore stable multiline rendering. Generated UI textYAnchor TextBounds support remains separate.)]],
 }
 
 ------------------------------------------------------------------------------------------
@@ -1098,19 +1099,8 @@ end
     scriptFn, callback, state
 ]]
 
--- Keep meg() message sizing adaptive: AutoSize.X for short lines, wrapped full-width for overflow,
--- and TextBounds.Y for the actual rendered height. This avoids AutoSize.X fighting TextWrapped.
-loc.ResizeMegTextBoxY = function(textBox)
-  if not textBox or not textBox.Parent then return false end
-  local measuredHeight = tonumber(textBox.TextBounds.Y) or 0
-  local targetHeight = math.max(25, math.ceil(measuredHeight + 8))
-  local currentSize = textBox.Size
-  if currentSize.Y.Scale ~= 0 or currentSize.Y.Offset ~= targetHeight then
-    textBox.Size = UDim2.new(currentSize.X.Scale, currentSize.X.Offset, 0, targetHeight)
-  end
-  return true
-end
-
+-- meg() message rendering uses native Roblox AutomaticSize.XY.
+-- Keep TextBounds-based anchoring isolated to Generated UI; do not use it to size chat messages.
 local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOptions)
   messageOptions = type(messageOptions) == "table" and messageOptions or {}
   local system = issys == true
@@ -1138,16 +1128,14 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
 
   local meg1 = Instance.new("Frame")
   meg1.Name = "MessageOut"
-  meg1.AutomaticSize = Enum.AutomaticSize.Y
-  meg1.Size = UDim2.new(1,0,0,0)
+  meg1.AutomaticSize = Enum.AutomaticSize.XY
   meg1.BackgroundTransparency = 1
   meg1.Parent = RL
   ListLayout(meg1, 0,5, "H"..dir, "VTop", "SLayout", "FillV")
 
   local m_name = Instance.new("TextLabel")
   m_name.Name = "Name"
-  m_name.AutomaticSize = Enum.AutomaticSize.Y
-  m_name.Size = UDim2.new(1,0,0,0)
+  m_name.AutomaticSize = Enum.AutomaticSize.XY
   m_name.BackgroundTransparency = 1
   m_name.TextSize = 12
   m_name.TextColor3 = b_body.BackgroundColor3
@@ -1157,22 +1145,21 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
   m_name.TextXAlignment = Enum.TextXAlignment[dir] or Enum.TextXAlignment.Left
   m_name.TextYAlignment = Enum.TextYAlignment.Top
   m_name.Parent = meg1
-  
+
   local main = Instance.new("TextBox")
   main.Name = "Message"
-  main.AutomaticSize = Enum.AutomaticSize.X
+  main.AutomaticSize = Enum.AutomaticSize.XY
   main.BorderMode = Enum.BorderMode.Inset
   main.BorderSizePixel = 3
   main.BackgroundColor3 = b_body.BackgroundColor3
-  main.Size = UDim2.new(0,0,0,25)
+  main.Size = UDim2.new(0,50,0,0)
   main.BackgroundTransparency = system and 1 or 0.5
   main.TextColor3 = b_body.BackgroundColor3
   messageOptions.RawText = tostring(txt or "Failed to generate.")
   messageOptions.IsSyn = messageOptions.IsSyn == true
   messageOptions.RichText = messageOptions.RichText == true
   main.RichText = messageOptions.RichText or messageOptions.IsSyn
-  -- Start in natural-width mode. Overflow switches to bounded width + wrapping below.
-  main.TextWrapped = false
+  main.TextWrapped = true
   main.TextXAlignment = align
   main.TextYAlignment = Enum.TextYAlignment.Top
   main.Active = false
@@ -1184,59 +1171,7 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
       and loc.API.FormatSyntax(messageOptions.RawText) or messageOptions.RawText
   main.TextSize = 12
   main.LayoutOrder = 1
-  -- AutomaticSize.X cannot also decide a useful wrapping width for long messages.
-  -- Keep AutoSize.X while the natural line fits; switch only overflowing messages to
-  -- full MessageOut width + TextWrapped, then size Y from TextBounds.Y.
   main.Parent = meg1
-  loc.API.MegLayoutRefreshByTextBox = loc.API.MegLayoutRefreshByTextBox or {}
-  local sizingRevision = 0
-  local sizingBusy = false
-  local function refreshMessageLayout()
-    if not main.Parent or sizingBusy then return end
-    sizingRevision = sizingRevision + 1
-    local currentRevision = sizingRevision
-    sizingBusy = true
-    main.AutomaticSize = Enum.AutomaticSize.X
-    main.TextWrapped = false
-    main.Size = UDim2.new(0, 0, 0, 25)
-    task.defer(function()
-      if not main.Parent or currentRevision ~= sizingRevision then
-        if currentRevision == sizingRevision then sizingBusy = false end
-        return
-      end
-      local availableWidth = math.max(1, meg1.AbsoluteSize.X)
-      local naturalWidth = math.max(main.AbsoluteSize.X, (tonumber(main.TextBounds.X) or 0) + 14)
-      if naturalWidth > availableWidth then
-        main.AutomaticSize = Enum.AutomaticSize.None
-        main.TextWrapped = true
-        main.Size = UDim2.new(1, 0, 0, 25)
-      else
-        main.AutomaticSize = Enum.AutomaticSize.X
-        main.TextWrapped = false
-        main.Size = UDim2.new(0, 0, 0, 25)
-      end
-      task.defer(function()
-        if main.Parent and currentRevision == sizingRevision then
-          loc.ResizeMegTextBoxY(main)
-        end
-        if currentRevision == sizingRevision then sizingBusy = false end
-      end)
-    end)
-  end
-  loc.API.MegLayoutRefreshByTextBox[main] = refreshMessageLayout
-  main.Destroying:Connect(function()
-    if loc.API and loc.API.MegLayoutRefreshByTextBox then
-      loc.API.MegLayoutRefreshByTextBox[main] = nil
-    end
-  end)
-  main:GetPropertyChangedSignal("Text"):Connect(refreshMessageLayout)
-  main:GetPropertyChangedSignal("RichText"):Connect(refreshMessageLayout)
-  main:GetPropertyChangedSignal("TextSize"):Connect(refreshMessageLayout)
-  main:GetPropertyChangedSignal("TextBounds"):Connect(function()
-    if main.Parent and not sizingBusy then loc.ResizeMegTextBoxY(main) end
-  end)
-  meg1:GetPropertyChangedSignal("AbsoluteSize"):Connect(refreshMessageLayout)
-  task.defer(refreshMessageLayout)
   b_body:SetAttribute("ArcsenIsSyn", messageOptions.IsSyn)
   b_body:SetAttribute("ArcsenRichText", messageOptions.RichText)
   if loc.API and loc.API.MegOptionsByFrame then
@@ -2384,16 +2319,6 @@ loc.API.UpdateMegText = function(frame, newText, options)
     end
     frame:SetAttribute("ArcsenIsSyn", storedOptions.IsSyn == true)
     frame:SetAttribute("ArcsenRichText", storedOptions.RichText == true)
-    task.defer(function(target)
-        if target and target.Parent then
-            local refresh = loc.API.MegLayoutRefreshByTextBox and loc.API.MegLayoutRefreshByTextBox[target]
-            if type(refresh) == "function" then
-                refresh()
-            else
-                loc.ResizeMegTextBoxY(target)
-            end
-        end
-    end, updateTarget)
     return true
 end
 
