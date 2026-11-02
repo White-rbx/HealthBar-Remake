@@ -1,4 +1,4 @@
--- Loader script 7.37
+-- Loader script 7.38
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -1431,7 +1431,8 @@ loc.ThemeTileSizeUI = loc.o(
         local value = loc.clampThemeTileSize(box.Text)
         if value ~= nil then
             Data.UI.ThemeTileSize = value
-            box.Text = tostring(value)
+            box.Text = ""
+            box.PlaceholderText = tostring(value)
             loc.applyTheme()
         end
     end,
@@ -1439,7 +1440,8 @@ loc.ThemeTileSizeUI = loc.o(
         local value = loc.clampThemeTileSize(box.Text)
         if value == nil then return end
         Data.UI.ThemeTileSize = value
-        box.Text = tostring(value)
+        box.Text = ""
+        box.PlaceholderText = tostring(value)
         loc.saveData(Data)
         loc.applyTheme()
         btn.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -1447,7 +1449,8 @@ loc.ThemeTileSizeUI = loc.o(
     end
 )
 if loc.ThemeTileSizeUI and loc.ThemeTileSizeUI.Input then
-    loc.ThemeTileSizeUI.Input.Text = tostring(Data.UI.ThemeTileSize or 64)
+    loc.ThemeTileSizeUI.Input.Text = ""
+    loc.ThemeTileSizeUI.Input.PlaceholderText = tostring(Data.UI.ThemeTileSize or 64)
 end
 
 loc.ThemeImageUI = loc.o(
