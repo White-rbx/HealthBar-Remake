@@ -1,4 +1,4 @@
--- Loader script 7.362
+-- Loader script 7.37
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -1389,7 +1389,7 @@ loc.ThemeSelectUI = loc.o(
         loc.updateThemeCustomRows()
         loc.applyTheme()
         if loc.BackgroundTransparencyUI and loc.BackgroundTransparencyUI.Input then
-            loc.BackgroundTransparencyUI.Input.Text = tostring(loc.getActiveBackgroundTransparency())
+            loc.BackgroundTransparencyUI.Input.PlaceholderText = tostring(loc.getActiveBackgroundTransparency())
         end
         loc.saveData(Data)
         if ui and ui.SelectButton then ui.SelectButton.Text = value end
@@ -1659,7 +1659,6 @@ loc.BackgroundTransparencyUI = loc.o(
     function(box)
         local value = loc.clampBackgroundTransparency(box.Text)
         if value ~= nil then
-            box.Text = tostring(value)
             loc.applyBackgroundTransparency(value)
         end
     end,
@@ -1667,7 +1666,8 @@ loc.BackgroundTransparencyUI = loc.o(
         local value = loc.clampBackgroundTransparency(box.Text)
         if value == nil then return end
         loc.storeActiveBackgroundTransparency(value)
-        box.Text = tostring(value)
+        box.Text = ""
+        box.PlaceholderText = tostring(value)
         loc.saveData(Data)
         loc.applyBackgroundTransparency(value)
         btn.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -1675,7 +1675,8 @@ loc.BackgroundTransparencyUI = loc.o(
     end
 )
 if loc.BackgroundTransparencyUI and loc.BackgroundTransparencyUI.Input then
-    loc.BackgroundTransparencyUI.Input.Text = tostring(loc.getActiveBackgroundTransparency() or 0.08)
+    loc.BackgroundTransparencyUI.Input.Text = ""
+    loc.BackgroundTransparencyUI.Input.PlaceholderText = tostring(loc.getActiveBackgroundTransparency() or 0.08)
 end
 
 -- Keep the current theme applied as delayed ExperienceSettings descendants appear.
