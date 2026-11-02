@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.82 meg Auto X + TextBounds Y ",
+	sion = " UIs 7.2.83 Adaptive Auto X + Wrapped TextBounds Y ",
 	logs = [[
 # -- Update logs --
 (:1/11/2026: A) Added Interactive UI Engine: child-property type conversion, UI events, state bindings, reusable action functions, conditions, Tween actions, and connection cleanup. Root Frame and Parent remain system-controlled.
@@ -91,7 +91,7 @@ local ver = {
 (:2/11/2026: F) Stage 16.3: Harden current-chat GenerativeUI scope, revoke stale UI proxies, clean Restore/Body connections, and expand the Core Prompt function/expression guide.
 (:2/11/2026: A) Stage 16.4: Add Root Y-offset layout control, TextBox PlaceholderText fallback, clearer UI-generation workflow guidance, and conditional Restore UI only when the generated Root disappears.
 (:2/11/2026: F&A) Stage 16.5: Prevent incomplete ARCSEN_UI markers/JSON from leaking into chat; add TextBounds-aware Text Y anchoring and pixel offsets for generated text elements. Stage 16.6: Cap generated Chat UI height at 700px and document the limit in Core/Request prompts. Stage 16.7: Isolate TextBounds anchor rendering from the Chat UI build pipeline so anchor measurement or signal failures cannot prevent UI creation. Stage 16.8: Add user-selectable UI Creation Height Limit (300/500/700/1000px/No Height Limit), enforce it in validation/building and provide the active cap to Core/Request prompts. Stage 16.9: Rework meg() message TextBox to fill available width and resize its height from TextBounds.Y, including dynamic UpdateMegText changes.
-(:2/11/2026: F) Stage 16.10: Keep meg() message width on AutomaticSize.X (bounded by the message column) and calculate only height from TextBounds.Y so long wrapped content expands vertically.)]],
+(:2/11/2026: F) Stage 16.10: Keep meg() AutoSize.X for short lines; switch overflowing content to bounded full-width wrapping and TextBounds.Y height. Stage 16.11: Refresh meg() horizontal/vertical sizing after Text/RichText/TextSize updates and reduce graph UI descriptor complexity to prevent truncated output.)]],
 }
 
 ------------------------------------------------------------------------------------------
@@ -1098,13 +1098,14 @@ end
     scriptFn, callback, state
 ]]
 
--- Keep meg() message sizing split by axis: AutomaticSize.X + TextBounds.Y.
+-- Keep meg() message sizing adaptive: AutoSize.X for short lines, wrapped full-width for overflow,
+-- and TextBounds.Y for the actual rendered height. This avoids AutoSize.X fighting TextWrapped.
 loc.ResizeMegTextBoxY = function(textBox)
   if not textBox or not textBox.Parent then return false end
   local measuredHeight = tonumber(textBox.TextBounds.Y) or 0
   local targetHeight = math.max(25, math.ceil(measuredHeight + 8))
-  if textBox.Size.Y.Scale ~= 0 or textBox.Size.Y.Offset ~= targetHeight then
-    local currentSize = textBox.Size
+  local currentSize = textBox.Size
+  if currentSize.Y.Scale ~= 0 or currentSize.Y.Offset ~= targetHeight then
     textBox.Size = UDim2.new(currentSize.X.Scale, currentSize.X.Offset, 0, targetHeight)
   end
   return true
@@ -1170,7 +1171,8 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
   messageOptions.IsSyn = messageOptions.IsSyn == true
   messageOptions.RichText = messageOptions.RichText == true
   main.RichText = messageOptions.RichText or messageOptions.IsSyn
-  main.TextWrapped = true
+  -- Start in natural-width mode. Overflow switches to bounded width + wrapping below.
+  main.TextWrapped = false
   main.TextXAlignment = align
   main.TextYAlignment = Enum.TextYAlignment.Top
   main.Active = false
@@ -1182,30 +1184,59 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
       and loc.API.FormatSyntax(messageOptions.RawText) or messageOptions.RawText
   main.TextSize = 12
   main.LayoutOrder = 1
-  -- X auto-sizes to the rendered text but is capped by the message column.
-  -- Once X reaches the parent width, TextWrapped carries additional content into Y.
-  local messageWidthConstraint = Instance.new("UISizeConstraint")
-  messageWidthConstraint.MinSize = Vector2.new(1, 0)
-  messageWidthConstraint.MaxSize = Vector2.new(math.max(1, meg1.AbsoluteSize.X), 1000000)
-  messageWidthConstraint.Parent = main
+  -- AutomaticSize.X cannot also decide a useful wrapping width for long messages.
+  -- Keep AutoSize.X while the natural line fits; switch only overflowing messages to
+  -- full MessageOut width + TextWrapped, then size Y from TextBounds.Y.
   main.Parent = meg1
-  local function refreshMessageWidthLimit()
-    if not main.Parent or not messageWidthConstraint.Parent then return end
-    messageWidthConstraint.MaxSize = Vector2.new(math.max(1, meg1.AbsoluteSize.X), 1000000)
+  loc.API.MegLayoutRefreshByTextBox = loc.API.MegLayoutRefreshByTextBox or {}
+  local sizingRevision = 0
+  local sizingBusy = false
+  local function refreshMessageLayout()
+    if not main.Parent or sizingBusy then return end
+    sizingRevision = sizingRevision + 1
+    local currentRevision = sizingRevision
+    sizingBusy = true
+    main.AutomaticSize = Enum.AutomaticSize.X
+    main.TextWrapped = false
+    main.Size = UDim2.new(0, 0, 0, 25)
     task.defer(function()
-      if main.Parent then loc.ResizeMegTextBoxY(main) end
+      if not main.Parent or currentRevision ~= sizingRevision then
+        if currentRevision == sizingRevision then sizingBusy = false end
+        return
+      end
+      local availableWidth = math.max(1, meg1.AbsoluteSize.X)
+      local naturalWidth = math.max(main.AbsoluteSize.X, (tonumber(main.TextBounds.X) or 0) + 14)
+      if naturalWidth > availableWidth then
+        main.AutomaticSize = Enum.AutomaticSize.None
+        main.TextWrapped = true
+        main.Size = UDim2.new(1, 0, 0, 25)
+      else
+        main.AutomaticSize = Enum.AutomaticSize.X
+        main.TextWrapped = false
+        main.Size = UDim2.new(0, 0, 0, 25)
+      end
+      task.defer(function()
+        if main.Parent and currentRevision == sizingRevision then
+          loc.ResizeMegTextBoxY(main)
+        end
+        if currentRevision == sizingRevision then sizingBusy = false end
+      end)
     end)
   end
-  meg1:GetPropertyChangedSignal("AbsoluteSize"):Connect(refreshMessageWidthLimit)
-  main:GetPropertyChangedSignal("TextBounds"):Connect(function()
-    loc.ResizeMegTextBoxY(main)
-  end)
-  task.defer(function()
-    if main.Parent then
-      refreshMessageWidthLimit()
-      loc.ResizeMegTextBoxY(main)
+  loc.API.MegLayoutRefreshByTextBox[main] = refreshMessageLayout
+  main.Destroying:Connect(function()
+    if loc.API and loc.API.MegLayoutRefreshByTextBox then
+      loc.API.MegLayoutRefreshByTextBox[main] = nil
     end
   end)
+  main:GetPropertyChangedSignal("Text"):Connect(refreshMessageLayout)
+  main:GetPropertyChangedSignal("RichText"):Connect(refreshMessageLayout)
+  main:GetPropertyChangedSignal("TextSize"):Connect(refreshMessageLayout)
+  main:GetPropertyChangedSignal("TextBounds"):Connect(function()
+    if main.Parent and not sizingBusy then loc.ResizeMegTextBoxY(main) end
+  end)
+  meg1:GetPropertyChangedSignal("AbsoluteSize"):Connect(refreshMessageLayout)
+  task.defer(refreshMessageLayout)
   b_body:SetAttribute("ArcsenIsSyn", messageOptions.IsSyn)
   b_body:SetAttribute("ArcsenRichText", messageOptions.RichText)
   if loc.API and loc.API.MegOptionsByFrame then
@@ -2355,7 +2386,12 @@ loc.API.UpdateMegText = function(frame, newText, options)
     frame:SetAttribute("ArcsenRichText", storedOptions.RichText == true)
     task.defer(function(target)
         if target and target.Parent then
-            loc.ResizeMegTextBoxY(target)
+            local refresh = loc.API.MegLayoutRefreshByTextBox and loc.API.MegLayoutRefreshByTextBox[target]
+            if type(refresh) == "function" then
+                refresh()
+            else
+                loc.ResizeMegTextBoxY(target)
+            end
         end
     end, updateTarget)
     return true
@@ -9677,7 +9713,7 @@ loc.API.GenerateResponse = function(chatID, userIndex)
         .. "\nUI CREATION HEIGHT LIMIT (active user permission): " .. tostring(loc.API.ChatUIHeightLimitPrompt)
         .. "\nEnforce this exact limit in every ARCSEN_UI descriptor. Root height minimum is 100px. No Height Limit means no configured maximum, but still use a finite, reasonable height."
         .. (loc.API.ChatUIModeForRequest == "Allow"
-            and ". When the user explicitly asks to create or update interactive UI inside this chat, emit one validated ARCSEN_UI JSON marker as described in the Core Prompt. Plan a compact parent-to-children tree first; use unique IDs, valid JSON, class-compatible properties and existing action targets. Use declarative state, expressions, bindings, nested conditions and small reusable parameterized functions before considering Lua. Keep descriptors compact enough for one complete response; top-level height MUST be at least 100px and MUST obey the exact UI Creation Height Limit supplied in runtime metadata (300px, 500px, 700px, 1000px or No Height Limit); never assume a 700px maximum. For numeric limits, never exceed the selected limit; for No Height Limit, use a finite, reasonable height. Use an internal ScrollingFrame if content needs more space; for graphs use a moderate number of curve segments (normally 24-40), avoid huge coordinate dumps, and use textYAnchor (Top/Center/Bottom) plus optional textYOffset for text positioned against actual TextBounds rather than Parent height. Do not use generic Text=Default; TextBox hints belong in PlaceholderText, with Text omitted/empty when there is no initial value. The top-level rootOffsetY integer controls Root.Position.Y.Offset only (positive down, negative up, default 0; -300..300). Root Frame instance properties, X position, Parent and ClassName remain protected; never create ScreenGui or Script/LocalScript/ModuleScript Instances. Do not show Restore UI while a Root exists; the client handles Restore UI only when the Root disappears and automatically rebuilds UI on tab reopen. Output exactly one complete ARCSEN_UI marker without a code fence; keep explanation short outside it, and never leak raw Lua or internal implementation code. Never put Lua inside ARCSEN_UI JSON. Do not emit the marker for normal advice or code examples."
+            and ". When the user explicitly asks to create or update interactive UI inside this chat, emit one validated ARCSEN_UI JSON marker as described in the Core Prompt. Plan a compact parent-to-children tree first; use unique IDs, valid JSON, class-compatible properties and existing action targets. Use declarative state, expressions, bindings, nested conditions and small reusable parameterized functions before considering Lua. Keep descriptors compact enough for one complete response; top-level height MUST be at least 100px and MUST obey the exact UI Creation Height Limit supplied in runtime metadata (300px, 500px, 700px, 1000px or No Height Limit); never assume a 700px maximum. For numeric limits, never exceed the selected limit; for No Height Limit, use a finite, reasonable height. Use an internal ScrollingFrame if content needs more space; for graphs use a compact number of curve segments (normally 12-16 on mobile, never more than 20 unless explicitly requested), keep graph grid lines to a small readable set, avoid one Instance per minor tick, aim for no more than 80 child Instances in a graph, and avoid huge coordinate dumps; use textYAnchor (Top/Center/Bottom) plus optional textYOffset for text positioned against actual TextBounds rather than Parent height. Do not use generic Text=Default; TextBox hints belong in PlaceholderText, with Text omitted/empty when there is no initial value. The top-level rootOffsetY integer controls Root.Position.Y.Offset only (positive down, negative up, default 0; -300..300). Root Frame instance properties, X position, Parent and ClassName remain protected; never create ScreenGui or Script/LocalScript/ModuleScript Instances. Do not show Restore UI while a Root exists; the client handles Restore UI only when the Root disappears and automatically rebuilds UI on tab reopen. Output exactly one complete ARCSEN_UI marker without a code fence; keep explanation short outside it, and never leak raw Lua or internal implementation code. Never put Lua inside ARCSEN_UI JSON. Do not emit the marker for normal advice or code examples."
             or ". Disabled: do not emit ARCSEN_UI markers. Answer normally and explain that Settings > Arcsen's sandbox permission > Chat UI Generator must be set to Allow (Interactive UI) first if the user asks to create a visual panel.")
     if loc.API.ChatUIModeForRequest == "Allow" and loc.API.ChatUILuaPolicyForRequest.enabled then
         loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
