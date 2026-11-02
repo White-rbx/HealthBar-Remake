@@ -1,4 +1,4 @@
--- Loader script 7.35
+-- Loader script 7.36
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -446,7 +446,10 @@ local DEFAULT_DATA = {
         ThemeGradient1 = { 255, 255, 255 },
         ThemeGradient2 = { 255, 255, 255 },
         ThemeGradientRotation = 90,
-        MenuBackgroundTransparency = 0.08,
+        MenuBackgroundTransparency = 0.08, -- Compatibility mirror of the active Theme value.
+        MenuBackgroundTransparencyDefault = 0.08,
+        MenuBackgroundTransparencyImage = 0.1,
+        ThemeTileSize = 64,
         HideMenu = false,
         SettingsTransparency = 0.3,
         UIScale = 1,
@@ -511,8 +514,35 @@ loc.loadData = function()
         end
     end
 
+    -- Preserve the old single transparency value when migrating to per-theme values.
+    loc.LegacyThemeForTransparency = type(data.UI) == "table" and tostring(data.UI.Theme or "Default") or "Default"
+    if loc.LegacyThemeForTransparency ~= "Default" and loc.LegacyThemeForTransparency ~= "Anniversary"
+        and loc.LegacyThemeForTransparency ~= "Halloween" and loc.LegacyThemeForTransparency ~= "Custom" then
+        loc.LegacyThemeForTransparency = "Default"
+    end
+    loc.LegacyTransparencyValue = type(data.UI) == "table"
+        and tonumber(data.UI.MenuBackgroundTransparency) or nil
+    loc.HadDefaultTransparency = type(data.UI) == "table" and data.UI.MenuBackgroundTransparencyDefault ~= nil
+    loc.HadImageTransparency = type(data.UI) == "table" and data.UI.MenuBackgroundTransparencyImage ~= nil
+
     -- เติม default ที่ขาด
     loc.deepMerge(data, DEFAULT_DATA)
+
+    if not loc.HadDefaultTransparency then
+        data.UI.MenuBackgroundTransparencyDefault = loc.LegacyThemeForTransparency == "Default"
+            and math.clamp(loc.LegacyTransparencyValue or 0.08, 0, 1)
+            or 0.08
+    end
+    if not loc.HadImageTransparency then
+        data.UI.MenuBackgroundTransparencyImage = loc.LegacyThemeForTransparency ~= "Default"
+            and math.clamp(loc.LegacyTransparencyValue or 0.1, 0.1, 1)
+            or 0.1
+    end
+    if data.UI.Theme == "Default" then
+        data.UI.MenuBackgroundTransparency = data.UI.MenuBackgroundTransparencyDefault
+    else
+        data.UI.MenuBackgroundTransparency = data.UI.MenuBackgroundTransparencyImage
+    end
 
     -- save กลับทันที (กัน key หาย)
     loc.saveData(data)
@@ -1047,7 +1077,8 @@ loc.SEARCH_PAGE = nil
 loc.SEARCH_LIST_PATH = "ExperienceSettings.Menu.Search.List"
 loc.SEARCH_PAGE_PATH = "ExperienceSettings.Menu.Search.Page"
 loc.CURRENT_BG_COLOR = Color3.fromRGB(18, 18, 21)
-loc.CURRENT_BG_TRANSPARENCY = tonumber(Data.UI.MenuBackgroundTransparency) or 0.08
+loc.CURRENT_BG_TRANSPARENCY = tonumber(Data.UI.MenuBackgroundTransparencyDefault) or 0.08
+loc.CURRENT_TILE_SIZE = 64
 if type(Data.UI.BackgroundRGB) ~= "table" or #Data.UI.BackgroundRGB < 3 then
     Data.UI.BackgroundRGB = {18, 18, 21}
 end
@@ -1151,13 +1182,40 @@ end
 
 loc.clampBackgroundTransparency = function(value)
     value = tonumber(value)
-    if value == nil then return nil end
+    if value == nil or value ~= value or value == math.huge or value == -math.huge then return nil end
 
-    -- Default allows the full 0–1 range. Image themes keep at least 0.1 transparency
-    -- so the ImageBackground remains visible through the ExperienceSettings panels.
+    -- Default allows 0–1. Image themes keep at least 0.1 so ImageBackground remains visible.
     local minimum = Data.UI.Theme == "Default" and 0 or 0.1
     return math.clamp(value, minimum, 1)
 end
+
+loc.getActiveBackgroundTransparency = function()
+    if Data.UI.Theme == "Default" then
+        loc.ActiveTransparencyValue = tonumber(Data.UI.MenuBackgroundTransparencyDefault)
+        if loc.ActiveTransparencyValue == nil then loc.ActiveTransparencyValue = 0.08 end
+    else
+        loc.ActiveTransparencyValue = tonumber(Data.UI.MenuBackgroundTransparencyImage)
+        if loc.ActiveTransparencyValue == nil then loc.ActiveTransparencyValue = 0.1 end
+    end
+    return loc.clampBackgroundTransparency(loc.ActiveTransparencyValue)
+end
+
+loc.storeActiveBackgroundTransparency = function(value)
+    if Data.UI.Theme == "Default" then
+        Data.UI.MenuBackgroundTransparencyDefault = value
+    else
+        Data.UI.MenuBackgroundTransparencyImage = value
+    end
+    -- Keep the legacy field synchronized for older configs/tools.
+    Data.UI.MenuBackgroundTransparency = value
+end
+
+loc.clampThemeTileSize = function(value)
+    value = tonumber(value)
+    if value == nil or value ~= value or value == math.huge or value == -math.huge then return nil end
+    return math.max(12, math.floor(value))
+end
+Data.UI.ThemeTileSize = loc.clampThemeTileSize(Data.UI.ThemeTileSize) or 64
 
 -- These ExperienceSettings containers must always remain fully transparent.
 loc.isForcedTransparentBackground = function(inst)
@@ -1169,7 +1227,7 @@ end
 loc.applyBackgroundTransparency = function(value)
     value = loc.clampBackgroundTransparency(value)
     if value == nil then return false end
-    Data.UI.MenuBackgroundTransparency = value
+    loc.storeActiveBackgroundTransparency(value)
     loc.CURRENT_BG_TRANSPARENCY = value
     if #loc.CACHED_BGS == 0 then loc.refreshThemeTargets() end
     for _, inst in ipairs(loc.CACHED_BGS) do
@@ -1217,10 +1275,14 @@ loc.applyTheme = function()
     loc.CURRENT_BG_COLOR = Data.UI.Theme == "Default"
         and loc.rgbArrayToColor(Data.UI.BackgroundRGB, {18, 18, 21})
         or Color3.fromRGB(150, 150, 150)
-    local savedTransparency = tonumber(Data.UI.MenuBackgroundTransparency)
-    if savedTransparency == nil then savedTransparency = 0.08 end
-    loc.CURRENT_BG_TRANSPARENCY = loc.clampBackgroundTransparency(savedTransparency)
-    Data.UI.MenuBackgroundTransparency = loc.CURRENT_BG_TRANSPARENCY
+    loc.CURRENT_BG_TRANSPARENCY = loc.getActiveBackgroundTransparency()
+        or (Data.UI.Theme == "Default" and 0.08 or 0.1)
+    loc.storeActiveBackgroundTransparency(loc.CURRENT_BG_TRANSPARENCY)
+    Data.UI.ThemeTileSize = loc.clampThemeTileSize(Data.UI.ThemeTileSize) or 64
+    loc.CURRENT_TILE_SIZE = 64
+    if Data.UI.Theme == "Custom" then
+        loc.CURRENT_TILE_SIZE = Data.UI.ThemeTileSize
+    end
 
     for _, inst in ipairs(loc.CACHED_BGS) do
         if inst and inst.Parent then
@@ -1258,7 +1320,7 @@ loc.applyTheme = function()
                 loc.ThemeImage.BackgroundTransparency = 1
                 loc.ThemeImage.Image = loc.ThemeImageID
                 loc.ThemeImage.ScaleType = Enum.ScaleType.Tile
-                loc.ThemeImage.TileSize = UDim2.new(0, 64, 0, 64)
+                loc.ThemeImage.TileSize = UDim2.new(0, loc.CURRENT_TILE_SIZE or 64, 0, loc.CURRENT_TILE_SIZE or 64)
                 loc.ThemeImage.ZIndex = math.max(0, (tonumber(loc.ThemeImageParent.ZIndex) or 1) - 1)
                 loc.ThemeImage.Active = false
                 loc.ThemeImage.Parent = loc.ThemeImageParent
@@ -1327,7 +1389,7 @@ loc.ThemeSelectUI = loc.o(
         loc.updateThemeCustomRows()
         loc.applyTheme()
         if loc.BackgroundTransparencyUI and loc.BackgroundTransparencyUI.Input then
-            loc.BackgroundTransparencyUI.Input.Text = tostring(Data.UI.MenuBackgroundTransparency)
+            loc.BackgroundTransparencyUI.Input.Text = tostring(loc.getActiveBackgroundTransparency())
         end
         loc.saveData(Data)
         if ui and ui.SelectButton then ui.SelectButton.Text = value end
@@ -1338,6 +1400,7 @@ loc.ThemeSelectUI = loc.o(
 loc.updateThemeCustomRows = function()
     loc.ThemeRowsVisible = Data.UI.Theme == "Custom"
     if loc.ThemeImageUI and loc.ThemeImageUI.Frame then loc.ThemeImageUI.Frame.Visible = loc.ThemeRowsVisible end
+    if loc.ThemeTileSizeUI and loc.ThemeTileSizeUI.Frame then loc.ThemeTileSizeUI.Frame.Visible = loc.ThemeRowsVisible end
     if loc.ThemeGradientEditorFrame then loc.ThemeGradientEditorFrame.Visible = loc.ThemeRowsVisible end
 
     -- BackgroundColor3 can only be edited while the Default theme is selected.
@@ -1357,6 +1420,34 @@ loc.updateThemeCustomRows = function()
             loc.BackgroundColorUI.Button.BackgroundTransparency = loc.BackgroundColorEditable and 0.12 or 0.6
         end
     end
+end
+
+loc.ThemeTileSizeUI = loc.o(
+    "Set TileSize (px, minimum 12)",
+    255, 255, 255,
+    true, tostring(Data.UI.ThemeTileSize or 64),
+    true, "Save",
+    function(box)
+        local value = loc.clampThemeTileSize(box.Text)
+        if value ~= nil then
+            Data.UI.ThemeTileSize = value
+            box.Text = tostring(value)
+            loc.applyTheme()
+        end
+    end,
+    function(box, btn)
+        local value = loc.clampThemeTileSize(box.Text)
+        if value == nil then return end
+        Data.UI.ThemeTileSize = value
+        box.Text = tostring(value)
+        loc.saveData(Data)
+        loc.applyTheme()
+        btn.TextColor3 = Color3.fromRGB(0, 255, 0)
+        task.delay(0.35, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
+    end
+)
+if loc.ThemeTileSizeUI and loc.ThemeTileSizeUI.Input then
+    loc.ThemeTileSizeUI.Input.Text = tostring(Data.UI.ThemeTileSize or 64)
 end
 
 loc.ThemeImageUI = loc.o(
@@ -1563,19 +1654,19 @@ loc.saveData(Data)
 loc.BackgroundTransparencyUI = loc.o(
     "Set BackgroundTransparency",
     255, 255, 255,
-    true, tostring(Data.UI.MenuBackgroundTransparency or 0.08),
+    true, tostring(loc.getActiveBackgroundTransparency() or 0.08),
     true, "Save",
     function(box)
         local value = loc.clampBackgroundTransparency(box.Text)
         if value ~= nil then
-            Data.UI.MenuBackgroundTransparency = value
+            box.Text = tostring(value)
             loc.applyBackgroundTransparency(value)
         end
     end,
     function(box, btn)
         local value = loc.clampBackgroundTransparency(box.Text)
         if value == nil then return end
-        Data.UI.MenuBackgroundTransparency = value
+        loc.storeActiveBackgroundTransparency(value)
         box.Text = tostring(value)
         loc.saveData(Data)
         loc.applyBackgroundTransparency(value)
@@ -1584,7 +1675,7 @@ loc.BackgroundTransparencyUI = loc.o(
     end
 )
 if loc.BackgroundTransparencyUI and loc.BackgroundTransparencyUI.Input then
-    loc.BackgroundTransparencyUI.Input.Text = tostring(Data.UI.MenuBackgroundTransparency or 0.08)
+    loc.BackgroundTransparencyUI.Input.Text = tostring(loc.getActiveBackgroundTransparency() or 0.08)
 end
 
 -- Keep the current theme applied as delayed ExperienceSettings descendants appear.
