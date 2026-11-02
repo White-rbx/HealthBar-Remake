@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.81 Dynamic UI Height + meg TextBounds + Height Permission ",
+	sion = " UIs 7.2.82 meg Auto X + TextBounds Y ",
 	logs = [[
 # -- Update logs --
 (:1/11/2026: A) Added Interactive UI Engine: child-property type conversion, UI events, state bindings, reusable action functions, conditions, Tween actions, and connection cleanup. Root Frame and Parent remain system-controlled.
@@ -90,7 +90,8 @@ local ver = {
 (:2/11/2026: A) Stage 16.2: Add per-message Restore UI control; revalidate saved UI descriptors before rebuilding and bind scoped Explorer context to each message.
 (:2/11/2026: F) Stage 16.3: Harden current-chat GenerativeUI scope, revoke stale UI proxies, clean Restore/Body connections, and expand the Core Prompt function/expression guide.
 (:2/11/2026: A) Stage 16.4: Add Root Y-offset layout control, TextBox PlaceholderText fallback, clearer UI-generation workflow guidance, and conditional Restore UI only when the generated Root disappears.
-(:2/11/2026: F&A) Stage 16.5: Prevent incomplete ARCSEN_UI markers/JSON from leaking into chat; add TextBounds-aware Text Y anchoring and pixel offsets for generated text elements. Stage 16.6: Cap generated Chat UI height at 700px and document the limit in Core/Request prompts. Stage 16.7: Isolate TextBounds anchor rendering from the Chat UI build pipeline so anchor measurement or signal failures cannot prevent UI creation. Stage 16.8: Add user-selectable UI Creation Height Limit (300/500/700/1000px/No Height Limit), enforce it in validation/building and provide the active cap to Core/Request prompts. Stage 16.9: Rework meg() message TextBox to fill available width and resize its height from TextBounds.Y, including dynamic UpdateMegText changes.)]],
+(:2/11/2026: F&A) Stage 16.5: Prevent incomplete ARCSEN_UI markers/JSON from leaking into chat; add TextBounds-aware Text Y anchoring and pixel offsets for generated text elements. Stage 16.6: Cap generated Chat UI height at 700px and document the limit in Core/Request prompts. Stage 16.7: Isolate TextBounds anchor rendering from the Chat UI build pipeline so anchor measurement or signal failures cannot prevent UI creation. Stage 16.8: Add user-selectable UI Creation Height Limit (300/500/700/1000px/No Height Limit), enforce it in validation/building and provide the active cap to Core/Request prompts. Stage 16.9: Rework meg() message TextBox to fill available width and resize its height from TextBounds.Y, including dynamic UpdateMegText changes.
+(:2/11/2026: F) Stage 16.10: Keep meg() message width on AutomaticSize.X (bounded by the message column) and calculate only height from TextBounds.Y so long wrapped content expands vertically.)]],
 }
 
 ------------------------------------------------------------------------------------------
@@ -1097,6 +1098,18 @@ end
     scriptFn, callback, state
 ]]
 
+-- Keep meg() message sizing split by axis: AutomaticSize.X + TextBounds.Y.
+loc.ResizeMegTextBoxY = function(textBox)
+  if not textBox or not textBox.Parent then return false end
+  local measuredHeight = tonumber(textBox.TextBounds.Y) or 0
+  local targetHeight = math.max(25, math.ceil(measuredHeight + 8))
+  if textBox.Size.Y.Scale ~= 0 or textBox.Size.Y.Offset ~= targetHeight then
+    local currentSize = textBox.Size
+    textBox.Size = UDim2.new(currentSize.X.Scale, currentSize.X.Offset, 0, targetHeight)
+  end
+  return true
+end
+
 local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOptions)
   messageOptions = type(messageOptions) == "table" and messageOptions or {}
   local system = issys == true
@@ -1146,11 +1159,11 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
   
   local main = Instance.new("TextBox")
   main.Name = "Message"
-  main.AutomaticSize = Enum.AutomaticSize.None
+  main.AutomaticSize = Enum.AutomaticSize.X
   main.BorderMode = Enum.BorderMode.Inset
   main.BorderSizePixel = 3
   main.BackgroundColor3 = b_body.BackgroundColor3
-  main.Size = UDim2.new(1,0,0,25)
+  main.Size = UDim2.new(0,0,0,25)
   main.BackgroundTransparency = system and 1 or 0.5
   main.TextColor3 = b_body.BackgroundColor3
   messageOptions.RawText = tostring(txt or "Failed to generate.")
@@ -1169,22 +1182,28 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
       and loc.API.FormatSyntax(messageOptions.RawText) or messageOptions.RawText
   main.TextSize = 12
   main.LayoutOrder = 1
+  -- X auto-sizes to the rendered text but is capped by the message column.
+  -- Once X reaches the parent width, TextWrapped carries additional content into Y.
+  local messageWidthConstraint = Instance.new("UISizeConstraint")
+  messageWidthConstraint.MinSize = Vector2.new(1, 0)
+  messageWidthConstraint.MaxSize = Vector2.new(math.max(1, meg1.AbsoluteSize.X), 1000000)
+  messageWidthConstraint.Parent = main
   main.Parent = meg1
-  -- Measure the rendered text itself and resize only the TextBox height.
-  -- Width stays bound to the chat message column so TextWrapped controls line breaks.
+  local function refreshMessageWidthLimit()
+    if not main.Parent or not messageWidthConstraint.Parent then return end
+    messageWidthConstraint.MaxSize = Vector2.new(math.max(1, meg1.AbsoluteSize.X), 1000000)
+    task.defer(function()
+      if main.Parent then loc.ResizeMegTextBoxY(main) end
+    end)
+  end
+  meg1:GetPropertyChangedSignal("AbsoluteSize"):Connect(refreshMessageWidthLimit)
   main:GetPropertyChangedSignal("TextBounds"):Connect(function()
-    if not main.Parent then return end
-    local measuredHeight = tonumber(main.TextBounds.Y) or 0
-    local targetHeight = math.max(25, math.ceil(measuredHeight + 8))
-    if main.Size.Y.Offset ~= targetHeight then
-      main.Size = UDim2.new(1, 0, 0, targetHeight)
-    end
+    loc.ResizeMegTextBoxY(main)
   end)
   task.defer(function()
     if main.Parent then
-      local measuredHeight = tonumber(main.TextBounds.Y) or 0
-      local targetHeight = math.max(25, math.ceil(measuredHeight + 8))
-      if main.Size.Y.Offset ~= targetHeight then main.Size = UDim2.new(1, 0, 0, targetHeight) end
+      refreshMessageWidthLimit()
+      loc.ResizeMegTextBoxY(main)
     end
   end)
   b_body:SetAttribute("ArcsenIsSyn", messageOptions.IsSyn)
@@ -2311,37 +2330,34 @@ end
 
 loc.API.UpdateMegText = function(frame, newText, options)
     if not frame or not frame.Parent then return false end
-    loc.API.UpdateOptions = type(options) == "table" and options or {}
-    loc.API.UpdateRawText = tostring(newText or "")
-    loc.API.UpdateMain = nil
-    for _, updateDescendant in ipairs(frame:GetDescendants()) do
-        if updateDescendant:IsA("TextBox") and updateDescendant.Name == "Message" then
-            loc.API.UpdateMain = updateDescendant
+    local updateOptions = type(options) == "table" and options or {}
+    local rawText = tostring(newText or "")
+    local updateTarget
+    for _, descendant in ipairs(frame:GetDescendants()) do
+        if descendant:IsA("TextBox") and descendant.Name == "Message" then
+            updateTarget = descendant
             break
         end
     end
-    if not loc.API.UpdateMain then return false end
-    loc.API.UpdateStoredOptions = loc.API.MegOptionsByFrame and loc.API.MegOptionsByFrame[frame]
-    if type(loc.API.UpdateStoredOptions) ~= "table" then loc.API.UpdateStoredOptions = {} end
-    if loc.API.UpdateOptions.IsSyn ~= nil then loc.API.UpdateStoredOptions.IsSyn = loc.API.UpdateOptions.IsSyn == true end
-    if loc.API.UpdateOptions.RichText ~= nil then loc.API.UpdateStoredOptions.RichText = loc.API.UpdateOptions.RichText == true end
-    loc.API.UpdateStoredOptions.RawText = loc.API.UpdateRawText
-    loc.API.UpdateMain.RichText = loc.API.UpdateStoredOptions.IsSyn == true or loc.API.UpdateStoredOptions.RichText == true
-    if loc.API.UpdateStoredOptions.IsSyn == true then
-        loc.API.UpdateMain.Text = loc.API.FormatSyntax(loc.API.UpdateRawText)
+    if not updateTarget then return false end
+    local storedOptions = loc.API.MegOptionsByFrame and loc.API.MegOptionsByFrame[frame]
+    if type(storedOptions) ~= "table" then storedOptions = {} end
+    if updateOptions.IsSyn ~= nil then storedOptions.IsSyn = updateOptions.IsSyn == true end
+    if updateOptions.RichText ~= nil then storedOptions.RichText = updateOptions.RichText == true end
+    storedOptions.RawText = rawText
+    updateTarget.RichText = storedOptions.IsSyn == true or storedOptions.RichText == true
+    if storedOptions.IsSyn == true then
+        updateTarget.Text = loc.API.FormatSyntax(rawText)
     else
-        loc.API.UpdateMain.Text = loc.API.UpdateRawText
+        updateTarget.Text = rawText
     end
-    frame:SetAttribute("ArcsenIsSyn", loc.API.UpdateStoredOptions.IsSyn == true)
-    frame:SetAttribute("ArcsenRichText", loc.API.UpdateStoredOptions.RichText == true)
-    task.defer(function(updateTarget)
-        if updateTarget and updateTarget.Parent then
-            loc.API.UpdateMeasureHeight = math.max(25, math.ceil((tonumber(updateTarget.TextBounds.Y) or 0) + 8))
-            if updateTarget.Size.Y.Offset ~= loc.API.UpdateMeasureHeight then
-                updateTarget.Size = UDim2.new(1, 0, 0, loc.API.UpdateMeasureHeight)
-            end
+    frame:SetAttribute("ArcsenIsSyn", storedOptions.IsSyn == true)
+    frame:SetAttribute("ArcsenRichText", storedOptions.RichText == true)
+    task.defer(function(target)
+        if target and target.Parent then
+            loc.ResizeMegTextBoxY(target)
         end
-    end, loc.API.UpdateMain)
+    end, updateTarget)
     return true
 end
 
