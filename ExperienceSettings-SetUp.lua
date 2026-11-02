@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 1.245 Oof]]
+local v_ver = [[ExperienceSettings-SetUp 1.246 Oof]]
 
 ------------------------------------------------------------------------------------------
 
@@ -211,7 +211,7 @@ Frame.Parent = Screen
 
 local imgbg = Instance.new("ImageLabel")
 imgbg.Active = false
-imgbg.Size = UDin2.new(1,0,1,0)
+imgbg.Size = UDim2.new(1,0,1,0)
 imgbg.BackgroundTransparency = 1
 imgbg.Image = "rbxassetid://83287919609198"
 imgbg.ImageTransparency = 1
