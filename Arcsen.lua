@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.79 UI Output Guard + Text Y Anchor ",
+	sion = " UIs 7.2.80 UI Anchor Isolation + UI Build Safety ",
 	logs = [[
 # -- Update logs --
 (:1/11/2026: A) Added Interactive UI Engine: child-property type conversion, UI events, state bindings, reusable action functions, conditions, Tween actions, and connection cleanup. Root Frame and Parent remain system-controlled.
@@ -90,7 +90,7 @@ local ver = {
 (:2/11/2026: A) Stage 16.2: Add per-message Restore UI control; revalidate saved UI descriptors before rebuilding and bind scoped Explorer context to each message.
 (:2/11/2026: F) Stage 16.3: Harden current-chat GenerativeUI scope, revoke stale UI proxies, clean Restore/Body connections, and expand the Core Prompt function/expression guide.
 (:2/11/2026: A) Stage 16.4: Add Root Y-offset layout control, TextBox PlaceholderText fallback, clearer UI-generation workflow guidance, and conditional Restore UI only when the generated Root disappears.
-(:2/11/2026: F&A) Stage 16.5: Prevent incomplete ARCSEN_UI markers/JSON from leaking into chat; add TextBounds-aware Text Y anchoring and pixel offsets for generated text elements. Stage 16.6: Cap generated Chat UI height at 700px and document the limit in Core/Request prompts.)]],
+(:2/11/2026: F&A) Stage 16.5: Prevent incomplete ARCSEN_UI markers/JSON from leaking into chat; add TextBounds-aware Text Y anchoring and pixel offsets for generated text elements. Stage 16.6: Cap generated Chat UI height at 700px and document the limit in Core/Request prompts. Stage 16.7: Isolate TextBounds anchor rendering from the Chat UI build pipeline so anchor measurement or signal failures cannot prevent UI creation.)]],
 }
 
 ------------------------------------------------------------------------------------------
@@ -7077,51 +7077,65 @@ loc.API.ApplyChatUITextAnchor = function(anchor)
 end
 
 loc.API.RegisterChatUITextAnchors = function(context)
-    if not context or context.destroyed then return end
+    if not context or context.destroyed then return false end
     for _, anchor in ipairs(context.textAnchors or {}) do
-        if anchor.instance and anchor.instance.Parent then
-            loc.API.ApplyChatUITextAnchor(anchor)
-            for _, propertyName in ipairs({"TextBounds", "Text", "TextSize", "TextWrapped", "Font", "FontFace", "TextScaled", "AbsoluteSize"}) do
+        -- Text measurement is an optional visual enhancement. It must never abort UI creation.
+        pcall(function()
+            if not anchor.instance or not anchor.instance.Parent then return end
+            pcall(loc.API.ApplyChatUITextAnchor, anchor)
+            for _, propertyName in ipairs({"Text", "TextSize", "TextWrapped", "Font", "FontFace", "TextScaled", "AbsoluteSize", "RichText"}) do
                 loc.API.ChatUIAnchorSignalOK, loc.API.ChatUIAnchorSignal = pcall(function()
                     return anchor.instance:GetPropertyChangedSignal(propertyName)
                 end)
                 if loc.API.ChatUIAnchorSignalOK and loc.API.ChatUIAnchorSignal then
-                    loc.API.ChatUIAnchorConnection = loc.API.ChatUIAnchorSignal:Connect(function()
-                        if not context.destroyed then
-                            task.defer(function()
-                                if not context.destroyed then loc.API.ApplyChatUITextAnchor(anchor) end
-                            end)
-                        end
+                    loc.API.ChatUIAnchorConnectOK, loc.API.ChatUIAnchorConnection = pcall(function()
+                        return loc.API.ChatUIAnchorSignal:Connect(function()
+                            if not context.destroyed then
+                                task.defer(function()
+                                    if not context.destroyed then
+                                        pcall(loc.API.ApplyChatUITextAnchor, anchor)
+                                    end
+                                end)
+                            end
+                        end)
                     end)
-                    table.insert(context.connections, {instance = anchor.instance, connection = loc.API.ChatUIAnchorConnection})
+                    if loc.API.ChatUIAnchorConnectOK and loc.API.ChatUIAnchorConnection then
+                        table.insert(context.connections, {instance = anchor.instance, connection = loc.API.ChatUIAnchorConnection})
+                    end
                 end
             end
-            -- Preserve external Position changes as the new anchor point without accumulating our own offset.
+            -- Preserve externally changed Position as the new anchor point without accumulating our own offset.
             loc.API.ChatUIAnchorPositionSignalOK, loc.API.ChatUIAnchorPositionSignal = pcall(function()
                 return anchor.instance:GetPropertyChangedSignal("Position")
             end)
             if loc.API.ChatUIAnchorPositionSignalOK and loc.API.ChatUIAnchorPositionSignal then
-                loc.API.ChatUIAnchorPositionConnection = loc.API.ChatUIAnchorPositionSignal:Connect(function()
-                    if context.destroyed or anchor.updating then return end
-                    loc.API.ChatUIAnchorCurrentPosition = anchor.instance.Position
-                    loc.API.ChatUIAnchorCurrentTextHeight = 0
-                    pcall(function() loc.API.ChatUIAnchorCurrentTextHeight = math.max(0, anchor.instance.TextBounds.Y) end)
-                    loc.API.ChatUIAnchorCurrentShift = loc.API.ChatUIAnchorCurrentTextHeight * (tonumber(anchor.factor) or 0)
-                        - (tonumber(anchor.extraOffset) or 0)
-                    anchor.basePosition = UDim2.new(
-                        loc.API.ChatUIAnchorCurrentPosition.X.Scale,
-                        loc.API.ChatUIAnchorCurrentPosition.X.Offset,
-                        loc.API.ChatUIAnchorCurrentPosition.Y.Scale,
-                        loc.API.ChatUIAnchorCurrentPosition.Y.Offset + loc.API.ChatUIAnchorCurrentShift
-                    )
-                    task.defer(function()
-                        if not context.destroyed then loc.API.ApplyChatUITextAnchor(anchor) end
+                loc.API.ChatUIAnchorPositionConnectOK, loc.API.ChatUIAnchorPositionConnection = pcall(function()
+                    return loc.API.ChatUIAnchorPositionSignal:Connect(function()
+                        if context.destroyed or anchor.updating then return end
+                        pcall(function()
+                            loc.API.ChatUIAnchorCurrentPosition = anchor.instance.Position
+                            loc.API.ChatUIAnchorCurrentTextHeight = math.max(0, anchor.instance.TextBounds.Y)
+                            loc.API.ChatUIAnchorCurrentShift = loc.API.ChatUIAnchorCurrentTextHeight * (tonumber(anchor.factor) or 0)
+                                - (tonumber(anchor.extraOffset) or 0)
+                            anchor.basePosition = UDim2.new(
+                                loc.API.ChatUIAnchorCurrentPosition.X.Scale,
+                                loc.API.ChatUIAnchorCurrentPosition.X.Offset,
+                                loc.API.ChatUIAnchorCurrentPosition.Y.Scale,
+                                loc.API.ChatUIAnchorCurrentPosition.Y.Offset + loc.API.ChatUIAnchorCurrentShift
+                            )
+                            task.defer(function()
+                                if not context.destroyed then pcall(loc.API.ApplyChatUITextAnchor, anchor) end
+                            end)
+                        end)
                     end)
                 end)
-                table.insert(context.connections, {instance = anchor.instance, connection = loc.API.ChatUIAnchorPositionConnection})
+                if loc.API.ChatUIAnchorPositionConnectOK and loc.API.ChatUIAnchorPositionConnection then
+                    table.insert(context.connections, {instance = anchor.instance, connection = loc.API.ChatUIAnchorPositionConnection})
+                end
             end
-        end
+        end)
     end
+    return true
 end
 
 -- Build every Instance first, then apply properties/bindings and connect events. Parent is always builder-owned.
@@ -7208,7 +7222,8 @@ loc.API.CreateChatUIInstanceTree = function(rootNode, parent, rootHeight, rootOf
         end
     end
     for _, binding in ipairs(context.bindings) do loc.API.ChatUIApplyBinding(context, binding) end
-    loc.API.RegisterChatUITextAnchors(context)
+    -- TextBounds anchoring is best-effort only; failures must not block the generated UI.
+    loc.API.ChatUITextAnchorRegisterOK, loc.API.ChatUITextAnchorRegisterError = pcall(loc.API.RegisterChatUITextAnchors, context)
     loc.API.ConnectChatUIEvents(context)
     return loc.API.ChatUIRootInstance
 end
