@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 1.242 Oof]]
+local v_ver = [[ExperienceSettings-SetUp 1.245 Oof]]
 
 ------------------------------------------------------------------------------------------
 
@@ -208,6 +208,15 @@ Frame.Size = UDim2.new(1,0,1,0)
 Frame.BackgroundColor3 = Color3.new(0,0,0)
 Frame.BackgroundTransparency = 1
 Frame.Parent = Screen
+
+local imgbg = Instance.new("ImageLabel")
+imgbg.Active = false
+imgbg.Size = UDin2.new(1,0,1,0)
+imgbg.BackgroundTransparency = 1
+imgbg.Image = "rbxassetid://83287919609198"
+imgbg.ImageTransparency = 1
+imgbg.ZIndex = 0
+imgbg.Parent = Frame
 
 local Image = Instance.new("ImageLabel")
 Image.AnchorPoint = Vector2.new(0.5,0.5)
@@ -438,6 +447,10 @@ TweenService:Create(Logo, TweenInfo.new(0.5), {
 	ImageTransparency = 0
 }):Play()
 
+TweenService:Create(imgbg, TweenInfo.new(0.5), {
+	ImageTransparency = 0
+}):Play()
+
 TweenService:Create(Team, TweenInfo.new(0.5), {
 	TextTransparency = 0
 }):Play()
@@ -546,6 +559,10 @@ Error: <font size="10" face="Code">]] .. msg .. [[</font>]]
 		}):Play()
 
 		TweenService:Create(Logo, TweenInfo.new(0.5), {
+	        ImageTransparency = 1
+        }):Play()
+
+		TweenService:Create(imgbg, TweenInfo.new(0.5), {
 	        ImageTransparency = 1
         }):Play()
 
