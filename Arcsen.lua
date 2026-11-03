@@ -1,8 +1,8 @@
 local ver = {
-	sion = " UIs 7.2.88 Provider Diagnostics & Descriptor Recovery ",
+	sion = " UIs 7.2.885 Declarative UI Structure Guide ",
 	logs = [[
 # -- Update logs --
-(:3/11/2026: F) Stage 16.16: Add provider truncation diagnostics to Chat UI failures, including configured token limit and exact output-token usage when reported; keep required-token count explicitly unknown.
+(:3/11/2026: A) Stage 16.16: Add a schema-accurate Declarative Chat UI Structure Guide covering descriptor shape, Instance hierarchy, class/container rules, state flow and JSON preflight checks.
 (:3/11/2026: F) Stage 16.15: Diagnose provider output truncation across Gemini/OpenAI/Claude/DeepSeek; hide partial ARCSEN_UI prefixes; report exact marker/JSON parse stage; remove prompt pressure to shrink requested UI or graph data.
 (:3/11/2026: F) Stage 16.13: Remove the configurable Chat UI Height Limit; let Arcsen choose a finite content-fitting Root height with numeric safety validation and no configured maximum.
 (:3/11/2026: F&A) Stage 16.14: Remove graph child-Instance count guidance; add a Root-child loading overlay and hidden staging container, build UI progressively with live FillBar progress, reveal completed UI and destroy the loading overlay only after the FillBar reaches 100%; set minimum Root height to 180px.
@@ -2050,6 +2050,59 @@ CHAT UI FUNCTION / EXPRESSION GUIDE:
 - Conditions use one selector (state, event or variable), for example {"state":"count","greaterThan":3}; combine them with {"and":[condition1,condition2]}, {"or":[...]}, or {"not":condition}. The then/else values are action arrays.
 - Keep functions small and reusable. Event actions are declarative and bounded by the client action budget; do not create recursive loops or attempt to evade limits.
 - Lua is not part of the ARCSEN_UI JSON. If Create Lua Script is Don't, stay entirely within declarative actions, state, expressions, bindings and functions. If Lua is enabled, use a separate Lua action only after a GenerativeUI tree exists. Do not emit ARCSEN_UI and ARCSEN_LUA_SCRIPT in the same response; create the UI first, then use the scoped GenerativeUI proxy in a later request if Lua is genuinely necessary.
+
+
+CHAT UI STRUCTURE JSON PLAYBOOK (FOLLOW THIS BEFORE GENERATING ANY UI):
+Think of the descriptor as two connected parts: (1) an Instance tree that defines what exists and where it is parented, and (2) declarative logic that defines how it changes. Plan both before serializing JSON. Do not treat the request as a flat list of widgets.
+
+1) PLAN THE TREE FIRST:
+- Convert the request into a hierarchy: protected Root Frame -> main GuiObject containers -> sections/panels -> labels, inputs, buttons and visual decorations.
+- Example for a small game: Root -> GamePanel -> Header, StatusLabel, Board, RestartButton; Board -> row/cell containers or the required cell buttons. Every visible element must have an intentional parent.
+- Place UICorner, UIStroke, UIGradient, UIPadding, UIListLayout, UIGridLayout, UIPageLayout, UITableLayout, UIAspectRatioConstraint, UIScale and UITextSizeConstraint under the GuiObject they decorate or control. These non-GuiObject Instances are not containers.
+- A node may contain children only when its class is one of: Frame, CanvasGroup, TextLabel, TextButton, TextBox, ImageLabel, ImageButton or ScrollingFrame. Do not put children under UIStroke, UICorner or a layout/constraint.
+
+2) USE THIS DESCRIPTOR SHAPE:
+{
+  "height": 180,
+  "rootOffsetY": 0,
+  "state": {},
+  "functions": {},
+  "root": {"class": "Frame", "children": []}
+}
+- root is required and MUST be a Frame. It is a protected, invisible clipping viewport; it is not the visible panel. Give it at least one visible GuiObject child.
+- height is a finite integer of at least 180 px. Choose it to fit the complete UI; there is no configured maximum. rootOffsetY is optional and only for vertical offset.
+- state is an optional object of initial values. functions is an optional object of named reusable action definitions. Keep both at the descriptor top level, not inside root.
+
+3) USE THIS NODE SHAPE:
+{"id":"uniqueId","name":"ReadableName","class":"TextButton","properties":{},"bindings":{},"events":{},"children":[]}
+- class is required and must be one of the supported classes: Frame, CanvasGroup, TextLabel, TextButton, TextBox, ImageLabel, ImageButton, ScrollingFrame, UICorner, UIStroke, UIGradient, UIPadding, UIListLayout, UIGridLayout, UIPageLayout, UITableLayout, UIAspectRatioConstraint, UIScale or UITextSizeConstraint.
+- Give every non-root node a short, unique id. Actions and references use id, not name. name is optional and only a readable Instance name.
+- properties contains writable Roblox properties for that class. Use valid Roblox property names and encode value types using the formats described in CHAT UI GENERATOR. Never set Parent or ClassName; the builder owns them. Root properties are ignored and must not be used for layout or styling.
+- children is an array of child node objects. Omit it or use [] when the node has no children. Keep arrays as arrays and objects as objects.
+- bindings maps a child property name to a state binding, for example {"Text":{"state":"score","prefix":"Score: "}}. The binding's state key must exist in the top-level state object.
+- events maps a supported event name to an action array. Put events only on the child node that receives the event; do not put events on root.
+- For TextLabel, TextButton and TextBox only, textYAnchor may be Top/Center/Bottom and textYOffset may be a finite pixel number.
+
+4) MATCH CLASSES AND EVENTS:
+- GuiObject containers: Frame, CanvasGroup, TextLabel, TextButton, TextBox, ImageLabel, ImageButton, ScrollingFrame.
+- Decoration/layout classes are leaves; parent them under the GuiObject they affect.
+- Activated is valid on TextButton and ImageButton. TextChanged, Focused and FocusLost are valid on TextBox. MouseEnter, MouseLeave, InputBegan and InputEnded are valid on GuiObject classes. Never invent an event name or attach an event to an incompatible class.
+- Use exactly the supported action names and argument fields listed in CHAT UI EVENTS AND LOGIC. Never invent action types, binding formats, expression operators or condition keys.
+
+5) KEEP VISUALS AND LOGIC SEPARATE:
+- properties describes initial appearance and layout.
+- state stores changing data, such as score, turn, board, status or selected cell.
+- bindings display state on child properties; events receive input; functions group reusable action arrays.
+- Typical flow: a button's events.Activated calls a named function -> the function updates state -> bindings refresh the displayed text/visibility/property. Do not duplicate a displayed value in unrelated places when one binding can keep it synchronized.
+- Use $state, $event, $var and $expr only in supported action values. Use Call for reusable functions. Avoid recursive function calls, self-triggering event chains and unnecessary action steps.
+
+6) JSON PREFLIGHT BEFORE EMITTING:
+- Confirm the descriptor is one JSON object with double-quoted keys/strings, valid commas, balanced braces/brackets and no comments, trailing commas, NaN or Infinity.
+- Confirm root.class is Frame and root has at least one visible GuiObject child.
+- Confirm every class is allowed, every parent can contain its children, every non-root id is unique, and all action targets/function names/state keys exist.
+- Confirm each event is supported by that exact class, each event/function body is an action array, and each binding has a valid state key.
+- Confirm property value encodings match the expected Roblox type. Keep the complete requested controls, content and data; simplify only genuinely redundant structure.
+- Only after the checks pass, serialize compactly and emit one complete [[ARCSEN_UI:{...}]] marker. Do not put Markdown fences, comments, Lua code or explanatory prose inside the marker. Never start a marker when you cannot finish it; explain the output-budget limitation outside the marker instead.
 
 sUNC / EXECUTOR ENVIRONMENT:
 - Arcsen runs on the Roblox client and its host executor may support sUNC functions. You may use or explain sUNC-compatible Luau functions when helping the user write code, if that function is actually provided by their executor. Examples can include getcustomasset, request, readfile, or writefile; do not assume any one of them is available.
@@ -5389,18 +5442,9 @@ end
 
 loc.API.GetProviderTruncationDiagnostic = function()
     if not loc.API.ResponseOutputTruncated then return "" end
-    loc.API.TruncationTokenLimit = tonumber(loc.API.ResponseTokenLimit or loc.API.RequestToken)
-    loc.API.TruncationTokensUsed = tonumber(loc.API.ResponseOutputTokens)
-    loc.API.TruncationTokenLimitText = loc.API.TruncationTokenLimit
-        and loc.API.FormatTokenCount(loc.API.TruncationTokenLimit) or "Unavailable"
-    loc.API.TruncationTokensUsedText = loc.API.TruncationTokensUsed
-        and loc.API.FormatTokenCount(loc.API.TruncationTokensUsed) or "Unavailable (provider did not report output usage)"
-    return "\nProvider diagnostics:"
-        .. "\nProvider: " .. tostring(loc.API.ResponseProvider or "unknown")
-        .. "\nFinish Reason: " .. tostring(loc.API.ResponseFinishReason or "unknown")
-        .. "\nTokens Limit: " .. loc.API.TruncationTokenLimitText
-        .. "\nTokens Used: " .. loc.API.TruncationTokensUsedText
-        .. "\nTokens Needed: Unknown (the provider does not report the total required output tokens)."
+    return " Provider output stopped at its output-token limit (provider="
+        .. tostring(loc.API.ResponseProvider or "unknown")
+        .. ", finish_reason=" .. tostring(loc.API.ResponseFinishReason or "unknown") .. ")."
 end
 
 loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
@@ -5410,9 +5454,6 @@ loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
     loc.API.ResponseProvider = loc.API.RequestProvider
     loc.API.ResponseFinishReason = ""
     loc.API.ResponseOutputTruncated = false
-    loc.API.ResponseTokenLimit = nil
-    loc.API.ResponseOutputTokens = nil
-    loc.API.ResponseUsage = nil
     loc.API.RequestKey = tostring(config.APIKey or "")
     if loc.API.RequestKey == "" then error("API key is missing. Open API Settings and add your provider key.") end
     if not loc.API.RequestProvider then error("Unsupported model selected: " .. loc.API.RequestModel) end
@@ -5525,7 +5566,6 @@ loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
         loc.API.ResponseBody = loc.API.SendHTTP(loc.API.RequestURL, "POST", loc.API.RequestHeaders, s.HttpService:JSONEncode(loc.API.RequestBody), requestMeta)
     end
     loc.API.ResponseData = s.HttpService:JSONDecode(loc.API.ResponseBody)
-    loc.API.ResponseTokenLimit = loc.API.RequestToken
     loc.API.ResponseFinishReason = loc.API.GetProviderFinishReason(loc.API.RequestProvider, loc.API.ResponseData)
     loc.API.ResponseOutputTruncated = loc.API.IsProviderOutputTruncated(loc.API.RequestProvider, loc.API.ResponseFinishReason)
     loc.API.EmptyResponseReason = nil
@@ -5539,13 +5579,6 @@ loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
     end
     loc.API.ResponseUsage = type(loc.API.ResponseData.usage) == "table" and loc.API.ResponseData.usage
         or (type(loc.API.ResponseData.usageMetadata) == "table" and loc.API.ResponseData.usageMetadata or {})
-    -- Keep exact completion/output usage separate from estimated daily totals.
-    -- Gemini: candidatesTokenCount; OpenAI/DeepSeek: completion_tokens; Claude: output_tokens.
-    loc.API.ResponseOutputTokens = tonumber(
-        loc.API.ResponseUsage.completion_tokens
-        or loc.API.ResponseUsage.output_tokens
-        or loc.API.ResponseUsage.candidatesTokenCount
-    )
     loc.API.RecordDailyTokenUsage(
         loc.API.RequestProvider,
         loc.API.RequestModel,
@@ -10163,7 +10196,7 @@ loc.API.GenerateResponse = function(chatID, userIndex)
             loc.API.TaskResponseText = tostring(loc.API.TaskResponseText or "")
                 .. "\n\n[Chat UI was not created. Stage: marker extraction. Reason: "
                 .. tostring(loc.API.ChatUIMarkerError):sub(1, 420)
-                .. "\nRaw UI data was hidden.]"
+                .. " Raw UI data was hidden.]"
         end
         if loc.API.ChatUIMarkerJSON then
             if requestMeta and requestMeta.ChatUIMode == "Allow" and loc.API.ChatUIMode == "Allow" then
