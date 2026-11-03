@@ -1,7 +1,8 @@
 local ver = {
-	sion = " UIs 7.2.885 Declarative UI Structure Guide ",
+	sion = " UIs 7.2.89 Last Token Usage ",
 	logs = [[
 # -- Update logs --
+(:3/11/2026: A) Stage 16.17: Add persistent Last Token Used diagnostics in API Settings with exact/estimated totals, input/output breakdown, provider/model, and optional thinking-token metadata.
 (:3/11/2026: A) Stage 16.16: Add a schema-accurate Declarative Chat UI Structure Guide covering descriptor shape, Instance hierarchy, class/container rules, state flow and JSON preflight checks.
 (:3/11/2026: F) Stage 16.15: Diagnose provider output truncation across Gemini/OpenAI/Claude/DeepSeek; hide partial ARCSEN_UI prefixes; report exact marker/JSON parse stage; remove prompt pressure to shrink requested UI or graph data.
 (:3/11/2026: F) Stage 16.13: Remove the configurable Chat UI Height Limit; let Arcsen choose a finite content-fitting Root height with numeric safety validation and no configured maximum.
@@ -3076,17 +3077,44 @@ loc.API.RefreshDailyTokenUsage = function()
     if loc.API.DailyTokenUsageCaption and loc.API.DailyTokenUsageCaption.Parent then
         loc.API.DailyTokenUsageCaption.Text = "All models • " .. tostring(tonumber(loc.API.DailyTokenUsage.Requests) or 0) .. " requests • resets daily"
     end
+    loc.API.LastTokenUsage = type(loc.API.DailyTokenUsage.LastRequest) == "table" and loc.API.DailyTokenUsage.LastRequest or {}
+    if loc.API.LastTokenUsageValue and loc.API.LastTokenUsageValue.Parent then
+        if loc.API.LastTokenUsage.HasRequest == true then
+            loc.API.LastTokenUsagePrefix = loc.API.LastTokenUsage.Estimated == true and "~" or ""
+            loc.API.LastTokenUsageValue.Text = loc.API.LastTokenUsagePrefix .. loc.API.FormatTokenCount(loc.API.LastTokenUsage.Total) .. " tokens"
+        else
+            loc.API.LastTokenUsageValue.Text = "No request yet"
+        end
+    end
+    if loc.API.LastTokenUsageCaption and loc.API.LastTokenUsageCaption.Parent then
+        if loc.API.LastTokenUsage.HasRequest == true then
+            loc.API.LastTokenUsageInputText = loc.API.LastTokenUsage.InputAvailable == true and loc.API.FormatTokenCount(loc.API.LastTokenUsage.Input) or "?"
+            loc.API.LastTokenUsageOutputText = loc.API.LastTokenUsage.OutputAvailable == true and loc.API.FormatTokenCount(loc.API.LastTokenUsage.Output) or "?"
+            loc.API.LastTokenUsageCaption.Text = tostring(loc.API.LastTokenUsage.Provider or "Unknown") .. " / " .. tostring(loc.API.LastTokenUsage.Model or "Unknown")
+                .. " • In " .. loc.API.LastTokenUsageInputText .. " • Out " .. loc.API.LastTokenUsageOutputText
+            if tonumber(loc.API.LastTokenUsage.Thinking) then
+                loc.API.LastTokenUsageCaption.Text = loc.API.LastTokenUsageCaption.Text .. " • Think " .. loc.API.FormatTokenCount(loc.API.LastTokenUsage.Thinking)
+            end
+            if tonumber(loc.API.LastTokenUsage.Timestamp) then
+                loc.API.LastTokenUsageCaption.Text = loc.API.LastTokenUsageCaption.Text .. " • " .. os.date("%H:%M", tonumber(loc.API.LastTokenUsage.Timestamp))
+            end
+        else
+            loc.API.LastTokenUsageCaption.Text = "Input / output usage will appear after a request"
+        end
+    end
 end
 loc.API.DailyUsageRefreshDay = function()
     loc.API.DailyTokenUsage = type(loc.API.DailyTokenUsage) == "table" and loc.API.DailyTokenUsage or {}
     if tostring(loc.API.DailyTokenUsage.Date or "") ~= loc.API.GetDailyUsageDate() then
+        loc.API.DailyUsageLastRequest = type(loc.API.DailyTokenUsage.LastRequest) == "table" and loc.API.DailyTokenUsage.LastRequest or {HasRequest = false}
         loc.API.DailyTokenUsage = {
             Date = loc.API.GetDailyUsageDate(),
             TotalTokens = 0,
             ExactTokens = 0,
             EstimatedTokens = 0,
             Requests = 0,
-            ByProvider = {}
+            ByProvider = {},
+            LastRequest = loc.API.DailyUsageLastRequest
         }
         loc.API.SaveDailyTokenUsage()
     end
@@ -3098,7 +3126,8 @@ loc.API.LoadDailyTokenUsage = function()
         ExactTokens = 0,
         EstimatedTokens = 0,
         Requests = 0,
-        ByProvider = {}
+        ByProvider = {},
+        LastRequest = {HasRequest = false}
     }
     loc.API.EnsureDailyUsageFolder()
     if type(isfile) == "function" and type(readfile) == "function" then
@@ -3107,9 +3136,14 @@ loc.API.LoadDailyTokenUsage = function()
             loc.API.DailyUsageReadOK, loc.API.DailyUsageReadData = pcall(function()
                 return s.HttpService:JSONDecode(readfile(loc.API.DailyTokenUsageFile))
             end)
-            if loc.API.DailyUsageReadOK and type(loc.API.DailyUsageReadData) == "table"
-                and tostring(loc.API.DailyUsageReadData.Date or "") == loc.API.GetDailyUsageDate() then
-                loc.API.DailyTokenUsage = loc.API.DailyUsageReadData
+            if loc.API.DailyUsageReadOK and type(loc.API.DailyUsageReadData) == "table" then
+                if tostring(loc.API.DailyUsageReadData.Date or "") == loc.API.GetDailyUsageDate() then
+                    loc.API.DailyTokenUsage = loc.API.DailyUsageReadData
+                else
+                    -- Daily totals roll over, but the most recent request remains useful diagnostics.
+                    loc.API.DailyTokenUsage.LastRequest = type(loc.API.DailyUsageReadData.LastRequest) == "table"
+                        and loc.API.DailyUsageReadData.LastRequest or {HasRequest = false}
+                end
             end
         end
     end
@@ -3118,6 +3152,19 @@ loc.API.LoadDailyTokenUsage = function()
     loc.API.DailyTokenUsage.EstimatedTokens = math.max(0, math.floor(tonumber(loc.API.DailyTokenUsage.EstimatedTokens) or 0))
     loc.API.DailyTokenUsage.Requests = math.max(0, math.floor(tonumber(loc.API.DailyTokenUsage.Requests) or 0))
     loc.API.DailyTokenUsage.ByProvider = type(loc.API.DailyTokenUsage.ByProvider) == "table" and loc.API.DailyTokenUsage.ByProvider or {}
+    loc.API.DailyTokenUsage.LastRequest = type(loc.API.DailyTokenUsage.LastRequest) == "table" and loc.API.DailyTokenUsage.LastRequest or {HasRequest = false}
+    loc.API.LastTokenUsage = loc.API.DailyTokenUsage.LastRequest
+    loc.API.LastTokenUsage.HasRequest = loc.API.LastTokenUsage.HasRequest == true
+    loc.API.LastTokenUsage.Total = math.max(0, math.floor(tonumber(loc.API.LastTokenUsage.Total) or 0))
+    loc.API.LastTokenUsage.Input = tonumber(loc.API.LastTokenUsage.Input)
+    loc.API.LastTokenUsage.Output = tonumber(loc.API.LastTokenUsage.Output)
+    loc.API.LastTokenUsage.Thinking = tonumber(loc.API.LastTokenUsage.Thinking)
+    loc.API.LastTokenUsage.InputAvailable = loc.API.LastTokenUsage.InputAvailable == true
+    loc.API.LastTokenUsage.OutputAvailable = loc.API.LastTokenUsage.OutputAvailable == true
+    loc.API.LastTokenUsage.Estimated = loc.API.LastTokenUsage.Estimated == true
+    loc.API.LastTokenUsage.Provider = tostring(loc.API.LastTokenUsage.Provider or "Unknown")
+    loc.API.LastTokenUsage.Model = tostring(loc.API.LastTokenUsage.Model or "Unknown")
+    loc.API.LastTokenUsage.Timestamp = tonumber(loc.API.LastTokenUsage.Timestamp)
     loc.API.SaveDailyTokenUsage()
 end
 loc.API.CountPromptTextCharacters = function(value)
@@ -3138,16 +3185,21 @@ loc.API.RecordDailyTokenUsage = function(provider, model, usage, requestBody, re
     usage = type(usage) == "table" and usage or {}
     loc.API.UsageInputTokens = tonumber(usage.prompt_tokens or usage.input_tokens or usage.promptTokenCount)
     loc.API.UsageOutputTokens = tonumber(usage.completion_tokens or usage.output_tokens or usage.candidatesTokenCount)
-    loc.API.UsageTotalTokens = tonumber(usage.total_tokens or usage.totalTokenCount)
-    if not loc.API.UsageTotalTokens and (loc.API.UsageInputTokens or loc.API.UsageOutputTokens) then
-        loc.API.UsageTotalTokens = (loc.API.UsageInputTokens or 0) + (loc.API.UsageOutputTokens or 0)
-    end
+    loc.API.UsageThinkingTokens = tonumber(usage.thoughtsTokenCount or usage.thinking_tokens or usage.thinkingTokenCount)
+    loc.API.UsageProviderTotalTokens = tonumber(usage.total_tokens or usage.totalTokenCount)
+    loc.API.UsageTotalTokens = loc.API.UsageProviderTotalTokens
+    loc.API.UsageTotalSource = loc.API.UsageProviderTotalTokens and "provider total" or nil
     loc.API.UsageWasEstimated = false
+    if not loc.API.UsageTotalTokens and loc.API.UsageInputTokens ~= nil and loc.API.UsageOutputTokens ~= nil then
+        loc.API.UsageTotalTokens = loc.API.UsageInputTokens + loc.API.UsageOutputTokens + (loc.API.UsageThinkingTokens or 0)
+        loc.API.UsageTotalSource = "sum of reported usage fields"
+    end
     if not loc.API.UsageTotalTokens then
         loc.API.UsagePromptChars = loc.API.CountPromptTextCharacters(requestBody)
         loc.API.UsageEstimateChars = loc.API.UsagePromptChars + #(tostring(responseText or ""))
         loc.API.UsageTotalTokens = math.max(1, math.ceil(loc.API.UsageEstimateChars / 4))
         loc.API.UsageWasEstimated = true
+        loc.API.UsageTotalSource = "text-length estimate"
     end
     loc.API.UsageTotalTokens = math.max(0, math.floor(loc.API.UsageTotalTokens))
     loc.API.DailyTokenUsage.TotalTokens = (tonumber(loc.API.DailyTokenUsage.TotalTokens) or 0) + loc.API.UsageTotalTokens
@@ -3160,6 +3212,21 @@ loc.API.RecordDailyTokenUsage = function(provider, model, usage, requestBody, re
     loc.API.DailyTokenUsage.ByProvider = type(loc.API.DailyTokenUsage.ByProvider) == "table" and loc.API.DailyTokenUsage.ByProvider or {}
     loc.API.UsageProviderKey = tostring(provider or "Unknown") .. "/" .. tostring(model or "Unknown")
     loc.API.DailyTokenUsage.ByProvider[loc.API.UsageProviderKey] = (tonumber(loc.API.DailyTokenUsage.ByProvider[loc.API.UsageProviderKey]) or 0) + loc.API.UsageTotalTokens
+    loc.API.DailyTokenUsage.LastRequest = {
+        HasRequest = true,
+        Total = loc.API.UsageTotalTokens,
+        Input = loc.API.UsageInputTokens,
+        Output = loc.API.UsageOutputTokens,
+        Thinking = loc.API.UsageThinkingTokens,
+        InputAvailable = loc.API.UsageInputTokens ~= nil,
+        OutputAvailable = loc.API.UsageOutputTokens ~= nil,
+        Estimated = loc.API.UsageWasEstimated == true,
+        TotalSource = loc.API.UsageTotalSource,
+        Provider = tostring(provider or "Unknown"),
+        Model = tostring(model or "Unknown"),
+        Timestamp = os.time()
+    }
+    loc.API.LastTokenUsage = loc.API.DailyTokenUsage.LastRequest
     loc.API.SaveDailyTokenUsage()
     loc.API.RefreshDailyTokenUsage()
 end
@@ -3239,6 +3306,47 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
     loc.API.DailyTokenUsageCaption.TextScaled = true
     loc.API.DailyTokenUsageCaption.TextXAlignment = Enum.TextXAlignment.Left
     loc.API.DailyTokenUsageCaption.Parent = loc.API.DailyTokenUsageRow
+
+    loc.API.LastTokenUsageRow = Instance.new("Frame")
+    loc.API.LastTokenUsageRow.Name = "LastTokenUsage"
+    loc.API.LastTokenUsageRow.Size = UDim2.new(1, 0, 0, 42)
+    loc.API.LastTokenUsageRow.BackgroundColor3 = Color3.fromRGB(88, 88, 88)
+    loc.API.LastTokenUsageRow.BackgroundTransparency = 0.25
+    loc.API.LastTokenUsageRow.BorderMode = Enum.BorderMode.Inset
+    loc.API.LastTokenUsageRow.BorderSizePixel = 3
+    loc.API.LastTokenUsageRow.Parent = frame
+    Corner(0, 5, loc.API.LastTokenUsageRow)
+    loc.API.LastTokenUsageLabel = Instance.new("TextLabel")
+    loc.API.LastTokenUsageLabel.Name = "Title"
+    loc.API.LastTokenUsageLabel.BackgroundTransparency = 1
+    loc.API.LastTokenUsageLabel.Position = UDim2.new(0, 6, 0, 1)
+    loc.API.LastTokenUsageLabel.Size = UDim2.new(0.57, -6, 0, 20)
+    loc.API.LastTokenUsageLabel.Text = "Last token used"
+    loc.API.LastTokenUsageLabel.TextColor3 = Color3.new(1, 1, 1)
+    loc.API.LastTokenUsageLabel.TextScaled = true
+    loc.API.LastTokenUsageLabel.TextXAlignment = Enum.TextXAlignment.Left
+    loc.API.LastTokenUsageLabel.Parent = loc.API.LastTokenUsageRow
+    loc.API.LastTokenUsageValue = Instance.new("TextLabel")
+    loc.API.LastTokenUsageValue.Name = "Value"
+    loc.API.LastTokenUsageValue.BackgroundTransparency = 1
+    loc.API.LastTokenUsageValue.Position = UDim2.new(0.57, 0, 0, 1)
+    loc.API.LastTokenUsageValue.Size = UDim2.new(0.43, -6, 0, 20)
+    loc.API.LastTokenUsageValue.Text = "No request yet"
+    loc.API.LastTokenUsageValue.TextColor3 = Color3.fromRGB(145, 255, 165)
+    loc.API.LastTokenUsageValue.TextScaled = true
+    loc.API.LastTokenUsageValue.TextXAlignment = Enum.TextXAlignment.Right
+    loc.API.LastTokenUsageValue.Parent = loc.API.LastTokenUsageRow
+    loc.API.LastTokenUsageCaption = Instance.new("TextLabel")
+    loc.API.LastTokenUsageCaption.Name = "Caption"
+    loc.API.LastTokenUsageCaption.BackgroundTransparency = 1
+    loc.API.LastTokenUsageCaption.Position = UDim2.new(0, 6, 0, 21)
+    loc.API.LastTokenUsageCaption.Size = UDim2.new(1, -12, 0, 16)
+    loc.API.LastTokenUsageCaption.Text = "Input / output usage will appear after a request"
+    loc.API.LastTokenUsageCaption.TextColor3 = Color3.fromRGB(225, 225, 225)
+    loc.API.LastTokenUsageCaption.TextScaled = true
+    loc.API.LastTokenUsageCaption.TextXAlignment = Enum.TextXAlignment.Left
+    loc.API.LastTokenUsageCaption.Parent = loc.API.LastTokenUsageRow
+
     loc.API.RefreshDailyTokenUsage()
     frame:GetPropertyChangedSignal("Visible"):Connect(function()
         if frame.Visible then loc.API.RefreshDailyTokenUsage() end
