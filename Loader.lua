@@ -1,4 +1,4 @@
--- Loader script 7.38
+-- Loader script 7.39
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -449,7 +449,8 @@ local DEFAULT_DATA = {
         MenuBackgroundTransparency = 0.08, -- Compatibility mirror of the active Theme value.
         MenuBackgroundTransparencyDefault = 0.08,
         MenuBackgroundTransparencyImage = 0.1,
-        ThemeTileSize = 64,
+        ThemeTileSizeOffset = 64,
+        ThemeTileSizeScale = 0,
         HideMenu = false,
         SettingsTransparency = 0.3,
         UIScale = 1,
@@ -524,6 +525,19 @@ loc.loadData = function()
         and tonumber(data.UI.MenuBackgroundTransparency) or nil
     loc.HadDefaultTransparency = type(data.UI) == "table" and data.UI.MenuBackgroundTransparencyDefault ~= nil
     loc.HadImageTransparency = type(data.UI) == "table" and data.UI.MenuBackgroundTransparencyImage ~= nil
+
+    -- Migrate the legacy pixel-only TileSize into the new Offset component.
+    -- Existing custom sizes are preserved; new configs use Offset 64 / Scale 0.
+    if type(data.UI) == "table" and data.UI.ThemeTileSizeOffset == nil then
+        local legacyTileSize = tonumber(data.UI.ThemeTileSize)
+        if legacyTileSize ~= nil and legacyTileSize == legacyTileSize
+            and legacyTileSize ~= math.huge and legacyTileSize ~= -math.huge then
+            data.UI.ThemeTileSizeOffset = legacyTileSize
+        end
+    end
+    if type(data.UI) == "table" then
+        data.UI.ThemeTileSize = nil
+    end
 
     -- เติม default ที่ขาด
     loc.deepMerge(data, DEFAULT_DATA)
@@ -1078,7 +1092,6 @@ loc.SEARCH_LIST_PATH = "ExperienceSettings.Menu.Search.List"
 loc.SEARCH_PAGE_PATH = "ExperienceSettings.Menu.Search.Page"
 loc.CURRENT_BG_COLOR = Color3.fromRGB(18, 18, 21)
 loc.CURRENT_BG_TRANSPARENCY = tonumber(Data.UI.MenuBackgroundTransparencyDefault) or 0.08
-loc.CURRENT_TILE_SIZE = 64
 if type(Data.UI.BackgroundRGB) ~= "table" or #Data.UI.BackgroundRGB < 3 then
     Data.UI.BackgroundRGB = {18, 18, 21}
 end
@@ -1210,12 +1223,15 @@ loc.storeActiveBackgroundTransparency = function(value)
     Data.UI.MenuBackgroundTransparency = value
 end
 
-loc.clampThemeTileSize = function(value)
+loc.parseThemeTileComponent = function(value)
     value = tonumber(value)
     if value == nil or value ~= value or value == math.huge or value == -math.huge then return nil end
-    return math.max(12, math.floor(value))
+    return value
 end
-Data.UI.ThemeTileSize = loc.clampThemeTileSize(Data.UI.ThemeTileSize) or 64
+Data.UI.ThemeTileSizeOffset = loc.parseThemeTileComponent(Data.UI.ThemeTileSizeOffset)
+    or 64
+Data.UI.ThemeTileSizeScale = loc.parseThemeTileComponent(Data.UI.ThemeTileSizeScale)
+    or 0
 
 -- These ExperienceSettings containers must always remain fully transparent.
 loc.isForcedTransparentBackground = function(inst)
@@ -1278,10 +1294,11 @@ loc.applyTheme = function()
     loc.CURRENT_BG_TRANSPARENCY = loc.getActiveBackgroundTransparency()
         or (Data.UI.Theme == "Default" and 0.08 or 0.1)
     loc.storeActiveBackgroundTransparency(loc.CURRENT_BG_TRANSPARENCY)
-    Data.UI.ThemeTileSize = loc.clampThemeTileSize(Data.UI.ThemeTileSize) or 64
-    loc.CURRENT_TILE_SIZE = 64
+    loc.CURRENT_TILE_SIZE_SCALE = 0
+    loc.CURRENT_TILE_SIZE_OFFSET = 64
     if Data.UI.Theme == "Custom" then
-        loc.CURRENT_TILE_SIZE = Data.UI.ThemeTileSize
+        loc.CURRENT_TILE_SIZE_SCALE = loc.parseThemeTileComponent(Data.UI.ThemeTileSizeScale) or 0
+        loc.CURRENT_TILE_SIZE_OFFSET = loc.parseThemeTileComponent(Data.UI.ThemeTileSizeOffset) or 64
     end
 
     for _, inst in ipairs(loc.CACHED_BGS) do
@@ -1320,7 +1337,12 @@ loc.applyTheme = function()
                 loc.ThemeImage.BackgroundTransparency = 1
                 loc.ThemeImage.Image = loc.ThemeImageID
                 loc.ThemeImage.ScaleType = Enum.ScaleType.Tile
-                loc.ThemeImage.TileSize = UDim2.new(0, loc.CURRENT_TILE_SIZE or 64, 0, loc.CURRENT_TILE_SIZE or 64)
+                loc.ThemeImage.TileSize = UDim2.new(
+                    loc.CURRENT_TILE_SIZE_SCALE or 0,
+                    loc.CURRENT_TILE_SIZE_OFFSET or 64,
+                    loc.CURRENT_TILE_SIZE_SCALE or 0,
+                    loc.CURRENT_TILE_SIZE_OFFSET or 64
+                )
                 loc.ThemeImage.ZIndex = math.max(0, (tonumber(loc.ThemeImageParent.ZIndex) or 1) - 1)
                 loc.ThemeImage.Active = false
                 loc.ThemeImage.Parent = loc.ThemeImageParent
@@ -1400,7 +1422,12 @@ loc.ThemeSelectUI = loc.o(
 loc.updateThemeCustomRows = function()
     loc.ThemeRowsVisible = Data.UI.Theme == "Custom"
     if loc.ThemeImageUI and loc.ThemeImageUI.Frame then loc.ThemeImageUI.Frame.Visible = loc.ThemeRowsVisible end
-    if loc.ThemeTileSizeUI and loc.ThemeTileSizeUI.Frame then loc.ThemeTileSizeUI.Frame.Visible = loc.ThemeRowsVisible end
+    if loc.ThemeTileSizeOffsetUI and loc.ThemeTileSizeOffsetUI.Frame then
+        loc.ThemeTileSizeOffsetUI.Frame.Visible = loc.ThemeRowsVisible
+    end
+    if loc.ThemeTileSizeScaleUI and loc.ThemeTileSizeScaleUI.Frame then
+        loc.ThemeTileSizeScaleUI.Frame.Visible = loc.ThemeRowsVisible
+    end
     if loc.ThemeGradientEditorFrame then loc.ThemeGradientEditorFrame.Visible = loc.ThemeRowsVisible end
 
     -- BackgroundColor3 can only be edited while the Default theme is selected.
@@ -1422,24 +1449,22 @@ loc.updateThemeCustomRows = function()
     end
 end
 
-loc.ThemeTileSizeUI = loc.o(
-    "Set TileSize (px, minimum 12)",
+loc.ThemeTileSizeOffsetUI = loc.o(
+    "Set TileSize Offset (64 is default)",
     255, 255, 255,
-    true, tostring(Data.UI.ThemeTileSize or 64),
+    true, tostring(Data.UI.ThemeTileSizeOffset),
     true, "Save",
     function(box)
-        local value = loc.clampThemeTileSize(box.Text)
+        local value = loc.parseThemeTileComponent(box.Text)
         if value ~= nil then
-            Data.UI.ThemeTileSize = value
-            box.Text = ""
-            box.PlaceholderText = tostring(value)
+            Data.UI.ThemeTileSizeOffset = value
             loc.applyTheme()
         end
     end,
     function(box, btn)
-        local value = loc.clampThemeTileSize(box.Text)
+        local value = loc.parseThemeTileComponent(box.Text)
         if value == nil then return end
-        Data.UI.ThemeTileSize = value
+        Data.UI.ThemeTileSizeOffset = value
         box.Text = ""
         box.PlaceholderText = tostring(value)
         loc.saveData(Data)
@@ -1448,9 +1473,38 @@ loc.ThemeTileSizeUI = loc.o(
         task.delay(0.35, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
     end
 )
-if loc.ThemeTileSizeUI and loc.ThemeTileSizeUI.Input then
-    loc.ThemeTileSizeUI.Input.Text = ""
-    loc.ThemeTileSizeUI.Input.PlaceholderText = tostring(Data.UI.ThemeTileSize or 64)
+if loc.ThemeTileSizeOffsetUI and loc.ThemeTileSizeOffsetUI.Input then
+    loc.ThemeTileSizeOffsetUI.Input.Text = ""
+    loc.ThemeTileSizeOffsetUI.Input.PlaceholderText = tostring(Data.UI.ThemeTileSizeOffset)
+end
+
+loc.ThemeTileSizeScaleUI = loc.o(
+    "Set TileSize Scale (0 is default)",
+    255, 255, 255,
+    true, tostring(Data.UI.ThemeTileSizeScale),
+    true, "Save",
+    function(box)
+        local value = loc.parseThemeTileComponent(box.Text)
+        if value ~= nil then
+            Data.UI.ThemeTileSizeScale = value
+            loc.applyTheme()
+        end
+    end,
+    function(box, btn)
+        local value = loc.parseThemeTileComponent(box.Text)
+        if value == nil then return end
+        Data.UI.ThemeTileSizeScale = value
+        box.Text = ""
+        box.PlaceholderText = tostring(value)
+        loc.saveData(Data)
+        loc.applyTheme()
+        btn.TextColor3 = Color3.fromRGB(0, 255, 0)
+        task.delay(0.35, function() if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end end)
+    end
+)
+if loc.ThemeTileSizeScaleUI and loc.ThemeTileSizeScaleUI.Input then
+    loc.ThemeTileSizeScaleUI.Input.Text = ""
+    loc.ThemeTileSizeScaleUI.Input.PlaceholderText = tostring(Data.UI.ThemeTileSizeScale)
 end
 
 loc.ThemeImageUI = loc.o(
