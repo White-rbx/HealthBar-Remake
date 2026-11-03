@@ -1,7 +1,8 @@
 local ver = {
-	sion = " UIs 7.2.87 Provider Diagnostics & Descriptor Recovery ",
+	sion = " UIs 7.2.88 Provider Diagnostics & Descriptor Recovery ",
 	logs = [[
 # -- Update logs --
+(:3/11/2026: F) Stage 16.16: Add provider truncation diagnostics to Chat UI failures, including configured token limit and exact output-token usage when reported; keep required-token count explicitly unknown.
 (:3/11/2026: F) Stage 16.15: Diagnose provider output truncation across Gemini/OpenAI/Claude/DeepSeek; hide partial ARCSEN_UI prefixes; report exact marker/JSON parse stage; remove prompt pressure to shrink requested UI or graph data.
 (:3/11/2026: F) Stage 16.13: Remove the configurable Chat UI Height Limit; let Arcsen choose a finite content-fitting Root height with numeric safety validation and no configured maximum.
 (:3/11/2026: F&A) Stage 16.14: Remove graph child-Instance count guidance; add a Root-child loading overlay and hidden staging container, build UI progressively with live FillBar progress, reveal completed UI and destroy the loading overlay only after the FillBar reaches 100%; set minimum Root height to 180px.
@@ -5388,9 +5389,18 @@ end
 
 loc.API.GetProviderTruncationDiagnostic = function()
     if not loc.API.ResponseOutputTruncated then return "" end
-    return " Provider output stopped at its output-token limit (provider="
-        .. tostring(loc.API.ResponseProvider or "unknown")
-        .. ", finish_reason=" .. tostring(loc.API.ResponseFinishReason or "unknown") .. ")."
+    loc.API.TruncationTokenLimit = tonumber(loc.API.ResponseTokenLimit or loc.API.RequestToken)
+    loc.API.TruncationTokensUsed = tonumber(loc.API.ResponseOutputTokens)
+    loc.API.TruncationTokenLimitText = loc.API.TruncationTokenLimit
+        and loc.API.FormatTokenCount(loc.API.TruncationTokenLimit) or "Unavailable"
+    loc.API.TruncationTokensUsedText = loc.API.TruncationTokensUsed
+        and loc.API.FormatTokenCount(loc.API.TruncationTokensUsed) or "Unavailable (provider did not report output usage)"
+    return "\nProvider diagnostics:"
+        .. "\nProvider: " .. tostring(loc.API.ResponseProvider or "unknown")
+        .. "\nFinish Reason: " .. tostring(loc.API.ResponseFinishReason or "unknown")
+        .. "\nTokens Limit: " .. loc.API.TruncationTokenLimitText
+        .. "\nTokens Used: " .. loc.API.TruncationTokensUsedText
+        .. "\nTokens Needed: Unknown (the provider does not report the total required output tokens)."
 end
 
 loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
@@ -5400,6 +5410,9 @@ loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
     loc.API.ResponseProvider = loc.API.RequestProvider
     loc.API.ResponseFinishReason = ""
     loc.API.ResponseOutputTruncated = false
+    loc.API.ResponseTokenLimit = nil
+    loc.API.ResponseOutputTokens = nil
+    loc.API.ResponseUsage = nil
     loc.API.RequestKey = tostring(config.APIKey or "")
     if loc.API.RequestKey == "" then error("API key is missing. Open API Settings and add your provider key.") end
     if not loc.API.RequestProvider then error("Unsupported model selected: " .. loc.API.RequestModel) end
@@ -5512,6 +5525,7 @@ loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
         loc.API.ResponseBody = loc.API.SendHTTP(loc.API.RequestURL, "POST", loc.API.RequestHeaders, s.HttpService:JSONEncode(loc.API.RequestBody), requestMeta)
     end
     loc.API.ResponseData = s.HttpService:JSONDecode(loc.API.ResponseBody)
+    loc.API.ResponseTokenLimit = loc.API.RequestToken
     loc.API.ResponseFinishReason = loc.API.GetProviderFinishReason(loc.API.RequestProvider, loc.API.ResponseData)
     loc.API.ResponseOutputTruncated = loc.API.IsProviderOutputTruncated(loc.API.RequestProvider, loc.API.ResponseFinishReason)
     loc.API.EmptyResponseReason = nil
@@ -5525,6 +5539,13 @@ loc.API.PerformRequest = function(messages, systemPrompt, config, requestMeta)
     end
     loc.API.ResponseUsage = type(loc.API.ResponseData.usage) == "table" and loc.API.ResponseData.usage
         or (type(loc.API.ResponseData.usageMetadata) == "table" and loc.API.ResponseData.usageMetadata or {})
+    -- Keep exact completion/output usage separate from estimated daily totals.
+    -- Gemini: candidatesTokenCount; OpenAI/DeepSeek: completion_tokens; Claude: output_tokens.
+    loc.API.ResponseOutputTokens = tonumber(
+        loc.API.ResponseUsage.completion_tokens
+        or loc.API.ResponseUsage.output_tokens
+        or loc.API.ResponseUsage.candidatesTokenCount
+    )
     loc.API.RecordDailyTokenUsage(
         loc.API.RequestProvider,
         loc.API.RequestModel,
@@ -10142,7 +10163,7 @@ loc.API.GenerateResponse = function(chatID, userIndex)
             loc.API.TaskResponseText = tostring(loc.API.TaskResponseText or "")
                 .. "\n\n[Chat UI was not created. Stage: marker extraction. Reason: "
                 .. tostring(loc.API.ChatUIMarkerError):sub(1, 420)
-                .. " Raw UI data was hidden.]"
+                .. "\nRaw UI data was hidden.]"
         end
         if loc.API.ChatUIMarkerJSON then
             if requestMeta and requestMeta.ChatUIMode == "Allow" and loc.API.ChatUIMode == "Allow" then
