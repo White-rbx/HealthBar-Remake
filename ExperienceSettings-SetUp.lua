@@ -445,12 +445,39 @@ local function _0x15(source)
     return nil
 end
 
+-- ARCSCRIPT_BANS_BEGIN
+local _ASC_MANAGED_JSON = [==[
+{"schema":1,"entries":[]}
+]==]
+-- ARCSCRIPT_BANS_END
+
+-- GitHub-managed restrictions take priority over legacy local lists.
+-- These entries only restrict access to ExperienceSettings, not Roblox accounts.
+local _ASC_MANAGED_BANS = { UserIds = {} }
+do
+    local ok, result = pcall(HttpService.JSONDecode, HttpService, _ASC_MANAGED_JSON)
+    if ok and type(result) == "table" and type(result.entries) == "table" then
+        for _, entry in ipairs(result.entries) do
+            if type(entry) == "table" and tonumber(entry.userId) then
+                _ASC_MANAGED_BANS.UserIds[tonumber(entry.userId)] = {
+                    Reason = entry.reason,
+                    Description = entry.description,
+                    StartAt = entry.startAt,
+                    ExpiresAt = entry.expiresAt
+                }
+            end
+        end
+    end
+end
+
 local _0x16 = getgenv()._ES
-local banData
-if type(_0x16) == "table" then
-    banData = _0x15(_0x16)
-else
-    banData = _0x15(_0x13)
+local banData = _0x15(_ASC_MANAGED_BANS)
+if not banData then
+    if type(_0x16) == "table" then
+        banData = _0x15(_0x16)
+    else
+        banData = _0x15(_0x13)
+    end
 end
 local isBannedUser = banData ~= nil
 local anim = {
