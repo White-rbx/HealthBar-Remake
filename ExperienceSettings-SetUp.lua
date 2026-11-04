@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettings-SetUp 1.246 Oof]]
+local v_ver = [[ExperienceSettings-SetUp 1.247 BanSchedule]]
 
 ------------------------------------------------------------------------------------------
 
@@ -327,7 +327,12 @@ local _0x13 = {
         },
     },
     UserIds = {
-        -- [123456789] = { Reason = "...", Description = "..." },
+        -- [123456789] = {
+        --     Reason = "Rule violation",
+        --     Description = "Temporary restriction",
+        --     StartAt = "2026-11-05 09:00",   -- ICT (UTC+7), optional
+        --     ExpiresAt = "2026-11-12 09:00" -- optional; omit for permanent
+        -- },
 		--[[ [11810742331] = {
             Reason = "การเป็นศัตรูและการหักหลังผู้อื่น",
             Description = "โปรดติดต่อจอห์นผ่านทางดิสคอร์ด | เห็นล่าสุดที่: 'Rintama High'; เกมไอดี: 131031240633619"
@@ -335,20 +340,77 @@ local _0x13 = {
     }
 }
 
-local function _0x14(entry)
-    if type(entry) == "table" then
-        return {
-            Reason = tostring(entry.Reason or "Restricted access"),
-            Description = tostring(entry.Description or "This account is listed in the access restriction data.")
-        }
+-- Ban schedule: timestamps may be Unix seconds or "YYYY-MM-DD HH:MM"
+-- Date strings use Thailand time (ICT, UTC+7). Missing ExpiresAt = permanent.
+local function _banTime(value)
+    if value == nil or value == "" then return nil, true end
+    if type(value) == "number" then
+        if value == value and value >= 0 and value < 253402300800 then
+            return math.floor(value), true
+        end
+        return nil, false
     end
-    if entry then
+    if type(value) ~= "string" then return nil, false end
+
+    local y, mo, d, h, mi, sec =
+        value:match("^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d):(%d%d)$")
+    if not y then
+        y, mo, d, h, mi =
+            value:match("^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d)$")
+        sec = "00"
+    end
+    if not y then return nil, false end
+    y, mo, d = tonumber(y), tonumber(mo), tonumber(d)
+    h, mi, sec = tonumber(h), tonumber(mi), tonumber(sec)
+    if y < 2000 or y > 2100 or mo < 1 or mo > 12
+        or d < 1 or d > 31 or h > 23 or mi > 59 or sec > 59 then
+        return nil, false
+    end
+
+    local ok, result = pcall(function()
+        -- Interpret the clock fields as an ICT wall-clock, then shift to UTC.
+        return DateTime.fromUniversalTime(y, mo, d, h, mi, sec).UnixTimestamp - 7 * 3600
+    end)
+    if not ok or type(result) ~= "number" then return nil, false end
+    local check = os.date("!*t", result + 7 * 3600)
+    if check.year ~= y or check.month ~= mo or check.day ~= d
+        or check.hour ~= h or check.min ~= mi or check.sec ~= sec then
+        return nil, false
+    end
+    return result, true
+end
+
+local function _0x14(entry)
+    if not entry then return nil end
+    if type(entry) ~= "table" then
         return {
             Reason = "Restricted access",
             Description = "This account is listed in the access restriction data."
         }
     end
-    return nil
+    if entry.Enabled == false then return nil end
+
+    local startAt, startOK = _banTime(entry.StartAt)
+    local expiresAt, expiresOK = _banTime(entry.ExpiresAt)
+    if not startOK or not expiresOK then
+        warn("[ExperienceSettings] Invalid ban date/time; entry skipped.")
+        return nil
+    end
+    if startAt and expiresAt and expiresAt <= startAt then
+        warn("[ExperienceSettings] Ban end must be later than start; entry skipped.")
+        return nil
+    end
+
+    local now = os.time()
+    if (startAt and now < startAt) or (expiresAt and now >= expiresAt) then
+        return nil
+    end
+    return {
+        Reason = tostring(entry.Reason or "Restricted access"),
+        Description = tostring(entry.Description or "This account is listed in the access restriction data."),
+        StartAt = startAt,
+        ExpiresAt = expiresAt
+    }
 end
 
 local function _0x15(source)
@@ -357,25 +419,27 @@ local function _0x15(source)
     local ids = source.UserIds or source.UserIDs or source.userIds or source.Ids or source.ids
 
     if type(names) == "table" then
-        local entry = names[player.Name]
-        if entry then return _0x14(entry) end
+        local result = _0x14(names[player.Name])
+        if result then return result end
         for name, data in pairs(names) do
-            if type(name) == "string" and string.lower(name) == string.lower(player.Name) and data then
-                return _0x14(data)
+            if type(name) == "string" and name:lower() == player.Name:lower() then
+                result = _0x14(data)
+                if result then return result end
             end
         end
     end
 
     if type(ids) == "table" then
-        local entry = ids[player.UserId] or ids[tostring(player.UserId)]
-        if entry then return _0x14(entry) end
+        local result = _0x14(ids[player.UserId] or ids[tostring(player.UserId)])
+        if result then return result end
     end
 
-    local entry = source[player.Name] or source[player.UserId] or source[tostring(player.UserId)]
-    if entry then return _0x14(entry) end
+    local result = _0x14(source[player.Name] or source[player.UserId] or source[tostring(player.UserId)])
+    if result then return result end
     for key, data in pairs(source) do
-        if type(key) == "string" and string.lower(key) == string.lower(player.Name) and data then
-            return _0x14(data)
+        if type(key) == "string" and key:lower() == player.Name:lower() then
+            result = _0x14(data)
+            if result then return result end
         end
     end
     return nil
@@ -478,12 +542,27 @@ if banData then
 
 	task.defer(function()
 		if twarn then
-			twarn.Text = "<b>You have been banned.</b>\n"
-				.. "Reason: <mark color='rgb(255,85,85)' transparency='0.5'>" .. banData.Reason .. "</mark>\n"
-				.. "Description: <font size='10'>" .. banData.Description .. "</font>"
+            local function escapeText(value)
+                return tostring(value or ""):gsub("&", "&amp;")
+                    :gsub("<", "&lt;"):gsub(">", "&gt;")
+                    :gsub('"', "&quot;"):gsub("'", "&#39;")
+            end
+            local expiresText = banData.ExpiresAt and
+                (os.date("!%Y-%m-%d %H:%M", banData.ExpiresAt + 7 * 3600) .. " ICT (UTC+7)") or
+                "Permanent"
+            twarn.Text = "<b>You have been banned from ExperienceSettings.</b>\n"
+                .. "Reason: <mark color='rgb(255,85,85)' transparency='0.5'>" .. escapeText(banData.Reason) .. "</mark>\n"
+                .. "Description: <font size='10'>" .. escapeText(banData.Description) .. "</font>\n"
+                .. "Until: <b>" .. escapeText(expiresText) .. "</b>"
+            twarn.TextYAlignment = Enum.TextYAlignment.Top
+            twarn.AutomaticSize = Enum.AutomaticSize.Y
+            twarn.Size = UDim2.new(1, 0, 0, 100)
+            CanBar.Visible = false
 		end
 
 		if btnBar then
+            btnBar.Position = UDim2.new(0.3, 0, 0.78, 0)
+            btnBar.Size = UDim2.new(0.4, 0, 0, 46)
 			btnBar.Visible = true
 			btnBar.Text = "I <font color='rgb(0,255,0)'>agree</font> and close the UI."
 		end
