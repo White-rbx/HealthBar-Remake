@@ -1,7 +1,8 @@
 local ver = {
-	sion = " UIs 7.2.90 Last Chat Token Usage ",
+	sion = " UIs 7.2.90 + OpenChat Dev Preview ",
 	logs = [[
 # -- Update logs --
+(:4/11/2026: A) Added /OpenChat ON/OFF/STATUS, a separate OpenChat tab, API polling and a 125-message rolling cap for local development.
 (:4/11/2026: F) Stage 16.18: Keep Last Token Used pinned to the latest primary chat request; count background title and memory requests in daily totals without allowing them to overwrite the chat usage display.
 (:3/11/2026: A) Stage 16.17: Add persistent Last Token Used diagnostics in API Settings with exact/estimated totals, input/output breakdown, provider/model, and optional thinking-token metadata.
 (:3/11/2026: A) Stage 16.16: Add a schema-accurate Declarative Chat UI Structure Guide covering descriptor shape, Instance hierarchy, class/container rules, state flow and JSON preflight checks.
@@ -5194,6 +5195,13 @@ local function addchat(file, gen, nchat)
     Tween(scale, {Scale = 0}, 0.1).Completed:Wait()
     if loc.API and loc.API.ChatData then
       loc.API.DeleteCandidate = loc.API.ChatData[tostring(nchat)]
+      if loc.API.DeleteCandidate and loc.API.DeleteCandidate.IsOpenChat then
+        loc.API.DeleteCore = loc.API.ArcsenCommand
+        if type(loc.API.DeleteCore) == "table" and type(loc.API.DeleteCore.setOpenChat) == "function" then
+          pcall(loc.API.DeleteCore.setOpenChat, false)
+        end
+        loc.API.OpenChatTabID = nil
+      end
       if loc.API.DeleteCandidate and loc.API.DeleteCandidate.IsHereChat then
         loc.API.DeleteCore = loc.API.ArcsenCommand
         if type(loc.API.DeleteCore) == "table" and type(loc.API.DeleteCore.setHereChat) == "function" then
@@ -10641,7 +10649,10 @@ loc.API.UpdateSendButton = function()
         loc.API.ChatTipLastChatID = tostring(loc.API.ActiveChatID or "")
         loc.API.ChatTipRunID = (tonumber(loc.API.ChatTipRunID) or 0) + 1
     end
-    if loc.API.SendButtonChat and loc.API.SendButtonChat.IsHereChat then
+    if loc.API.SendButtonChat and loc.API.SendButtonChat.IsOpenChat then
+        c_box.TextEditable = true
+        c_box.PlaceholderText = "Message OpenChat (local test)..."
+    elseif loc.API.SendButtonChat and loc.API.SendButtonChat.IsHereChat then
         c_box.TextEditable = true
         c_box.PlaceholderText = "Message Roblox chat..."
     else
@@ -10678,7 +10689,7 @@ loc.API.ChatTipIndex = 1
 loc.API.CanShowChatTips = function()
     if not c_box or not c_box.Parent or c_box:IsFocused() or c_box.Text ~= "" then return false end
     local active = loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)] or nil
-    return not active or (active.IsHereChat ~= true and #(active.Messages or {}) == 0)
+    return not active or (active.IsHereChat ~= true and active.IsOpenChat ~= true and #(active.Messages or {}) == 0)
 end
 
 loc.API.PlayChatTipTween = function(fullText, startCount, endCount, duration, runID)
@@ -10703,7 +10714,8 @@ end
 c_box.Focused:Connect(function()
     loc.API.ChatTipRunID += 1
     if not (loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)]
-        and loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsHereChat) then
+        and (loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsHereChat
+          or loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsOpenChat)) then
         c_box.PlaceholderText = "Say something..."
     end
 end)
@@ -10716,6 +10728,9 @@ task.spawn(function()
     while c_box and c_box.Parent and gpt and gpt.Parent do
         if not loc.API.CanShowChatTips() then
             if loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)]
+                and loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsOpenChat then
+                c_box.PlaceholderText = "Message OpenChat (local test)..."
+            elseif loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)]
                 and loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsHereChat then
                 c_box.PlaceholderText = "Message Roblox chat..."
             else
@@ -10800,6 +10815,28 @@ end
 
 loc.API.SendMessage = function(rawText)
     loc.API.SendMessageActiveChat = loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)] or nil
+    if loc.API.SendMessageActiveChat and loc.API.SendMessageActiveChat.IsOpenChat then
+        loc.API.OpenChatText = tostring(rawText or "")
+        if not loc.API.OpenChatText:match("%S") then return false end
+        if #(loc.API.PendingInputFiles or {}) > 0 then
+            meg("OpenChat supports text messages only. Remove attachments first.", nil, "Center", true, 255, 180, 80)
+            return false
+        end
+        loc.API.OpenChatCore = loc.API.ArcsenCommand
+        if type(loc.API.OpenChatCore) ~= "table" or type(loc.API.OpenChatCore.sendOpenChat) ~= "function" then
+            meg("OpenChat is unavailable. Update ArcsenCommand-Module.lua to v0.6.0.", nil, "Center", true, 255, 90, 90)
+            return false
+        end
+        loc.API.OpenChatCallOK, loc.API.OpenChatSendResult, loc.API.OpenChatSendReason = pcall(
+            loc.API.OpenChatCore.sendOpenChat, loc.API.OpenChatText
+        )
+        if not loc.API.OpenChatCallOK or loc.API.OpenChatSendResult ~= true then
+            meg("OpenChat send failed: " .. tostring(loc.API.OpenChatSendReason or loc.API.OpenChatSendResult), nil, "Center", true, 255, 90, 90)
+            return false
+        end
+        c_box.Text = ""
+        return true
+    end
     if loc.API.SendMessageActiveChat and loc.API.SendMessageActiveChat.IsHereChat then
         loc.API.HereChatText = tostring(rawText or "")
         if not loc.API.HereChatText:match("%S") then return false end
@@ -10938,6 +10975,7 @@ loc.API.SaveChats = function()
             TabBackgroundRGB = chatData.TabBackgroundRGB,
             TabTextRGB = chatData.TabTextRGB,
             IsHereChat = chatData.IsHereChat == true,
+            IsOpenChat = chatData.IsOpenChat == true,
             LastDisplayTimeAt = tonumber(chatData.LastDisplayTimeAt),
             TimeMarkers = {},
             Messages = {}
@@ -10975,6 +11013,7 @@ loc.API.SaveChats = function()
                 username = savedMessage.username,
                 displayName = savedMessage.displayName,
                 userId = savedMessage.userId,
+                messageId = savedMessage.messageId,
                 teamName = savedMessage.teamName,
                 experienceName = savedMessage.experienceName,
                 placeId = savedMessage.placeId,
@@ -11023,6 +11062,13 @@ loc.API.LoadChats = function()
             savedChat.State = tostring(savedChat.State or "Normal")
             savedChat.Busy = false
             savedChat.IsHereChat = savedChat.IsHereChat == true
+            savedChat.IsOpenChat = savedChat.IsOpenChat == true
+            if savedChat.IsOpenChat then
+                loc.API.OpenChatTabID = tostring(savedID)
+                while #savedChat.Messages > 125 do table.remove(savedChat.Messages, 1) end
+                savedChat.TimeMarkers = {}
+                savedChat.LastDisplayTimeAt = nil
+            end
             savedChat.LastDisplayTimeAt = tonumber(savedChat.LastDisplayTimeAt)
             if type(savedChat.TimeMarkers) ~= "table" then savedChat.TimeMarkers = {} end
             if savedChat.IsHereChat then
@@ -11797,7 +11843,9 @@ do
     if type(commandCore) ~= "table"
         or type(commandCore.setOnHereChatChanged) ~= "function"
         or type(commandCore.sendMessage) ~= "function"
-        or (tonumber(tostring(commandCore.version or ""):match("^0%.5%.(%d+)$")) or 0) < 2 then
+        or type(commandCore.setOnOpenChatChanged) ~= "function"
+        or type(commandCore.sendOpenChat) ~= "function"
+        or tostring(commandCore.version or "") ~= "0.6.0" then
         commandCore = nil
         local ok, result = pcall(function()
             if type(loadstring) ~= "function" then
@@ -11815,14 +11863,16 @@ do
             local registered = type(envNow) == "table" and envNow.ArcsenCommand or nil
             if type(registered) == "table"
                 and type(registered.setOnHereChatChanged) == "function"
-                and type(registered.sendMessage) == "function" then
+                and type(registered.sendMessage) == "function"
+                and type(registered.sendOpenChat) == "function" then
                 return registered
             elseif type(returned) == "table"
                 and type(returned.setOnHereChatChanged) == "function"
-                and type(returned.sendMessage) == "function" then
+                and type(returned.sendMessage) == "function"
+                and type(returned.sendOpenChat) == "function" then
                 return returned
             end
-            error("ArcsenCommand-Module.lua is outdated. Upload v0.5.2 or newer to GitHub first.")
+            error("ArcsenCommand-Module.lua is outdated. Upload v0.6.0 to GitHub first.")
         end)
 
         if ok then
@@ -11971,9 +12021,161 @@ do
             return true
         end
 
+        loc.API.EnsureOpenChatTab = function(activate)
+            loc.API.OpenChatTabID = tostring(loc.API.OpenChatTabID or "")
+            loc.API.OpenChatTabData = loc.API.OpenChatTabID ~= "" and loc.API.ChatData[loc.API.OpenChatTabID] or nil
+            if not loc.API.OpenChatTabData then
+                for existingID, existingChat in pairs(loc.API.ChatData) do
+                    if type(existingChat) == "table" and existingChat.IsOpenChat == true then
+                        loc.API.OpenChatTabID = tostring(existingID)
+                        loc.API.OpenChatTabData = existingChat
+                        break
+                    end
+                end
+            end
+
+            if loc.API.OpenChatTabData then
+                if not loc.API.OpenChatTabData.Tab or not loc.API.OpenChatTabData.Tab.Parent then
+                    loc.API.OpenChatTabData.Tab = addchat(nil, "OpenChat", loc.API.OpenChatTabID)
+                end
+            else
+                loc.API.OpenChatIDOK, loc.API.OpenChatNewID = pcall(function()
+                    return s.HttpService:GenerateGUID(false)
+                end)
+                if not loc.API.OpenChatIDOK or type(loc.API.OpenChatNewID) ~= "string" or loc.API.OpenChatNewID == "" then
+                    loc.API.OpenChatNewID = "OpenChat-" .. tostring(os.time()) .. "-" .. tostring(math.random(100000, 999999))
+                end
+                loc.API.OpenChatTabID = tostring(loc.API.OpenChatNewID)
+                loc.API.OpenChatTabData = {
+                    ID = loc.API.OpenChatTabID,
+                    Title = "OpenChat",
+                    Messages = {},
+                    State = "Normal",
+                    StateBackgroundRGB = loc.API.ColorToRGB(loc.API.StatePalette.Normal[1]),
+                    StateTextRGB = loc.API.ColorToRGB(loc.API.StatePalette.Normal[2]),
+                    Busy = false,
+                    TitleGenerated = true,
+                    IsOpenChat = true,
+                }
+                loc.API.ChatData[loc.API.OpenChatTabID] = loc.API.OpenChatTabData
+                loc.API.OpenChatTabData.Tab = addchat(nil, "OpenChat", loc.API.OpenChatTabID)
+                if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
+            end
+
+            if activate == true then
+                loc.API.ActiveChatID = loc.API.OpenChatTabID
+                if type(loc.API.RenderChat) == "function" then
+                    loc.API.RenderChat(loc.API.OpenChatTabID, true)
+                end
+                if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
+            end
+            return loc.API.OpenChatTabID
+        end
+
+        loc.API.AppendOpenChatMessage = function(messageText, metadata)
+            metadata = type(metadata) == "table" and metadata or {}
+            local chatID = loc.API.EnsureOpenChatTab(false)
+            local chatData = chatID and loc.API.ChatData[chatID]
+            if not chatData then return false end
+
+            local displayName = tostring(metadata.displayName or metadata.username or "Unknown")
+            local username = tostring(metadata.username or displayName)
+            local userId = tonumber(metadata.userId)
+            local header = "<b>" .. escapeHeaderText(displayName) .. "</b> (@" .. escapeHeaderText(username) .. ")"
+            if userId then
+                header = header .. " (" .. tostring(math.floor(userId)) .. ")"
+            end
+
+            local teamName = tostring(metadata.teamName or "")
+            if teamName ~= "" then
+                local tr = math.clamp(tonumber(metadata.teamR) or 255, 0, 255)
+                local tg = math.clamp(tonumber(metadata.teamG) or 255, 0, 255)
+                local tb = math.clamp(tonumber(metadata.teamB) or 255, 0, 255)
+                header = header .. ' <font color="rgb(' .. math.floor(tr) .. ',' .. math.floor(tg) .. ',' .. math.floor(tb) .. ')">| <b><i>' .. escapeHeaderText(teamName) .. '</i></b></font>'
+            end
+            local experienceName = tostring(metadata.experienceName or (tonumber(metadata.placeId) and ("Place " .. tostring(math.floor(tonumber(metadata.placeId)))) or "Unknown Experience"))
+            local safeExperienceName = escapeHeaderText(experienceName)
+
+            local record = {
+                role = "herechat",
+                text = tostring(messageText or ""),
+                header = header,
+                username = username,
+                displayName = displayName,
+                userId = userId,
+                messageId = tonumber(metadata.messageId),
+                teamName = teamName ~= "" and teamName or nil,
+                experienceName = safeExperienceName,
+                placeId = tonumber(metadata.placeId),
+                teamR = tonumber(metadata.teamR),
+                teamG = tonumber(metadata.teamG),
+                teamB = tonumber(metadata.teamB),
+                direction = metadata.direction == "Right" and "Right" or "Left",
+                origin = "Global",
+                timestamp = tonumber(metadata.timestamp) or os.time(),
+                r = tonumber(metadata.r) or 125,
+                g = tonumber(metadata.g) or 190,
+                b = tonumber(metadata.b) or 255,
+                richText = false,
+                isSyn = false,
+                likedByUser = false,
+                likedByAI = false,
+            }
+            -- Ignore messages already stored (e.g. after a script reload).
+            for _, existing in ipairs(chatData.Messages) do
+                if tonumber(record.messageId) and tonumber(existing.messageId) == record.messageId then
+                    return false
+                end
+            end
+            table.insert(chatData.Messages, record)
+            -- A rolling window in the client mirrors the database's 125-message cap.
+            local trimmed = false
+            while #chatData.Messages > 125 do
+                table.remove(chatData.Messages, 1)
+                trimmed = true
+            end
+            if trimmed then
+                chatData.TimeMarkers = {}
+                chatData.LastDisplayTimeAt = nil
+            end
+            -- The OpenChat tab participates in unread notifications for both sources.
+            -- Messages in the currently visible tab are never marked unread.
+            if type(loc.API.NotifyNewChatMessage) == "function" then
+                loc.API.NotifyNewChatMessage(chatID, #chatData.Messages)
+            end
+            -- Count a newly received/sent OpenChat message once, at append time only.
+            if type(loc.RecordMessageForCounter) == "function" then
+                loc.RecordMessageForCounter("herechat")
+            end
+            local batchTotal = tonumber(metadata.batchTotal) or 1
+            local batchIndex = tonumber(metadata.batchIndex) or 1
+            if batchIndex < batchTotal then return true end
+            if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
+
+            if tostring(loc.API.ActiveChatID or "") == chatID then
+                if (batchTotal > 1 or trimmed or loc.API.PendingNewMessageMarkers[chatID]) and type(loc.API.RenderChat) == "function" then
+                    -- OpenChat can append while the window is closed; render the marker
+                    -- now so it is already in the viewport when the user opens Chat.
+                    loc.API.RenderChat(chatID, true)
+                else
+                    loc.API.DrawMessage(chatID, #chatData.Messages, record)
+                    if type(loc.API.ScrollChatToBottom) == "function" then
+                        loc.API.ScrollChatToBottom(chatID)
+                    end
+                end
+            end
+            return true
+        end
+
         commandCore.setOutput(function(message, level, metadata)
             metadata = type(metadata) == "table" and metadata or {}
 
+            if metadata.source == "OpenChat" and level == "chat" then
+                if type(loc.API.AppendOpenChatMessage) == "function" then
+                    loc.API.AppendOpenChatMessage(message, metadata)
+                end
+                return
+            end
             if metadata.source == "HereChat" and level == "chat" then
                 if type(loc.API.AppendHereChatMessage) == "function" then
                     loc.API.AppendHereChatMessage(message, metadata)
@@ -11991,6 +12193,15 @@ do
             end
 
             meg(message, "Command", "Left", level ~= "chat", r, g, b)
+        end)
+    end
+
+    if type(commandCore) == "table" and type(commandCore.setOnOpenChatChanged) == "function" then
+        commandCore.setOnOpenChatChanged(function(enabled)
+            if enabled and type(loc.API.EnsureOpenChatTab) == "function" then
+                loc.API.EnsureOpenChatTab(true)
+            end
+            -- OFF stops network polling and keeps the existing 125-message history.
         end)
     end
 
@@ -12561,6 +12772,12 @@ loc.API.LoadGlobalMemory()
 if type(loc.API.RefreshMemoryReviewText) == "function" then loc.API.RefreshMemoryReviewText() end
 loc.API.RefreshPendingAttachmentUI()
 loc.API.LoadChats()
+if type(loc.API.ArcsenCommand) == "table"
+    and type(loc.API.ArcsenCommand.isOpenChatEnabled) == "function"
+    and loc.API.ArcsenCommand.isOpenChatEnabled()
+    and type(loc.API.EnsureOpenChatTab) == "function" then
+    loc.API.EnsureOpenChatTab(true)
+end
 if type(loc.API.ArcsenCommand) == "table"
     and type(loc.API.ArcsenCommand.isHereChatEnabled) == "function"
     and loc.API.ArcsenCommand.isHereChatEnabled()
