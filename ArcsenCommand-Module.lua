@@ -1,6 +1,6 @@
 --[[
     ArcsenCommand-Module.lua
-    Version: 0.5.3
+    Version: 0.6.0
 
     Purpose:
       - Command core only; creates no UI.
@@ -32,15 +32,23 @@ local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
+local HttpService = game:GetService("HttpService")
 
 local module = {
-    version = "0.5.2",
+    version = "0.6.0",
     APIVersion = 1,
     commands = {},
     _output = nil,
     _onCommandsChanged = nil,
     _onHereChatChanged = nil,
     _hereChatEnabled = false,
+    _openChatEnabled = false,
+    _openChatCycle = 0,
+    _openChatLastID = 0,
+    _openChatSessionID = HttpService:GenerateGUID(false):gsub("-", ""),
+    _onOpenChatChanged = nil,
+    _openChatPollInterval = 6,
+    _openChatLimit = 125,
     _connections = {},
     _lastMessageKey = nil,
     _lastMessageAt = 0,
@@ -122,6 +130,168 @@ local function notifyHereChatChanged(enabled)
     end
 end
 
+-- OpenChat is separate from HereChat. This is a localhost-only development
+-- transport until verified identities and text moderation exist on a hosted backend.
+function module.setOnOpenChatChanged(callback)
+    if callback ~= nil and type(callback) ~= "function" then
+        return false, "OpenChat callback must be a function or nil."
+    end
+    module._onOpenChatChanged = callback
+    return true
+end
+
+local function notifyOpenChatChanged(enabled)
+    if type(module._onOpenChatChanged) == "function" then
+        pcall(module._onOpenChatChanged, enabled == true)
+    end
+end
+
+local getSenderColor
+
+local function openChatURL()
+    local base = tostring(sharedEnvironment.ArcsenOpenChatURL or "http://127.0.0.1:8080")
+    base = base:gsub("/+$", "")
+    if base:match("^https://[%w%.%-]+[/:]?")
+        or base:match("^http://127%.0%.0%.1:%d+$")
+        or base:match("^http://localhost:%d+$") then
+        return base .. "/api/v1/openchat/messages"
+    end
+    return nil, "Use HTTPS for a remote API, or http://127.0.0.1:8080 for local tests."
+end
+
+local function openChatHTTP(method, after, payload)
+    local url, reason = openChatURL()
+    if not url then return nil, reason end
+    local requestFn = type(request) == "function" and request
+        or type(http_request) == "function" and http_request
+        or (type(syn) == "table" and type(syn.request) == "function" and syn.request)
+        or (type(http) == "table" and type(http.request) == "function" and http.request)
+        or (type(sharedEnvironment.request) == "function" and sharedEnvironment.request)
+    if type(requestFn) ~= "function" then
+        return nil, "This executor does not provide a supported HTTP request function."
+    end
+    if method == "GET" then
+        url = url .. "?after=" .. tostring(math.max(0, math.floor(tonumber(after) or 0)))
+    end
+    local opts = {
+        Url = url,
+        Method = method,
+        Headers = { ["Accept"] = "application/json", ["Content-Type"] = "application/json" },
+    }
+    if method == "POST" then opts.Body = HttpService:JSONEncode(payload) end
+    local ok, reply = pcall(requestFn, opts)
+    if not ok then return nil, tostring(reply) end
+    if type(reply) ~= "table" then return nil, "Invalid HTTP response." end
+    local code = tonumber(reply.StatusCode or reply.Status or 0) or 0
+    local decodedOK, data = pcall(HttpService.JSONDecode, HttpService, tostring(reply.Body or ""))
+    if code < 200 or code >= 300 then
+        return nil, "HTTP " .. tostring(code) .. ": " .. tostring(decodedOK and type(data) == "table" and data.error or "Request failed")
+    end
+    if not decodedOK or type(data) ~= "table" then return nil, "Could not decode API response." end
+    return data
+end
+
+local function deliverOpenChat(messages)
+    if type(messages) ~= "table" then return end
+    local received = {}
+    for _, item in ipairs(messages) do
+        if type(item) == "table" then
+            local id = math.floor(tonumber(item.id) or 0)
+            local body = tostring(item.text or "")
+            if id > module._openChatLastID and body ~= "" then
+                module._openChatLastID = id
+                local username = tostring(item.username or "Unknown")
+                local localPlayer = Players.LocalPlayer
+                local isMine = localPlayer ~= nil and username == localPlayer.Name
+                local red, green, blue = getSenderColor(username)
+                table.insert(received, {
+                    body = body, id = id, username = username,
+                    displayName = tostring(item.displayName or username),
+                    timestamp = tonumber(item.timestamp) or os.time(),
+                    direction = isMine and "Right" or "Left",
+                    r = red, g = green, b = blue,
+                })
+            end
+        end
+    end
+    for index, entry in ipairs(received) do
+        emit(entry.body, "chat", {
+                    source = "OpenChat", origin = "Global",
+                    batchIndex = index, batchTotal = #received,
+                    direction = entry.direction,
+                    username = entry.username,
+                    displayName = entry.displayName,
+                    messageId = entry.id,
+                    timestamp = entry.timestamp,
+                    experienceName = "OpenChat • Global",
+                    r = entry.r, g = entry.g, b = entry.b,
+                    copyable = true,
+                })
+    end
+end
+
+function module.setOpenChat(enabled)
+    if module._destroyed then return false, "ArcsenCommand has been destroyed." end
+    enabled = enabled == true
+    if module._openChatEnabled == enabled then
+        local message = "OpenChat already " .. (enabled and "ON" or "OFF")
+        emit(message, "info", {source="ArcsenCommand", isSystem=true})
+        return true, message
+    end
+    if not enabled then
+        module._openChatEnabled = false
+        module._openChatCycle = module._openChatCycle + 1
+        notifyOpenChatChanged(false)
+        emit("OpenChat: OFF", "success", {source="ArcsenCommand", isSystem=true})
+        return true, "OpenChat OFF"
+    end
+    -- Confirm the API is reachable before enabling or creating a tab.
+    local data, err = openChatHTTP("GET", module._openChatLastID)
+    if not data then return false, err end
+    module._openChatEnabled = true
+    module._openChatCycle = module._openChatCycle + 1
+    local cycle = module._openChatCycle
+    notifyOpenChatChanged(true)
+    deliverOpenChat(data.messages)
+    emit("OpenChat: ON (max " .. tostring(module._openChatLimit) .. " global messages)",
+        "success", {source="ArcsenCommand", isSystem=true})
+    task.spawn(function()
+        while module._openChatEnabled and not module._destroyed and cycle == module._openChatCycle do
+            task.wait(module._openChatPollInterval)
+            if not module._openChatEnabled or module._destroyed or cycle ~= module._openChatCycle then break end
+            local response = openChatHTTP("GET", module._openChatLastID)
+            if module._openChatEnabled and not module._destroyed and cycle == module._openChatCycle and response then
+                deliverOpenChat(response.messages)
+            end
+        end
+    end)
+    return true, "OpenChat ON"
+end
+
+function module.isOpenChatEnabled()
+    return module._openChatEnabled == true
+end
+
+function module.sendOpenChat(rawText)
+    if module._destroyed then return false, "ArcsenCommand has been destroyed." end
+    if not module._openChatEnabled then return false, "Use /OpenChat ON first." end
+    local body = tostring(rawText or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if body == "" or #body > 800 or utf8.len(body) == nil or utf8.len(body) > 200 then
+        return false, "OpenChat messages must contain 1-200 characters (max 800 bytes)."
+    end
+    local user = Players.LocalPlayer
+    if not user then return false, "LocalPlayer is unavailable." end
+    local data, err = openChatHTTP("POST", nil, {
+        text = body,
+        username = user.Name,
+        displayName = user.DisplayName,
+        sessionId = module._openChatSessionID,
+    })
+    if not data then return false, err end
+    if type(data.message) == "table" then deliverOpenChat({data.message}) end
+    return true, "OpenChat message submitted."
+end
+
 local function notifyCommandsChanged()
     if type(module._onCommandsChanged) == "function" then
         pcall(module._onCommandsChanged, module.commands)
@@ -155,7 +325,7 @@ local function getPlayerByName(name)
     return nil
 end
 
-local function getSenderColor(name)
+getSenderColor = function(name)
     -- Stable, readable color for the whole incoming-message bubble.
     local seed = 0
     name = tostring(name or "")
@@ -516,6 +686,23 @@ module.registerCommand("herechat", function(arguments)
     return true, usage
 end, "Toggle incoming chat display: /HereChat ON, OFF, or STATUS")
 
+module.registerCommand("openchat", function(arguments)
+    local option = tostring(arguments or ""):lower():match("^%s*(%S*)") or ""
+    if option == "on" or option == "off" then
+        local ok, message = module.setOpenChat(option == "on")
+        if not ok then emit(message, "error", {source="ArcsenCommand", isSystem=true}) end
+        return true, message
+    elseif option == "status" then
+        local message = "OpenChat: " .. (module.isOpenChatEnabled() and "ON" or "OFF")
+            .. " (125 messages max, refresh every 6s)"
+        emit(message, "info", {source="ArcsenCommand", isSystem=true})
+        return true, message
+    end
+    local usage = "Usage: /OpenChat ON | OFF | STATUS"
+    emit(usage, "warning", {source="ArcsenCommand", isSystem=true})
+    return true, usage
+end, "Toggle global OpenChat relay (125 message limit): ON, OFF or STATUS")
+
 module.registerCommand("help", function()
     local names = {}
     for name in pairs(module.commands) do
@@ -567,6 +754,8 @@ function module.destroy()
 
     module._destroyed = true
     module._hereChatEnabled = false
+    module._openChatEnabled = false
+    module._openChatCycle = module._openChatCycle + 1
     table.clear(module._pendingOutgoing)
     disconnectHereChat()
     if sharedEnvironment.ArcsenCommand == module then
