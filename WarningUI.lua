@@ -1,4 +1,4 @@
-local v_ver = [[WarningUI 0.1.1 Preview]]
+local v_ver = [[WarningUI 0.1.2 Preview]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -342,6 +342,35 @@ hr.Parent = gui
 ListLayout(hr, 0,0,"HCenter","VCenter","SLayout","FillV")
 
 local state = { queue = {}, active = nil, seen = {}, seenOrder = {}, run = 0, dead = false, scripts = {} }
+-- Save only announcement IDs to avoid showing the same one after a client restart.
+-- File APIs are optional; normal Roblox clients without a local store dedupe per session.
+local seenFile = "ExperienceSettings/SeenWarnings.json"
+local seenHttp = game:GetService("HttpService")
+if type(readfile)=="function" and type(isfile)=="function" then
+  pcall(function()
+    if isfile(seenFile) then
+      local ids=seenHttp:JSONDecode(readfile(seenFile))
+      if type(ids)=="table" then
+        for _,id in ipairs(ids) do
+          if type(id)=="string" and #id<=100 and not state.seen[id] then
+            state.seen[id]=true
+            table.insert(state.seenOrder,id)
+          end
+        end
+      end
+    end
+  end)
+end
+while #state.seenOrder>300 do state.seen[table.remove(state.seenOrder,1)] = nil end
+local function persistSeen()
+  if type(writefile)~="function" then return end
+  pcall(function()
+    if type(isfolder)=="function" and type(makefolder)=="function" and not isfolder("ExperienceSettings") then
+      makefolder("ExperienceSettings")
+    end
+    writefile(seenFile,seenHttp:JSONEncode(state.seenOrder))
+  end)
+end
 
 local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, onSecondary)
   local frmbtn = twoButtons == true
@@ -616,6 +645,7 @@ function api.showServer(data)
       local oldest = table.remove(state.seenOrder, 1)
       state.seen[oldest] = nil
     end
+    persistSeen()
   end
   return ok, err
 end
