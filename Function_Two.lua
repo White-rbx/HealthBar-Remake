@@ -1,4 +1,4 @@
--- So this another script lol 2.92
+-- So this another script lol 2.93
 
 
 -- =====>> Saved Functions <<=====
@@ -337,7 +337,7 @@ end)
         updateToggle(not toggle)
     end)
 
-    return f
+    return f, updateToggle
 end
 --// =====================================================
 
@@ -647,127 +647,127 @@ Show or hide the Gif Animation Editor window.]],
 )
 
 --// =====================================================
---// ARCSCRIPTCENTER: OPT-IN ACTIVE USERS
---// Uses the existing ToggleConfig; OFF by default for new users.
---// Saved ON will turn on again next time until the user switches OFF.
---// No keys, player identities, game IDs, or chat content are sent.
+--// ARCSCRIPTCENTER: ACTIVE STATUS + EXPLICIT PROFILE CONSENT
+--// Anonymous count ON by default, OFF means 24h pause (clearly disclosed).
+--// A separate persistent opt-out is provided. Roblox profile sharing is OFF by default.
 --// =====================================================
 do
-    local presenceURL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/UniversalPresence.lua"
-    local presenceEnv = getgenv()
-    local presenceKey = "_ES_UniversalPresenceSession"
-    local presenceCycle = 0
-    local presenceSession = nil
-    local presenceRow = nil
-
-    -- Stop a previous session if Function_Two.lua is executed again.
-    if type(presenceEnv[presenceKey]) == "table"
-        and type(presenceEnv[presenceKey].stop) == "function" then
-        pcall(function() presenceEnv[presenceKey]:stop() end)
+    local env = getgenv()
+    local conf = ToggleConfig
+    local baseURL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/UniversalPresence.lua"
+    local key = "_ES_UniversalPresenceSession"
+    local pauseKey = "ACS_presence_pause_until"
+    local offKey = "ACS_presence_never_share"
+    local profileKey = "ACS_presence_profile_opt_in"
+    local mainKey = "ACS_ShareActiveStatus"
+    local session, row, setMain
+    local cycle = 0
+    local initial = true
+    local function stop()
+        cycle += 1
+        if session and type(session.stop)=="function" then pcall(function() session:stop() end) end
+        session = nil
+        if type(env[key])=="table" and type(env[key].stop)=="function" then
+            pcall(function() env[key]:stop() end)
+        end
+        env[key] = nil
     end
-    presenceEnv[presenceKey] = nil
-
-    local function stopPresence()
-        presenceCycle += 1
-        if presenceSession and type(presenceSession.stop) == "function" then
-            pcall(function() presenceSession:stop() end)
-        end
-        presenceSession = nil
-        presenceEnv[presenceKey] = nil
-    end
-
-    local function pickHTTP()
-        if type(request) == "function" then return request end
-        if type(http_request) == "function" then return http_request end
-        if type(syn) == "table" and type(syn.request) == "function" then
-            return syn.request
-        end
-        if type(http) == "table" and type(http.request) == "function" then
-            return http.request
-        end
+    stop()
+    local function requestFunction()
+        if type(request)=="function" then return request end
+        if type(http_request)=="function" then return http_request end
+        if type(syn)=="table" and type(syn.request)=="function" then return syn.request end
+        if type(http)=="table" and type(http.request)=="function" then return http.request end
         return nil
     end
-
-    local function startPresence()
-        stopPresence()
-        local cycle = presenceCycle
-        local requestFunction = pickHTTP()
-        if not requestFunction then
-            warn("[ExperienceSettings Presence] HTTP request capability unavailable; no data sent.")
-            return
-        end
-
-        -- Download only when the user has enabled the toggle.
-        local fetched, source = pcall(function()
-            return game:HttpGet(presenceURL)
-        end)
-        if not fetched or type(source) ~= "string" or source == "" then
-            warn("[ExperienceSettings Presence] Cannot load UniversalPresence.lua")
-            return
-        end
-        if cycle ~= presenceCycle then return end
-
-        local compiled, compileError = loadstring(source)
-        if type(compiled) ~= "function" then
-            warn("[ExperienceSettings Presence] Invalid module: " .. tostring(compileError))
-            return
-        end
-        local loaded, module = pcall(compiled)
-        if not loaded or type(module) ~= "table" or type(module.new) ~= "function" then
-            warn("[ExperienceSettings Presence] Unexpected module interface; check GitHub version.")
-            return
-        end
-        if cycle ~= presenceCycle then return end
-
-        local created, session = pcall(module.new, requestFunction, function(ok, err)
-            if not ok then
-                warn("[ExperienceSettings Presence] Heartbeat failed: " .. tostring(err))
+    local function start()
+        stop()
+        if conf:Get(offKey,false) or not conf:Get(mainKey,true) or
+           tonumber(conf:Get(pauseKey,0)) > os.time() then return end
+        local req = requestFunction()
+        if not req then warn("[Presence] HTTP request unavailable") return end
+        local current = cycle
+        task.spawn(function()
+            local ok, source = pcall(function() return game:HttpGet(baseURL) end)
+            if not ok or type(source)~="string" or current~=cycle then return end
+            local compiled = loadstring(source)
+            if type(compiled)~="function" then return end
+            local loaded, module = pcall(compiled)
+            if not loaded or type(module)~="table" or type(module.new)~="function" or current~=cycle then return end
+            local profile = nil
+            if conf:Get(profileKey,false) then
+                -- Never share profile identifiers unless the user explicitly opted in.
+                local player = game:GetService("Players").LocalPlayer
+                if player then profile = {
+                    consent=true, userId=player.UserId,
+                    username=player.Name, displayName=player.DisplayName
+                } end
             end
+            local created, s = pcall(module.new, req, function(success, err)
+                if not success then warn("[Presence] "..tostring(err)) end
+            end, profile)
+            if not created or type(s)~="table" or current~=cycle then return end
+            session=s; env[key]=s
+            local ready, result = pcall(function() return s:start(true) end)
+            if not ready or result==false then stop() end
         end)
-        if not created or type(session) ~= "table"
-            or type(session.start) ~= "function" or type(session.stop) ~= "function" then
-            warn("[ExperienceSettings Presence] Unable to create a presence session.")
-            return
-        end
-        if cycle ~= presenceCycle then return end
-
-        presenceSession = session
-        presenceEnv[presenceKey] = session
-        local ok, started, reason = pcall(function()
-            return session:start(true)
-        end)
-        if not ok or started == false then
-            warn("[ExperienceSettings Presence] Unable to start: " .. tostring(reason))
-            stopPresence()
-        end
     end
-
-    -- Prevent a second UI row if this script is rerun without recreating B_Frame.
-    local previousRow = BFrame:FindFirstChild("ACS_ShareActiveStatus")
-    if previousRow then previousRow:Destroy() end
-
-    presenceRow = createToggle(
-        BFrame,
-        "ACS_ShareActiveStatus",
-        "Share Active Status",
-        [[<b><u>Share Active Status (ArcScriptCenter)</u></b>
-Opt in to anonymous active-session counting. No usernames, Roblox User IDs, place IDs or chat messages are sent.
-OFF by default; turning ON is saved and automatically restores next time. Turn OFF to revoke participation.]],
-        function(enabled)
-            if enabled then
-                startPresence()
-            else
-                stopPresence()
+    -- If a 24-hour pause expired, resume unless the persistent opt-out is ON.
+    if tonumber(conf:Get(pauseKey,0))<=os.time() and not conf:Get(offKey,false) then
+        conf:Set(mainKey,true)
+        conf:Set(pauseKey,0)
+        conf:Save()
+    elseif tonumber(conf:Get(pauseKey,0))>os.time() then
+        conf:Set(mainKey,false)
+        conf:Save()
+    end
+    local old=BFrame:FindFirstChild(mainKey)
+    if old then old:Destroy() end
+    row,setMain = createToggle(BFrame,mainKey,"Share Active Status",
+        [[<b>Share Active Status</b> — Anonymous session count is ON by default.
+Switching OFF means <b>Pause for 24 hours</b>, then it resumes automatically.
+Use "Never Share Active Status" to opt out permanently.
+Only the separate Profile toggle shares a Roblox name and User ID.]],
+        function(on)
+            if not initial then
+                conf:Set(pauseKey,on and 0 or (os.time()+86400))
+                conf:Save()
             end
-        end,
-        false
-    )
-    presenceRow.Name = "ACS_ShareActiveStatus"
-
-    -- Clean up on UI removal. Hiding the settings UI does not disconnect.
-    presenceRow.AncestryChanged:Connect(function(_, parent)
-        if not parent then stopPresence() end
+            if on then start() else stop() end
+        end,true)
+    row.Name=mainKey
+    initial=false
+    local oldProfile=BFrame:FindFirstChild(profileKey)
+    if oldProfile then oldProfile:Destroy() end
+    local profileRow=createToggle(BFrame,profileKey,"Show Roblox Profile to Admin",
+        [[<b>Share Roblox Profile in Admin Active Users</b> — OFF by default.
+When enabled, sends your Roblox User ID, username and display name to
+ArcScriptCenter for display in the private Admin dashboard.
+Anyone using an untrusted client could spoof these values; no verified identity is claimed.]],
+        function(on)
+            if not initial and conf:Get(mainKey,true) and not conf:Get(offKey,false) then start() end
+        end,false)
+    profileRow.Name=profileKey
+    local oldOff=BFrame:FindFirstChild(offKey)
+    if oldOff then oldOff:Destroy() end
+    local offRow=createToggle(BFrame,offKey,"Never Share Active Status",
+        [[<b>Permanent Opt-out</b> — Stops anonymous presence AND profile sharing.
+Stays in effect across restarts until you turn this OFF yourself.]],
+        function(on)
+            if on then stop() elseif conf:Get(mainKey,true) then start() end
+        end,false)
+    offRow.Name=offKey
+    task.spawn(function()
+        while row.Parent do
+            task.wait(60)
+            if not row.Parent then break end
+            if not conf:Get(offKey,false) and not conf:Get(mainKey,true) and
+               tonumber(conf:Get(pauseKey,0))>0 and tonumber(conf:Get(pauseKey,0))<=os.time() then
+                setMain(true)
+            end
+        end
     end)
+    row.AncestryChanged:Connect(function(_,parent) if not parent then stop() end end)
 end
 
 --// ================= END =================
