@@ -1,4 +1,4 @@
-local v_ver = [[WarningUI 0.1.0 Preview]]
+local v_ver = [[WarningUI 0.1.1 Preview]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -341,7 +341,7 @@ hr.BackgroundColor3 = Color3.new(0,0,0)
 hr.Parent = gui
 ListLayout(hr, 0,0,"HCenter","VCenter","SLayout","FillV")
 
-local state = { queue = {}, active = nil, seen = {}, seenOrder = {}, run = 0, dead = false }
+local state = { queue = {}, active = nil, seen = {}, seenOrder = {}, run = 0, dead = false, scripts = {} }
 
 local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, onSecondary)
   local frmbtn = twoButtons == true
@@ -498,7 +498,48 @@ local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, o
   return { close = dismiss, frame = frm }
 end
 
-local api = { version = "0.1.0", source = "ExperienceSettings WarningUI" }
+local api = { version = "0.2.0", source = "ExperienceSettings WarningUI" }
+
+-- Register trusted local Luau callbacks before showing Cloud warnings.
+-- 'RequireScript' never compiles text returned by a Cloudflare API.
+function api.registerScript(id, fn)
+  if type(id) ~= "string" or not id:match("^[%a][%w_-]*$") or #id > 64 then
+    return false, "Invalid script ID"
+  end
+  if type(fn) ~= "function" then return false, "Expected Luau function" end
+  state.scripts[id] = fn
+  return true
+end
+
+function api.unregisterScript(id)
+  state.scripts[id] = nil
+end
+
+local function makeButtonCallback(entry, source, slot)
+  local isPrimary = slot == 1
+  local action = entry[isPrimary and "primaryAction" or "secondaryAction"] or "ExitUI"
+  local scriptId = entry[isPrimary and "primaryScriptId" or "secondaryScriptId"]
+  local localFunction = entry[isPrimary and "primaryScript" or "secondaryScript"]
+  local legacy = entry[isPrimary and "onPrimary" or "onSecondary"]
+  if action == "ExitUI" then
+    -- Legacy client callback remains supported for old integrations.
+    if source == "client" and type(legacy) == "function" then return legacy end
+    return nil
+  end
+  if action ~= "RequireScript" then return nil end
+  if source == "client" and type(localFunction) == "function" then
+    return function() return localFunction(entry) end
+  end
+  if type(scriptId) ~= "string" then return nil end
+  return function()
+    local handler = state.scripts[scriptId]
+    if type(handler) ~= "function" then
+      warn("[WarningUI] Unregistered button script: " .. tostring(scriptId))
+      return nil -- allow popup to close; don't trap the player
+    end
+    return handler(entry)
+  end
+end
 
 local function showNext()
   if state.dead or state.active or #state.queue == 0 then return end
@@ -518,13 +559,36 @@ local function queueWarning(entry, source)
   local title = "[" .. prefix .. "] " .. tostring(entry.title or "Warning")
   local description = tostring(entry.description or entry.message or "")
   if description == "" then return false, "Message is empty" end
+  -- For local client callbacks the function is supplied directly in Luau.
+  -- For server notices only a registered script ID can run on button click.
+  local action1 = entry.primaryAction or "ExitUI"
+  local action2 = entry.secondaryAction or "ExitUI"
+  if (action1 ~= "ExitUI" and action1 ~= "RequireScript") or
+     (action2 ~= "ExitUI" and action2 ~= "RequireScript") then
+    return false, "Invalid button action"
+  end
+  if source == "server" then
+    if action1 == "RequireScript" and type(entry.primaryScriptId) ~= "string" then
+      return false, "Button1 script ID required"
+    end
+    if entry.secondaryLabel and action2 == "RequireScript" and type(entry.secondaryScriptId) ~= "string" then
+      return false, "Button2 script ID required"
+    end
+  elseif action1 == "RequireScript" and type(entry.primaryScript) ~= "function" and
+    (type(entry.primaryScriptId) ~= "string" or not state.scripts[entry.primaryScriptId]) then
+    return false, "Button1 Luau function required"
+  elseif entry.secondaryLabel and action2 == "RequireScript" and
+    type(entry.secondaryScript) ~= "function" and
+    (type(entry.secondaryScriptId) ~= "string" or not state.scripts[entry.secondaryScriptId]) then
+    return false, "Button2 Luau function required"
+  end
   table.insert(state.queue, {
     title = title:sub(1, 120),
     description = description:sub(1, 1500),
     primaryLabel = tostring(entry.primaryLabel or "OK"):sub(1, 32),
     secondaryLabel = entry.secondaryLabel and tostring(entry.secondaryLabel):sub(1, 32) or nil,
-    onPrimary = entry.onPrimary,
-    onSecondary = entry.onSecondary
+    onPrimary = makeButtonCallback(entry, source, 1),
+    onSecondary = entry.secondaryLabel and makeButtonCallback(entry, source, 2) or nil
   })
   showNext()
   return true
