@@ -1,6 +1,6 @@
 --[[
     ArcsenCommand-Module.lua
-    Version: 0.6.0
+    Version: 0.6.1
 
     Purpose:
       - Command core only; creates no UI.
@@ -35,7 +35,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local HttpService = game:GetService("HttpService")
 
 local module = {
-    version = "0.6.0",
+    version = "0.6.1",
     APIVersion = 1,
     commands = {},
     _output = nil,
@@ -130,8 +130,9 @@ local function notifyHereChatChanged(enabled)
     end
 end
 
--- OpenChat is separate from HereChat. This is a localhost-only development
--- transport until verified identities and text moderation exist on a hosted backend.
+-- OpenChat is a read-only public feed of developer-approved announcements.
+-- Do not use external HTTP to exchange player-to-player messages; Roblox
+-- requires TextChatService for player chat and its permission/filter rules.
 function module.setOnOpenChatChanged(callback)
     if callback ~= nil and type(callback) ~= "function" then
         return false, "OpenChat callback must be a function or nil."
@@ -149,46 +150,76 @@ end
 local getSenderColor
 
 local function openChatURL()
-    local base = tostring(sharedEnvironment.ArcsenOpenChatURL or "http://127.0.0.1:8080")
+    -- Official ArcScriptCenter API is the default; localhost was a prototype.
+    local base = tostring(sharedEnvironment.ArcsenOpenChatURL
+        or "https://arcscriptcenter-api.kogpasan14.workers.dev")
     base = base:gsub("/+$", "")
-    if base:match("^https://[%w%.%-]+[/:]?")
-        or base:match("^http://127%.0%.0%.1:%d+$")
-        or base:match("^http://localhost:%d+$") then
-        return base .. "/api/v1/openchat/messages"
+    if not (base:match("^https://[%w%.%-]+$")
+        or base:match("^https://[%w%.%-]+:%d+$")) then
+        return nil, "OpenChat requires an HTTPS API base URL."
     end
-    return nil, "Use HTTPS for a remote API, or http://127.0.0.1:8080 for local tests."
+    return base .. "/api/v1/openchat/messages"
 end
 
-local function openChatHTTP(method, after, payload)
+local function openChatHTTP(method, after)
+    if method ~= "GET" then
+        return nil, "Cloud OpenChat is read-only. Use Roblox TextChatService for player chat."
+    end
     local url, reason = openChatURL()
     if not url then return nil, reason end
+    url = url .. "?after=" .. tostring(math.max(0, math.floor(tonumber(after) or 0)))
+
+    local function decode(body)
+        local ok, result = pcall(HttpService.JSONDecode, HttpService, tostring(body or ""))
+        if not ok or type(result) ~= "table" then
+            return nil, "Invalid JSON from ArcScriptCenter API."
+        end
+        if result.ok ~= true or type(result.messages) ~= "table" then
+            return nil, tostring(result.error or "OpenChat API did not return messages.")
+        end
+        if result.mode ~= "admin_announcements" then
+            return nil, "Unexpected OpenChat API mode."
+        end
+        return result
+    end
+
+    local function safeHttpGet()
+        -- Some supported hosts expose game:HttpGet but not request() StatusCode.
+        local success, body = pcall(function() return game:HttpGet(url) end)
+        if not success then return nil, tostring(body) end
+        return decode(body)
+    end
+
     local requestFn = type(request) == "function" and request
         or type(http_request) == "function" and http_request
         or (type(syn) == "table" and type(syn.request) == "function" and syn.request)
         or (type(http) == "table" and type(http.request) == "function" and http.request)
         or (type(sharedEnvironment.request) == "function" and sharedEnvironment.request)
-    if type(requestFn) ~= "function" then
-        return nil, "This executor does not provide a supported HTTP request function."
+    if type(requestFn) ~= "function" then return safeHttpGet() end
+
+    local ok, reply = pcall(requestFn, {
+        Url = url, Method = "GET",
+        Headers = {["Accept"] = "application/json"}
+    })
+    if not ok or type(reply) ~= "table" then
+        local data, fallbackError = safeHttpGet()
+        if data then return data end
+        return nil, "OpenChat request failed: " .. tostring(ok and "unexpected response" or reply)
+            .. "; HttpGet: " .. tostring(fallbackError)
     end
-    if method == "GET" then
-        url = url .. "?after=" .. tostring(math.max(0, math.floor(tonumber(after) or 0)))
-    end
-    local opts = {
-        Url = url,
-        Method = method,
-        Headers = { ["Accept"] = "application/json", ["Content-Type"] = "application/json" },
-    }
-    if method == "POST" then opts.Body = HttpService:JSONEncode(payload) end
-    local ok, reply = pcall(requestFn, opts)
-    if not ok then return nil, tostring(reply) end
-    if type(reply) ~= "table" then return nil, "Invalid HTTP response." end
+
     local code = tonumber(reply.StatusCode or reply.Status or 0) or 0
-    local decodedOK, data = pcall(HttpService.JSONDecode, HttpService, tostring(reply.Body or ""))
-    if code < 200 or code >= 300 then
-        return nil, "HTTP " .. tostring(code) .. ": " .. tostring(decodedOK and type(data) == "table" and data.error or "Request failed")
+    if code == 0 then
+        local data, fallbackError = safeHttpGet()
+        if data then return data end
+        return nil, "OpenChat HTTP 0 (transport/network error). HttpGet: " .. tostring(fallbackError)
     end
-    if not decodedOK or type(data) ~= "table" then return nil, "Could not decode API response." end
-    return data
+    if code < 200 or code >= 300 then
+        local valid, data = pcall(HttpService.JSONDecode, HttpService, tostring(reply.Body or ""))
+        return nil, "OpenChat HTTP " .. tostring(code) .. ": "
+            .. tostring(valid and type(data) == "table" and data.error or "Request rejected")
+    end
+    return decode(reply.Body)
 end
 
 local function deliverOpenChat(messages)
@@ -207,7 +238,19 @@ local function deliverOpenChat(messages)
                 table.insert(received, {
                     body = body, id = id, username = username,
                     displayName = tostring(item.displayName or username),
-                    timestamp = tonumber(item.timestamp) or os.time(),
+                    timestamp = (function()
+                        local numeric = tonumber(item.timestamp)
+                        if numeric then return numeric end
+                        if type(item.timestamp) == "string" then
+                            local iso = item.timestamp:gsub(" ", "T")
+                            if iso:match("^%d%d%d%d%-%d%d%-%d%dT") and not iso:match("Z$") then
+                                iso = iso .. "Z"
+                            end
+                            local ok, dt = pcall(DateTime.fromIsoDate, iso)
+                            if ok and dt then return dt.UnixTimestamp end
+                        end
+                        return os.time()
+                    end)(),
                     direction = isMine and "Right" or "Left",
                     r = red, g = green, b = blue,
                 })
@@ -253,7 +296,7 @@ function module.setOpenChat(enabled)
     local cycle = module._openChatCycle
     notifyOpenChatChanged(true)
     deliverOpenChat(data.messages)
-    emit("OpenChat: ON (max " .. tostring(module._openChatLimit) .. " global messages)",
+    emit("OpenChat: ON (read-only Cloud Feed; max " .. tostring(module._openChatLimit) .. " announcements)",
         "success", {source="ArcsenCommand", isSystem=true})
     task.spawn(function()
         while module._openChatEnabled and not module._destroyed and cycle == module._openChatCycle do
@@ -273,23 +316,7 @@ function module.isOpenChatEnabled()
 end
 
 function module.sendOpenChat(rawText)
-    if module._destroyed then return false, "ArcsenCommand has been destroyed." end
-    if not module._openChatEnabled then return false, "Use /OpenChat ON first." end
-    local body = tostring(rawText or ""):gsub("^%s+", ""):gsub("%s+$", "")
-    if body == "" or #body > 800 or utf8.len(body) == nil or utf8.len(body) > 200 then
-        return false, "OpenChat messages must contain 1-200 characters (max 800 bytes)."
-    end
-    local user = Players.LocalPlayer
-    if not user then return false, "LocalPlayer is unavailable." end
-    local data, err = openChatHTTP("POST", nil, {
-        text = body,
-        username = user.Name,
-        displayName = user.DisplayName,
-        sessionId = module._openChatSessionID,
-    })
-    if not data then return false, err end
-    if type(data.message) == "table" then deliverOpenChat({data.message}) end
-    return true, "OpenChat message submitted."
+    return false, "OpenChat Cloud Feed is read-only. Player chat must use Roblox TextChatService (try HereChat in a supported experience)."
 end
 
 local function notifyCommandsChanged()
@@ -694,14 +721,14 @@ module.registerCommand("openchat", function(arguments)
         return true, message
     elseif option == "status" then
         local message = "OpenChat: " .. (module.isOpenChatEnabled() and "ON" or "OFF")
-            .. " (125 messages max, refresh every 6s)"
+            .. " (read-only announcements, max 125, refresh every 6s)"
         emit(message, "info", {source="ArcsenCommand", isSystem=true})
         return true, message
     end
     local usage = "Usage: /OpenChat ON | OFF | STATUS"
     emit(usage, "warning", {source="ArcsenCommand", isSystem=true})
     return true, usage
-end, "Toggle global OpenChat relay (125 message limit): ON, OFF or STATUS")
+end, "Read approved global announcements (read-only): ON, OFF or STATUS")
 
 module.registerCommand("help", function()
     local names = {}
