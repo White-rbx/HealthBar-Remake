@@ -1,4 +1,4 @@
--- ArcScriptCenter Cloud Warning Connector v0.5.12
+-- ArcScriptCenter Cloud Warning Connector v0.5.13
 -- Install with WarningUI.lua (Preview v0.1.0+) already loaded.
 -- Server means ArcScriptCenter's Cloudflare Worker, NOT another game's Roblox server.
 -- Only reads public, approved service notices. No secrets or user data are sent.
@@ -71,7 +71,7 @@ local started, reason = ui.startServerPolling(fetcher, 30)
 assert(started, tostring(reason or 'Unable to start WarningUI polling'))
 
 shared.ArcScriptWarningConnector = {
-    version = '0.5.12',
+    version = '0.5.13',
     stop = function()
         ui.stopServerPolling()
     end
