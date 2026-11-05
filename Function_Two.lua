@@ -1,4 +1,4 @@
--- So this another script lol 2.91
+-- So this another script lol 2.92
 
 
 -- =====>> Saved Functions <<=====
@@ -645,5 +645,129 @@ Show or hide the Gif Animation Editor window.]],
 	end,
 	false
 )
+
+--// =====================================================
+--// ARCSCRIPTCENTER: OPT-IN ACTIVE USERS
+--// Uses the existing ToggleConfig; OFF by default for new users.
+--// Saved ON will turn on again next time until the user switches OFF.
+--// No keys, player identities, game IDs, or chat content are sent.
+--// =====================================================
+do
+    local presenceURL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/UniversalPresence.lua"
+    local presenceEnv = getgenv()
+    local presenceKey = "_ES_UniversalPresenceSession"
+    local presenceCycle = 0
+    local presenceSession = nil
+    local presenceRow = nil
+
+    -- Stop a previous session if Function_Two.lua is executed again.
+    if type(presenceEnv[presenceKey]) == "table"
+        and type(presenceEnv[presenceKey].stop) == "function" then
+        pcall(function() presenceEnv[presenceKey]:stop() end)
+    end
+    presenceEnv[presenceKey] = nil
+
+    local function stopPresence()
+        presenceCycle += 1
+        if presenceSession and type(presenceSession.stop) == "function" then
+            pcall(function() presenceSession:stop() end)
+        end
+        presenceSession = nil
+        presenceEnv[presenceKey] = nil
+    end
+
+    local function pickHTTP()
+        if type(request) == "function" then return request end
+        if type(http_request) == "function" then return http_request end
+        if type(syn) == "table" and type(syn.request) == "function" then
+            return syn.request
+        end
+        if type(http) == "table" and type(http.request) == "function" then
+            return http.request
+        end
+        return nil
+    end
+
+    local function startPresence()
+        stopPresence()
+        local cycle = presenceCycle
+        local requestFunction = pickHTTP()
+        if not requestFunction then
+            warn("[ExperienceSettings Presence] HTTP request capability unavailable; no data sent.")
+            return
+        end
+
+        -- Download only when the user has enabled the toggle.
+        local fetched, source = pcall(function()
+            return game:HttpGet(presenceURL)
+        end)
+        if not fetched or type(source) ~= "string" or source == "" then
+            warn("[ExperienceSettings Presence] Cannot load UniversalPresence.lua")
+            return
+        end
+        if cycle ~= presenceCycle then return end
+
+        local compiled, compileError = loadstring(source)
+        if type(compiled) ~= "function" then
+            warn("[ExperienceSettings Presence] Invalid module: " .. tostring(compileError))
+            return
+        end
+        local loaded, module = pcall(compiled)
+        if not loaded or type(module) ~= "table" or type(module.new) ~= "function" then
+            warn("[ExperienceSettings Presence] Unexpected module interface; check GitHub version.")
+            return
+        end
+        if cycle ~= presenceCycle then return end
+
+        local created, session = pcall(module.new, requestFunction, function(ok, err)
+            if not ok then
+                warn("[ExperienceSettings Presence] Heartbeat failed: " .. tostring(err))
+            end
+        end)
+        if not created or type(session) ~= "table"
+            or type(session.start) ~= "function" or type(session.stop) ~= "function" then
+            warn("[ExperienceSettings Presence] Unable to create a presence session.")
+            return
+        end
+        if cycle ~= presenceCycle then return end
+
+        presenceSession = session
+        presenceEnv[presenceKey] = session
+        local ok, started, reason = pcall(function()
+            return session:start(true)
+        end)
+        if not ok or started == false then
+            warn("[ExperienceSettings Presence] Unable to start: " .. tostring(reason))
+            stopPresence()
+        end
+    end
+
+    -- Prevent a second UI row if this script is rerun without recreating B_Frame.
+    local previousRow = BFrame:FindFirstChild("ACS_ShareActiveStatus")
+    if previousRow then previousRow:Destroy() end
+
+    presenceRow = createToggle(
+        BFrame,
+        "ACS_ShareActiveStatus",
+        "Share Active Status",
+        [[<b><u>Share Active Status (ArcScriptCenter)</u></b>
+Opt in to anonymous active-session counting. No usernames, Roblox User IDs, place IDs or chat messages are sent.
+OFF by default; turning ON is saved and automatically restores next time. Turn OFF to revoke participation.]],
+        function(enabled)
+            if enabled then
+                startPresence()
+            else
+                stopPresence()
+            end
+        end,
+        false
+    )
+    presenceRow.Name = "ACS_ShareActiveStatus"
+
+    -- Clean up on UI removal. Hiding the settings UI does not disconnect.
+    presenceRow.AncestryChanged:Connect(function(_, parent)
+        if not parent then stopPresence() end
+    end)
+end
 
 --// ================= END =================
