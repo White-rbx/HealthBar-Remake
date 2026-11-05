@@ -1,4 +1,4 @@
--- UniversalPresence.lua — opt-in anonymous presence for ExperienceSettings.
+-- UniversalPresence.lua v0.5.14 — presence + optional consented profile.
 -- This is a client-side prototype. It never starts unless :start(true) is called.
 -- No usernames, Roblox UserIds, place IDs, chat messages or API secrets are sent.
 -- Caller must supply an HTTP request function supported by its host environment.
@@ -7,7 +7,7 @@ local BASE = "https://arcscriptcenter-api.kogpasan14.workers.dev"
 local Heartbeat = {}
 Heartbeat.__index = Heartbeat
 
-function Heartbeat.new(httpRequest, onStatus)
+function Heartbeat.new(httpRequest, onStatus, profile)
     assert(type(httpRequest) == "function", "Provide an approved HTTP request function")
     return setmetatable({
         request = httpRequest,
@@ -15,15 +15,23 @@ function Heartbeat.new(httpRequest, onStatus)
         id = HttpService:GenerateGUID(false):gsub("%-", ""):lower(),
         active = false,
         generation = 0,
+        profile = (type(profile) == "table" and profile.consent == true) and profile or nil,
     }, Heartbeat)
 end
 
 function Heartbeat:_send(path)
+    local data = {sessionId = self.id}
+    if path == "/api/v1/presence/heartbeat" and self.profile then
+        data.profileConsent = true
+        data.userId = tostring(self.profile.userId)
+        data.username = self.profile.username
+        data.displayName = self.profile.displayName
+    end
     local ok, response = pcall(self.request, {
         Url = BASE .. path,
         Method = "POST",
         Headers = { ["Content-Type"] = "application/json", ["Accept"] = "application/json" },
-        Body = HttpService:JSONEncode({sessionId = self.id}),
+        Body = HttpService:JSONEncode(data),
     })
     if not ok then return false, tostring(response) end
     if type(response) ~= "table" then return false, "Invalid HTTP response" end
