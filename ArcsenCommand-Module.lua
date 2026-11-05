@@ -1,6 +1,6 @@
 --[[
     ArcsenCommand-Module.lua
-    Version: 0.6.1
+    Version: 0.6.2
 
     Purpose:
       - Command core only; creates no UI.
@@ -35,7 +35,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local HttpService = game:GetService("HttpService")
 
 local module = {
-    version = "0.6.1",
+    version = "0.6.2",
     APIVersion = 1,
     commands = {},
     _output = nil,
@@ -317,6 +317,50 @@ end
 
 function module.sendOpenChat(rawText)
     return false, "OpenChat Cloud Feed is read-only. Player chat must use Roblox TextChatService (try HereChat in a supported experience)."
+end
+
+-- Moderation-only endpoint: a report is not a chat message.
+-- Anonymous reporter ID is random per ArcsenCommand session; user names are
+-- neither requested nor transmitted by this function.
+function module.reportOpenChat(messageId, reason, details)
+    if module._destroyed then return false, "ArcsenCommand has been destroyed." end
+    messageId = tonumber(messageId)
+    if not messageId or messageId < 1 or messageId % 1 ~= 0 then
+        return false, "Invalid message ID."
+    end
+    local accepted = {harassment=true, spam=true, abuse=true, other=true}
+    if accepted[tostring(reason)] ~= true then return false, "Invalid report reason." end
+    details = tostring(details or ""):sub(1, 240)
+    local url, err = openChatURL()
+    if not url then return false, err end
+    url = url:gsub("/messages$", "/reports")
+    local req = type(request) == "function" and request
+        or type(http_request) == "function" and http_request
+        or (type(syn) == "table" and type(syn.request) == "function" and syn.request)
+        or (type(http) == "table" and type(http.request) == "function" and http.request)
+        or (type(sharedEnvironment.request) == "function" and sharedEnvironment.request)
+    if type(req) ~= "function" then return false, "This environment cannot send report requests." end
+    local body = HttpService:JSONEncode({
+        messageId = messageId,
+        reason = reason,
+        details = details,
+        reporterToken = module._openChatSessionID
+    })
+    local ok, response = pcall(req, {
+        Url = url, Method = "POST",
+        Headers = { ["Content-Type"] = "application/json", ["Accept"] = "application/json" },
+        Body = body
+    })
+    if not ok or type(response) ~= "table" then
+        return false, "Report network request failed."
+    end
+    local code = tonumber(response.StatusCode or response.Status or 0) or 0
+    local decodedOK, data = pcall(HttpService.JSONDecode, HttpService, tostring(response.Body or ""))
+    if code >= 200 and code < 300 and decodedOK and type(data)=="table" and data.ok then
+        return true, "Report accepted"
+    end
+    return false, decodedOK and type(data)=="table" and tostring(data.error or "Report rejected")
+        or ("Report HTTP " .. tostring(code))
 end
 
 local function notifyCommandsChanged()
