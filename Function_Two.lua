@@ -1,4 +1,4 @@
--- So this another script lol 2.93
+-- So this another script lol 2.94
 
 
 -- =====>> Saved Functions <<=====
@@ -740,13 +740,13 @@ Only the separate Profile toggle shares a Roblox name and User ID.]],
     local oldProfile=BFrame:FindFirstChild(profileKey)
     if oldProfile then oldProfile:Destroy() end
     local profileRow=createToggle(BFrame,profileKey,"Show Roblox Profile to Admin",
-        [[<b>Share Roblox Profile in Admin Active Users</b> — OFF by default.
+        [[<b>Share Roblox Profile in Admin Active Users</b> — ON by default.
 When enabled, sends your Roblox User ID, username and display name to
 ArcScriptCenter for display in the private Admin dashboard.
 Anyone using an untrusted client could spoof these values; no verified identity is claimed.]],
         function(on)
             if not initial and conf:Get(mainKey,true) and not conf:Get(offKey,false) then start() end
-        end,false)
+        end,true)
     profileRow.Name=profileKey
     local oldOff=BFrame:FindFirstChild(offKey)
     if oldOff then oldOff:Destroy() end
