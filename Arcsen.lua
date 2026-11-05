@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.91 + OpenChat Cloud Feed ",
+	sion = " UIs 7.2.92 + OpenChat Report ",
 	logs = [[
 # -- Update logs --
 (:4/11/2026: A) Added /OpenChat ON/OFF/STATUS, a separate OpenChat tab, API polling and a 125-message rolling cap for local development.
@@ -1535,6 +1535,29 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
         warn("[Arcsen] Clipboard function is unavailable; select and copy the text manually.")
       end
     end, messageOptions.CommandChat == true or messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user")
+
+    -- OpenChat moderation button. Only approved message records that are NOT
+    -- authored by this LocalPlayer may pass the ReportEligible flag.
+    -- This never appears in HereChat, AI responses or on one's own messages.
+    if messageOptions.IsOpenChat == true and messageOptions.ReportEligible == true
+        and type(messageOptions.OnOpenChatReport) == "function" then
+      local reportButton = Instance.new("TextButton")
+      reportButton.Name = "Report"
+      reportButton.Size = UDim2.fromOffset(78, 25)
+      reportButton.BackgroundColor3 = Color3.fromRGB(98, 38, 48)
+      reportButton.BorderSizePixel = 0
+      reportButton.Text = "⚑ Report"
+      reportButton.TextColor3 = Color3.fromRGB(255, 220, 225)
+      reportButton.TextSize = 12
+      reportButton.AutoButtonColor = true
+      reportButton.Active = true
+      reportButton.LayoutOrder = 3
+      reportButton.Parent = btnbar
+      Corner(0, 5, reportButton)
+      reportButton.MouseButton1Click:Connect(function()
+        if reportButton.Active then messageOptions.OnOpenChatReport() end
+      end)
+    end
 
     inbtn("81942007444642", "Like", function(btn)
       if messageOptions.SpeakerType == "user" then
@@ -7876,6 +7899,177 @@ loc.API.BuildChatUIExplorerSnapshot = function(chatID)
     return table.concat(loc.API.ExplorerLines, "\n")
 end
 
+-- OpenChat report dialog. One instance at a time, inside the EXISTING Arcsen UI.
+-- The client submits a message ID + a reason; it cannot choose the offender in D1.
+loc.API.ShowOpenChatReportDialog = function(record)
+    if type(record) ~= "table" or not tonumber(record.messageId) then return false end
+    if loc.API.OpenChatReportOverlay and loc.API.OpenChatReportOverlay.Parent then
+        loc.API.OpenChatReportOverlay:Destroy()
+    end
+
+    local overlay = Instance.new("Frame")
+    overlay.Name = "OpenChatReportOverlay"
+    overlay.Size = UDim2.fromScale(1, 1)
+    overlay.BackgroundColor3 = Color3.fromRGB(3, 7, 17)
+    overlay.BackgroundTransparency = 0.2
+    overlay.Active = true
+    overlay.ZIndex = 200
+    overlay.Parent = gpt
+    loc.API.OpenChatReportOverlay = overlay
+
+    local panel = Instance.new("Frame")
+    panel.Name = "ReportDialog"
+    panel.Size = UDim2.new(0.93, 0, 0, 348)
+    panel.AnchorPoint = Vector2.new(0.5, 0.5)
+    panel.Position = UDim2.fromScale(0.5, 0.5)
+    panel.BackgroundColor3 = Color3.fromRGB(19, 28, 45)
+    panel.BorderSizePixel = 0
+    panel.Active = true
+    panel.ZIndex = 201
+    panel.Parent = overlay
+    Corner(0, 12, panel)
+    Stroke(panel, "ASMBorder", 110, 140, 180, "LJMRound", 1, 0.3)
+
+    local function label(name, value, y, size, color)
+        local obj = Instance.new("TextLabel")
+        obj.Name = name
+        obj.Size = UDim2.new(1, -24, 0, size == 17 and 27 or 30)
+        obj.Position = UDim2.fromOffset(12, y)
+        obj.BackgroundTransparency = 1
+        obj.TextXAlignment = Enum.TextXAlignment.Left
+        obj.TextYAlignment = Enum.TextYAlignment.Center
+        obj.TextWrapped = true
+        obj.TextSize = size or 12
+        obj.TextColor3 = color or Color3.fromRGB(205, 220, 240)
+        obj.Text = tostring(value)
+        obj.ZIndex = 202
+        obj.Parent = panel
+        return obj
+    end
+    label("Title", "Report OpenChat message", 8, 17, Color3.fromRGB(245, 247, 255))
+    label("Sender", "From: @" .. tostring(record.username or "Unknown") .. "  •  #" .. tostring(record.messageId), 38, 12)
+    label("Preview", '"' .. tostring(record.text or ""):sub(1, 110):gsub("[%c]", " ") .. '"', 66, 12, Color3.fromRGB(155, 175, 200))
+    label("ChooseReason", "Why are you reporting this message?", 99, 12)
+
+    local selectedReason = nil
+    local reasons = {
+        {"Harassment", "harassment"},
+        {"Spam", "spam"},
+        {"Hate / threats", "abuse"},
+        {"Other", "other"}
+    }
+    local choices = Instance.new("Frame")
+    choices.Size = UDim2.new(1, -24, 0, 76)
+    choices.Position = UDim2.fromOffset(12, 126)
+    choices.BackgroundTransparency = 1
+    choices.ZIndex = 202
+    choices.Parent = panel
+    local grid = Instance.new("UIGridLayout")
+    grid.CellSize = UDim2.new(0.5, -4, 0, 34)
+    grid.CellPadding = UDim2.fromOffset(8, 8)
+    grid.Parent = choices
+    local reasonButtons = {}
+    for _, choice in ipairs(reasons) do
+        local button = Instance.new("TextButton")
+        button.Name = "Reason_" .. choice[2]
+        button.BackgroundColor3 = Color3.fromRGB(39, 52, 72)
+        button.TextColor3 = Color3.fromRGB(225, 232, 244)
+        button.TextSize = 12
+        button.Text = choice[1]
+        button.BorderSizePixel = 0
+        button.Active = true
+        button.ZIndex = 203
+        button.Parent = choices
+        Corner(0, 5, button)
+        table.insert(reasonButtons, {button, choice[2]})
+        button.MouseButton1Click:Connect(function()
+            selectedReason = choice[2]
+            for _, row in ipairs(reasonButtons) do
+                row[1].BackgroundColor3 = row[2] == selectedReason
+                    and Color3.fromRGB(37, 106, 122) or Color3.fromRGB(39, 52, 72)
+            end
+        end)
+    end
+    label("OptionalLabel", "Additional details (optional)", 204, 12)
+    local details = Instance.new("TextBox")
+    details.Name = "AdditionalDetails"
+    details.Size = UDim2.new(1, -24, 0, 52)
+    details.Position = UDim2.fromOffset(12, 232)
+    details.BackgroundColor3 = Color3.fromRGB(12, 20, 35)
+    details.TextColor3 = Color3.fromRGB(240, 243, 250)
+    details.PlaceholderColor3 = Color3.fromRGB(125, 140, 165)
+    details.PlaceholderText = "Provide context, if needed (max 240 characters)"
+    details.Text = ""
+    details.TextSize = 12
+    details.TextXAlignment = Enum.TextXAlignment.Left
+    details.TextYAlignment = Enum.TextYAlignment.Top
+    details.TextWrapped = true
+    details.MultiLine = true
+    details.ClearTextOnFocus = false
+    details.ZIndex = 203
+    details.Parent = panel
+    Corner(0, 5, details)
+
+    local status = label("Status", "Reports are reviewed by moderators, not auto-banned.", 287, 11, Color3.fromRGB(152, 170, 194))
+    status.Size = UDim2.new(1, -24, 0, 21)
+    local cancel = Instance.new("TextButton")
+    cancel.Name = "Cancel"
+    cancel.Size = UDim2.new(0.5, -18, 0, 28)
+    cancel.Position = UDim2.new(0, 12, 1, -36)
+    cancel.BackgroundColor3 = Color3.fromRGB(62, 70, 86)
+    cancel.Text = "Cancel"
+    cancel.TextColor3 = Color3.new(1, 1, 1)
+    cancel.TextSize = 12
+    cancel.Active = true
+    cancel.ZIndex = 203
+    cancel.Parent = panel
+    Corner(0, 5, cancel)
+    cancel.MouseButton1Click:Connect(function() overlay:Destroy() end)
+
+    local submit = Instance.new("TextButton")
+    submit.Name = "SubmitReport"
+    submit.Size = UDim2.new(0.5, -18, 0, 28)
+    submit.Position = UDim2.new(0.5, 6, 1, -36)
+    submit.BackgroundColor3 = Color3.fromRGB(145, 59, 76)
+    submit.Text = "Send report"
+    submit.TextColor3 = Color3.new(1, 1, 1)
+    submit.TextSize = 12
+    submit.Active = true
+    submit.ZIndex = 203
+    submit.Parent = panel
+    Corner(0, 5, submit)
+    submit.MouseButton1Click:Connect(function()
+        if not submit.Active then return end
+        if not selectedReason then
+            status.Text = "Please select a reason first."
+            return
+        end
+        local core = loc.API.ArcsenCommand
+        if type(core) ~= "table" or type(core.reportOpenChat) ~= "function" then
+            status.Text = "Report API unavailable. Update ArcsenCommand-Module.lua."
+            return
+        end
+        submit.Active = false
+        submit.Text = "Sending..."
+        status.Text = "Contacting ArcScriptCenter..."
+        task.spawn(function()
+            local ok, accepted, explanation = pcall(core.reportOpenChat,
+                tonumber(record.messageId), selectedReason, tostring(details.Text or ""):sub(1, 240))
+            if not overlay.Parent then return end
+            if ok and accepted == true then
+                status.Text = "Report received. Thank you."
+                submit.Text = "Reported"
+                task.delay(1.5, function() if overlay.Parent then overlay:Destroy() end end)
+            else
+                status.Text = tostring(ok and explanation or accepted or "Report failed"):sub(1, 160)
+                submit.Active = true
+                submit.Text = "Try again"
+            end
+        end)
+    end)
+    return true
+end
+
 loc.API.DrawMessage = function(chatID, index, message)
     loc.API.DrawChatForMessage = loc.API.ChatData[tostring(chatID)]
     local isLatestMessage = loc.API.DrawChatForMessage ~= nil and index == #(loc.API.DrawChatForMessage.Messages or {})
@@ -7962,6 +8156,20 @@ loc.API.DrawMessage = function(chatID, index, message)
                 RawText = tostring(message.text or ""),
                 RichText = false,
                 IsHereChat = true,
+                IsOpenChat = loc.API.DrawChatForMessage ~= nil and loc.API.DrawChatForMessage.IsOpenChat == true,
+                ReportEligible = loc.API.DrawChatForMessage ~= nil and loc.API.DrawChatForMessage.IsOpenChat == true
+                    and tonumber(message.messageId) ~= nil
+                    and message.direction ~= "Right"
+                    and not (s.Players.LocalPlayer and (
+                        (tonumber(message.userId) ~= nil
+                            and tonumber(message.userId) == s.Players.LocalPlayer.UserId)
+                        or tostring(message.username or ""):lower() == s.Players.LocalPlayer.Name:lower()
+                    )),
+                OnOpenChatReport = function()
+                    if type(loc.API.ShowOpenChatReportDialog) == "function" then
+                        loc.API.ShowOpenChatReportDialog(message)
+                    end
+                end,
             }
         )
     end
@@ -12097,6 +12305,7 @@ do
                 username = username,
                 displayName = displayName,
                 userId = userId,
+                senderType = tostring(metadata.senderType or "unknown"),
                 messageId = tonumber(metadata.messageId),
                 teamName = teamName ~= "" and teamName or nil,
                 experienceName = safeExperienceName,
