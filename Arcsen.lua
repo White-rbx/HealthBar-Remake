@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.90 + OpenChat Dev Preview ",
+	sion = " UIs 7.2.91 + OpenChat Cloud Feed ",
 	logs = [[
 # -- Update logs --
 (:4/11/2026: A) Added /OpenChat ON/OFF/STATUS, a separate OpenChat tab, API polling and a 125-message rolling cap for local development.
@@ -10650,8 +10650,9 @@ loc.API.UpdateSendButton = function()
         loc.API.ChatTipRunID = (tonumber(loc.API.ChatTipRunID) or 0) + 1
     end
     if loc.API.SendButtonChat and loc.API.SendButtonChat.IsOpenChat then
-        c_box.TextEditable = true
-        c_box.PlaceholderText = "Message OpenChat (local test)..."
+        c_box.TextEditable = false
+        c_box.Text = ""
+        c_box.PlaceholderText = "Cloud Feed - read-only (approved announcements)"
     elseif loc.API.SendButtonChat and loc.API.SendButtonChat.IsHereChat then
         c_box.TextEditable = true
         c_box.PlaceholderText = "Message Roblox chat..."
@@ -10667,6 +10668,15 @@ loc.API.UpdateSendButton = function()
         c_b_send.Text = "✓"
         c_b_send.BackgroundColor3 = Color3.new(0,0.5,0)
         c_b_send.TextColor3 = Color3.new(0,1,0)
+    end
+    -- Never offer a send button in the read-only Cloud Feed tab.
+    if loc.API.SendButtonChat and loc.API.SendButtonChat.IsOpenChat then
+        c_b_send.Text = "—"
+        c_b_send.BackgroundColor3 = Color3.fromRGB(65,70,80)
+        c_b_send.TextColor3 = Color3.fromRGB(185,190,205)
+        c_b_send.Active = false
+    else
+        c_b_send.Active = true
     end
 end
 
@@ -10729,7 +10739,7 @@ task.spawn(function()
         if not loc.API.CanShowChatTips() then
             if loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)]
                 and loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsOpenChat then
-                c_box.PlaceholderText = "Message OpenChat (local test)..."
+                c_box.PlaceholderText = "Cloud Feed - read-only (approved announcements)"
             elseif loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)]
                 and loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsHereChat then
                 c_box.PlaceholderText = "Message Roblox chat..."
@@ -10816,26 +10826,10 @@ end
 loc.API.SendMessage = function(rawText)
     loc.API.SendMessageActiveChat = loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)] or nil
     if loc.API.SendMessageActiveChat and loc.API.SendMessageActiveChat.IsOpenChat then
-        loc.API.OpenChatText = tostring(rawText or "")
-        if not loc.API.OpenChatText:match("%S") then return false end
-        if #(loc.API.PendingInputFiles or {}) > 0 then
-            meg("OpenChat supports text messages only. Remove attachments first.", nil, "Center", true, 255, 180, 80)
-            return false
-        end
-        loc.API.OpenChatCore = loc.API.ArcsenCommand
-        if type(loc.API.OpenChatCore) ~= "table" or type(loc.API.OpenChatCore.sendOpenChat) ~= "function" then
-            meg("OpenChat is unavailable. Update ArcsenCommand-Module.lua to v0.6.0.", nil, "Center", true, 255, 90, 90)
-            return false
-        end
-        loc.API.OpenChatCallOK, loc.API.OpenChatSendResult, loc.API.OpenChatSendReason = pcall(
-            loc.API.OpenChatCore.sendOpenChat, loc.API.OpenChatText
-        )
-        if not loc.API.OpenChatCallOK or loc.API.OpenChatSendResult ~= true then
-            meg("OpenChat send failed: " .. tostring(loc.API.OpenChatSendReason or loc.API.OpenChatSendResult), nil, "Center", true, 255, 90, 90)
-            return false
-        end
-        c_box.Text = ""
-        return true
+        -- This tab receives approved cloud announcements only.
+        meg("Cloud Feed is read-only. Use HereChat for supported Roblox player chat.",
+            nil, "Center", true, 255, 180, 80)
+        return false
     end
     if loc.API.SendMessageActiveChat and loc.API.SendMessageActiveChat.IsHereChat then
         loc.API.HereChatText = tostring(rawText or "")
@@ -11845,7 +11839,7 @@ do
         or type(commandCore.sendMessage) ~= "function"
         or type(commandCore.setOnOpenChatChanged) ~= "function"
         or type(commandCore.sendOpenChat) ~= "function"
-        or tostring(commandCore.version or "") ~= "0.6.0" then
+        or tostring(commandCore.version or "") ~= "0.6.1" then
         commandCore = nil
         local ok, result = pcall(function()
             if type(loadstring) ~= "function" then
@@ -11872,7 +11866,7 @@ do
                 and type(returned.sendOpenChat) == "function" then
                 return returned
             end
-            error("ArcsenCommand-Module.lua is outdated. Upload v0.6.0 to GitHub first.")
+            error("ArcsenCommand-Module.lua is outdated. Upload v0.6.1 to GitHub first.")
         end)
 
         if ok then
