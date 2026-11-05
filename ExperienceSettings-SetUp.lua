@@ -447,7 +447,7 @@ end
 
 -- ARCSCRIPT_BANS_BEGIN
 local _ASC_MANAGED_JSON = [==[
-{"schema":1,"entries":[{"userId":"10621050181","username":"","reason":"Footsteps","description":"Test","startAt":"2026-11-05 20:36","expiresAt":"2026-11-05 20:37"}]}
+{"schema":1,"entries":[]}
 ]==]
 -- ARCSCRIPT_BANS_END
 
