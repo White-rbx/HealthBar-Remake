@@ -1,0 +1,611 @@
+local v_ver = [[WarningUI 0.1.0 Preview]]
+--[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
+
+------------------------------------------------------------------------------------------
+
+-- =====>> Saved Functions <<=====
+-- ====FUNCTION CORNER===== Example: Corner(Scale, Offset, Parent)
+local function Corner(Scale, Offset, Parent)
+  local Corner = Instance.new("UICorner")
+  Corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
+  Corner.Parent = Parent
+  return Corner
+end
+-- =====END FUNCTION CORNER====
+
+-- =====FUNCTION UILISTLAYOUT===== Example: ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+local ListUI = {
+ HCenter = Enum.HorizontalAlignment.Center,
+ VCenter = Enum.VerticalAlignment.Center,
+ HLeft = Enum.HorizontalAlignment.Left,
+ VTop = Enum.VerticalAlignment.Top,
+ HRight = Enum.HorizontalAlignment.Right,
+ VBottom = Enum.VerticalAlignment.Bottom,
+ FillH = Enum.FillDirection.Horizontal,
+ FillV = Enum.FillDirection.Vertical,
+ SCustom = Enum.SortOrder.Custom,
+ SLayout = Enum.SortOrder.LayoutOrder,
+ SName = Enum.SortOrder.Name
+}
+
+local function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(scale or 0, offset or 0)
+    list.FillDirection = ListUI[FILL] or ListUI.FillH
+    list.HorizontalAlignment = ListUI[HZ] or ListUI.HCenter
+    list.VerticalAlignment = ListUI[VT] or ListUI.VCenter
+    list.SortOrder = ListUI[SO] or ListUI.SName
+    list.Parent = parent
+    return list
+end
+-- =====END FUNCTION UILISTLAYOUT=====
+
+-- ====FUNCTION UISTROKE===== Example: Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+local StrokeUI = {
+ ASMBorder = Enum.ApplyStrokeMode.Border,
+ ASMContextual = Enum.ApplyStrokeMode.Contextual,
+
+ LJMBevel = Enum.LineJoinMode.Bevel,
+ LJMMiter = Enum.LineJoinMode.Miter,
+ LJMRound = Enum.LineJoinMode.Round
+}
+
+local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+    local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
+    stroke.ApplyStrokeMode = StrokeUI[ASM] or StrokeUI.ASMBorder
+    stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
+    stroke.LineJoinMode = StrokeUI[LJM] or StrokeUI.LJMRound
+    stroke.Thickness = Tn or 1
+    stroke.Transparency = Transy or 0
+    stroke.Parent = parent
+    return stroke
+end
+-- =====END FUNCTION UISTROKE=====
+
+-- ====FUNCTION UIGRADIENT===== Example: Gradient(parent, rotation, offsetX, offsetY, {...}, {...})
+local function Gradient(parent, rotation, offsetX, offsetY, colors, transparencies)
+    local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+
+    grad.Rotation = rotation or 0
+    grad.Offset = Vector2.new(offsetX or 0, offsetY or 0)
+
+    -- Color
+    local colorKeypoints = {}
+
+    if not colors or #colors == 0 then
+        colorKeypoints = {
+            ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+            ColorSequenceKeypoint.new(1, Color3.new(1,1,1))
+        }
+    elseif #colors == 1 then
+        colorKeypoints = {
+            ColorSequenceKeypoint.new(0, colors[1]),
+            ColorSequenceKeypoint.new(1, colors[1])
+        }
+    else
+        for i, c in ipairs(colors) do
+            local t = (i-1) / (#colors-1)
+            table.insert(colorKeypoints, ColorSequenceKeypoint.new(t, c))
+        end
+    end
+
+    grad.Color = ColorSequence.new(colorKeypoints)
+
+
+    -- Transparency
+    local transparencyKeypoints = {}
+
+    if not transparencies or #transparencies == 0 then
+        transparencyKeypoints = {
+            NumberSequenceKeypoint.new(0, 0),
+            NumberSequenceKeypoint.new(1, 0)
+        }
+    elseif #transparencies == 1 then
+        transparencyKeypoints = {
+            NumberSequenceKeypoint.new(0, transparencies[1]),
+            NumberSequenceKeypoint.new(1, transparencies[1])
+        }
+    else
+        for i, tValue in ipairs(transparencies) do
+            local t = (i-1) / (#transparencies-1)
+            table.insert(
+                transparencyKeypoints,
+                NumberSequenceKeypoint.new(t, tValue)
+            )
+        end
+    end
+
+    grad.Transparency = NumberSequence.new(transparencyKeypoints)
+
+    grad.Parent = parent
+    return grad
+end
+-- =====END FUNCTION UIGRADIENT=====
+
+-- ====FUNCTION UIPADDING ===== Example: Padding(parent, {X, Y}, {X, Y}, {X, Y}, {X, Y})
+local function Padding(parent, bottom, left, right, top)
+    local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
+    local function toUDim(value)
+        if typeof(value) == "UDim" then
+            return value
+        elseif type(value) == "number" then
+            return UDim.new(0, value)
+        elseif type(value) == "table" and #value >= 2 then
+            return UDim.new(value[1] or 0, value[2] or 0)
+        else
+            return UDim.new(0, 0)
+        end
+    end
+
+    pad.PaddingBottom = toUDim(bottom)
+    pad.PaddingLeft   = toUDim(left)
+    pad.PaddingRight  = toUDim(right)
+    pad.PaddingTop    = toUDim(top)
+
+    pad.Parent = parent
+    return pad
+end
+
+-- =====FUNCTION UIASPECTRATIONCONSTRAINT==== Example: Aspect(parent, ratio, aspectType, dominantAxis)
+
+--// ENUM SHORTCUTS
+local Axis = Enum.DominantAxis
+local Type = Enum.AspectType
+
+local AspectUI = {
+ Axis = Enum.DominantAxis,
+ Type = Enum.AspectType,
+
+-- optional ultra-short aliases
+ Width = Axis.Width,
+ Height = Axis.Height,
+
+ Fit = Type.FitWithinMaxSize,
+ Scale = Type.ScaleWithParentSize
+}
+
+
+--// ASPECT FUNCTION
+local function Aspect(parent, ratio, aspectType, dominantAxis)
+	if not parent then return end
+	
+	-- prevent duplicates
+	local existing = parent:FindFirstChildOfClass("UIAspectRatioConstraint")
+	if existing then
+		-- update instead
+		existing.AspectRatio = AspectUI[ratio] or existing.AspectRatio
+		existing.AspectType = AspectUI[aspectType] or existing.AspectType
+		existing.DominantAxis = AspectUI[dominantAxis] or existing.DominantAxis
+		return existing
+	end
+	
+	-- create new
+	local constraint = Instance.new("UIAspectRatioConstraint")
+	constraint.Parent = parent
+	
+	constraint.AspectRatio = AspectUI[ratio] or 1
+	constraint.AspectType = AspectUI[aspectType] or AspectUI.Fit
+	constraint.DominantAxis = AspectUI[dominantAxis] or AspectUI.Width
+	
+	return constraint
+end
+
+-- =====END FUNCTION UIASPECTRATIONCONSTRAINT=====
+
+--[[
+====== CLIENT SERVICES ( OLD ) ======
+
+-- UI / Player Interface
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
+
+-- 3D/2D Destroy
+local Debris = game:GetService("Debris")
+
+-- 3D Wprkspace
+local Workspace = game:GetService("Workspace")
+local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
+local Camera = Workspace.CurrentCamera
+
+-- Storage
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Third Party
+local HttpService = game:GetService("HttpService")
+
+-- Audio / Feedback
+local SoundService = game:GetService("SoundService")
+
+-- Commerce / Monetization
+local MarketplaceService = game:GetService("MarketplaceService")
+
+-- Runtime / Frame Updates
+local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
+local TextChatService = game:GetService("TextChatService")
+
+-- Animation / Transitions
+local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
+
+-- Input (Desktop / Mobile)
+local UserInputService = game:GetService("UserInputService")
+local TouchInputService = game:GetService("TouchInputService")
+]]
+
+--====== CLIENT SERVICES ( TABLE ); Use like this 'Service.Example' ======--
+
+local s = {
+-- UI / Player Interface
+ CoreGui = game:GetService("CoreGui"),
+ StarterGui = game:GetService("StarterGui"),
+ GuiService = game:GetService("GuiService"),
+ Players = game:GetService("Players"),
+
+-- 3D/2D Destroy
+ Debris = game:GetService("Debris"),
+
+-- 3D Wprkspace
+ Workspace = game:GetService("Workspace"),
+ TeleportService = game:GetService("TeleportService"),
+ Lighting = game:GetService("Lighting"),
+ Camera = Workspace.CurrentCamera,
+
+-- Storage
+ ReplicatedStorage = game:GetService("ReplicatedStorage"),
+
+-- Third Party
+ HttpService = game:GetService("HttpService"),
+
+-- Audio / Feedback
+ SoundService = game:GetService("SoundService"),
+
+-- Commerce / Monetization
+ MarketplaceService = game:GetService("MarketplaceService"),
+
+-- Runtime / Frame Updates
+ RunService = game:GetService("RunService"),
+ TextService = game:GetService("TextService"),
+ TextChatService = game:GetService("TextChatService"),
+
+-- Animation / Transitions
+ TweenService = game:GetService("TweenService"),
+ ContentProvider = game:GetService("ContentProvider"),
+
+-- Input (Desktop / Mobile)
+ UserInputService = game:GetService("UserInputService"),
+ TouchInputService = game:GetService("TouchInputService"),
+
+}
+
+-- All local in one tabel; Use like this 'loc.Example'
+local loc = {
+  -- v Local V
+  
+}
+
+local tweenStyle = {
+    Linear = Enum.EasingStyle.Linear,
+    Sine = Enum.EasingStyle.Sine,
+    Back = Enum.EasingStyle.Back,
+    Quad = Enum.EasingStyle.Quad,
+    Quart = Enum.EasingStyle.Quart,
+    Quint = Enum.EasingStyle.Quint,
+    Bounce = Enum.EasingStyle.Bounce,
+    Elastic = Enum.EasingStyle.Elastic,
+    Exponential = Enum.EasingStyle.Exponential,
+    Circular = Enum.EasingStyle.Circular,
+    Cubic = Enum.EasingStyle.Cubic
+}
+
+local function Tween(obj, propertie, time, style)
+    local properties = propertie or {}
+
+    local selectedStyle = tweenStyle[style] or style or Enum.EasingStyle.Quad
+
+    local tweenInfo = TweenInfo.new(
+        time or 0.5,
+        selectedStyle,
+        Enum.EasingDirection.Out
+    )
+
+    local tween = s.TweenService:Create(obj, tweenInfo, properties)
+    tween:Play()
+    return tween
+end
+
+---------------------------------------------------------------------------------------
+
+-- Remove a previously initialized popup and its animation loops when re-running.
+local old = s.CoreGui:FindFirstChild("WarningUI-ByArcScript")
+if old then old:Destroy() end
+
+local fder = Instance.new("Folder")
+fder.Name = "WarningUI-ByArcScript"
+fder.Parent = s.CoreGui
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "main"
+gui.ScreenInsets = Enum.ScreenInsets.None
+gui.DisplayOrder = 2147483645
+gui.Parent = fder
+
+local hr = Instance.new("Frame")
+hr.Name = "Holder"
+hr.Size = UDim2.new(1,0,1,0)
+hr.BackgroundTransparency = 1
+hr.BackgroundColor3 = Color3.new(0,0,0)
+hr.Parent = gui
+ListLayout(hr, 0,0,"HCenter","VCenter","SLayout","FillV")
+
+local state = { queue = {}, active = nil, seen = {}, seenOrder = {}, run = 0, dead = false }
+
+local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, onSecondary)
+  local frmbtn = twoButtons == true
+
+  local frm = Instance.new("Frame")
+  frm.Name = "PopUp"
+  frm.Size = UDim2.new(0.8, 0, 0.42, 0)
+  local limit = Instance.new("UISizeConstraint")
+  limit.MinSize = Vector2.new(240, 210)
+  limit.MaxSize = Vector2.new(570, 450)
+  limit.Parent = frm
+  frm.BackgroundColor3 = Color3.fromRGB(0,0,25)
+  frm.BorderMode = Enum.BorderMode.Inset
+  frm.BorderSizePixel = 5
+  frm.Parent = hr
+  Corner(0,8,frm)
+  local frmStroke = Stroke(frm, "ASMBorder",255,255,255,"LJMRound",5,0)
+  local frmGra = Gradient(frmStroke, 0,0,0,
+      {Color3.new(1,1,0),Color3.new(0,1,1)})
+
+  local frmsca = Instance.new("UIScale")
+  frmsca.Scale = 0.01
+  frmsca.Parent = frm
+
+  local credit = Instance.new("TextLabel")
+  credit.Name = "Label"
+  credit.Position = UDim2.new(0.55, 0, 0, 2)
+  credit.Size = UDim2.new(0.43, 0, 0, 16)
+  credit.TextScaled = false
+  credit.TextSize = 10
+  credit.TextXAlignment = Enum.TextXAlignment.Right
+  credit.BackgroundTransparency = 1
+  credit.TextColor3 = Color3.new(1,1,1)
+  credit.Text = 'Gui by <b><font color="rgb(0,255,255)">Arc</font><font color="rgb(255,255,0)">Script</font>&apos; Dev</b>'
+  credit.RichText = true
+  credit.Parent = frm
+
+  local title = Instance.new("TextLabel")
+  title.Name = "Title"
+  title.Size = UDim2.new(1,0,0,42)
+  title.Position = UDim2.new(0,0,0,14)
+  title.BackgroundTransparency = 1
+  title.TextColor3 = Color3.new(1,1,1)
+  title.BorderMode = Enum.BorderMode.Inset
+  title.BorderSizePixel = 8
+  title.Text = tostring(ntitle or "Unknown Warning")
+  title.TextScaled = true
+  title.RichText = false -- server-supplied text must never be parsed as markup
+  title.Parent = frm
+
+  local line = Instance.new("Frame")
+  line.Name = "Line"
+  line.Size = UDim2.new(1,0,0,1)
+  line.BackgroundColor3 = Color3.new(1,1,1)
+  line.Position = UDim2.new(0,0,0,56)
+  line.Parent = frm
+
+  local des = Instance.new("TextLabel")
+  des.Name = "Description"
+  des.Size = UDim2.new(1,-16,1,-122)
+  des.Position = UDim2.new(0,8,0,62)
+  des.BackgroundTransparency = 1
+  des.TextColor3 = Color3.new(1,1,1)
+  des.BorderMode = Enum.BorderMode.Inset
+  des.BorderSizePixel = 8
+  des.Text = tostring(ndes or "This a blank message for the example.\nThis is from the server by moderator or client saying:\n\nHello, World.")
+  des.TextWrapped  = true
+  --des.TextScaled = true
+  des.TextSize = 13
+  des.TextYAlignment = Enum.TextYAlignment.Top
+  des.RichText = false
+  des.Parent = frm
+
+  local tap = Instance.new("Frame")
+  tap.Name = "Tab"
+  tap.Size = UDim2.new(1,0,0,55)
+  tap.Position = UDim2.new(0,0,1,-55)
+  tap.BackgroundTransparency = 1
+  tap.BorderMode = Enum.BorderMode.Inset
+  tap.BorderSizePixel = 5
+  tap.Parent = frm
+
+  local btn = Instance.new("TextButton")
+  btn.Name = "Button1"
+  btn.Size = UDim2.new(1,-1,0,45)
+  btn.BackgroundColor3 = Color3.fromRGB(0,85,255)
+  btn.BorderMode = Enum.BorderMode.Inset
+  btn.BorderSizePixel = 8
+  btn.TextColor3 = Color3.new(1,1,1)
+  btn.TextScaled = true
+  btn.Text = tostring(nbtn1 or "Button1")
+  btn.Parent = tap
+  Corner(0,8,btn)
+
+  local btn2 = Instance.new("TextButton")
+  btn2.Name = "Button2"
+  btn2.Size = UDim2.new(0.5,-1,0,45)
+  btn2.Position = UDim2.new(1/2,1,0,0)
+  btn2.BackgroundColor3 = Color3.fromRGB(0,85,255)
+  btn2.BorderMode = Enum.BorderMode.Inset
+  btn2.BorderSizePixel = 8
+  btn2.TextColor3 = Color3.new(1,1,1)
+  btn2.TextScaled = true
+  btn2.Text = tostring(nbtn2 or "Button2")
+  btn2.Visible = frmbtn
+  btn2.Parent = tap
+  Corner(0,8,btn2)
+
+  if frmbtn == true then
+    btn.Size = UDim2.new(0.5,-1,0,45)
+    btn.BackgroundColor3 = Color3.new(1,1,1)
+    btn.TextColor3 = Color3.new(0,0,0)
+    btn2.Visible = true
+  end
+
+  local closing = false
+  local function dismiss()
+    if closing then return end
+    closing = true
+    Tween(frmsca, {Scale = 0.01}, 0.2, "Quad")
+    Tween(hr, {BackgroundTransparency = 1}, 0.2, "Quad")
+    task.delay(0.21, function()
+      if frm and frm.Parent then frm:Destroy() end
+      if type(onClose) == "function" then onClose() end
+    end)
+  end
+
+  btn.MouseButton1Click:Connect(function()
+    if type(onPrimary) == "function" then
+      local ok, value = pcall(onPrimary)
+      if not ok then warn("[WarningUI] Primary callback:", value) end
+      if ok and value == false then return end
+    end
+    dismiss()
+  end)
+  btn2.MouseButton1Click:Connect(function()
+    if type(onSecondary) == "function" then
+      local ok, value = pcall(onSecondary)
+      if not ok then warn("[WarningUI] Secondary callback:", value) end
+      if ok and value == false then return end
+    end
+    dismiss()
+  end)
+
+  task.spawn(function()
+    while frm and frm.Parent and not closing do
+      frmGra.Rotation = (frmGra.Rotation + 4) % 360
+      task.wait(0.05)
+    end
+  end)
+
+  Tween(hr, {BackgroundTransparency = 0.2}, 0.2)
+  Tween(frmsca, {Scale = 1}, 0.2, "Bounce")
+  return { close = dismiss, frame = frm }
+end
+
+local api = { version = "0.1.0", source = "ExperienceSettings WarningUI" }
+
+local function showNext()
+  if state.dead or state.active or #state.queue == 0 then return end
+  local entry = table.remove(state.queue, 1)
+  state.active = pop(entry.title, entry.description, entry.primaryLabel,
+      entry.secondaryLabel ~= nil, entry.secondaryLabel,
+      function()
+        state.active = nil
+        if not state.dead then task.defer(showNext) end
+      end, entry.onPrimary, entry.onSecondary)
+end
+
+local function queueWarning(entry, source)
+  if state.dead or type(entry) ~= "table" then return false, "Invalid warning" end
+  if #state.queue >= 20 then return false, "Warning queue is full" end
+  local prefix = source == "server" and "SERVER" or "CLIENT"
+  local title = "[" .. prefix .. "] " .. tostring(entry.title or "Warning")
+  local description = tostring(entry.description or entry.message or "")
+  if description == "" then return false, "Message is empty" end
+  table.insert(state.queue, {
+    title = title:sub(1, 120),
+    description = description:sub(1, 1500),
+    primaryLabel = tostring(entry.primaryLabel or "OK"):sub(1, 32),
+    secondaryLabel = entry.secondaryLabel and tostring(entry.secondaryLabel):sub(1, 32) or nil,
+    onPrimary = entry.onPrimary,
+    onSecondary = entry.onSecondary
+  })
+  showNext()
+  return true
+end
+
+-- Client warnings are local; they work without any network request.
+function api.showClient(data)
+  return queueWarning(data, "client")
+end
+
+-- Server warnings are already-verified announcement objects from the Cloud API.
+-- ExpiresAt is Unix seconds; the upstream Worker must validate admin authorization.
+function api.showServer(data)
+  if type(data) ~= "table" then return false, "Invalid server warning" end
+  local id = tostring(data.id or "")
+  if id == "" or #id > 100 then return false, "Server warning ID required" end
+  local expires = tonumber(data.expiresAt)
+  if expires and expires <= os.time() then return false, "Warning expired" end
+  if state.seen[id] then return false, "Already shown this session" end
+  local ok, err = queueWarning(data, "server")
+  if ok then
+    state.seen[id] = true
+    table.insert(state.seenOrder, id)
+    if #state.seenOrder > 300 then
+      local oldest = table.remove(state.seenOrder, 1)
+      state.seen[oldest] = nil
+    end
+  end
+  return ok, err
+end
+
+function api.dismiss()
+  if state.active then state.active.close() end
+end
+
+-- The fetcher is supplied by a trusted caller and returns decoded JSON:
+-- { warnings = { { id=..., title=..., message=..., expiresAt=... }, ... } }
+-- No API URL, secret, or network function is hardcoded in WarningUI itself.
+function api.startServerPolling(fetcher, interval)
+  if type(fetcher) ~= "function" then return false, "Fetcher function required" end
+  interval = math.clamp(tonumber(interval) or 30, 15, 300)
+  state.run += 1
+  local currentRun = state.run
+  task.spawn(function()
+    while not state.dead and currentRun == state.run do
+      local ok, data = pcall(fetcher)
+      if ok and type(data) == "table" and type(data.warnings) == "table" then
+        for _, item in ipairs(data.warnings) do
+          if state.dead or currentRun ~= state.run then break end
+          api.showServer(item)
+        end
+      end
+      task.wait(interval)
+    end
+  end)
+  return true
+end
+
+function api.stopServerPolling()
+  state.run += 1
+end
+
+function api.destroy()
+  if state.dead then return end
+  state.dead = true
+  state.run += 1
+  table.clear(state.queue)
+  if fder and fder.Parent then fder:Destroy() end
+  state.active = nil
+  if type(getgenv) == "function" then
+    local env = getgenv()
+    if env.WarningUI == api then env.WarningUI = nil end
+  end
+end
+
+if type(getgenv) == "function" then
+  local env = getgenv()
+  if type(env.WarningUI) == "table" and type(env.WarningUI.destroy) == "function" then
+    pcall(env.WarningUI.destroy)
+  end
+  env.WarningUI = api
+end
+
+return api
