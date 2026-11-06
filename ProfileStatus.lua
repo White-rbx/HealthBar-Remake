@@ -1,10 +1,15 @@
-local v_ver = [[Script ahh 2.98 Beta]]
+local v_ver = [[Script ahh 2.97 Stats | ProfileStatus nil-guard fix]]
+print("[ProfileStatus] Loaded: " .. v_ver)
 
 ------------------------------------------------------------------------------------------
 
 -- =====>> Saved Functions <<=====
 -- ====FUNCTION CORNER===== Example: Corner(Scale, Offset, Parent)
 local function Corner(Scale, Offset, Parent)
+  if not Parent then
+    warn("[ProfileStatus] UICorner target is nil; skipped")
+    return nil
+  end
   local Corner = Instance.new("UICorner")
   Corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
   Corner.Parent = Parent
@@ -28,6 +33,7 @@ local ListUI = {
 }
 
 local function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+    if not parent then return nil end
     local list = Instance.new("UIListLayout")
     list.Padding = UDim.new(scale or 0, offset or 0)
     list.FillDirection = ListUI[FILL] or ListUI.FillH
@@ -50,19 +56,38 @@ local StrokeUI = {
 }
 
 local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+    if not parent then return nil end
+
     local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
-    stroke.ApplyStrokeMode = StrokeUI[ASM] or StrokeUI.ASMBorder
+    local strokeMode = typeof(ASM) == "EnumItem" and ASM
+        or (type(ASM) == "string" and StrokeUI[ASM])
+        or StrokeUI.ASMBorder
+    local lineJoin = typeof(LJM) == "EnumItem" and LJM
+        or (type(LJM) == "string" and StrokeUI[LJM])
+        or StrokeUI.LJMRound
+
+    stroke.ApplyStrokeMode = strokeMode
     stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
-    stroke.LineJoinMode = StrokeUI[LJM] or StrokeUI.LJMRound
+    stroke.LineJoinMode = lineJoin
     stroke.Thickness = Tn or 1
     stroke.Transparency = Transy or 0
     stroke.Parent = parent
     return stroke
 end
+
+-- Change a UIStroke color when an action cannot be completed.
+local function warnStroke(target, warningColor)
+    if not target then return end
+    local stroke = target:FindFirstChildOfClass("UIStroke")
+    if stroke then
+        stroke.Color = warningColor or Color3.fromRGB(255, 0, 0)
+    end
+end
 -- =====END FUNCTION UISTROKE=====
 
 -- ====FUNCTION UIGRADIENT===== Example: Gradient(parent, rotation, offsetX, offsetY, {...}, {...})
 local function Gradient(parent, rotation, offsetX, offsetY, colors, transparencies)
+    if not parent then return nil end
     local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
 
     grad.Rotation = rotation or 0
@@ -123,6 +148,7 @@ end
 
 -- ====FUNCTION UIPADDING ===== Example: Padding(parent, {X, Y}, {X, Y}, {X, Y}, {X, Y})
 local function Padding(parent, bottom, left, right, top)
+    if not parent then return nil end
     local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
     local function toUDim(value)
         if typeof(value) == "UDim" then
@@ -164,27 +190,29 @@ local AspectUI = {
 
 --// ASPECT FUNCTION
 function Aspect(parent, ratio, aspectType, dominantAxis)
-	if not parent then return end
-	
-	-- prevent duplicates
-	local existing = parent:FindFirstChildOfClass("UIAspectRatioConstraint")
-	if existing then
-		-- update instead
-		existing.AspectRatio = AspectUI[ratio] or existing.AspectRatio
-		existing.AspectType = AspectUI[aspectType] or existing.AspectType
-		existing.DominantAxis = AspectUI[dominantAxis] or existing.DominantAxis
-		return existing
-	end
-	
-	-- create new
-	local constraint = Instance.new("UIAspectRatioConstraint")
-	constraint.Parent = parent
-	
-	constraint.AspectRatio = AspectUI[ratio] or 1
-	constraint.AspectType = AspectUI[aspectType] or AspectUI.Fit
-	constraint.DominantAxis = AspectUI[dominantAxis] or AspectUI.Width
-	
-	return constraint
+    if not parent then return end
+
+    -- Numeric ratios (for example 1 or 16/9) should be used directly.
+    local ratioValue = type(ratio) == "number" and ratio > 0 and ratio or nil
+    local typeValue = typeof(aspectType) == "EnumItem" and aspectType
+        or (type(aspectType) == "string" and AspectUI[aspectType])
+    local axisValue = typeof(dominantAxis) == "EnumItem" and dominantAxis
+        or (type(dominantAxis) == "string" and AspectUI[dominantAxis])
+
+    local existing = parent:FindFirstChildOfClass("UIAspectRatioConstraint")
+    if existing then
+        if ratioValue then existing.AspectRatio = ratioValue end
+        if typeValue then existing.AspectType = typeValue end
+        if axisValue then existing.DominantAxis = axisValue end
+        return existing
+    end
+
+    local constraint = Instance.new("UIAspectRatioConstraint")
+    constraint.AspectRatio = ratioValue or 1
+    constraint.AspectType = typeValue or AspectUI.Fit
+    constraint.DominantAxis = axisValue or AspectUI.Width
+    constraint.Parent = parent
+    return constraint
 end
 
 -- =====END FUNCTION UIASPECTRATIONCONSTRAINT=====
@@ -229,37 +257,49 @@ local TouchInputService = game:GetService("TouchInputService")
 
 ---------------------------------------------------------------------------------------
 
--- <<===== Position (old / new Roblox TopBar + moved-to-CoreGui fallback) =====>>
--- Use the ExperienceSettings root rather than waiting forever for UnibarLeftFrame.
-local function findExperienceSettingsMenu()
-    -- After Loader finishes its first stage, the root moves directly to CoreGui.
-    local exp = CoreGui:FindFirstChild("ExperienceSettings")
-    if not exp then
-        local outer = CoreGui:FindFirstChild("TopBarApp")
-        local app = outer and outer:FindFirstChild("TopBarApp")
-        if app then
-            local frame = app:FindFirstChild("TopBarFrame")
-            local right = frame and frame:FindFirstChild("TopRightFrame")
-            local old = app:FindFirstChild("UnibarLeftFrame")
-            local newBar = right and right:FindFirstChild("HealthBar")
-            local oldBar = old and old:FindFirstChild("HealthBar")
-            exp = (newBar and newBar:FindFirstChild("ExperienceSettings"))
-                or (oldBar and oldBar:FindFirstChild("ExperienceSettings"))
-        end
+-- <<===== Position =====>>
+-- Resolve the existing ExperienceSettings menu regardless of Roblox TopBar layout.
+-- Once the Loader moves the UI, it lives directly under CoreGui.
+local function findExperienceMenu()
+    local directUI = CoreGui:FindFirstChild("ExperienceSettings")
+    local directMenu = directUI and directUI:FindFirstChild("Menu")
+    if directMenu then
+        return directMenu
     end
-    return exp and exp:FindFirstChild("Menu")
+
+    local topBarRoot = CoreGui:FindFirstChild("TopBarApp")
+    local app = topBarRoot and topBarRoot:FindFirstChild("TopBarApp")
+    if not app then
+        return nil
+    end
+
+    local topBarFrame = app:FindFirstChild("TopBarFrame")
+    local rightFrame = topBarFrame and topBarFrame:FindFirstChild("TopRightFrame")
+    local oldFrame = app:FindFirstChild("UnibarLeftFrame")
+
+    local function menuIn(container)
+        local healthBar = container and container:FindFirstChild("HealthBar")
+        local ui = healthBar and healthBar:FindFirstChild("ExperienceSettings")
+        return ui and ui:FindFirstChild("Menu")
+    end
+
+    -- Explicit fallback works even if the new frame is absent (nil).
+    return menuIn(rightFrame) or menuIn(oldFrame)
 end
 
-local Menu = findExperienceSettingsMenu()
-local menuDeadline = os.clock() + 10
-while not Menu and os.clock() < menuDeadline do
+local Menu = findExperienceMenu()
+local deadline = os.clock() + 20
+while not Menu and os.clock() < deadline do
     task.wait(0.1)
-    Menu = findExperienceSettingsMenu()
+    Menu = findExperienceMenu()
 end
+
 if not Menu then
-    warn("[ProfileStatus] ExperienceSettings.Menu not found in new/old TopBar or CoreGui within 10s; skipping optional UI.")
+    warn("[ProfileStatus] ExperienceSettings.Menu not found in CoreGui or either TopBar path (20s timeout).")
     return
 end
+
+print("[ProfileStatus] Menu found:", Menu:GetFullName())
 
 -- =====>> Instance <<=====
 local pro = Instance.new("Frame")
@@ -267,7 +307,7 @@ pro.Name = "ProfileStatus"
 pro.Position = UDim2.new(0.25,0,1,0)
 pro.Size = UDim2.new(0.5,0,0.7,0)
 pro.BackgroundColor3 = Color3.fromRGB(17, 18, 25)
-pro.BackgroundTransparency = 0
+pro.BackgroundTransparency = 0.1
 pro.Parent = Menu
 Corner(0,8,pro)
 ListLayout(pro, 0, 0, "HCenter", "VCenter", "SName", "FillV")
@@ -322,7 +362,7 @@ user.Parent = pfhr
 local scr = Instance.new("ScrollingFrame")
 scr.Name = "Scroll"
 scr.Size = UDim2.new(1,0,1,-80)
-scr.Position = UDim2.new(0,0,0.21,0)
+scr.Position = UDim2.new(0,0,0,85)
 scr.CanvasSize = UDim2.new(0,0,0,0)
 scr.BorderMode = Enum.BorderMode.Inset
 scr.BorderSizePixel = 5
@@ -338,10 +378,15 @@ Corner(0,3,scr)
 local TextExtraFunction = {}
 
 local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, lay, Workin, Function)
+    if not parent then
+        warn("[ProfileStatus] Text parent missing for " .. tostring(Name))
+        return nil
+    end
     local Body = Instance.new("Frame")
     Body.Name = tostring(Name or "Unknown")
     Body.Size = UDim2.new(1,-2,0,20)
     Body.BackgroundTransparency = 1
+    Body.LayoutOrder = tonumber(lay or 0)
     Body.Parent = parent
 
     local img = Instance.new("ImageLabel")
@@ -361,20 +406,22 @@ local function Text(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, lay,
     txt.TextColor3 = Color3.fromRGB(R or 255, G or 255, B or 255)
     txt.TextScaled = true
 	txt.RichText = true
-	txt.LayoutOrder = tonumber(lay or 0)
-    txt.Size = UDim2.new(1, -25, 0, 20)
-    txt.Position = UDim2.new(25,0,0,0)
+	txt.BorderMode = Enum.BorderMode.Inset
+	txt.BorderSizePixel = 2
+	txt.TextXAlignment = Enum.TextXAlignment.Left
+	txt.Size = UDim2.new(1, -25, 0, 20)
+    txt.Position = UDim2.new(0,25,0,0)
     txt.Parent = Body
 
     Corner(0, 5, txt)
-    Stroke(txt, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
+    Stroke(txt, "ASMBorder", R1 or 255, G1 or 255, B1 or 255, "LJMRound", 1, 0)
     Corner(0, 5, img)
-    Stroke(img, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
+    Stroke(img, "ASMBorder", R1 or 255, G1 or 255, B1 or 255, "LJMRound", 1, 0)
 
     -- Workin loop (สคริปต์หลัก)
     if typeof(Workin) == "function" then
         task.spawn(function()
-            while txt.Parent do
+            while txt and txt.Parent do
                 Workin(txt)
                 task.wait(0.05)
             end
@@ -397,11 +444,17 @@ wf.BackgroundTransparency = 1
 wf.Parent = scr
 
 -- [ function Button ]
+local ButtonExtraFunction = {}
 local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, lay, Workin, Callback, Function)
+    if not parent then
+        warn("[ProfileStatus] Button parent missing for " .. tostring(Name))
+        return nil
+    end
     local Body = Instance.new("Frame")
     Body.Name = tostring(Name or "Unknown")
     Body.Size = UDim2.new(1,-2,0,20)
     Body.BackgroundTransparency = 1
+	Body.LayoutOrder = tonumber(lay or 0)
     Body.Parent = parent
 
     local img = Instance.new("ImageLabel")
@@ -420,16 +473,18 @@ local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, la
 	btn.BackgroundColor3 = Color3.fromRGB(R1 or 255, G1 or 255, B1 or 255)
     btn.TextScaled = true
 	btn.RichText = true
+	btn.BorderMode = Enum.BorderMode.Inset
+	btn.BorderSizePixel = 2
+	btn.TextXAlignment = Enum.TextXAlignment.Left
 	btn.TextColor3 = Color3.new(1,1,1)
     btn.Size = UDim2.new(1, -25, 0, 20)
-    btnPosition = UDim2.new(25,0,0,0)
-	btn.LayoutOrder = tonumber(lay or 0)
+    btn.Position = UDim2.new(0,25,0,0)
     btn.Parent = Body
 
     Corner(0, 5, btn)
-    Stroke(btn, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
+    Stroke(btn, "ASMBorder", R1 or 255, G1 or 255, B1 or 255, "LJMRound", 1, 0)
     Corner(0, 5, img)
-    Stroke(img, ASMBorder, R1 or 255, G1 or 255, B1 or 255, LJMRound, 1, 0)
+    Stroke(img, "ASMBorder", R1 or 255, G1 or 255, B1 or 255, "LJMRound", 1, 0)
 
     -- Callback (ไม่มี debug)
     if typeof(Callback) == "function" then
@@ -441,18 +496,17 @@ local function Button(parent, Name, TextContent, Active, R, G, B, R1, G1, B1, la
     -- Workin loop (ไม่มี debug)
     if typeof(Workin) == "function" then
         task.spawn(function()
-            while btn.Parent do
+            while btn and btn.Parent do
                 Workin(btn)
                 task.wait(0.05)
             end
         end)
     end
 
-    -- Manual function
+    -- Roblox Instances do not support assigning an arbitrary .Function field.
+    -- Keep auxiliary callbacks in a Lua table, just like TextExtraFunction.
     if typeof(Function) == "function" then
-        btn.Function = function(...)
-            return Function(btn, ...)
-        end
+        ButtonExtraFunction[btn] = Function
     end
 
     return btn
@@ -461,13 +515,14 @@ end
 local function space(parent, layoutorder, text)
 	local space = Instance.new("TextLabel")
 	space.Name = "Space"
-	space.Size = UDim2.new(0.99,0,0,11)
+	space.Size = UDim2.new(0.99,0,0,25)
 	space.BackgroundTransparency = 1
     space.LayoutOrder = layoutorder or 1
 	space.TextColor3 = Color3.new(1,1,1)
 	space.Text = tostring("<b>" .. text .."</b>")
 	space.RichText = true
 	space.TextWrapped = true
+    space.TextScaled = true
 	space.TextSize = 10
 	space.TextXAlignment = Enum.TextXAlignment.Center
 	space.TextYAlignment = Enum.TextYAlignment.Center
@@ -476,7 +531,7 @@ end
 
 space(scr, 0, "You")
 space(scr, 2, "Experience")
-spacd(scr, 4, "Others")
+space(scr, 4, "Others")
 						
 -- Load Avatar
 task.spawn(function()
@@ -707,7 +762,7 @@ local function fmt(sec)
 end
 
 task.spawn(function()
-	while afkText.Parent do
+	while afkText and afkText.Parent do
 		local now = tick()
 		local diff = math.floor(now - AFK.LastActivity)
 
@@ -748,7 +803,7 @@ local function formatTime(sec)
 end
 
 task.spawn(function()
-	while playingText.Parent do
+	while playingText and playingText.Parent do
 		local elapsed = math.floor(tick() - startTick)
 		playingText.Text = "PlayingTime: " .. formatTime(elapsed)
 		task.wait(1)
@@ -857,11 +912,7 @@ local function bindBackpack()
 	if backpackConnAdd then backpackConnAdd:Disconnect() end
 	if backpackConnRemove then backpackConnRemove:Disconnect() end
 
-	local backpack = lp:WaitForChild("Backpack", 8)
-    if not backpack then
-        warn("[ProfileStatus] Backpack not found within 8s; inventory counter skipped.")
-        return
-    end
+	local backpack = lp:WaitForChild("Backpack")
 
 	local function updateInv()
 		local c = 0
@@ -940,7 +991,7 @@ local posButton = Button(
 	"Position: X: - | Y: - | Z: -",
 	true,                 -- Active (กดได้)
 	120,255,255,          -- Text color (Cyan)
-	120,255,255,3         -- Stroke color
+	120,255,255,3,        -- Stroke color
 	nil,                  -- Workin (ใช้ loop ด้านล่างแทน)
 	function(btn)         -- Callback (Copy)
 		if HRP and HRP.Parent then
@@ -964,7 +1015,7 @@ local posButton = Button(
 
 -- real-time update
 task.spawn(function()
-	while posButton.Parent do
+	while posButton and posButton.Parent do
 		if HRP and HRP.Parent then
 			local p = HRP.Position
 			posButton.Text = string.format(
@@ -990,7 +1041,7 @@ local charTypeText = Text(
 )
 
 task.spawn(function()
-	while charTypeText.Parent do
+	while charTypeText and charTypeText.Parent do
 		if Humanoid then
 			if Humanoid.RigType == Enum.HumanoidRigType.R6 then
 				charTypeText.Text = "CharacterType: R6"
@@ -1019,7 +1070,7 @@ local timeText = Button(
 )
 
 task.spawn(function()
-	while timeText.Parent do
+	while timeText and timeText.Parent do
 		timeText.Text = "TimeOfDay: " .. tostring(Lighting.TimeOfDay)
 		task.wait(0.001)
 	end
