@@ -1,4 +1,4 @@
--- Well 4.13
+-- Well 4.14
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -250,15 +250,37 @@ local URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/h
 local CoreGui = game:GetService("CoreGui")
 
 -- ========== HELPER ==========
-local function getHealthBar()
+-- Return both layout candidates rather than only the first one.
+-- If both HealthBars exist during a Roblox UI rollout, the temporary UI
+-- might still have been parented to the other HealthBar.
+local function getHealthBars()
     local outer = CoreGui:FindFirstChild("TopBarApp")
     local app = outer and outer:FindFirstChild("TopBarApp")
-    if not app then return nil end
-    local frame = app:FindFirstChild("TopBarFrame")
-    local right = frame and frame:FindFirstChild("TopRightFrame")
-    local old = app:FindFirstChild("UnibarLeftFrame")
-    return (right and right:FindFirstChild("HealthBar"))
-        or (old and old:FindFirstChild("HealthBar"))
+    if not app then return nil, nil end
+
+    local topBarFrame = app:FindFirstChild("TopBarFrame")
+    local topRightFrame = topBarFrame and topBarFrame:FindFirstChild("TopRightFrame")
+    local unibarLeftFrame = app:FindFirstChild("UnibarLeftFrame")
+
+    local newBar = topRightFrame and topRightFrame:FindFirstChild("HealthBar")
+    local oldBar = unibarLeftFrame and unibarLeftFrame:FindFirstChild("HealthBar")
+    return newBar, oldBar
+end
+
+local function getHealthBar()
+    local newBar, oldBar = getHealthBars()
+    return newBar or oldBar
+end
+
+local function findExperienceSettings()
+    -- It may already have been reparented by another stage of the loader.
+    local direct = CoreGui:FindFirstChild("ExperienceSettings")
+    if direct then return direct end
+
+    -- Search BOTH candidates, even if the other HealthBar has priority.
+    local newBar, oldBar = getHealthBars()
+    return (newBar and newBar:FindFirstChild("ExperienceSettings"))
+        or (oldBar and oldBar:FindFirstChild("ExperienceSettings"))
 end
 
 local function removeLoadBackground()
@@ -337,32 +359,58 @@ task.spawn(function()
 end)
 -- ==============
 
--- Location
-local CoreGui = game:GetService("CoreGui")
+-- Locate the ExperienceSettings UI in either HealthBar or CoreGui.
+-- Do not treat a missing UI folder as a missing HealthBar.
 local expsting
-for _ = 1, 100 do -- max 10 seconds; no infinite yield for deprecated frame
-    local bar = getHealthBar()
-    expsting = bar and bar:FindFirstChild("ExperienceSettings")
+local uiDeadline = os.clock() + 45
+repeat
+    expsting = findExperienceSettings()
     if expsting then break end
     task.wait(0.1)
-end
+until os.clock() >= uiDeadline
+
 if not expsting then
-    warn("[ExperienceSettings] Loading UI not found in old or new TopBar path")
+    local newBar, oldBar = getHealthBars()
+    if newBar or oldBar then
+        warn("[ExperienceSettings] HealthBar found, but ExperienceSettings UI was not created within 45s. Check whether ExperienceSettings.lua ran successfully.")
+    else
+        warn("[ExperienceSettings] HealthBar not found at either TopBar path within 45s (new: TopBarFrame.TopRightFrame.HealthBar; old: UnibarLeftFrame.HealthBar).")
+    end
     return
 end
 
--- รอ Loader พร้อม
-local loader
+-- Keep waiting for the loading animation, but handle a UI that has
+-- already moved to CoreGui and no longer has a loading background.
+local ready = false
+local readyDeadline = os.clock() + 45
 repeat
-    loader = expsting:FindFirstChild("Menu")
-            and expsting.Menu:FindFirstChild("Load_Background")
-            and expsting.Menu.Load_Background:FindFirstChild("Skip")
-            and expsting.Menu.Load_Background.Skip:FindFirstChild("Loader")
-    task.wait(0.05)
-until loader and loader.Size == UDim2.new(1,0,1,0)
+    local menu = expsting:FindFirstChild("Menu")
+    local background = menu and menu:FindFirstChild("Load_Background")
+    local skip = background and background:FindFirstChild("Skip")
+    local loader = skip and skip:FindFirstChild("Loader")
 
--- ตอนนี้ย้าย parent
-expsting.Parent = CoreGui
+    if loader and loader.Size == UDim2.new(1, 0, 1, 0) then
+        ready = true
+        break
+    end
+
+    if expsting.Parent == CoreGui and menu and not background then
+        ready = true -- Already completed by another stage.
+        break
+    end
+
+    task.wait(0.05)
+until os.clock() >= readyDeadline
+
+if not ready then
+    warn("[ExperienceSettings] UI folder found, but loading animation did not finish within 45s.")
+    return
+end
+
+-- Parent is temporary in either TopBar layout; move it only after loading.
+if expsting.Parent ~= CoreGui then
+    expsting.Parent = CoreGui
+end
 monitorReady = true
 
 -- Auto-destroy Load_Background
