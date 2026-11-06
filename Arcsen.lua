@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.92 + OpenChat Report ",
+	sion = " UIs 7.2.93 + OpenChat Safety ",
 	logs = [[
 # -- Update logs --
 (:4/11/2026: A) Added /OpenChat ON/OFF/STATUS, a separate OpenChat tab, API polling and a 125-message rolling cap for local development.
@@ -1544,9 +1544,10 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
       local reportButton = Instance.new("TextButton")
       reportButton.Name = "Report"
       reportButton.Size = UDim2.fromOffset(78, 25)
-      reportButton.BackgroundColor3 = Color3.fromRGB(98, 38, 48)
+      reportButton.BackgroundColor3 = messageOptions.ReportPreviouslySent
+          and Color3.fromRGB(47, 91, 78) or Color3.fromRGB(98, 38, 48)
       reportButton.BorderSizePixel = 0
-      reportButton.Text = "⚑ Report"
+      reportButton.Text = messageOptions.ReportPreviouslySent and "✓ Reported" or "⚑ Report"
       reportButton.TextColor3 = Color3.fromRGB(255, 220, 225)
       reportButton.TextSize = 12
       reportButton.AutoButtonColor = true
@@ -7919,7 +7920,7 @@ loc.API.ShowOpenChatReportDialog = function(record)
 
     local panel = Instance.new("Frame")
     panel.Name = "ReportDialog"
-    panel.Size = UDim2.new(0.93, 0, 0, 348)
+    panel.Size = UDim2.new(0.93, 0, 0, 400)
     panel.AnchorPoint = Vector2.new(0.5, 0.5)
     panel.Position = UDim2.fromScale(0.5, 0.5)
     panel.BackgroundColor3 = Color3.fromRGB(19, 28, 45)
@@ -8038,6 +8039,61 @@ loc.API.ShowOpenChatReportDialog = function(record)
     submit.ZIndex = 203
     submit.Parent = panel
     Corner(0, 5, submit)
+
+    -- View only reports from this anonymous session (no Roblox identity stored).
+    local myReports = Instance.new("TextButton")
+    myReports.Name = "MyOpenChatReports"
+    myReports.Size = UDim2.new(1, -24, 0, 26)
+    myReports.Position = UDim2.fromOffset(12, 314)
+    myReports.BackgroundColor3 = Color3.fromRGB(37, 64, 95)
+    myReports.TextColor3 = Color3.fromRGB(214, 231, 252)
+    myReports.TextSize = 12
+    myReports.Text = "Check my report status"
+    myReports.Active = true
+    myReports.ZIndex = 203
+    myReports.Parent = panel
+    Corner(0, 5, myReports)
+    myReports.MouseButton1Click:Connect(function()
+        if not myReports.Active then return end
+        local core = loc.API.ArcsenCommand
+        if type(core) ~= "table" or type(core.getOpenChatReports) ~= "function" then
+            status.Text = "Update ArcsenCommand to check report status."
+            return
+        end
+        myReports.Active = false
+        myReports.Text = "Checking..."
+        task.spawn(function()
+            local ok, reports, reason = pcall(core.getOpenChatReports)
+            if not overlay.Parent then return end
+            if ok and type(reports) == "table" then
+                local pending, reviewed, dismissed = 0, 0, 0
+                for _, item in ipairs(reports) do
+                    if item.status == "pending" then pending = pending + 1
+                    elseif item.status == "reviewed" then reviewed = reviewed + 1
+                    else dismissed = dismissed + 1 end
+                end
+                status.Text = "Your reports: " .. #reports .. " (pending " .. pending
+                    .. ", reviewed " .. reviewed .. ", closed " .. dismissed .. ")"
+                if type(core.wasOpenChatReported) == "function" and core.wasOpenChatReported(record.messageId) then
+                    submit.Text = "Already reported"
+                    submit.Active = false
+                end
+            else
+                status.Text = tostring(ok and reason or reports or "Status unavailable"):sub(1, 160)
+            end
+            myReports.Text = "Check my report status"
+            myReports.Active = true
+        end)
+    end)
+
+    if type(loc.API.ArcsenCommand) == "table"
+        and type(loc.API.ArcsenCommand.wasOpenChatReported) == "function"
+        and loc.API.ArcsenCommand.wasOpenChatReported(record.messageId) then
+        status.Text = "You already reported this message in this session."
+        submit.Text = "Already reported"
+        submit.Active = false
+    end
+
     submit.MouseButton1Click:Connect(function()
         if not submit.Active then return end
         if not selectedReason then
@@ -8059,7 +8115,12 @@ loc.API.ShowOpenChatReportDialog = function(record)
             if ok and accepted == true then
                 status.Text = "Report received. Thank you."
                 submit.Text = "Reported"
-                task.delay(1.5, function() if overlay.Parent then overlay:Destroy() end end)
+                task.delay(1.5, function()
+                    if overlay.Parent then overlay:Destroy() end
+                    if type(loc.API.RenderChat) == "function" and loc.API.ActiveChatID then
+                        loc.API.RenderChat(tostring(loc.API.ActiveChatID), true)
+                    end
+                end)
             else
                 status.Text = tostring(ok and explanation or accepted or "Report failed"):sub(1, 160)
                 submit.Active = true
@@ -8165,6 +8226,9 @@ loc.API.DrawMessage = function(chatID, index, message)
                             and tonumber(message.userId) == s.Players.LocalPlayer.UserId)
                         or tostring(message.username or ""):lower() == s.Players.LocalPlayer.Name:lower()
                     )),
+                ReportPreviouslySent = type(loc.API.ArcsenCommand) == "table"
+                    and type(loc.API.ArcsenCommand.wasOpenChatReported) == "function"
+                    and loc.API.ArcsenCommand.wasOpenChatReported(message.messageId) == true,
                 OnOpenChatReport = function()
                     if type(loc.API.ShowOpenChatReportDialog) == "function" then
                         loc.API.ShowOpenChatReportDialog(message)
