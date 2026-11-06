@@ -1,4 +1,26 @@
--- Well 4.15
+-- Well 4.13
+
+-- LoaderSettings is the explicit start gate for the main script.
+-- Do not run it in task.spawn: the main bootstrap must await its permission.
+local loaderGateOK, loaderGateResult = pcall(function()
+    local source = game:HttpGet(
+        "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"
+    )
+    local chunk, compileError = loadstring(source)
+    if not chunk then error("LoaderSettings compile: " .. tostring(compileError)) end
+    return chunk() -- true = authorized; false/nil = cancelled or incomplete
+end)
+if not loaderGateOK then
+    warn("[ES][Bootstrap] Loader Settings failed; stopping Main: " .. tostring(loaderGateResult))
+    return
+end
+if loaderGateResult ~= true then
+    warn("[ES][Bootstrap] Main was not authorized by Loader Settings.")
+    return
+end
+print("[ES][Bootstrap] Loader Settings authorized Main.")
+
+
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -230,24 +252,6 @@ task.delay(0.5,function()
 		ES.progress = ES.max
 		ES.done = true
 	end
-end)
-
--- LoaderSettings is a separate configuration UI (not ExperienceSettings).
--- Its startup must not suspend the main UI bootstrap if it yields on an avatar/UI.
-task.spawn(function()
-    print("[ES][Bootstrap] Starting LoaderSettings in parallel...")
-    local ok, err = pcall(function()
-        local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"
-        local source = game:HttpGet(url)
-        local chunk, compileError = loadstring(source)
-        if not chunk then error("LoaderSettings compile: " .. tostring(compileError)) end
-        chunk()
-    end)
-    if not ok then
-        warn("[ES][Bootstrap] LoaderSettings failed independently: " .. tostring(err))
-    else
-        print("[ES][Bootstrap] LoaderSettings loaded.")
-    end
 end)
 
 local Players = game:GetService("Players")
