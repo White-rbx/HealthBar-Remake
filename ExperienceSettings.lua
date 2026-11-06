@@ -1,4 +1,4 @@
--- Ok 4.972
+-- Ok 4.973
 -- TweenHealth preloads image frames: run separately so its PreloadAsync
 -- cannot delay the ExperienceSettings UI creation.
 local bootstrapEnv = getgenv()
@@ -42,6 +42,10 @@ end
 -- เป้าหมายใหม่ของตำแหน่ง HealthBar (ปรับได้)
 local newHealthBarPosition = UDim2.new(0.835, 0, 0, 0)
 local newHealthBarSize = UDim2.new(0.109, 0, 1, 0)
+-- The newer TopRightFrame HealthBar is a full-width, 44px row.
+-- Keep the classic Unibar layout unchanged for clients still using it.
+local topRightHealthBarSize = UDim2.new(1, 0, 0, 44)
+local topRightHealthBarPosition = UDim2.new(0, 0, 0, 0)
 local newInnerBarSize = UDim2.new(1.85, 0, 0, 10)
 
 -- helper: หาวัตถุ TopBarApp.HealthBar แบบปลอดภัย (returns instance or nil)
@@ -68,8 +72,13 @@ task.spawn(function()
                 if bar and bar.Parent then
                     bar.Visible = true
                     -- try/catch แต่ pcall รอบนอกแล้ว
-                    bar.Position = newHealthBarPosition
-                    bar.Size = newHealthBarSize
+                    if bar.Parent and bar.Parent.Name == "TopRightFrame" then
+                        bar.Position = topRightHealthBarPosition
+                        bar.Size = topRightHealthBarSize
+                    else
+                        bar.Position = newHealthBarPosition
+                        bar.Size = newHealthBarSize
+                    end
                 end
 
                 local innerBar = bar:FindFirstChild("HealthBar")
