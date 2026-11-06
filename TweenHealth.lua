@@ -1,4 +1,4 @@
--- Bah bah 2.375
+-- Bah bah 2.376
 -- LocalScript: HealthBar + PainOverlay + UIScale + Static Noise
 
 local RunService = game:GetService("RunService")
@@ -81,22 +81,25 @@ local currentSoundPitch = 1
 local currentSoundEnabled = false
 
 -- ========== HELPERS ==========
+-- Compatibility with Roblox's old UnibarLeftFrame and new TopRightFrame.
+local function resolveOuterHealthBar()
+    local outer = CoreGui:FindFirstChild("TopBarApp")
+    local app = outer and outer:FindFirstChild("TopBarApp")
+    if not app then return nil end
+    local frame = app:FindFirstChild("TopBarFrame")
+    local right = frame and frame:FindFirstChild("TopRightFrame")
+    local old = app:FindFirstChild("UnibarLeftFrame")
+    return (right and right:FindFirstChild("HealthBar"))
+        or (old and old:FindFirstChild("HealthBar"))
+end
+
 local function lerp(a, b, t)
 	return a + (b - a) * math.clamp(t, 0, 1)
 end
 
 local function findInnerAndFill()
-	local topBarApp = CoreGui:FindFirstChild("TopBarApp")
-	if not topBarApp then return nil, nil end
-
-	local nested = topBarApp:FindFirstChild("TopBarApp")
-	if not nested then return nil, nil end
-
-	local unibar = nested:FindFirstChild("UnibarLeftFrame")
-	if not unibar then return nil, nil end
-
-	local healthBar = unibar:FindFirstChild("HealthBar")
-	if not healthBar then return nil, nil end
+    local healthBar = resolveOuterHealthBar()
+    if not healthBar then return nil, nil end
 
 	local inner = healthBar:FindFirstChild("HealthBar")
 	if not inner then return nil, nil end
@@ -106,17 +109,8 @@ local function findInnerAndFill()
 end
 
 local function getHealthBarParent()
-	local topBarApp = CoreGui:FindFirstChild("TopBarApp")
-	if not topBarApp then return nil end
-
-	local nested = topBarApp:FindFirstChild("TopBarApp")
-	if not nested then return nil end
-
-	local unibar = nested:FindFirstChild("UnibarLeftFrame")
-	if not unibar then return nil end
-
-	local healthBar = unibar:FindFirstChild("HealthBar")
-	if not healthBar then return nil end
+    local healthBar = resolveOuterHealthBar()
+    if not healthBar then return nil end
 
 	return healthBar:FindFirstChild("HealthBar")
 end
@@ -505,23 +499,9 @@ local function applyAllFixes()
 end
 
 local function tweenFillFullOnce()
-	local fill = nil
-	local topBar = CoreGui:FindFirstChild("TopBarApp")
-	if topBar then
-		local nested = topBar:FindFirstChild("TopBarApp")
-		if nested then
-			local unibar = nested:FindFirstChild("UnibarLeftFrame")
-			if unibar then
-				local hb = unibar:FindFirstChild("HealthBar")
-				if hb then
-					local inner = hb:FindFirstChild("HealthBar")
-					if inner then
-						fill = inner:FindFirstChild("Fill")
-					end
-				end
-			end
-		end
-	end
+    local hb = resolveOuterHealthBar()
+    local inner = hb and hb:FindFirstChild("HealthBar")
+    local fill = inner and inner:FindFirstChild("Fill")
 
 	if not fill or not fill:IsA("GuiObject") then return end
 
