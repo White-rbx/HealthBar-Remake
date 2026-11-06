@@ -1,6 +1,6 @@
 --[[
     ArcsenCommand-Module.lua
-    Version: 0.6.2
+    Version: 0.6.3
 
     Purpose:
       - Command core only; creates no UI.
@@ -35,7 +35,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local HttpService = game:GetService("HttpService")
 
 local module = {
-    version = "0.6.2",
+    version = "0.6.3",
     APIVersion = 1,
     commands = {},
     _output = nil,
@@ -46,6 +46,7 @@ local module = {
     _openChatCycle = 0,
     _openChatLastID = 0,
     _openChatSessionID = HttpService:GenerateGUID(false):gsub("-", ""),
+    _reportedOpenChatMessages = {},
     _onOpenChatChanged = nil,
     _openChatPollInterval = 6,
     _openChatLimit = 125,
@@ -328,6 +329,9 @@ function module.reportOpenChat(messageId, reason, details)
     if not messageId or messageId < 1 or messageId % 1 ~= 0 then
         return false, "Invalid message ID."
     end
+    if module._reportedOpenChatMessages[messageId] then
+        return true, "You already reported this message in this session."
+    end
     local accepted = {harassment=true, spam=true, abuse=true, other=true}
     if accepted[tostring(reason)] ~= true then return false, "Invalid report reason." end
     details = tostring(details or ""):sub(1, 240)
@@ -357,10 +361,49 @@ function module.reportOpenChat(messageId, reason, details)
     local code = tonumber(response.StatusCode or response.Status or 0) or 0
     local decodedOK, data = pcall(HttpService.JSONDecode, HttpService, tostring(response.Body or ""))
     if code >= 200 and code < 300 and decodedOK and type(data)=="table" and data.ok then
-        return true, "Report accepted"
+        module._reportedOpenChatMessages[messageId] = true
+        return true, data.duplicate == true and "Report already recorded" or "Report accepted"
     end
     return false, decodedOK and type(data)=="table" and tostring(data.error or "Report rejected")
         or ("Report HTTP " .. tostring(code))
+end
+
+function module.wasOpenChatReported(messageId)
+    return module._reportedOpenChatMessages[tonumber(messageId)] == true
+end
+
+-- Check ONLY this anonymous session's reports. The random session token is
+-- never placed in a URL, user-visible history, or sent to another player.
+function module.getOpenChatReports()
+    if module._destroyed then return nil, "ArcsenCommand has been destroyed." end
+    local url, err = openChatURL()
+    if not url then return nil, err end
+    url = url:gsub("/messages$", "/reports/status")
+    local req = type(request) == "function" and request
+        or type(http_request) == "function" and http_request
+        or (type(syn) == "table" and type(syn.request) == "function" and syn.request)
+        or (type(http) == "table" and type(http.request) == "function" and http.request)
+        or (type(sharedEnvironment.request) == "function" and sharedEnvironment.request)
+    if type(req) ~= "function" then return nil, "This environment cannot check report status." end
+    local body = HttpService:JSONEncode({reporterToken = module._openChatSessionID})
+    local ok, reply = pcall(req, {
+        Url = url, Method = "POST",
+        Headers = { ["Content-Type"] = "application/json", ["Accept"] = "application/json" },
+        Body = body
+    })
+    if not ok or type(reply) ~= "table" then return nil, "Report status request failed." end
+    local code = tonumber(reply.StatusCode or reply.Status or 0) or 0
+    local decoded, data = pcall(HttpService.JSONDecode, HttpService, tostring(reply.Body or ""))
+    if code < 200 or code >= 300 or not decoded or type(data) ~= "table" or data.ok ~= true
+        or type(data.reports) ~= "table" then
+        return nil, decoded and type(data) == "table" and tostring(data.error or "Request rejected")
+            or ("Report status HTTP " .. tostring(code))
+    end
+    for _, item in ipairs(data.reports) do
+        local id = tonumber(item.messageId)
+        if id and id >= 1 then module._reportedOpenChatMessages[id] = true end
+    end
+    return data.reports
 end
 
 local function notifyCommandsChanged()
@@ -768,11 +811,31 @@ module.registerCommand("openchat", function(arguments)
             .. " (read-only announcements, max 125, refresh every 6s)"
         emit(message, "info", {source="ArcsenCommand", isSystem=true})
         return true, message
+    elseif option == "reports" then
+        local reports, err = module.getOpenChatReports()
+        if not reports then
+            emit(err or "Could not load reports.", "error", {source="ArcsenCommand", isSystem=true})
+            return true, err
+        end
+        local rows = {"OpenChat reports for this anonymous session:"}
+        if #reports == 0 then
+            table.insert(rows, "No reports in this session.")
+        else
+            for index, item in ipairs(reports) do
+                if index > 10 then break end
+                table.insert(rows, "#" .. tostring(item.messageId or "?")
+                    .. " • " .. tostring(item.reason or "other")
+                    .. " • " .. tostring(item.status or "pending"))
+            end
+        end
+        local message = table.concat(rows, "\n")
+        emit(message, "info", {source="ArcsenCommand", isSystem=true})
+        return true, message
     end
-    local usage = "Usage: /OpenChat ON | OFF | STATUS"
+    local usage = "Usage: /OpenChat ON | OFF | STATUS | REPORTS"
     emit(usage, "warning", {source="ArcsenCommand", isSystem=true})
     return true, usage
-end, "Read approved global announcements (read-only): ON, OFF or STATUS")
+end, "Read approved global announcements and check anonymous report results: ON, OFF, STATUS or REPORTS")
 
 module.registerCommand("help", function()
     local names = {}
