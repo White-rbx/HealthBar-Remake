@@ -1,6 +1,6 @@
 --[[
     ArcsenCommand-Module.lua
-    Version: 0.6.3
+    Version: 0.6.4
 
     Purpose:
       - Command core only; creates no UI.
@@ -30,12 +30,11 @@ end
 
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 local HttpService = game:GetService("HttpService")
 
 local module = {
-    version = "0.6.3",
+    version = "0.6.4",
     APIVersion = 1,
     commands = {},
     _output = nil,
@@ -625,35 +624,7 @@ local function connectNewChat()
     end
 end
 
-local function connectLegacyChat()
-    local ok, connection = pcall(function()
-        local chatEvents = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-        local event = chatEvents and chatEvents:FindFirstChild("OnMessageDoneFiltering")
-        if not event then
-            return nil
-        end
-
-        return event.OnClientEvent:Connect(function(messageData)
-            if module._destroyed then
-                return
-            end
-            if type(messageData) ~= "table" then
-                return
-            end
-            if not messageData.FromSpeaker or not messageData.Message then
-                return
-            end
-
-            local username = tostring(messageData.FromSpeaker)
-            local player = getPlayerByName(username)
-            showIncomingMessage(username, messageData.Message, player)
-        end)
-    end)
-
-    if ok and connection then
-        table.insert(module._connections, connection)
-    end
-end
+-- LegacyChat is deliberately not connected. New chat uses Roblox TextChatService.
 
 function module.setHereChat(enabled)
     if module._destroyed then
@@ -671,7 +642,7 @@ function module.setHereChat(enabled)
     if enabled then
         disconnectHereChat()
         connectNewChat()
-        connectLegacyChat()
+        -- Legacy chat bridge intentionally disabled: use TextChatService only.
         emit("HereChat: ON", "success", {source = "ArcsenCommand", isSystem = true})
         notifyHereChatChanged(true)
     else
@@ -710,7 +681,7 @@ function module.sendMessage(rawText)
     table.insert(module._pendingOutgoing, pending)
     if #module._connections == 0 then
         connectNewChat()
-        connectLegacyChat()
+        -- Legacy chat bridge intentionally disabled: use TextChatService only.
     end
 
     local ok, sendError = pcall(function()
@@ -721,14 +692,7 @@ function module.sendMessage(rawText)
             return
         end
 
-        local legacy = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-        local request = legacy and legacy:FindFirstChild("SayMessageRequest")
-        if request and request:IsA("RemoteEvent") then
-            request:FireServer(text, "All")
-            return
-        end
-
-        error("No supported public Roblox chat channel is available.")
+        error("No permitted TextChatService channel is available.")
     end)
 
     if not ok then
