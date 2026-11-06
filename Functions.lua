@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.972
+-- So uhm just a script lol. 6.973
 
 -- Loadstring
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
@@ -10,22 +10,40 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local TextService = game:GetService("TextService")
 
+-- Compatibility for both old and new Roblox CoreGui TopBar layouts.
+-- Hold the ExperienceSettings instance itself, so moving its Parent later is safe.
+local function esHealthBar()
+    local outer = game:GetService("CoreGui"):FindFirstChild("TopBarApp")
+    local app = outer and outer:FindFirstChild("TopBarApp")
+    if not app then return nil end
+    local frame = app:FindFirstChild("TopBarFrame")
+    local newParent = frame and frame:FindFirstChild("TopRightFrame")
+    local oldParent = app:FindFirstChild("UnibarLeftFrame")
+    return (newParent and newParent:FindFirstChild("HealthBar"))
+        or (oldParent and oldParent:FindFirstChild("HealthBar"))
+end
+
+local function esRootWait()
+    local core = game:GetService("CoreGui")
+    local deadline = os.clock() + 8
+    repeat
+        local exp = core:FindFirstChild("ExperienceSettings")
+        local bar = esHealthBar()
+        exp = exp or (bar and bar:FindFirstChild("ExperienceSettings"))
+        if exp then return exp end
+        task.wait(0.1)
+    until os.clock() >= deadline
+    error("[ExperienceSettings] UI not found under either TopBar path or CoreGui")
+end
+
+local ESRoot = esRootWait()
+
 -- ===== [ Position's ] =====
-local Background = game:GetService("CoreGui")
-                   :WaitForChild("TopBarApp")
-                   :WaitForChild("TopBarApp")
-                   :WaitForChild("UnibarLeftFrame")
-                   :WaitForChild("HealthBar")
-                   :WaitForChild("ExperienceSettings")
+local Background = ESRoot
                    :WaitForChild("Menu")
                    :WaitForChild("Background")
 
-local Menu = game:GetService("CoreGui")
-                   :WaitForChild("TopBarApp")
-                   :WaitForChild("TopBarApp")
-                   :WaitForChild("UnibarLeftFrame")
-                   :WaitForChild("HealthBar")
-                   :WaitForChild("ExperienceSettings")
+local Menu = ESRoot
                    :WaitForChild("Menu")
 
 local hr = Menu:WaitForChild("TopBar")
@@ -891,12 +909,7 @@ end)
 --===========================
 
 -- หาปุ่ม About ด้วย WaitForChild (ใน CoreGui)
-local aboutButton = game:GetService("CoreGui")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("UnibarLeftFrame")
-	:WaitForChild("HealthBar")
-	:WaitForChild("ExperienceSettings")
+local aboutButton = ESRoot
 	:WaitForChild("Menu")
 	:WaitForChild("TopBar")
 	:WaitForChild("Holder")
@@ -930,11 +943,7 @@ end)
 
 task.spawn(function()
 	local cg = game:GetService("CoreGui")
-	local top = cg:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
-	local unibar = top:WaitForChild("UnibarLeftFrame")
-	local hb = unibar:WaitForChild("HealthBar")
-	local exp = hb:WaitForChild("ExperienceSettings")
-	local menu = exp:WaitForChild("Menu")
+	local menu = ESRoot:WaitForChild("Menu")
 	local topbar = menu:WaitForChild("TopBar")
 	local holder = topbar:WaitForChild("Holder")
 	local sta = holder:WaitForChild("a2_Status")
@@ -957,11 +966,7 @@ end)
 
 task.spawn(function()
 	local cg = game:GetService("CoreGui")
-	local top = cg:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
-	local unibar = top:WaitForChild("UnibarLeftFrame")
-	local hb = unibar:WaitForChild("HealthBar")
-	local exp = hb:WaitForChild("ExperienceSettings")
-	local menu = exp:WaitForChild("Menu")
+	local menu = ESRoot:WaitForChild("Menu")
 	local topbar = menu:WaitForChild("TopBar")
     local holder = topbar:WaitForChild("Holder")
 	local loadFrame = holder:WaitForChild("LoadFrame")     
@@ -1054,10 +1059,8 @@ local TweenService = game:GetService("TweenService")
 local cg = game:GetService("CoreGui")
 
 -- wait core UI
-local root = cg:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
-local holder = root:WaitForChild("UnibarLeftFrame")
-	:WaitForChild("HealthBar"):WaitForChild("ExperienceSettings")
-	:WaitForChild("Menu"):WaitForChild("TopBar"):WaitForChild("Holder")
+local holder = ESRoot:WaitForChild("Menu")
+    :WaitForChild("TopBar"):WaitForChild("Holder")
 local menu = holder.Parent.Parent
 local topbar = menu:WaitForChild("TopBar")
 local holderRef = holder
@@ -1343,13 +1346,7 @@ local CoreGui = game:GetService("CoreGui")
 local ON_ID  = "116259694864857"
 local OFF_ID = "107706370299068"
 
-local profilePath = CoreGui
-    :WaitForChild("TopBarApp")
-    :WaitForChild("TopBarApp")
-    :WaitForChild("UnibarLeftFrame")
-    :WaitForChild("HealthBar")
-    :WaitForChild("ExperienceSettings")
-    :WaitForChild("Menu")
+local profilePath = ESRoot:WaitForChild("Menu")
 local ProfileStatus = profilePath:WaitForChild("ProfileStatus")
 
 local tweenInfo = TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -1618,12 +1615,7 @@ end
 -- << main loadstring >>
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/LighterCyan.ai.lua"))()
 -- หา LighterCyan.ai ด้วย WaitForChild
-local gui = game:GetService("CoreGui")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("UnibarLeftFrame")
-	:WaitForChild("HealthBar")
-	:WaitForChild("ExperienceSettings")
+local gui = ESRoot
 	:WaitForChild("LighterCyan.ai")
 
 -- ใช้ toggle เดิมของนาย
@@ -1636,12 +1628,8 @@ end, false) -- default: ปิด
 
 -- <<===== HEALTHBAR =====>>
 -- 🔍 หา HealthBar หลัก
-local hb = game:GetService("CoreGui")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("UnibarLeftFrame")
-	:WaitForChild("HealthBar")
-	:WaitForChild("HealthBar")
+local hb = assert(esHealthBar(), "[ExperienceSettings] HealthBar missing")
+    :WaitForChild("HealthBar")
 
 -- 🟩 Toggle รวม HealthBar
 createToggle(BFrame, "HBar", "HealthBar", [[<b><u>HealthBar</u></b>
