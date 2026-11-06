@@ -1,4 +1,4 @@
--- Well 4.12
+-- Well 4.13
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -251,23 +251,22 @@ local CoreGui = game:GetService("CoreGui")
 
 -- ========== HELPER ==========
 local function getHealthBar()
-	local ok, top = pcall(function()
-		return CoreGui:FindFirstChild("TopBarApp") and CoreGui.TopBarApp:FindFirstChild("TopBarApp")
-	end)
-	if not ok or not top then return nil end
-	local unibar = top:FindFirstChild("UnibarLeftFrame")
-	if not unibar then return nil end
-	return unibar:FindFirstChild("HealthBar")
+    local outer = CoreGui:FindFirstChild("TopBarApp")
+    local app = outer and outer:FindFirstChild("TopBarApp")
+    if not app then return nil end
+    local frame = app:FindFirstChild("TopBarFrame")
+    local right = frame and frame:FindFirstChild("TopRightFrame")
+    local old = app:FindFirstChild("UnibarLeftFrame")
+    return (right and right:FindFirstChild("HealthBar"))
+        or (old and old:FindFirstChild("HealthBar"))
 end
 
 local function removeLoadBackground()
-	local ok, menu = pcall(function()
-		return game:GetService("CoreGui")
-			.TopBarApp.TopBarApp
-			.UnibarLeftFrame.HealthBar
-			.ExperienceSettings.Menu
-	end)
-	if ok and menu then
+    local bar = getHealthBar()
+    local exp = CoreGui:FindFirstChild("ExperienceSettings")
+        or (bar and bar:FindFirstChild("ExperienceSettings"))
+    local menu = exp and exp:FindFirstChild("Menu")
+    if menu then
 		local bg = menu:FindFirstChild("Load_Background")
 		if bg then
 			pcall(function() bg:Destroy() end)
@@ -320,15 +319,17 @@ local function tryReload()
 end
 
 -- ========== MONITOR LOOP ==========
+local monitorReady = false
 task.spawn(function()
 	while true do
 		task.wait(1)
-		local hb = getHealthBar()
+		local hb = monitorReady and getHealthBar()
 		if hb then
-			local exp = hb:FindFirstChild("ExperienceSettings")
-			if not exp then
-				tryReload()
-			end
+			local exp = CoreGui:FindFirstChild("ExperienceSettings")
+                or hb:FindFirstChild("ExperienceSettings")
+            if not exp then
+                tryReload()
+            end
 		else
 			-- HealthBar หาย ไม่ reload ตามที่ระบุ
 		end
@@ -338,11 +339,17 @@ end)
 
 -- Location
 local CoreGui = game:GetService("CoreGui")
-local expsting = CoreGui:FindFirstChild("TopBarApp")
-    :WaitForChild("TopBarApp")
-    :WaitForChild("UnibarLeftFrame")
-    :WaitForChild("HealthBar")
-    :WaitForChild("ExperienceSettings")
+local expsting
+for _ = 1, 100 do -- max 10 seconds; no infinite yield for deprecated frame
+    local bar = getHealthBar()
+    expsting = bar and bar:FindFirstChild("ExperienceSettings")
+    if expsting then break end
+    task.wait(0.1)
+end
+if not expsting then
+    warn("[ExperienceSettings] Loading UI not found in old or new TopBar path")
+    return
+end
 
 -- รอ Loader พร้อม
 local loader
@@ -356,7 +363,7 @@ until loader and loader.Size == UDim2.new(1,0,1,0)
 
 -- ตอนนี้ย้าย parent
 expsting.Parent = CoreGui
-
+monitorReady = true
 
 -- Auto-destroy Load_Background
 task.wait(3)
@@ -365,22 +372,10 @@ task.spawn(function()
     local CoreGui = game:GetService("CoreGui")
 
     while task.wait(0.05) do
-        local path = CoreGui:FindFirstChild("TopBarApp", 10)
-        if path then
-            path = path:FindFirstChild("TopBarApp", 10)
-        end
-        if path then
-            path = path:FindFirstChild("UnibarLeftFrame", 10)
-        end
-        if path then
-            path = path:FindFirstChild("HealthBar", 10)
-        end
-        if path then
-            path = path:FindFirstChild("ExperienceSettings", 10)
-        end
-        if path then
-            path = path:FindFirstChild("Menu", 10)
-        end
+        local bar = getHealthBar()
+        local exp = CoreGui:FindFirstChild("ExperienceSettings")
+            or (bar and bar:FindFirstChild("ExperienceSettings"))
+        local path = exp and exp:FindFirstChild("Menu")
 
         -- ถ้าถึงตรงนี้ได้แล้วจึงเช็ค Load_Background
         if path then
@@ -398,11 +393,9 @@ task.spawn(function()
 
     while task.wait(0.05) do
         -- หา ExperienceSettings ให้แน่นอนก่อน
-        local path = CoreGui:FindFirstChild("TopBarApp", 10)
-        if path then path = path:FindFirstChild("TopBarApp", 10) end
-        if path then path = path:FindFirstChild("UnibarLeftFrame", 10) end
-        if path then path = path:FindFirstChild("HealthBar", 10) end
-        if path then path = path:FindFirstChild("ExperienceSettings", 10) end
+        local bar = getHealthBar()
+        local path = CoreGui:FindFirstChild("ExperienceSettings")
+            or (bar and bar:FindFirstChild("ExperienceSettings"))
 
         if not path then
             continue
@@ -459,13 +452,12 @@ end
 
 SetZIndexRecursive(asrt)
 
-local sata = CoreGui:WaitForChild("TopBarApp", 10)
-    :WaitForChild("TopBarApp", 10)
-    :WaitForChild("UnibarLeftFrame", 10)
-    :WaitForChild("HealthBar", 10)
-    :WaitForChild("ExperienceSettings", 10)
-    :WaitForChild("Menu", 10)
-sata:Destroy()
+-- The main ExperienceSettings instance was moved to CoreGui above.
+-- Only remove an obsolete second Menu still attached to a HealthBar.
+local staleBar = getHealthBar()
+local staleExp = staleBar and staleBar:FindFirstChild("ExperienceSettings")
+local sata = staleExp and staleExp:FindFirstChild("Menu")
+if sata then sata:Destroy() end
 
 
 -- Hamburger Menu Remake
@@ -552,10 +544,7 @@ local plr = Players.LocalPlayer
 
 local Menu = CoreGui:WaitForChild("ExperienceSettings", 10)
 if Menu then Menu = Menu:FindFirstChild("Menu") end
-local valueGui = CoreGui:FindFirstChild("TopBarApp")
-if valueGui then valueGui = valueGui:FindFirstChild("TopBarApp") end
-if valueGui then valueGui = valueGui:FindFirstChild("UnibarLeftFrame") end
-if valueGui then valueGui = valueGui:FindFirstChild("HealthBar") end
+local valueGui = getHealthBar()
 if valueGui then valueGui = valueGui:FindFirstChild("ValueFolder") end
 if valueGui then valueGui = valueGui:FindFirstChild("ValueGui") end
 
@@ -631,14 +620,9 @@ end
 -- Set Y
 local CoreGui = game:GetService("CoreGui")
 
-local profileStatus =
-    CoreGui:WaitForChild("TopBarApp")
-        :WaitForChild("TopBarApp")
-        :WaitForChild("UnibarLeftFrame")
-        :WaitForChild("HealthBar")
-        :WaitForChild("ExperienceSettings")
-        :WaitForChild("Menu")
-        :WaitForChild("ProfileStatus")
+local profileStatus = CoreGui:WaitForChild("ExperienceSettings", 10)
+    :WaitForChild("Menu", 10)
+    :WaitForChild("ProfileStatus", 10)
 
 while not profileStatus.Parent do
     profileStatus.AncestryChanged:Wait()
