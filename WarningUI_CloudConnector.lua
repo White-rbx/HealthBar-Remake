@@ -1,4 +1,4 @@
--- ArcScriptCenter Cloud Warning Connector v0.5.13
+-- ArcScriptCenter Cloud Warning Connector v0.5.21 — live 15s one-shot polling
 -- Install with WarningUI.lua (Preview v0.1.0+) already loaded.
 -- Server means ArcScriptCenter's Cloudflare Worker, NOT another game's Roblox server.
 -- Only reads public, approved service notices. No secrets or user data are sent.
@@ -24,6 +24,7 @@ local requestFn = type(request) == 'function' and request
     or type(shared.request) == 'function' and shared.request
 
 local lastErrorAt = 0
+shared.ArcScriptWarningStatus = {ok=false,stage='fetching',lastSuccess=nil,count=0}
 local function readWarnings()
     local raw
     if type(requestFn) == 'function' then
@@ -59,7 +60,11 @@ end
 
 local function fetcher()
     local ok, data = pcall(readWarnings)
-    if ok then return data end
+    if ok then
+        shared.ArcScriptWarningStatus = {ok=true,stage='online',lastSuccess=os.time(),count=#data.warnings}
+        return data
+    end
+    shared.ArcScriptWarningStatus = {ok=false,stage='fetch',error=tostring(data),lastSuccess=shared.ArcScriptWarningStatus.lastSuccess}
     if os.time() - lastErrorAt >= 120 then
         warn('[WarningUI] ' .. tostring(data))
         lastErrorAt = os.time()
@@ -67,11 +72,11 @@ local function fetcher()
     return nil
 end
 
-local started, reason = ui.startServerPolling(fetcher, 30)
+local started, reason = ui.startServerPolling(fetcher, 15)
 assert(started, tostring(reason or 'Unable to start WarningUI polling'))
 
 shared.ArcScriptWarningConnector = {
-    version = '0.5.13',
+    version = '0.5.21',
     stop = function()
         ui.stopServerPolling()
     end
