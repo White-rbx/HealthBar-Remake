@@ -1,4 +1,4 @@
--- Value 2.3
+-- Value 2.31
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
@@ -7,16 +7,18 @@ local fpsLabel, fpsStroke
 local pingLabel, pingStroke
 
 local function refreshObjects()
-	local success, point = pcall(function()
-		return CoreGui
-			.TopBarApp
-			.TopBarApp
-			.UnibarLeftFrame
-			.HealthBar
-			.ValueFolder
-			.ValueGui
-			.point
-	end)
+    local success, point = pcall(function()
+        local top = CoreGui:FindFirstChild("TopBarApp")
+        local app = top and top:FindFirstChild("TopBarApp")
+        local frame = app and app:FindFirstChild("TopBarFrame")
+        local right = frame and frame:FindFirstChild("TopRightFrame")
+        local old = app and app:FindFirstChild("UnibarLeftFrame")
+        local bar = (right and right:FindFirstChild("HealthBar"))
+            or (old and old:FindFirstChild("HealthBar"))
+        local folder = bar and bar:FindFirstChild("ValueFolder")
+        local gui = folder and folder:FindFirstChild("ValueGui")
+        return gui and gui:FindFirstChild("point")
+    end)
 
 	if not success or not point then
 		return
