@@ -1,7 +1,8 @@
 local ver = {
-	sion = " UIs 7.2.97 ",
+	sion = " UIs 7.2.98 | Generated UI Diagnostics ",
 	logs = [[
 # -- Update logs --
+(:7/11/2026: F&A) Stage 16.17: Surface missing ARCSEN_UI markers on visual UI requests; strengthen descriptor and Instance preflight; show failed property diagnostics; add AI Dislike feedback to user messages.
 (:7/11/2026: R&F) Removed Global/OpenChat and settings; added Dislike response; keep HereChat unchanged.
 (:4/11/2026: F) Stage 16.18: Keep Last Token Used pinned to the latest primary chat request; count background title and memory requests in daily totals without allowing them to overwrite the chat usage display.
 (:3/11/2026: A) Stage 16.17: Add persistent Last Token Used diagnostics in API Settings with exact/estimated totals, input/output breakdown, provider/model, and optional thinking-token metadata.
@@ -1608,8 +1609,14 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
       end
     end, messageOptions.CommandChat ~= true and (messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user"))
 
-    -- Dislike response: feedback on AI replies only, stored per message.
+    -- AI replies: user may Dislike. User messages: show the AI's Dislike selection.
     inbtn("115771585779031", "Dislike", function(btn)
+      if messageOptions.SpeakerType == "user" then
+        if type(messageOptions.OnDislikeSelf) == "function" then
+          messageOptions.OnDislikeSelf()
+        end
+        return
+      end
       messageOptions.DislikedByUser = not messageOptions.DislikedByUser
       if messageOptions.DislikedByUser and messageOptions.LikedByUser then
         messageOptions.LikedByUser = false
@@ -1625,7 +1632,7 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
       if type(messageOptions.OnDislike) == "function" then
         messageOptions.OnDislike(messageOptions.DislikedByUser)
       end
-    end, messageOptions.CommandChat ~= true and messageOptions.SpeakerType == "ai")
+    end, messageOptions.CommandChat ~= true and (messageOptions.SpeakerType == "ai" or messageOptions.SpeakerType == "user"))
 
     inbtn("74459863797782", "Retry", function()
       if type(messageOptions.OnRetry) == "function" then
@@ -1802,7 +1809,8 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
       if button.Name == "Like" and ((messageOptions.SpeakerType == "user" and messageOptions.LikedByAI) or (messageOptions.SpeakerType == "ai" and messageOptions.LikedByUser)) then
         button.BackgroundColor3 = Color3.fromRGB(0,190,70)
         button.ImageColor3 = Color3.fromRGB(0,255,100)
-      elseif button.Name == "Dislike" and messageOptions.SpeakerType == "ai" and messageOptions.DislikedByUser then
+      elseif button.Name == "Dislike" and ((messageOptions.SpeakerType == "ai" and messageOptions.DislikedByUser)
+          or (messageOptions.SpeakerType == "user" and messageOptions.DislikedByAI)) then
         button.BackgroundColor3 = Color3.fromRGB(175,55,55)
         button.ImageColor3 = Color3.fromRGB(255,100,100)
       end
@@ -2214,7 +2222,7 @@ ARCSEN MESSAGE OPTIONS:
 - Begin with [[ARCSEN_RICHTEXT_OFF]] for plain text. RichText is OFF by default when neither marker is used.
 - If the entire response is Luau/code and syntax highlighting should be enabled, begin with [[ARCSEN_SYNTAX_ON]]. Use [[ARCSEN_SYNTAX_OFF]] for non-code responses. Syntax highlighting is OFF by default.
 - MULTI-MESSAGE OUTPUT: When a reply is clearer as separate chat bubbles (for example, short explanation, code, then a note), separate 2 to 5 messages with the exact marker [[ARCSEN_MESSAGE_BREAK]]. Do not show this marker to the user except as a separator. Do not split every sentence; use it only when the parts have distinct purposes. Formatting options are parsed independently for each part, so put [[ARCSEN_SYNTAX_ON]] at the start of a code-only part and [[ARCSEN_SYNTAX_OFF]] at its end. Put RichText markers only inside the part they apply to. Keep [[ARCSEN_STATE:...]] and [[ARCSEN_LIKE_LAST_USER]] in the first part only. If one message is enough, do not use the separator.
-- You may include [[ARCSEN_LIKE_LAST_USER]] at the start when you choose to like the user's latest message. Never claim to have clicked UI controls.
+- You may include [[ARCSEN_LIKE_LAST_USER]] or [[ARCSEN_DISLIKE_LAST_USER]] at the start to rate the user's latest message. Use at most ONE marker, and only if you genuinely choose that feedback. This changes the Like/Dislike indicators on the user's own message, not on the AI response. Never claim to have clicked UI controls.
 - Choose one chat state from: Excellent, Good, Quite good, A little bit good, Normal, Abnormal, Bad, Very bad, Critical, Muted.
 - Prefix each response with exactly one state marker: [[ARCSEN_STATE:Good|#2E8B57|#FFFFFF]] where the state name is exact, the second value is a background #RRGGBB color, and the third value is a readable text #RRGGBB color. Choose colors with strong contrast; the application may adjust text color if contrast is too low.
 - These markers are control tokens and must not appear in the displayed answer.
@@ -5909,6 +5917,7 @@ loc.API.ParseAssistantResponse = function(raw)
     loc.API.ParsedRichText = false
     loc.API.ParsedIsSyn = false
     loc.API.ParsedLikeLastUser = false
+    loc.API.ParsedDislikeLastUser = false
     loc.API.ParsedState = nil
     loc.API.ParsedStateBackground = nil
     loc.API.ParsedStateText = nil
@@ -5921,6 +5930,7 @@ loc.API.ParseAssistantResponse = function(raw)
     loc.API.ParsedIsSyn = loc.API.SyntaxOnPosition ~= nil and (loc.API.SyntaxOffPosition == nil or loc.API.SyntaxOnPosition < loc.API.SyntaxOffPosition)
 
     if loc.API.ParsedText:find("[[ARCSEN_LIKE_LAST_USER]]", 1, true) then loc.API.ParsedLikeLastUser = true end
+    if loc.API.ParsedText:find("[[ARCSEN_DISLIKE_LAST_USER]]", 1, true) then loc.API.ParsedDislikeLastUser = true end
 
     loc.API.StateMarker = loc.API.ParsedText:match("%[%[ARCSEN_STATE:([^%]]+)%]%]")
     if loc.API.StateMarker then
@@ -5948,6 +5958,7 @@ loc.API.ParseAssistantResponse = function(raw)
     loc.API.ParsedText = loc.API.ParsedText:gsub("%[%[ARCSEN_SYNTAX_ON%]%]", "")
     loc.API.ParsedText = loc.API.ParsedText:gsub("%[%[ARCSEN_SYNTAX_OFF%]%]", "")
     loc.API.ParsedText = loc.API.ParsedText:gsub("%[%[ARCSEN_LIKE_LAST_USER%]%]", "")
+    loc.API.ParsedText = loc.API.ParsedText:gsub("%[%[ARCSEN_DISLIKE_LAST_USER%]%]", "")
     loc.API.ParsedText = loc.API.ParsedText:gsub("%[%[ARCSEN_STATE:[^%]]+%]%]", "")
     loc.API.ParsedText = loc.API.ParsedText:gsub("^%s+", ""):gsub("%s+$", "")
     return loc.API.ParsedText, loc.API.ParsedRichText, loc.API.ParsedLikeLastUser, loc.API.ParsedState, loc.API.ParsedStateBackground, loc.API.ParsedStateText, loc.API.ParsedIsSyn
@@ -5990,6 +6001,7 @@ loc.API.ParseAssistantMessages = function(raw)
     loc.API.MultiAllImages = {}
     loc.API.MultiImageSeen = {}
     loc.API.MultiLikeLastUser = false
+    loc.API.MultiDislikeLastUser = false
     loc.API.MultiState = nil
     loc.API.MultiStateBackground = nil
     loc.API.MultiStateText = nil
@@ -6003,6 +6015,7 @@ loc.API.ParseAssistantMessages = function(raw)
         loc.API.MultiPartText = tostring(loc.API.MultiPartText or "")
 
         if loc.API.MultiPartLike then loc.API.MultiLikeLastUser = true end
+        if loc.API.ParsedDislikeLastUser then loc.API.MultiDislikeLastUser = true end
         if not loc.API.MultiState and loc.API.MultiPartState then
             loc.API.MultiState = loc.API.MultiPartState
             loc.API.MultiStateBackground = loc.API.MultiPartBackground
@@ -6042,6 +6055,7 @@ loc.API.ParseAssistantMessages = function(raw)
             downloads = table.clone(loc.API.ParsedDownloadRequests or {})
         })
         loc.API.MultiLikeLastUser = loc.API.MultiPartLike == true
+        loc.API.MultiDislikeLastUser = loc.API.ParsedDislikeLastUser == true
         loc.API.MultiState = loc.API.MultiPartState
         loc.API.MultiStateBackground = loc.API.MultiPartBackground
         loc.API.MultiStateText = loc.API.MultiPartStateText
@@ -6052,7 +6066,9 @@ loc.API.ParseAssistantMessages = function(raw)
     loc.API.ParsedResponse = loc.API.ParsedMessages[1].text
     loc.API.ParsedResponseRich = loc.API.ParsedMessages[1].richText
     loc.API.ParsedIsSyn = loc.API.ParsedMessages[1].isSyn
-    loc.API.ParsedLikeLastUser = loc.API.MultiLikeLastUser
+    -- Dislike wins on contradictory feedback markers; a message cannot have both.
+    loc.API.ParsedDislikeLastUser = loc.API.MultiDislikeLastUser
+    loc.API.ParsedLikeLastUser = loc.API.MultiLikeLastUser and not loc.API.MultiDislikeLastUser
     loc.API.ParsedState = loc.API.MultiState
     loc.API.ParsedStateBackground = loc.API.MultiStateBackground
     loc.API.ParsedStateText = loc.API.MultiStateText
@@ -6083,6 +6099,23 @@ end
 
 -- Chat UI Generator: declarative Instance tree + expression/action engine. AI JSON is never evaluated as Lua.
 -- Stage 16 adds parameterized functions, nested logic, expressions and a Root-scoped Lua Explorer proxy.
+-- Detect explicit UI creation requests, not ordinary questions *about* charts.
+-- This flag only improves diagnostics and prompt precision; it never fabricates a UI.
+loc.API.IsChatUICreationRequest = function(requestText)
+    local textValue = tostring(requestText or ""):lower()
+    if textValue == "" then return false end
+    local visual = {"graph", "chart", "plot", "panel", "widget", "interface", "mini game", "minigame", "dashboard", "button", "form", "diagram", "กราฟ", "แผนภูมิ", "หน้าต่าง", "อินเทอร์เฟซ", "มินิเกม", "เกม", "ปุ่ม"}
+    local action = {"create", "make", "build", "generate", "draw", "show", "display", "render", "interactive", "don't see", "not showing", "missing", "สร้าง", "ทำกราฟ", "วาด", "แสดง", "ไม่เห็น", "ไม่ขึ้น", "หาย"}
+    local hasVisual, hasAction = textValue:match("%f[%a]ui%f[%A]") ~= nil, false
+    for _, keyword in ipairs(visual) do
+        if textValue:find(keyword, 1, true) then hasVisual = true; break end
+    end
+    for _, keyword in ipairs(action) do
+        if textValue:find(keyword, 1, true) then hasAction = true; break end
+    end
+    return hasVisual and hasAction
+end
+
 loc.API.ExtractChatUIMarker = function(textValue)
     textValue = tostring(textValue or "")
     loc.API.ChatUIMarkerPrefix = "[[ARCSEN_UI:"
@@ -6671,6 +6704,12 @@ loc.API.ValidateSingleChatUINode = function(node, isRoot, generatedID)
     loc.API.ChatUINodeID = isRoot and "__root" or tostring(node.id or generatedID or loc.API.ChatUINodeClass)
     if loc.API.ChatUINodeID == "" then return nil, "UI node id cannot be empty." end
     if #loc.API.ChatUINodeID > 80 then return nil, "UI node id is too long." end
+    if node.properties ~= nil and type(node.properties) ~= "table" then
+        return nil, "UI node properties must be a JSON object for " .. loc.API.ChatUINodeID
+    end
+    if node.props ~= nil and type(node.props) ~= "table" then
+        return nil, "UI node props must be a JSON object for " .. loc.API.ChatUINodeID
+    end
     loc.API.ChatUINodeProperties = {}
     loc.API.ChatUINodeInputProperties = type(node.properties) == "table" and node.properties or (type(node.props) == "table" and node.props or {})
     if not isRoot then
@@ -6894,6 +6933,9 @@ loc.API.ValidateChatUIComponent = function(rawJSON)
     end
     loc.API.ChatUIRootInput = loc.API.ChatUIData.root
     if type(loc.API.ChatUIRootInput) ~= "table" then
+        if type(loc.API.ChatUIData.children) == "table" or loc.API.ChatUIData.class ~= nil then
+            return nil, "UI descriptor must contain root:{class:'Frame',children:[...]}. The top-level JSON object is not itself an Instance node."
+        end
         -- Backward compatibility: wrap the old visible one-Frame descriptor in the protected clipping root.
         loc.API.ChatUILegacyHeight = loc.API.NormalizeChatUIHeight(loc.API.ChatUIData.height, 180)
         loc.API.ChatUILegacyBackground = type(loc.API.ChatUIData.background) == "table"
@@ -7638,6 +7680,11 @@ loc.API.CreateChatUIInstanceTree = function(rootNode, parent, rootHeight, rootOf
                 return nil
             end
             loc.API.ChatUIChildInstance.Name = tostring(childNode.name or childNode.class)
+            if loc.API.ChatUIBuildEntry.node.id == "__root"
+                and (childNode.class == "Frame" or childNode.class == "CanvasGroup" or childNode.class == "ScrollingFrame")
+                and (childNode.properties or {}).Size == nil then
+                loc.API.ChatUIChildInstance.Size = UDim2.new(1, 0, 1, 0)
+            end
             loc.API.ChatUIChildInstance.Parent = loc.API.ChatUIBuildEntry.instance
             context.instances[childNode.id] = loc.API.ChatUIChildInstance
             context.nodes[childNode.id] = childNode
@@ -7662,7 +7709,11 @@ loc.API.CreateChatUIInstanceTree = function(rootNode, parent, rootHeight, rootOf
     for _, buildEntry in ipairs(loc.API.ChatUIBuildQueue) do
         if buildEntry.node.id ~= "__root" then
             for propertyName, propertyValue in pairs(buildEntry.node.properties or {}) do
-                loc.API.ChatUISetProperty(context, buildEntry.instance, propertyName, propertyValue)
+                if not loc.API.ChatUISetProperty(context, buildEntry.instance, propertyName, propertyValue) then
+                    if #context.propertyErrors < 8 then
+                        table.insert(context.propertyErrors, tostring(buildEntry.node.id) .. "." .. tostring(propertyName))
+                    end
+                end
             end
             -- TextBox starts empty; show a hint instead of forcing a fake Text value.
             if buildEntry.instance:IsA("TextBox") then
@@ -7851,6 +7902,7 @@ loc.API.CreateChatUIComponent = function(spec, chatID, message, existingBody, ex
         message = type(message) == "table" and message or nil,
         instances = {}, nodes = {}, bindings = {}, connections = {}, tweens = {}, textAnchors = {},
         state = type(spec.state) == "table" and table.clone(spec.state) or {},
+        propertyErrors = {},
         spec = spec,
         functions = type(spec.functions) == "table" and spec.functions or {},
         callScopes = {}, event = {}, destroyed = false, dispatching = false
@@ -7889,6 +7941,12 @@ loc.API.CreateChatUIComponent = function(spec, chatID, message, existingBody, ex
         if context.rootHost and context.rootHost.Parent then pcall(function() context.rootHost:Destroy() end) end
         if not isReusingBody and body and body.Parent then body:Destroy() end
         return false
+    end
+    if #context.propertyErrors > 0 then
+        warn("[Arcsen GeneratedUI] Some Instance properties could not be assigned: " .. table.concat(context.propertyErrors, ", "))
+        if context.message then
+            context.message.uiBuildWarnings = table.concat(context.propertyErrors, ", ")
+        end
     end
     loc.API.ChatUIContextByChat[context.chatID] = context
     if context.message then
@@ -8121,6 +8179,7 @@ loc.API.DrawMessage = function(chatID, index, message)
             LikedByUser = message.likedByUser == true,
             DislikedByUser = message.dislikedByUser == true,
             LikedByAI = message.likedByAI == true,
+            DislikedByAI = message.dislikedByAI == true,
             IsEditing = loc.API.EditingMessage ~= nil
                 and tostring(loc.API.EditingMessage.ChatID) == tostring(chatID)
                 and tonumber(loc.API.EditingMessage.Index) == tonumber(index),
@@ -8149,7 +8208,10 @@ loc.API.DrawMessage = function(chatID, index, message)
                 end
             end,
             OnLikeSelf = function()
-                meg("You cannot like your own message.", nil, "Center", true, 255, 180, 80)
+                meg("AI reactions are set by Arcsen, not by clicking your own message.", nil, "Center", true, 255, 180, 80)
+            end,
+            OnDislikeSelf = function()
+                meg("AI reactions are set by Arcsen, not by clicking your own message.", nil, "Center", true, 255, 180, 80)
             end,
             OnRetry = function()
                 if not isLatestMessage then return end
@@ -9446,6 +9508,7 @@ loc.API.ExtractLuaScriptResponse = function(raw)
         :gsub("%[%[ARCSEN_SYNTAX_ON%]%]", "")
         :gsub("%[%[ARCSEN_SYNTAX_OFF%]%]", "")
         :gsub("%[%[ARCSEN_LIKE_LAST_USER%]%]", "")
+        :gsub("%[%[ARCSEN_DISLIKE_LAST_USER%]%]", "")
         :gsub("%[%[ARCSEN_MESSAGE_BREAK%]%]", "\n\n")
         :gsub("^%s+", ""):gsub("%s+$", "")
     return loc.API.LuaExtractedCode, nil, true, loc.API.LuaActionDescription
@@ -10194,6 +10257,7 @@ loc.API.GenerateResponse = function(chatID, userIndex)
         AllowAIMode = tostring(loc.API.AllowAIModeForRequest or "Don't"),
         CharacterControlMode = tostring(loc.API.CharacterControlMode or "Don't"),
         ChatUIMode = tostring(loc.API.ChatUIMode or "Don't"),
+        ExpectsChatUI = loc.API.IsChatUICreationRequest(loc.API.RequestUserMessage and loc.API.RequestUserMessage.text),
         CharacterControlSerial = tonumber(loc.API.CharacterActionSerial) or 0,
         ModifyFileMode = tostring(loc.API.ModifyFileMode or "Don't"),
         AllFileAccessMode = tostring(loc.API.AllFileAccessMode or "Don't"),
@@ -10208,6 +10272,11 @@ loc.API.GenerateResponse = function(chatID, userIndex)
         QuotaCharged = loc.API.RequestUserMessage and loc.API.RequestUserMessage.attachmentQuotaCharged == true or false,
         Cancelled = false
     }
+    if loc.API.ChatData[chatID].RequestMeta.ExpectsChatUI
+        and loc.API.ChatUIModeForRequest == "Allow" then
+        loc.API.ChatData[chatID].RequestSystemPrompt = loc.API.ChatData[chatID].RequestSystemPrompt
+            .. "\n\nCURRENT REQUEST: GENERATE THE ACTUAL CHAT UI. An explanation that a graph or widget exists is NOT a rendered UI. Emit ONE complete [[ARCSEN_UI:{...}]] marker containing top-level height/rootOffsetY/state/functions/root, where root is a Frame with visible GuiObject children. Every child is {id,class,properties,children,bindings,events}. Root is an invisible clipping Frame; graph bars, axes, labels, and interactive controls must be child Instances. If unable to output valid complete JSON, explicitly say the UI was not created. NEVER say 'Here is the graph' without supplying the marker."
+    end
     task.spawn(function(runID, requestMeta)
         if not loc.API.ChatData[chatID] or loc.API.ChatData[chatID].RequestGenerationId ~= runID then return end
         loc.API.SetThinkingStatus(chatID, "Preparing the API request…")
@@ -10425,6 +10494,12 @@ loc.API.GenerateResponse = function(chatID, userIndex)
         end
         loc.API.ParsedUIComponent = nil
         loc.API.ChatUIMarkerJSON, loc.API.TaskResponseText, loc.API.ChatUIMarkerError = loc.API.ExtractChatUIMarker(loc.API.TaskResponseText)
+        if not loc.API.ChatUIMarkerJSON and not loc.API.ChatUIMarkerError
+            and requestMeta and requestMeta.ExpectsChatUI == true
+            and requestMeta.ChatUIMode == "Allow" and loc.API.ChatUIMode == "Allow" then
+            loc.API.TaskResponseText = tostring(loc.API.TaskResponseText or "")
+                .. "\n\n[Chat UI not created: Arcsen returned text without the required ARCSEN_UI JSON descriptor. Use Retry to regenerate the actual Instance tree. No graph was rendered.]"
+        end
         if loc.API.ChatUIMarkerError then
             loc.API.TaskResponseText = tostring(loc.API.TaskResponseText or "")
                 .. "\n\n[Chat UI was not created. Stage: marker extraction. Reason: "
@@ -10510,10 +10585,12 @@ loc.API.GenerateResponse = function(chatID, userIndex)
                 end
             end
         end
-        if loc.API.ParsedLikeLastUser then
-            for likeIndex = userIndex, 1, -1 do
-                if loc.API.ChatData[chatID].Messages[likeIndex] and loc.API.ChatData[chatID].Messages[likeIndex].role == "user" then
-                    loc.API.ChatData[chatID].Messages[likeIndex].likedByAI = true
+        if loc.API.ParsedLikeLastUser or loc.API.ParsedDislikeLastUser then
+            for ratingIndex = userIndex, 1, -1 do
+                local ratedMessage = loc.API.ChatData[chatID].Messages[ratingIndex]
+                if ratedMessage and ratedMessage.role == "user" then
+                    ratedMessage.likedByAI = loc.API.ParsedLikeLastUser == true
+                    ratedMessage.dislikedByAI = loc.API.ParsedDislikeLastUser == true
                     break
                 end
             end
@@ -11068,6 +11145,7 @@ loc.API.SaveChats = function()
                 likedByUser = savedMessage.likedByUser == true,
                 dislikedByUser = savedMessage.dislikedByUser == true,
                 likedByAI = savedMessage.likedByAI == true,
+                dislikedByAI = savedMessage.dislikedByAI == true,
                 imageSource = savedMessage.imageSource,
                 imageSources = savedMessage.imageSources,
                 uiComponent = type(savedMessage.uiComponent) == "table" and savedMessage.uiComponent or nil,
