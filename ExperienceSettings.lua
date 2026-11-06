@@ -1,4 +1,4 @@
--- Ok 4.968
+-- Ok 4.969
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -31,10 +31,12 @@ local function getHealthBarRoot()
     if not topBar then return nil end
     local innerTop = topBar:FindFirstChild("TopBarApp") or topBar
     if not innerTop then return nil end
-    local unibar = innerTop:FindFirstChild("UnibarLeftFrame")
-    if not unibar then return nil end
-    local healthBar = unibar:FindFirstChild("HealthBar")
-    return healthBar
+    -- Roblox UI rollout: new TopRightFrame preferred, old UnibarLeftFrame fallback.
+    local frame = innerTop:FindFirstChild("TopBarFrame")
+    local right = frame and frame:FindFirstChild("TopRightFrame")
+    local old = innerTop:FindFirstChild("UnibarLeftFrame")
+    return (right and right:FindFirstChild("HealthBar"))
+        or (old and old:FindFirstChild("HealthBar"))
 end
 
 -- ปรับตำแหน่ง HealthBar (loop ปกติแต่ปลอดภัย)
@@ -348,7 +350,9 @@ local function createOrUpdateImage()
     if not healthBarPath then healthBarPath = findHealthBarPath() end
     if not healthBarPath then return end
 
-    local healthBar = healthBarPath:FindFirstChild("UnibarLeftFrame", true)
+    -- Keep ImageDeathRandomClient on the parent frame in either layout.
+    local rootBar = getHealthBarRoot()
+    local healthBar = rootBar and rootBar.Parent
     if not healthBar then return end
 
     local imageLabel = healthBar:FindFirstChild("ImageDeathRandomClient")
@@ -542,12 +546,7 @@ end
 
 -- Safe Find path to the HealthBar where we parent our Menu
 local function getHealthBar()
-    local ok, topBar = pcall(function() return CoreGui:WaitForChild("TopBarApp", 5) end)
-    if not ok or not topBar then return nil end
-    local inner = topBar:FindFirstChild("TopBarApp")
-    local left = inner and inner:FindFirstChild("UnibarLeftFrame")
-    local healthBar = left and left:FindFirstChild("HealthBar")
-    return healthBar
+    return getHealthBarRoot()
 end
 
 local healthBar = getHealthBar()
@@ -824,13 +823,9 @@ hr.Size = UDim2.new(0, 300, 1, 0)
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
-local gui_aV2 = CoreGui
-	:WaitForChild("TopBarApp")
-	:WaitForChild("TopBarApp")
-	:WaitForChild("UnibarLeftFrame")
-	:WaitForChild("HealthBar")
-	:WaitForChild("ValueFolder")
-	:WaitForChild("ValueGui")
+local gui_aV2 = getHealthBarRoot()
+    :WaitForChild("ValueFolder")
+    :WaitForChild("ValueGui")
 
 local CHECK_INTERVAL = 0.05
 local TIMEOUT = 3
@@ -1272,22 +1267,12 @@ end
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Functions.lua"))()
 print("[ Functions Loadstring ] Successful loaded.")
 
-local lder = game:GetService("CoreGui"):WaitForChild("TopBarApp")
-                                      :WaitForChild("TopBarApp")
-                                      :WaitForChild("UnibarLeftFrame")
-                                      :WaitForChild("HealthBar")
-                                      :WaitForChild("ExperienceSettings")
-                                      :WaitForChild("Menu")
+local lder = expSettings:WaitForChild("Menu")
                                       :WaitForChild("Load_Background")
                                       :WaitForChild("Skip")
                                       :WaitForChild("Loader")
 
-local bkload = game:GetService("CoreGui"):WaitForChild("TopBarApp")
-                                      :WaitForChild("TopBarApp")
-                                      :WaitForChild("UnibarLeftFrame")
-                                      :WaitForChild("HealthBar")
-                                      :WaitForChild("ExperienceSettings")
-                                      :WaitForChild("Menu")
+local bkload = expSettings:WaitForChild("Menu")
                                       :WaitForChild("Load_Background")
 
 task.wait(0.1)
@@ -1317,7 +1302,8 @@ lder.Size = UDim2.new(0.5,0,1,0)
 
 -- ValueLabels toggle (safe wait)
 local valueGuiOK, ValueGui = pcall(function()
-    return CoreGui:WaitForChild("TopBarApp"):WaitForChild("TopBarApp"):WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar"):WaitForChild("ValueFolder"):WaitForChild("ValueGui")
+    local bar = getHealthBarRoot()
+    return bar and bar:FindFirstChild("ValueFolder") and bar.ValueFolder:FindFirstChild("ValueGui")
 end)
 
 createToggle(BFrame, "EVS", "Enable ValueLabels", [[<b><u>ValueLabel</u></b>
@@ -1906,10 +1892,7 @@ end, false, -330) -- true = เปิดเริ่มต้น
 
 task.spawn(function()
     local core = game:GetService("CoreGui")
-    local bg = core:WaitForChild("TopBarApp"):WaitForChild("TopBarApp")
-        :WaitForChild("UnibarLeftFrame"):WaitForChild("HealthBar")
-        :WaitForChild("ExperienceSettings"):WaitForChild("Menu")
-        :WaitForChild("Background")
+    local bg = expSettings:WaitForChild("Menu"):WaitForChild("Background")
 
     local inner = bg:WaitForChild("Inner_Background")
     inner.Visible = false
