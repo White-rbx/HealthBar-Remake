@@ -1,4 +1,4 @@
--- Loader script 7.39
+-- Loader script 7.40
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -903,12 +903,26 @@ s.CoreGui.DescendantAdded:Connect(function(inst)
     end
 end)
 
+-- The automatic setting and the one-time manual approval are independent.
+-- Never derive execution permission from a TextButton or a stale unlocked flag.
 local CONTINUE_LOCK = true
-
--- Always Load → skip lock
-if Data.Loader.AlwaysLoad == true then
-    CONTINUE_LOCK = false
+local CONTINUE_MANUAL = false
+loc.canLoad = function()
+    local player = s.Players.LocalPlayer
+    local char = player and player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local ok, healthOn = pcall(function()
+        return s.StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
+    end)
+    return hrp ~= nil and ok and healthOn == true
 end
+
+loc.refreshContinueLock = function()
+    CONTINUE_LOCK = not (CONTINUE_MANUAL == true
+        or (Data.Loader.AlwaysLoad == true and loc.canLoad()))
+    return not CONTINUE_LOCK
+end
+loc.refreshContinueLock()
 ------------------------------------------------------------
 
 -- Continue (ONE TIME)
@@ -946,7 +960,8 @@ local continueUI = loc.o(
         end
 
         -- passed check → load
-        CONTINUE_LOCK = false
+        CONTINUE_MANUAL = true
+        loc.refreshContinueLock()
         btn.Text = "Loaded"
     end
 )
@@ -991,8 +1006,13 @@ local alwaysUI = loc.o(
     false, nil,  
     true, nil,  
     function(newStatus)  
-        Data.Loader.AlwaysLoad = newStatus  
-        loc.saveData(Data)  
+        Data.Loader.AlwaysLoad = newStatus == true
+        -- OFF immediately re-locks auto loading unless Get Load was pressed.
+        loc.refreshContinueLock()
+        loc.saveData(Data)
+        if continueUI and continueUI.Button then
+            continueUI.Button.Text = CONTINUE_LOCK and "Get Load" or "Loaded"
+        end
     end,  
     nil,  
     Data.Loader.AlwaysLoad,
@@ -1002,32 +1022,20 @@ local alwaysUI = loc.o(
 local continueBtn = continueUI.Button
 local alwaysBtn = alwaysUI.Button
 
--- function ตรวจสถานะโหลดได้หรือไม่
-loc.canLoad = function()
-    local player = s.Players.LocalPlayer
-    local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-
-    local healthOn = false
-    pcall(function()
-        healthOn = s.StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
-    end)
-
-    return hrp and healthOn
-end
-
 -- bypass warning watcher
 task.spawn(function()
     while continueBtn and continueBtn.Parent do
-        local alwaysOn = alwaysBtn.Text == "ON"
+        local alwaysOn = Data.Loader.AlwaysLoad == true
         local ok = loc.canLoad()
+        loc.refreshContinueLock()
 
-        if alwaysOn and not ok then
+        if alwaysOn and not ok and not CONTINUE_MANUAL then
             -- show warning
             continueBtn.Text = "Bypass detected: Toggle is ON"
             continueBtn.TextColor3 = Color3.fromRGB(255,255,0)
 
-            CONTINUE_LOCK = true
+            -- No unlocked state survives a failed automatic precondition.
+            loc.refreshContinueLock()
         else
             -- revert to normal state
             if not CONTINUE_LOCK then
@@ -6886,7 +6894,7 @@ end)
 
 task.spawn(function()
     while killBtn and killBtn.Parent do
-        local isAlwaysOn = alwaysBtn.Text == "ON"
+        local isAlwaysOn = Data.Loader.AlwaysLoad == true
 
         if not CONTINUE_LOCK then
             -- Continue ถูกกดแล้ว
@@ -6931,7 +6939,10 @@ print[[------------------------------------------------------------
 ------------------------------------------------------------
 ]]
 
--- WAIT
-while CONTINUE_LOCK do
-    task.wait()
+-- WAIT: recompute on each wake so an OFF toggle never inherits stale permission.
+while true do
+    if loc.refreshContinueLock() then break end
+    -- The user destroyed Loader before authorizing a load: stop this script.
+    if not gui or not gui.Parent then return end
+    task.wait(0.05)
 end
