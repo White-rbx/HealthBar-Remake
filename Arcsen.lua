@@ -1,7 +1,10 @@
 local ver = {
-	sion = " UIs 7.2.95 + OpenChat Safety ",
+	sion = " UIs 7.2.96 + OpenChat Safety UI ",
 	logs = [[
 # -- Update logs --
+(:7/11/2026: A) OpenChat-only compact headers, local blocked-user settings, safe copy warnings and action bar; no Cloud message transport.
+(:7/11/2026: F) OpenChat is permanent: auto-starts, cannot be deleted or renamed, /OpenChat command removed. Roblox-native text stays within authorized scope; Cloud feed remains announcements-only.
+(:7/11/2026: A) OpenChat supports two-way Roblox TextChatService in the current server, with separate read-only Cloud announcements.
 (:4/11/2026: A) Added /OpenChat ON/OFF/STATUS, a separate OpenChat tab, API polling and a 125-message rolling cap for local development.
 (:4/11/2026: F) Stage 16.18: Keep Last Token Used pinned to the latest primary chat request; count background title and memory requests in daily totals without allowing them to overwrite the chat usage display.
 (:3/11/2026: A) Stage 16.17: Add persistent Last Token Used diagnostics in API Settings with exact/estimated totals, input/output breakdown, provider/model, and optional thinking-token metadata.
@@ -1527,6 +1530,104 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
         warningToggle:SetAttribute("WarningHidden", false)
       end
     end
+    -- OpenChat-only action bar. Do not change HereChat/AI controls.
+    -- Reactions only become active when an authorized message provider supplies
+    -- server-backed callbacks and counts. No synthetic Like totals are created.
+    if messageOptions.IsOpenChat == true then
+      inbtn("85495702622937", "Copy", function()
+        local raw = tostring(messageOptions.RawText or main.Text)
+        -- Unsafe URI schemes are never copied from OpenChat.
+        if raw:lower():find("javascript:",1,true) or raw:lower():find("data:text/html",1,true) then
+          warn("[Arcsen] Unsafe link copying blocked.")
+          return
+        end
+        -- Warning must precede copying any link; 2 acknowledgements.
+        if raw:find("https?://") or raw:find("www%.") then
+          local stage = tonumber(messageOptions._LinkCopyStage) or 0
+          if stage < 2 then
+            messageOptions._LinkCopyStage = stage + 1
+            pcall(function()
+              game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Link Safety " .. tostring(stage + 1) .. "/2",
+                Text = stage == 0 and "Check the website address before copying. Tap Copy again to continue."
+                    or "Never share login details. Tap Copy once more if you understand.",
+                Duration = 6
+              })
+            end)
+            return
+          end
+          messageOptions._LinkCopyStage = 0
+        end
+        if type(setclipboard) == "function" then setclipboard(raw)
+        elseif type(toclipboard) == "function" then toclipboard(raw)
+        else warn("[Arcsen] Clipboard is unavailable in this client.") end
+      end, true)
+
+      local ownMessage = messageOptions.OwnMessage == true
+      for _, voteType in ipairs({"Like", "Dislike"}) do
+        local amount = voteType == "Like" and messageOptions.LikeCount or messageOptions.DislikeCount
+        local allowed = not ownMessage and type(messageOptions.OnOpenChatVote) == "function"
+        local vote = Instance.new("TextButton")
+        vote.Name = voteType
+        vote.Size = UDim2.fromOffset(80,25)
+        vote.BackgroundColor3 = Color3.fromRGB(35,50,70)
+        vote.BorderSizePixel = 0
+        vote.Text = voteType .. " " .. (amount == nil and "—" or tostring(math.floor(tonumber(amount) or 0)))
+        vote.TextSize = 12
+        vote.TextColor3 = allowed and Color3.fromRGB(225,240,255) or Color3.fromRGB(135,145,155)
+        vote.Active = allowed
+        vote.AutoButtonColor = allowed
+        vote.Parent = btnbar
+        Corner(0,4,vote)
+        if allowed then
+          vote.MouseButton1Click:Connect(function()
+            if os.clock() < (tonumber(loc.API.OpenChatActionUntil) or 0) then return end
+            -- The callback must validate identity and enforce the limit on its server.
+            local ok, accepted = pcall(messageOptions.OnOpenChatVote,voteType)
+            if ok and accepted == true then loc.API.OpenChatActionUntil = os.clock()+4 end
+          end)
+        end
+      end
+      if not ownMessage then
+        local function textAction(name, title, callback)
+          local button = Instance.new("TextButton")
+          button.Name = name
+          button.Size = UDim2.fromOffset(name == "BlockUser" and 76 or 62,25)
+          button.BackgroundColor3 = Color3.fromRGB(42,55,74)
+          button.TextColor3 = Color3.fromRGB(230,235,245)
+          button.TextSize = 11
+          button.BorderSizePixel = 0
+          button.Text = title
+          button.Parent = btnbar
+          Corner(0,4,button)
+          button.MouseButton1Click:Connect(callback)
+          return button
+        end
+        local canReport = messageOptions.ReportEligible == true and type(messageOptions.OnOpenChatReport) == "function"
+        textAction("Report","Report",function()
+          if os.clock() < (tonumber(loc.API.OpenChatReportOpenUntil) or 0) then return end
+          if os.clock() < (tonumber(loc.API.OpenChatReportSentUntil) or 0) then return end
+          loc.API.OpenChatReportOpenUntil = os.clock()+4
+          if canReport then
+            messageOptions.OnOpenChatReport()
+          else
+            pcall(function()
+              game:GetService("StarterGui"):SetCore("SendNotification",{
+                Title="Report Roblox chat",Text="Use Roblox Report Abuse to report this player message.",Duration=7
+              })
+            end)
+          end
+        end)
+        if tonumber(messageOptions.SenderUserId) and type(loc.API.BlockOpenChatUser) == "function" then
+          textAction("BlockUser","Block User",function()
+            if os.clock() < (tonumber(loc.API.OpenChatActionUntil) or 0) then return end
+            if loc.API.BlockOpenChatUser(messageOptions.SenderUserId, messageOptions.SenderName) then
+              loc.API.OpenChatActionUntil = os.clock()+4
+            end
+          end)
+        end
+      end
+    else
     local editButton = inbtn("73984153023004", "Edit", function(btn)
       if messageOptions.IsEditing == true then
         local cancelled = false
@@ -1809,6 +1910,7 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
         main.Active = false
       end
     end)
+    end -- standard HereChat / AI action buttons
   end
 
   -- Count system messages only when meg() actually creates a new message.
@@ -3325,6 +3427,105 @@ loc.API.RecordDailyTokenUsage = function(provider, model, usage, requestBody, re
     loc.API.RefreshDailyTokenUsage()
 end
 loc.API.LoadDailyTokenUsage()
+
+-- OpenChat local communication preferences. Only Roblox-delivered messages
+-- can be hidden here; this does not enable cross-game chat or alter moderation.
+loc.API.OpenChatBlockedUsers = {}
+loc.API.OpenChatBlockFile = "ExperienceSettings/Arcsen/OpenChatBlocked.json"
+pcall(function()
+    if type(isfile)=="function" and type(readfile)=="function"
+        and isfile(loc.API.OpenChatBlockFile) then
+        local parsed = s.HttpService:JSONDecode(readfile(loc.API.OpenChatBlockFile))
+        if type(parsed)=="table" then
+            for id,name in pairs(parsed) do
+                if type(id)=="string" and id:match("^%d+$") and type(name)=="string" then
+                    loc.API.OpenChatBlockedUsers[id]=name:sub(1,40)
+                end
+            end
+        end
+    end
+end)
+loc.API.SaveOpenChatBlocks = function()
+    pcall(function()
+        if type(writefile)~="function" then return end
+        if type(isfolder)=="function" and type(makefolder)=="function" then
+            for _,folder in ipairs({"ExperienceSettings","ExperienceSettings/Arcsen"}) do
+                if not isfolder(folder) then makefolder(folder) end
+            end
+        end
+        writefile(loc.API.OpenChatBlockFile,s.HttpService:JSONEncode(loc.API.OpenChatBlockedUsers))
+    end)
+end
+loc.API.RefreshOpenChatBlocks = function()
+    local list = loc.API.OpenChatBlockedList
+    if not list or not list.Parent then return end
+    for _,item in ipairs(list:GetChildren()) do
+        if item:IsA("GuiObject") then item:Destroy() end
+    end
+    local count=0
+    for id,name in pairs(loc.API.OpenChatBlockedUsers) do
+        count+=1
+        local row = Instance.new("TextButton")
+        row.Name="Unblock_"..id
+        row.Size=UDim2.new(1,-6,0,28)
+        row.BackgroundColor3=Color3.fromRGB(35,45,63)
+        row.TextColor3=Color3.new(1,1,1)
+        row.TextSize=12
+        row.Text="Unblock "..name.." ["..id.."]"
+        row.Parent=list
+        Corner(0,4,row)
+        row.MouseButton1Click:Connect(function()
+            loc.API.OpenChatBlockedUsers[id]=nil
+            loc.API.SaveOpenChatBlocks()
+            loc.API.RefreshOpenChatBlocks()
+            if loc.API.ActiveChatID and type(loc.API.RenderChat)=="function" then
+                loc.API.RenderChat(tostring(loc.API.ActiveChatID),true)
+            end
+        end)
+    end
+    if count==0 then
+        local empty=Instance.new("TextLabel")
+        empty.Name="Empty"
+        empty.Size=UDim2.new(1,0,0,28)
+        empty.BackgroundTransparency=1
+        empty.TextColor3=Color3.fromRGB(190,200,210)
+        empty.Text="No blocked users"
+        empty.TextSize=12
+        empty.Parent=list
+    end
+end
+loc.API.BlockOpenChatUser = function(userId,nickname)
+    local id=tonumber(userId)
+    if not id or id<1 or (s.Players.LocalPlayer and id==s.Players.LocalPlayer.UserId) then return false end
+    loc.API.OpenChatBlockedUsers[tostring(math.floor(id))]=tostring(nickname or "User"):sub(1,40)
+    loc.API.SaveOpenChatBlocks()
+    loc.API.RefreshOpenChatBlocks()
+    if loc.API.ActiveChatID and type(loc.API.RenderChat)=="function" then
+        loc.API.RenderChat(tostring(loc.API.ActiveChatID),true)
+    end
+    return true
+end
+loc.API.ArcsenCommunicationFrame=addset("ArcsenCommunication","Arcsen Communication",140,190,255,function(frame)
+    ListLayout(frame,0,5,"HLeft","VTop","SLayout","FillV")
+    local title=Instance.new("TextLabel")
+    title.Name="BlockedTitle"
+    title.Size=UDim2.new(1,0,0,25)
+    title.BackgroundTransparency=1
+    title.TextColor3=Color3.new(1,1,1)
+    title.TextXAlignment=Enum.TextXAlignment.Left
+    title.Text="OpenChat blocked users (device only)"
+    title.TextSize=12
+    title.Parent=frame
+    local list=Instance.new("Frame")
+    list.Name="BlockedUsers"
+    list.Size=UDim2.new(1,0,0,0)
+    list.AutomaticSize=Enum.AutomaticSize.Y
+    list.BackgroundTransparency=1
+    list.Parent=frame
+    ListLayout(list,0,4,"HLeft","VTop","SLayout","FillV")
+    loc.API.OpenChatBlockedList=list
+    loc.API.RefreshOpenChatBlocks()
+end)
 
 loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(frame)
     ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
@@ -5120,6 +5321,13 @@ local function addchat(file, gen, nchat)
     end
   end
   titleBox.FocusLost:Connect(function()
+    if loc.API.ChatData and loc.API.ChatData[tostring(nchat)]
+        and loc.API.ChatData[tostring(nchat)].IsOpenChat == true then
+      titleBox.Text = "OpenChat"
+      titleBox.TextEditable = false
+      titleBox.Active = false
+      return
+    end
     titleBox.TextEditable = false
     titleBox.Active = false
     if loc.API and loc.API.ChatData and loc.API.ChatData[tostring(nchat)] then
@@ -5175,6 +5383,15 @@ local function addchat(file, gen, nchat)
   del.TextScaled = true
   del.TextColor3 = Color3.new(1,0,0)
   del.Parent = options
+  -- The OpenChat system tab is permanent and cannot be deleted.
+  local isPermanentOpenChat = loc.API.ChatData and loc.API.ChatData[tostring(nchat)]
+      and loc.API.ChatData[tostring(nchat)].IsOpenChat == true
+  if isPermanentOpenChat then
+    del.Visible = false
+    del.Active = false
+    del.Selectable = false
+    titleBox.Text = "OpenChat"
+  end
   Corner(0,5,del)
 
   local box = Instance.new("TextBox")
@@ -5267,16 +5484,14 @@ local function addchat(file, gen, nchat)
   end
 
   del.MouseButton1Click:Connect(function()
+    -- Defense in depth: ignore deletion even if a hidden button is invoked.
+    if loc.API.ChatData and loc.API.ChatData[tostring(nchat)]
+        and loc.API.ChatData[tostring(nchat)].IsOpenChat == true then
+      return
+    end
     Tween(scale, {Scale = 0}, 0.1).Completed:Wait()
     if loc.API and loc.API.ChatData then
       loc.API.DeleteCandidate = loc.API.ChatData[tostring(nchat)]
-      if loc.API.DeleteCandidate and loc.API.DeleteCandidate.IsOpenChat then
-        loc.API.DeleteCore = loc.API.ArcsenCommand
-        if type(loc.API.DeleteCore) == "table" and type(loc.API.DeleteCore.setOpenChat) == "function" then
-          pcall(loc.API.DeleteCore.setOpenChat, false)
-        end
-        loc.API.OpenChatTabID = nil
-      end
       if loc.API.DeleteCandidate and loc.API.DeleteCandidate.IsHereChat then
         loc.API.DeleteCore = loc.API.ArcsenCommand
         if type(loc.API.DeleteCore) == "table" and type(loc.API.DeleteCore.setHereChat) == "function" then
@@ -5336,7 +5551,9 @@ local function addchat(file, gen, nchat)
     end
 
     loc.API.LastTabTap = loc.API.LastTabTap or {}
-    if loc.API.LastTabTap[tostring(nchat)] and os.clock() - loc.API.LastTabTap[tostring(nchat)] <= 0.55 then
+    if not isPermanentOpenChat
+        and loc.API.LastTabTap[tostring(nchat)]
+        and os.clock() - loc.API.LastTabTap[tostring(nchat)] <= 0.55 then
       titleBox.TextEditable = true
       titleBox.Active = true
       titleBox:CaptureFocus()
@@ -8164,6 +8381,7 @@ loc.API.ShowOpenChatReportDialog = function(record)
                 tonumber(record.messageId), selectedReason, tostring(details.Text or ""):sub(1, 240))
             if not overlay.Parent then return end
             if ok and accepted == true then
+                loc.API.OpenChatReportSentUntil = os.clock()+30
                 status.Text = "Report received. Thank you."
                 submit.Text = "Reported"
                 task.delay(1.5, function()
@@ -8201,6 +8419,45 @@ loc.API.DrawMessage = function(chatID, index, message)
     end
 
     if message.role == "herechat" then
+        -- OpenChat has its own compact header. HereChat below is untouched.
+        if loc.API.DrawChatForMessage and loc.API.DrawChatForMessage.IsOpenChat == true then
+            local id = tonumber(message.userId)
+            if id and loc.API.OpenChatBlockedUsers and loc.API.OpenChatBlockedUsers[tostring(math.floor(id))] then
+                return meg("Blocked user's message hidden", "OpenChat", "Center", true,
+                    155,165,180,nil,{NoCounter=true,IsStatus=true})
+            end
+            local nickname=tostring(message.displayName or message.username or "Unknown")
+            nickname=nickname:gsub("&","&amp;"):gsub("<","&lt;"):gsub(">","&gt;")
+            local timeText=tonumber(message.timestamp) and os.date("%H:%M",tonumber(message.timestamp)) or "--:--"
+            local left=message.direction~="Right"
+            if id then
+                local account="["..tostring(math.floor(id)).."]"
+                loc.API.HereChatRenderHeader=left
+                    and ("<b>"..nickname.."</b> "..account.." • "..timeText)
+                    or (timeText.." • "..account.." <b>"..nickname.."</b>")
+            else
+                loc.API.HereChatRenderHeader=left
+                    and ("<b>"..nickname.."</b> • "..timeText)
+                    or (timeText.." • <b>"..nickname.."</b>")
+            end
+            return meg(tostring(message.text or ""),loc.API.HereChatRenderHeader,
+                left and "Left" or "Right",false,
+                tonumber(message.r) or 125,tonumber(message.g) or 190,tonumber(message.b) or 255,
+                nil,{
+                    CommandChat=true,NameRichText=true,RawText=tostring(message.text or ""),
+                    RichText=false,IsOpenChat=true,
+                    OwnMessage=not left,
+                    SenderUserId=id,SenderName=tostring(message.displayName or message.username or "Unknown"),
+                    -- Counts must come from a verified provider; Roblox native chat has none.
+                    LikeCount=tonumber(message.likeCount),DislikeCount=tonumber(message.dislikeCount),
+                    ReportEligible=tonumber(message.messageId)~=nil and left and tostring(message.origin or "") == "CloudAnnouncement",
+                    OnOpenChatReport=function()
+                        if type(loc.API.ShowOpenChatReportDialog)=="function" then
+                            loc.API.ShowOpenChatReportDialog(message)
+                        end
+                    end
+                })
+        end
         -- Arcsen-origin messages use the requested reverse header layout.
         -- Roblox-origin messages intentionally keep their existing header style.
         if tostring(message.origin or "Roblox") == "Arcsen" then
@@ -10987,9 +11244,8 @@ loc.API.UpdateSendButton = function()
         loc.API.ChatTipRunID = (tonumber(loc.API.ChatTipRunID) or 0) + 1
     end
     if loc.API.SendButtonChat and loc.API.SendButtonChat.IsOpenChat then
-        c_box.TextEditable = false
-        c_box.Text = ""
-        c_box.PlaceholderText = "Cloud Feed - read-only (approved announcements)"
+        c_box.TextEditable = true
+        c_box.PlaceholderText = "Message Roblox players in this server..."
     elseif loc.API.SendButtonChat and loc.API.SendButtonChat.IsHereChat then
         c_box.TextEditable = true
         c_box.PlaceholderText = "Message Roblox chat..."
@@ -11006,15 +11262,8 @@ loc.API.UpdateSendButton = function()
         c_b_send.BackgroundColor3 = Color3.new(0,0.5,0)
         c_b_send.TextColor3 = Color3.new(0,1,0)
     end
-    -- Never offer a send button in the read-only Cloud Feed tab.
-    if loc.API.SendButtonChat and loc.API.SendButtonChat.IsOpenChat then
-        c_b_send.Text = "—"
-        c_b_send.BackgroundColor3 = Color3.fromRGB(65,70,80)
-        c_b_send.TextColor3 = Color3.fromRGB(185,190,205)
-        c_b_send.Active = false
-    else
-        c_b_send.Active = true
-    end
+    -- Sending is enabled for OpenChat only through Roblox TextChatService.
+    c_b_send.Active = true
 end
 
 -- Context-sensitive chat-tip typewriter. This never replaces HereChat's placeholder.
@@ -11076,7 +11325,7 @@ task.spawn(function()
         if not loc.API.CanShowChatTips() then
             if loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)]
                 and loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsOpenChat then
-                c_box.PlaceholderText = "Cloud Feed - read-only (approved announcements)"
+                c_box.PlaceholderText = "Message Roblox players in this server..."
             elseif loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)]
                 and loc.API.ChatData[tostring(loc.API.ActiveChatID)].IsHereChat then
                 c_box.PlaceholderText = "Message Roblox chat..."
@@ -11163,10 +11412,30 @@ end
 loc.API.SendMessage = function(rawText)
     loc.API.SendMessageActiveChat = loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)] or nil
     if loc.API.SendMessageActiveChat and loc.API.SendMessageActiveChat.IsOpenChat then
-        -- This tab receives approved cloud announcements only.
-        meg("Cloud Feed is read-only. Use HereChat for supported Roblox player chat.",
-            nil, "Center", true, 255, 180, 80)
-        return false
+        local text = tostring(rawText or "")
+        if not text:match("%S") then return false end
+        if #(loc.API.PendingInputFiles or {}) > 0 then
+            meg("OpenChat player messages support text only. Remove attachments before sending.",
+                nil, "Center", true, 255, 180, 80)
+            return false
+        end
+        local core = loc.API.ArcsenCommand
+        if type(core) ~= "table" or type(core.sendOpenChat) ~= "function"
+            or core.supportsOpenChatRobloxChat ~= true then
+            meg("OpenChat needs ArcsenCommand-Module.lua v0.6.6 or newer.",
+                nil, "Center", true, 255, 90, 90)
+            return false
+        end
+        local ok, sent, reason = pcall(core.sendOpenChat, text)
+        if not ok or sent ~= true then
+            meg("OpenChat: " .. tostring(ok and (reason or "Roblox rejected the message") or sent),
+                nil, "Center", true, 255, 90, 90)
+            return false
+        end
+        -- Roblox server's filtered delivery produces the actual bubble; never
+        -- insert the outgoing raw text as a locally spoofed chat message.
+        c_box.Text = ""
+        return true
     end
     if loc.API.SendMessageActiveChat and loc.API.SendMessageActiveChat.IsHereChat then
         loc.API.HereChatText = tostring(rawText or "")
@@ -11396,6 +11665,7 @@ loc.API.LoadChats = function()
             savedChat.IsHereChat = savedChat.IsHereChat == true
             savedChat.IsOpenChat = savedChat.IsOpenChat == true
             if savedChat.IsOpenChat then
+                savedChat.Title = "OpenChat"
                 loc.API.OpenChatTabID = tostring(savedID)
                 while #savedChat.Messages > 125 do table.remove(savedChat.Messages, 1) end
                 savedChat.TimeMarkers = {}
@@ -12166,7 +12436,7 @@ loc.API.ChatOptionRows.DisplayTimeAs = addoptions(
 loc.API.ChatOptionRows.DisplayTimeAs.Box.Text = loc.API.DisplayTimeFormat
 
 -- Message Counter also tracks issys=true meg() messages; HereChat messages include saved timestamps.
--- ArcsenCommand bridge + bidirectional HereChat (Module 0.6.4)
+-- ArcsenCommand bridge + native Roblox OpenChat and HereChat (Module 0.6.6)
 do
     local shared = type(getgenv) == "function" and getgenv() or nil
     local commandCore = type(shared) == "table" and shared.ArcsenCommand or nil
@@ -12177,6 +12447,8 @@ do
         or type(commandCore.sendMessage) ~= "function"
         or type(commandCore.setOnOpenChatChanged) ~= "function"
         or type(commandCore.sendOpenChat) ~= "function"
+        or commandCore.supportsOpenChatRobloxChat ~= true
+        or commandCore.supportsPermanentOpenChatTab ~= true
         then
         commandCore = nil
         local ok, result = pcall(function()
@@ -12196,15 +12468,19 @@ do
             if type(registered) == "table"
                 and type(registered.setOnHereChatChanged) == "function"
                 and type(registered.sendMessage) == "function"
-                and type(registered.sendOpenChat) == "function" then
+                and type(registered.sendOpenChat) == "function"
+                and registered.supportsOpenChatRobloxChat == true
+                and registered.supportsPermanentOpenChatTab == true then
                 return registered
             elseif type(returned) == "table"
                 and type(returned.setOnHereChatChanged) == "function"
                 and type(returned.sendMessage) == "function"
-                and type(returned.sendOpenChat) == "function" then
+                and type(returned.sendOpenChat) == "function"
+                and returned.supportsOpenChatRobloxChat == true
+                and returned.supportsPermanentOpenChatTab == true then
                 return returned
             end
-            error("ArcsenCommand-Module.lua is missing required APIs. Update the module to v0.6.4.")
+            error("ArcsenCommand-Module.lua is missing required APIs. Update the module to v0.6.5.")
         end)
 
         if ok then
@@ -12367,6 +12643,11 @@ do
             end
 
             if loc.API.OpenChatTabData then
+                loc.API.OpenChatTabData.IsOpenChat = true
+                loc.API.OpenChatTabData.Title = "OpenChat"
+                if loc.API.OpenChatTabData.TitleLabel then
+                    loc.API.OpenChatTabData.TitleLabel.Text = "OpenChat"
+                end
                 if not loc.API.OpenChatTabData.Tab or not loc.API.OpenChatTabData.Tab.Parent then
                     loc.API.OpenChatTabData.Tab = addchat(nil, "OpenChat", loc.API.OpenChatTabID)
                 end
@@ -12444,7 +12725,7 @@ do
                 teamG = tonumber(metadata.teamG),
                 teamB = tonumber(metadata.teamB),
                 direction = metadata.direction == "Right" and "Right" or "Left",
-                origin = "Global",
+                origin = tostring(metadata.origin or "CloudAnnouncement"),
                 timestamp = tonumber(metadata.timestamp) or os.time(),
                 r = tonumber(metadata.r) or 125,
                 g = tonumber(metadata.g) or 190,
@@ -13105,11 +13386,17 @@ loc.API.LoadGlobalMemory()
 if type(loc.API.RefreshMemoryReviewText) == "function" then loc.API.RefreshMemoryReviewText() end
 loc.API.RefreshPendingAttachmentUI()
 loc.API.LoadChats()
+-- Permanent OpenChat: always recreate/show the tab after loading saved chats.
+-- Subscribe to Roblox-approved messages automatically; cloud remains announcements-only.
+if type(loc.API.EnsureOpenChatTab) == "function" then
+    loc.API.EnsureOpenChatTab(false)
+end
 if type(loc.API.ArcsenCommand) == "table"
-    and type(loc.API.ArcsenCommand.isOpenChatEnabled) == "function"
-    and loc.API.ArcsenCommand.isOpenChatEnabled()
-    and type(loc.API.EnsureOpenChatTab) == "function" then
-    loc.API.EnsureOpenChatTab(true)
+    and type(loc.API.ArcsenCommand.setOpenChat) == "function" then
+    local ok, enabled, reason = pcall(loc.API.ArcsenCommand.setOpenChat, true)
+    if not ok or enabled ~= true then
+        warn("[Arcsen] Could not enable built-in OpenChat: " .. tostring(ok and reason or enabled))
+    end
 end
 if type(loc.API.ArcsenCommand) == "table"
     and type(loc.API.ArcsenCommand.isHereChatEnabled) == "function"
