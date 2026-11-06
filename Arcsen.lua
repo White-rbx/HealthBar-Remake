@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.2.93 + OpenChat Safety ",
+	sion = " UIs 7.2.95 + OpenChat Safety ",
 	logs = [[
 # -- Update logs --
 (:4/11/2026: A) Added /OpenChat ON/OFF/STATUS, a separate OpenChat tab, API polling and a 125-message rolling cap for local development.
@@ -1190,6 +1190,36 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
   Corner(0,5,main)
   Stroke(main, ASMBorder,r or 255,g or 255, b or 255, LJMRound, 1, 0)
 
+  -- Chat-safety warning: informational UI only, never a hidden message preview.
+  -- A trusted caller must explicitly confirm that Roblox chat is unavailable.
+  if type(messageOptions.WarningText) == "string" and messageOptions.WarningText ~= "" then
+    local warningRow = Instance.new("Frame")
+    warningRow.Name = "WarningControls"
+    warningRow.AutomaticSize = Enum.AutomaticSize.Y
+    warningRow.Size = UDim2.new(1, 0, 0, 0)
+    warningRow.BackgroundTransparency = 1
+    warningRow.LayoutOrder = 2
+    warningRow.Parent = meg1
+    ListLayout(warningRow, 0, 4, "HLeft", "VTop", "SLayout", "FillH")
+
+    local warningText = Instance.new("TextLabel")
+    warningText.Name = "WarningText"
+    warningText.AutomaticSize = Enum.AutomaticSize.Y
+    warningText.Size = UDim2.new(1, 0, 0, 0)
+    warningText.TextWrapped = true
+    warningText.TextXAlignment = Enum.TextXAlignment.Left
+    warningText.TextYAlignment = Enum.TextYAlignment.Top
+    warningText.TextSize = 12
+    warningText.TextColor3 = Color3.fromRGB(210, 170, 85)
+    warningText.BackgroundTransparency = 1
+    warningText.RichText = false
+    warningText.Text = messageOptions.WarningText
+    warningText.Parent = warningRow
+
+    -- The toggle itself is created by inbtn() below, inside ButtonBar.
+    messageOptions._WarningLabel = warningText
+  end
+
   -- Deduplicate image sources within each message render. Cache avoids re-downloading;
   -- renderedImageKeys avoids creating duplicate ImageLabels from repeated links.
   local renderedImageKeys = {}
@@ -1461,7 +1491,7 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
     btn.Image = "rbxassetid://" .. imageId
     btn.BackgroundColor3 = b_body.BackgroundColor3
     btn.ImageColor3 = Color3.new(0,0,0)
-    btn.Visible = isvisible == true and not system
+    btn.Visible = isvisible == true and (not system or name == "WarningToggle")
     btn.Active = btn.Visible
     btn.Parent = btnbar
     Corner(0,3,btn)
@@ -1474,11 +1504,29 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
     return btn
   end
 
-  if system or messageOptions.IsStatus == true then
-    btnbar:Destroy()
+  local simpleNotice = system or messageOptions.IsStatus == true
+  if simpleNotice then
+    -- Preserve the original system-message appearance when adding a warning toggle.
     if main:FindFirstChildOfClass("UIStroke") then main:FindFirstChildOfClass("UIStroke"):Destroy() end
     m_name:Destroy()
+  end
+
+  if simpleNotice and not messageOptions._WarningLabel then
+    btnbar:Destroy()
   else
+    if messageOptions._WarningLabel then
+      local warningLabel = messageOptions._WarningLabel
+      local warningToggle = inbtn("7733960981", "WarningToggle", function(btn)
+        warningLabel.Visible = not warningLabel.Visible
+        btn:SetAttribute("WarningHidden", not warningLabel.Visible)
+        btn.Image = warningLabel.Visible
+            and "rbxassetid://7733960981" -- eye: hide warning
+            or "rbxassetid://6031071053" -- eye-off: show warning
+      end, true)
+      if warningToggle then
+        warningToggle:SetAttribute("WarningHidden", false)
+      end
+    end
     local editButton = inbtn("73984153023004", "Edit", function(btn)
       if messageOptions.IsEditing == true then
         local cancelled = false
@@ -1771,6 +1819,9 @@ local function meg(txt, per, direction, issys, r, g, b, imageSource, messageOpti
 
   return b_body
 end
+
+-- Chat safety API is initialized after loc.API is rebuilt later in this file.
+-- AgeChatNotice.lua is retired; chat restrictions are never inferred from missing messages.
 
 -- Demo messages removed: start with an empty chat history.
 -- Dynamic message updates: loc.API.UpdateMegText(frame, text, {IsSyn = true/false, RichText = true/false}).
@@ -8135,6 +8186,20 @@ loc.API.DrawMessage = function(chatID, index, message)
     loc.API.DrawChatForMessage = loc.API.ChatData[tostring(chatID)]
     local isLatestMessage = loc.API.DrawChatForMessage ~= nil and index == #(loc.API.DrawChatForMessage.Messages or {})
 
+    if message.role == "chat-safety" then
+        local kind = tostring(message.chatSafetyKind or "")
+        if kind ~= "self" and kind ~= "peers" then return nil end
+        local headline = kind == "self" and "🔒 Chat unavailable" or "🔒 Some chat connections unavailable"
+        local explanation = kind == "self"
+            and "Roblox chat permissions currently prevent this account from using in-experience text chat."
+            or "Some players in this server cannot chat with you under Roblox chat permissions."
+        return meg(headline, "System", "Left", true, 255, 180, 0, nil, {
+            NoCounter = true,
+            IsStatus = true,
+            WarningText = explanation
+        })
+    end
+
     if message.role == "herechat" then
         -- Arcsen-origin messages use the requested reverse header layout.
         -- Roblox-origin messages intentionally keep their existing header style.
@@ -11258,6 +11323,7 @@ loc.API.SaveChats = function()
         for _, savedMessage in ipairs(chatData.Messages or {}) do
             table.insert(loc.API.SaveData.Chats[chatID].Messages, {
                 role = savedMessage.role,
+                chatSafetyKind = (savedMessage.role == "chat-safety") and savedMessage.chatSafetyKind or nil,
                 text = tostring(savedMessage.text or ""),
                 richText = savedMessage.richText == true,
                 isSyn = savedMessage.isSyn == true,
@@ -12100,7 +12166,7 @@ loc.API.ChatOptionRows.DisplayTimeAs = addoptions(
 loc.API.ChatOptionRows.DisplayTimeAs.Box.Text = loc.API.DisplayTimeFormat
 
 -- Message Counter also tracks issys=true meg() messages; HereChat messages include saved timestamps.
--- ArcsenCommand bridge + bidirectional HereChat (Module v0.5.2)
+-- ArcsenCommand bridge + bidirectional HereChat (Module 0.6.4)
 do
     local shared = type(getgenv) == "function" and getgenv() or nil
     local commandCore = type(shared) == "table" and shared.ArcsenCommand or nil
@@ -12111,7 +12177,7 @@ do
         or type(commandCore.sendMessage) ~= "function"
         or type(commandCore.setOnOpenChatChanged) ~= "function"
         or type(commandCore.sendOpenChat) ~= "function"
-        or tostring(commandCore.version or "") ~= "0.6.1" then
+        then
         commandCore = nil
         local ok, result = pcall(function()
             if type(loadstring) ~= "function" then
@@ -12138,7 +12204,7 @@ do
                 and type(returned.sendOpenChat) == "function" then
                 return returned
             end
-            error("ArcsenCommand-Module.lua is outdated. Upload v0.6.1 to GitHub first.")
+            error("ArcsenCommand-Module.lua is missing required APIs. Update the module to v0.6.4.")
         end)
 
         if ok then
@@ -13054,3 +13120,260 @@ end
 if type(loc.UpdateMessageCounter) == "function" then
     loc.UpdateMessageCounter()
 end
+
+-- CHAT SAFETY (CLIENT-ONLY) v0.5.24
+-- ExperienceSettings runs client-side via an executor; this is not a Roblox ServerScript.
+-- Roblox controls all chat delivery and filtering. This module checks only the
+-- local player's own chat permission; it does not infer peer restrictions.
+-- No messages, age data, IPs, or message lengths are sent to Cloudflare.
+loc.API.ChatSafety = {
+    chatAvailable = nil, -- nil = unknown
+    noticesShown = {self = false},
+}
+
+loc.API.ShowChatSafetyNotice = function(kind)
+    if kind == true then kind = "self" end -- compatibility with earlier caller
+    if kind ~= "self" then return false end
+    local cs = loc.API.ChatSafety
+    if cs.noticesShown.self then return false end
+    cs.noticesShown.self = true
+
+    local entry = {
+        role = "chat-safety", chatSafetyKind = "self", text = "",
+        timestamp = os.time(), richText = false,
+    }
+    if type(loc.API.EnsureHereChatTab) == "function" then
+        local id = loc.API.EnsureHereChatTab(false)
+        local chat = id and loc.API.ChatData[id]
+        if chat then
+            table.insert(chat.Messages, entry)
+            if type(loc.API.NotifyNewChatMessage) == "function" then
+                loc.API.NotifyNewChatMessage(id, #chat.Messages)
+            end
+            if type(loc.RecordMessageForCounter) == "function" then
+                loc.RecordMessageForCounter("system")
+            end
+            if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
+            if tostring(loc.API.ActiveChatID or "") == tostring(id) then
+                if type(loc.API.RenderChat) == "function" then
+                    loc.API.RenderChat(id, true)
+                end
+            end
+            return true
+        end
+    end
+
+    meg("🔒 Chat unavailable", "System", "Left", true, 255, 180, 0, nil, {
+        WarningText = "Roblox chat permissions currently prevent in-experience text chat.",
+        IsStatus = true,
+    })
+    return true
+end
+
+loc.API.ApplyChatSafetyStatus = function(status)
+    if type(status) ~= "table" or status.kind ~= "chat_safety" then return false end
+    if type(status.chatAvailable) ~= "boolean" then return false end
+    local cs = loc.API.ChatSafety
+    if cs.chatAvailable ~= status.chatAvailable then
+        cs.chatAvailable = status.chatAvailable
+        cs.noticesShown.self = false
+        if status.chatAvailable == false then
+            loc.API.ShowChatSafetyNotice("self")
+        end
+    end
+    return true
+end
+
+loc.API.RefreshChatSafetyStatus = function()
+    -- Roblox documents this API as callable from a LocalScript for the local user.
+    local player = s.Players.LocalPlayer
+    if not player then return false end
+    local ok, allowed = pcall(function()
+        return s.TextChatService:CanUserChatAsync(player.UserId)
+    end)
+    -- Failed check means unknown, NOT restricted.
+    if not ok or type(allowed) ~= "boolean" then return false end
+    return loc.API.ApplyChatSafetyStatus({kind = "chat_safety", chatAvailable = allowed})
+end
+
+task.spawn(loc.API.RefreshChatSafetyStatus)
+
+
+-- ARCSCRIPTCENTER CLOUD CONNECTION (Executor sUNC / HTTP GET) v0.5.25
+-- Separate from Roblox chat permission checks. Cloudflare cannot validate
+-- two-player Roblox chat eligibility or deliver filtered/blocked messages.
+-- No outgoing POST, player name, UserId, age, message, or unique client ID.
+loc.API.ArcScriptCenterCloud = {
+    protocol = 1,
+    connected = false,
+    policyConnected = false,
+    announcementsReady = false,
+    busy = false,
+    lastChecked = nil,
+    version = nil,
+    transport = "sUNC HTTP GET",
+    error = "Not checked",
+}
+
+local function arcGetCloudBase()
+    local sharedEnv = nil
+    if type(getgenv) == "function" then
+        local ok, result = pcall(getgenv)
+        if ok and type(result) == "table" then sharedEnv = result end
+    end
+    -- Same optional API base used by ArcsenCommand's OpenChat feed.
+    local configured = sharedEnv and sharedEnv.ArcsenOpenChatURL
+    local base = tostring(configured or "https://arcscriptcenter-api.kogpasan14.workers.dev")
+    base = base:gsub("/+$", "")
+    if not base:match("^https://[%w%.%-]+$") and
+       not base:match("^https://[%w%.%-]+:%d+$") then
+        return nil, "Use an HTTPS API hostname in getgenv().ArcsenOpenChatURL"
+    end
+    return base
+end
+
+local function arcGetSuncRequest()
+    if type(request) == "function" then return request end
+    if type(http_request) == "function" then return http_request end
+    if type(syn) == "table" and type(syn.request) == "function" then return syn.request end
+    if type(http) == "table" and type(http.request) == "function" then return http.request end
+    if type(getgenv) == "function" then
+        local ok, env = pcall(getgenv)
+        if ok and type(env) == "table" and type(env.request) == "function" then
+            return env.request
+        end
+    end
+    return nil
+end
+
+local function arcRequestPublicJSON(requestFn, url)
+    -- Executor request() can yield. Caller runs this in task.spawn.
+    -- No client-specific headers, secrets, cookies or data body are added.
+    local ok, response = pcall(requestFn, {
+        Url = url,
+        Method = "GET",
+        Headers = { ["Accept"] = "application/json" },
+    })
+    if not ok or type(response) ~= "table" then
+        return nil, "sUNC request unavailable or network error"
+    end
+    local code = tonumber(response.StatusCode or response.Status or 0) or 0
+    if code < 200 or code >= 300 then
+        return nil, "HTTP " .. tostring(code)
+    end
+    local body = response.Body or response.body
+    if type(body) ~= "string" or #body > 65536 then
+        return nil, "Invalid API response size"
+    end
+    local decoded, data = pcall(s.HttpService.JSONDecode, s.HttpService, body)
+    if not decoded or type(data) ~= "table" or data.ok ~= true then
+        return nil, "Invalid ArcScriptCenter JSON response"
+    end
+    return data
+end
+
+local function arcUpdateCloudSettingsUI()
+    local cloud = loc.API.ArcScriptCenterCloud
+    local ui = cloud and cloud.statusLabel
+    if not ui or not ui.Parent then return end
+    local state = cloud.connected and "ONLINE" or "OFFLINE"
+    if cloud.busy then state = "CHECKING" end
+    local detail = cloud.error == "" and "No client identity sent" or cloud.error
+    ui.Text = "Worker: " .. state ..
+        " | v" .. tostring(cloud.version or "?") ..
+        "\nPolicy API: " .. (cloud.policyConnected and "OK" or "Unavailable") ..
+        " | Announcements: " .. (cloud.announcementsReady and "OK" or "Unavailable") ..
+        "\nClient transport: sUNC HTTPS GET (public, read-only)" ..
+        "\n" .. tostring(detail):sub(1, 100)
+end
+
+loc.API.RefreshArcScriptCenterCloud = function()
+    local cloud = loc.API.ArcScriptCenterCloud
+    if cloud.busy then return false, "Already checking" end
+    cloud.busy = true
+    cloud.error = ""
+    cloud.connected = false
+    cloud.policyConnected = false
+    cloud.announcementsReady = false
+    arcUpdateCloudSettingsUI()
+
+    local function finish()
+        cloud.busy = false
+        cloud.lastChecked = os.time()
+        arcUpdateCloudSettingsUI()
+        return cloud.connected and cloud.policyConnected and cloud.announcementsReady
+    end
+    local requestFn = arcGetSuncRequest()
+    if not requestFn then
+        cloud.error = "Executor does not provide sUNC request()"
+        return finish()
+    end
+    local base, reason = arcGetCloudBase()
+    if not base then
+        cloud.error = reason
+        return finish()
+    end
+    local bootstrap, bootError = arcRequestPublicJSON(requestFn, base .. "/api/v1/client/bootstrap")
+    if not bootstrap or bootstrap.service ~= "ArcScriptCenter" or
+        bootstrap.protocol ~= 1 or bootstrap.mode ~= "read_only_public" then
+        cloud.error = bootError or "Unexpected bootstrap protocol"
+        return finish()
+    end
+    cloud.connected = true
+    cloud.version = tostring(bootstrap.version or "?")
+
+    local policy, policyError = arcRequestPublicJSON(requestFn, base .. "/api/v1/chat-safety/status")
+    cloud.policyConnected = policy ~= nil and policy.protocol == 1 and
+        policy.policy == "Roblox TextChatService" and
+        policy.playerPostingEnabled == false and
+        policy.hiddenMessagesAvailable == false
+    if not cloud.policyConnected then
+        cloud.error = policyError or "Chat Safety API mismatch"
+        return finish()
+    end
+
+    local feed, feedError = arcRequestPublicJSON(requestFn, base .. "/api/v1/openchat/status")
+    cloud.announcementsReady = feed ~= nil and feed.mode == "admin_announcements" and
+        feed.publicPosting == false
+    cloud.error = cloud.announcementsReady and "" or
+        (feedError or "Announcement API mode mismatch")
+    return finish()
+end
+
+-- Lightweight diagnostics within existing Arcsen Settings; no separate ScreenGui.
+loc.API.ArcScriptCenterCloudSettings = addset(
+    "ArcScriptCenterCloud", "ArcScriptCenter Cloud (sUNC)", 120, 205, 255,
+    function(frame)
+        ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
+        local status = Instance.new("TextLabel")
+        status.Name = "CloudConnectionStatus"
+        status.Size = UDim2.new(1, -8, 0, 72)
+        status.BackgroundTransparency = 1
+        status.TextColor3 = Color3.fromRGB(220, 235, 255)
+        status.TextSize = 12
+        status.TextWrapped = true
+        status.TextXAlignment = Enum.TextXAlignment.Left
+        status.TextYAlignment = Enum.TextYAlignment.Center
+        status.RichText = false
+        status.Text = "Checking ArcScriptCenter..."
+        status.Parent = frame
+        loc.API.ArcScriptCenterCloud.statusLabel = status
+
+        local refresh = Instance.new("TextButton")
+        refresh.Name = "RefreshCloud"
+        refresh.Size = UDim2.new(1, -8, 0, 26)
+        refresh.Text = "Refresh Cloud Connection"
+        refresh.TextSize = 13
+        refresh.TextColor3 = Color3.fromRGB(255, 255, 255)
+        refresh.BackgroundColor3 = Color3.fromRGB(30, 85, 120)
+        refresh.Parent = frame
+        Corner(0, 5, refresh)
+        refresh.MouseButton1Click:Connect(function()
+            task.spawn(loc.API.RefreshArcScriptCenterCloud)
+        end)
+        arcUpdateCloudSettingsUI()
+    end
+)
+
+-- Initial request once. Existing OpenChat module separately polls approved announcements.
+task.spawn(loc.API.RefreshArcScriptCenterCloud)
