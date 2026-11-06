@@ -1,4 +1,4 @@
--- Ok 4.973
+-- Ok 4.969 -- Toggle & Respawn Fix
 -- TweenHealth preloads image frames: run separately so its PreloadAsync
 -- cannot delay the ExperienceSettings UI creation.
 local bootstrapEnv = getgenv()
@@ -39,58 +39,71 @@ if not player then
     player = Players.LocalPlayer
 end
 
--- เป้าหมายใหม่ของตำแหน่ง HealthBar (ปรับได้)
-local newHealthBarPosition = UDim2.new(0.835, 0, 0, 0)
-local newHealthBarSize = UDim2.new(0.109, 0, 1, 0)
--- The newer TopRightFrame HealthBar is a full-width, 44px row.
--- Keep the classic Unibar layout unchanged for clients still using it.
-local topRightHealthBarSize = UDim2.new(1, 0, 0, 44)
-local topRightHealthBarPosition = UDim2.new(0, 0, 0, 0)
-local newInnerBarSize = UDim2.new(1.85, 0, 0, 10)
+-- ValueLabels: the ToggleConfig state is authoritative, including after
+-- CoreGui HealthBar is disabled/re-enabled or Roblox replaces the UI instance.
+-- No extra polling loop is needed: setupValueGui() already runs during updates.
+local valueLabelsWanted = true
+local valueLabelsCharacterReady = true
 
--- helper: หาวัตถุ TopBarApp.HealthBar แบบปลอดภัย (returns instance or nil)
+-- One-time Roblox TopBar geometry; no background polling/loop.
+-- Requested geometry (new TopRightFrame layout only):
+-- HB       Position (0,0,0,0)   Size (0,120,0,16)
+-- TRF      Position (-1,16,0,12) Size (0,0,0,44)
+-- HB.HB    Position (0,0,0.5,0) Size (0,0,0,0)
+-- TBF      Position (0,0,0,0) Size (1,0,0,58)
 local function getHealthBarRoot()
-    local topBar = CoreGui:FindFirstChild("TopBarApp")
-    if not topBar then return nil end
-    local innerTop = topBar:FindFirstChild("TopBarApp") or topBar
-    if not innerTop then return nil end
-    -- Roblox UI rollout: new TopRightFrame preferred, old UnibarLeftFrame fallback.
-    local frame = innerTop:FindFirstChild("TopBarFrame")
+    local outerTop = CoreGui:FindFirstChild("TopBarApp")
+    if not outerTop then return nil end
+    local app = outerTop:FindFirstChild("TopBarApp") or outerTop
+    local frame = app:FindFirstChild("TopBarFrame")
     local right = frame and frame:FindFirstChild("TopRightFrame")
-    local old = innerTop:FindFirstChild("UnibarLeftFrame")
+    local old = app:FindFirstChild("UnibarLeftFrame")
     return (right and right:FindFirstChild("HealthBar"))
         or (old and old:FindFirstChild("HealthBar"))
 end
 
--- ปรับตำแหน่ง HealthBar (loop ปกติแต่ปลอดภัย)
-task.spawn(function()
-    while true do
-        pcall(function()
-            local bar = getHealthBarRoot()
-            if bar then
-                -- ตรวจสอบก่อนตั้งค่าทุกครั้ง
-                if bar and bar.Parent then
-                    bar.Visible = true
-                    -- try/catch แต่ pcall รอบนอกแล้ว
-                    if bar.Parent and bar.Parent.Name == "TopRightFrame" then
-                        bar.Position = topRightHealthBarPosition
-                        bar.Size = topRightHealthBarSize
-                    else
-                        bar.Position = newHealthBarPosition
-                        bar.Size = newHealthBarSize
-                    end
-                end
-
-                local innerBar = bar:FindFirstChild("HealthBar")
-                if innerBar then
-                    innerBar.Visible = true
-                    innerBar.Size = newInnerBarSize
-                end
-            end
-        end)
-        task.wait(0.1)
+local function syncValueLabels()
+    local bar = getHealthBarRoot()
+    local folder = bar and bar:FindFirstChild("ValueFolder")
+    local gui = folder and folder:FindFirstChild("ValueGui")
+    if gui and gui:IsA("ScreenGui") then
+        local desired = valueLabelsWanted and valueLabelsCharacterReady
+        if gui.Enabled ~= desired then
+            gui.Enabled = desired
+        end
     end
-end)
+end
+
+
+local function applyTopBarGeometryOnce(bar)
+    if not bar then return end
+    local outerTop = CoreGui:FindFirstChild("TopBarApp")
+    local app = outerTop and (outerTop:FindFirstChild("TopBarApp") or outerTop)
+    local topBarFrame = app and app:FindFirstChild("TopBarFrame")
+    local rightFrame = topBarFrame and topBarFrame:FindFirstChild("TopRightFrame")
+
+    if not (rightFrame and bar.Parent == rightFrame) then
+        -- Preserve the legacy Unibar layout when the new TopBar is unavailable.
+        print("[ExperienceSettings] One-shot TopBar geometry skipped (legacy layout).")
+        return
+    end
+
+    topBarFrame.Position = UDim2.new(0, 0, 0, 0)
+    topBarFrame.Size = UDim2.new(1, 0, 0, 58)
+    rightFrame.Position = UDim2.new(-1, 16, 0, 12)
+    rightFrame.Size = UDim2.new(0, 0, 0, 44)
+    bar.Position = UDim2.new(0, 0, 0, 0)
+    bar.Size = UDim2.new(0, 120, 0, 16)
+    bar.Visible = true
+
+    local innerBar = bar:FindFirstChild("HealthBar")
+    if innerBar then
+        innerBar.Position = UDim2.new(0, 0, 0.5, 0)
+        innerBar.Size = UDim2.new(0, 0, 0, 0)
+        innerBar.Visible = true
+    end
+    print("[ExperienceSettings] One-shot TopBar geometry applied.")
+end
 
 -- GUI แสดงค่า HP / Speed / FPS (สร้างในโฟลเดอร์ใต้ HealthBar)
 local function setupValueGui()
@@ -111,6 +124,9 @@ local function setupValueGui()
 		gui.DisplayOrder = 2147483645
         gui.Parent = folder
     end
+
+    -- Respect the saved preference even for a newly recreated ScreenGui.
+    syncValueLabels()
 
     -- frame container (point)
     local fm = gui:FindFirstChild("point")
@@ -594,6 +610,9 @@ if not healthBar then
     return
 end
 
+-- One-time placement happens after the HealthBar becomes available.
+applyTopBarGeometryOnce(healthBar)
+
 -- ======= Build UI =======
 local existingUI = CoreGui:FindFirstChild("ExperienceSettings")
     or healthBar:FindFirstChild("ExperienceSettings")
@@ -875,9 +894,8 @@ local CoreGui = game:GetService("CoreGui")
 -- Ensure the value UI exists even before RenderStepped has a Humanoid/HRP.
 -- Waiting without a timeout here used to block the loading bar progression.
 setupValueGui()
-local valueBar = getHealthBarRoot()
-local valueFolder = valueBar and valueBar:FindFirstChild("ValueFolder")
-local gui_aV2 = valueFolder and valueFolder:FindFirstChild("ValueGui")
+-- Do not hold on to a ValueGui instance: the CoreGui HealthBar may be recreated.
+-- The HRP Watcher calls syncValueLabels() against the current instance.
 
 local CHECK_INTERVAL = 0.05
 local TIMEOUT = 3
@@ -979,7 +997,8 @@ task.spawn(function()
 					if ui_hbm then ui_hbm.Visible = false end
 					if ui_OC  then ui_OC.Visible  = true end
 					if ui_gpt then ui_gpt.Visible = false end
-					if gui_aV2 then gui_aV2.Enabled = true end
+					valueLabelsCharacterReady = true
+                    syncValueLabels()
 				end)
 
 				if ui_wa1 and ui_wa1.Parent then
@@ -1012,7 +1031,8 @@ task.spawn(function()
 						if ui_hbm then ui_hbm.Visible = false end
 						if ui_OC  then ui_OC.Visible  = false end
 						if ui_gpt then ui_gpt.Visible = false end
-						if gui_aV2 then gui_aV2.Enabled = false end
+						valueLabelsCharacterReady = false
+                        syncValueLabels()
 					end)
 
 					if ui_wa1 and ui_wa1.Parent then
@@ -1368,21 +1388,16 @@ lder.Size = UDim2.new(0.5,0,1,0)
 
 -- ======== TOGGLE SWITCHS ===========
 
--- ValueLabels toggle (safe wait)
-local valueGuiOK, ValueGui = pcall(function()
-    local bar = getHealthBarRoot()
-    return bar and bar:FindFirstChild("ValueFolder") and bar.ValueFolder:FindFirstChild("ValueGui")
-end)
-
+-- ValueLabels toggle: keep the preference independent of CoreGui recreation.
+-- createToggle() restores EVS through ToggleConfig and runs this callback on init.
 createToggle(BFrame, "EVS", "Enable ValueLabels", [[<b><u>ValueLabel</u></b>
 Show ValueLabel at the Top HealthBar.
 • FPS - Frame Per second
 • HP - Health ( How to read: 100.000 HP = 100 HP )
 • WS/s - Walkspeed per studs ( How to read: 16.000 WS/s = 16 WS/s )]], function(state)
-    if valueGuiOK and ValueGui then
-        pcall(function() ValueGui.Enabled = state end)
-    end
-end, (valueGuiOK and ValueGui and ValueGui.Enabled) or true)
+    valueLabelsWanted = state == true
+    syncValueLabels()
+end, true)
 
 -- Save / restore Lighting backup
 local lightingBackup = {}
@@ -1470,150 +1485,161 @@ Graphic quality recommend 6+]], function(state)
     end
 end, false)
 
--- ต้องมี service เหล่านี้
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-
+-- LIGHT TOGGLES: restore after respawn using CharacterAdded + ChildAdded.
+-- No permanent respawn polling. Only RGB animation uses a loop while enabled.
 local localPlayer = Players.LocalPlayer
+local LIGHT_NAME = "Experience_Lighter"
+local whiteLightEnabled = false
+local rgbLightEnabled = false
+local currentLightPart = nil
+local rainbowToken = nil
+local pendingLightPartConnection = nil
 
--- เก็บ coroutine / task ของ rainbow per-part เพื่อให้เราหยุดได้
-local _rainbowTasks = {}
-
--- ลิสต์ part ที่จะพยายามหา (ลำดับความสำคัญ)
 local ATTACH_CANDIDATES = {
-    "HumanoidRootPart",
-    "LowerTorso",
-    "UpperTorso",
-    "Torso",
-    "Head"
+    "HumanoidRootPart", "LowerTorso", "UpperTorso", "Torso", "Head"
 }
 
--- หา part ที่จะ parent light ให้ (คืน BasePart หรือ nil)
 local function findAttachPart(character)
     if not character then return nil end
     for _, name in ipairs(ATTACH_CANDIDATES) do
-        local p = character:FindFirstChild(name)
-        if p and p:IsA("BasePart") then
-            return p
+        local part = character:FindFirstChild(name)
+        if part and part:IsA("BasePart") then
+            return part
         end
     end
     return nil
 end
 
--- สต็อกชื่อ light
-local LIGHT_NAME = "Experience_Lighter"
-
--- หยุด rainbow loop สำหรับ part นั้น (ถ้ามี)
-local function stopRainbowFor(part)
-    if not part then return end
-    local taskFlag = _rainbowTasks[part]
-    if taskFlag and taskFlag._stop then
-        taskFlag._stop = true
-        _rainbowTasks[part] = nil
+local function stopLightRainbow()
+    if rainbowToken then
+        rainbowToken.stopped = true
+        rainbowToken = nil
     end
 end
 
--- สร้างหรือเปิด light
--- params:
---  state: boolean (true = on, false = off)
---  rainbow: boolean (true => ไล่สี)
---  opts (optional): table { Brightness = number, Range = number, Color = Color3 }
-local function setLighterForCharacter(char, state, rainbow, opts)
-    if not char then return false, "no char" end
-    local attach = findAttachPart(char)
-    if not attach then return false, "no attach part found" end
-
-    -- ถ้ามี light อยู่แล้ว จัดการตาม state
-    local existing = attach:FindFirstChild(LIGHT_NAME)
-    if not state then
-        -- ปิด/ลบ
-        if existing then
-            stopRainbowFor(attach)
+local function cleanupCharacterLight()
+    stopLightRainbow()
+    if currentLightPart then
+        local existing = currentLightPart:FindFirstChild(LIGHT_NAME)
+        if existing and existing:IsA("PointLight") then
             existing:Destroy()
         end
-        return true, "turned off"
+        currentLightPart = nil
+    end
+end
+
+local function disconnectPendingLight()
+    if pendingLightPartConnection then
+        pendingLightPartConnection:Disconnect()
+        pendingLightPartConnection = nil
+    end
+end
+
+-- When both toggles are saved ON, RGB has priority. Disabling RGB
+-- immediately restores White when White is still enabled.
+local function getLightMode()
+    if rgbLightEnabled then return "RGB" end
+    if whiteLightEnabled then return "White" end
+    return "Off"
+end
+
+local function applyLightForCharacter(character)
+    if not localPlayer or character ~= localPlayer.Character then return false end
+    local part = findAttachPart(character)
+    if not part then return false end
+
+    if currentLightPart and currentLightPart ~= part then
+        cleanupCharacterLight()
     end
 
-    -- เปิด: สร้าง light ถ้ายังไม่มี
-    if not existing then
-        local light = Instance.new("PointLight")
+    local mode = getLightMode()
+    if mode == "Off" then
+        cleanupCharacterLight()
+        return true
+    end
+
+    local light = part:FindFirstChild(LIGHT_NAME)
+    if light and not light:IsA("PointLight") then
+        warn("[ExperienceSettings] Experience_Lighter name is already used by a non-PointLight instance.")
+        return false
+    end
+    if not light then
+        light = Instance.new("PointLight")
         light.Name = LIGHT_NAME
-        light.Brightness = (opts and opts.Brightness) or 2
-        light.Range = (opts and opts.Range) or 25
-        light.Color = (opts and opts.Color) or Color3.new(1,1,1)
-        -- PointLight ไม่มี Angle property — เป็น omnidirectional อยู่แล้ว (เทียบกับ SpotLight)
-        light.Parent = attach
-
-        -- ถ้าผู้ใช้ทำลาย part เราควรหยุด task ด้วย (เช็ค AncestryChanged)
-        attach.AncestryChanged:Connect(function(child, parent)
-            if not parent then
-                -- part ถูกลบ -> หยุด rainbow (ถ้ามี)
-                stopRainbowFor(attach)
-            end
-        end)
-    else
-        -- update properties ถ้ามี
-        existing.Brightness = (opts and opts.Brightness) or existing.Brightness
-        existing.Range = (opts and opts.Range) or existing.Range
-        existing.Color = (opts and opts.Color) or existing.Color
+        light.Parent = part
     end
 
-    -- rainbow handling
-    stopRainbowFor(attach) -- ทำความสะอาดก่อน
-    if rainbow then
-        -- สร้าง task flag เพื่อให้หยุดได้
-        local flag = { _stop = false }
-        _rainbowTasks[attach] = flag
+    currentLightPart = part
+    light.Enabled = true
+    light.Brightness = 2
+    light.Range = 25
+    light.Color = Color3.fromRGB(255, 255, 255)
+
+    stopLightRainbow()
+    if mode == "RGB" then
+        local token = { stopped = false }
+        rainbowToken = token
         task.spawn(function()
-            local t0 = tick()
-            while not flag._stop and attach.Parent do
-                local h = (tick() - t0) * 0.12 -- speed factor (ปรับได้)
-                local color = Color3.fromHSV(h % 1, 1, 1)
-                local light = attach:FindFirstChild(LIGHT_NAME)
-                if light then
-                    -- pcall ป้องกัน error ถ้า light ถูกทำลายในระหว่าง loop
-                    pcall(function() light.Color = color end)
-                else
-                    break
-                end
+            local started = os.clock()
+            while not token.stopped
+                and light.Parent == part
+                and part.Parent
+                and localPlayer.Character == character
+                and rgbLightEnabled do
+                light.Color = Color3.fromHSV(((os.clock() - started) * 0.12) % 1, 1, 1)
                 task.wait(0.06)
             end
+            if rainbowToken == token then rainbowToken = nil end
         end)
-    else
-        -- ตั้งสีปกติ (ขาว) เมื่อไม่ใช่ rainbow
-        local light = attach:FindFirstChild(LIGHT_NAME)
-        if light then
-            pcall(function() light.Color = Color3.fromRGB(255,255,255) end)
+    end
+    return true
+end
+
+local function refreshLocalLight()
+    disconnectPendingLight()
+    local character = localPlayer and localPlayer.Character
+    if not character or getLightMode() == "Off" then
+        cleanupCharacterLight()
+        return
+    end
+    if applyLightForCharacter(character) then return end
+
+    -- A new character may not have an attachment part yet when the
+    -- CharacterAdded event fires. Retry on its first eligible ChildAdded.
+    pendingLightPartConnection = character.ChildAdded:Connect(function(child)
+        if not child:IsA("BasePart") or character ~= localPlayer.Character then return end
+        if applyLightForCharacter(character) then
+            disconnectPendingLight()
         end
-    end
-
-    return true, "turned on"
-end
-
--- ตัวช่วย: toggle สำหรับ local player (เรียกจาก toggle callback)
-local function toggleForLocalPlayer(state, rainbow)
-    local pl = Players.LocalPlayer
-    if not pl then return end
-    local char = pl.Character or pl.CharacterAdded:Wait()
-    local ok, msg = pcall(function()
-        return setLighterForCharacter(char, state, rainbow)
     end)
-    if not ok then
-        warn("[Lighter] failed:", msg)
+    -- Cover a part added between the first check and the connection.
+    if applyLightForCharacter(character) then
+        disconnectPendingLight()
     end
 end
+
+localPlayer.CharacterAdded:Connect(function()
+    cleanupCharacterLight()
+    refreshLocalLight()
+end)
+
+localPlayer.CharacterRemoving:Connect(function()
+    disconnectPendingLight()
+    cleanupCharacterLight()
+end)
 
 createToggle(BFrame, "WL", "White Light", [[<b><u>White Light</u></b>
 Just a PointLight around the you.
 Useful in the dark.]], function(state)
-    toggleForLocalPlayer(state, false) -- ปกติ ขาว
+    whiteLightEnabled = state == true
+    refreshLocalLight()
 end, false)
 
 createToggle(BFrame, "RGBL", "RGB Light", [[<b><u>RGB Light</u></b>
 Same as White Light, but RGB.]], function(state)
-    toggleForLocalPlayer(state, true) -- RGB (เดิม rainbow)
+    rgbLightEnabled = state == true
+    refreshLocalLight()
 end, false)
-
 
 
 createToggle(BFrame, "ESP-S", "ESP", [[<b><u>ESP</u></b>
