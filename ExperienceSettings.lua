@@ -1,4 +1,4 @@
--- Ok 4.969
+-- Ok 4.970
 -- TweenHealth
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
 print("[ TweenHealth ] Successful loaded.")
@@ -549,9 +549,19 @@ local function getHealthBar()
     return getHealthBarRoot()
 end
 
+-- New and old Roblox TopBar layouts may appear AFTER this file starts.
+-- Do not abort immediately: a delayed HealthBar would prevent the whole UI
+-- from ever being created, even though the path becomes valid later.
 local healthBar = getHealthBar()
 if not healthBar then
-    warn("ExperienceUI: HealthBar not found. Aborting UI creation.")
+    local deadline = os.clock() + 30
+    repeat
+        task.wait(0.1)
+        healthBar = getHealthBar()
+    until healthBar or os.clock() >= deadline
+end
+if not healthBar then
+    warn("[ExperienceSettings] Cannot create UI: HealthBar unavailable after 30s in both supported TopBar layouts.")
     return
 end
 
