@@ -1,7 +1,16 @@
--- So uhm just a script lol. 6.973
+-- So uhm just a script lol. 6.974
 
--- Loadstring
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"))()
+-- Loadstring (optional colorful labels; never block the main UI)
+task.spawn(function()
+    local ok, err = pcall(function()
+        local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ColorfulLabel.lua"
+        local src = game:HttpGet(url)
+        local f, compileErr = loadstring(src)
+        if not f then error(tostring(compileErr)) end
+        f()
+    end)
+    if not ok then warn("[Functions][ColorfulLabel] " .. tostring(err)) end
+end)
 
 -- ===== [ Service's ] ===== 
 local CoreGui = game:GetService("CoreGui")
@@ -1335,8 +1344,20 @@ task.spawn(function()
 end)
 				
 -- ===== END =====
--- Loadstring ProfileStatus
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ProfileStatus.lua"))()
+-- ProfileStatus is optional.  Its remote script may still require
+-- updating to new TopBar paths; do not block Functions/Loader if it stalls.
+task.spawn(function()
+    local profileOk, profileErr = pcall(function()
+        local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/ProfileStatus.lua"
+        local src = game:HttpGet(url)
+        local fn, compileErr = loadstring(src)
+        if not fn then error(tostring(compileErr)) end
+        fn()
+    end)
+    if not profileOk then
+        warn("[Functions][ProfileStatus] Add-on failed (other UI continues): " .. tostring(profileErr))
+        return
+    end
 
 -- ==== PROFILESTATUS ======
 -- Sta image-driven toggle for ProfileStatus tween
@@ -1347,7 +1368,11 @@ local ON_ID  = "116259694864857"
 local OFF_ID = "107706370299068"
 
 local profilePath = ESRoot:WaitForChild("Menu")
-local ProfileStatus = profilePath:WaitForChild("ProfileStatus")
+local ProfileStatus = profilePath:WaitForChild("ProfileStatus", 6)
+if not ProfileStatus then
+    warn("[Functions][ProfileStatus] No UI after 6s; skipping optional profile toggle.")
+    return
+end
 
 local tweenInfo = TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local posOn  = UDim2.new(0.25, 0, 0.155, 0)
@@ -1428,6 +1453,7 @@ else
     end
 end
 -- ==========
+end) -- optional ProfileStatus initialization
 
 local function SafeFont(font)
 	local ok = pcall(function()
@@ -1613,25 +1639,39 @@ end
 -- =====>> TOGGLE SWITCH <<=====
 -- <<===== LIGHTERCYAN.AI =====>>
 -- << main loadstring >>
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/LighterCyan.ai.lua"))()
--- หา LighterCyan.ai ด้วย WaitForChild
-local gui = ESRoot
-	:WaitForChild("LighterCyan.ai")
-
--- ใช้ toggle เดิมของนาย
-createToggle(BFrame, "LighterCyan", "LighterCyan.ai (Discontinued)", [[<b><u>LighterCyan.ai</u></b>
+-- Discontinued optional add-on must not block the active loading sequence.
+task.spawn(function()
+    local loaded, loadErr = pcall(function()
+        local src = game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/LighterCyan.ai.lua")
+        local fn, compileErr = loadstring(src)
+        if not fn then error(tostring(compileErr)) end
+        fn()
+    end)
+    if not loaded then
+        warn("[Functions][LighterCyan] " .. tostring(loadErr))
+        return
+    end
+    local gui = ESRoot:WaitForChild("LighterCyan.ai", 6)
+    if not gui then
+        warn("[Functions][LighterCyan] Optional GUI not found; skipping toggle.")
+        return
+    end
+    -- ใช้ toggle เดิมของนาย
+    createToggle(BFrame, "LighterCyan", "LighterCyan.ai (Discontinued)", [[<b><u>LighterCyan.ai</u></b>
 It's discontinued bro.
 😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭😭]], function(state)
 	gui.Enabled = state  -- เปิด/ปิดตามสวิตช์
 end, false) -- default: ปิด
+end) -- optional LighterCyan
 -- <<===== END LIGHTERCYAN =====>>
 
 -- <<===== HEALTHBAR =====>>
 -- 🔍 หา HealthBar หลัก
-local hb = assert(esHealthBar(), "[ExperienceSettings] HealthBar missing")
-    :WaitForChild("HealthBar")
+local hbRoot = esHealthBar()
+local hb = hbRoot and hbRoot:FindFirstChild("HealthBar")
 
 -- 🟩 Toggle รวม HealthBar
+if hb then
 createToggle(BFrame, "HBar", "HealthBar", [[<b><u>HealthBar</u></b>
 Show HealthBar at the Top Right.]], function(state)
 	local fill = hb:FindFirstChild("Fill")
@@ -1642,6 +1682,9 @@ Show HealthBar at the Top Right.]], function(state)
 	if outline then outline.Visible = state end
 	if stroke then stroke.Transparency = state and 0 or 1 end
 end, true) -- default = ON
+else
+    warn("[Functions][HealthBar] Inner HealthBar absent; toggle skipped without blocking loading.")
+end
 -- <<===== END HEALTHBAR =====>>
 
 -- <<===== MUTED DEATH SOUNDS =====>
