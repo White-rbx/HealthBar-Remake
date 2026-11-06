@@ -1,4 +1,4 @@
--- Ok 4.971
+-- Ok 4.972
 -- TweenHealth preloads image frames: run separately so its PreloadAsync
 -- cannot delay the ExperienceSettings UI creation.
 local bootstrapEnv = getgenv()
@@ -1307,8 +1307,24 @@ end
 end
 
 -- ===== Functions loadstring() =====
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Functions.lua"))()
-print("[ Functions Loadstring ] Successful loaded.")
+-- Functions.lua is an add-on, NOT the Loading UI root.  A legacy
+-- WaitForChild inside any downloaded add-on must not freeze bootstrap.
+-- Deploy the matching v4 Functions.lua + ColorfulLabel.lua too.
+task.spawn(function()
+    local ok, err = pcall(function()
+        local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Functions.lua"
+        local source = game:HttpGet(url)
+        local chunk, compileErr = loadstring(source)
+        if not chunk then error("Functions.lua compile failed: " .. tostring(compileErr)) end
+        chunk()
+    end)
+    if ok then
+        print("[ Functions Loadstring ] Successful loaded.")
+    else
+        warn("[ExperienceSettings][Functions] Add-on failed (UI loading continues): " .. tostring(err))
+    end
+end)
+print("[ExperienceSettings] Functions add-on started in parallel; loading continues.")
 
 local lder = expSettings:WaitForChild("Menu")
                                       :WaitForChild("Load_Background")
