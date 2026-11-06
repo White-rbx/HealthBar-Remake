@@ -1,4 +1,4 @@
--- Loader script 7.40
+-- Loader script 7.41
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -903,26 +903,25 @@ s.CoreGui.DescendantAdded:Connect(function(inst)
     end
 end)
 
--- The automatic setting and the one-time manual approval are independent.
--- Never derive execution permission from a TextButton or a stale unlocked flag.
-local CONTINUE_LOCK = true
-local CONTINUE_MANUAL = false
+-- One-time manual permission and the stored automatic preference are independent.
+-- Both are local to this invocation; a button label is never a load permission.
+local manualLoadRequested = false
+
 loc.canLoad = function()
     local player = s.Players.LocalPlayer
-    local char = player and player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local ok, healthOn = pcall(function()
+    local character = player and player.Character
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+    local ok, healthEnabled = pcall(function()
         return s.StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
     end)
-    return hrp ~= nil and ok and healthOn == true
+    return rootPart ~= nil and ok and healthEnabled == true
 end
 
-loc.refreshContinueLock = function()
-    CONTINUE_LOCK = not (CONTINUE_MANUAL == true
-        or (Data.Loader.AlwaysLoad == true and loc.canLoad()))
-    return not CONTINUE_LOCK
+local function canContinue()
+    return loc.canLoad() and
+        (manualLoadRequested or Data.Loader.AlwaysLoad == true)
 end
-loc.refreshContinueLock()
+
 ------------------------------------------------------------
 
 -- Continue (ONE TIME)
@@ -932,44 +931,30 @@ local continueUI = loc.o(
     false, nil,
     true, "Get Load",
     nil,
-    function(box, btn)
-
-        -- safety check
-        local player = s.Players.LocalPlayer
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-
-        local healthEnabled = s.StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Health)
-
-        if not hrp or not healthEnabled then
-            -- temporary warning
-            local oldText = btn.Text
-            local oldColor = btn.TextColor3
-
+    function(_, btn)
+        if not loc.canLoad() then
+            local oldText, oldColor = btn.Text, btn.TextColor3
             btn.Text = "Cannot Load"
-            btn.TextColor3 = Color3.fromRGB(255,255,0)
-
+            btn.TextColor3 = Color3.fromRGB(255, 255, 0)
             task.delay(1, function()
-                if btn and btn.Parent and CONTINUE_LOCK then
+                if btn and btn.Parent and not canContinue() then
                     btn.Text = oldText
                     btn.TextColor3 = oldColor
                 end
             end)
-
             return
         end
 
-        -- passed check → load
-        CONTINUE_MANUAL = true
-        loc.refreshContinueLock()
+        -- This is the only manual unlock path.
+        manualLoadRequested = true
         btn.Text = "Loaded"
     end
 )
 
 local btn = continueUI.Button
 
--- sync text if already unlocked (Always Load case)
-if not CONTINUE_LOCK then
+-- Reflect current authorization; UI text never grants it.
+if canContinue() then
     btn.Text = "Loaded"
 end
 
@@ -978,7 +963,7 @@ task.spawn(function()
     local toggle = false
 
     while btn and btn.Parent do
-        if not CONTINUE_LOCK then
+        if canContinue() then
             toggle = not toggle
 
             local color = toggle
@@ -1005,13 +990,13 @@ local alwaysUI = loc.o(
     255,255,255,  
     false, nil,  
     true, nil,  
-    function(newStatus)  
+    function(newStatus)
         Data.Loader.AlwaysLoad = newStatus == true
-        -- OFF immediately re-locks auto loading unless Get Load was pressed.
-        loc.refreshContinueLock()
         loc.saveData(Data)
+        -- Turning Always Load OFF does not inherit a stale automatic grant.
+        -- If Get Load was clicked separately, the manual approval stays valid.
         if continueUI and continueUI.Button then
-            continueUI.Button.Text = CONTINUE_LOCK and "Get Load" or "Loaded"
+            continueUI.Button.Text = canContinue() and "Loaded" or "Get Load"
         end
     end,  
     nil,  
@@ -1020,33 +1005,21 @@ local alwaysUI = loc.o(
 ) 
 
 local continueBtn = continueUI.Button
-local alwaysBtn = alwaysUI.Button
 
--- bypass warning watcher
+-- Display state only; this watcher must never grant loading permission.
 task.spawn(function()
     while continueBtn and continueBtn.Parent do
-        local alwaysOn = Data.Loader.AlwaysLoad == true
-        local ok = loc.canLoad()
-        loc.refreshContinueLock()
-
-        if alwaysOn and not ok and not CONTINUE_MANUAL then
-            -- show warning
+        local autoOn = Data.Loader.AlwaysLoad == true
+        if autoOn and not loc.canLoad() and not manualLoadRequested then
             continueBtn.Text = "Bypass detected: Toggle is ON"
-            continueBtn.TextColor3 = Color3.fromRGB(255,255,0)
-
-            -- No unlocked state survives a failed automatic precondition.
-            loc.refreshContinueLock()
+            continueBtn.TextColor3 = Color3.fromRGB(255, 255, 0)
+        elseif canContinue() then
+            continueBtn.Text = "Loaded"
+            continueBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         else
-            -- revert to normal state
-            if not CONTINUE_LOCK then
-                continueBtn.Text = "Loaded"
-                continueBtn.TextColor3 = Color3.fromRGB(255,255,255)
-            else
-                continueBtn.Text = "Okay"
-                continueBtn.TextColor3 = Color3.fromRGB(255,255,255)
-            end
+            continueBtn.Text = "Get Load"
+            continueBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
-
         task.wait(0.3)
     end
 end)
@@ -6883,38 +6856,16 @@ local kill = loc.o(
 
 local killBtn = kill.Button
 
+-- Avoid mutable flag state for Destroy protection.
 task.spawn(function()
     while killBtn and killBtn.Parent do
-        if not CONTINUE_LOCK then
-            killBtn.Active = false
-        end
-        task.wait(0.2)
-    end
-end)
-
-task.spawn(function()
-    while killBtn and killBtn.Parent do
-        local isAlwaysOn = Data.Loader.AlwaysLoad == true
-
-        if not CONTINUE_LOCK then
-            -- Continue ถูกกดแล้ว
-            killBtn.Active = false
-            killBtn.Text = "Cannot destroy"
-            killBtn.TextColor3 = Color3.fromRGB(255,0,0)
-
-        elseif isAlwaysOn then
-            -- Always Load เปิด
-            killBtn.Active = false
-            killBtn.Text = "Cannot destroy"
-            killBtn.TextColor3 = Color3.fromRGB(255,0,0)
-
-        else
-            -- ปกติ
-            killBtn.Active = true
-            killBtn.Text = "Destroy"
-            killBtn.TextColor3 = Color3.fromRGB(255,255,255)
-        end
-
+        local denyDestroy = canContinue() or Data.Loader.AlwaysLoad == true
+        killBtn.Active = not denyDestroy
+        killBtn.Selectable = not denyDestroy
+        killBtn.Text = denyDestroy and "Cannot destroy" or "Destroy"
+        killBtn.TextColor3 = denyDestroy
+            and Color3.fromRGB(255, 0, 0)
+            or Color3.fromRGB(255, 255, 255)
         task.wait(0.2)
     end
 end)
@@ -6939,10 +6890,12 @@ print[[------------------------------------------------------------
 ------------------------------------------------------------
 ]]
 
--- WAIT: recompute on each wake so an OFF toggle never inherits stale permission.
-while true do
-    if loc.refreshContinueLock() then break end
-    -- The user destroyed Loader before authorizing a load: stop this script.
-    if not gui or not gui.Parent then return end
-    task.wait(0.05)
+-- Strict gate: the calling bootstrap must await this script's return value.
+-- OFF + no manual click => wait, even if Always Load was ON earlier.
+while not canContinue() do
+    if not gui or not gui.Parent then
+        return false -- Cancelled; bootstrap must NOT load Main.
+    end
+    task.wait(0.1)
 end
+return true -- Explicit permission; bootstrap may now load Main.
