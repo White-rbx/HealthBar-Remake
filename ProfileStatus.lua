@@ -1,4 +1,4 @@
-local v_ver = [[Script ahh 2.96 Stats]]
+local v_ver = [[Script ahh 2.97 Stats]]
 
 ------------------------------------------------------------------------------------------
 
@@ -250,15 +250,48 @@ local TouchInputService = game:GetService("TouchInputService")
 ---------------------------------------------------------------------------------------
 
 -- <<===== Position =====>>
-local Menu = game.CoreGui:WaitForChild("TopBarApp")
-                 :WaitForChild("TopBarApp")
-                 :WaitForChild("UnibarLeftFrame")
-                 :WaitForChild("HealthBar")
-                 :WaitForChild("ExperienceSettings")
-                 :WaitForChild("Menu")
+-- Resolve the existing ExperienceSettings menu regardless of Roblox TopBar layout.
+-- Once the Loader moves the UI, it lives directly under CoreGui.
+local function findExperienceMenu()
+    local directUI = CoreGui:FindFirstChild("ExperienceSettings")
+    local directMenu = directUI and directUI:FindFirstChild("Menu")
+    if directMenu then
+        return directMenu
+    end
 
+    local topBarRoot = CoreGui:FindFirstChild("TopBarApp")
+    local app = topBarRoot and topBarRoot:FindFirstChild("TopBarApp")
+    if not app then
+        return nil
+    end
 
--- local Menu = game:GetService("CoreGui").ExperienceSettings.Menu
+    local topBarFrame = app:FindFirstChild("TopBarFrame")
+    local rightFrame = topBarFrame and topBarFrame:FindFirstChild("TopRightFrame")
+    local oldFrame = app:FindFirstChild("UnibarLeftFrame")
+
+    local function menuIn(container)
+        local healthBar = container and container:FindFirstChild("HealthBar")
+        local ui = healthBar and healthBar:FindFirstChild("ExperienceSettings")
+        return ui and ui:FindFirstChild("Menu")
+    end
+
+    -- Explicit fallback works even if the new frame is absent (nil).
+    return menuIn(rightFrame) or menuIn(oldFrame)
+end
+
+local Menu = findExperienceMenu()
+local deadline = os.clock() + 20
+while not Menu and os.clock() < deadline do
+    task.wait(0.1)
+    Menu = findExperienceMenu()
+end
+
+if not Menu then
+    warn("[ProfileStatus] ExperienceSettings.Menu not found in CoreGui or either TopBar path (20s timeout).")
+    return
+end
+
+print("[ProfileStatus] Menu found:", Menu:GetFullName())
 
 -- =====>> Instance <<=====
 local pro = Instance.new("Frame")
