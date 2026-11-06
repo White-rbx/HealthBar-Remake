@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.974
+-- So uhm just a script lol. 6.975
 
 -- Loadstring (optional colorful labels; never block the main UI)
 task.spawn(function()
