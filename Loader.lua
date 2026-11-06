@@ -1,4 +1,4 @@
--- Well 4.14
+-- Well 4.15
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -232,8 +232,23 @@ task.delay(0.5,function()
 	end
 end)
 
--- Loader
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"))()
+-- LoaderSettings is a separate configuration UI (not ExperienceSettings).
+-- Its startup must not suspend the main UI bootstrap if it yields on an avatar/UI.
+task.spawn(function()
+    print("[ES][Bootstrap] Starting LoaderSettings in parallel...")
+    local ok, err = pcall(function()
+        local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"
+        local source = game:HttpGet(url)
+        local chunk, compileError = loadstring(source)
+        if not chunk then error("LoaderSettings compile: " .. tostring(compileError)) end
+        chunk()
+    end)
+    if not ok then
+        warn("[ES][Bootstrap] LoaderSettings failed independently: " .. tostring(err))
+    else
+        print("[ES][Bootstrap] LoaderSettings loaded.")
+    end
+end)
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
@@ -359,8 +374,47 @@ task.spawn(function()
 end)
 -- ==============
 
--- Locate the ExperienceSettings UI in either HealthBar or CoreGui.
--- Do not treat a missing UI folder as a missing HealthBar.
+-- A separate entrypoint normally launches main/ExperienceSettings.lua.
+-- If that entrypoint was skipped, failed or returned before creating the UI,
+-- start it here *once*. Note: upload the PATCHED ExperienceSettings.lua to
+-- the main branch too; main/loadstring.lua uses that path.
+local UI_SOURCE_URL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/main/ExperienceSettings.lua"
+task.spawn(function()
+    task.wait(3) -- Give the normal entrypoint a chance to create the UI.
+    if findExperienceSettings() then
+        print("[ES][Bootstrap] UI already exists; no duplicate startup.")
+        return
+    end
+    local env = getgenv()
+    if env.__ES_UI_BOOTSTRAP_RUNNING or env.__ES_UI_SCRIPT_RUNNING then
+        print("[ES][Bootstrap] UI script already in progress; monitoring it.")
+        return
+    end
+
+    env.__ES_UI_BOOTSTRAP_RUNNING = true
+    local ok, err = pcall(function()
+        print("[ES][Bootstrap] No UI after 3s; fetching ExperienceSettings.lua...")
+        local source = game:HttpGet(UI_SOURCE_URL)
+        print("[ES][Bootstrap] UI source downloaded; compiling...")
+        local chunk, compileError = loadstring(source)
+        if not chunk then
+            error("ExperienceSettings.lua compile error: " .. tostring(compileError))
+        end
+        print("[ES][Bootstrap] Executing ExperienceSettings.lua...")
+        chunk()
+    end)
+    env.__ES_UI_BOOTSTRAP_RUNNING = nil
+    if not ok then
+        warn("[ES][Bootstrap] UI script failed: " .. tostring(err))
+    elseif findExperienceSettings() then
+        print("[ES][Bootstrap] ExperienceSettings UI created.")
+    else
+        warn("[ES][Bootstrap] ExperienceSettings.lua returned without creating UI. Make sure main/ExperienceSettings.lua is the updated dual-path file.")
+    end
+end)
+
+-- Locate ExperienceSettings under either HealthBar or CoreGui.
+-- Unlike a path warning, this also reports whether the bootstrap began.
 local expsting
 local uiDeadline = os.clock() + 45
 repeat
@@ -372,7 +426,7 @@ until os.clock() >= uiDeadline
 if not expsting then
     local newBar, oldBar = getHealthBars()
     if newBar or oldBar then
-        warn("[ExperienceSettings] HealthBar found, but ExperienceSettings UI was not created within 45s. Check whether ExperienceSettings.lua ran successfully.")
+        warn("[ExperienceSettings] HealthBar found, but no UI after 45s. Check [ES][Bootstrap] logs and verify main/ExperienceSettings.lua is updated.")
     else
         warn("[ExperienceSettings] HealthBar not found at either TopBar path within 45s (new: TopBarFrame.TopRightFrame.HealthBar; old: UnibarLeftFrame.HealthBar).")
     end
