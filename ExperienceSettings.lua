@@ -1,7 +1,26 @@
--- Ok 4.970
--- TweenHealth
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua"))()
-print("[ TweenHealth ] Successful loaded.")
+-- Ok 4.971
+-- TweenHealth preloads image frames: run separately so its PreloadAsync
+-- cannot delay the ExperienceSettings UI creation.
+local bootstrapEnv = getgenv()
+if bootstrapEnv.__ES_UI_SCRIPT_RUNNING then
+    print("[ExperienceSettings] UI creation is already running; duplicate skipped.")
+    return
+end
+bootstrapEnv.__ES_UI_SCRIPT_RUNNING = true
+
+task.spawn(function()
+    local ok, err = pcall(function()
+        local source = game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/TweenHealth.lua")
+        local chunk, compileError = loadstring(source)
+        if not chunk then error(tostring(compileError)) end
+        chunk()
+    end)
+    if ok then
+        print("[ TweenHealth ] Successful loaded.")
+    else
+        warn("[ExperienceSettings] TweenHealth failed (UI continues): " .. tostring(err))
+    end
+end)
 -- More loadstring coming soon... Awoo :3 oh shit I'm a furry.
 
 -- ========= HEALTHBAR AND SOUNDS ===========
@@ -561,14 +580,25 @@ if not healthBar then
     until healthBar or os.clock() >= deadline
 end
 if not healthBar then
+    bootstrapEnv.__ES_UI_SCRIPT_RUNNING = nil
     warn("[ExperienceSettings] Cannot create UI: HealthBar unavailable after 30s in both supported TopBar layouts.")
     return
 end
 
 -- ======= Build UI =======
+local existingUI = CoreGui:FindFirstChild("ExperienceSettings")
+    or healthBar:FindFirstChild("ExperienceSettings")
+if existingUI then
+    bootstrapEnv.__ES_UI_SCRIPT_RUNNING = nil
+    print("[ExperienceSettings] Existing UI detected; duplicate skipped.")
+    return
+end
+
 local expSettings = Instance.new("Folder")
 expSettings.Name = "ExperienceSettings"
 expSettings.Parent = healthBar
+bootstrapEnv.__ES_UI_SCRIPT_RUNNING = nil -- Instance now exists for other loaders.
+print("[ExperienceSettings] UI root created at: " .. expSettings:GetFullName())
 
 local menuGui = Instance.new("ScreenGui")
 menuGui.Name = "Menu"
@@ -833,9 +863,12 @@ hr.Size = UDim2.new(0, 300, 1, 0)
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
-local gui_aV2 = getHealthBarRoot()
-    :WaitForChild("ValueFolder")
-    :WaitForChild("ValueGui")
+-- Ensure the value UI exists even before RenderStepped has a Humanoid/HRP.
+-- Waiting without a timeout here used to block the loading bar progression.
+setupValueGui()
+local valueBar = getHealthBarRoot()
+local valueFolder = valueBar and valueBar:FindFirstChild("ValueFolder")
+local gui_aV2 = valueFolder and valueFolder:FindFirstChild("ValueGui")
 
 local CHECK_INTERVAL = 0.05
 local TIMEOUT = 3
@@ -1877,7 +1910,9 @@ lder.Size = UDim2.new(0.65,0,1,0)
 -- ===== END ESP implementation =====
 
 -- ===== เข้าถึง DamageOverlay โดยตรงใน CoreGui =====
-local DamageOverlay = game:GetService("CoreGui"):WaitForChild("DamageOverlay")
+-- TweenHealth initializes DamageOverlay asynchronously. This toggle is optional:
+-- a missing overlay must not hold the rest of the UI loading sequence forever.
+local DamageOverlay = CoreGui:FindFirstChild("DamageOverlay")
 
 -- ใช้ฟังก์ชัน createToggle ที่คุณมีอยู่แล้ว
 createToggle(BFrame, "DO",  "Damage Overlay <stroke color='rgb(255,255,255)' thickness='1'><font color='#ff5555'><b>⚠ READ DESCRIPTION BY PRESSING HERE ⚠</b></font></stroke>", [[<b><u>Damage Overlay</u></b>
@@ -1895,7 +1930,8 @@ This effect may contain:
 If you experience dizziness, eye strain, or discomfort,
 please turn this feature <b>OFF</b> immediately.
 </font></stroke>]], function(state)
-	DamageOverlay.Enabled = state
+    DamageOverlay = CoreGui:FindFirstChild("DamageOverlay") or DamageOverlay
+    if DamageOverlay then DamageOverlay.Enabled = state end
 end, false, -330) -- true = เปิดเริ่มต้น
 
 -- ===== END DAMAGEOVERLAY =====
