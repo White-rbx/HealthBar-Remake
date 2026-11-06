@@ -1,6 +1,6 @@
 --[[
     ArcsenCommand-Module.lua
-    Version: 0.6.4
+    Version: 0.6.7
 
     Purpose:
       - Command core only; creates no UI.
@@ -25,30 +25,21 @@ end
 -- Clean up a previous copy, if this file is executed again.
 local previous = sharedEnvironment.ArcsenCommand
 if type(previous) == "table" and type(previous.destroy) == "function" then
-    pcall(previous.destroy)
+    pcall(previous.d1estroy)
 end
 
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 local MarketplaceService = game:GetService("MarketplaceService")
-local HttpService = game:GetService("HttpService")
 
 local module = {
-    version = "0.6.4",
+    version = "0.6.7",
     APIVersion = 1,
     commands = {},
     _output = nil,
     _onCommandsChanged = nil,
     _onHereChatChanged = nil,
     _hereChatEnabled = false,
-    _openChatEnabled = false,
-    _openChatCycle = 0,
-    _openChatLastID = 0,
-    _openChatSessionID = HttpService:GenerateGUID(false):gsub("-", ""),
-    _reportedOpenChatMessages = {},
-    _onOpenChatChanged = nil,
-    _openChatPollInterval = 6,
-    _openChatLimit = 125,
     _connections = {},
     _lastMessageKey = nil,
     _lastMessageAt = 0,
@@ -130,280 +121,8 @@ local function notifyHereChatChanged(enabled)
     end
 end
 
--- OpenChat is a read-only public feed of developer-approved announcements.
--- Do not use external HTTP to exchange player-to-player messages; Roblox
--- requires TextChatService for player chat and its permission/filter rules.
-function module.setOnOpenChatChanged(callback)
-    if callback ~= nil and type(callback) ~= "function" then
-        return false, "OpenChat callback must be a function or nil."
-    end
-    module._onOpenChatChanged = callback
-    return true
-end
-
-local function notifyOpenChatChanged(enabled)
-    if type(module._onOpenChatChanged) == "function" then
-        pcall(module._onOpenChatChanged, enabled == true)
-    end
-end
-
 local getSenderColor
-
-local function openChatURL()
-    -- Official ArcScriptCenter API is the default; localhost was a prototype.
-    local base = tostring(sharedEnvironment.ArcsenOpenChatURL
-        or "https://arcscriptcenter-api.kogpasan14.workers.dev")
-    base = base:gsub("/+$", "")
-    if not (base:match("^https://[%w%.%-]+$")
-        or base:match("^https://[%w%.%-]+:%d+$")) then
-        return nil, "OpenChat requires an HTTPS API base URL."
-    end
-    return base .. "/api/v1/openchat/messages"
-end
-
-local function openChatHTTP(method, after)
-    if method ~= "GET" then
-        return nil, "Cloud OpenChat is read-only. Use Roblox TextChatService for player chat."
-    end
-    local url, reason = openChatURL()
-    if not url then return nil, reason end
-    url = url .. "?after=" .. tostring(math.max(0, math.floor(tonumber(after) or 0)))
-
-    local function decode(body)
-        local ok, result = pcall(HttpService.JSONDecode, HttpService, tostring(body or ""))
-        if not ok or type(result) ~= "table" then
-            return nil, "Invalid JSON from ArcScriptCenter API."
-        end
-        if result.ok ~= true or type(result.messages) ~= "table" then
-            return nil, tostring(result.error or "OpenChat API did not return messages.")
-        end
-        if result.mode ~= "admin_announcements" then
-            return nil, "Unexpected OpenChat API mode."
-        end
-        return result
-    end
-
-    local function safeHttpGet()
-        -- Some supported hosts expose game:HttpGet but not request() StatusCode.
-        local success, body = pcall(function() return game:HttpGet(url) end)
-        if not success then return nil, tostring(body) end
-        return decode(body)
-    end
-
-    local requestFn = type(request) == "function" and request
-        or type(http_request) == "function" and http_request
-        or (type(syn) == "table" and type(syn.request) == "function" and syn.request)
-        or (type(http) == "table" and type(http.request) == "function" and http.request)
-        or (type(sharedEnvironment.request) == "function" and sharedEnvironment.request)
-    if type(requestFn) ~= "function" then return safeHttpGet() end
-
-    local ok, reply = pcall(requestFn, {
-        Url = url, Method = "GET",
-        Headers = {["Accept"] = "application/json"}
-    })
-    if not ok or type(reply) ~= "table" then
-        local data, fallbackError = safeHttpGet()
-        if data then return data end
-        return nil, "OpenChat request failed: " .. tostring(ok and "unexpected response" or reply)
-            .. "; HttpGet: " .. tostring(fallbackError)
-    end
-
-    local code = tonumber(reply.StatusCode or reply.Status or 0) or 0
-    if code == 0 then
-        local data, fallbackError = safeHttpGet()
-        if data then return data end
-        return nil, "OpenChat HTTP 0 (transport/network error). HttpGet: " .. tostring(fallbackError)
-    end
-    if code < 200 or code >= 300 then
-        local valid, data = pcall(HttpService.JSONDecode, HttpService, tostring(reply.Body or ""))
-        return nil, "OpenChat HTTP " .. tostring(code) .. ": "
-            .. tostring(valid and type(data) == "table" and data.error or "Request rejected")
-    end
-    return decode(reply.Body)
-end
-
-local function deliverOpenChat(messages)
-    if type(messages) ~= "table" then return end
-    local received = {}
-    for _, item in ipairs(messages) do
-        if type(item) == "table" then
-            local id = math.floor(tonumber(item.id) or 0)
-            local body = tostring(item.text or "")
-            if id > module._openChatLastID and body ~= "" then
-                module._openChatLastID = id
-                local username = tostring(item.username or "Unknown")
-                local localPlayer = Players.LocalPlayer
-                local isMine = localPlayer ~= nil and username == localPlayer.Name
-                local red, green, blue = getSenderColor(username)
-                table.insert(received, {
-                    body = body, id = id, username = username,
-                    displayName = tostring(item.displayName or username),
-                    timestamp = (function()
-                        local numeric = tonumber(item.timestamp)
-                        if numeric then return numeric end
-                        if type(item.timestamp) == "string" then
-                            local iso = item.timestamp:gsub(" ", "T")
-                            if iso:match("^%d%d%d%d%-%d%d%-%d%dT") and not iso:match("Z$") then
-                                iso = iso .. "Z"
-                            end
-                            local ok, dt = pcall(DateTime.fromIsoDate, iso)
-                            if ok and dt then return dt.UnixTimestamp end
-                        end
-                        return os.time()
-                    end)(),
-                    direction = isMine and "Right" or "Left",
-                    r = red, g = green, b = blue,
-                })
-            end
-        end
-    end
-    for index, entry in ipairs(received) do
-        emit(entry.body, "chat", {
-                    source = "OpenChat", origin = "Global",
-                    batchIndex = index, batchTotal = #received,
-                    direction = entry.direction,
-                    username = entry.username,
-                    displayName = entry.displayName,
-                    messageId = entry.id,
-                    timestamp = entry.timestamp,
-                    experienceName = "OpenChat • Global",
-                    r = entry.r, g = entry.g, b = entry.b,
-                    copyable = true,
-                })
-    end
-end
-
-function module.setOpenChat(enabled)
-    if module._destroyed then return false, "ArcsenCommand has been destroyed." end
-    enabled = enabled == true
-    if module._openChatEnabled == enabled then
-        local message = "OpenChat already " .. (enabled and "ON" or "OFF")
-        emit(message, "info", {source="ArcsenCommand", isSystem=true})
-        return true, message
-    end
-    if not enabled then
-        module._openChatEnabled = false
-        module._openChatCycle = module._openChatCycle + 1
-        notifyOpenChatChanged(false)
-        emit("OpenChat: OFF", "success", {source="ArcsenCommand", isSystem=true})
-        return true, "OpenChat OFF"
-    end
-    -- Confirm the API is reachable before enabling or creating a tab.
-    local data, err = openChatHTTP("GET", module._openChatLastID)
-    if not data then return false, err end
-    module._openChatEnabled = true
-    module._openChatCycle = module._openChatCycle + 1
-    local cycle = module._openChatCycle
-    notifyOpenChatChanged(true)
-    deliverOpenChat(data.messages)
-    emit("OpenChat: ON (read-only Cloud Feed; max " .. tostring(module._openChatLimit) .. " announcements)",
-        "success", {source="ArcsenCommand", isSystem=true})
-    task.spawn(function()
-        while module._openChatEnabled and not module._destroyed and cycle == module._openChatCycle do
-            task.wait(module._openChatPollInterval)
-            if not module._openChatEnabled or module._destroyed or cycle ~= module._openChatCycle then break end
-            local response = openChatHTTP("GET", module._openChatLastID)
-            if module._openChatEnabled and not module._destroyed and cycle == module._openChatCycle and response then
-                deliverOpenChat(response.messages)
-            end
-        end
-    end)
-    return true, "OpenChat ON"
-end
-
-function module.isOpenChatEnabled()
-    return module._openChatEnabled == true
-end
-
-function module.sendOpenChat(rawText)
-    return false, "OpenChat Cloud Feed is read-only. Player chat must use Roblox TextChatService (try HereChat in a supported experience)."
-end
-
--- Moderation-only endpoint: a report is not a chat message.
--- Anonymous reporter ID is random per ArcsenCommand session; user names are
--- neither requested nor transmitted by this function.
-function module.reportOpenChat(messageId, reason, details)
-    if module._destroyed then return false, "ArcsenCommand has been destroyed." end
-    messageId = tonumber(messageId)
-    if not messageId or messageId < 1 or messageId % 1 ~= 0 then
-        return false, "Invalid message ID."
-    end
-    if module._reportedOpenChatMessages[messageId] then
-        return true, "You already reported this message in this session."
-    end
-    local accepted = {harassment=true, spam=true, abuse=true, other=true}
-    if accepted[tostring(reason)] ~= true then return false, "Invalid report reason." end
-    details = tostring(details or ""):sub(1, 240)
-    local url, err = openChatURL()
-    if not url then return false, err end
-    url = url:gsub("/messages$", "/reports")
-    local req = type(request) == "function" and request
-        or type(http_request) == "function" and http_request
-        or (type(syn) == "table" and type(syn.request) == "function" and syn.request)
-        or (type(http) == "table" and type(http.request) == "function" and http.request)
-        or (type(sharedEnvironment.request) == "function" and sharedEnvironment.request)
-    if type(req) ~= "function" then return false, "This environment cannot send report requests." end
-    local body = HttpService:JSONEncode({
-        messageId = messageId,
-        reason = reason,
-        details = details,
-        reporterToken = module._openChatSessionID
-    })
-    local ok, response = pcall(req, {
-        Url = url, Method = "POST",
-        Headers = { ["Content-Type"] = "application/json", ["Accept"] = "application/json" },
-        Body = body
-    })
-    if not ok or type(response) ~= "table" then
-        return false, "Report network request failed."
-    end
-    local code = tonumber(response.StatusCode or response.Status or 0) or 0
-    local decodedOK, data = pcall(HttpService.JSONDecode, HttpService, tostring(response.Body or ""))
-    if code >= 200 and code < 300 and decodedOK and type(data)=="table" and data.ok then
-        module._reportedOpenChatMessages[messageId] = true
-        return true, data.duplicate == true and "Report already recorded" or "Report accepted"
-    end
-    return false, decodedOK and type(data)=="table" and tostring(data.error or "Report rejected")
-        or ("Report HTTP " .. tostring(code))
-end
-
-function module.wasOpenChatReported(messageId)
-    return module._reportedOpenChatMessages[tonumber(messageId)] == true
-end
-
--- Check ONLY this anonymous session's reports. The random session token is
--- never placed in a URL, user-visible history, or sent to another player.
-function module.getOpenChatReports()
-    if module._destroyed then return nil, "ArcsenCommand has been destroyed." end
-    local url, err = openChatURL()
-    if not url then return nil, err end
-    url = url:gsub("/messages$", "/reports/status")
-    local req = type(request) == "function" and request
-        or type(http_request) == "function" and http_request
-        or (type(syn) == "table" and type(syn.request) == "function" and syn.request)
-        or (type(http) == "table" and type(http.request) == "function" and http.request)
-        or (type(sharedEnvironment.request) == "function" and sharedEnvironment.request)
-    if type(req) ~= "function" then return nil, "This environment cannot check report status." end
-    local body = HttpService:JSONEncode({reporterToken = module._openChatSessionID})
-    local ok, reply = pcall(req, {
-        Url = url, Method = "POST",
-        Headers = { ["Content-Type"] = "application/json", ["Accept"] = "application/json" },
-        Body = body
-    })
-    if not ok or type(reply) ~= "table" then return nil, "Report status request failed." end
-    local code = tonumber(reply.StatusCode or reply.Status or 0) or 0
-    local decoded, data = pcall(HttpService.JSONDecode, HttpService, tostring(reply.Body or ""))
-    if code < 200 or code >= 300 or not decoded or type(data) ~= "table" or data.ok ~= true
-        or type(data.reports) ~= "table" then
-        return nil, decoded and type(data) == "table" and tostring(data.error or "Request rejected")
-            or ("Report status HTTP " .. tostring(code))
-    end
-    for _, item in ipairs(data.reports) do
-        local id = tonumber(item.messageId)
-        if id and id >= 1 then module._reportedOpenChatMessages[id] = true end
-    end
-    return data.reports
-end
+local connectNewChat, finishTemporaryChatHooks
 
 local function notifyCommandsChanged()
     if type(module._onCommandsChanged) == "function" then
@@ -480,7 +199,7 @@ local function hasPendingOutgoing()
     return #module._pendingOutgoing > 0
 end
 
-local function finishTemporaryChatHooks()
+finishTemporaryChatHooks = function()
     if not module._hereChatEnabled and not hasPendingOutgoing() then
         disconnectHereChat()
     end
@@ -517,11 +236,11 @@ local function claimOutgoingEcho(username, text, player)
     for index, pending in ipairs(module._pendingOutgoing) do
         if tostring(pending.text or "") == tostring(text or "") then
             table.remove(module._pendingOutgoing, index)
-            return true
+            return true, pending.source
         end
     end
-    table.remove(module._pendingOutgoing, 1)
-    return true
+    local first = table.remove(module._pendingOutgoing, 1)
+    return true, first and first.source
 end
 
 local function showIncomingMessage(username, text, player)
@@ -539,7 +258,7 @@ local function showIncomingMessage(username, text, player)
         player = Players.LocalPlayer
     end
 
-    local sentFromArcsen = claimOutgoingEcho(username, text, player)
+    local sentFromArcsen, pendingSource = claimOutgoingEcho(username, text, player)
     -- HereChat OFF suppresses ordinary incoming messages, but a pending message sent
     -- through Arcsen must still be able to return through Roblox's filtered chat event.
     if not module._hereChatEnabled and not sentFromArcsen then
@@ -575,32 +294,28 @@ local function showIncomingMessage(username, text, player)
         end
     end
 
-    -- Arcsen owns the header layout. Send structured sender metadata and keep
-    -- the message body as plain text; never add AI-Thinking-style [tags].
-    emit(plainText(text), "chat", {
-        source = "HereChat",
-        origin = sentFromArcsen and "Arcsen" or "Roblox",
-        direction = sentFromArcsen and "Right" or "Left",
+    -- Roblox has already filtered/delivered this message to the local client.
+    -- Mirror ONLY that delivered message into any enabled Arcsen tabs.
+    local metadata = {
+        origin = "Roblox", direction = sentFromArcsen and "Right" or "Left",
         username = player and player.Name or username,
         displayName = player and player.DisplayName or username,
-        userId = userId,
-        teamName = teamName,
+        userId = userId, teamName = teamName,
         experienceName = tostring(module._experienceName or ("Place " .. tostring(module._placeId))),
-        placeId = module._placeId,
-        universeId = module._universeId,
-        teamR = teamRed,
-        teamG = teamGreen,
-        teamB = teamBlue,
-        r = red,
-        g = green,
-        b = blue,
-        isSystem = false,
-        copyable = true,
-    })
+        placeId = module._placeId, universeId = module._universeId,
+        teamR = teamRed, teamG = teamGreen, teamB = teamBlue,
+        r = red, g = green, b = blue,
+        isSystem = false, copyable = true,
+    }
+    if module._hereChatEnabled or (sentFromArcsen and pendingSource == "HereChat") then
+        metadata.source = "HereChat"
+        emit(plainText(text), "chat", metadata)
+    end
     finishTemporaryChatHooks()
+
 end
 
-local function connectNewChat()
+connectNewChat = function()
     local ok, connection = pcall(function()
         return TextChatService.MessageReceived:Connect(function(message)
             if module._destroyed then
@@ -642,7 +357,7 @@ function module.setHereChat(enabled)
     if enabled then
         disconnectHereChat()
         connectNewChat()
-        -- Legacy chat bridge intentionally disabled: use TextChatService only.
+        -- Native Roblox delivery handles chat permissions and filtering.
         emit("HereChat: ON", "success", {source = "ArcsenCommand", isSystem = true})
         notifyHereChatChanged(true)
     else
@@ -660,7 +375,7 @@ function module.isHereChatEnabled()
     return module._hereChatEnabled == true
 end
 
-function module.sendMessage(rawText)
+function module.sendMessage(rawText, sourceTab)
     if module._destroyed then
         return false, "ArcsenCommand has been destroyed."
     end
@@ -677,7 +392,7 @@ function module.sendMessage(rawText)
 
     -- Register before sending so the server-filtered echo can be recognized as an
     -- Arcsen-originated message and displayed on the right exactly once.
-    local pending = {text = text, at = os.clock()}
+    local pending = {text = text, at = os.clock(), source = "HereChat"}
     table.insert(module._pendingOutgoing, pending)
     if #module._connections == 0 then
         connectNewChat()
@@ -764,42 +479,7 @@ module.registerCommand("herechat", function(arguments)
     return true, usage
 end, "Toggle incoming chat display: /HereChat ON, OFF, or STATUS")
 
-module.registerCommand("openchat", function(arguments)
-    local option = tostring(arguments or ""):lower():match("^%s*(%S*)") or ""
-    if option == "on" or option == "off" then
-        local ok, message = module.setOpenChat(option == "on")
-        if not ok then emit(message, "error", {source="ArcsenCommand", isSystem=true}) end
-        return true, message
-    elseif option == "status" then
-        local message = "OpenChat: " .. (module.isOpenChatEnabled() and "ON" or "OFF")
-            .. " (read-only announcements, max 125, refresh every 6s)"
-        emit(message, "info", {source="ArcsenCommand", isSystem=true})
-        return true, message
-    elseif option == "reports" then
-        local reports, err = module.getOpenChatReports()
-        if not reports then
-            emit(err or "Could not load reports.", "error", {source="ArcsenCommand", isSystem=true})
-            return true, err
-        end
-        local rows = {"OpenChat reports for this anonymous session:"}
-        if #reports == 0 then
-            table.insert(rows, "No reports in this session.")
-        else
-            for index, item in ipairs(reports) do
-                if index > 10 then break end
-                table.insert(rows, "#" .. tostring(item.messageId or "?")
-                    .. " • " .. tostring(item.reason or "other")
-                    .. " • " .. tostring(item.status or "pending"))
-            end
-        end
-        local message = table.concat(rows, "\n")
-        emit(message, "info", {source="ArcsenCommand", isSystem=true})
-        return true, message
-    end
-    local usage = "Usage: /OpenChat ON | OFF | STATUS | REPORTS"
-    emit(usage, "warning", {source="ArcsenCommand", isSystem=true})
-    return true, usage
-end, "Read approved global announcements and check anonymous report results: ON, OFF, STATUS or REPORTS")
+-- Moderator reports remain available through the message report button.
 
 module.registerCommand("help", function()
     local names = {}
@@ -852,9 +532,7 @@ function module.destroy()
 
     module._destroyed = true
     module._hereChatEnabled = false
-    module._openChatEnabled = false
-    module._openChatCycle = module._openChatCycle + 1
-    table.clear(module._pendingOutgoing)
+        table.clear(module._pendingOutgoing)
     disconnectHereChat()
     if sharedEnvironment.ArcsenCommand == module then
         sharedEnvironment.ArcsenCommand = nil
