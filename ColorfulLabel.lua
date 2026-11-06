@@ -1,4 +1,4 @@
--- Value 2.31
+-- Value 2.32
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
@@ -41,10 +41,10 @@ CoreGui.DescendantAdded:Connect(function(obj)
 	if obj:IsA("TextLabel") then
 		if obj.Name == "FPSLabel" then
 			fpsLabel = obj
-			fpsStroke = obj:WaitForChild("UIStroke")
+			fpsStroke = obj:FindFirstChildOfClass("UIStroke")
 		elseif obj.Name == "PingLabel" then
 			pingLabel = obj
-			pingStroke = obj:WaitForChild("UIStroke")
+			pingStroke = obj:FindFirstChildOfClass("UIStroke")
 		end
 	end
 end)
