@@ -1,4 +1,4 @@
--- Loader script 7.46
+-- Loader script 7.47
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -440,8 +440,9 @@ local DEFAULT_DATA = {
 
     UI = {
         BackgroundRGB = { 18, 18, 21 },
-        HealthBarPosition = { 0.923, -12, 0, 5 }, -- UDim2: XScale, XOffset, YScale, YOffset
-        HealthBarWidthOffset = 250, -- X Offset only, shared by HB and HB.HB
+        HealthBarPosition = { 0.923, -12, 0, 5 }, -- Old: outer HB.Position
+        HealthBarTopRightFramePosition = { 0.915, 0, 0, 30 }, -- New: TopRightFrame.Position
+        HealthBarWidthOffset = 250, -- Old: both HB layers; New: outer HB only
         BackgroundRGBCustom = false,
         Theme = "Default",
         ThemeImage = "",
@@ -2040,8 +2041,9 @@ task.spawn(function()
 end)
 
 --// =====================================================
---// HEALTHBAR POSITION / SIZE / VISIBILITY (LOADER 7.46)
---// Uses the same preferred HealthBar paths as Loader (main).
+--// HEALTHBAR POSITION / SIZE / VISIBILITY (LOADER 7.47)
+--// Old: position on HB, size on HB and HB.HB
+--// New: position on TopRightFrame, size X.Offset on outer HB only
 --// Only one active bar is targeted; do not force both rollout bars visible.
 --// =====================================================
 
@@ -2077,6 +2079,8 @@ end
 -- Save/restore HealthBar layout independently from the existing load gate.
 Data.UI.HealthBarPosition = loc.parseHealthBarPosition(Data.UI.HealthBarPosition)
     or { 0.923, -12, 0, 5 }
+Data.UI.HealthBarTopRightFramePosition = loc.parseHealthBarPosition(Data.UI.HealthBarTopRightFramePosition)
+    or { 0.915, 0, 0, 30 }
 
 loc.parseHealthBarWidth = function(raw)
     local number = tonumber(raw)
@@ -2102,6 +2106,8 @@ loc.HealthBarWatcher = {
     inner = nil,
     bar = nil,
     alternate = nil,
+    kind = nil, -- "Old" or "New"
+    frame = nil, -- TopRightFrame for New HealthBar only
     coreSignals = {},
     appSignals = {},
     propertySignals = {}
@@ -2127,9 +2133,10 @@ loc.findHealthBarInner = function(bar)
     return nil
 end
 
+-- Find only the exact old/new paths. Always match the direct HealthBar child.
 loc.findHealthBar = function(outer)
     local app = outer and outer:FindFirstChild("TopBarApp")
-    if not app then return nil, nil, nil end
+    if not app then return nil, nil, nil, nil, nil end
     local topBarFrame = app:FindFirstChild("TopBarFrame")
     local topRightFrame = topBarFrame and topBarFrame:FindFirstChild("TopRightFrame")
     local leftFrame = app:FindFirstChild("UnibarLeftFrame")
@@ -2137,34 +2144,52 @@ loc.findHealthBar = function(outer)
     local oldBar = leftFrame and leftFrame:FindFirstChild("HealthBar")
     if newBar and not newBar:IsA("GuiObject") then newBar = nil end
     if oldBar and not oldBar:IsA("GuiObject") then oldBar = nil end
+    if topRightFrame and not topRightFrame:IsA("GuiObject") then topRightFrame = nil end
 
     local newInner = loc.findHealthBarInner(newBar)
     local oldInner = loc.findHealthBarInner(oldBar)
     local chosen, inner
-    -- Prioritize the visible old/new bar with its direct child HealthBar.
-    if newBar and newBar.Visible and newInner then
+    -- Visible bars take priority even if their inner child has not appeared yet.
+    if newBar and newBar.Visible then
         chosen, inner = newBar, newInner
-    elseif oldBar and oldBar.Visible and oldInner then
-        chosen, inner = oldBar, oldInner
-    elseif newInner then
-        chosen, inner = newBar, newInner
-    elseif oldInner then
-        chosen, inner = oldBar, oldInner
-    elseif newBar and newBar.Visible then
-        chosen = newBar
     elseif oldBar and oldBar.Visible then
-        chosen = oldBar
-    else
-        chosen = newBar or oldBar
+        chosen, inner = oldBar, oldInner
+    elseif newBar then
+        chosen, inner = newBar, newInner
+    elseif oldBar then
+        chosen, inner = oldBar, oldInner
     end
-    -- Listen for the other bar becoming active without forcing it visible.
-    local alternate
-    if chosen == newBar then
-        alternate = oldBar
-    else
-        alternate = newBar
+    local kind, alternate, frame
+    if chosen then
+        if chosen == newBar then
+            kind, alternate, frame = "New", oldBar, topRightFrame
+        else
+            kind, alternate = "Old", newBar
+        end
     end
-    return chosen, inner, alternate
+    return chosen, inner, alternate, kind, frame
+end
+
+-- Same Set HealthBar Position control, but different target by Roblox UI family.
+loc.getHealthBarPositionKind = function()
+    local watcher = loc.HealthBarWatcher
+    if watcher.kind == "New" or watcher.kind == "Old" then return watcher.kind end
+    -- Also works while Debug Stop is enabled (when all event listeners are disconnected).
+    local _, _, _, kind = loc.findHealthBar(s.CoreGui:FindFirstChild("TopBarApp"))
+    return kind or "Old"
+end
+
+loc.getHealthBarPositionValues = function()
+    return loc.getHealthBarPositionKind() == "New"
+        and Data.UI.HealthBarTopRightFramePosition
+        or Data.UI.HealthBarPosition
+end
+
+loc.updateHealthBarPositionPlaceholder = function()
+    local ui = loc.HealthBarPositionUI
+    if ui and ui.Input then
+        ui.Input.PlaceholderText = loc.formatHealthBarPosition(loc.getHealthBarPositionValues())
+    end
 end
 
 loc.applyHealthBarLayout = function()
@@ -2172,21 +2197,46 @@ loc.applyHealthBarLayout = function()
     local hb = watcher and watcher.bar
     if not watcher.active or watcher.paused or not hb or not hb.Parent then return end
 
-    local p = Data.UI.HealthBarPosition
-    local targetPosition = UDim2.new(p[1], p[2], p[3], p[4])
     local width = Data.UI.HealthBarWidthOffset
-    local targetSize = UDim2.new(0, width, 1, 0)
-    if hb.Visible ~= true then hb.Visible = true end
-    if hb.Position ~= targetPosition then hb.Position = targetPosition end
-    if hb.Size ~= targetSize then hb.Size = targetSize end
-
     local inner = watcher.inner
-    if inner and inner:IsA("GuiObject") and inner.Parent == hb and inner.Name == "HealthBar" then
-        local innerPosition = UDim2.new(0, 0, 0.5, 0)
-        local innerSize = UDim2.new(0, width, 0, 20)
-        if inner.Visible ~= true then inner.Visible = true end
-        if inner.Position ~= innerPosition then inner.Position = innerPosition end
-        if inner.Size ~= innerSize then inner.Size = innerSize end
+    if watcher.kind == "New" then
+        -- New CoreGui: the position belongs to TopRightFrame, NOT HB.
+        local trf = watcher.frame
+        if trf and trf.Parent then
+            local p = Data.UI.HealthBarTopRightFramePosition
+            local framePosition = UDim2.new(p[1], p[2], p[3], p[4])
+            local frameSize = UDim2.new(0, 0, 0, 44)
+            if trf.Position ~= framePosition then trf.Position = framePosition end
+            if trf.Size ~= frameSize then trf.Size = frameSize end
+        end
+        if hb.Visible ~= true then hb.Visible = true end
+        local hbPosition = UDim2.new(0, 0, 0, 0)
+        local hbSize = UDim2.new(0, width, 0, 16)
+        if hb.Position ~= hbPosition then hb.Position = hbPosition end
+        if hb.Size ~= hbSize then hb.Size = hbSize end
+        -- New HealthBar's direct child is a zero-sized visual/fill container.
+        -- Do not force its Visible property: only the outer HB must stay visible.
+        if inner and inner:IsA("GuiObject") and inner.Parent == hb then
+            local innerPosition = UDim2.new(0, 0, 0.5, 0)
+            local innerSize = UDim2.new(0, 0, 0, 0)
+            if inner.Position ~= innerPosition then inner.Position = innerPosition end
+            if inner.Size ~= innerSize then inner.Size = innerSize end
+        end
+    else
+        -- Old CoreGui: position belongs to HB, width applies to BOTH HB layers.
+        local p = Data.UI.HealthBarPosition
+        local hbPosition = UDim2.new(p[1], p[2], p[3], p[4])
+        local hbSize = UDim2.new(0, width, 1, 0)
+        if hb.Visible ~= true then hb.Visible = true end
+        if hb.Position ~= hbPosition then hb.Position = hbPosition end
+        if hb.Size ~= hbSize then hb.Size = hbSize end
+        if inner and inner:IsA("GuiObject") and inner.Parent == hb then
+            local innerPosition = UDim2.new(0, 0, 0.5, 0)
+            local innerSize = UDim2.new(0, width, 0, 20)
+            if inner.Visible ~= true then inner.Visible = true end
+            if inner.Position ~= innerPosition then inner.Position = innerPosition end
+            if inner.Size ~= innerSize then inner.Size = innerSize end
+        end
     end
 end
 
@@ -2231,14 +2281,24 @@ loc.refreshHealthBarMonitor = function()
         end
     end
 
-    local hb, inner, alternate = loc.findHealthBar(outer)
+    local hb, inner, alternate, kind, frame = loc.findHealthBar(outer)
 
-    if hb ~= watcher.bar or inner ~= watcher.inner or alternate ~= watcher.alternate then
+    if hb ~= watcher.bar or inner ~= watcher.inner or alternate ~= watcher.alternate
+        or kind ~= watcher.kind or frame ~= watcher.frame then
         -- Disconnect listeners from destroyed/replaced HealthBars.
         loc.disconnectHealthBarSignals(watcher.propertySignals)
         watcher.bar = hb
         watcher.inner = inner
         watcher.alternate = alternate
+        watcher.kind = kind
+        watcher.frame = frame
+        if frame then
+            -- TRF is the layout controller for the New HealthBar.
+            for _, property in ipairs({"Position", "Size"}) do
+                table.insert(watcher.propertySignals,
+                    frame:GetPropertyChangedSignal(property):Connect(loc.scheduleHealthBarRefresh))
+            end
+        end
         if alternate then
             table.insert(watcher.propertySignals,
                 alternate:GetPropertyChangedSignal("Visible"):Connect(loc.scheduleHealthBarRefresh))
@@ -2256,6 +2316,7 @@ loc.refreshHealthBarMonitor = function()
     end
 
     loc.applyHealthBarLayout()
+    loc.updateHealthBarPositionPlaceholder()
 end
 
 -- Toggleable Debug pause: disconnect HB listeners while ON; reconnect and
@@ -2274,6 +2335,7 @@ loc.setHealthBarChangerPaused = function(paused)
         loc.disconnectHealthBarSignals(watcher.propertySignals)
         loc.disconnectHealthBarSignals(watcher.appSignals)
         watcher.outer, watcher.bar, watcher.inner, watcher.alternate = nil, nil, nil, nil
+        watcher.kind, watcher.frame = nil, nil
     else
         -- Rebind the current HealthBar (which may have respawned while paused).
         loc.refreshHealthBarMonitor()
@@ -2288,6 +2350,7 @@ loc.stopHealthBarMonitor = function()
     loc.disconnectHealthBarSignals(watcher.appSignals)
     loc.disconnectHealthBarSignals(watcher.coreSignals)
     watcher.outer, watcher.bar, watcher.inner, watcher.alternate = nil, nil, nil, nil
+    watcher.kind, watcher.frame = nil, nil
 end
 
 loc.HealthBarPositionUI = loc.o(
@@ -2311,7 +2374,12 @@ loc.HealthBarPositionUI = loc.o(
             return
         end
 
-        Data.UI.HealthBarPosition = values
+        -- New UI: store TRF.Position; Old UI: store outer HB.Position.
+        if loc.getHealthBarPositionKind() == "New" then
+            Data.UI.HealthBarTopRightFramePosition = values
+        else
+            Data.UI.HealthBarPosition = values
+        end
         loc.saveData(Data)
         loc.refreshHealthBarMonitor() -- Apply immediately; property listeners enforce changes later.
         box.Text = ""
@@ -2328,7 +2396,7 @@ if loc.HealthBarPositionUI and loc.HealthBarPositionUI.Input then
     -- Saved value becomes the next default placeholder on restart.
     loc.HealthBarPositionUI.Input.Text = ""
     loc.HealthBarPositionUI.Input.PlaceholderText =
-        loc.formatHealthBarPosition(Data.UI.HealthBarPosition)
+        loc.formatHealthBarPosition(loc.getHealthBarPositionValues())
     -- A second line provides room for the complete UDim2 value on mobile.
     loc.HealthBarPositionUI.Frame.Size = UDim2.new(1, 0, 0, 60)
     loc.HealthBarPositionUI.Label.Size = UDim2.new(1, -8, 0, 27)
@@ -2338,8 +2406,8 @@ if loc.HealthBarPositionUI and loc.HealthBarPositionUI.Input then
     loc.HealthBarPositionUI.Button.Position = UDim2.new(1, -101, 0, 31)
 end
 
--- Width changer: one numeric X.Offset controls both HB and HB.HB.
--- X.Scale/Y.Scale/Y.Offset remain fixed to the requested layout.
+-- Width changer: Old affects both HB/HB.HB X.Offset; New affects outer HB only.
+-- X.Scale/Y.Scale/Y.Offset remain fixed for each distinct layout family.
 loc.HealthBarSizeUI = loc.o(
     "Set HealthBar Size",
     255, 255, 255,
@@ -7268,8 +7336,8 @@ print[[------------------------------------------------------------
   - Set UIScale = Set UIScale of ExperienceSettings
   - IsHealthOn: State = Always checking HealthBar is on or not
   - HealthBarToggle = ON/OFF HealthBar
-  - Set HealthBar Position = Set HealthBar UDim2 position; size and visibility are enforced
-  - Set HealthBar Size = Set X Offset (px) for both HB and HB.HB; defaults to 250
+  - Set HealthBar Position = Old: HB.Position; New: TopRightFrame.Position
+  - Set HealthBar Size = X Offset (px): Old both HB layers; New outer HB only; default 250
   - Stop HealthBar Changer Event = Debug toggle (OFF default); ON suspends HB layout enforcement
   - Console shortcut = The short way to open developer console on mobile
   - Kill Gui = Destroy this Settings - Loader Rejoiner
