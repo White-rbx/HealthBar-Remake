@@ -1,4 +1,4 @@
--- Loader script 7.41
+-- Loader script 7.44
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -440,6 +440,7 @@ local DEFAULT_DATA = {
 
     UI = {
         BackgroundRGB = { 18, 18, 21 },
+        HealthBarPosition = { 0.923, -12, 0, 5 }, -- UDim2: XScale, XOffset, YScale, YOffset
         BackgroundRGBCustom = false,
         Theme = "Default",
         ThemeImage = "",
@@ -2036,6 +2037,265 @@ task.spawn(function()
         task.wait(0.5)
     end
 end)
+
+--// =====================================================
+--// HEALTHBAR POSITION / SIZE / VISIBILITY (LOADER 7.44)
+--// Uses the same preferred HealthBar paths as Loader (main).
+--// Only one active bar is targeted; do not force both rollout bars visible.
+--// =====================================================
+
+loc.parseHealthBarPosition = function(raw)
+    local values
+    if type(raw) == "table" then
+        if #raw ~= 4 then return nil end
+        values = raw
+    elseif type(raw) == "string" then
+        -- Exactly four comma-separated numeric components.
+        local a, b, c, d = raw:match("^%s*([^,]+)%s*,%s*([^,]+)%s*,%s*([^,]+)%s*,%s*([^,]+)%s*$")
+        if not a then return nil end
+        values = { a, b, c, d }
+    else
+        return nil
+    end
+
+    local parsed = {}
+    for i = 1, 4 do
+        local n = tonumber(values[i])
+        if not n or n ~= n or n == math.huge or n == -math.huge then
+            return nil
+        end
+        parsed[i] = n
+    end
+    return parsed
+end
+
+loc.formatHealthBarPosition = function(values)
+    return table.concat(values, ", ")
+end
+
+-- Save/restore position independently from the existing load gate.
+Data.UI.HealthBarPosition = loc.parseHealthBarPosition(Data.UI.HealthBarPosition)
+    or { 0.923, -12, 0, 5 }
+
+-- Event-driven HealthBar enforcement: no polling loop and no RenderStepped.
+-- Keep all watcher state in loc (one top-level local table is not needed).
+loc.HealthBarWatcher = {
+    active = true,
+    paused = false, -- Debug: Stop HealthBar Changer Event (OFF by default)
+    pending = false,
+    generation = 0, -- invalidates deferred refreshes when paused/resumed
+    app = nil,
+    outer = nil,
+    inner = nil,
+    bar = nil,
+    coreSignals = {},
+    appSignals = {},
+    propertySignals = {}
+}
+
+loc.disconnectHealthBarSignals = function(connections)
+    for _, connection in ipairs(connections) do
+        connection:Disconnect()
+    end
+    table.clear(connections)
+end
+
+loc.findHealthBar = function(outer)
+    local app = outer and outer:FindFirstChild("TopBarApp")
+    if not app then return nil end
+    local topBarFrame = app:FindFirstChild("TopBarFrame")
+    local topRightFrame = topBarFrame and topBarFrame:FindFirstChild("TopRightFrame")
+    local leftFrame = app:FindFirstChild("UnibarLeftFrame")
+    local newBar = topRightFrame and topRightFrame:FindFirstChild("HealthBar")
+    local oldBar = leftFrame and leftFrame:FindFirstChild("HealthBar")
+    local hb = newBar or oldBar
+    return hb and hb:IsA("GuiObject") and hb or nil
+end
+
+loc.applyHealthBarLayout = function()
+    local watcher = loc.HealthBarWatcher
+    local hb = watcher and watcher.bar
+    if not watcher.active or watcher.paused or not hb or not hb.Parent then return end
+
+    local p = Data.UI.HealthBarPosition
+    local targetPosition = UDim2.new(p[1], p[2], p[3], p[4])
+    local targetSize = UDim2.new(0, 250, 1, 0)
+    if hb.Visible ~= true then hb.Visible = true end
+    if hb.Position ~= targetPosition then hb.Position = targetPosition end
+    if hb.Size ~= targetSize then hb.Size = targetSize end
+
+    local inner = watcher.inner
+    if inner and inner.Parent == hb and inner:IsA("GuiObject") then
+        local innerPosition = UDim2.new(0, 0, 0.5, 0)
+        local innerSize = UDim2.new(0, 250, 0, 20)
+        if inner.Visible ~= true then inner.Visible = true end
+        if inner.Position ~= innerPosition then inner.Position = innerPosition end
+        if inner.Size ~= innerSize then inner.Size = innerSize end
+    end
+end
+
+-- Batch simultaneous property changes into one deferred refresh.
+-- Event callbacks only schedule a refresh, so our own assignments cannot recurse.
+loc.scheduleHealthBarRefresh = function()
+    local watcher = loc.HealthBarWatcher
+    if not watcher.active or watcher.paused or watcher.pending or not gui.Parent then return end
+    watcher.pending = true
+    local generation = watcher.generation
+    task.defer(function()
+        -- Ignore work queued before the Debug switch changed state.
+        if generation ~= watcher.generation then return end
+        watcher.pending = false
+        if watcher.active and not watcher.paused and gui.Parent then
+            loc.refreshHealthBarMonitor()
+        end
+    end)
+end
+
+loc.refreshHealthBarMonitor = function()
+    local watcher = loc.HealthBarWatcher
+    if not watcher.active or watcher.paused or not gui.Parent then return end
+
+    -- Watch only the TopBarApp subtree, not every change in CoreGui.
+    local outer = s.CoreGui:FindFirstChild("TopBarApp")
+    if outer ~= watcher.outer then
+        loc.disconnectHealthBarSignals(watcher.appSignals)
+        watcher.outer = outer
+        if outer then
+            -- New/recreated HealthBar or inner HB; also detect swapped UI containers.
+            local function onHierarchyChange(instance)
+                local name = instance.Name
+                if name == "HealthBar" or name == "HB"
+                    or name == "TopBarApp" or name == "TopBarFrame"
+                    or name == "TopRightFrame" or name == "UnibarLeftFrame" then
+                    loc.scheduleHealthBarRefresh()
+                end
+            end
+            table.insert(watcher.appSignals, outer.DescendantAdded:Connect(onHierarchyChange))
+            table.insert(watcher.appSignals, outer.DescendantRemoving:Connect(onHierarchyChange))
+        end
+    end
+
+    local hb = loc.findHealthBar(outer)
+    local inner = hb and hb:FindFirstChild("HB")
+    if inner and not inner:IsA("GuiObject") then inner = nil end
+
+    if hb ~= watcher.bar or inner ~= watcher.inner then
+        -- Disconnect listeners from destroyed/replaced HealthBars.
+        loc.disconnectHealthBarSignals(watcher.propertySignals)
+        watcher.bar = hb
+        watcher.inner = inner
+        if hb then
+            for _, property in ipairs({"Visible", "Position", "Size"}) do
+                table.insert(watcher.propertySignals,
+                    hb:GetPropertyChangedSignal(property):Connect(loc.scheduleHealthBarRefresh))
+                if inner then
+                    table.insert(watcher.propertySignals,
+                        inner:GetPropertyChangedSignal(property):Connect(loc.scheduleHealthBarRefresh))
+                end
+            end
+        end
+    end
+
+    loc.applyHealthBarLayout()
+end
+
+-- Toggleable Debug pause: disconnect HB listeners while ON; reconnect and
+-- restore the saved layout once when OFF. No polling thread is involved.
+loc.setHealthBarChangerPaused = function(paused)
+    local watcher = loc.HealthBarWatcher
+    paused = paused == true
+    if not watcher.active or watcher.paused == paused then return end
+
+    watcher.paused = paused
+    watcher.pending = false
+    watcher.generation = watcher.generation + 1
+
+    if paused then
+        -- Stop auto-correcting HB and HB.HB, but leave their present values intact.
+        loc.disconnectHealthBarSignals(watcher.propertySignals)
+        loc.disconnectHealthBarSignals(watcher.appSignals)
+        watcher.outer, watcher.bar, watcher.inner = nil, nil, nil
+    else
+        -- Rebind the current HealthBar (which may have respawned while paused).
+        loc.refreshHealthBarMonitor()
+    end
+end
+
+loc.stopHealthBarMonitor = function()
+    local watcher = loc.HealthBarWatcher
+    if not watcher.active then return end
+    watcher.active = false
+    loc.disconnectHealthBarSignals(watcher.propertySignals)
+    loc.disconnectHealthBarSignals(watcher.appSignals)
+    loc.disconnectHealthBarSignals(watcher.coreSignals)
+    watcher.outer, watcher.bar, watcher.inner = nil, nil, nil
+end
+
+loc.HealthBarPositionUI = loc.o(
+    "Set HealthBar Position",
+    255, 255, 255,
+    true, "", -- nbox, keep Text empty so PlaceholderText is visible
+    true, "Set", -- nbtn
+    nil,
+    function(box, btn)
+        local values = loc.parseHealthBarPosition(box.Text)
+        if not values then
+            local previous = btn.Text
+            btn.Text = "Invalid"
+            btn.TextColor3 = Color3.fromRGB(255, 80, 80)
+            task.delay(1, function()
+                if btn and btn.Parent then
+                    btn.Text = previous
+                    btn.TextColor3 = Color3.new(1, 1, 1)
+                end
+            end)
+            return
+        end
+
+        Data.UI.HealthBarPosition = values
+        loc.saveData(Data)
+        loc.refreshHealthBarMonitor() -- Apply immediately; property listeners enforce changes later.
+        box.Text = ""
+        box.PlaceholderText = loc.formatHealthBarPosition(values)
+        btn.TextColor3 = Color3.fromRGB(0, 255, 0)
+        task.delay(0.4, function()
+            if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end
+        end)
+    end,
+    nil, scr
+)
+
+if loc.HealthBarPositionUI and loc.HealthBarPositionUI.Input then
+    -- Saved value becomes the next default placeholder on restart.
+    loc.HealthBarPositionUI.Input.Text = ""
+    loc.HealthBarPositionUI.Input.PlaceholderText =
+        loc.formatHealthBarPosition(Data.UI.HealthBarPosition)
+    -- A second line provides room for the complete UDim2 value on mobile.
+    loc.HealthBarPositionUI.Frame.Size = UDim2.new(1, 0, 0, 60)
+    loc.HealthBarPositionUI.Label.Size = UDim2.new(1, -8, 0, 27)
+    loc.HealthBarPositionUI.Input.Size = UDim2.new(1, -110, 0, 26)
+    loc.HealthBarPositionUI.Input.Position = UDim2.new(0, 5, 0, 31)
+    loc.HealthBarPositionUI.Button.Size = UDim2.new(0, 96, 0, 26)
+    loc.HealthBarPositionUI.Button.Position = UDim2.new(1, -101, 0, 31)
+end
+
+-- Listen for the Roblox TopBarApp being created, removed or replaced.
+-- No while-loop: HealthBar properties react only to change signals.
+table.insert(loc.HealthBarWatcher.coreSignals,
+    s.CoreGui.ChildAdded:Connect(function(child)
+        if child.Name == "TopBarApp" then loc.scheduleHealthBarRefresh() end
+    end))
+table.insert(loc.HealthBarWatcher.coreSignals,
+    s.CoreGui.ChildRemoved:Connect(function(child)
+        if child.Name == "TopBarApp" then loc.scheduleHealthBarRefresh() end
+    end))
+
+-- Release listeners when LoaderSettings is removed, avoiding stale callbacks.
+table.insert(loc.HealthBarWatcher.coreSignals,
+    gui.AncestryChanged:Connect(function(_, parent)
+        if parent == nil then loc.stopHealthBarMonitor() end
+    end))
+loc.refreshHealthBarMonitor() -- Initial snapshot; afterwards updates are event-driven.
 
 -- TeleportService uses the shared s.TeleportService service reference.
 -- HttpService uses the shared s.HttpService service reference.
@@ -6628,6 +6888,22 @@ L.RefreshLanguageButtons()
 
 loc.o("« Debug »", 255,255,255, false,nil,false,nil,nil,nil,nil,ins2)
 
+-- Session-only debug toggle. OFF by default on every Loader launch.
+-- ON  = stop overriding HB / HB.HB properties and disconnect their listeners.
+-- OFF = reconnect listeners and immediately restore the saved layout.
+loc.StopHealthBarChangerUI = loc.o(
+    "Stop HealthBar Changer Event",
+    255, 255, 255,
+    false, nil,
+    true, "OFF",
+    nil,
+    function(enabled)
+        loc.setHealthBarChangerPaused(enabled)
+    end,
+    false,
+    ins2
+)
+
 
 -- Set ExperienceSetting's ScreenGui ScreenInsets
 
@@ -6885,6 +7161,8 @@ print[[------------------------------------------------------------
   - Set UIScale = Set UIScale of ExperienceSettings
   - IsHealthOn: State = Always checking HealthBar is on or not
   - HealthBarToggle = ON/OFF HealthBar
+  - Set HealthBar Position = Set HealthBar UDim2 position; size and visibility are enforced
+  - Stop HealthBar Changer Event = Debug toggle (OFF default); ON suspends HB layout enforcement
   - Console shortcut = The short way to open developer console on mobile
   - Kill Gui = Destroy this Settings - Loader Rejoiner
 ------------------------------------------------------------
