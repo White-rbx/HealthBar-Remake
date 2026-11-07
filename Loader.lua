@@ -1,4 +1,4 @@
--- Loader script 7.45
+-- Loader script 7.46
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -2040,7 +2040,7 @@ task.spawn(function()
 end)
 
 --// =====================================================
---// HEALTHBAR POSITION / SIZE / VISIBILITY (LOADER 7.45)
+--// HEALTHBAR POSITION / SIZE / VISIBILITY (LOADER 7.46)
 --// Uses the same preferred HealthBar paths as Loader (main).
 --// Only one active bar is targeted; do not force both rollout bars visible.
 --// =====================================================
@@ -2114,17 +2114,15 @@ loc.disconnectHealthBarSignals = function(connections)
     table.clear(connections)
 end
 
--- Roblox can keep both rollout locations. Some versions place the inner HB
--- one or more levels down, so looking only at HealthBar:FindFirstChild("HB")
--- can miss the actual bar and leave its Size unchanged.
+-- HB.HB is the DIRECT child named "HealthBar" (not a child named "HB"):
+-- Old: CoreGui.TopBarApp.TopBarApp.UnibarLeftFrame.HealthBar.HealthBar
+-- New: CoreGui.TopBarApp.TopBarApp.TopBarFrame.TopRightFrame.HealthBar.HealthBar
+-- Do not scan descendants: similarly named UI elsewhere must not be resized.
 loc.findHealthBarInner = function(bar)
     if not bar or not bar:IsA("GuiObject") then return nil end
-    local direct = bar:FindFirstChild("HB")
-    if direct and direct:IsA("GuiObject") then return direct end
-    for _, descendant in ipairs(bar:GetDescendants()) do
-        if descendant.Name == "HB" and descendant:IsA("GuiObject") then
-            return descendant
-        end
+    local direct = bar:FindFirstChild("HealthBar")
+    if direct and direct:IsA("GuiObject") and direct.Parent == bar then
+        return direct
     end
     return nil
 end
@@ -2143,7 +2141,7 @@ loc.findHealthBar = function(outer)
     local newInner = loc.findHealthBarInner(newBar)
     local oldInner = loc.findHealthBarInner(oldBar)
     local chosen, inner
-    -- Prioritize the visible candidate that actually contains HB.HB.
+    -- Prioritize the visible old/new bar with its direct child HealthBar.
     if newBar and newBar.Visible and newInner then
         chosen, inner = newBar, newInner
     elseif oldBar and oldBar.Visible and oldInner then
@@ -2183,7 +2181,7 @@ loc.applyHealthBarLayout = function()
     if hb.Size ~= targetSize then hb.Size = targetSize end
 
     local inner = watcher.inner
-    if inner and inner:IsA("GuiObject") and inner:IsDescendantOf(hb) then
+    if inner and inner:IsA("GuiObject") and inner.Parent == hb and inner.Name == "HealthBar" then
         local innerPosition = UDim2.new(0, 0, 0.5, 0)
         local innerSize = UDim2.new(0, width, 0, 20)
         if inner.Visible ~= true then inner.Visible = true end
@@ -2219,10 +2217,10 @@ loc.refreshHealthBarMonitor = function()
         loc.disconnectHealthBarSignals(watcher.appSignals)
         watcher.outer = outer
         if outer then
-            -- New/recreated HealthBar or inner HB; also detect swapped UI containers.
+            -- New/recreated outer or inner HealthBar; detect swapped UI containers.
             local function onHierarchyChange(instance)
                 local name = instance.Name
-                if name == "HealthBar" or name == "HB"
+                if name == "HealthBar"
                     or name == "TopBarApp" or name == "TopBarFrame"
                     or name == "TopRightFrame" or name == "UnibarLeftFrame" then
                     loc.scheduleHealthBarRefresh()
