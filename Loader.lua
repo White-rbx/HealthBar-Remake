@@ -1,4 +1,4 @@
--- Loader script 7.47
+-- Loader script 7.48
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -2041,7 +2041,7 @@ task.spawn(function()
 end)
 
 --// =====================================================
---// HEALTHBAR POSITION / SIZE / VISIBILITY (LOADER 7.47)
+--// HEALTHBAR POSITION / SIZE / VISIBILITY (LOADER 7.48)
 --// Old: position on HB, size on HB and HB.HB
 --// New: position on TopRightFrame, size X.Offset on outer HB only
 --// Only one active bar is targeted; do not force both rollout bars visible.
@@ -2185,10 +2185,18 @@ loc.getHealthBarPositionValues = function()
         or Data.UI.HealthBarPosition
 end
 
-loc.updateHealthBarPositionPlaceholder = function()
+-- Switch the displayed saved position only when the detected CoreGui family changes.
+-- PlaceholderText is always the factory DEFAULT, not the user's saved value.
+-- No polling, no per-property-change text writes, and don't interrupt editing.
+loc.updateHealthBarPositionInputKind = function()
     local ui = loc.HealthBarPositionUI
-    if ui and ui.Input then
-        ui.Input.PlaceholderText = loc.formatHealthBarPosition(loc.getHealthBarPositionValues())
+    if not ui or not ui.Input then return end
+    local kind = loc.getHealthBarPositionKind()
+    if ui.HealthBarKind == kind then return end
+    ui.HealthBarKind = kind
+    ui.Input.PlaceholderText = kind == "New" and "0.915, 0, 0, 30" or "0.923, -12, 0, 5"
+    if not ui.Input:IsFocused() then
+        ui.Input.Text = loc.formatHealthBarPosition(loc.getHealthBarPositionValues())
     end
 end
 
@@ -2316,7 +2324,7 @@ loc.refreshHealthBarMonitor = function()
     end
 
     loc.applyHealthBarLayout()
-    loc.updateHealthBarPositionPlaceholder()
+    loc.updateHealthBarPositionInputKind()
 end
 
 -- Toggleable Debug pause: disconnect HB listeners while ON; reconnect and
@@ -2356,7 +2364,7 @@ end
 loc.HealthBarPositionUI = loc.o(
     "Set HealthBar Position",
     255, 255, 255,
-    true, "", -- nbox, keep Text empty so PlaceholderText is visible
+    true, "", -- nbox, show saved value in Text and factory default in PlaceholderText
     true, "Set", -- nbtn
     nil,
     function(box, btn)
@@ -2382,8 +2390,7 @@ loc.HealthBarPositionUI = loc.o(
         end
         loc.saveData(Data)
         loc.refreshHealthBarMonitor() -- Apply immediately; property listeners enforce changes later.
-        box.Text = ""
-        box.PlaceholderText = loc.formatHealthBarPosition(values)
+        box.Text = loc.formatHealthBarPosition(values)
         btn.TextColor3 = Color3.fromRGB(0, 255, 0)
         task.delay(0.4, function()
             if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end
@@ -2393,10 +2400,11 @@ loc.HealthBarPositionUI = loc.o(
 )
 
 if loc.HealthBarPositionUI and loc.HealthBarPositionUI.Input then
-    -- Saved value becomes the next default placeholder on restart.
-    loc.HealthBarPositionUI.Input.Text = ""
+    -- Preserve the factory default in PlaceholderText; show saved input in Text.
+    loc.HealthBarPositionUI.HealthBarKind = loc.getHealthBarPositionKind()
     loc.HealthBarPositionUI.Input.PlaceholderText =
-        loc.formatHealthBarPosition(loc.getHealthBarPositionValues())
+        loc.HealthBarPositionUI.HealthBarKind == "New" and "0.915, 0, 0, 30" or "0.923, -12, 0, 5"
+    loc.HealthBarPositionUI.Input.Text = loc.formatHealthBarPosition(loc.getHealthBarPositionValues())
     -- A second line provides room for the complete UDim2 value on mobile.
     loc.HealthBarPositionUI.Frame.Size = UDim2.new(1, 0, 0, 60)
     loc.HealthBarPositionUI.Label.Size = UDim2.new(1, -8, 0, 27)
@@ -2411,7 +2419,7 @@ end
 loc.HealthBarSizeUI = loc.o(
     "Set HealthBar Size",
     255, 255, 255,
-    true, "", -- nbox; show saved value as PlaceholderText
+    true, "", -- nbox; saved value belongs in Text
     true, "Set", -- nbtn
     nil,
     function(box, btn)
@@ -2433,8 +2441,7 @@ loc.HealthBarSizeUI = loc.o(
         loc.saveData(Data)
         -- Reapply now unless the Debug stop switch is ON (then only save).
         loc.refreshHealthBarMonitor()
-        box.Text = ""
-        box.PlaceholderText = tostring(width)
+        box.Text = tostring(width)
         btn.TextColor3 = Color3.fromRGB(0, 255, 0)
         task.delay(0.4, function()
             if btn and btn.Parent then btn.TextColor3 = Color3.new(1, 1, 1) end
@@ -2444,8 +2451,8 @@ loc.HealthBarSizeUI = loc.o(
 )
 
 if loc.HealthBarSizeUI and loc.HealthBarSizeUI.Input then
-    loc.HealthBarSizeUI.Input.Text = ""
-    loc.HealthBarSizeUI.Input.PlaceholderText = tostring(Data.UI.HealthBarWidthOffset)
+    loc.HealthBarSizeUI.Input.Text = tostring(Data.UI.HealthBarWidthOffset)
+    loc.HealthBarSizeUI.Input.PlaceholderText = "250"
     loc.HealthBarSizeUI.Frame.Size = UDim2.new(1, 0, 0, 60)
     loc.HealthBarSizeUI.Label.Size = UDim2.new(1, -8, 0, 27)
     loc.HealthBarSizeUI.Input.Size = UDim2.new(1, -110, 0, 26)
