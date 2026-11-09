@@ -1,4 +1,4 @@
--- So this another script lol 2.95
+-- So this another script lol 2.952
 
 
 -- =====>> Saved Functions <<=====
@@ -968,7 +968,7 @@ Turning OFF stops counting; turning it back ON resumes the total.]],
             if initial then return end
             if not on and conf:Get(rankKey,false) and setRank then setRank(false) end
             updateState()
-        end,false)
+		end, true)
     usageRow.Name=usageKey
 
     local rankRow
@@ -986,7 +986,7 @@ Turning this OFF removes the public profile without erasing recorded usage time.
             end
             if not on and conf:Get(avatarKey,false) and setAvatar then setAvatar(false) end
             updateState()
-        end,false)
+        end,true)
     rankRow.Name=rankKey
 
     local avatarRow
