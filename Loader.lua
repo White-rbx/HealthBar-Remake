@@ -1,3 +1,11 @@
+-- Strict ES SetUp gate. Main bootstrap must load ES SetUp first.
+-- Do not build the Loader UI for banned/failed initialization.
+if type(getgenv) ~= 'function' then return false end
+if getgenv().__ES_BANNED == true or getgenv().__ES_READY ~= true or type(getgenv().ES) ~= 'table' then
+    warn('[ExperienceSettings Loader] Blocked: ES SetUp has not authorized this session.')
+    return false
+end
+
 -- Loader script 7.48
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
@@ -1320,6 +1328,19 @@ loc.applyTheme = function()
                 loc.ThemeImage.Position = UDim2.new(0, 0, 0, 0)
                 loc.ThemeImage.BackgroundTransparency = 1
                 loc.ThemeImage.Image = loc.ThemeImageID
+                -- RBX images may take time to resolve on slow connections.
+                -- Preload in the background; never block the Loader or overwrite theme alpha.
+                loc.RBXImagePreloadCache = loc.RBXImagePreloadCache or {}
+                if not loc.RBXImagePreloadCache[loc.ThemeImageID] then
+                    loc.RBXImagePreloadCache[loc.ThemeImageID] = true
+                    local assetId = loc.ThemeImageID
+                    task.spawn(function()
+                        local loaded = pcall(function()
+                            s.ContentProvider:PreloadAsync({assetId})
+                        end)
+                        if not loaded then loc.RBXImagePreloadCache[assetId] = nil end
+                    end)
+                end
                 loc.ThemeImage.ScaleType = Enum.ScaleType.Tile
                 loc.ThemeImage.TileSize = UDim2.new(
                     loc.CURRENT_TILE_SIZE_SCALE or 0,
