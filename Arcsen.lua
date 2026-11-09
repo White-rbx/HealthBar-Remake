@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.12 | Chat Lua Scopes ",
+	sion = " UIs 7.3.13 | ArcScriptCenter Leaderboard ",
 	logs = [[
+(:9/11/2026: A) Stage 16.23: Built-in opt-in masked Leaderboard in Arcsen > Settings > ArcScriptCenter. Lazy public API reads with Today / This Year / All Time, Refresh, cached view, no admin credentials.
 (:7/11/2026: A) Stage 16.22: Create Lua Script In The Chat — Don't / Root Only / All Instance access. Root-only runner exposes UI proxies, all-mode excludes CoreGui.ExperienceSettings and descendants. Script cards pin permission and revoke on mode change.
 # -- Update logs --
 (:7/11/2026: A&F) Stage 16.22: Expose child JSON IDs as per-UI scoped Luau UI.ID refs (with local alias syntax); normalize common UI JSON shape variations locally, recover complete JSON missing closing marker, improve first-turn UI schema guidance and name saved UI buttons Open <title>.
@@ -13390,6 +13391,229 @@ loc.API.RefreshArcScriptCenterCloud = function()
     return finish()
 end
 
+-- Optional AnalyticsPresence bridge; all collection and identity sharing start OFF.
+-- Trusted bundled module: no network code is loaded from warning messages or from public API responses.
+loc.API.PresenceAnalytics = nil
+do
+    local bundled = [=====[
+-- ArcScriptCenter v0.5.31 — OPTIONAL, EXPLICITLY OPTED-IN usage telemetry.
+-- This is a standalone client adapter for ExperienceSettings.
+-- It does NOT send chat, movement, location, inventories, or private messages.
+-- Usage (from your EXISTING toggle handlers):
+--   local Analytics = [load this module]()
+--   Analytics:SetActiveUser(true)       -- existing 'Active User' setting
+--   Analytics:SetShowToAdmin(true)      -- existing 'Show to Admin' setting
+--   Analytics:SetAnalyticsConsent(true) -- independent optional consent
+--   Analytics:SetLeaderboardConsent(true) -- independent optional public-name consent
+-- All options default to false. No network requests until Active User AND Show to Admin are ON.
+
+local Players = game:GetService('Players')
+local HttpService = game:GetService('HttpService')
+local LocalPlayer = Players.LocalPlayer
+
+local M = {}
+M.__index = M
+
+local API_DEFAULT = 'https://arcscriptcenter-api.kogpasan14.workers.dev'
+local HEARTBEAT = 30
+
+local function getRequest()
+    local env = type(getgenv) == 'function' and getgenv() or nil
+    if type(env) == 'table' then
+        if type(env.request) == 'function' then return env.request end
+        if type(env.http_request) == 'function' then return env.http_request end
+        if type(env.syn) == 'table' and type(env.syn.request) == 'function' then return env.syn.request end
+    end
+    if type(request) == 'function' then return request end
+    if type(http_request) == 'function' then return http_request end
+    if type(syn) == 'table' and type(syn.request) == 'function' then return syn.request end
+    return nil
+end
+
+function M.new(opts)
+    opts = type(opts) == 'table' and opts or {}
+    local self = setmetatable({}, M)
+    self.api = tostring(opts.url or API_DEFAULT):gsub('/+$','')
+    if not self.api:match('^https://[%w%-%.]+$') then
+        return nil, 'ArcScriptCenter URL must be an HTTPS hostname'
+    end
+    self._request = opts.httpRequest or getRequest()
+    if type(self._request) ~= 'function' then
+        return nil, 'No compatible HTTP request function available'
+    end
+    self.sessionId = HttpService:GenerateGUID(false):gsub('[^%x]',''):lower()
+    self.activeUser = false
+    self.showToAdmin = false
+    self.analyticsConsent = false
+    self.leaderboardConsent = false
+    self.running = false
+    self.destroyed = false
+    self.epoch = 0
+    self.busy = false
+    self.lastError = nil
+    self.loopId = 0
+    self._connections = {}
+    table.insert(self._connections, Players.PlayerRemoving:Connect(function(player)
+        if player == LocalPlayer then self:Destroy(false) end
+    end))
+    return self
+end
+
+function M:_send(path, data)
+    local response = self._request({
+        Url = self.api .. '/api/v1/presence/' .. path,
+        Method = 'POST',
+        Headers = {['Content-Type']='application/json',Accept='application/json'},
+        Body = HttpService:JSONEncode(data)
+    })
+    local code = tonumber(response and (response.StatusCode or response.Status)) or 0
+    if code < 200 or code >= 300 then
+        return false, 'Presence HTTP ' .. tostring(code)
+    end
+    return true
+end
+
+function M:_payload()
+    local body = { sessionId = self.sessionId }
+    if self.showToAdmin then
+        body.profileConsent = true
+        body.userId = tostring(LocalPlayer.UserId)
+        body.username = tostring(LocalPlayer.Name)
+        body.displayName = tostring(LocalPlayer.DisplayName)
+    end
+    if self.analyticsConsent then
+        body.analyticsConsent = true
+        body.analyticsUserId = tostring(LocalPlayer.UserId)
+        body.leaderboardConsent = self.leaderboardConsent == true
+    end
+    return body
+end
+
+function M:_leave(revokeRanking)
+    local body = {sessionId=self.sessionId}
+    if revokeRanking and self.analyticsConsent then
+        body.analyticsConsent = true
+        body.analyticsUserId = tostring(LocalPlayer.UserId)
+        body.leaderboardConsent = false
+    end
+    -- Best effort only: abrupt game exits/network loss are handled by server TTL.
+    task.spawn(function()
+        pcall(function() self:_send('leave',body) end)
+    end)
+end
+
+function M:_eligible()
+    return not self.destroyed and self.activeUser and self.showToAdmin
+end
+
+function M:_heartbeat()
+    if not self:_eligible() or self.busy then return end
+    local epoch = self.epoch
+    local payload = self:_payload()
+    self.busy = true
+    task.spawn(function()
+        local ok,success,why = pcall(function() return self:_send('heartbeat',payload) end)
+        self.busy = false
+        if not ok or not success then self.lastError = tostring(why or success)
+        else self.lastError=nil end
+        -- A delayed HTTP request must never re-enable a toggled-off session.
+        if epoch ~= self.epoch then
+            if self:_eligible() then self:_heartbeat() else self:_leave(false) end
+        end
+    end)
+end
+
+function M:_reconcile(oldEnabled, revokeRanking)
+    if self.destroyed then return end
+    local enabled = self:_eligible()
+    self.epoch += 1
+    if not enabled then
+        if oldEnabled then self:_leave(revokeRanking) end
+        self.running = false
+        self.loopId += 1
+        return
+    end
+    self:_heartbeat()
+    if self.running then return end
+    self.running = true
+    self.loopId += 1
+    local token = self.loopId
+    task.spawn(function()
+        while self.running and not self.destroyed and self.loopId == token do
+            task.wait(HEARTBEAT)
+            if self.loopId ~= token or not self:_eligible() then break end
+            self:_heartbeat()
+        end
+        if self.loopId == token then self.running=false end
+    end)
+end
+
+-- Hook existing UI controls to these setters; DO NOT create a second toggle panel.
+function M:SetActiveUser(value)
+    local was = self:_eligible()
+    self.activeUser = value == true
+    self:_reconcile(was, not self.activeUser)
+end
+function M:SetShowToAdmin(value)
+    local was = self:_eligible()
+    self.showToAdmin = value == true
+    self:_reconcile(was, not self.showToAdmin)
+end
+function M:SetAnalyticsConsent(value)
+    local was = self:_eligible()
+    local disabling = self.analyticsConsent and value ~= true
+    if disabling and was then self:_leave(true) end
+    self.analyticsConsent = value == true
+    if not self.analyticsConsent then self.leaderboardConsent = false end
+    self:_reconcile(was, false)
+end
+function M:SetLeaderboardConsent(value)
+    local was = self:_eligible()
+    if value == true and not self.analyticsConsent then return false,'Enable analytics consent first' end
+    self.leaderboardConsent = value == true
+    self:_reconcile(was, false)
+    return true
+end
+function M:GetStatus()
+    return {
+        active = self:_eligible(),
+        analytics = self.analyticsConsent,
+        leaderboard = self.leaderboardConsent,
+        lastError = self.lastError,
+    }
+end
+function M:Destroy(revokeRanking)
+    if self.destroyed then return end
+    local was = self:_eligible()
+    if was then self:_leave(revokeRanking == true) end
+    self.destroyed=true;self.running=false;self.epoch += 1;self.loopId += 1
+    for _,connection in ipairs(self._connections) do
+        pcall(function() connection:Disconnect() end)
+    end
+    table.clear(self._connections)
+end
+
+return M
+
+]=====]
+    local factory, compileError = loadstring(bundled)
+    if factory then
+        local ok, package = pcall(factory)
+        if ok and type(package) == "table" and type(package.new) == "function" then
+            local ready, adapter, reason = pcall(package.new)
+            if ready and type(adapter) == "table" then
+                loc.API.PresenceAnalytics = adapter
+            else
+                warn("[ArcScriptCenter] Analytics adapter: " .. tostring(reason or adapter))
+            end
+        else
+            warn("[ArcScriptCenter] Analytics module failed: " .. tostring(package))
+        end
+    else
+        warn("[ArcScriptCenter] Analytics compile failed: " .. tostring(compileError))
+    end
+end
+
 -- Lightweight diagnostics within existing Arcsen Settings; no separate ScreenGui.
 loc.API.ArcScriptCenterCloudSettings = addset(
     "ArcScriptCenter", "ArcScriptCenter", 120, 205, 255,
@@ -13422,6 +13646,302 @@ loc.API.ArcScriptCenterCloudSettings = addset(
             task.spawn(loc.API.RefreshArcScriptCenterCloud)
         end)
         arcUpdateCloudSettingsUI()
+
+        -- Explicit, independent opt-in controls. OFF by default each execution.
+        local analytics = loc.API.PresenceAnalytics
+        local note = Instance.new("TextLabel")
+        note.Name = "AnalyticsPrivacyNote"
+        note.Size = UDim2.new(1, -8, 0, 90)
+        note.BackgroundTransparency = 1
+        note.TextColor3 = Color3.fromRGB(210, 225, 240)
+        note.TextWrapped = true
+        note.TextSize = 12
+        note.TextXAlignment = Enum.TextXAlignment.Left
+        note.TextYAlignment = Enum.TextYAlignment.Top
+        note.Text = "Usage sharing is OFF by default. Enable Active User + Show to Admin for presence. " ..
+            "Analytics consent counts unique accounts; Leaderboard consent publishes your nickname and masked Username/UserID. " ..
+            "All identity information is client-reported (unverified). Session-only choices."
+        note.Parent = frame
+
+        local controls = {
+            {"Active User", "activeUser", "SetActiveUser"},
+            {"Show to Admin", "showToAdmin", "SetShowToAdmin"},
+            {"Analytics Consent", "analyticsConsent", "SetAnalyticsConsent"},
+            {"Leaderboard Consent", "leaderboardConsent", "SetLeaderboardConsent"}
+        }
+        local buttons = {}
+        local function refreshConsentButtons()
+            for _, entry in ipairs(controls) do
+                local btn = buttons[entry[2]]
+                if btn then
+                    local enabled = analytics and analytics[entry[2]] == true
+                    btn.Text = entry[1] .. ": " .. (enabled and "ON" or "OFF")
+                    btn.BackgroundColor3 = enabled and Color3.fromRGB(30, 105, 80)
+                        or Color3.fromRGB(75, 65, 75)
+                end
+            end
+        end
+        for _, entry in ipairs(controls) do
+            local settingLabel, property, setter = entry[1], entry[2], entry[3]
+            local toggle = Instance.new("TextButton")
+            toggle.Name = "Consent_" .. property
+            toggle.Size = UDim2.new(1, -8, 0, 30)
+            toggle.TextSize = 13
+            toggle.TextColor3 = Color3.fromRGB(245, 245, 255)
+            toggle.Parent = frame
+            Corner(0, 5, toggle)
+            buttons[property] = toggle
+            toggle.MouseButton1Click:Connect(function()
+                if not analytics or type(analytics[setter]) ~= "function" then
+                    ding("Analytics HTTP adapter unavailable on this executor.", 4, 255, 120, 95)
+                    return
+                end
+                local nextValue = not (analytics[property] == true)
+                local ok, accepted, why = pcall(function()
+                    return analytics[setter](analytics, nextValue)
+                end)
+                if not ok or accepted == false then
+                    ding("Analytics: " .. tostring(why or accepted), 4, 255, 120, 95)
+                end
+                refreshConsentButtons()
+            end)
+        end
+        refreshConsentButtons()
+
+        -- Stage 16.23: masked, read-only Leaderboard integrated in Arcsen Settings.
+        -- No admin token, Roblox identifiers, or chat messages in these GET requests.
+        local ranks = { period = "all", cache = {}, requestId = 0 }
+        local rankTabs = {}
+        local rankingTitle = Instance.new("TextLabel")
+        rankingTitle.Name = "LeaderboardTitle"
+        rankingTitle.Size = UDim2.new(1, -8, 0, 26)
+        rankingTitle.LayoutOrder = 10
+        rankingTitle.BackgroundTransparency = 1
+        rankingTitle.TextColor3 = Color3.fromRGB(150, 215, 255)
+        rankingTitle.TextSize = 15
+        rankingTitle.TextXAlignment = Enum.TextXAlignment.Left
+        rankingTitle.Text = "Leaderboard  |  Opt-in only"
+        rankingTitle.Parent = frame
+
+        local rankTabsBar = Instance.new("Frame")
+        rankTabsBar.Name = "LeaderboardPeriodTabs"
+        rankTabsBar.Size = UDim2.new(1, -8, 0, 31)
+        rankTabsBar.LayoutOrder = 11
+        rankTabsBar.BackgroundTransparency = 1
+        rankTabsBar.Parent = frame
+        local refreshLeaderboard
+        local function showSelectedPeriod()
+            for _, item in ipairs(rankTabs) do
+                local selected = item.period == ranks.period
+                item.button.BackgroundColor3 = selected
+                    and Color3.fromRGB(35, 112, 156) or Color3.fromRGB(65, 70, 85)
+                item.button.TextColor3 = selected
+                    and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(205, 220, 240)
+            end
+        end
+        for i, item in ipairs({{"today", "Today"}, {"year", "This Year"}, {"all", "All Time"}}) do
+            local period, title = item[1], item[2]
+            local button = Instance.new("TextButton")
+            button.Name = "Period_" .. period
+            button.Size = UDim2.new(1 / 3, -4, 1, 0)
+            button.Position = UDim2.new((i - 1) / 3, 2, 0, 0)
+            button.Text = title
+            button.TextSize = 12
+            button.TextWrapped = true
+            button.TextColor3 = Color3.new(1, 1, 1)
+            button.BorderSizePixel = 0
+            button.Parent = rankTabsBar
+            Corner(0, 5, button)
+            table.insert(rankTabs, { period = period, button = button })
+            button.MouseButton1Click:Connect(function()
+                if ranks.period == period then return end
+                ranks.period = period
+                showSelectedPeriod()
+                if refreshLeaderboard then refreshLeaderboard(false) end
+            end)
+        end
+        showSelectedPeriod()
+
+        local rankingRefresh = Instance.new("TextButton")
+        rankingRefresh.Name = "RefreshLeaderboard"
+        rankingRefresh.Size = UDim2.new(1, -8, 0, 30)
+        rankingRefresh.LayoutOrder = 12
+        rankingRefresh.BackgroundColor3 = Color3.fromRGB(28, 88, 120)
+        rankingRefresh.TextColor3 = Color3.fromRGB(240, 250, 255)
+        rankingRefresh.TextSize = 13
+        rankingRefresh.Text = "Refresh Leaderboard"
+        rankingRefresh.Parent = frame
+        Corner(0, 5, rankingRefresh)
+
+        local rankingStatus = Instance.new("TextLabel")
+        rankingStatus.Name = "LeaderboardStatus"
+        rankingStatus.Size = UDim2.new(1, -8, 0, 36)
+        rankingStatus.LayoutOrder = 13
+        rankingStatus.BackgroundTransparency = 1
+        rankingStatus.TextColor3 = Color3.fromRGB(205, 220, 240)
+        rankingStatus.TextSize = 11
+        rankingStatus.TextWrapped = true
+        rankingStatus.TextXAlignment = Enum.TextXAlignment.Left
+        rankingStatus.TextYAlignment = Enum.TextYAlignment.Center
+        rankingStatus.Text = "Open ArcScriptCenter settings to load rankings."
+        rankingStatus.Parent = frame
+
+        local rankScroll = Instance.new("ScrollingFrame")
+        rankScroll.Name = "LeaderboardScroll"
+        rankScroll.Size = UDim2.new(1, -8, 0, 225)
+        rankScroll.LayoutOrder = 14
+        rankScroll.BackgroundColor3 = Color3.fromRGB(20, 26, 39)
+        rankScroll.BackgroundTransparency = 0.15
+        rankScroll.BorderSizePixel = 0
+        rankScroll.CanvasSize = UDim2.fromOffset(0, 0)
+        rankScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        rankScroll.ScrollBarThickness = 4
+        rankScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+        rankScroll.Parent = frame
+        Corner(0, 6, rankScroll)
+        local rankLayout = Instance.new("UIListLayout")
+        rankLayout.Padding = UDim.new(0, 4)
+        rankLayout.FillDirection = Enum.FillDirection.Vertical
+        rankLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+        rankLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        rankLayout.Parent = rankScroll
+
+        local rankPrivacy = Instance.new("TextLabel")
+        rankPrivacy.Name = "LeaderboardPrivacy"
+        rankPrivacy.Size = UDim2.new(1, -8, 0, 43)
+        rankPrivacy.LayoutOrder = 15
+        rankPrivacy.BackgroundTransparency = 1
+        rankPrivacy.TextColor3 = Color3.fromRGB(165, 185, 210)
+        rankPrivacy.TextSize = 11
+        rankPrivacy.TextWrapped = true
+        rankPrivacy.TextXAlignment = Enum.TextXAlignment.Left
+        rankPrivacy.Text = "Names are client-reported (not Roblox-verified). Username and UserID are masked by the Worker. Only consenting users are shown."
+        rankPrivacy.Parent = frame
+
+        local function renderRankings(items)
+            -- Reuse one ScrollingFrame; no duplicate ranks after refresh/period switch.
+            for _, child in ipairs(rankScroll:GetChildren()) do
+                if child:IsA("Frame") then child:Destroy() end
+            end
+            rankScroll.CanvasPosition = Vector2.zero
+            local shown = 0
+            for _, info in ipairs(type(items) == "table" and items or {}) do
+                if shown >= 50 then break end
+                if type(info) == "table" then
+                    local nickname = tostring(info.nickname or "Unknown"):sub(1, 40)
+                    local username = tostring(info.username or ""):sub(1, 64)
+                    local userId = tostring(info.userId or ""):sub(1, 32)
+                    -- Defense in depth: refuse to render accidentally unmasked identifiers.
+                    if username:find("*", 1, true) and userId:find("*", 1, true) then
+                        shown += 1
+                        local rank = tonumber(info.rank) or shown
+                        local entry = Instance.new("Frame")
+                        entry.Name = "LeaderboardEntry_" .. tostring(shown)
+                        entry.Size = UDim2.new(1, -8, 0, 53)
+                        entry.LayoutOrder = shown
+                        entry.BackgroundColor3 = Color3.fromRGB(38, 49, 67)
+                        entry.BorderSizePixel = 0
+                        entry.Parent = rankScroll
+                        Corner(0, 5, entry)
+
+                        local number = Instance.new("TextLabel")
+                        number.Name = "Rank"
+                        number.Size = UDim2.new(0, 40, 1, 0)
+                        number.BackgroundTransparency = 1
+                        number.TextColor3 = Color3.fromRGB(130, 195, 255)
+                        number.TextSize = 15
+                        number.Text = "#" .. tostring(math.floor(rank))
+                        number.Parent = entry
+
+                        local display = Instance.new("TextLabel")
+                        display.Name = "Nickname"
+                        display.Position = UDim2.fromOffset(42, 3)
+                        display.Size = UDim2.new(1, -47, 0, 22)
+                        display.BackgroundTransparency = 1
+                        display.TextColor3 = Color3.fromRGB(245, 250, 255)
+                        display.TextSize = 13
+                        display.TextWrapped = true
+                        display.TextTruncate = Enum.TextTruncate.AtEnd
+                        display.TextXAlignment = Enum.TextXAlignment.Left
+                        display.Text = nickname
+                        display.Parent = entry
+
+                        local metadata = Instance.new("TextLabel")
+                        metadata.Name = "MaskedIdentity"
+                        metadata.Position = UDim2.fromOffset(42, 26)
+                        metadata.Size = UDim2.new(1, -47, 0, 24)
+                        metadata.BackgroundTransparency = 1
+                        metadata.TextColor3 = Color3.fromRGB(185, 203, 225)
+                        metadata.TextSize = 11
+                        metadata.TextWrapped = true
+                        metadata.TextTruncate = Enum.TextTruncate.AtEnd
+                        metadata.TextXAlignment = Enum.TextXAlignment.Left
+                        metadata.Text = "@" .. username .. "  |  [" .. userId .. "]"
+                        metadata.Parent = entry
+                    end
+                end
+            end
+            return shown
+        end
+
+        refreshLeaderboard = function(force)
+            if not frame or not frame.Parent or not frame.Visible then return end
+            local period = ranks.period
+            -- Invalidate an earlier period's in-flight GET even when this period is cached.
+            ranks.requestId += 1
+            local currentRequest = ranks.requestId
+            local cached = ranks.cache[period]
+            if not force and cached and (os.clock() - cached.checked) < 60 then
+                local shown = renderRankings(cached.items)
+                rankingStatus.Text = tostring(shown) .. " opted-in profiles  |  " .. period .. "  |  cached"
+                rankingRefresh.Text = "Refresh Leaderboard"
+                rankingRefresh.Active = true
+                return
+            end
+            rankingStatus.Text = "Loading " .. period .. " leaderboard..."
+            rankingRefresh.Text = "Loading..."
+            rankingRefresh.Active = false
+            task.spawn(function()
+                local requestFn = arcGetSuncRequest()
+                local base, reason = arcGetCloudBase()
+                local data, errorText = nil, nil
+                if not requestFn then
+                    errorText = "HTTP GET is unavailable in this environment"
+                elseif not base then
+                    errorText = reason or "Invalid API URL"
+                else
+                    data, errorText = arcRequestPublicJSON(requestFn,
+                        base .. "/api/v1/analytics/leaderboard?period=" .. period)
+                end
+                if currentRequest ~= ranks.requestId or not frame.Parent then return end
+                rankingRefresh.Text = "Refresh Leaderboard"
+                rankingRefresh.Active = true
+                if not data or data.period ~= period or type(data.items) ~= "table" then
+                    rankingStatus.Text = "Leaderboard unavailable: " .. tostring(errorText or "Unexpected response"):sub(1, 110)
+                    return
+                end
+                ranks.cache[period] = { items = data.items, checked = os.clock() }
+                local shown = renderRankings(data.items)
+                rankingStatus.Text = shown == 0 and "No opted-in profiles for this period."
+                    or (tostring(shown) .. " opted-in profiles  |  " .. period)
+            end)
+        end
+
+        rankingRefresh.MouseButton1Click:Connect(function()
+            if rankingRefresh.Active then refreshLeaderboard(true) end
+        end)
+        -- Lazy-load only after opening the ArcScriptCenter settings group.
+        frame:GetPropertyChangedSignal("Visible"):Connect(function()
+            if frame.Visible then
+                refreshLeaderboard(false)
+            else
+                -- In-flight results are discarded when the group is closed.
+                ranks.requestId += 1
+                rankingRefresh.Text = "Refresh Leaderboard"
+                rankingRefresh.Active = true
+            end
+        end)
+        loc.API.RefreshArcScriptCenterLeaderboard = refreshLeaderboard
     end
 )
 
