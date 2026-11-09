@@ -1,4 +1,4 @@
-local v_ver = [[WarningUI 0.1.3 Preview]]
+local v_ver = [[WarningUI 0.1.4 Preview]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -615,6 +615,15 @@ function api.showServer(data)
   if type(data) ~= "table" then return false, "Invalid server warning" end
   local id = tostring(data.id or "")
   if id == "" or #id > 100 then return false, "Server warning ID required" end
+  -- Only Live: clients that start after publication must never see this item.
+  local mode = tostring(data.deliveryMode or 'only_live')
+  local created = tonumber(data.createdAt)
+  if mode ~= 'only_live' and mode ~= 'live_and_after' then return false, 'Invalid delivery mode' end
+  if not created then return false, 'Creation timestamp required' end
+  local sessionStarted = warningEnv and tonumber(warningEnv.ArcScriptWarningClientStartedAt) or os.time()
+  if mode == 'only_live' and created < sessionStarted then
+    return false, 'Only Live: announcement was published before client start'
+  end
   local expires = tonumber(data.expiresAt)
   if expires and expires <= os.time() then return false, "Warning expired" end
   if state.seen[id] then return false, "Already shown this session" end
