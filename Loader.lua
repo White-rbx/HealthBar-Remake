@@ -1,12 +1,17 @@
 -- Strict ES SetUp gate. Main bootstrap must load ES SetUp first.
 -- Do not build the Loader UI for banned/failed initialization.
 if type(getgenv) ~= 'function' then return false end
-if getgenv().__ES_BANNED == true or getgenv().__ES_READY ~= true or type(getgenv().ES) ~= 'table' then
-    warn('[ExperienceSettings Loader] Blocked: ES SetUp has not authorized this session.')
+local _boot = getgenv()
+local _setup = _boot.ES
+local _setupShowing = game:GetService("CoreGui"):FindFirstChild("ExperienceSettings-SetUp") ~= nil
+if _boot.__ES_BANNED == true or _boot.__ES_READY ~= true
+    or type(_setup) ~= "table" or _setup.done ~= true or _setup.error == true
+    or _setupShowing or _boot.__ES_SETUP_FINISHED == false then
+    warn("[ExperienceSettings Loader] Blocked: ES SetUp is not fully finished.")
     return false
 end
 
--- Loader script 7.48
+-- Loader script 7.48 (v0.5.36 SetUp completion gate)
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
