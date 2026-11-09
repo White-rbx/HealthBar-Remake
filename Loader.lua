@@ -1,4 +1,4 @@
--- Well 4.15
+-- Well 4.16 | v0.5.36: Strict SetUp -> Loader -> Main serialization
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -12,6 +12,16 @@
 ]]
 
 -- =========================================
+-- SERIAL STARTUP (prevent duplicate SetUp/Loader windows)
+-- =========================================
+local bootEnv = getgenv()
+if bootEnv.__ES_BOOTSTRAP_BUSY then
+    warn("[ES][Bootstrap] Initialization already in progress; duplicate execution ignored.")
+    return
+end
+bootEnv.__ES_BOOTSTRAP_BUSY = true
+
+-- =========================================
 -- RESET
 -- =========================================
 
@@ -19,6 +29,8 @@
 getgenv().ArcScriptWarningClientStartedAt = os.time()
 getgenv().ES = nil
 getgenv().__ES_READY = nil
+getgenv().__ES_BANNED = nil
+getgenv().__ES_SETUP_FINISHED = nil
 getgenv()[string.char(95, 120, 55, 95, 113)] = nil
 
 -- =========================================
@@ -43,7 +55,8 @@ if not ok then
 		err
 	)
 
-	return
+    bootEnv.__ES_BOOTSTRAP_BUSY = nil
+    return
 
 end
 
@@ -58,6 +71,7 @@ repeat
 	task.wait()
 until
 	getgenv().__ES_READY
+    or getgenv().__ES_BANNED == true
 	or getgenv()[string.char(95, 120, 55, 95, 113)]
 	or tick() - start >= timeout
 
@@ -71,6 +85,7 @@ if tick() - start >= timeout then
 		"[ ES ERROR ] Setup timeout."
 	)
 
+    bootEnv.__ES_BOOTSTRAP_BUSY = nil
 	return
 
 end
@@ -79,12 +94,13 @@ end
 -- BAN CHECK
 -- =========================================
 
-if getgenv()[string.char(95, 120, 55, 95, 113)] then
+if getgenv().__ES_BANNED == true or getgenv()[string.char(95, 120, 55, 95, 113)] then
 
 	warn(
 		"You're banned from ExperienceSettings."
 	)
 
+    bootEnv.__ES_BOOTSTRAP_BUSY = nil
 	return
 
 end
@@ -101,18 +117,189 @@ if not ES then
 		"[ ES ERROR ] ES missing."
 	)
 
+    bootEnv.__ES_BOOTSTRAP_BUSY = nil
 	return
 
 end
 
 
+-- =========================================================
+-- PHASE 2: SetUp must finish scanning AND close its splash
+-- Do not confuse __ES_READY (ban check passed) with ES.done.
+-- =========================================================
+-- ===== ERROR SYSTEM =====
+local function catch(err)
+	ES.error = true
+	ES.lastError = tostring(err)
+	warn("[ ES ERROR ]:", err)
+end
+
+local function safe(f)
+	local ok, err = pcall(f)
+	if not ok then
+		catch(err)
+	end
+end
+
+-- ===== SCAN SYSTEM =====
+local visited = {}
+local queue = {}
+local scannedCount = 0
+
+local function extractURLs(src)
+
+	local urls = {}
+
+	-- ""
+	for url in string.gmatch(
+		src,
+		'HttpGet%s*%(%s*"([^"]+)"'
+	) do
+
+		if url:match("^https?://") then
+			table.insert(urls,url)
+		end
+
+	end
+
+	-- ''
+	for url in string.gmatch(
+		src,
+		"HttpGet%s*%(%s*'([^']+)'"
+	) do
+
+		if url:match("^https?://") then
+			table.insert(urls,url)
+		end
+
+	end
+
+	-- [[ ]]
+	for url in string.gmatch(
+		src,
+		'HttpGet%s*%(%s*%[%[(.-)%]%]'
+	) do
+
+		if url:match("^https?://") then
+			table.insert(urls,url)
+		end
+
+	end
+
+	return urls
+
+end
+
+local function scan(url)
+	if visited[url] then return end
+	visited[url] = true
+
+	local ok, src = pcall(function()
+		return game:HttpGet(url)
+	end)
+
+	if not ok then
+		return catch("HttpGet failed: "..tostring(src))
+	end
+
+	if not src or src == "" then
+		return catch("Empty script: "..url)
+	end
+
+	-- ✅ compile check
+	local f, err = loadstring(src)
+	if not f then
+		return catch("Compile error: "..err.." | "..url)
+	end
+
+	-- 🔍 หา loadstring ต่อ
+	for _, u in ipairs(extractURLs(src)) do
+		table.insert(queue, u)
+	end
+
+	-- 📊 progress จริง
+	scannedCount += 1
+ES.progress =
+	math.clamp(
+		scannedCount * 15,
+		0,
+		ES.max
+	)
+end
+
+-- ===== MAIN =====
+local function main()
+
+	-- 🔥 ใช้ Loader ตัวใหม่
+	table.insert(queue, "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/Loader.lua")
+
+	while #queue > 0 do
+		if ES.error then break end
+
+		local url = table.remove(queue, 1)
+
+		safe(function()
+			scan(url)
+		end)
+	end
+
+end
+
+-- RUN
+safe(main)
+
+-- DONE: mark the progress only after the full compile/URL scan finishes.
+if ES.error then
+    warn("[ES][SetUp] Script validation failed; Loader will not be started.")
+    getgenv().__ES_BOOTSTRAP_BUSY = nil
+    return
+end
+ES.progress = ES.max
+task.wait(0.2) -- allow the progress bar to reach 100% visually
+ES.done = true
+
+
+-- Wait until the SetUp script has completed its fade-out and destroyed its ScreenGui.
+-- A 10-second timeout prevents a broken SetUp from opening the Loader prematurely.
+do
+    local coreGui = game:GetService("CoreGui")
+    local deadline = os.clock() + 10
+    repeat
+        if bootEnv.__ES_BANNED or ES.error or bootEnv.ES ~= ES then
+            warn("[ES][SetUp] Aborted: denied, invalidated or failed during finish.")
+            bootEnv.__ES_BOOTSTRAP_BUSY = nil
+            return
+        end
+        local stillShowing = coreGui:FindFirstChild("ExperienceSettings-SetUp") ~= nil
+        local finishedSignal = bootEnv.__ES_SETUP_FINISHED == true
+        -- Compatible with previous SetUp versions that do not send this explicit signal.
+        if ES.done == true and not stillShowing and
+            (finishedSignal or bootEnv.__ES_SETUP_FINISHED == nil) then
+            break
+        end
+        if os.clock() >= deadline then
+            warn("[ES][SetUp] Timed out waiting for the intro screen to close. Loader blocked.")
+            bootEnv.__ES_BOOTSTRAP_BUSY = nil
+            return
+        end
+        task.wait(0.05)
+    until false
+end
+
+-- =========================================================
+-- PHASE 3: Only now is the Loader Rejoiner allowed to appear.
+-- =========================================================
 -- Strict synchronous Get Load / Always Load gate (v0.5.35).
 -- A parallel task.spawn previously allowed Main UI to run before the Loader returned.
 do
     local env = getgenv()
     env.__ES_LOAD_GRANTED = false
     local player = game:GetService("Players").LocalPlayer
-    if not player then warn("[ES][Gate] No LocalPlayer"); return end
+    if not player then
+        warn("[ES][Gate] No LocalPlayer")
+        bootEnv.__ES_BOOTSTRAP_BUSY = nil
+        return
+    end
     local character = player.Character or player.CharacterAdded:Wait()
     character:WaitForChild("HumanoidRootPart", 20)
     pcall(function() game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.Health, true) end)
@@ -123,13 +310,17 @@ do
         if not chunk then error("LoaderSettings compile: " .. tostring(why)) end
         return chunk()
     end)
-    if not ok or allowed ~= true or env.__ES_BANNED == true or env.__ES_READY ~= true then
+    if not ok or allowed ~= true or env.__ES_BANNED == true
+        or env.__ES_READY ~= true or env.ES ~= ES or ES.error then
         warn("[ES][Gate] Main initialization blocked: " .. tostring(allowed))
+        bootEnv.__ES_BOOTSTRAP_BUSY = nil
         return
     end
     env.__ES_LOAD_GRANTED = true
     print("[ES][Gate] Authorized by Get Load or Always Load")
 end
+-- From this point Main UI is allowed; further stages handle their own startup guards.
+bootEnv.__ES_BOOTSTRAP_BUSY = nil
 
 -- WARNING CENTER: load only after ES SetUp has permitted the user.
 -- The Worker sends only DATA; these two trusted modules are embedded here.
@@ -931,136 +1122,7 @@ return shared.ArcScriptWarningConnector
     if not ok then warn('[ArcScriptCenter WarningUI] '..tostring(err)) end
 end)
 
--- ===== ERROR SYSTEM =====
-local function catch(err)
-	ES.error = true
-	ES.lastError = tostring(err)
-	warn("[ ES ERROR ]:", err)
-end
 
-local function safe(f)
-	local ok, err = pcall(f)
-	if not ok then
-		catch(err)
-	end
-end
-
--- ===== SCAN SYSTEM =====
-local visited = {}
-local queue = {}
-local scannedCount = 0
-
-local function extractURLs(src)
-
-	local urls = {}
-
-	-- ""
-	for url in string.gmatch(
-		src,
-		'HttpGet%s*%(%s*"([^"]+)"'
-	) do
-
-		if url:match("^https?://") then
-			table.insert(urls,url)
-		end
-
-	end
-
-	-- ''
-	for url in string.gmatch(
-		src,
-		"HttpGet%s*%(%s*'([^']+)'"
-	) do
-
-		if url:match("^https?://") then
-			table.insert(urls,url)
-		end
-
-	end
-
-	-- [[ ]]
-	for url in string.gmatch(
-		src,
-		'HttpGet%s*%(%s*%[%[(.-)%]%]'
-	) do
-
-		if url:match("^https?://") then
-			table.insert(urls,url)
-		end
-
-	end
-
-	return urls
-
-end
-
-local function scan(url)
-	if visited[url] then return end
-	visited[url] = true
-
-	local ok, src = pcall(function()
-		return game:HttpGet(url)
-	end)
-
-	if not ok then
-		return catch("HttpGet failed: "..tostring(src))
-	end
-
-	if not src or src == "" then
-		return catch("Empty script: "..url)
-	end
-
-	-- ✅ compile check
-	local f, err = loadstring(src)
-	if not f then
-		return catch("Compile error: "..err.." | "..url)
-	end
-
-	-- 🔍 หา loadstring ต่อ
-	for _, u in ipairs(extractURLs(src)) do
-		table.insert(queue, u)
-	end
-
-	-- 📊 progress จริง
-	scannedCount += 1
-ES.progress =
-	math.clamp(
-		scannedCount * 15,
-		0,
-		ES.max
-	)
-end
-
--- ===== MAIN =====
-local function main()
-
-	-- 🔥 ใช้ Loader ตัวใหม่
-	table.insert(queue, "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/Loader.lua")
-
-	while #queue > 0 do
-		if ES.error then break end
-
-		local url = table.remove(queue, 1)
-
-		safe(function()
-			scan(url)
-		end)
-	end
-
-end
-
--- RUN
-safe(main)
-
--- DONE
-task.delay(0.5,function()
-	if not ES.error then
-		ES.progress = ES.max
-		ES.done = true
-	end
-end)
-
--- LoaderSettings already completed synchronously at the top of this entrypoint.
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
