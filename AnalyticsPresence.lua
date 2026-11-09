@@ -1,4 +1,4 @@
--- ArcScriptCenter v0.5.31 — OPTIONAL, EXPLICITLY OPTED-IN usage telemetry.
+-- ArcScriptCenter v0.5.35 — OPTIONAL, EXPLICITLY OPTED-IN usage telemetry.
 -- This is a standalone client adapter for ExperienceSettings.
 -- It does NOT send chat, movement, location, inventories, or private messages.
 -- Usage (from your EXISTING toggle handlers):
@@ -7,7 +7,7 @@
 --   Analytics:SetShowToAdmin(true)      -- existing 'Show to Admin' setting
 --   Analytics:SetAnalyticsConsent(true) -- independent optional consent
 --   Analytics:SetLeaderboardConsent(true) -- independent optional public-name consent
--- All options default to false. No network requests until Active User AND Show to Admin are ON.
+-- Anonymous active status is controlled by Function_Two. Analytics/leaderboard/avatar opt-in separately.
 
 local Players = game:GetService('Players')
 local HttpService = game:GetService('HttpService')
@@ -48,6 +48,7 @@ function M.new(opts)
     self.showToAdmin = false
     self.analyticsConsent = false
     self.leaderboardConsent = false
+    self.avatarConsent = false
     self.running = false
     self.destroyed = false
     self.epoch = 0
@@ -77,8 +78,12 @@ end
 
 function M:_payload()
     local body = { sessionId = self.sessionId }
-    if self.showToAdmin then
+    -- Public leaderboard profile and admin presence profile are separate consents.
+    local wantsPublic = self.analyticsConsent and self.leaderboardConsent
+    local wantsAdmin = self.showToAdmin
+    if wantsPublic or wantsAdmin then
         body.profileConsent = true
+        body.adminProfileConsent = wantsAdmin == true
         body.userId = tostring(LocalPlayer.UserId)
         body.username = tostring(LocalPlayer.Name)
         body.displayName = tostring(LocalPlayer.DisplayName)
@@ -86,7 +91,8 @@ function M:_payload()
     if self.analyticsConsent then
         body.analyticsConsent = true
         body.analyticsUserId = tostring(LocalPlayer.UserId)
-        body.leaderboardConsent = self.leaderboardConsent == true
+        body.leaderboardConsent = wantsPublic == true
+        body.avatarConsent = wantsPublic and self.avatarConsent == true or false
     end
     return body
 end
@@ -105,7 +111,7 @@ function M:_leave(revokeRanking)
 end
 
 function M:_eligible()
-    return not self.destroyed and self.activeUser and self.showToAdmin
+    return not self.destroyed and self.activeUser
 end
 
 function M:_heartbeat()
@@ -154,26 +160,42 @@ end
 function M:SetActiveUser(value)
     local was = self:_eligible()
     self.activeUser = value == true
-    self:_reconcile(was, not self.activeUser)
+    self:_reconcile(was, false)
 end
 function M:SetShowToAdmin(value)
     local was = self:_eligible()
     self.showToAdmin = value == true
-    self:_reconcile(was, not self.showToAdmin)
+    self:_reconcile(was, false)
 end
 function M:SetAnalyticsConsent(value)
     local was = self:_eligible()
-    local disabling = self.analyticsConsent and value ~= true
-    if disabling and was then self:_leave(true) end
+    -- Withdrawn analytics consent also withdraws public ranking, including while paused.
+    if self.analyticsConsent and value ~= true then self:_leave(true) end
     self.analyticsConsent = value == true
-    if not self.analyticsConsent then self.leaderboardConsent = false end
+    if not self.analyticsConsent then
+        self.leaderboardConsent = false
+        self.avatarConsent = false
+    end
     self:_reconcile(was, false)
 end
 function M:SetLeaderboardConsent(value)
     local was = self:_eligible()
-    if value == true and not self.analyticsConsent then return false,'Enable analytics consent first' end
+    if value == true and not self.analyticsConsent then
+        return false, 'Enable usage tracking consent first'
+    end
+    local turningOff = self.leaderboardConsent and value ~= true
     self.leaderboardConsent = value == true
+    if not self.leaderboardConsent then self.avatarConsent = false end
+    if turningOff and not was then self:_leave(true) end
     self:_reconcile(was, false)
+    return true
+end
+function M:SetAvatarConsent(value)
+    if value == true and (not self.analyticsConsent or not self.leaderboardConsent) then
+        return false, 'Enable leaderboard sharing first'
+    end
+    self.avatarConsent = value == true
+    self:_reconcile(self:_eligible(), false)
     return true
 end
 function M:GetStatus()
@@ -181,6 +203,8 @@ function M:GetStatus()
         active = self:_eligible(),
         analytics = self.analyticsConsent,
         leaderboard = self.leaderboardConsent,
+        avatar = self.avatarConsent,
+        showToAdmin = self.showToAdmin,
         lastError = self.lastError,
     }
 end
