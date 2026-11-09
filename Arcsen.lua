@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.3.13 | ArcScriptCenter Leaderboard ",
+	sion = " UIs 7.3.15 | Usage + Avatar Leaderboard ",
 	logs = [[
 (:9/11/2026: A) Stage 16.23: Built-in opt-in masked Leaderboard in Arcsen > Settings > ArcScriptCenter. Lazy public API reads with Today / This Year / All Time, Refresh, cached view, no admin credentials.
 (:7/11/2026: A) Stage 16.22: Create Lua Script In The Chat — Don't / Root Only / All Instance access. Root-only runner exposes UI proxies, all-mode excludes CoreGui.ExperienceSettings and descendants. Script cards pin permission and revoke on mode change.
@@ -13391,228 +13391,9 @@ loc.API.RefreshArcScriptCenterCloud = function()
     return finish()
 end
 
--- Optional AnalyticsPresence bridge; all collection and identity sharing start OFF.
--- Trusted bundled module: no network code is loaded from warning messages or from public API responses.
+-- v7.3.14: Function_Two.lua owns all presence/analytics consent and heartbeats.
+-- Arcsen is strictly read-only for these settings to prevent duplicate sessions.
 loc.API.PresenceAnalytics = nil
-do
-    local bundled = [=====[
--- ArcScriptCenter v0.5.31 — OPTIONAL, EXPLICITLY OPTED-IN usage telemetry.
--- This is a standalone client adapter for ExperienceSettings.
--- It does NOT send chat, movement, location, inventories, or private messages.
--- Usage (from your EXISTING toggle handlers):
---   local Analytics = [load this module]()
---   Analytics:SetActiveUser(true)       -- existing 'Active User' setting
---   Analytics:SetShowToAdmin(true)      -- existing 'Show to Admin' setting
---   Analytics:SetAnalyticsConsent(true) -- independent optional consent
---   Analytics:SetLeaderboardConsent(true) -- independent optional public-name consent
--- All options default to false. No network requests until Active User AND Show to Admin are ON.
-
-local Players = game:GetService('Players')
-local HttpService = game:GetService('HttpService')
-local LocalPlayer = Players.LocalPlayer
-
-local M = {}
-M.__index = M
-
-local API_DEFAULT = 'https://arcscriptcenter-api.kogpasan14.workers.dev'
-local HEARTBEAT = 30
-
-local function getRequest()
-    local env = type(getgenv) == 'function' and getgenv() or nil
-    if type(env) == 'table' then
-        if type(env.request) == 'function' then return env.request end
-        if type(env.http_request) == 'function' then return env.http_request end
-        if type(env.syn) == 'table' and type(env.syn.request) == 'function' then return env.syn.request end
-    end
-    if type(request) == 'function' then return request end
-    if type(http_request) == 'function' then return http_request end
-    if type(syn) == 'table' and type(syn.request) == 'function' then return syn.request end
-    return nil
-end
-
-function M.new(opts)
-    opts = type(opts) == 'table' and opts or {}
-    local self = setmetatable({}, M)
-    self.api = tostring(opts.url or API_DEFAULT):gsub('/+$','')
-    if not self.api:match('^https://[%w%-%.]+$') then
-        return nil, 'ArcScriptCenter URL must be an HTTPS hostname'
-    end
-    self._request = opts.httpRequest or getRequest()
-    if type(self._request) ~= 'function' then
-        return nil, 'No compatible HTTP request function available'
-    end
-    self.sessionId = HttpService:GenerateGUID(false):gsub('[^%x]',''):lower()
-    self.activeUser = false
-    self.showToAdmin = false
-    self.analyticsConsent = false
-    self.leaderboardConsent = false
-    self.running = false
-    self.destroyed = false
-    self.epoch = 0
-    self.busy = false
-    self.lastError = nil
-    self.loopId = 0
-    self._connections = {}
-    table.insert(self._connections, Players.PlayerRemoving:Connect(function(player)
-        if player == LocalPlayer then self:Destroy(false) end
-    end))
-    return self
-end
-
-function M:_send(path, data)
-    local response = self._request({
-        Url = self.api .. '/api/v1/presence/' .. path,
-        Method = 'POST',
-        Headers = {['Content-Type']='application/json',Accept='application/json'},
-        Body = HttpService:JSONEncode(data)
-    })
-    local code = tonumber(response and (response.StatusCode or response.Status)) or 0
-    if code < 200 or code >= 300 then
-        return false, 'Presence HTTP ' .. tostring(code)
-    end
-    return true
-end
-
-function M:_payload()
-    local body = { sessionId = self.sessionId }
-    if self.showToAdmin then
-        body.profileConsent = true
-        body.userId = tostring(LocalPlayer.UserId)
-        body.username = tostring(LocalPlayer.Name)
-        body.displayName = tostring(LocalPlayer.DisplayName)
-    end
-    if self.analyticsConsent then
-        body.analyticsConsent = true
-        body.analyticsUserId = tostring(LocalPlayer.UserId)
-        body.leaderboardConsent = self.leaderboardConsent == true
-    end
-    return body
-end
-
-function M:_leave(revokeRanking)
-    local body = {sessionId=self.sessionId}
-    if revokeRanking and self.analyticsConsent then
-        body.analyticsConsent = true
-        body.analyticsUserId = tostring(LocalPlayer.UserId)
-        body.leaderboardConsent = false
-    end
-    -- Best effort only: abrupt game exits/network loss are handled by server TTL.
-    task.spawn(function()
-        pcall(function() self:_send('leave',body) end)
-    end)
-end
-
-function M:_eligible()
-    return not self.destroyed and self.activeUser and self.showToAdmin
-end
-
-function M:_heartbeat()
-    if not self:_eligible() or self.busy then return end
-    local epoch = self.epoch
-    local payload = self:_payload()
-    self.busy = true
-    task.spawn(function()
-        local ok,success,why = pcall(function() return self:_send('heartbeat',payload) end)
-        self.busy = false
-        if not ok or not success then self.lastError = tostring(why or success)
-        else self.lastError=nil end
-        -- A delayed HTTP request must never re-enable a toggled-off session.
-        if epoch ~= self.epoch then
-            if self:_eligible() then self:_heartbeat() else self:_leave(false) end
-        end
-    end)
-end
-
-function M:_reconcile(oldEnabled, revokeRanking)
-    if self.destroyed then return end
-    local enabled = self:_eligible()
-    self.epoch += 1
-    if not enabled then
-        if oldEnabled then self:_leave(revokeRanking) end
-        self.running = false
-        self.loopId += 1
-        return
-    end
-    self:_heartbeat()
-    if self.running then return end
-    self.running = true
-    self.loopId += 1
-    local token = self.loopId
-    task.spawn(function()
-        while self.running and not self.destroyed and self.loopId == token do
-            task.wait(HEARTBEAT)
-            if self.loopId ~= token or not self:_eligible() then break end
-            self:_heartbeat()
-        end
-        if self.loopId == token then self.running=false end
-    end)
-end
-
--- Hook existing UI controls to these setters; DO NOT create a second toggle panel.
-function M:SetActiveUser(value)
-    local was = self:_eligible()
-    self.activeUser = value == true
-    self:_reconcile(was, not self.activeUser)
-end
-function M:SetShowToAdmin(value)
-    local was = self:_eligible()
-    self.showToAdmin = value == true
-    self:_reconcile(was, not self.showToAdmin)
-end
-function M:SetAnalyticsConsent(value)
-    local was = self:_eligible()
-    local disabling = self.analyticsConsent and value ~= true
-    if disabling and was then self:_leave(true) end
-    self.analyticsConsent = value == true
-    if not self.analyticsConsent then self.leaderboardConsent = false end
-    self:_reconcile(was, false)
-end
-function M:SetLeaderboardConsent(value)
-    local was = self:_eligible()
-    if value == true and not self.analyticsConsent then return false,'Enable analytics consent first' end
-    self.leaderboardConsent = value == true
-    self:_reconcile(was, false)
-    return true
-end
-function M:GetStatus()
-    return {
-        active = self:_eligible(),
-        analytics = self.analyticsConsent,
-        leaderboard = self.leaderboardConsent,
-        lastError = self.lastError,
-    }
-end
-function M:Destroy(revokeRanking)
-    if self.destroyed then return end
-    local was = self:_eligible()
-    if was then self:_leave(revokeRanking == true) end
-    self.destroyed=true;self.running=false;self.epoch += 1;self.loopId += 1
-    for _,connection in ipairs(self._connections) do
-        pcall(function() connection:Disconnect() end)
-    end
-    table.clear(self._connections)
-end
-
-return M
-
-]=====]
-    local factory, compileError = loadstring(bundled)
-    if factory then
-        local ok, package = pcall(factory)
-        if ok and type(package) == "table" and type(package.new) == "function" then
-            local ready, adapter, reason = pcall(package.new)
-            if ready and type(adapter) == "table" then
-                loc.API.PresenceAnalytics = adapter
-            else
-                warn("[ArcScriptCenter] Analytics adapter: " .. tostring(reason or adapter))
-            end
-        else
-            warn("[ArcScriptCenter] Analytics module failed: " .. tostring(package))
-        end
-    else
-        warn("[ArcScriptCenter] Analytics compile failed: " .. tostring(compileError))
-    end
-end
 
 -- Lightweight diagnostics within existing Arcsen Settings; no separate ScreenGui.
 loc.API.ArcScriptCenterCloudSettings = addset(
@@ -13647,66 +13428,36 @@ loc.API.ArcScriptCenterCloudSettings = addset(
         end)
         arcUpdateCloudSettingsUI()
 
-        -- Explicit, independent opt-in controls. OFF by default each execution.
-        local analytics = loc.API.PresenceAnalytics
-        local note = Instance.new("TextLabel")
-        note.Name = "AnalyticsPrivacyNote"
-        note.Size = UDim2.new(1, -8, 0, 90)
-        note.BackgroundTransparency = 1
-        note.TextColor3 = Color3.fromRGB(210, 225, 240)
-        note.TextWrapped = true
-        note.TextSize = 12
-        note.TextXAlignment = Enum.TextXAlignment.Left
-        note.TextYAlignment = Enum.TextYAlignment.Top
-        note.Text = "Usage sharing is OFF by default. Enable Active User + Show to Admin for presence. " ..
-            "Analytics consent counts unique accounts; Leaderboard consent publishes your nickname and masked Username/UserID. " ..
-            "All identity information is client-reported (unverified). Session-only choices."
-        note.Parent = frame
-
-        local controls = {
-            {"Active User", "activeUser", "SetActiveUser"},
-            {"Show to Admin", "showToAdmin", "SetShowToAdmin"},
-            {"Analytics Consent", "analyticsConsent", "SetAnalyticsConsent"},
-            {"Leaderboard Consent", "leaderboardConsent", "SetLeaderboardConsent"}
-        }
-        local buttons = {}
-        local function refreshConsentButtons()
-            for _, entry in ipairs(controls) do
-                local btn = buttons[entry[2]]
-                if btn then
-                    local enabled = analytics and analytics[entry[2]] == true
-                    btn.Text = entry[1] .. ": " .. (enabled and "ON" or "OFF")
-                    btn.BackgroundColor3 = enabled and Color3.fromRGB(30, 105, 80)
-                        or Color3.fromRGB(75, 65, 75)
-                end
+        -- Read-only state: do not offer a SECOND toggle panel in Arcsen.
+        local usageInfo = Instance.new("TextLabel")
+        usageInfo.Name = "FunctionTwoPresenceStatus"
+        usageInfo.Size = UDim2.new(1,-8,0,90)
+        usageInfo.BackgroundTransparency = 1
+        usageInfo.TextColor3 = Color3.fromRGB(210,225,240)
+        usageInfo.TextWrapped = true
+        usageInfo.TextSize = 12
+        usageInfo.TextXAlignment = Enum.TextXAlignment.Left
+        usageInfo.TextYAlignment = Enum.TextYAlignment.Center
+        usageInfo.Parent = frame
+        local function refreshUsageInfo()
+            local state = type(getgenv) == "function" and getgenv().ArcScriptCenterConsentStatus
+            if type(state) ~= "table" then
+                usageInfo.Text = "Usage settings: ExperienceSettings > Toggles > ArcScriptCenter.\n" ..
+                    "Open that menu to control sharing."
+                return
             end
+            local function flag(value) return value and "ON" or "OFF" end
+            usageInfo.Text = "Source: Function_Two.lua (read-only)\n" ..
+                "Active: " .. flag(state.activeUser) .. "  |  Admin: " .. flag(state.showToAdmin) ..
+                "  |  Time: " .. flag(state.analyticsConsent) .. "\n" ..
+                "Leaderboard: " .. flag(state.leaderboardConsent) ..
+                "  |  ImageLabel: " .. flag(state.avatarConsent) ..
+                "\nTo change these, use the Toggles panel."
         end
-        for _, entry in ipairs(controls) do
-            local settingLabel, property, setter = entry[1], entry[2], entry[3]
-            local toggle = Instance.new("TextButton")
-            toggle.Name = "Consent_" .. property
-            toggle.Size = UDim2.new(1, -8, 0, 30)
-            toggle.TextSize = 13
-            toggle.TextColor3 = Color3.fromRGB(245, 245, 255)
-            toggle.Parent = frame
-            Corner(0, 5, toggle)
-            buttons[property] = toggle
-            toggle.MouseButton1Click:Connect(function()
-                if not analytics or type(analytics[setter]) ~= "function" then
-                    ding("Analytics HTTP adapter unavailable on this executor.", 4, 255, 120, 95)
-                    return
-                end
-                local nextValue = not (analytics[property] == true)
-                local ok, accepted, why = pcall(function()
-                    return analytics[setter](analytics, nextValue)
-                end)
-                if not ok or accepted == false then
-                    ding("Analytics: " .. tostring(why or accepted), 4, 255, 120, 95)
-                end
-                refreshConsentButtons()
-            end)
-        end
-        refreshConsentButtons()
+        refreshUsageInfo()
+        frame:GetPropertyChangedSignal("Visible"):Connect(function()
+            if frame.Visible then refreshUsageInfo() end
+        end)
 
         -- Stage 16.23: masked, read-only Leaderboard integrated in Arcsen Settings.
         -- No admin token, Roblox identifiers, or chat messages in these GET requests.
@@ -13815,8 +13566,50 @@ loc.API.ArcScriptCenterCloudSettings = addset(
         rankPrivacy.TextSize = 11
         rankPrivacy.TextWrapped = true
         rankPrivacy.TextXAlignment = Enum.TextXAlignment.Left
-        rankPrivacy.Text = "Names are client-reported (not Roblox-verified). Username and UserID are masked by the Worker. Only consenting users are shown."
+        rankPrivacy.Text = "Names are client-reported (not Roblox-verified). Username and UserID are masked by the Worker. Only opted-in profiles are shown even after logout. Time is accumulated by Function_Two toggles."
         rankPrivacy.Parent = frame
+
+        local function usageTime(seconds)
+            local value = math.max(0, math.floor(tonumber(seconds) or 0))
+            local hours = math.floor(value / 3600)
+            local minutes = math.floor(value % 3600 / 60)
+            local secs = value % 60
+            return string.format("%dh %02dm %02ds", hours, minutes, secs)
+        end
+        -- Remote thumbnails are opt-in and not guaranteed to render through Roblox content IDs.
+        -- When available, use a small local asset cache; otherwise display profile initials.
+        local function tryLoadAvatar(avatarImage, initialsLabel, assetUrl, index)
+            if type(assetUrl) ~= "string" or #assetUrl > 400 then return end
+            local hostname = assetUrl:match("^https://([%w%.%-]+)/")
+            if not hostname or not (hostname == "rbxcdn.com" or hostname:sub(-11) == ".rbxcdn.com") then return end
+            task.spawn(function()
+                local asset = assetUrl
+                local req = arcGetSuncRequest()
+                if type(req) == "function" and type(writefile) == "function" and type(getcustomasset) == "function" then
+                    local ok, resp = pcall(req,{Url=assetUrl,Method="GET",Headers={Accept="image/png"}})
+                    if ok and type(resp) == "table" and tonumber(resp.StatusCode) == 200 and
+                        type(resp.Body) == "string" and #resp.Body > 100 and #resp.Body < 300000 and
+                        resp.Body:sub(1,4) == "\137PNG" then
+                        local assetKey = 0
+                        for pos = 1, #assetUrl do
+                            assetKey = (assetKey * 33 + assetUrl:byte(pos)) % 2147483647
+                        end
+                        local path = "ACS_Avatar_" .. tostring(assetKey) .. ".png"
+                        local saved = pcall(writefile,path,resp.Body)
+                        if saved then
+                            local worked, custom = pcall(getcustomasset,path)
+                            if worked and type(custom) == "string" then asset = custom end
+                        end
+                    end
+                end
+                if not avatarImage.Parent then return end
+                pcall(function() avatarImage.Image = asset end)
+                pcall(function()
+                    game:GetService("ContentProvider"):PreloadAsync({avatarImage})
+                    if avatarImage.Parent and avatarImage.IsLoaded then initialsLabel.Visible = false end
+                end)
+            end)
+        end
 
         local function renderRankings(items)
             -- Reuse one ScrollingFrame; no duplicate ranks after refresh/period switch.
@@ -13837,12 +13630,30 @@ loc.API.ArcScriptCenterCloudSettings = addset(
                         local rank = tonumber(info.rank) or shown
                         local entry = Instance.new("Frame")
                         entry.Name = "LeaderboardEntry_" .. tostring(shown)
-                        entry.Size = UDim2.new(1, -8, 0, 53)
+                        entry.Size = UDim2.new(1, -8, 0, 67)
                         entry.LayoutOrder = shown
                         entry.BackgroundColor3 = Color3.fromRGB(38, 49, 67)
                         entry.BorderSizePixel = 0
                         entry.Parent = rankScroll
                         Corner(0, 5, entry)
+
+                        local profileImage = Instance.new("ImageLabel")
+                        profileImage.Name = "PublicAvatar"
+                        profileImage.Size = UDim2.fromOffset(38, 38)
+                        profileImage.Position = UDim2.fromOffset(39, 11)
+                        profileImage.BackgroundColor3 = Color3.fromRGB(55,70,88)
+                        profileImage.BorderSizePixel = 0
+                        profileImage.Parent = entry
+                        Corner(1,0,profileImage)
+                        local initial = Instance.new("TextLabel")
+                        initial.Name = "AvatarFallback"
+                        initial.Size = UDim2.fromScale(1,1)
+                        initial.BackgroundTransparency = 1
+                        initial.TextColor3 = Color3.fromRGB(235,245,255)
+                        initial.TextSize = 19
+                        initial.Text = nickname:sub(1,1):upper()
+                        initial.Parent = profileImage
+                        tryLoadAvatar(profileImage, initial, info.avatarUrl, shown)
 
                         local number = Instance.new("TextLabel")
                         number.Name = "Rank"
@@ -13855,8 +13666,8 @@ loc.API.ArcScriptCenterCloudSettings = addset(
 
                         local display = Instance.new("TextLabel")
                         display.Name = "Nickname"
-                        display.Position = UDim2.fromOffset(42, 3)
-                        display.Size = UDim2.new(1, -47, 0, 22)
+                        display.Position = UDim2.fromOffset(83, 2)
+                        display.Size = UDim2.new(1, -88, 0, 20)
                         display.BackgroundTransparency = 1
                         display.TextColor3 = Color3.fromRGB(245, 250, 255)
                         display.TextSize = 13
@@ -13868,8 +13679,8 @@ loc.API.ArcScriptCenterCloudSettings = addset(
 
                         local metadata = Instance.new("TextLabel")
                         metadata.Name = "MaskedIdentity"
-                        metadata.Position = UDim2.fromOffset(42, 26)
-                        metadata.Size = UDim2.new(1, -47, 0, 24)
+                        metadata.Position = UDim2.fromOffset(83, 22)
+                        metadata.Size = UDim2.new(1, -88, 0, 19)
                         metadata.BackgroundTransparency = 1
                         metadata.TextColor3 = Color3.fromRGB(185, 203, 225)
                         metadata.TextSize = 11
@@ -13877,7 +13688,17 @@ loc.API.ArcScriptCenterCloudSettings = addset(
                         metadata.TextTruncate = Enum.TextTruncate.AtEnd
                         metadata.TextXAlignment = Enum.TextXAlignment.Left
                         metadata.Text = "@" .. username .. "  |  [" .. userId .. "]"
+                        local timeLabel = Instance.new("TextLabel")
+                        timeLabel.Name = "AccumulatedTime"
+                        timeLabel.Position = UDim2.fromOffset(83, 42)
+                        timeLabel.Size = UDim2.new(1, -88, 0, 20)
+                        timeLabel.BackgroundTransparency = 1
+                        timeLabel.TextColor3 = Color3.fromRGB(140,225,190)
+                        timeLabel.TextSize = 12
+                        timeLabel.TextXAlignment = Enum.TextXAlignment.Left
+                        timeLabel.Text = "Usage: " .. usageTime(info.seconds)
                         metadata.Parent = entry
+                        timeLabel.Parent = entry
                     end
                 end
             end
