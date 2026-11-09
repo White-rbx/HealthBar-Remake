@@ -1,4 +1,4 @@
-local v_ver = [[WarningUI 0.1.4 Preview]]
+local v_ver = [[WarningUI 0.1.5 Preview]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -508,7 +508,7 @@ local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, o
   return { close = dismiss, frame = frm }
 end
 
-local api = { version = "0.2.0", source = "ExperienceSettings WarningUI" }
+local api = { version = "0.2.2-handle-id-rejoin", source = "ExperienceSettings WarningUI" }
 
 -- Register trusted local Luau callbacks before showing Cloud warnings.
 -- 'RequireScript' never compiles text returned by a Cloudflare API.
@@ -541,6 +541,34 @@ local function makeButtonCallback(entry, source, slot)
     return function() return localFunction(entry) end
   end
   if type(scriptId) ~= "string" then return nil end
+  -- Cloud actions are fixed, locally defined behaviors. No API source is compiled.
+  if source == "server" then
+    if scriptId == "ACS_WarningClose" then
+      return function() return true end
+    elseif scriptId == "ACS_WarningLeave" then
+      return function()
+        local player = game:GetService("Players").LocalPlayer
+        if player then
+          player:Kick("You chose to leave the experience from ArcScriptCenter WarningUI.")
+        end
+        return true
+      end
+    elseif scriptId == "ACS_WarningRejoin" then
+      return function()
+        -- Only after the local user explicitly presses the clearly labeled button.
+        local player = game:GetService("Players").LocalPlayer
+        if not player then return false end
+        local ok, err = pcall(function()
+          game:GetService("TeleportService"):Teleport(game.PlaceId, player)
+        end)
+        if not ok then
+          warn("[WarningUI] Rejoin failed: " .. tostring(err))
+          return false -- keep the warning visible if teleport was rejected
+        end
+        return true
+      end
+    end
+  end
   return function()
     local handler = state.scripts[scriptId]
     if type(handler) ~= "function" then
@@ -592,11 +620,28 @@ local function queueWarning(entry, source)
     (type(entry.secondaryScriptId) ~= "string" or not state.scripts[entry.secondaryScriptId]) then
     return false, "Button2 Luau function required"
   end
+  -- A server-authored notice must never disguise a voluntary disconnect button.
+  local label1 = tostring(entry.primaryLabel or "OK"):sub(1, 32)
+  local label2 = entry.secondaryLabel and tostring(entry.secondaryLabel):sub(1, 32) or nil
+  if source == "server" then
+    if action1 == "RequireScript" and entry.primaryScriptId == "ACS_WarningLeave" then
+      label1 = "Leave game"
+    end
+    if action1 == "RequireScript" and entry.primaryScriptId == "ACS_WarningRejoin" then
+      label1 = "Rejoin game"
+    end
+    if label2 and action2 == "RequireScript" and entry.secondaryScriptId == "ACS_WarningLeave" then
+      label2 = "Leave game"
+    end
+    if label2 and action2 == "RequireScript" and entry.secondaryScriptId == "ACS_WarningRejoin" then
+      label2 = "Rejoin game"
+    end
+  end
   table.insert(state.queue, {
     title = title:sub(1, 120),
     description = description:sub(1, 1500),
-    primaryLabel = tostring(entry.primaryLabel or "OK"):sub(1, 32),
-    secondaryLabel = entry.secondaryLabel and tostring(entry.secondaryLabel):sub(1, 32) or nil,
+    primaryLabel = label1,
+    secondaryLabel = label2,
     onPrimary = makeButtonCallback(entry, source, 1),
     onSecondary = entry.secondaryLabel and makeButtonCallback(entry, source, 2) or nil
   })
