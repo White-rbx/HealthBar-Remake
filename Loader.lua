@@ -1,4 +1,4 @@
--- Well 4.14
+-- Well 4.15
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -105,6 +105,31 @@ if not ES then
 
 end
 
+
+-- Strict synchronous Get Load / Always Load gate (v0.5.35).
+-- A parallel task.spawn previously allowed Main UI to run before the Loader returned.
+do
+    local env = getgenv()
+    env.__ES_LOAD_GRANTED = false
+    local player = game:GetService("Players").LocalPlayer
+    if not player then warn("[ES][Gate] No LocalPlayer"); return end
+    local character = player.Character or player.CharacterAdded:Wait()
+    character:WaitForChild("HumanoidRootPart", 20)
+    pcall(function() game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.Health, true) end)
+    local ok, allowed = pcall(function()
+        local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"
+        local src = game:HttpGet(url)
+        local chunk, why = loadstring(src)
+        if not chunk then error("LoaderSettings compile: " .. tostring(why)) end
+        return chunk()
+    end)
+    if not ok or allowed ~= true or env.__ES_BANNED == true or env.__ES_READY ~= true then
+        warn("[ES][Gate] Main initialization blocked: " .. tostring(allowed))
+        return
+    end
+    env.__ES_LOAD_GRANTED = true
+    print("[ES][Gate] Authorized by Get Load or Always Load")
+end
 
 -- WARNING CENTER: load only after ES SetUp has permitted the user.
 -- The Worker sends only DATA; these two trusted modules are embedded here.
@@ -1035,23 +1060,7 @@ task.delay(0.5,function()
 	end
 end)
 
--- LoaderSettings is a separate configuration UI (not ExperienceSettings).
--- Its startup must not suspend the main UI bootstrap if it yields on an avatar/UI.
-task.spawn(function()
-    print("[ES][Bootstrap] Starting LoaderSettings in parallel...")
-    local ok, err = pcall(function()
-        local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Loader.lua"
-        local source = game:HttpGet(url)
-        local chunk, compileError = loadstring(source)
-        if not chunk then error("LoaderSettings compile: " .. tostring(compileError)) end
-        chunk()
-    end)
-    if not ok then
-        warn("[ES][Bootstrap] LoaderSettings failed independently: " .. tostring(err))
-    else
-        print("[ES][Bootstrap] LoaderSettings loaded.")
-    end
-end)
+-- LoaderSettings already completed synchronously at the top of this entrypoint.
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
