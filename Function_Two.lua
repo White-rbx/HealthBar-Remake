@@ -1,4 +1,4 @@
--- So this another script lol 2.94
+-- So this another script lol 2.95
 
 
 -- =====>> Saved Functions <<=====
@@ -647,127 +647,393 @@ Show or hide the Gif Animation Editor window.]],
 )
 
 --// =====================================================
---// ARCSCRIPTCENTER: ACTIVE STATUS + EXPLICIT PROFILE CONSENT
---// Anonymous count ON by default, OFF means 24h pause (clearly disclosed).
---// A separate persistent opt-out is provided. Roblox profile sharing is OFF by default.
+--// ArcScriptCenter v0.5.35: ONE presence + usage owner (Function_Two Toggles)
+--// Arcsen Settings is read-only. Public profiles/time require explicit consent.
 --// =====================================================
 do
     local env = getgenv()
     local conf = ToggleConfig
-    local baseURL = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/UniversalPresence.lua"
-    local key = "_ES_UniversalPresenceSession"
-    local pauseKey = "ACS_presence_pause_until"
-    local offKey = "ACS_presence_never_share"
-    local profileKey = "ACS_presence_profile_opt_in"
     local mainKey = "ACS_ShareActiveStatus"
-    local session, row, setMain
-    local cycle = 0
-    local initial = true
-    local function stop()
-        cycle += 1
-        if session and type(session.stop)=="function" then pcall(function() session:stop() end) end
-        session = nil
-        if type(env[key])=="table" and type(env[key].stop)=="function" then
-            pcall(function() env[key]:stop() end)
+    local pauseKey = "ACS_presence_pause_until"
+    local neverKey = "ACS_presence_never_share"
+    local profileKey = "ACS_presence_profile_opt_in"
+    local usageKey = "ACS_usage_time_opt_in"
+    local rankKey = "ACS_leaderboard_opt_in"
+    local avatarKey = "ACS_leaderboard_avatar_opt_in"
+    local oldKey = "_ES_UniversalPresenceSession"
+    local ownerKey = "_ES_AnalyticsPresenceSession"
+
+    -- Retire the previous UniversalPresence heartbeat to avoid counting one client twice.
+    if type(env[oldKey]) == "table" and type(env[oldKey].stop) == "function" then
+        pcall(function() env[oldKey]:stop() end)
+    end
+    env[oldKey] = nil
+    if type(env[ownerKey]) == "table" and type(env[ownerKey].Destroy) == "function" then
+        pcall(function() env[ownerKey]:Destroy(false) end)
+    end
+    env[ownerKey] = nil
+
+    local bundledModule = [=====[-- ArcScriptCenter v0.5.35 — OPTIONAL, EXPLICITLY OPTED-IN usage telemetry.
+-- This is a standalone client adapter for ExperienceSettings.
+-- It does NOT send chat, movement, location, inventories, or private messages.
+-- Usage (from your EXISTING toggle handlers):
+--   local Analytics = [load this module]()
+--   Analytics:SetActiveUser(true)       -- existing 'Active User' setting
+--   Analytics:SetShowToAdmin(true)      -- existing 'Show to Admin' setting
+--   Analytics:SetAnalyticsConsent(true) -- independent optional consent
+--   Analytics:SetLeaderboardConsent(true) -- independent optional public-name consent
+-- Anonymous active status is controlled by Function_Two. Analytics/leaderboard/avatar opt-in separately.
+
+local Players = game:GetService('Players')
+local HttpService = game:GetService('HttpService')
+local LocalPlayer = Players.LocalPlayer
+
+local M = {}
+M.__index = M
+
+local API_DEFAULT = 'https://arcscriptcenter-api.kogpasan14.workers.dev'
+local HEARTBEAT = 30
+
+local function getRequest()
+    local env = type(getgenv) == 'function' and getgenv() or nil
+    if type(env) == 'table' then
+        if type(env.request) == 'function' then return env.request end
+        if type(env.http_request) == 'function' then return env.http_request end
+        if type(env.syn) == 'table' and type(env.syn.request) == 'function' then return env.syn.request end
+    end
+    if type(request) == 'function' then return request end
+    if type(http_request) == 'function' then return http_request end
+    if type(syn) == 'table' and type(syn.request) == 'function' then return syn.request end
+    return nil
+end
+
+function M.new(opts)
+    opts = type(opts) == 'table' and opts or {}
+    local self = setmetatable({}, M)
+    self.api = tostring(opts.url or API_DEFAULT):gsub('/+$','')
+    if not self.api:match('^https://[%w%-%.]+$') then
+        return nil, 'ArcScriptCenter URL must be an HTTPS hostname'
+    end
+    self._request = opts.httpRequest or getRequest()
+    if type(self._request) ~= 'function' then
+        return nil, 'No compatible HTTP request function available'
+    end
+    self.sessionId = HttpService:GenerateGUID(false):gsub('[^%x]',''):lower()
+    self.activeUser = false
+    self.showToAdmin = false
+    self.analyticsConsent = false
+    self.leaderboardConsent = false
+    self.avatarConsent = false
+    self.running = false
+    self.destroyed = false
+    self.epoch = 0
+    self.busy = false
+    self.lastError = nil
+    self.loopId = 0
+    self._connections = {}
+    table.insert(self._connections, Players.PlayerRemoving:Connect(function(player)
+        if player == LocalPlayer then self:Destroy(false) end
+    end))
+    return self
+end
+
+function M:_send(path, data)
+    local response = self._request({
+        Url = self.api .. '/api/v1/presence/' .. path,
+        Method = 'POST',
+        Headers = {['Content-Type']='application/json',Accept='application/json'},
+        Body = HttpService:JSONEncode(data)
+    })
+    local code = tonumber(response and (response.StatusCode or response.Status)) or 0
+    if code < 200 or code >= 300 then
+        return false, 'Presence HTTP ' .. tostring(code)
+    end
+    return true
+end
+
+function M:_payload()
+    local body = { sessionId = self.sessionId }
+    -- Public leaderboard profile and admin presence profile are separate consents.
+    local wantsPublic = self.analyticsConsent and self.leaderboardConsent
+    local wantsAdmin = self.showToAdmin
+    if wantsPublic or wantsAdmin then
+        body.profileConsent = true
+        body.adminProfileConsent = wantsAdmin == true
+        body.userId = tostring(LocalPlayer.UserId)
+        body.username = tostring(LocalPlayer.Name)
+        body.displayName = tostring(LocalPlayer.DisplayName)
+    end
+    if self.analyticsConsent then
+        body.analyticsConsent = true
+        body.analyticsUserId = tostring(LocalPlayer.UserId)
+        body.leaderboardConsent = wantsPublic == true
+        body.avatarConsent = wantsPublic and self.avatarConsent == true or false
+    end
+    return body
+end
+
+function M:_leave(revokeRanking)
+    local body = {sessionId=self.sessionId}
+    if revokeRanking and self.analyticsConsent then
+        body.analyticsConsent = true
+        body.analyticsUserId = tostring(LocalPlayer.UserId)
+        body.leaderboardConsent = false
+    end
+    -- Best effort only: abrupt game exits/network loss are handled by server TTL.
+    task.spawn(function()
+        pcall(function() self:_send('leave',body) end)
+    end)
+end
+
+function M:_eligible()
+    return not self.destroyed and self.activeUser
+end
+
+function M:_heartbeat()
+    if not self:_eligible() or self.busy then return end
+    local epoch = self.epoch
+    local payload = self:_payload()
+    self.busy = true
+    task.spawn(function()
+        local ok,success,why = pcall(function() return self:_send('heartbeat',payload) end)
+        self.busy = false
+        if not ok or not success then self.lastError = tostring(why or success)
+        else self.lastError=nil end
+        -- A delayed HTTP request must never re-enable a toggled-off session.
+        if epoch ~= self.epoch then
+            if self:_eligible() then self:_heartbeat() else self:_leave(false) end
         end
-        env[key] = nil
+    end)
+end
+
+function M:_reconcile(oldEnabled, revokeRanking)
+    if self.destroyed then return end
+    local enabled = self:_eligible()
+    self.epoch += 1
+    if not enabled then
+        if oldEnabled then self:_leave(revokeRanking) end
+        self.running = false
+        self.loopId += 1
+        return
     end
-    stop()
-    local function requestFunction()
-        if type(request)=="function" then return request end
-        if type(http_request)=="function" then return http_request end
-        if type(syn)=="table" and type(syn.request)=="function" then return syn.request end
-        if type(http)=="table" and type(http.request)=="function" then return http.request end
-        return nil
+    self:_heartbeat()
+    if self.running then return end
+    self.running = true
+    self.loopId += 1
+    local token = self.loopId
+    task.spawn(function()
+        while self.running and not self.destroyed and self.loopId == token do
+            task.wait(HEARTBEAT)
+            if self.loopId ~= token or not self:_eligible() then break end
+            self:_heartbeat()
+        end
+        if self.loopId == token then self.running=false end
+    end)
+end
+
+-- Hook existing UI controls to these setters; DO NOT create a second toggle panel.
+function M:SetActiveUser(value)
+    local was = self:_eligible()
+    self.activeUser = value == true
+    self:_reconcile(was, false)
+end
+function M:SetShowToAdmin(value)
+    local was = self:_eligible()
+    self.showToAdmin = value == true
+    self:_reconcile(was, false)
+end
+function M:SetAnalyticsConsent(value)
+    local was = self:_eligible()
+    -- Withdrawn analytics consent also withdraws public ranking, including while paused.
+    if self.analyticsConsent and value ~= true then self:_leave(true) end
+    self.analyticsConsent = value == true
+    if not self.analyticsConsent then
+        self.leaderboardConsent = false
+        self.avatarConsent = false
     end
-    local function start()
-        stop()
-        if conf:Get(offKey,false) or not conf:Get(mainKey,true) or
-           tonumber(conf:Get(pauseKey,0)) > os.time() then return end
-        local req = requestFunction()
-        if not req then warn("[Presence] HTTP request unavailable") return end
-        local current = cycle
-        task.spawn(function()
-            local ok, source = pcall(function() return game:HttpGet(baseURL) end)
-            if not ok or type(source)~="string" or current~=cycle then return end
-            local compiled = loadstring(source)
-            if type(compiled)~="function" then return end
-            local loaded, module = pcall(compiled)
-            if not loaded or type(module)~="table" or type(module.new)~="function" or current~=cycle then return end
-            local profile = nil
-            if conf:Get(profileKey,false) then
-                -- Never share profile identifiers unless the user explicitly opted in.
-                local player = game:GetService("Players").LocalPlayer
-                if player then profile = {
-                    consent=true, userId=player.UserId,
-                    username=player.Name, displayName=player.DisplayName
-                } end
-            end
-            local created, s = pcall(module.new, req, function(success, err)
-                if not success then warn("[Presence] "..tostring(err)) end
-            end, profile)
-            if not created or type(s)~="table" or current~=cycle then return end
-            session=s; env[key]=s
-            local ready, result = pcall(function() return s:start(true) end)
-            if not ready or result==false then stop() end
-        end)
+    self:_reconcile(was, false)
+end
+function M:SetLeaderboardConsent(value)
+    local was = self:_eligible()
+    if value == true and not self.analyticsConsent then
+        return false, 'Enable usage tracking consent first'
     end
-    -- If a 24-hour pause expired, resume unless the persistent opt-out is ON.
-    if tonumber(conf:Get(pauseKey,0))<=os.time() and not conf:Get(offKey,false) then
-        conf:Set(mainKey,true)
-        conf:Set(pauseKey,0)
-        conf:Save()
-    elseif tonumber(conf:Get(pauseKey,0))>os.time() then
-        conf:Set(mainKey,false)
-        conf:Save()
+    local turningOff = self.leaderboardConsent and value ~= true
+    self.leaderboardConsent = value == true
+    if not self.leaderboardConsent then self.avatarConsent = false end
+    if turningOff and not was then self:_leave(true) end
+    self:_reconcile(was, false)
+    return true
+end
+function M:SetAvatarConsent(value)
+    if value == true and (not self.analyticsConsent or not self.leaderboardConsent) then
+        return false, 'Enable leaderboard sharing first'
     end
-    local old=BFrame:FindFirstChild(mainKey)
-    if old then old:Destroy() end
-    row,setMain = createToggle(BFrame,mainKey,"Share Active Status",
-        [[<b>Share Active Status</b> — Anonymous session count is ON by default.
-Switching OFF means <b>Pause for 24 hours</b>, then it resumes automatically.
-Use "Never Share Active Status" to opt out permanently.
-Only the separate Profile toggle shares a Roblox name and User ID.]],
+    self.avatarConsent = value == true
+    self:_reconcile(self:_eligible(), false)
+    return true
+end
+function M:GetStatus()
+    return {
+        active = self:_eligible(),
+        analytics = self.analyticsConsent,
+        leaderboard = self.leaderboardConsent,
+        avatar = self.avatarConsent,
+        showToAdmin = self.showToAdmin,
+        lastError = self.lastError,
+    }
+end
+function M:Destroy(revokeRanking)
+    if self.destroyed then return end
+    local was = self:_eligible()
+    if was then self:_leave(revokeRanking == true) end
+    self.destroyed=true;self.running=false;self.epoch += 1;self.loopId += 1
+    for _,connection in ipairs(self._connections) do
+        pcall(function() connection:Disconnect() end)
+    end
+    table.clear(self._connections)
+end
+
+return M
+]=====]
+    local adapter
+    do
+        local compiled, why = loadstring(bundledModule)
+        if compiled then
+            local ok, factory = pcall(compiled)
+            if ok and type(factory) == "table" and type(factory.new) == "function" then
+                local made, instance, err = pcall(factory.new)
+                if made and type(instance) == "table" then
+                    adapter = instance
+                    env[ownerKey] = instance
+                else warn("[ArcScriptCenter] Analytics init: " .. tostring(err or instance)) end
+            else warn("[ArcScriptCenter] Analytics module: " .. tostring(factory)) end
+        else warn("[ArcScriptCenter] Analytics syntax: " .. tostring(why)) end
+    end
+    local initial = true
+    local row, setMain, setUsage, setRank, setAvatar
+    local function isEnabled()
+        return conf:Get(mainKey,true) == true
+            and conf:Get(neverKey,false) ~= true
+            and (tonumber(conf:Get(pauseKey,0)) or 0) <= os.time()
+    end
+    local function updateState()
+        local active = isEnabled()
+        local showAdmin = conf:Get(profileKey,false) == true
+        local usage = conf:Get(usageKey,false) == true
+        local ranking = usage and conf:Get(rankKey,false) == true
+        local avatar = ranking and conf:Get(avatarKey,false) == true
+        if adapter then
+            -- Inactive sessions send no heartbeat, while retained leaderboard time stays in D1.
+            adapter:SetShowToAdmin(showAdmin)
+            adapter:SetAnalyticsConsent(usage)
+            adapter:SetLeaderboardConsent(ranking)
+            adapter:SetAvatarConsent(avatar)
+            adapter:SetActiveUser(active)
+        end
+        env.ArcScriptCenterConsentStatus = {
+            activeUser=active, showToAdmin=showAdmin,
+            analyticsConsent=usage, leaderboardConsent=ranking, avatarConsent=avatar,
+            source="Function_Two.lua", tracking=active and usage
+        }
+    end
+    -- Preserve user's existing pause setting, but do not turn ON a permanent opt-out.
+    if tonumber(conf:Get(pauseKey,0)) > 0 and tonumber(conf:Get(pauseKey,0)) <= os.time()
+       and not conf:Get(neverKey,false) then
+        conf:Set(mainKey,true); conf:Set(pauseKey,0); conf:Save()
+    end
+
+    row,setMain=createToggle(BFrame,mainKey,"Share Active Status",
+        [[<b>Anonymous Active User</b> is shared while ON (default). OFF pauses for 24 hours.
+Use Never Share to opt out permanently. Usage time and public leaderboard are separate OFF-by-default toggles.]],
         function(on)
-            if not initial then
-                conf:Set(pauseKey,on and 0 or (os.time()+86400))
-                conf:Save()
-            end
-            if on then start() else stop() end
+            if initial then return end
+            conf:Set(pauseKey,on and 0 or (os.time()+86400)); conf:Save()
+            updateState()
         end,true)
     row.Name=mainKey
-    initial=false
-    local oldProfile=BFrame:FindFirstChild(profileKey)
-    if oldProfile then oldProfile:Destroy() end
+
     local profileRow=createToggle(BFrame,profileKey,"Show Roblox Profile to Admin",
-        [[<b>Share Roblox Profile in Admin Active Users</b> — ON by default.
-When enabled, sends your Roblox User ID, username and display name to
-ArcScriptCenter for display in the private Admin dashboard.
-Anyone using an untrusted client could spoof these values; no verified identity is claimed.]],
-        function(on)
-            if not initial and conf:Get(mainKey,true) and not conf:Get(offKey,false) then start() end
-        end,true)
+        [[<b>Private Admin profile</b> — OFF by default. Explicit permission to display
+self-reported Roblox Username, DisplayName and UserID on the Admin Active User list.]],
+        function(on) if not initial then updateState() end end,false)
     profileRow.Name=profileKey
-    local oldOff=BFrame:FindFirstChild(offKey)
-    if oldOff then oldOff:Destroy() end
-    local offRow=createToggle(BFrame,offKey,"Never Share Active Status",
-        [[<b>Permanent Opt-out</b> — Stops anonymous presence AND profile sharing.
-Stays in effect across restarts until you turn this OFF yourself.]],
+
+    local usageRow
+    usageRow,setUsage=createToggle(BFrame,usageKey,"Count Usage Time",
+        [[<b>Accumulate usage time</b> — OFF by default. When enabled while Share Active Status is ON,
+periodic heartbeats count approximately 30-second intervals on the Worker. Time is kept in D1 after logout.
+Turning OFF stops counting; turning it back ON resumes the total.]],
         function(on)
-            if on then stop() elseif conf:Get(mainKey,true) then start() end
+            if initial then return end
+            if not on and conf:Get(rankKey,false) and setRank then setRank(false) end
+            updateState()
         end,false)
-    offRow.Name=offKey
+    usageRow.Name=usageKey
+
+    local rankRow
+    rankRow,setRank=createToggle(BFrame,rankKey,"Show in Leaderboard",
+        [[<b>Public Leaderboard (opt-in)</b> — OFF by default. Shares self-reported nickname,
+masked Username, masked UserID, and accumulated usage time. The ranking stays visible after logout.
+Turning this OFF removes the public profile without erasing recorded usage time.]],
+        function(on)
+            if initial then return end
+            if on and not conf:Get(usageKey,false) then
+                -- Do not silently turn on a separate telemetry consent.
+                if setRank then setRank(false) end
+                warn("[ArcScriptCenter] Enable Count Usage Time before Show in Leaderboard.")
+                return
+            end
+            if not on and conf:Get(avatarKey,false) and setAvatar then setAvatar(false) end
+            updateState()
+        end,false)
+    rankRow.Name=rankKey
+
+    local avatarRow
+    avatarRow,setAvatar=createToggle(BFrame,avatarKey,"Show Your Avatar in Arcsen Leaderboard",
+        [[<b>Show your Roblox avatar ImageLabel</b> — OFF by default. An avatar may identify you even
+when Username and UserID are masked. If ON, Worker fetches your public Roblox avatar
+and stores only its CDN image URL. Some Roblox clients may show a fallback avatar.]],
+        function(on)
+            if initial then return end
+            if on and not conf:Get(rankKey,false) then
+                -- Consent to display an image never implies consent to publish the entire profile.
+                if setAvatar then setAvatar(false) end
+                warn("[ArcScriptCenter] Enable Show in Leaderboard first.")
+                return
+            end
+            updateState()
+        end,false)
+    avatarRow.Name=avatarKey
+
+    local neverRow=createToggle(BFrame,neverKey,"Never Share Active Status",
+        [[<b>Permanent opt-out.</b> Stops active status and usage counting immediately.
+Existing public ranking data is retained until you turn OFF Show in Leaderboard.]],
+        function(on) if not initial then updateState() end end,false)
+    neverRow.Name=neverKey
+    initial=false
+    -- Initial setup: do not fire a separate heartbeat from each toggle constructor.
+    if not conf:Get(usageKey,false) and conf:Get(rankKey,false) then setRank(false) end
+    if not conf:Get(rankKey,false) and conf:Get(avatarKey,false) then setAvatar(false) end
+    updateState()
+
     task.spawn(function()
         while row.Parent do
             task.wait(60)
             if not row.Parent then break end
-            if not conf:Get(offKey,false) and not conf:Get(mainKey,true) and
+            if not conf:Get(neverKey,false) and not conf:Get(mainKey,true) and
                tonumber(conf:Get(pauseKey,0))>0 and tonumber(conf:Get(pauseKey,0))<=os.time() then
                 setMain(true)
             end
         end
     end)
-    row.AncestryChanged:Connect(function(_,parent) if not parent then stop() end end)
+    row.AncestryChanged:Connect(function(_,parent)
+        if not parent then
+            if adapter then adapter:Destroy(false) end
+            if env[ownerKey] == adapter then env[ownerKey]=nil end
+            env.ArcScriptCenterConsentStatus=nil
+        end
+    end)
 end
 
 --// ================= END =================
