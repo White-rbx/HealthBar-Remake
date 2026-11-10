@@ -1,4 +1,4 @@
-local v_ver = [[WarningUI 0.1.5 Preview]]
+local v_ver = [[WarningUI 0.1.7 SecurityLevel RichText & Client Rejoin]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -353,7 +353,44 @@ warningCache.seen = type(warningCache.seen) == "table" and warningCache.seen or 
 warningCache.order = type(warningCache.order) == "table" and warningCache.order or {}
 local state = { queue = {}, active = nil, seen = warningCache.seen, seenOrder = warningCache.order, run = 0, dead = false, scripts = {} }
 
-local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, onSecondary)
+local LEVEL_RGB = {
+  info = Color3.fromRGB(0,0,50),
+  warning = Color3.fromRGB(50,50,0),
+  critical = Color3.fromRGB(50,0,0),
+}
+local RICH_FONTS = {Gotham = true, SourceSans = true, Arial = true, Code = true, Cartoon = true}
+local function validHex(v, fallback)
+  if type(v) == "string" and v:match("^#%x%x%x%x%x%x$") then return v end
+  return fallback
+end
+local function escapeRobloxText(v)
+  return tostring(v or ""):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")
+end
+local function formatWarningText(plain, settings)
+  if type(settings) ~= "table" or settings.enabled ~= true then return tostring(plain or ""), false end
+  local message = escapeRobloxText(plain)
+  local styles = settings.styles
+  if type(styles) ~= "table" then styles = {} end
+  local wraps = {}
+  local function wrapper(startTag, endTag)
+    message = startTag .. message .. endTag
+  end
+  for _, tag in ipairs({"b", "i", "u", "s"}) do
+    local key = ({b="bold", i="italic", u="underline", s="strike"})[tag]
+    if styles[key] == true then wrapper("<"..tag..">", "</"..tag..">") end
+  end
+  local color = validHex(styles.color, "#FFFFFF")
+  local face = RICH_FONTS[styles.font] and styles.font or "Gotham"
+  wrapper('<font color="' .. color .. '" face="' .. face .. '">', '</font>')
+  local thickness = tonumber(styles.strokeThickness) or 0
+  if thickness > 0 then
+    thickness = math.clamp(thickness, 0, 4)
+    wrapper('<stroke color="' .. validHex(styles.strokeColor,"#000000") .. '" thickness="' .. string.format("%.1f", thickness) .. '">', '</stroke>')
+  end
+  return message, true
+end
+
+local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, onSecondary, severity, formatting)
   local frmbtn = twoButtons == true
 
   local frm = Instance.new("Frame")
@@ -363,14 +400,14 @@ local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, o
   limit.MinSize = Vector2.new(240, 210)
   limit.MaxSize = Vector2.new(570, 450)
   limit.Parent = frm
-  frm.BackgroundColor3 = Color3.fromRGB(0,0,25)
+  frm.BackgroundColor3 = LEVEL_RGB[tostring(severity or "warning"):lower()] or LEVEL_RGB.warning
   frm.BorderMode = Enum.BorderMode.Inset
   frm.BorderSizePixel = 5
   frm.Parent = hr
   Corner(0,8,frm)
   local frmStroke = Stroke(frm, "ASMBorder",255,255,255,"LJMRound",5,0)
-  local frmGra = Gradient(frmStroke, 0,0,0,
-      {Color3.new(1,1,0),Color3.new(0,1,1)})
+  local themeColor = ({info=Color3.fromRGB(100,145,255), warning=Color3.fromRGB(255,226,90), critical=Color3.fromRGB(255,100,100)})[tostring(severity or "warning"):lower()] or Color3.new(1,1,1)
+  local frmGra = Gradient(frmStroke, 0,0,0, {themeColor, Color3.new(1,1,1)})
 
   local frmsca = Instance.new("UIScale")
   frmsca.Scale = 0.01
@@ -417,12 +454,13 @@ local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, o
   des.TextColor3 = Color3.new(1,1,1)
   des.BorderMode = Enum.BorderMode.Inset
   des.BorderSizePixel = 8
-  des.Text = tostring(ndes or "This a blank message for the example.\nThis is from the server by moderator or client saying:\n\nHello, World.")
+  local formattedDescription, enableRichText = formatWarningText(ndes or "This is a warning.", formatting)
+  des.Text = formattedDescription
   des.TextWrapped  = true
   --des.TextScaled = true
   des.TextSize = 13
   des.TextYAlignment = Enum.TextYAlignment.Top
-  des.RichText = false
+  des.RichText = enableRichText
   des.Parent = frm
 
   local tap = Instance.new("Frame")
@@ -508,7 +546,7 @@ local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, o
   return { close = dismiss, frame = frm }
 end
 
-local api = { version = "0.2.2-handle-id-rejoin", source = "ExperienceSettings WarningUI" }
+local api = { version = "0.2.4-richtext-client-rejoin", source = "ExperienceSettings WarningUI" }
 
 -- Register trusted local Luau callbacks before showing Cloud warnings.
 -- 'RequireScript' never compiles text returned by a Cloudflare API.
@@ -548,8 +586,13 @@ local function makeButtonCallback(entry, source, slot)
     elseif scriptId == "ACS_WarningLeave" then
       return function()
         local player = game:GetService("Players").LocalPlayer
-        if player then
+        if not player then return false end
+        local ok, reason = pcall(function()
           player:Kick("You chose to leave the experience from ArcScriptCenter WarningUI.")
+        end)
+        if not ok then
+          warn("[WarningUI] Leave failed: " .. tostring(reason))
+          return false
         end
         return true
       end
@@ -558,12 +601,19 @@ local function makeButtonCallback(entry, source, slot)
         -- Only after the local user explicitly presses the clearly labeled button.
         local player = game:GetService("Players").LocalPlayer
         if not player then return false end
+        if game.PlaceId <= 0 then
+          warn("[WarningUI] Rejoin requires a published Roblox place.")
+          return false
+        end
+        -- Universal/client-only behavior, matching the existing Loader Rejoin action.
+        -- No RemoteEvent or game-owned ServerScriptService script is required.
+        -- Teleport() is a legacy Roblox API; some experiences may reject the request.
         local ok, err = pcall(function()
-          game:GetService("TeleportService"):Teleport(game.PlaceId, player)
+          s.TeleportService:Teleport(game.PlaceId, player)
         end)
         if not ok then
           warn("[WarningUI] Rejoin failed: " .. tostring(err))
-          return false -- keep the warning visible if teleport was rejected
+          return false
         end
         return true
       end
@@ -587,7 +637,7 @@ local function showNext()
       function()
         state.active = nil
         if not state.dead then task.defer(showNext) end
-      end, entry.onPrimary, entry.onSecondary)
+      end, entry.onPrimary, entry.onSecondary, entry.severity, entry.formatting)
 end
 
 local function queueWarning(entry, source)
@@ -640,6 +690,8 @@ local function queueWarning(entry, source)
   table.insert(state.queue, {
     title = title:sub(1, 120),
     description = description:sub(1, 1500),
+    severity = tostring(entry.severity or "warning"):lower(),
+    formatting = entry.richText == true and {enabled = true, styles = entry.formatting} or nil,
     primaryLabel = label1,
     secondaryLabel = label2,
     onPrimary = makeButtonCallback(entry, source, 1),
