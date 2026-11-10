@@ -1,4 +1,4 @@
-local v_ver = [[WarningUI 0.1.7 SecurityLevel RichText & Client Rejoin]]
+local v_ver = [[WarningUI 0.1.8 Selected RichText & Client Rejoin]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -368,26 +368,45 @@ local function escapeRobloxText(v)
 end
 local function formatWarningText(plain, settings)
   if type(settings) ~= "table" or settings.enabled ~= true then return tostring(plain or ""), false end
-  local message = escapeRobloxText(plain)
-  local styles = settings.styles
-  if type(styles) ~= "table" then styles = {} end
-  local wraps = {}
-  local function wrapper(startTag, endTag)
-    message = startTag .. message .. endTag
+  local styles = type(settings.styles) == "table" and settings.styles or {}
+  local function formatPart(text, style)
+    local message = escapeRobloxText(text)
+    if type(style) ~= "table" then return message end
+    local function wrapper(openTag, closeTag)
+      message = openTag .. message .. closeTag
+    end
+    for _, tag in ipairs({"b", "i", "u", "s"}) do
+      local key = ({b="bold", i="italic", u="underline", s="strike"})[tag]
+      if style[key] == true then wrapper("<"..tag..">", "</"..tag..">") end
+    end
+    if style.color ~= nil or style.font ~= nil then
+      local color = validHex(style.color, "#FFFFFF")
+      local face = RICH_FONTS[style.font] and style.font or "Gotham"
+      wrapper('<font color="' .. color .. '" face="' .. face .. '">', '</font>')
+    end
+    local thickness = tonumber(style.strokeThickness) or 0
+    if thickness > 0 then
+      thickness = math.clamp(thickness, 0, 4)
+      wrapper('<stroke color="' .. validHex(style.strokeColor,"#000000") .. '" thickness="' .. string.format("%.1f", thickness) .. '">', '</stroke>')
+    end
+    return message
   end
-  for _, tag in ipairs({"b", "i", "u", "s"}) do
-    local key = ({b="bold", i="italic", u="underline", s="strike"})[tag]
-    if styles[key] == true then wrapper("<"..tag..">", "</"..tag..">") end
+  if type(styles.segments) == "table" then
+    if #styles.segments == 0 or #styles.segments > 200 then return tostring(plain or ""), false end
+    local combined, chunks = {}, {}
+    for _, seg in ipairs(styles.segments) do
+      if type(seg) ~= "table" or type(seg.text) ~= "string" or type(seg.styles) ~= "table" then
+        return tostring(plain or ""), false
+      end
+      table.insert(combined, seg.text)
+      table.insert(chunks, formatPart(seg.text, seg.styles))
+    end
+    -- Never render a remotely provided styled body that differs from its plain body.
+    if table.concat(combined) ~= tostring(plain or "") then return tostring(plain or ""), false end
+    return table.concat(chunks), true
   end
-  local color = validHex(styles.color, "#FFFFFF")
-  local face = RICH_FONTS[styles.font] and styles.font or "Gotham"
-  wrapper('<font color="' .. color .. '" face="' .. face .. '">', '</font>')
-  local thickness = tonumber(styles.strokeThickness) or 0
-  if thickness > 0 then
-    thickness = math.clamp(thickness, 0, 4)
-    wrapper('<stroke color="' .. validHex(styles.strokeColor,"#000000") .. '" thickness="' .. string.format("%.1f", thickness) .. '">', '</stroke>')
-  end
-  return message, true
+  -- Backward compatibility with previously published whole-message styles.
+  return formatPart(plain, styles), true
 end
 
 local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, onSecondary, severity, formatting)
@@ -546,7 +565,7 @@ local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, o
   return { close = dismiss, frame = frm }
 end
 
-local api = { version = "0.2.4-richtext-client-rejoin", source = "ExperienceSettings WarningUI" }
+local api = { version = "0.2.5-selected-richtext-client-rejoin", source = "ExperienceSettings WarningUI" }
 
 -- Register trusted local Luau callbacks before showing Cloud warnings.
 -- 'RequireScript' never compiles text returned by a Cloudflare API.
@@ -687,9 +706,13 @@ local function queueWarning(entry, source)
       label2 = "Rejoin game"
     end
   end
+  -- Limit local input by UTF-8 characters, never by raw bytes. Server notices
+  -- are <=900 Unicode characters, so their styled segments stay in sync.
+  local cutOk, cutAt = pcall(utf8.offset, description, 1501)
+  if cutOk and cutAt then description = description:sub(1, cutAt - 1) end
   table.insert(state.queue, {
     title = title:sub(1, 120),
-    description = description:sub(1, 1500),
+    description = description,
     severity = tostring(entry.severity or "warning"):lower(),
     formatting = entry.richText == true and {enabled = true, styles = entry.formatting} or nil,
     primaryLabel = label1,
