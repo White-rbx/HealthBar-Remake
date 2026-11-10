@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.3.15 | Usage + Avatar Leaderboard ",
+	sion = " UIs 7.3.2 ",
 	logs = [[
 (:9/11/2026: A) Stage 16.23: Built-in opt-in masked Leaderboard in Arcsen > Settings > ArcScriptCenter. Lazy public API reads with Today / This Year / All Time, Refresh, cached view, no admin credentials.
 (:7/11/2026: A) Stage 16.22: Create Lua Script In The Chat — Don't / Root Only / All Instance access. Root-only runner exposes UI proxies, all-mode excludes CoreGui.ExperienceSettings and descendants. Script cards pin permission and revoke on mode change.
@@ -13317,6 +13317,7 @@ local function arcUpdateCloudSettingsUI()
     local cloud = loc.API.ArcScriptCenterCloud
     local ui = cloud and cloud.statusLabel
     if not ui or not ui.Parent then return end
+    if type(cloud.renderMaskedList) == "function" then cloud.renderMaskedList(cloud.activeCount) end
     local state = cloud.connected and "ONLINE" or "OFFLINE"
     if cloud.busy then state = "CHECKING" end
     local detail = cloud.error == "" and "No client identity sent" or cloud.error
@@ -13458,6 +13459,71 @@ loc.API.ArcScriptCenterCloudSettings = addset(
         frame:GetPropertyChangedSignal("Visible"):Connect(function()
             if frame.Visible then refreshUsageInfo() end
         end)
+
+        -- Preview-only Active User List. Public API exposes counts, never identities.
+        local activeTitle = Instance.new("TextLabel")
+        activeTitle.Name = "ActiveUserListTitle"
+        activeTitle.Size = UDim2.new(1, -8, 0, 25)
+        activeTitle.LayoutOrder = 5
+        activeTitle.BackgroundTransparency = 1
+        activeTitle.TextColor3 = Color3.fromRGB(150, 215, 255)
+        activeTitle.TextSize = 15
+        activeTitle.TextXAlignment = Enum.TextXAlignment.Left
+        activeTitle.Text = "Active User List  |  Masked"
+        activeTitle.Parent = frame
+
+        local activeScroll = Instance.new("ScrollingFrame")
+        activeScroll.Name = "ActiveUserListMasked"
+        activeScroll.Size = UDim2.new(1, -8, 0, 158)
+        activeScroll.LayoutOrder = 6
+        activeScroll.BackgroundColor3 = Color3.fromRGB(20, 26, 39)
+        activeScroll.BackgroundTransparency = 0.15
+        activeScroll.BorderSizePixel = 0
+        activeScroll.CanvasSize = UDim2.fromOffset(0, 0)
+        activeScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        activeScroll.ScrollBarThickness = 4
+        activeScroll.Parent = frame
+        Corner(0, 6, activeScroll)
+        local activeLayout = Instance.new("UIListLayout")
+        activeLayout.Padding = UDim.new(0, 4)
+        activeLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        activeLayout.Parent = activeScroll
+        loc.API.ArcScriptCenterCloud.renderMaskedList = function(count)
+            if not activeScroll.Parent then return end
+            for _, child in ipairs(activeScroll:GetChildren()) do
+                if child:IsA("TextLabel") then child:Destroy() end
+            end
+            local total = math.max(0, math.floor(tonumber(count) or 0))
+            local visible = math.min(total, 8)
+            if visible == 0 then visible = 1 end
+            for i = 1, visible do
+                local item = Instance.new("TextLabel")
+                item.Name = "MaskedPresence_" .. i
+                item.Size = UDim2.new(1, -8, 0, 32)
+                item.LayoutOrder = i
+                item.BackgroundColor3 = Color3.fromRGB(38, 49, 67)
+                item.BorderSizePixel = 0
+                item.TextColor3 = Color3.fromRGB(164, 180, 205)
+                item.TextTransparency = 0.28
+                item.TextSize = 12
+                item.TextXAlignment = Enum.TextXAlignment.Left
+                item.Text = total == 0 and "  No active opt-in sessions / unavailable" or ("  ●  █████████  @••••••  |  Hidden #" .. i)
+                item.Parent = activeScroll
+                Corner(0, 5, item)
+            end
+        end
+        loc.API.ArcScriptCenterCloud.renderMaskedList(loc.API.ArcScriptCenterCloud.activeCount)
+        local activePrivacy = Instance.new("TextLabel")
+        activePrivacy.Name = "ActiveUserListPrivacy"
+        activePrivacy.Size = UDim2.new(1, -8, 0, 34)
+        activePrivacy.LayoutOrder = 7
+        activePrivacy.BackgroundTransparency = 1
+        activePrivacy.TextColor3 = Color3.fromRGB(165, 185, 210)
+        activePrivacy.TextSize = 11
+        activePrivacy.TextWrapped = true
+        activePrivacy.TextXAlignment = Enum.TextXAlignment.Left
+        activePrivacy.Text = "Preview only: placeholders based on opt-in session count. No names, IDs or admin data requested."
+        activePrivacy.Parent = frame
 
         -- Stage 16.23: masked, read-only Leaderboard integrated in Arcsen Settings.
         -- No admin token, Roblox identifiers, or chat messages in these GET requests.
