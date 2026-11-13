@@ -1,4 +1,4 @@
--- So uhm just a script lol. 6.975
+-- So uhm just a script lol. 6.977
 
 -- Loadstring (optional colorful labels; never block the main UI)
 task.spawn(function()
@@ -250,11 +250,15 @@ Toggle.Size = UDim2.new(0.96,0,0.96,0)
 Toggle.Parent = Inner
 Corner(0.02, 0, Toggle)
 
-local BFrame = Instance.new("Frame")
+local BFrame = Instance.new("ScrollingFrame")
 BFrame.Name = "B_Frame"
 BFrame.BackgroundTransparency = 1
 BFrame.Position = UDim2.new(0.02,0,0.02,0)
 BFrame.Size = UDim2.new(0.96,0,0.96,0)
+BFrame.CanvasSize = UDim2.new(0,0,0,0)
+BFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+BFrame.ScrollBarThickness = 0
+BFrame.ScrollingDirection = Enum.ScrollingDirection.Y
 BFrame.Parent = Toggle
 createUIListLayout(BFrame, 0.005, 0, "HCenter", "VTop", "SName", "FillV")
 
