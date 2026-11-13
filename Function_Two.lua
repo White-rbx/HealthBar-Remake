@@ -1,4 +1,4 @@
--- So this another script lol 2.956
+-- So this another script lol 2.957
 
 
 -- =====>> Saved Functions <<=====
@@ -647,7 +647,7 @@ Show or hide the Gif Animation Editor window.]],
 )
 
 --// =====================================================
---// ArcScriptCenter v0.5.41.2: UniversalPresence single owner (Function_Two Toggles)
+--// ArcScriptCenter v0.5.41.3: UniversalPresence single owner (Function_Two Toggles)
 --// Arcsen Settings is read-only. Public profiles/time require explicit consent.
 --// =====================================================
 do
@@ -656,7 +656,7 @@ do
     local mainKey = "ACS_ShareActiveStatus"
     local pauseKey = "ACS_presence_pause_until"
     local neverKey = "ACS_presence_never_share"
-    local profileKey = "ACS_presence_profile_opt_in"
+    local profileKey = "ACS_admin_full_profile_opt_in_v2"
     local usageKey = "ACS_usage_time_opt_in"
     local rankKey = "ACS_leaderboard_opt_in"
     local avatarKey = "ACS_leaderboard_avatar_opt_in"
@@ -704,7 +704,7 @@ do
         if ok and type(factory) == "table" and type(factory.new) == "function" then
             local made, instance = pcall(factory.new)
             if made and type(instance) == "table" and type(instance.start) == "function"
-                and type(instance.setAdminNicknameConsent) == "function"
+                and type(instance.setAdminProfileConsent) == "function"
                 and type(instance.setAnalyticsConsent) == "function" then
                 adapter = instance
                 env[ownerKey] = adapter
@@ -738,7 +738,7 @@ do
                             warn("[ArcScriptCenter] " .. name .. ": " .. tostring(detail or accepted))
                         end
                     end
-                    apply("Admin nickname consent", adapter.setAdminNicknameConsent, showAdmin)
+                    apply("Full Admin profile consent", adapter.setAdminProfileConsent, showAdmin)
                     apply("Analytics consent", adapter.setAnalyticsConsent, usage)
                     apply("Leaderboard consent", adapter.setLeaderboardConsent, ranking)
                     apply("Avatar consent", adapter.setAvatarConsent, avatar)
@@ -752,7 +752,7 @@ do
         local actual = adapter and adapter:getStatus() or {}
         env.ArcScriptCenterConsentStatus = {
             activeUser=actual.active == true,
-            showToAdmin=actual.adminNicknameConsent == true,
+            showToAdmin=actual.adminProfileConsent == true,
             analyticsConsent=actual.analyticsConsent == true,
             leaderboardConsent=actual.leaderboardConsent == true,
             avatarConsent=actual.avatarConsent == true,
@@ -777,8 +777,8 @@ Use Never Share to opt out permanently. Usage time and public leaderboard are se
         end,false)
     row.Name=mainKey
 
-    local profileRow=createToggle(BFrame,profileKey,"Show Nickname to Admin",
-        [[<b>Show Nickname to Admin</b> — OFF by default. Admin receives only your opted-in DisplayName. The Worker uses account identifiers internally for session deduplication; the Admin list does not return Username, UserId, or avatar.]],
+    local profileRow=createToggle(BFrame,profileKey,"Show Full Profile to Admin",
+        [[<b>Full Admin Profile</b> — OFF by default, requires fresh consent. When ON, authorized administrators can see your Roblox DisplayName (nickname), Username, UserId and public Avatar in the private dashboard to prepare a SetUp Ban Draft. This does not automatically ban you. Client-supplied details are not Roblox-verified.]],
         function(on) if not initial then updateState() end end,false)
     profileRow.Name=profileKey
 
