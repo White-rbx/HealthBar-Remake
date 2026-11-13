@@ -1,4 +1,4 @@
--- Well 4.16 | v0.5.36: Strict SetUp -> Loader -> Main serialization
+-- Well 4.12 | v0.5.36: Strict SetUp -> Loader -> Main serialization
 
 --[[
  HELLO SCRIPTBLOX AND HAXHELL USERSSSS WHAT THE ACTUALLY HELL YOU GUYS
@@ -1026,91 +1026,143 @@ return api
 
 ]=====]
         local sourceConnector = [=====[
--- ArcScriptCenter Cloud Warning Connector v0.5.21 — live 15s one-shot polling
--- Install with WarningUI.lua (Preview v0.1.0+) already loaded.
--- Server means ArcScriptCenter's Cloudflare Worker, NOT another game's Roblox server.
--- Only reads public, approved service notices. No secrets or user data are sent.
+-- ArcScriptCenter Phase 2 - Production Bootstrap + WarningUI Connector v0.5.41.1
+-- Read-only public HTTPS GET only. NO secrets, Roblox UserId, or executable source.
+-- Load AFTER the existing WarningUI is initialized. Never use the staging Worker.
 
-local shared = type(getgenv) == 'function' and getgenv() or nil
-assert(type(shared) == 'table', 'WarningUI CloudConnector needs getgenv()')
+local env = type(getgenv) == "function" and getgenv() or nil
+assert(type(env) == "table", "ArcScriptCenter requires getgenv()")
+local ui = env.WarningUI
+assert(type(ui) == "table" and type(ui.startServerPolling) == "function",
+    "WarningUI must be initialized before the connector")
 
-local ui = shared.WarningUI
-assert(type(ui) == 'table' and type(ui.startServerPolling) == 'function',
-    'Load WarningUI.lua before WarningUI_CloudConnector.lua')
-
--- Stop older polling loops before starting a new one.
-if type(ui.stopServerPolling) == 'function' then
+-- Replace older connector's polling loop, but keep WarningUI and its UI/UX intact.
+if type(env.ArcScriptWarningConnector) == "table"
+    and type(env.ArcScriptWarningConnector.stop) == "function" then
+    pcall(env.ArcScriptWarningConnector.stop)
+end
+if type(ui.stopServerPolling) == "function" then
     ui.stopServerPolling()
 end
 
-local HttpService = game:GetService('HttpService')
-local url = 'https://arcscriptcenter-api.kogpasan14.workers.dev/api/v1/warnings'
-local requestFn = type(request) == 'function' and request
-    or type(http_request) == 'function' and http_request
-    or type(syn) == 'table' and type(syn.request) == 'function' and syn.request
-    or type(http) == 'table' and type(http.request) == 'function' and http.request
-    or type(shared.request) == 'function' and shared.request
+local HttpService = game:GetService("HttpService")
+local BASE = "https://arcscriptcenter-api.kogpasan14.workers.dev"
+local BOOTSTRAP_PATH = "/api/v1/client/bootstrap"
+local WARNINGS_PATH = "/api/v1/warnings"
+local requestFn = type(request) == "function" and request
+    or type(http_request) == "function" and http_request
+    or type(syn) == "table" and type(syn.request) == "function" and syn.request
+    or type(http) == "table" and type(http.request) == "function" and http.request
+    or type(env.request) == "function" and env.request
 
-local lastErrorAt = 0
-shared.ArcScriptWarningStatus = {ok=false,stage='fetching',lastSuccess=nil,count=0}
-local function readWarnings()
+local status = {
+    connectorVersion = "0.5.41.1-phase2",
+    host = BASE,
+    bootstrap = {ok=false, state="pending"},
+    warnings = {ok=false, state="pending", count=0},
+}
+env.ArcScriptClientStatus = status
+env.ArcScriptWarningStatus = {ok=false, stage="pending", count=0}
+
+local function publicGetJSON(path, maxBytes)
+    -- Never construct URLs from untrusted server responses.
+    if path ~= BOOTSTRAP_PATH and path ~= WARNINGS_PATH then
+        error("Unrecognized public endpoint")
+    end
+    local url = BASE .. path
     local raw
-    if type(requestFn) == 'function' then
+    if type(requestFn) == "function" then
         local ok, response = pcall(requestFn, {
-            Url = url,
-            Method = 'GET',
-            Headers = {Accept = 'application/json'},
-            Timeout = 10
+            Url = url, Method = "GET", Headers = {Accept="application/json"}, Timeout=10
         })
-        if not ok or type(response) ~= 'table' then
-            error('Cloud Warning request failed')
+        if not ok or type(response) ~= "table" then
+            error("Public API HTTP request unavailable")
         end
-        local status = tonumber(response.StatusCode or response.Status or 0)
-        if status ~= 200 then
-            error('Cloud Warning HTTP ' .. tostring(status))
+        local httpStatus = tonumber(response.StatusCode or response.Status or 0)
+        if httpStatus ~= 200 then
+            error("Public API HTTP " .. tostring(httpStatus))
         end
         raw = response.Body
     else
-        local ok, response = pcall(function()
-            return game:HttpGet(url)
-        end)
-        if not ok then error('HTTP GET is unavailable in this environment') end
-        raw = response
+        -- Compatibility fallback; still only uses the fixed Production HTTPS URL.
+        local ok, body = pcall(function() return game:HttpGet(url) end)
+        if not ok then error("HTTPS GET is unavailable") end
+        raw = body
     end
-
-    if type(raw) ~= 'string' then error('Invalid Warning API response') end
+    if type(raw) ~= "string" or #raw > maxBytes then
+        error("Invalid or oversized public API response")
+    end
     local ok, data = pcall(HttpService.JSONDecode, HttpService, raw)
-    if not ok or type(data) ~= 'table' or data.ok ~= true or type(data.warnings) ~= 'table' then
-        error('Invalid Warning API JSON')
+    if not ok or type(data) ~= "table" or data.ok ~= true then
+        error("Invalid public API JSON")
     end
     return data
 end
 
-local function fetcher()
-    local ok, data = pcall(readWarnings)
-    if ok then
-        shared.ArcScriptWarningStatus = {ok=true,stage='online',lastSuccess=os.time(),count=#data.warnings}
-        return data
+local nextBootstrapRetry = 0
+local lastWarningLog = 0
+local function readBootstrap()
+    local now=os.time()
+    if status.bootstrap.ok or now < nextBootstrapRetry then return end
+    nextBootstrapRetry=now+120
+    local ok, data=pcall(publicGetJSON, BOOTSTRAP_PATH, 16384)
+    if ok and data.service == "ArcScriptCenter" and data.protocol == 1
+        and data.client == "executor_sunc" and data.mode == "read_only_public"
+        and type(data.version) == "string"
+        and type(data.endpoints) == "table"
+        and data.endpoints.publicWarnings == WARNINGS_PATH then
+        status.bootstrap={ok=true,state="online",version=data.version,
+            protocol=data.protocol,lastSuccess=now}
+    else
+        status.bootstrap={ok=false,state="degraded",
+            error=ok and "Unexpected bootstrap protocol" or tostring(data)}
+        -- A transient Bootstrap error does not block local UI or public warnings.
     end
-    shared.ArcScriptWarningStatus = {ok=false,stage='fetch',error=tostring(data),lastSuccess=shared.ArcScriptWarningStatus.lastSuccess}
-    if os.time() - lastErrorAt >= 120 then
-        warn('[WarningUI] ' .. tostring(data))
-        lastErrorAt = os.time()
-    end
-    return nil
 end
 
-local started, reason = ui.startServerPolling(fetcher, 15)
-assert(started, tostring(reason or 'Unable to start WarningUI polling'))
-
-shared.ArcScriptWarningConnector = {
-    version = '0.5.21',
-    stop = function()
-        ui.stopServerPolling()
+local function warningsFetcher()
+    readBootstrap()
+    local ok, data=pcall(publicGetJSON, WARNINGS_PATH, 131072)
+    if not ok or type(data.warnings) ~= "table" then
+        local reason=ok and "Missing warnings array" or tostring(data)
+        local previous=status.warnings.lastSuccess
+        status.warnings={ok=false,state="degraded",error=reason,
+            lastSuccess=previous,count=0}
+        env.ArcScriptWarningStatus={ok=false,stage="fetch",error=reason,
+            lastSuccess=previous,count=0}
+        if os.time()-lastWarningLog >= 120 then
+            warn("[ArcScriptCenter Phase2] Public warnings: " .. reason)
+            lastWarningLog=os.time()
+        end
+        return nil
     end
-}
-return shared.ArcScriptWarningConnector
+    local now=os.time()
+    status.warnings={ok=true,state="online",lastSuccess=now,
+        count=#data.warnings}
+    env.ArcScriptWarningStatus={ok=true,stage="online",lastSuccess=now,
+        count=#data.warnings}
+    return data
+end
 
+-- Bootstrap is only advisory. WarningUI retains its existing queue, deduplication,
+-- Only Live and expiry checks; it never executes code from the API.
+readBootstrap()
+local started, reason=ui.startServerPolling(warningsFetcher, 15)
+assert(started, tostring(reason or "Could not start public warnings polling"))
+
+local controller={
+    version="0.5.41.1-phase2",
+    baseUrl=BASE,
+    getStatus=function() return status end,
+    stop=function()
+        if type(ui.stopServerPolling) == "function" then
+            ui.stopServerPolling()
+        end
+        status.warnings.state="stopped"
+    end,
+}
+env.ArcScriptWarningConnector=controller
+return controller
 ]=====]
         local factory, compileError = loadstring(sourceUI)
         if not factory then error('WarningUI compile: '..tostring(compileError)) end
