@@ -1,4 +1,4 @@
--- UniversalPresence.lua | ArcScriptCenter Phase 2 v0.5.41.2
+-- UniversalPresence.lua | ArcScriptCenter Phase 2 v0.5.41.3
 -- Backward-compatible replacement for UniversalPresence.lua v0.5.14
 -- Production ONLY | OFF by default | explicit per-feature opt-in
 -- Loading this ModuleScript/loadstring DOES NOT start any network requests.
@@ -64,6 +64,7 @@ function Client.new(requestFunction, onStatus, profile)
         profile = legacyProfile, -- legacy read-only snapshot; use setter to change consent
         active = false,
         adminSharing = legacyProfileConsent,
+        adminDetails = false, -- new full-profile disclosure, never inherited
         analytics = false,
         leaderboard = false,
         avatar = false,
@@ -89,6 +90,7 @@ function Client:getStatus()
     return {
         active = self.active,
         adminNicknameConsent = self.adminSharing,
+        adminProfileConsent = self.adminDetails,
         analyticsConsent = self.analytics,
         leaderboardConsent = self.leaderboard,
         avatarConsent = self.avatar,
@@ -163,12 +165,13 @@ function Client:_heartbeatBody()
     local body = {sessionId = self.sessionId}
     -- Profile fields are transmitted ONLY when a distinct opt-in requires them.
     -- Admin consent and leaderboard consent are independent.
-    if self.adminSharing or self.leaderboard then
+    if self.adminSharing or self.adminDetails or self.leaderboard then
         body.profileConsent = true
         body.userId = tostring(self.player.UserId)
         body.username = self.player.Name
         body.displayName = self.player.DisplayName
-        body.adminProfileConsent = self.adminSharing
+        body.adminProfileConsent = self.adminSharing or self.adminDetails
+        if self.adminDetails then body.adminDetailsConsent = true end
     end
     if self.analytics then
         body.analyticsConsent = true
@@ -342,6 +345,21 @@ function Client:setAdminNicknameConsent(enabled)
     return true
 end
 
+-- Full profile for PRIVATE admins: separate, explicit consent.
+-- Legacy setAdminNicknameConsent remains nickname-only (level 1).
+function Client:setAdminProfileConsent(enabled)
+    if type(enabled) ~= "boolean" then return false, "Expected boolean" end
+    if enabled and not self.active then return false, "Enable Active User first" end
+    if self.adminDetails == enabled then return true end
+    local revoking = self.adminDetails and not enabled
+    self.adminDetails = enabled
+    if revoking and self.active then
+        self.pendingLeave = true -- remove detailed profile immediately
+    end
+    self:_queueHeartbeat()
+    return true
+end
+
 function Client:setAnalyticsConsent(enabled)
     if type(enabled) ~= "boolean" then return false, "Expected boolean" end
     if enabled and not self.active then return false, "Enable Active User first" end
@@ -414,6 +432,7 @@ function Client:stop()
     local revoke = self.leaderboard or self.mightHavePublicRank or self.pendingLeaderboardRevoke
     self.active = false
     self.adminSharing = false
+    self.adminDetails = false
     self.profile = nil
     self.analytics = false
     self.leaderboard = false
