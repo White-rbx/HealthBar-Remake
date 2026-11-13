@@ -1,4 +1,4 @@
--- So this another script lol 2.955
+-- So this another script lol 2.956
 
 
 -- =====>> Saved Functions <<=====
@@ -198,7 +198,7 @@ local function createToggle(parent, id, text, description, callback, defaultStat
 
     local des = Instance.new("TextLabel")
     des.Name = "Description"
-    des.Position = UDim2.new(0,-224,0,0)
+    des.Position = UDim2.new(0,0,1,0)
     des.BackgroundColor3 = Color3.fromRGB(25,25,25)
     des.TextWrapped = true
     des.TextYAlignment = Enum.TextYAlignment.Top
