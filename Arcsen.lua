@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.3.22 ",
+	sion = " UIs 7.3.23 ",
 	logs = [[
 (:9/11/2026: A) Stage 16.23: Built-in opt-in masked Leaderboard in Arcsen > Settings > ArcScriptCenter. Lazy public API reads with Today / This Year / All Time, Refresh, cached view, no admin credentials.
 (:7/11/2026: A) Stage 16.22: Create Lua Script In The Chat — Don't / Root Only / All Instance access. Root-only runner exposes UI proxies, all-mode excludes CoreGui.ExperienceSettings and descendants. Script cards pin permission and revoke on mode change.
@@ -742,6 +742,13 @@ ListLayout(inf2, 0, 5, "HCenter", "VTop", "SLayout", "FillV")
 local oset = false
 
 set.MouseButton1Click:Connect(function()
+  -- Signed UI Policy may restrict chat, but must never restrict Settings/Appeal.
+  if loc.API.PolicyReadOnly == true then
+    oset = true
+    set.Image = "rbxassetid://99070092445366"
+    Tween(inf2, {Position = UDim2.new(0,0,-1,-5)})
+    return
+  end
   if oset == false then
     oset = true
     set.Image = "rbxassetid://99070092445366"
@@ -5360,6 +5367,7 @@ local function addchat(file, gen, nchat)
   btn:SetAttribute("ArcsenChatID", tostring(nchat or ""))
 
   btn.MouseButton1Click:Connect(function()
+    if loc.API.PolicyReadOnly == true then return end
     for _, item in ipairs(loc.API.ChatList) do
       local itemScale = item:FindFirstChildOfClass("UIScale")
       if itemScale then Tween(itemScale, {Scale = 0.8}, 0.2) end
@@ -10512,6 +10520,7 @@ loc.API.PerformLiveWebSearch = function(query, key, requestMeta)
 end
 
 loc.API.GenerateResponse = function(chatID, userIndex)
+    if loc.API.PolicyReadOnly == true then return false, "Policy restricted" end
     chatID = tostring(chatID)
     if not loc.API.ChatData[chatID] then return end
     if loc.API.ChatData[chatID].Busy then
@@ -11059,6 +11068,7 @@ loc.API.GenerateResponse = function(chatID, userIndex)
 end
 
 loc.API.RetryUserMessage = function(chatID, userIndex)
+    if loc.API.PolicyReadOnly == true then return false, "Policy restricted" end
     chatID = tostring(chatID)
     if not loc.API.ChatData[chatID] or loc.API.ChatData[chatID].Busy then return end
     loc.API.RetryUser = loc.API.ChatData[chatID].Messages[tonumber(userIndex) or -1]
@@ -11074,6 +11084,7 @@ loc.API.RetryUserMessage = function(chatID, userIndex)
 end
 
 loc.API.RetryFrom = function(chatID, assistantIndex)
+    if loc.API.PolicyReadOnly == true then return false, "Policy restricted" end
     chatID = tostring(chatID)
     if not loc.API.ChatData[chatID] then return end
     loc.API.RetryUserIndex = nil
@@ -11094,6 +11105,7 @@ loc.API.RetryFrom = function(chatID, assistantIndex)
 end
 
 loc.API.CreateChat = function(firstMessage)
+    if loc.API.PolicyReadOnly == true then return nil, "Policy restricted" end
     -- HttpService is stored in the shared service table (`s`); the old local declaration is commented out.
     loc.API.GUIDOK, loc.API.NewChatID = pcall(function()
         return s.HttpService:GenerateGUID(false)
@@ -11378,6 +11390,7 @@ loc.API.RefreshPendingAttachmentUI = function()
 end
 
 loc.API.SendMessage = function(rawText)
+    if loc.API.PolicyReadOnly == true then return false, "Policy restricted" end
     loc.API.SendMessageActiveChat = loc.API.ActiveChatID and loc.API.ChatData[tostring(loc.API.ActiveChatID)] or nil
     if loc.API.SendMessageActiveChat and loc.API.SendMessageActiveChat.IsHereChat then
         loc.API.HereChatText = tostring(rawText or "")
@@ -11650,6 +11663,7 @@ end
 
 -- New only opens a blank draft view; a tab is created after the first valid sent message.
 new.MouseButton1Click:Connect(function()
+    if loc.API.PolicyReadOnly == true then return end
     if type(loc.API.EditingMessage) == "table" and type(loc.API.CancelMessageEdit) == "function" then
         loc.API.CancelMessageEdit(nil, nil, nil, true)
     end
@@ -13868,3 +13882,281 @@ loc.API.ArcScriptCenterCloudSettings = addset(
 
 -- Initial public status request; no chat feed polling.
 task.spawn(loc.API.RefreshArcScriptCenterCloud)
+
+
+--// ===============================================================
+--// ArcScriptCenter Phase 2 | v0.5.41.5
+--// Signed UI Policy: CLIENT-SIDE ADVISORY GATE, not server authorization.
+--// No secret in the client. Signed HMAC is checked by the Worker through
+--// /api/v1/client/policy/verify; only verified responses affect this UI.
+--// ===============================================================
+task.spawn(function()
+    local env = type(getgenv) == "function" and getgenv() or nil
+    if env and type(env.ArcScriptPolicyGate) == "table"
+        and type(env.ArcScriptPolicyGate.stop) == "function" then
+        pcall(env.ArcScriptPolicyGate.stop)
+    end
+
+    local base = "https://arcscriptcenter-api.kogpasan14.workers.dev"
+    local player = game:GetService("Players").LocalPlayer
+    local gate = {status="checking",lastHTTP=nil,lastError=nil,lastChecked=nil,
+        policyValid=false,identityVerified=false,active=true,busy=false}
+    if env then env.ArcScriptPolicyStatus = gate end
+    local run = true
+    local saved = {
+        newVisible = new.Visible,
+        historyVisible = scr.Visible,
+        inputVisible = c_input.Visible,
+        currentChatVisible = c_scr.Visible,
+        textEditable = c_box.TextEditable,
+    }
+
+    local overlay = Instance.new("TextLabel")
+    overlay.Name = "ArcScriptCenterPolicyNotice"
+    overlay.Size = UDim2.new(1,-16,1,-16)
+    overlay.Position = UDim2.fromOffset(8,8)
+    overlay.BackgroundColor3 = Color3.fromRGB(24,27,37)
+    overlay.BackgroundTransparency = 0.05
+    overlay.TextColor3 = Color3.fromRGB(255,225,165)
+    overlay.TextWrapped = true
+    overlay.TextSize = 15
+    overlay.TextYAlignment = Enum.TextYAlignment.Center
+    overlay.RichText = false
+    overlay.Active = true
+    overlay.Visible = false
+    overlay.ZIndex = 20
+    overlay.Parent = chat
+    Corner(0,8,overlay)
+
+    -- Reuse the existing ArcScriptCenter settings group, no new ScreenGui.
+    local group = loc.API.ArcScriptCenterCloudSettings
+    local statusLabel
+    local retry
+    if typeof(group) == "Instance" and group:IsA("GuiObject") then
+        statusLabel = Instance.new("TextLabel")
+        statusLabel.Name = "SignedPolicyStatus"
+        statusLabel.Size = UDim2.new(1,-8,0,55)
+        statusLabel.LayoutOrder = 21
+        statusLabel.BackgroundTransparency = 1
+        statusLabel.TextColor3 = Color3.fromRGB(255,213,152)
+        statusLabel.TextSize = 12
+        statusLabel.TextWrapped = true
+        statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+        statusLabel.Parent = group
+
+        retry = Instance.new("TextButton")
+        retry.Name = "RetryBanPolicy"
+        retry.Size = UDim2.new(1,-8,0,30)
+        retry.LayoutOrder = 22
+        retry.BackgroundColor3 = Color3.fromRGB(65,85,115)
+        retry.TextColor3 = Color3.new(1,1,1)
+        retry.TextSize = 13
+        retry.Text = "Retry Signed UI Policy Check"
+        retry.Parent = group
+        Corner(0,5,retry)
+
+        local appealTitle = Instance.new("TextLabel")
+        appealTitle.Name = "FeedbackAndAppeal"
+        appealTitle.Size = UDim2.new(1,-8,0,24)
+        appealTitle.LayoutOrder = 23
+        appealTitle.BackgroundTransparency = 1
+        appealTitle.TextColor3 = Color3.fromRGB(160,215,255)
+        appealTitle.TextSize = 15
+        appealTitle.TextXAlignment = Enum.TextXAlignment.Left
+        appealTitle.Text = "Feedback & Appeal  |  Appeal draft"
+        appealTitle.Parent = group
+
+        local appealDraft = Instance.new("TextBox")
+        appealDraft.Name = "AppealDraft"
+        appealDraft.Size = UDim2.new(1,-8,0,90)
+        appealDraft.LayoutOrder = 24
+        appealDraft.BackgroundColor3 = Color3.fromRGB(30,37,52)
+        appealDraft.TextColor3 = Color3.new(1,1,1)
+        appealDraft.PlaceholderText = "Describe why you are appealing. Draft stays on this device."
+        appealDraft.Text = ""
+        appealDraft.TextSize = 13
+        appealDraft.TextXAlignment = Enum.TextXAlignment.Left
+        appealDraft.TextYAlignment = Enum.TextYAlignment.Top
+        appealDraft.TextWrapped = true
+        appealDraft.MultiLine = true
+        appealDraft.ClearTextOnFocus = false
+        appealDraft.Parent = group
+        Corner(0,5,appealDraft)
+
+        local appealCopy = Instance.new("TextButton")
+        appealCopy.Name = "CopyAppealDraft"
+        appealCopy.Size = UDim2.new(1,-8,0,28)
+        appealCopy.LayoutOrder = 25
+        appealCopy.BackgroundColor3 = Color3.fromRGB(45,95,135)
+        appealCopy.TextColor3 = Color3.new(1,1,1)
+        appealCopy.TextSize = 13
+        appealCopy.Text = "Copy Appeal Draft (not submitted)"
+        appealCopy.Parent = group
+        Corner(0,5,appealCopy)
+
+        local appealInfo = Instance.new("TextLabel")
+        appealInfo.Name = "AppealDraftNotice"
+        appealInfo.Size = UDim2.new(1,-8,0,37)
+        appealInfo.LayoutOrder = 26
+        appealInfo.BackgroundTransparency = 1
+        appealInfo.TextColor3 = Color3.fromRGB(220,205,160)
+        appealInfo.TextSize = 11
+        appealInfo.TextWrapped = true
+        appealInfo.Text = "Appeal sending API is not connected yet. Copy the draft to the project's official support channel."
+        appealInfo.Parent = group
+
+        appealCopy.MouseButton1Click:Connect(function()
+            if type(setclipboard) == "function" then
+                local ok = pcall(setclipboard, tostring(appealDraft.Text or ""))
+                appealInfo.Text = ok and "Draft copied. Nothing has been submitted." or "Copy failed. Select and copy the text manually."
+            else
+                appealInfo.Text = "Clipboard unavailable; select and copy the draft manually. Nothing was submitted."
+            end
+        end)
+    end
+
+    local function showSettings()
+        oset = true
+        set.Image = "rbxassetid://99070092445366"
+        Tween(inf2,{Position=UDim2.new(0,0,-1,-5)},0.2)
+        if typeof(group) == "Instance" then group.Visible = true end
+        if settings and settings:IsA("ScrollingFrame") then
+            task.defer(function()
+                if settings.Parent then
+                    settings.CanvasPosition = Vector2.new(0,math.max(0,settings.AbsoluteCanvasSize.Y))
+                end
+            end)
+        end
+    end
+
+    local function apply(status, reason)
+        local restricted = status ~= "not_banned"
+        loc.API.PolicyReadOnly = restricted
+        if restricted then
+            new.Active = false
+            new.Visible = false
+            scr.Visible = false
+            c_input.Visible = false
+            c_scr.Visible = false
+            c_box.TextEditable = false
+            overlay.Visible = true
+            overlay.Text = status == "banned"
+                and "Access to Arcsen is restricted. Open Settings > ArcScriptCenter > Feedback & Appeal."
+                or "ArcScriptCenter policy could not be verified. Chat is paused until a valid check is available."
+            if status == "banned" then showSettings() end
+        else
+            new.Active = true
+            new.Visible = saved.newVisible
+            scr.Visible = saved.historyVisible
+            c_input.Visible = saved.inputVisible
+            c_scr.Visible = saved.currentChatVisible
+            c_box.TextEditable = saved.textEditable
+            overlay.Visible = false
+        end
+        gate.status = status
+        gate.lastError = reason
+        gate.lastChecked = os.time()
+        if statusLabel and statusLabel.Parent then
+            statusLabel.Text = "Signed UI Policy: " .. tostring(status) ..
+                (gate.policyValid and " | verified signature" or " | verification pending") ..
+                "\n" .. tostring(reason or "Client identity is unverified; policy is a UI hint only."):sub(1,125)
+        end
+    end
+
+    -- Use a fixed production origin; no admin secrets or caller-provided URL.
+    local function post(path, data)
+        if path ~= "/api/v1/client/policy" and
+            path ~= "/api/v1/client/policy/verify" then
+            return nil,"Unsupported public policy route"
+        end
+        local requestFn = arcGetSuncRequest()
+        if type(requestFn) ~= "function" then return nil,"HTTP POST is unavailable" end
+        local body = s.HttpService:JSONEncode(data)
+        local ok,response = pcall(requestFn,{
+            Url=base .. path,Method="POST",Body=body,
+            Headers={ ["Content-Type"]="application/json",["Accept"]="application/json" },
+            Timeout=12
+        })
+        if not ok or type(response) ~= "table" then return nil,"Network request failed" end
+        local httpCode = tonumber(response.StatusCode or response.Status) or 0
+        gate.lastHTTP = httpCode
+        local raw = response.Body or response.body
+        if type(raw) ~= "string" or #raw > 4096 then return nil,"Invalid API body" end
+        local parsed,decoded = pcall(s.HttpService.JSONDecode,s.HttpService,raw)
+        if not parsed or type(decoded) ~= "table" then return nil,"Invalid policy JSON" end
+        if httpCode ~= 200 or decoded.ok ~= true then
+            return nil,tostring(decoded.error or ("HTTP " .. httpCode)):sub(1,100)
+        end
+        return decoded
+    end
+
+    local function check()
+        if not run or gate.busy then return false end
+        gate.busy = true
+        local uid = player and tostring(player.UserId) or ""
+        if not uid:match("^[1-9]%d*$") then
+            gate.policyValid = false
+            apply("unknown","LocalPlayer is unavailable")
+            gate.busy = false
+            return false
+        end
+        local result,err = post("/api/v1/client/policy",{userId=uid})
+        if not result then
+            gate.policyValid = false
+            apply("unknown",err)
+            gate.busy = false
+            return false
+        end
+        local p = result.policy
+        if type(p) ~= "table" or type(result.signature) ~= "string"
+            or p.subjectUserId ~= uid or p.identityVerified ~= false
+            or not (p.status == "banned" or p.status == "not_banned")
+            or type(p.ui) ~= "table"
+            or type(p.issuedAt) ~= "number" or type(p.expiresAt) ~= "number"
+            or p.expiresAt <= os.time() or p.issuedAt > os.time() + 5 then
+            gate.policyValid = false
+            apply("unknown","Policy schema or subject mismatch")
+            gate.busy = false
+            return false
+        end
+        local checked,verifyErr=post("/api/v1/client/policy/verify",{
+            policy=p,signature=result.signature
+        })
+        if not checked or checked.valid ~= true or checked.authorization ~= false
+            or checked.identityVerified ~= false then
+            gate.policyValid = false
+            apply("unknown",verifyErr or "Policy signature was not verified")
+            gate.busy = false
+            return false
+        end
+        local isBanned = p.status == "banned"
+        if p.ui.chatTabsVisible ~= (not isBanned) or
+           p.ui.newChatEnabled ~= (not isBanned) or
+           p.ui.settingsEnabled ~= true or
+           p.ui.appealEntryVisible ~= isBanned then
+            gate.policyValid = false
+            apply("unknown","Policy/UI disagreement")
+            gate.busy = false
+            return false
+        end
+        gate.policyValid = true
+        apply(p.status,nil)
+        gate.busy = false
+        return true
+    end
+
+    local controller = {
+        status=gate,
+        refresh=function() task.spawn(check) end,
+        stop=function() run=false;gate.active=false end,
+    }
+    loc.API.ArcScriptPolicyGate = controller
+    if env then env.ArcScriptPolicyGate = controller end
+    if retry then retry.MouseButton1Click:Connect(controller.refresh) end
+    apply("checking", "Awaiting Signed UI Policy")
+    while run and gpt and gpt.Parent do
+        check()
+        task.wait(45)  -- Signed policy expires after 60s. Never use stale grants.
+    end
+    controller.stop()
+end)
