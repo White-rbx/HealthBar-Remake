@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.26 ",
+	sion = " UIs 7.3.27 ",
 	logs = [[
+(:14/11/2026: A) Stage 16.26: Violation Notice card with reason, moderator message, Close X, expandable Open Appeal, read-only Violation ID and Appeal Case ID. Local preview API; no invented server evidence.
 (:14/11/2026: A) Stage 16.25: Move Appeal draft UI inside expandable Violation; remove Spam Mail from user-facing Feedback & Appeal. Backend uses separate Staging.
 (:14/11/2026: A) Stage 16.24: Added official ArcScriptCenter Rules to nested Feedback & Appeal; RichText sections expand to fit mobile width.
 (:9/11/2026: A) Stage 16.23: Built-in opt-in masked Leaderboard in Arcsen > Settings > ArcScriptCenter. Lazy public API reads with Today / This Year / All Time, Refresh, cached view, no admin credentials.
@@ -14216,28 +14217,37 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 end
                 makeDraftSection("Feedback")
 
-                -- Violation contains its own scrollable section. Appeal is NOT
-                -- a top-level entry and the admin-only Spam Mail is never shown.
-                local violationScroll, violationUI
-                local violationOpen = false
+                -- Violation Notice UI (developer's 14/11/2026 wireframe).
+                -- Appeal is expanded *inside* the notice, not a separate top-level tab.
+                -- No user-provided ID is treated as authenticated moderation evidence.
+                local violationScroll, violationUI, noticeUI
+                local violationOpen, appealOpen = false, false
+                local violationPreview = nil
+                local banNoticeVisible = false
+                local redrawNotice = function() end
+                local showAppeal = function() end
+
                 local function toggleViolation(show)
                     violationOpen = show == true
                     if not violationUI or not violationUI.Frame.Parent then return end
-                    violationUI.Frame.Size = UDim2.new(1,-6,0,violationOpen and 302 or 30)
+                    local bodyHeight = appealOpen and 420 or 290
+                    violationUI.Frame.Size = UDim2.new(1,-6,0,violationOpen and (bodyHeight + 37) or 30)
                     violationUI.Button.Text = violationOpen and "Close" or "Open"
                     if violationScroll then
+                        violationScroll.Size = UDim2.new(1,-8,0,bodyHeight)
                         violationScroll.Visible = violationOpen
                         if not violationOpen then
                             violationScroll.CanvasPosition = Vector2.zero
                         end
                     end
                 end
+
                 violationUI = o(panelScroll,"None","Violation",false,true,"Open",false,false,nil,
                     function(sub)
                         violationScroll = Instance.new("ScrollingFrame")
                         violationScroll.Name = "ViolationAppealUI"
                         violationScroll.Position = UDim2.fromOffset(4,31)
-                        violationScroll.Size = UDim2.new(1,-8,0,266)
+                        violationScroll.Size = UDim2.new(1,-8,0,290)
                         violationScroll.BackgroundColor3 = Color3.fromRGB(25,32,46)
                         violationScroll.BackgroundTransparency = 0.1
                         violationScroll.BorderSizePixel = 0
@@ -14266,18 +14276,281 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 nextOrder += 1
                 violationUI.Frame.LayoutOrder = nextOrder
                 violationUI.Frame.Size = UDim2.new(1,-6,0,30)
-                local openNestedAppeal = makeDraftSection("Appeal",violationScroll)
+
+                -- Keeping o() nested within o(), but rendering the notice as one
+                -- responsive card. UIListLayout and AutomaticSize handle long text.
+                noticeUI = o(violationScroll,"None","Moderation Notice",false,false,nil,false,false,nil,
+                    function(sub)
+                        sub.Frame.Name = "ViolationNotice"
+                        sub.Frame.Size = UDim2.new(1,-6,0,284)
+                        sub.Frame.BackgroundColor3 = Color3.fromRGB(29,35,47)
+                        sub.Frame.BackgroundTransparency = 0.08
+                        sub.Frame.BorderSizePixel = 1
+                        sub.Frame.ClipsDescendants = true
+                        sub.Label.Visible = false
+
+                        local body = Instance.new("Frame")
+                        body.Name = "NoticeBody"
+                        body.Position = UDim2.fromOffset(5,5)
+                        body.Size = UDim2.new(1,-10,0,0)
+                        body.AutomaticSize = Enum.AutomaticSize.Y
+                        body.BackgroundTransparency = 1
+                        body.Parent = sub.Frame
+                        local bodyLayout = Instance.new("UIListLayout")
+                        bodyLayout.Name = "NoticeLayout"
+                        bodyLayout.FillDirection = Enum.FillDirection.Vertical
+                        bodyLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                        bodyLayout.Padding = UDim.new(0,7)
+                        bodyLayout.Parent = body
+
+                        local function addLabel(name, order, value, minHeight, textSize, background)
+                            local label = Instance.new("TextLabel")
+                            label.Name = name
+                            label.LayoutOrder = order
+                            label.Size = UDim2.new(1,0,0,minHeight)
+                            label.AutomaticSize = Enum.AutomaticSize.Y
+                            label.BackgroundTransparency = background and 0.15 or 1
+                            if background then label.BackgroundColor3 = Color3.fromRGB(17,23,33) end
+                            label.TextColor3 = Color3.fromRGB(235,242,252)
+                            label.TextSize = textSize
+                            label.TextWrapped = true
+                            label.TextXAlignment = Enum.TextXAlignment.Left
+                            label.TextYAlignment = Enum.TextYAlignment.Top
+                            label.Text = value
+                            label.Parent = body
+                            if background then Corner(0,4,label) end
+                            return label
+                        end
+                        local function addButton(name, order, caption, parent, height)
+                            local button = Instance.new("TextButton")
+                            button.Name = name
+                            button.LayoutOrder = order
+                            button.Size = UDim2.new(1,0,0,height or 32)
+                            button.BackgroundColor3 = Color3.fromRGB(46,96,139)
+                            button.TextColor3 = Color3.new(1,1,1)
+                            button.TextSize = 13
+                            button.Text = caption
+                            button.Parent = parent or body
+                            Corner(0,5,button)
+                            return button
+                        end
+
+                        local header = Instance.new("Frame")
+                        header.Name = "NoticeHeader"
+                        header.LayoutOrder = 1
+                        header.Size = UDim2.new(1,0,0,48)
+                        header.BackgroundTransparency = 1
+                        header.Parent = body
+                        local title = Instance.new("TextLabel")
+                        title.Name = "ViolationTitle"
+                        title.Size = UDim2.new(1,-40,1,0)
+                        title.BackgroundTransparency = 1
+                        title.Text = "Your behavior broke our rules"
+                        title.TextColor3 = Color3.new(1,1,1)
+                        title.TextSize = 17
+                        title.TextWrapped = true
+                        title.TextXAlignment = Enum.TextXAlignment.Left
+                        title.TextYAlignment = Enum.TextYAlignment.Center
+                        title.Parent = header
+                        local close = Instance.new("TextButton")
+                        close.Name = "CloseViolation"
+                        close.Size = UDim2.fromOffset(30,30)
+                        close.Position = UDim2.new(1,-30,0,0)
+                        close.BackgroundColor3 = Color3.fromRGB(80,42,48)
+                        close.TextColor3 = Color3.new(1,1,1)
+                        close.TextSize = 16
+                        close.Text = "X"
+                        close.Parent = header
+                        Corner(0,4,close)
+                        close.MouseButton1Click:Connect(function() toggleViolation(false) end)
+
+                        local reasonLabel = addLabel("ViolationReason",2,"Reason: Not available",32,14,false)
+                        addLabel("ModeratorMessageTitle",3,"Moderator message:",18,13,false)
+                        local messageLabel = addLabel("ModeratorMessage",4,
+                            "No moderator message has been provided.",62,13,true)
+                        local previewLabel = addLabel("ViolationSource",5,
+                            "No authenticated moderation record has been loaded.",23,11,false)
+                        previewLabel.TextColor3 = Color3.fromRGB(245,203,140)
+                        local open = addButton("OpenAppeal",6,"Open Appeal",body,34)
+
+                        local appealPanel = Instance.new("Frame")
+                        appealPanel.Name = "AppealExpanded"
+                        appealPanel.LayoutOrder = 7
+                        appealPanel.Size = UDim2.new(1,0,0,0)
+                        appealPanel.BackgroundColor3 = Color3.fromRGB(23,30,43)
+                        appealPanel.BorderSizePixel = 0
+                        appealPanel.Visible = false
+                        appealPanel.Parent = body
+                        Corner(0,5,appealPanel)
+                        local appealLayout = Instance.new("UIListLayout")
+                        appealLayout.Padding = UDim.new(0,6)
+                        appealLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                        appealLayout.Parent = appealPanel
+                        local appealPad = Instance.new("UIPadding")
+                        appealPad.PaddingTop = UDim.new(0,6)
+                        appealPad.PaddingBottom = UDim.new(0,6)
+                        appealPad.PaddingLeft = UDim.new(0,6)
+                        appealPad.PaddingRight = UDim.new(0,6)
+                        appealPad.Parent = appealPanel
+
+                        local function appealLabel(name,order,value,height)
+                            local label = Instance.new("TextLabel")
+                            label.Name = name
+                            label.LayoutOrder = order
+                            label.Size = UDim2.new(1,-12,0,height)
+                            label.BackgroundTransparency = 1
+                            label.TextColor3 = Color3.fromRGB(225,236,252)
+                            label.TextSize = 12
+                            label.TextWrapped = true
+                            label.TextXAlignment = Enum.TextXAlignment.Left
+                            label.Text = value
+                            label.Parent = appealPanel
+                            return label
+                        end
+                        local idLabel = appealLabel("ViolationID",1,"Violation ID: Not provided",38)
+                        local caseLabel = appealLabel("AppealCaseID",2,"Appeal case ID: Not submitted",24)
+                        local appealBox = Instance.new("TextBox")
+                        appealBox.Name = "AppealDescription"
+                        appealBox.LayoutOrder = 3
+                        appealBox.Size = UDim2.new(1,-12,0,124)
+                        appealBox.BackgroundColor3 = Color3.fromRGB(35,43,59)
+                        appealBox.TextColor3 = Color3.new(1,1,1)
+                        appealBox.PlaceholderText = "Explain your appeal (50–1500 characters)."
+                        appealBox.Text = ""
+                        appealBox.TextSize = 13
+                        appealBox.TextWrapped = true
+                        appealBox.TextXAlignment = Enum.TextXAlignment.Left
+                        appealBox.TextYAlignment = Enum.TextYAlignment.Top
+                        appealBox.MultiLine = true
+                        appealBox.ClearTextOnFocus = false
+                        appealBox.Parent = appealPanel
+                        Corner(0,4,appealBox)
+                        local countLabel = appealLabel("AppealCharacterCount",4,"0/1500 characters",20)
+                        local copy = addButton("CopyAppealDraft",5,"Copy Appeal Draft (not submitted)",appealPanel,34)
+                        local status = appealLabel("AppealDraftStatus",6,
+                            "Draft only. Nothing is sent to Cloudflare.",43)
+                        status.TextColor3 = Color3.fromRGB(245,203,140)
+
+                        local function refreshHeight()
+                            if not sub.Frame.Parent then return end
+                            local apSize = appealOpen and (math.ceil(appealLayout.AbsoluteContentSize.Y)+12) or 0
+                            appealPanel.Size = UDim2.new(1,0,0,apSize)
+                            local h = math.ceil(bodyLayout.AbsoluteContentSize.Y)+12
+                            sub.Frame.Size = UDim2.new(1,-6,0,math.max(210,h))
+                            toggleViolation(violationOpen)
+                        end
+                        appealLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshHeight)
+                        bodyLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshHeight)
+                        reasonLabel:GetPropertyChangedSignal("TextBounds"):Connect(function()
+                            task.defer(refreshHeight)
+                        end)
+                        messageLabel:GetPropertyChangedSignal("TextBounds"):Connect(function()
+                            task.defer(refreshHeight)
+                        end)
+
+                        showAppeal = function(show)
+                            appealOpen = show == true
+                            appealPanel.Visible = appealOpen
+                            open.Text = appealOpen and "Close Appeal" or "Open Appeal"
+                            if not appealOpen then
+                                appealPanel.Size = UDim2.new(1,0,0,0)
+                            end
+                            task.defer(refreshHeight)
+                            toggleViolation(true)
+                            if appealOpen then
+                                task.defer(function()
+                                    if violationScroll and violationScroll.Parent then
+                                        violationScroll.CanvasPosition = Vector2.new(0,
+                                            math.max(0,violationScroll.AbsoluteCanvasSize.Y-violationScroll.AbsoluteSize.Y))
+                                    end
+                                end)
+                            end
+                        end
+                        open.MouseButton1Click:Connect(function() showAppeal(not appealOpen) end)
+                        appealBox:GetPropertyChangedSignal("Text"):Connect(function()
+                            local count = utf8.len(appealBox.Text) or #appealBox.Text
+                            countLabel.Text = tostring(count) .. "/1500 characters"
+                        end)
+                        copy.MouseButton1Click:Connect(function()
+                            local message = tostring(appealBox.Text or "")
+                            local length = utf8.len(message) or #message
+                            if length < 50 or length > 1500 then
+                                status.Text = "An appeal requires 50–1500 characters."
+                                return
+                            end
+                            if type(setclipboard) ~= "function" then
+                                status.Text = "Clipboard unavailable. Select and copy your text manually."
+                                appealBox:CaptureFocus()
+                                return
+                            end
+                            local vId = violationPreview and violationPreview.id or "Not provided"
+                            local textToCopy = "Appeal Draft\nViolation ID: " .. vId
+                                .. "\nUser ID: " .. tostring(player and player.UserId or "Unknown")
+                                .. "\n" .. message
+                            local ok = pcall(setclipboard,textToCopy)
+                            status.Text = ok and "Copied locally. NOT submitted to Cloudflare."
+                                or "Copy failed; select your draft manually."
+                        end)
+
+                        redrawNotice = function()
+                            if violationPreview then
+                                title.Text = "Your behavior broke our rules [PREVIEW]"
+                                reasonLabel.Text = "Reason: " .. violationPreview.reason
+                                messageLabel.Text = violationPreview.moderatorMessage
+                                idLabel.Text = "Violation ID: " .. violationPreview.id
+                                previewLabel.Text = "Local UI preview only — not an official moderation record."
+                            else
+                                title.Text = banNoticeVisible and "Your behavior broke our rules"
+                                    or "No violation notice available"
+                                reasonLabel.Text = "Reason: Not available"
+                                messageLabel.Text = "No moderator message has been provided."
+                                idLabel.Text = "Violation ID: Not provided"
+                                previewLabel.Text = banNoticeVisible
+                                    and "The ban policy does not include a verified violation ID or moderator note."
+                                    or "No authenticated moderation record has been loaded."
+                            end
+                            caseLabel.Text = "Appeal case ID: Not submitted"
+                            task.defer(refreshHeight)
+                        end
+                        task.defer(redrawNotice)
+                    end)
+                noticeUI.Frame.LayoutOrder = 1
+                noticeUI.Frame.Size = UDim2.new(1,-6,0,284)
+
+                -- Only expose a visibly marked preview for UI design/testing.
+                -- Production moderation data must come from a separate verified server flow.
+                loc.API.PreviewArcScriptCenterViolation = function(details)
+                    if type(details) ~= "table" then return false end
+                    local function safeValue(value,limit)
+                        if type(value) ~= "string" then return "" end
+                        value = value:gsub("[%c]", " "):sub(1,limit)
+                        return value
+                    end
+                    violationPreview = {
+                        id = safeValue(details.id,70),
+                        reason = safeValue(details.reason,120),
+                        moderatorMessage = safeValue(details.moderatorMessage,800),
+                    }
+                    if violationPreview.id == "" then violationPreview.id = "TEST-001" end
+                    if violationPreview.reason == "" then violationPreview.reason = "Test" end
+                    if violationPreview.moderatorMessage == "" then violationPreview.moderatorMessage = "Example." end
+                    redrawNotice()
+                    setPanelExpanded(true)
+                    toggleViolation(true)
+                    return true
+                end
+                loc.API.ClearArcScriptCenterViolationPreview = function()
+                    violationPreview = nil
+                    redrawNotice()
+                    return true
+                end
+                loc.API.UpdateArcScriptCenterViolationBanState = function(isBanned)
+                    banNoticeVisible = isBanned == true
+                    redrawNotice()
+                end
                 openAppealDraft = function(show)
                     if show then toggleViolation(true) end
-                    openNestedAppeal(show)
-                    if show and violationScroll then
-                        task.defer(function()
-                            if violationScroll.Parent then
-                                violationScroll.CanvasPosition = Vector2.new(0,
-                                    math.max(0,violationScroll.AbsoluteCanvasSize.Y-violationScroll.AbsoluteSize.Y))
-                            end
-                        end)
-                    end
+                    showAppeal(show)
                 end
             end,
             function(_,event)
@@ -14289,7 +14562,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
         -- Called only on a verified signed UI policy indicating a ban.
         revealAppealDraft = function()
             setPanelExpanded(true)
-            openAppealDraft(true)
+            -- Open Violation, but leave the Appeal form collapsed until Open Appeal is clicked.
+            openAppealDraft(false)
+            if type(loc.API.UpdateArcScriptCenterViolationBanState) == "function" then
+                loc.API.UpdateArcScriptCenterViolationBanState(true)
+            end
             if panelScroll then
                 task.defer(function()
                     if panelScroll.Parent then
@@ -14348,6 +14625,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
             c_scr.Visible = saved.currentChatVisible
             c_box.TextEditable = saved.textEditable
             overlay.Visible = false
+        end
+        if type(loc.API.UpdateArcScriptCenterViolationBanState) == "function" then
+            loc.API.UpdateArcScriptCenterViolationBanState(status == "banned")
         end
         gate.status = status
         gate.lastError = reason
@@ -14444,6 +14724,17 @@ More information in discord you can find the link at About or on the ScriptBlox/
     local controller = {
         status=gate,
         refresh=function() task.spawn(check) end,
+        -- Purely visual local preview; never changes server moderation or policy.
+        previewViolation=function(details)
+            if type(loc.API.PreviewArcScriptCenterViolation) ~= "function" then return false end
+            local ok = loc.API.PreviewArcScriptCenterViolation(details)
+            if ok then showSettings() end
+            return ok
+        end,
+        clearViolationPreview=function()
+            if type(loc.API.ClearArcScriptCenterViolationPreview) ~= "function" then return false end
+            return loc.API.ClearArcScriptCenterViolationPreview()
+        end,
         stop=function() run=false;gate.active=false end,
     }
     loc.API.ArcScriptPolicyGate = controller
