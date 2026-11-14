@@ -1,6 +1,8 @@
 local ver = {
-	sion = " UIs 7.3.27 ",
+	sion = " UIs 7.3.29 ",
 	logs = [[
+(:14/11/2026: F) Stage 16.28: Guard nested Feedback/Violation/Settings CanvasSize against truncated scrolling; track UIListLayout and bottommost elements, preserve AutomaticCanvasSize.Y.
+(:14/11/2026: F) Stage 16.27: Make the Violation Notice X button collapse/expand only the notice body; keep the title and X visible, automatically shrink the card and outer scrolling area.
 (:14/11/2026: A) Stage 16.26: Violation Notice card with reason, moderator message, Close X, expandable Open Appeal, read-only Violation ID and Appeal Case ID. Local preview API; no invented server evidence.
 (:14/11/2026: A) Stage 16.25: Move Appeal draft UI inside expandable Violation; remove Spam Mail from user-facing Feedback & Appeal. Backend uses separate Staging.
 (:14/11/2026: A) Stage 16.24: Added official ArcScriptCenter Rules to nested Feedback & Appeal; RichText sections expand to fit mobile width.
@@ -13960,6 +13962,53 @@ task.spawn(function()
         local panelExpanded = false
         local panelScroll, panelUI
         local openAppealDraft = function() end
+
+        -- Stage 16.28: protect nested scrolling containers against a short canvas.
+        -- AutomaticCanvasSize.Y remains enabled; CanvasSize is a reliable MINIMUM.
+        -- Recalculate after child frames change size (including expanded Appeal UI).
+        local syncPanelCanvas = function() end
+        local syncViolationCanvas = function() end
+        local function protectCanvas(scroll, list, tailSpace)
+            if not scroll or not list then return function() end end
+            scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+            local queued = false
+            local function refresh()
+                if not scroll.Parent or not list.Parent then return end
+                local padding = scroll:FindFirstChildOfClass("UIPadding")
+                local top = padding and padding.PaddingTop.Offset or 0
+                local bottom = padding and padding.PaddingBottom.Offset or 0
+                local desired = list.AbsoluteContentSize.Y + top + bottom
+
+                -- UIListLayout may still be one layout pass behind when a nested
+                -- Frame changes. Check the last rendered GuiObject too.
+                for _, child in ipairs(scroll:GetChildren()) do
+                    if child:IsA("GuiObject") and child.Visible then
+                        local childBottom = child.AbsolutePosition.Y
+                            - scroll.AbsolutePosition.Y
+                            + scroll.CanvasPosition.Y + child.AbsoluteSize.Y
+                        desired = math.max(desired, childBottom)
+                    end
+                end
+                desired = math.max(0, math.ceil(desired + (tailSpace or 32)))
+                -- CanvasSize and AutomaticCanvasSize jointly determine the maximum
+                -- scrollable extent; don't assume the automatic pass sees every row.
+                if scroll.CanvasSize.Y.Scale ~= 0 or scroll.CanvasSize.Y.Offset ~= desired then
+                    scroll.CanvasSize = UDim2.fromOffset(0, desired)
+                end
+            end
+            local function schedule()
+                if queued then return end
+                queued = true
+                task.defer(function()
+                    queued = false
+                    refresh()
+                end)
+            end
+            list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(schedule)
+            scroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(schedule)
+            schedule()
+            return refresh
+        end
         local function setPanelExpanded(value)
             panelExpanded = value == true
             if not panelUI or not panelUI.Frame.Parent then return end
@@ -14003,6 +14052,7 @@ task.spawn(function()
                 pad.PaddingLeft = UDim.new(0,3)
                 pad.PaddingRight = UDim.new(0,3)
                 pad.Parent = panelScroll
+                syncPanelCanvas = protectCanvas(panelScroll, layout, 42)
 
                 -- Nested o() entries render within the existing Arcsen Settings UI.
                 local nextOrder = 0
@@ -14222,6 +14272,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 -- No user-provided ID is treated as authenticated moderation evidence.
                 local violationScroll, violationUI, noticeUI
                 local violationOpen, appealOpen = false, false
+                local noticeCollapsed = false
                 local violationPreview = nil
                 local banNoticeVisible = false
                 local redrawNotice = function() end
@@ -14230,7 +14281,15 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 local function toggleViolation(show)
                     violationOpen = show == true
                     if not violationUI or not violationUI.Frame.Parent then return end
-                    local bodyHeight = appealOpen and 420 or 290
+                    -- AutomaticCanvasSize expands the scrollable canvas, while the
+                    -- viewport itself follows the actual notice height up to a
+                    -- mobile-friendly cap. A collapsed notice should not leave a
+                    -- large empty scrolling area behind.
+                    local contentHeight = 290
+                    if noticeUI and noticeUI.Frame then
+                        contentHeight = math.ceil(noticeUI.Frame.Size.Y.Offset) + 16
+                    end
+                    local bodyHeight = math.clamp(contentHeight,64,360)
                     violationUI.Frame.Size = UDim2.new(1,-6,0,violationOpen and (bodyHeight + 37) or 30)
                     violationUI.Button.Text = violationOpen and "Close" or "Open"
                     if violationScroll then
@@ -14240,6 +14299,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             violationScroll.CanvasPosition = Vector2.zero
                         end
                     end
+                    task.defer(function()
+                        syncViolationCanvas()
+                        syncPanelCanvas()
+                    end)
                 end
 
                 violationUI = o(panelScroll,"None","Violation",false,true,"Open",false,false,nil,
@@ -14269,6 +14332,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         pad.PaddingRight = UDim.new(0,3)
                         pad.PaddingBottom = UDim.new(0,4)
                         pad.Parent = violationScroll
+                        syncViolationCanvas = protectCanvas(violationScroll, layout, 42)
                     end,
                     function(_,event)
                         if event == "button" then toggleViolation(not violationOpen) end
@@ -14353,7 +14417,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         title.TextYAlignment = Enum.TextYAlignment.Center
                         title.Parent = header
                         local close = Instance.new("TextButton")
-                        close.Name = "CloseViolation"
+                        close.Name = "ToggleViolationNotice"
                         close.Size = UDim2.fromOffset(30,30)
                         close.Position = UDim2.new(1,-30,0,0)
                         close.BackgroundColor3 = Color3.fromRGB(80,42,48)
@@ -14362,10 +14426,15 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         close.Text = "X"
                         close.Parent = header
                         Corner(0,4,close)
-                        close.MouseButton1Click:Connect(function() toggleViolation(false) end)
+                        -- X toggles only this notice's body, not the Violation tab.
+                        -- The header stays visible in both states.
+                        local setNoticeCollapsed = function() end
+                        close.MouseButton1Click:Connect(function()
+                            setNoticeCollapsed(not noticeCollapsed)
+                        end)
 
                         local reasonLabel = addLabel("ViolationReason",2,"Reason: Not available",32,14,false)
-                        addLabel("ModeratorMessageTitle",3,"Moderator message:",18,13,false)
+                        local moderatorTitle = addLabel("ModeratorMessageTitle",3,"Moderator message:",18,13,false)
                         local messageLabel = addLabel("ModeratorMessage",4,
                             "No moderator message has been provided.",62,13,true)
                         local previewLabel = addLabel("ViolationSource",5,
@@ -14433,11 +14502,17 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                         local function refreshHeight()
                             if not sub.Frame.Parent then return end
-                            local apSize = appealOpen and (math.ceil(appealLayout.AbsoluteContentSize.Y)+12) or 0
+                            local apSize = (appealOpen and not noticeCollapsed)
+                                and (math.ceil(appealLayout.AbsoluteContentSize.Y)+12) or 0
                             appealPanel.Size = UDim2.new(1,0,0,apSize)
                             local h = math.ceil(bodyLayout.AbsoluteContentSize.Y)+12
-                            sub.Frame.Size = UDim2.new(1,-6,0,math.max(210,h))
+                            sub.Frame.Size = UDim2.new(1,-6,0,
+                                math.max(noticeCollapsed and 60 or 210,h))
                             toggleViolation(violationOpen)
+                            task.defer(function()
+                                syncViolationCanvas()
+                                syncPanelCanvas()
+                            end)
                         end
                         appealLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshHeight)
                         bodyLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshHeight)
@@ -14448,9 +14523,24 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             task.defer(refreshHeight)
                         end)
 
+                        setNoticeCollapsed = function(collapsed)
+                            noticeCollapsed = collapsed == true
+                            reasonLabel.Visible = not noticeCollapsed
+                            moderatorTitle.Visible = not noticeCollapsed
+                            messageLabel.Visible = not noticeCollapsed
+                            previewLabel.Visible = not noticeCollapsed
+                            open.Visible = not noticeCollapsed
+                            appealPanel.Visible = not noticeCollapsed and appealOpen
+                            -- Keep X visible and usable; its job is expand/collapse.
+                            close.Text = "X"
+                            task.defer(refreshHeight)
+                        end
+
                         showAppeal = function(show)
                             appealOpen = show == true
-                            appealPanel.Visible = appealOpen
+                            -- The Appeal form is never opened behind a collapsed card.
+                            if appealOpen then setNoticeCollapsed(false) end
+                            appealPanel.Visible = appealOpen and not noticeCollapsed
                             open.Text = appealOpen and "Close Appeal" or "Open Appeal"
                             if not appealOpen then
                                 appealPanel.Size = UDim2.new(1,0,0,0)
@@ -14459,10 +14549,16 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             toggleViolation(true)
                             if appealOpen then
                                 task.defer(function()
-                                    if violationScroll and violationScroll.Parent then
-                                        violationScroll.CanvasPosition = Vector2.new(0,
-                                            math.max(0,violationScroll.AbsoluteCanvasSize.Y-violationScroll.AbsoluteSize.Y))
-                                    end
+                                    refreshHeight()
+                                    task.defer(function()
+                                        if violationScroll and violationScroll.Parent then
+                                            syncViolationCanvas()
+                                            syncPanelCanvas()
+                                            violationScroll.CanvasPosition = Vector2.new(0,
+                                                math.max(0, violationScroll.AbsoluteCanvasSize.Y
+                                                    - violationScroll.AbsoluteWindowSize.Y))
+                                        end
+                                    end)
                                 end)
                             end
                         end
@@ -14494,7 +14590,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                         redrawNotice = function()
                             if violationPreview then
-                                title.Text = "Your behavior broke our rules [PREVIEW]"
+                                title.Text = "Your behavior broke our rules"
                                 reasonLabel.Text = "Reason: " .. violationPreview.reason
                                 messageLabel.Text = violationPreview.moderatorMessage
                                 idLabel.Text = "Violation ID: " .. violationPreview.id
@@ -14512,6 +14608,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             caseLabel.Text = "Appeal case ID: Not submitted"
                             task.defer(refreshHeight)
                         end
+                        -- Start expanded, matching the supplied moderation mockup.
+                        -- The [PREVIEW] disclaimer lives in the body, not the title.
+                        setNoticeCollapsed(false)
                         task.defer(redrawNotice)
                     end)
                 noticeUI.Frame.LayoutOrder = 1
@@ -14558,6 +14657,13 @@ More information in discord you can find the link at About or on the ScriptBlox/
             end)
         panelUI.Frame.LayoutOrder = 23
         panelUI.Frame.Size = UDim2.new(1,-8,0,30)
+
+        -- The Settings page is a THIRD scrolling layer. Guard it too so that
+        -- a newly expanded Feedback & Appeal section is never clipped at bottom.
+        local settingsLayout = settings:FindFirstChildOfClass("UIListLayout")
+        if settingsLayout then
+            protectCanvas(settings, settingsLayout, 48)
+        end
 
         -- Called only on a verified signed UI policy indicating a ban.
         revealAppealDraft = function()
