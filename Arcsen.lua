@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.29 ",
+	sion = " UIs 7.3.30 ",
 	logs = [[
+(:14/11/2026: F) Stage 16.29: Remove TextBounds sizing from Feedback/Violation notices; use TextScaled with font constraints for fixed labels, and a wrapped TextLabel in its own scrollable Moderator Message viewport. Preserve nested canvas guards.
 (:14/11/2026: F) Stage 16.28: Guard nested Feedback/Violation/Settings CanvasSize against truncated scrolling; track UIListLayout and bottommost elements, preserve AutomaticCanvasSize.Y.
 (:14/11/2026: F) Stage 16.27: Make the Violation Notice X button collapse/expand only the notice body; keep the title and X visible, automatically shrink the card and outer scrolling area.
 (:14/11/2026: A) Stage 16.26: Violation Notice card with reason, moderator message, Close X, expandable Open Appeal, read-only Violation ID and Appeal Case ID. Local preview API; no invented server evidence.
@@ -14064,10 +14065,15 @@ task.spawn(function()
                     local expanded = false
                     local function resize()
                         if not expanded or not item or not item.Frame.Parent or not infoText then return end
-                        -- TextBounds responds to screen width: no cropped rules on mobile.
-                        local measured = math.ceil(infoText.TextBounds.Y)
-                        local bodyHeight = math.max(allowRichText and 300 or 58, measured + 14)
-                        item.Frame.Size = UDim2.new(1,-6,0,32 + bodyHeight)
+                        -- TextWrapped + AutomaticSize.Y sizes this long text naturally.
+                        -- AbsoluteSize tracks Roblox's finished UI layout, not TextBounds.
+                        local height = math.ceil(infoText.AbsoluteSize.Y)
+                        local bodyHeight = math.max(allowRichText and 300 or 58, height + 16)
+                        local desired = 32 + bodyHeight
+                        if item.Frame.Size.Y.Offset ~= desired then
+                            item.Frame.Size = UDim2.new(1,-6,0,desired)
+                            task.defer(syncPanelCanvas)
+                        end
                     end
                     item = o(panelScroll,"None",title,false,true,"Show",false,false,nil,
                         function(sub)
@@ -14086,7 +14092,7 @@ task.spawn(function()
                             infoText.BackgroundTransparency = 1
                             infoText.Visible = false
                             infoText.Parent = sub.Frame
-                            infoText:GetPropertyChangedSignal("TextBounds"):Connect(resize)
+                            infoText:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() task.defer(resize) end)
                         end,
                         function(_,event,sub)
                             if event ~= "button" then return end
@@ -14094,7 +14100,10 @@ task.spawn(function()
                             infoText.Visible = expanded
                             sub.Frame.Size = UDim2.new(1,-6,0,expanded and 110 or 30)
                             sub.Button.Text = expanded and "Hide" or "Show"
-                            if expanded then task.defer(resize) end
+                            if expanded then
+                                task.defer(resize)
+                            end
+                            task.defer(syncPanelCanvas)
                         end)
                     nextOrder += 1
                     item.Frame.LayoutOrder = nextOrder
@@ -14372,7 +14381,12 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             label.Name = name
                             label.LayoutOrder = order
                             label.Size = UDim2.new(1,0,0,minHeight)
-                            label.AutomaticSize = Enum.AutomaticSize.Y
+                            label.AutomaticSize = Enum.AutomaticSize.None
+                            label.TextScaled = true
+                            local sizeLimit = Instance.new("UITextSizeConstraint")
+                            sizeLimit.MinTextSize = math.max(10, textSize - 3)
+                            sizeLimit.MaxTextSize = textSize
+                            sizeLimit.Parent = label
                             label.BackgroundTransparency = background and 0.15 or 1
                             if background then label.BackgroundColor3 = Color3.fromRGB(17,23,33) end
                             label.TextColor3 = Color3.fromRGB(235,242,252)
@@ -14393,6 +14407,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             button.BackgroundColor3 = Color3.fromRGB(46,96,139)
                             button.TextColor3 = Color3.new(1,1,1)
                             button.TextSize = 13
+                            button.TextScaled = true
+                            local sizeLimit = Instance.new("UITextSizeConstraint")
+                            sizeLimit.MinTextSize = 10
+                            sizeLimit.MaxTextSize = 13
+                            sizeLimit.Parent = button
                             button.Text = caption
                             button.Parent = parent or body
                             Corner(0,5,button)
@@ -14412,6 +14431,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         title.Text = "Your behavior broke our rules"
                         title.TextColor3 = Color3.new(1,1,1)
                         title.TextSize = 17
+                        title.TextScaled = true
+                        local titleSizeLimit = Instance.new("UITextSizeConstraint")
+                        titleSizeLimit.MinTextSize = 13
+                        titleSizeLimit.MaxTextSize = 17
+                        titleSizeLimit.Parent = title
                         title.TextWrapped = true
                         title.TextXAlignment = Enum.TextXAlignment.Left
                         title.TextYAlignment = Enum.TextYAlignment.Center
@@ -14423,6 +14447,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         close.BackgroundColor3 = Color3.fromRGB(80,42,48)
                         close.TextColor3 = Color3.new(1,1,1)
                         close.TextSize = 16
+                        close.TextScaled = true
                         close.Text = "X"
                         close.Parent = header
                         Corner(0,4,close)
@@ -14433,12 +14458,56 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             setNoticeCollapsed(not noticeCollapsed)
                         end)
 
-                        local reasonLabel = addLabel("ViolationReason",2,"Reason: Not available",32,14,false)
-                        local moderatorTitle = addLabel("ModeratorMessageTitle",3,"Moderator message:",18,13,false)
-                        local messageLabel = addLabel("ModeratorMessage",4,
-                            "No moderator message has been provided.",62,13,true)
+                        local reasonLabel = addLabel("ViolationReason",2,"Reason: Not available",52,14,false)
+                        local moderatorTitle = addLabel("ModeratorMessageTitle",3,"Moderator message:",24,13,false)
+
+                        -- Moderator Message is its own scrollable viewport.
+                        -- Fixed font size keeps long moderator notes readable.
+                        local moderatorScroll = Instance.new("ScrollingFrame")
+                        moderatorScroll.Name = "ModeratorMessageScroll"
+                        moderatorScroll.LayoutOrder = 4
+                        moderatorScroll.Size = UDim2.new(1,0,0,116)
+                        moderatorScroll.BackgroundColor3 = Color3.fromRGB(17,23,33)
+                        moderatorScroll.BorderSizePixel = 0
+                        moderatorScroll.ScrollBarThickness = 4
+                        moderatorScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+                        moderatorScroll.CanvasSize = UDim2.fromOffset(0,0)
+                        moderatorScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                        moderatorScroll.ClipsDescendants = true
+                        moderatorScroll.Parent = body
+                        Corner(0,4,moderatorScroll)
+
+                        local moderatorLayout = Instance.new("UIListLayout")
+                        moderatorLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                        moderatorLayout.Parent = moderatorScroll
+                        local moderatorPadding = Instance.new("UIPadding")
+                        moderatorPadding.PaddingTop = UDim.new(0,7)
+                        moderatorPadding.PaddingBottom = UDim.new(0,7)
+                        moderatorPadding.PaddingLeft = UDim.new(0,7)
+                        moderatorPadding.PaddingRight = UDim.new(0,9)
+                        moderatorPadding.Parent = moderatorScroll
+
+                        local messageLabel = Instance.new("TextLabel")
+                        messageLabel.Name = "ModeratorMessage"
+                        messageLabel.LayoutOrder = 1
+                        messageLabel.Size = UDim2.new(1,-6,0,24)
+                        messageLabel.AutomaticSize = Enum.AutomaticSize.Y
+                        messageLabel.BackgroundTransparency = 1
+                        messageLabel.TextColor3 = Color3.fromRGB(235,242,252)
+                        messageLabel.TextSize = 13
+                        messageLabel.TextScaled = false -- Do not shrink long messages
+                        messageLabel.TextWrapped = true
+                        messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+                        messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+                        messageLabel.Text = "No moderator message has been provided."
+                        messageLabel.Parent = moderatorScroll
+
+                        local syncModeratorCanvas = protectCanvas(moderatorScroll, moderatorLayout, 14)
+                        messageLabel:GetPropertyChangedSignal("AbsoluteSize"):Connect(
+                            function() task.defer(syncModeratorCanvas) end)
+
                         local previewLabel = addLabel("ViolationSource",5,
-                            "No authenticated moderation record has been loaded.",23,11,false)
+                            "No authenticated moderation record has been loaded.",42,11,false)
                         previewLabel.TextColor3 = Color3.fromRGB(245,203,140)
                         local open = addButton("OpenAppeal",6,"Open Appeal",body,34)
 
@@ -14470,6 +14539,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             label.BackgroundTransparency = 1
                             label.TextColor3 = Color3.fromRGB(225,236,252)
                             label.TextSize = 12
+                            label.TextScaled = true
+                            local sizeLimit = Instance.new("UITextSizeConstraint")
+                            sizeLimit.MinTextSize = 10
+                            sizeLimit.MaxTextSize = 12
+                            sizeLimit.Parent = label
                             label.TextWrapped = true
                             label.TextXAlignment = Enum.TextXAlignment.Left
                             label.Text = value
@@ -14516,18 +14590,16 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         end
                         appealLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshHeight)
                         bodyLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshHeight)
-                        reasonLabel:GetPropertyChangedSignal("TextBounds"):Connect(function()
-                            task.defer(refreshHeight)
-                        end)
-                        messageLabel:GetPropertyChangedSignal("TextBounds"):Connect(function()
-                            task.defer(refreshHeight)
-                        end)
+                        -- No TextBounds callbacks: the notice uses actual layout sizes.
+                        -- The moderator message scroll follows its own layout changes.
+                        moderatorScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(
+                            function() task.defer(syncModeratorCanvas) end)
 
                         setNoticeCollapsed = function(collapsed)
                             noticeCollapsed = collapsed == true
                             reasonLabel.Visible = not noticeCollapsed
                             moderatorTitle.Visible = not noticeCollapsed
-                            messageLabel.Visible = not noticeCollapsed
+                            moderatorScroll.Visible = not noticeCollapsed
                             previewLabel.Visible = not noticeCollapsed
                             open.Visible = not noticeCollapsed
                             appealPanel.Visible = not noticeCollapsed and appealOpen
@@ -14606,6 +14678,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                     or "No authenticated moderation record has been loaded."
                             end
                             caseLabel.Text = "Appeal case ID: Not submitted"
+                            moderatorScroll.CanvasPosition = Vector2.zero
+                            task.defer(syncModeratorCanvas)
                             task.defer(refreshHeight)
                         end
                         -- Start expanded, matching the supplied moderation mockup.
