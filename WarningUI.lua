@@ -1,4 +1,4 @@
-local v_ver = [[WarningUI 0.1.8 Selected RichText & Client Rejoin]]
+local v_ver = [[WarningUI 0.1.9 Header Mode & Selected RichText]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -565,7 +565,7 @@ local function pop(ntitle, ndes, nbtn1, twoButtons, nbtn2, onClose, onPrimary, o
   return { close = dismiss, frame = frm }
 end
 
-local api = { version = "0.2.5-selected-richtext-client-rejoin", source = "ExperienceSettings WarningUI" }
+local api = { version = "0.2.6-header-mode-selected-richtext", source = "ExperienceSettings WarningUI" }
 
 -- Register trusted local Luau callbacks before showing Cloud warnings.
 -- 'RequireScript' never compiles text returned by a Cloudflare API.
@@ -663,7 +663,10 @@ local function queueWarning(entry, source)
   if state.dead or type(entry) ~= "table" then return false, "Invalid warning" end
   if #state.queue >= 20 then return false, "Warning queue is full" end
   local prefix = source == "server" and "SERVER" or "CLIENT"
-  local title = "[" .. prefix .. "] " .. tostring(entry.title or "Warning")
+  -- Header preference is only the [SERVER] / [CLIENT] label; never the warning title.
+  -- Existing warnings and clients default to the same header as before.
+  local headerMode = entry.headerMode == "none" and "none" or "default"
+  local title = (headerMode == "none" and "" or ("[" .. prefix .. "] ")) .. tostring(entry.title or "Warning")
   local description = tostring(entry.description or entry.message or "")
   if description == "" then return false, "Message is empty" end
   -- For local client callbacks the function is supplied directly in Luau.
