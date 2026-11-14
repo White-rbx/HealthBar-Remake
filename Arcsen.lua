@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.33 ",
+	sion = " UIs 7.3.34 ",
 	logs = [[
+(:15/11/2026: A&F) Stage 16.33: Developer-revised Violation UI. Outer viewport fixed at 350px; AutomaticSize.Y for Violation card and Appeal; AutoCanvas for nested details and messages, new insets and left aligned text; all content stays local preview until staging API integration.
 (:15/11/2026: A&F) Stage 16.32: Replace old Violation Notice UI with developer recovered ViolationAppealUI, convert creation and expansion into reusable functions, use semi-transparent nested ScrollingFrames and robust canvas sizing; keep previews local.
 (:15/11/2026: F&A) Stage 16.31: Select is created only for selector rows, lives under SelectButton rather than Inside; one dropdown open at a time; add SelectButton and dropdown lifecycle methods while preserving ui.Button compatibility.
 (:14/11/2026: A&F) Stage 16.30: o() Body now AutomaticSize.Y / zero Y size; added hidden, zero-Y auto-sized Inside content container at Y=25. Nested Feedback, Violation, API Custom Prompt and Memory inputs use ui.Inside; no manual outer row heights.
@@ -14325,21 +14326,22 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 end
                 makeDraftSection("Feedback")
 
-                -- Stage 16.32: factory rebuilt from the developer-supplied ViolationAppealUI_recovered.lua
-                -- Original hierarchy/colors/positions preserved; variable names normalized.
+                -- Stage 16.33: rebuilt from the developer-revised ViolationAppealUI posted 15/11/2026
+                -- Original hierarchy/colors/positions preserved, including 350px outer viewport; variables named semantically.
                 local function buildViolationUI(parent, onResize)
                     -- Creating ScrollingFrame
                     local outerScroll = Instance.new("ScrollingFrame")
-                    outerScroll.Active = true
+                    outerScroll.Active = false
                     outerScroll.AnchorPoint = Vector2.new(0, 0)
                     outerScroll.AutoLocalize = true
                     outerScroll.BackgroundColor3 = Color3.new(0.0980392173, 0.125490203, 0.180392161)
                     outerScroll.BackgroundTransparency = 0.5
                     outerScroll.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     outerScroll.BorderSizePixel = 5
+                    outerScroll.BorderMode = Enum.BorderMode.Inset
                     outerScroll.BottomImage = "rbxasset://textures/ui/Scroll/scroll-bottom.png"
                     outerScroll.CanvasPosition = Vector2.new(0, 0)
-                    outerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+                    outerScroll.CanvasSize = UDim2.new(0, 0, 0, 97)
                     outerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
                     outerScroll.ClipsDescendants = true
                     outerScroll.Draggable = false
@@ -14368,7 +14370,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                     -- Creating UIListLayout
                     local outerLayout = Instance.new("UIListLayout")
-                    outerLayout.Name = "UIListLayout"
+                    outerLayout.Name = "UiListLayout"
                     outerLayout.Wraps = false
                     outerLayout.Parent = outerScroll
 
@@ -14377,10 +14379,12 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     violationCard.Active = false
                     violationCard.AnchorPoint = Vector2.new(0, 0)
                     violationCard.AutoLocalize = true
+                    violationCard.AutomaticSize = Enum.AutomaticSize.Y
                     violationCard.BackgroundColor3 = Color3.new(0, 0.333333343, 1)
                     violationCard.BackgroundTransparency = 0
                     violationCard.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     violationCard.BorderSizePixel = 5
+                    violationCard.BorderMode = Enum.BorderMode.Inset
                     violationCard.ClipsDescendants = false
                     violationCard.Draggable = false
                     violationCard.Interactable = true
@@ -14428,6 +14432,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     noticeTitle.TextColor3 = Color3.new(1, 1, 1)
                     noticeTitle.TextScaled = true
                     noticeTitle.TextSize = 8
+                    noticeTitle.TextXAlignment = Enum.TextXAlignment.Left
                     noticeTitle.TextStrokeColor3 = Color3.new(1, 1, 1)
                     noticeTitle.TextStrokeTransparency = 1
                     noticeTitle.TextTransparency = 0
@@ -14446,6 +14451,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     expandButton.BackgroundTransparency = 0
                     expandButton.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     expandButton.BorderSizePixel = 5
+                    expandButton.BorderMode = Enum.BorderMode.Inset
                     expandButton.ClipsDescendants = false
                     expandButton.Draggable = false
                     expandButton.Interactable = true
@@ -14485,9 +14491,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     detailsScroll.AnchorPoint = Vector2.new(0, 0)
                     detailsScroll.AutoLocalize = true
                     detailsScroll.BackgroundColor3 = Color3.new(0, 0, 0.498039216)
-                    detailsScroll.BackgroundTransparency = 0.5
+                    detailsScroll.BackgroundTransparency = 0
                     detailsScroll.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     detailsScroll.BorderSizePixel = 5
+                    detailsScroll.BorderMode = Enum.BorderMode.Inset
                     detailsScroll.BottomImage = "rbxasset://textures/ui/Scroll/scroll-bottom.png"
                     detailsScroll.CanvasPosition = Vector2.new(0, 0)
                     detailsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -14502,7 +14509,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     detailsScroll.Rotation = 0
                     detailsScroll.ScrollBarImageColor3 = Color3.new(1, 1, 1)
                     detailsScroll.ScrollBarImageTransparency = 0
-                    detailsScroll.ScrollBarThickness = 4
+                    detailsScroll.ScrollBarThickness = 0
                     detailsScroll.ScrollingEnabled = true
                     detailsScroll.Selectable = true
                     detailsScroll.SelectionGroup = true
@@ -14527,6 +14534,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     reasonLabel.BackgroundTransparency = 1
                     reasonLabel.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     reasonLabel.BorderSizePixel = 1
+                    reasonLabel.TextXAlignment = Enum.TextXAlignment.Left
                     reasonLabel.ClipsDescendants = false
                     reasonLabel.Draggable = false
                     reasonLabel.Interactable = true
@@ -14562,6 +14570,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     moderatorTitle.BackgroundTransparency = 1
                     moderatorTitle.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     moderatorTitle.BorderSizePixel = 1
+                    moderatorTitle.TextXAlignment = Enum.TextXAlignment.Left
                     moderatorTitle.ClipsDescendants = false
                     moderatorTitle.Draggable = false
                     moderatorTitle.Interactable = true
@@ -14594,9 +14603,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     messageScroll.AnchorPoint = Vector2.new(0, 0)
                     messageScroll.AutoLocalize = true
                     messageScroll.BackgroundColor3 = Color3.new(0, 0, 0.175879404)
-                    messageScroll.BackgroundTransparency = 0.5
+                    messageScroll.BackgroundTransparency = 0
                     messageScroll.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     messageScroll.BorderSizePixel = 2
+                    messageScroll.BorderMode = Enum.BorderMode.Inset
                     messageScroll.BottomImage = "rbxasset://textures/ui/Scroll/scroll-bottom.png"
                     messageScroll.CanvasPosition = Vector2.new(0, 0)
                     messageScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -14611,7 +14621,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     messageScroll.Rotation = 0
                     messageScroll.ScrollBarImageColor3 = Color3.new(1, 1, 1)
                     messageScroll.ScrollBarImageTransparency = 0
-                    messageScroll.ScrollBarThickness = 4
+                    messageScroll.ScrollBarThickness = 0
                     messageScroll.ScrollingEnabled = true
                     messageScroll.Selectable = true
                     messageScroll.SelectionGroup = true
@@ -14636,6 +14646,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     messageLabel.BackgroundTransparency = 1
                     messageLabel.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     messageLabel.BorderSizePixel = 1
+                    messageLabel.BorderMode = Enum.BorderMode.Inset
                     messageLabel.ClipsDescendants = false
                     messageLabel.Draggable = false
                     messageLabel.Interactable = true
@@ -14671,6 +14682,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     violationID.BackgroundTransparency = 1
                     violationID.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     violationID.BorderSizePixel = 1
+                    violationID.TextXAlignment = Enum.TextXAlignment.Left
                     violationID.ClipsDescendants = false
                     violationID.Draggable = false
                     violationID.Interactable = true
@@ -14707,6 +14719,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     appealButton.BackgroundTransparency = 0
                     appealButton.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     appealButton.BorderSizePixel = 2
+                    appealButton.BorderMode = Enum.BorderMode.Inset
                     appealButton.ClipsDescendants = false
                     appealButton.Draggable = false
                     appealButton.Interactable = true
@@ -14749,6 +14762,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     appealFrame.BackgroundTransparency = 1
                     appealFrame.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     appealFrame.BorderSizePixel = 1
+                    appealFrame.BorderMode = Enum.BorderMode.Inset
+                    appealFrame.AutomaticSize = Enum.AutomaticSize.Y
                     appealFrame.ClipsDescendants = false
                     appealFrame.Draggable = false
                     appealFrame.Interactable = true
@@ -14773,6 +14788,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     appealTitle.BackgroundTransparency = 1
                     appealTitle.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     appealTitle.BorderSizePixel = 1
+                    appealTitle.TextXAlignment = Enum.TextXAlignment.Left
                     appealTitle.ClipsDescendants = false
                     appealTitle.Draggable = false
                     appealTitle.Interactable = true
@@ -14808,6 +14824,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     appealInput.BackgroundTransparency = 0
                     appealInput.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     appealInput.BorderSizePixel = 2
+                    appealInput.BorderMode = Enum.BorderMode.Inset
+                    appealInput.TextXAlignment = Enum.TextXAlignment.Left
+                    appealInput.TextYAlignment = Enum.TextYAlignment.Top
+                    appealInput.AutomaticSize = Enum.AutomaticSize.Y
                     appealInput.ClearTextOnFocus = false
                     appealInput.ClipsDescendants = false
                     appealInput.Draggable = false
@@ -14835,7 +14855,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     appealInput.TextStrokeColor3 = Color3.new(0, 0, 0)
                     appealInput.TextStrokeTransparency = 1
                     appealInput.TextTransparency = 0
-                    appealInput.TextWrapped = true
+                    appealInput.TextWrapped = false
                     appealInput.Visible = true
                     appealInput.ZIndex = 1
                     appealInput.Parent = appealFrame
@@ -14855,6 +14875,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     submitButton.BackgroundTransparency = 0
                     submitButton.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     submitButton.BorderSizePixel = 2
+                    submitButton.BorderMode = Enum.BorderMode.Inset
                     submitButton.ClipsDescendants = false
                     submitButton.Draggable = false
                     submitButton.Interactable = true
@@ -14891,6 +14912,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     -- Creating UIListLayout
                     local appealLayout = Instance.new("UIListLayout")
                     appealLayout.Name = "UIListLayout"
+                    appealLayout.SortOrder = Enum.SortOrder.LayoutOrder
                     appealLayout.Wraps = false
                     appealLayout.Parent = appealFrame
 
@@ -14903,6 +14925,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     characterCounter.BackgroundTransparency = 1
                     characterCounter.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
                     characterCounter.BorderSizePixel = 1
+                    characterCounter.TextXAlignment = Enum.TextXAlignment.Left
                     characterCounter.ClipsDescendants = false
                     characterCounter.Draggable = false
                     characterCounter.Interactable = true
@@ -14917,7 +14940,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     characterCounter.SelectionGroup = false
                     characterCounter.SelectionOrder = 0
                     characterCounter.Size = UDim2.new(1, -10, 0, 15)
-                    characterCounter.Text = "Character 0/1500"
+                    characterCounter.Text = "Character 0/5000"
                     characterCounter.TextColor3 = Color3.new(1, 1, 1)
                     characterCounter.TextScaled = true
                     characterCounter.TextSize = 8
@@ -14936,7 +14959,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     local syncOuterCanvas = protectCanvas(outerScroll,outerLayout,24)
 
                     -- A long moderator message remains readable without TextBounds or TextScaled.
-                    messageLabel.AutomaticSize = Enum.AutomaticSize.Y
+                    messageLabel.Size = UDim2.new(1, -12, 0, 0)
+                    messageLabel.AutomaticSize = Enum.AutomaticSize.Y -- bounded X for wrapped message text
                     messageLabel.TextWrapped = true
                     messageLabel.TextScaled = false
                     messageLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -14976,20 +15000,26 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     local function updateCanvas()
                         if updatingLayout or not outerScroll.Parent then return end
                         updatingLayout = true
-                        -- UIListLayout applies inside the Appeal form (not to the positioned Details).
-                        local appealHeight = math.max(110,math.ceil(appealLayout.AbsoluteContentSize.Y)+8)
-                        local newAppealHeight = appealExpanded and appealHeight or 0
-                        if appealFrame.Size.Y.Offset ~= newAppealHeight then
-                            appealFrame.Size = UDim2.new(1,-10,0,newAppealHeight)
+                        -- Developer's ScrollingFrame1 is ALWAYS 350 Y Offset.
+                        -- Card/Appeal use AutomaticSize.Y, but the two nested
+                        -- scroll viewports keep their developer-defined sizes.
+                        -- Absolute-positioned content in Inside is accounted for
+                        -- explicitly so the Open Appeal section is never blinded.
+                        local appealHeight = math.max(0,
+                            math.ceil(appealLayout.AbsoluteContentSize.Y),
+                            math.ceil(appealFrame.AbsoluteSize.Y))
+                        local contentBottom = appealExpanded and (175+appealHeight) or 170
+                        local insideHeight = math.max(165, contentBottom + 24)
+                        if detailsScroll.CanvasSize.Y.Offset ~= insideHeight then
+                            detailsScroll.CanvasSize = UDim2.fromOffset(0, insideHeight)
                         end
-                        local contentBottom = appealExpanded and (175+appealHeight) or 175
-                        local detailsViewport = appealExpanded and math.min(310,contentBottom+6) or 185
-                        detailsScroll.Size = UDim2.new(1,0,0,detailsViewport)
-                        detailsScroll.CanvasSize = UDim2.fromOffset(0,contentBottom+24)
-                        local cardHeight = expanded and (45+detailsViewport+5) or 50
-                        violationCard.Size = UDim2.new(1,0,0,cardHeight)
-                        outerScroll.Size = UDim2.new(1,0,0,math.min(350,cardHeight+8))
-                        outerScroll.CanvasSize = UDim2.fromOffset(0,cardHeight+24)
+                        -- Card has positioned children, so keep a minimum
+                        -- explicit height while AutomaticSize.Y is enabled.
+                        local cardMinimum = expanded and 215 or 50 -- 45+165+5
+                        if violationCard.Size.Y.Offset ~= cardMinimum then
+                            violationCard.Size = UDim2.new(1,0,0,cardMinimum)
+                        end
+                        -- No resizing outerScroll here. Fixed at Y Offset = 350.
                         updatingLayout = false
                         task.defer(function()
                             if not outerScroll.Parent then return end
@@ -15035,7 +15065,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                     appealInput:GetPropertyChangedSignal("Text"):Connect(function()
                         local n=utf8.len(appealInput.Text) or #appealInput.Text
-                        characterCounter.Text = "Character "..n.."/1500"
+                        characterCounter.Text = "Character "..n.."/5000"
                         if submissionNote.Visible then
                             submissionNote.Visible = false
                             submissionNote.Text = ""
@@ -15048,7 +15078,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         local n=utf8.len(description) or #description
                         submissionNote.Visible=true
                         if n < 50 or n > 1500 then
-                            submissionNote.Text="Appeal must be 50–1500 characters. Nothing submitted."
+                            submissionNote.Text="Staging accepts appeals of 50–1500 characters (UI counter shows 5000). Nothing submitted."
                         elseif type(setclipboard)=="function" then
                             local ok=pcall(setclipboard, "Appeal Draft\n"..violationID.Text.."\n"..description)
                             submissionNote.Text=ok and "Draft copied. NOT submitted to Cloudflare."
@@ -15067,6 +15097,12 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                     appealLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
                         task.defer(updateCanvas)
+                    end)
+                    appealFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                        if appealExpanded then task.defer(updateCanvas) end
+                    end)
+                    appealInput:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                        if appealExpanded then task.defer(updateCanvas) end
                     end)
                     outerLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
                         task.defer(updateCanvas)
@@ -15088,13 +15124,13 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     function controller.SetNotice(details,isBanned)
                         -- UI previews are untrusted local examples, never authenticated moderation records.
                         if details then
-                            noticeTitle.Text = "Your behavior broke the rules"
+                            noticeTitle.Text = "<b>Your behavior broke the rules</b>"
                             reasonLabel.Text = "Reason: "..details.reason
                             messageLabel.Text = details.moderatorMessage
                             violationID.Text = "ID: "..details.id.." [PREVIEW]"
                         else
-                            noticeTitle.Text = isBanned and "Your behavior broke the rules"
-                                or "No violation notice available"
+                            noticeTitle.Text = isBanned and "<b>Your behavior broke the rules</b>"
+                                or "<b>No violation notice available</b>"
                             reasonLabel.Text = "Reason: Not available"
                             messageLabel.Text = "No verified moderator message is available."
                             violationID.Text = "ID: Not provided"
