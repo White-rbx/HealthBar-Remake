@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.3.2 ",
+	sion = " UIs 7.3.22 ",
 	logs = [[
 (:9/11/2026: A) Stage 16.23: Built-in opt-in masked Leaderboard in Arcsen > Settings > ArcScriptCenter. Lazy public API reads with Today / This Year / All Time, Refresh, cached view, no admin credentials.
 (:7/11/2026: A) Stage 16.22: Create Lua Script In The Chat — Don't / Root Only / All Instance access. Root-only runner exposes UI proxies, all-mode excludes CoreGui.ExperienceSettings and descendants. Script cards pin permission and revoke on mode change.
@@ -13251,6 +13251,8 @@ loc.API.ArcScriptCenterCloud = {
     version = nil,
     transport = "sUNC HTTP GET",
     activeCount = nil,
+    publicNicknames = {},
+    publicNicknameError = "Not checked",
     activeApproximate = true,
     activeError = "Not checked",
     error = "Not checked",
@@ -13317,7 +13319,9 @@ local function arcUpdateCloudSettingsUI()
     local cloud = loc.API.ArcScriptCenterCloud
     local ui = cloud and cloud.statusLabel
     if not ui or not ui.Parent then return end
-    if type(cloud.renderMaskedList) == "function" then cloud.renderMaskedList(cloud.activeCount) end
+    if type(cloud.renderNicknameList) == "function" then
+        cloud.renderNicknameList(cloud.publicNicknames, cloud.publicNicknameError)
+    end
     local state = cloud.connected and "ONLINE" or "OFFLINE"
     if cloud.busy then state = "CHECKING" end
     local detail = cloud.error == "" and "No client identity sent" or cloud.error
@@ -13338,6 +13342,8 @@ loc.API.RefreshArcScriptCenterCloud = function()
     cloud.policyConnected = false
     cloud.activeCount = nil
     cloud.activeError = "Not checked"
+    cloud.publicNicknames = {}
+    cloud.publicNicknameError = "Not checked"
     arcUpdateCloudSettingsUI()
 
     local function finish()
@@ -13368,6 +13374,28 @@ loc.API.RefreshArcScriptCenterCloud = function()
         cloud.version = tostring(presence.version or "?")
     else
         cloud.activeError = presenceError or "Active Users endpoint unavailable"
+    end
+
+    -- Public read-only endpoint. Consent to show a nickname is independent of
+    -- Full Admin Profile and public leaderboard sharing.
+    local nameResult, nameError = arcRequestPublicJSON(requestFn, base .. "/api/v1/presence/nicknames")
+    if nameResult and nameResult.mode == "public_nickname_opt_in"
+        and nameResult.verified == false and type(nameResult.items) == "table"
+        and #nameResult.items <= 100 then
+        local shown, seen = {}, {}
+        for _, row in ipairs(nameResult.items) do
+            local nickname = type(row) == "table" and row.nickname
+            if type(nickname) == "string" and nickname:match("%S")
+                and #nickname <= 160 and not nickname:find("[%c]")
+                and not seen[nickname] then
+                seen[nickname] = true
+                table.insert(shown, nickname)
+            end
+        end
+        cloud.publicNicknames = shown
+        cloud.publicNicknameError = ""
+    else
+        cloud.publicNicknameError = nameError or "Nickname endpoint unavailable"
     end
 
     local bootstrap, bootError = arcRequestPublicJSON(requestFn, base .. "/api/v1/client/bootstrap")
@@ -13460,7 +13488,7 @@ loc.API.ArcScriptCenterCloudSettings = addset(
             if frame.Visible then refreshUsageInfo() end
         end)
 
-        -- Preview-only Active User List. Public API exposes counts, never identities.
+        -- Read-only Active User List. Public API returns only opted-in nicknames.
         local activeTitle = Instance.new("TextLabel")
         activeTitle.Name = "ActiveUserListTitle"
         activeTitle.Size = UDim2.new(1, -8, 0, 25)
@@ -13469,7 +13497,7 @@ loc.API.ArcScriptCenterCloudSettings = addset(
         activeTitle.TextColor3 = Color3.fromRGB(150, 215, 255)
         activeTitle.TextSize = 15
         activeTitle.TextXAlignment = Enum.TextXAlignment.Left
-        activeTitle.Text = "Active User List  |  Masked"
+        activeTitle.Text = "Active User List  |  Nickname Only"
         activeTitle.Parent = frame
 
         local activeScroll = Instance.new("ScrollingFrame")
@@ -13488,31 +13516,37 @@ loc.API.ArcScriptCenterCloudSettings = addset(
         activeLayout.Padding = UDim.new(0, 4)
         activeLayout.SortOrder = Enum.SortOrder.LayoutOrder
         activeLayout.Parent = activeScroll
-        loc.API.ArcScriptCenterCloud.renderMaskedList = function(count)
+        loc.API.ArcScriptCenterCloud.renderNicknameList = function(names, errorText)
             if not activeScroll.Parent then return end
             for _, child in ipairs(activeScroll:GetChildren()) do
                 if child:IsA("TextLabel") then child:Destroy() end
             end
-            local total = math.max(0, math.floor(tonumber(count) or 0))
-            local visible = math.min(total, 8)
+            names = type(names) == "table" and names or {}
+            local visible = math.min(#names, 100)
             if visible == 0 then visible = 1 end
             for i = 1, visible do
                 local item = Instance.new("TextLabel")
-                item.Name = "MaskedPresence_" .. i
+                item.Name = "NicknamePresence_" .. i
                 item.Size = UDim2.new(1, -8, 0, 32)
                 item.LayoutOrder = i
                 item.BackgroundColor3 = Color3.fromRGB(38, 49, 67)
                 item.BorderSizePixel = 0
                 item.TextColor3 = Color3.fromRGB(164, 180, 205)
-                item.TextTransparency = 0.28
+                item.TextTransparency = 0
                 item.TextSize = 12
                 item.TextXAlignment = Enum.TextXAlignment.Left
-                item.Text = total == 0 and "  No active opt-in sessions / unavailable" or ("  ●  █████████  @••••••  |  Hidden #" .. i)
+                item.RichText = false
+                local nickname = names[i]
+                item.Text = nickname and ("  ●  " .. nickname)
+                    or (errorText == "" and "  No users sharing a public nickname"
+                        or "  Public nickname list unavailable")
                 item.Parent = activeScroll
                 Corner(0, 5, item)
             end
         end
-        loc.API.ArcScriptCenterCloud.renderMaskedList(loc.API.ArcScriptCenterCloud.activeCount)
+        loc.API.ArcScriptCenterCloud.renderNicknameList(
+            loc.API.ArcScriptCenterCloud.publicNicknames,
+            loc.API.ArcScriptCenterCloud.publicNicknameError)
         local activePrivacy = Instance.new("TextLabel")
         activePrivacy.Name = "ActiveUserListPrivacy"
         activePrivacy.Size = UDim2.new(1, -8, 0, 34)
@@ -13522,7 +13556,7 @@ loc.API.ArcScriptCenterCloudSettings = addset(
         activePrivacy.TextSize = 11
         activePrivacy.TextWrapped = true
         activePrivacy.TextXAlignment = Enum.TextXAlignment.Left
-        activePrivacy.Text = "Preview only: placeholders based on opt-in session count. No names, IDs or admin data requested."
+        activePrivacy.Text = "Only opted-in, unverified DisplayNames. No Username, UserId, Avatar or Admin profile requested."
         activePrivacy.Parent = frame
 
         -- Stage 16.23: masked, read-only Leaderboard integrated in Arcsen Settings.
