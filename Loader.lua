@@ -11,7 +11,7 @@ if _boot.__ES_BANNED == true or _boot.__ES_READY ~= true
     return false
 end
 
--- Loader script 7.48 (v0.5.36 SetUp completion gate)
+-- Loader script 7.50 (unified loc.o() expansion + Inside + AutomaticSize.Y; preserve v0.5.36 SetUp completion gate)
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -627,10 +627,8 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
     end
 
     local rowParent = typeof(parent) == "Instance" and parent or scr or h_si
-    local autoSize = Enum.AutomaticSize.None
-    if type(fill) == "string" then
-        autoSize = Enum.AutomaticSize[fill] or Enum.AutomaticSize.None
-    end
+    -- `fill` is accepted for legacy API compatibility; row height now follows
+    -- content automatically, so the Body always uses AutomaticSize.Y.
 
     local hasSelect = isselect == true
     local hasButton = isb == true -- nbtn/action button; not the dropdown trigger
@@ -640,8 +638,8 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
 
     local frame = Instance.new("Frame")
     frame.Name = "Body"
-    frame.Size = UDim2.new(1, 0, 0, 30)
-    frame.AutomaticSize = autoSize
+    frame.Size = UDim2.new(1, 0, 0, 0)
+    frame.AutomaticSize = Enum.AutomaticSize.Y
     frame.BorderMode = Enum.BorderMode.Inset
     frame.BorderSizePixel = 1
     frame.BackgroundColor3 = Color3.fromRGB(28, 30, 36)
@@ -653,7 +651,8 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
 
     local label = Instance.new("TextLabel")
     label.Name = "Name"
-    label.Size = UDim2.new(1, -reserve, 1, 0)
+    -- Fixed height is essential: Size.Y.Scale=1 would form an autosize cycle.
+    label.Size = UDim2.new(1, -reserve, 0, 30)
     label.BackgroundTransparency = 1
     label.TextScaled = true
     label.RichText = isrt == true
@@ -719,17 +718,17 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
     -- Compact legacy proportions; modern controls use fixed-width fields.
     if not modern then
         if hasButton and hasInput then
-            label.Size = UDim2.new(1/3, 0, 1, 0)
+            label.Size = UDim2.new(1/3, 0, 0, 30)
             input.Size = UDim2.new(1/3, -2, 0, 24)
             input.Position = UDim2.new(0.343, 0, 0, 3)
             button.Size = UDim2.new(1/3, -2, 0, 24)
             button.Position = UDim2.new(0.696, 0, 0, 3)
         elseif hasInput then
-            label.Size = UDim2.new(0.4, 0, 1, 0)
+            label.Size = UDim2.new(0.4, 0, 0, 30)
             input.Size = UDim2.new(0.49, 0, 0, 24)
             input.Position = UDim2.new(0.41, 0, 0, 3)
         elseif hasButton then
-            label.Size = UDim2.new(0.58, 0, 1, 0)
+            label.Size = UDim2.new(0.58, 0, 0, 30)
             button.Size = UDim2.new(0.4, 0, 0, 24)
             button.Position = UDim2.new(0.59, 0, 0, 3)
         end
@@ -737,10 +736,23 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         input.Position = UDim2.new(1, -207, 0, 3)
     end
 
+    -- Optional expandable content is isolated from the 30px control header.
+    -- Parent custom Children to ui.Inside, not ui.Frame.
+    local inside = Instance.new("Frame")
+    inside.Name = "Inside"
+    inside.AutomaticSize = Enum.AutomaticSize.Y
+    inside.Size = UDim2.new(1,0,0,0)
+    inside.Position = UDim2.new(0,0,0,25)
+    inside.BackgroundTransparency = 1
+    inside.Active = false
+    inside.Visible = false
+    inside.Parent = frame
+
     local selectFrame
     local ui = {
         Parent = rowParent,
         Frame = frame,
+        Inside = inside,
         Label = label,
         Button = button, -- compatibility alias for the nbtn
         NButton = button,
@@ -751,6 +763,61 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         SelectOptions = {},
         SelectedValue = selectedText or (hasSelect and not hasButton and tb or nil),
     }
+
+    -- One expansion API for legacy and modern rows. The main Body continues
+    -- to expose its old fields; ui.Inside owns all optional expandable content.
+    ui.Expanded = false
+    ui.ExpandButton = nil
+    ui.ExpandOnButton = false
+    ui.ExpandOpenText = "Open"
+    ui.ExpandCloseText = "Close"
+    ui.OnExpandedChanged = nil
+
+    ui.IsExpanded = function()
+        return ui.Expanded == true
+    end
+    ui.SetExpanded = function(expanded)
+        local target = expanded == true
+        local changed = ui.Expanded ~= target
+        ui.Expanded = target
+        if inside.Parent then inside.Visible = target end
+        if ui.ExpandButton and ui.ExpandButton.Parent then
+            ui.ExpandButton.Text = target and ui.ExpandCloseText or ui.ExpandOpenText
+        end
+        if changed and type(ui.OnExpandedChanged) == "function" then
+            ui.OnExpandedChanged(target, ui)
+        end
+        return target
+    end
+    ui.ToggleExpanded = function()
+        return ui.SetExpanded(not ui.IsExpanded())
+    end
+    -- ConfigureExpand can be called from the single scriptFN(ui) callback.
+    -- Setting autoButton=true makes loc.o() handle the click automatically;
+    -- callers do not need a separate MouseButton1Click handler.
+    ui.ConfigureExpand = function(config)
+        config = type(config) == "table" and config or {}
+        ui.ExpandButton = config.button == false and nil or (config.button or button)
+        ui.ExpandOnButton = config.autoButton ~= false
+        ui.ExpandOpenText = tostring(config.openText or "Open")
+        ui.ExpandCloseText = tostring(config.closeText or "Close")
+        ui.OnExpandedChanged = config.onChanged
+        return ui.SetExpanded(config.expanded == true)
+    end
+    -- One call instead of manually reparenting/resizing Label, Input and Button
+    -- in each HealthBar-style two-line row.
+    ui.UseInsideForControls = function()
+        if not input or not button then return false end
+        label.Size = UDim2.new(1, -8, 0, 27)
+        input.Parent = inside
+        button.Parent = inside
+        input.Size = UDim2.new(1, -110, 0, 26)
+        input.Position = UDim2.new(0, 5, 0, 5)
+        button.Size = UDim2.new(0, 96, 0, 26)
+        button.Position = UDim2.new(1, -101, 0, 5)
+        ui.SetExpanded(true)
+        return true
+    end
 
     if hasSelect then
         selectFrame = Instance.new("ScrollingFrame")
@@ -833,6 +900,9 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         end
         button.MouseButton1Click:Connect(function()
             if not button.Active then return end
+            if ui.ExpandOnButton and ui.ExpandButton == button then
+                ui.ToggleExpanded()
+            end
             if not modern and status ~= nil then
                 status = not status
                 loc.updateToggle(button, status)
@@ -1438,7 +1508,9 @@ loc.updateThemeCustomRows = function()
     if loc.ThemeTileSizeScaleUI and loc.ThemeTileSizeScaleUI.Frame then
         loc.ThemeTileSizeScaleUI.Frame.Visible = loc.ThemeRowsVisible
     end
-    if loc.ThemeGradientEditorFrame then loc.ThemeGradientEditorFrame.Visible = loc.ThemeRowsVisible end
+    if loc.ThemeGradientEditorUI and loc.ThemeGradientEditorUI.Frame then
+        loc.ThemeGradientEditorUI.Frame.Visible = loc.ThemeRowsVisible
+    end
 
     -- BackgroundColor3 can only be edited while the Default theme is selected.
     loc.BackgroundColorEditable = Data.UI.Theme == "Default"
@@ -1544,13 +1616,17 @@ if loc.ThemeImageUI and loc.ThemeImageUI.Input then
 end
 
 -- Dynamic Multi-Stop Gradient Editor (2–20 stops).
-loc.ThemeGradientEditorFrame = Instance.new("Frame")
-loc.ThemeGradientEditorFrame.Name = "CustomGradientEditor"
-loc.ThemeGradientEditorFrame.Size = UDim2.new(1, 0, 0, 0)
-loc.ThemeGradientEditorFrame.AutomaticSize = Enum.AutomaticSize.Y
-loc.ThemeGradientEditorFrame.BackgroundTransparency = 1
-loc.ThemeGradientEditorFrame.Visible = false
-loc.ThemeGradientEditorFrame.Parent = scr
+-- Custom Theme gradient editor now lives in ONE loc.o() row.
+-- The o() helper owns the expand/collapse button and adjusts Body size itself.
+loc.ThemeGradientEditorUI = loc.o(
+    scr, nil, "Custom Gradient Editor", false, true, "Close",
+    false, false, nil,
+    function(ui)
+        ui.ConfigureExpand({expanded=true,openText="Open",closeText="Close"})
+    end
+)
+loc.ThemeGradientEditorFrame = loc.ThemeGradientEditorUI.Inside
+loc.ThemeGradientEditorUI.Frame.Visible = false
 ListLayout(loc.ThemeGradientEditorFrame, 0, 4, "HCenter", "VTop", "SLayout", "FillV")
 
 loc.ThemeGradientRowUIs = {}
@@ -1629,7 +1705,8 @@ loc.rebuildThemeGradientRows = function()
             ui.Input.PlaceholderText = "R,G,B;Transparency (or nil)"
             ui.Input.TextSize = 13
             ui.Input.TextScaled = false
-            ui.Label.Size = UDim2.new(0.2, -2, 1, 0)
+            -- Fixed Y avoids a Size.Y.Scale=1 / AutomaticSize.Y feedback cycle.
+            ui.Label.Size = UDim2.new(0.2, -2, 0, 30)
             ui.Input.Size = UDim2.new(0.58, -4, 0, 24)
             ui.Input.Position = UDim2.new(0.21, 2, 0, 3)
             ui.Button.Size = UDim2.new(0.19, -2, 0, 24)
@@ -2431,13 +2508,8 @@ if loc.HealthBarPositionUI and loc.HealthBarPositionUI.Input then
     loc.HealthBarPositionUI.Input.PlaceholderText =
         loc.HealthBarPositionUI.HealthBarKind == "New" and "0.915, 0, 0, 30" or "0.923, -12, 0, 5"
     loc.HealthBarPositionUI.Input.Text = loc.formatHealthBarPosition(loc.getHealthBarPositionValues())
-    -- A second line provides room for the complete UDim2 value on mobile.
-    loc.HealthBarPositionUI.Frame.Size = UDim2.new(1, 0, 0, 60)
-    loc.HealthBarPositionUI.Label.Size = UDim2.new(1, -8, 0, 27)
-    loc.HealthBarPositionUI.Input.Size = UDim2.new(1, -110, 0, 26)
-    loc.HealthBarPositionUI.Input.Position = UDim2.new(0, 5, 0, 31)
-    loc.HealthBarPositionUI.Button.Size = UDim2.new(0, 96, 0, 26)
-    loc.HealthBarPositionUI.Button.Position = UDim2.new(1, -101, 0, 31)
+    -- The helper now handles the full two-line layout in one function.
+    loc.HealthBarPositionUI.UseInsideForControls()
 end
 
 -- Width changer: Old affects both HB/HB.HB X.Offset; New affects outer HB only.
@@ -2479,12 +2551,7 @@ loc.HealthBarSizeUI = loc.o(
 if loc.HealthBarSizeUI and loc.HealthBarSizeUI.Input then
     loc.HealthBarSizeUI.Input.Text = tostring(Data.UI.HealthBarWidthOffset)
     loc.HealthBarSizeUI.Input.PlaceholderText = "250"
-    loc.HealthBarSizeUI.Frame.Size = UDim2.new(1, 0, 0, 60)
-    loc.HealthBarSizeUI.Label.Size = UDim2.new(1, -8, 0, 27)
-    loc.HealthBarSizeUI.Input.Size = UDim2.new(1, -110, 0, 26)
-    loc.HealthBarSizeUI.Input.Position = UDim2.new(0, 5, 0, 31)
-    loc.HealthBarSizeUI.Button.Size = UDim2.new(0, 96, 0, 26)
-    loc.HealthBarSizeUI.Button.Position = UDim2.new(1, -101, 0, 31)
+    loc.HealthBarSizeUI.UseInsideForControls()
 end
 
 -- Listen for the Roblox TopBarApp being created, removed or replaced.
@@ -2633,9 +2700,9 @@ SERVER_SELECT_UI = loc.o(
     function(value, action, ui)
         if action == "select" then
             local selected = SERVER_OPTION_BY_LABEL[value]
-            if loc.CustomServerUI and loc.CustomServerUI.Frame then
-                loc.CustomServerUI.Frame.Visible = selected and selected.Key == "Custom" or false
-            end
+            -- Show the Custom ServerSize row inside the main Server selector;
+            -- no second independent visibility controller is needed.
+            ui.SetExpanded(selected ~= nil and selected.Key == "Custom")
             if selected and selected.Key == "Custom" and loc.CustomServerUI
                 and loc.CustomServerUI.Input then
                 loc.UpdateCustomServerTarget(loc.CustomServerUI.Input.Text, false)
@@ -2784,7 +2851,11 @@ loc.CustomServerUI = loc.o(
         end
     end
 )
-loc.CustomServerUI.Frame.Visible = false
+-- Put the custom input inside the same Server row; loc.o() manages expansion.
+loc.CustomServerUI.Frame.Parent = SERVER_SELECT_UI.Inside
+loc.CustomServerUI.Frame.Visible = true
+loc.CustomServerUI.Frame.Position = UDim2.new(0,0,0,0)
+SERVER_SELECT_UI.SetExpanded(false)
 
 loc.UpdateServerSelector()
 s.Players.PlayerAdded:Connect(function()
