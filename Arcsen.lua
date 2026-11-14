@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.30 ",
+	sion = " UIs 7.3.31 ",
 	logs = [[
+(:14/11/2026: A&F) Stage 16.30: o() Body now AutomaticSize.Y / zero Y size; added hidden, zero-Y auto-sized Inside content container at Y=25. Nested Feedback, Violation, API Custom Prompt and Memory inputs use ui.Inside; no manual outer row heights.
 (:14/11/2026: F) Stage 16.29: Remove TextBounds sizing from Feedback/Violation notices; use TextScaled with font constraints for fixed labels, and a wrapped TextLabel in its own scrollable Moderator Message viewport. Preserve nested canvas guards.
 (:14/11/2026: F) Stage 16.28: Guard nested Feedback/Violation/Settings CanvasSize against truncated scrolling; track UIListLayout and bottommost elements, preserve AutomaticCanvasSize.Y.
 (:14/11/2026: F) Stage 16.27: Make the Violation Notice X button collapse/expand only the notice body; keep the title and X visible, automatically shrink the card and outer scrolling area.
@@ -1964,8 +1965,8 @@ local function o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scrip
 
     local frame = Instance.new("Frame")
     frame.Name = "Body"
-    frame.Size = UDim2.new(1, 0, 0, 30)
-    frame.AutomaticSize = autoSize
+    frame.Size = UDim2.new(1, 0, 0, 0)
+    frame.AutomaticSize = Enum.AutomaticSize.Y
     frame.BorderMode = Enum.BorderMode.Inset
     frame.BorderSizePixel = 5
     frame.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -2048,9 +2049,23 @@ local function o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scrip
 
     ListLayout(sd, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
 
+    -- Expandable content goes into Inside, not directly into Body.
+    -- Header controls (Name/Button/Input) stay on Body unless moved explicitly.
+    local inside = Instance.new("Frame")
+    inside.Name = "Inside"
+    inside.AutomaticSize = Enum.AutomaticSize.Y
+    inside.Size = UDim2.new(1,0,0,0)
+    inside.Position = UDim2.new(0,0,0,25)
+    inside.BackgroundTransparency = 1
+    inside.Active = false
+    inside.Visible = false
+    inside.Parent = frame
+
     local ui = {
         Parent = parent,
-        Frame = frame,
+        Frame = frame,  -- Outer Body: background and LayoutOrder
+        Body = frame,
+        Inside = inside, -- Put expandable children here
         Label = txt,
         Button = btn_o,
         Input = box_o,
@@ -3556,9 +3571,11 @@ loc.API.SettingsFrame = addset("API", "API Settings", 80, 200, 255, function(fra
 
     loc.API.Rows.CustomPrompt = o(frame, "None", "Custom Prompt", false, false, "", false, true, "Add optional instructions for Arcsen",
         function(ui)
-            ui.Frame.Size = UDim2.new(1, 0, 0, 120)
+            ui.Frame.Size = UDim2.new(1, 0, 0, 0)
+            ui.Inside.Visible = true
+            ui.Input.Parent = ui.Inside
             ui.Label.Size = UDim2.new(1, -10, 0, 22)
-            ui.Input.Position = UDim2.new(0, 5, 0, 25)
+            ui.Input.Position = UDim2.new(0, 5, 0, 0)
             ui.Input.Size = UDim2.new(1, -10, 0, 90)
             ui.Input.Text = loc.API.Draft.CustomPrompt
             ui.Input.MultiLine = true
@@ -12907,10 +12924,12 @@ loc.API.MemorySettingsFrame = addset("Memory", "Memory Summary", 160, 140, 255, 
     loc.API.RefreshMemoryReviewText()
 
     loc.API.MemorySettingsRows.Modify = o(frame, "None", "Modify Memory", false, true, "Apply", false, true, "Describe memory changes", function(ui)
-        ui.Frame.Size = UDim2.new(1, 0, 0, 85)
+        ui.Frame.Size = UDim2.new(1, 0, 0, 0)
+        ui.Inside.Visible = true
+        ui.Input.Parent = ui.Inside
         ui.Label.Size = UDim2.new(1, -110, 0, 22)
         ui.Label.Position = UDim2.new(0, 0, 0, 0)
-        ui.Input.Position = UDim2.new(0, 5, 0, 27)
+        ui.Input.Position = UDim2.new(0, 5, 0, 0)
         ui.Input.Size = UDim2.new(1, -10, 0, 53)
         ui.Input.MultiLine = true
         ui.Input.TextWrapped = true
@@ -14013,7 +14032,7 @@ task.spawn(function()
         local function setPanelExpanded(value)
             panelExpanded = value == true
             if not panelUI or not panelUI.Frame.Parent then return end
-            panelUI.Frame.Size = UDim2.new(1,-8,0,panelExpanded and 296 or 30)
+            panelUI.Inside.Visible = panelExpanded
             panelUI.Button.Text = panelExpanded and "Close" or "Open"
             if panelScroll then
                 panelScroll.Visible = panelExpanded
@@ -14024,12 +14043,12 @@ task.spawn(function()
         panelUI = o(group,"None","Feedback & Appeal",false,true,"Open",false,false,nil,
             function(container)
                 container.Frame.Name = "FeedbackAndAppeal"
-                container.Frame.Size = UDim2.new(1,-8,0,30)
+                container.Frame.Size = UDim2.new(1,-8,0,0)
 
                 -- o() rows are children of this ScrollingFrame, which owns their layout.
                 panelScroll = Instance.new("ScrollingFrame")
                 panelScroll.Name = "FeedbackAppealSections"
-                panelScroll.Position = UDim2.fromOffset(4,29)
+                panelScroll.Position = UDim2.fromOffset(4,4)
                 panelScroll.Size = UDim2.new(1,-8,0,260)
                 panelScroll.BackgroundColor3 = Color3.fromRGB(25,32,46)
                 panelScroll.BackgroundTransparency = 0.1
@@ -14040,7 +14059,7 @@ task.spawn(function()
                 panelScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
                 panelScroll.ClipsDescendants = true
                 panelScroll.Visible = false
-                panelScroll.Parent = container.Frame
+                panelScroll.Parent = container.Inside
                 Corner(0,5,panelScroll)
                 local layout = Instance.new("UIListLayout")
                 layout.Name = "FeedbackAppealLayout"
@@ -14064,14 +14083,7 @@ task.spawn(function()
                     local infoText, item
                     local expanded = false
                     local function resize()
-                        if not expanded or not item or not item.Frame.Parent or not infoText then return end
-                        -- TextWrapped + AutomaticSize.Y sizes this long text naturally.
-                        -- AbsoluteSize tracks Roblox's finished UI layout, not TextBounds.
-                        local height = math.ceil(infoText.AbsoluteSize.Y)
-                        local bodyHeight = math.max(allowRichText and 300 or 58, height + 16)
-                        local desired = 32 + bodyHeight
-                        if item.Frame.Size.Y.Offset ~= desired then
-                            item.Frame.Size = UDim2.new(1,-6,0,desired)
+                        if item and item.Frame.Parent then
                             task.defer(syncPanelCanvas)
                         end
                     end
@@ -14079,7 +14091,7 @@ task.spawn(function()
                         function(sub)
                             infoText = Instance.new("TextLabel")
                             infoText.Name = "SectionNotice"
-                            infoText.Position = UDim2.fromOffset(6,31)
+                            infoText.Position = UDim2.fromOffset(6,4)
                             infoText.Size = UDim2.new(1,-12,0,0)
                             infoText.AutomaticSize = Enum.AutomaticSize.Y
                             infoText.Text = description
@@ -14090,24 +14102,20 @@ task.spawn(function()
                             infoText.TextXAlignment = Enum.TextXAlignment.Left
                             infoText.TextYAlignment = Enum.TextYAlignment.Top
                             infoText.BackgroundTransparency = 1
-                            infoText.Visible = false
-                            infoText.Parent = sub.Frame
+                            infoText.Visible = true
+                            infoText.Parent = sub.Inside
                             infoText:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() task.defer(resize) end)
                         end,
                         function(_,event,sub)
                             if event ~= "button" then return end
                             expanded = not expanded
-                            infoText.Visible = expanded
-                            sub.Frame.Size = UDim2.new(1,-6,0,expanded and 110 or 30)
+                            sub.Inside.Visible = expanded
                             sub.Button.Text = expanded and "Hide" or "Show"
-                            if expanded then
-                                task.defer(resize)
-                            end
-                            task.defer(syncPanelCanvas)
+                            task.defer(resize)
                         end)
                     nextOrder += 1
                     item.Frame.LayoutOrder = nextOrder
-                    item.Frame.Size = UDim2.new(1,-6,0,30)
+                    item.Frame.Size = UDim2.new(1,-6,0,0)
                     return item
                 end
 
@@ -14149,7 +14157,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             if not isAppeal then
                                 titleInput = Instance.new("TextBox")
                                 titleInput.Name = "ProblemTopic"
-                                titleInput.Position = UDim2.fromOffset(5,30)
+                                titleInput.Position = UDim2.fromOffset(5,5)
                                 titleInput.Size = UDim2.new(1,-10,0,28)
                                 titleInput.BackgroundColor3 = Color3.fromRGB(36,44,61)
                                 titleInput.TextColor3 = Color3.new(1,1,1)
@@ -14158,13 +14166,13 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 titleInput.PlaceholderText = "Problem topic (3–50 characters)"
                                 titleInput.ClearTextOnFocus = false
                                 titleInput.Text = ""
-                                titleInput.Visible = false
-                                titleInput.Parent = sub.Frame
+                                titleInput.Visible = true
+                                titleInput.Parent = sub.Inside
                                 Corner(0,4,titleInput)
                             end
                             draftInput = Instance.new("TextBox")
                             draftInput.Name = isAppeal and "AppealDraft" or "FeedbackDescription"
-                            draftInput.Position = UDim2.fromOffset(5,isAppeal and 30 or 62)
+                            draftInput.Position = UDim2.fromOffset(5,isAppeal and 5 or 37)
                             draftInput.Size = UDim2.new(1,-10,0,106)
                             draftInput.BackgroundColor3 = Color3.fromRGB(30,37,52)
                             draftInput.TextColor3 = Color3.new(1,1,1)
@@ -14178,35 +14186,35 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 and "Explain your appeal here (50–1500 characters)."
                                 or "Describe the problem (50–1500 characters)."
                             draftInput.Text = ""
-                            draftInput.Visible = false
-                            draftInput.Parent = sub.Frame
+                            draftInput.Visible = true
+                            draftInput.Parent = sub.Inside
                             Corner(0,4,draftInput)
                             countLabel = Instance.new("TextLabel")
                             countLabel.Name = "CharacterCount"
-                            countLabel.Position = UDim2.fromOffset(5,isAppeal and 139 or 171)
+                            countLabel.Position = UDim2.fromOffset(5,isAppeal and 114 or 146)
                             countLabel.Size = UDim2.new(1,-10,0,18)
                             countLabel.BackgroundTransparency = 1
                             countLabel.TextColor3 = Color3.fromRGB(180,200,225)
                             countLabel.TextXAlignment = Enum.TextXAlignment.Left
                             countLabel.TextSize = 11
-                            countLabel.Visible = false
-                            countLabel.Parent = sub.Frame
+                            countLabel.Visible = true
+                            countLabel.Parent = sub.Inside
                             draftInput:GetPropertyChangedSignal("Text"):Connect(updateCount)
                             updateCount()
                             local copy = Instance.new("TextButton")
                             copy.Name = "Copy" .. kind .. "Draft"
-                            copy.Position = UDim2.fromOffset(5,isAppeal and 160 or 192)
+                            copy.Position = UDim2.fromOffset(5,isAppeal and 135 or 167)
                             copy.Size = UDim2.new(1,-10,0,28)
                             copy.BackgroundColor3 = Color3.fromRGB(45,95,135)
                             copy.TextColor3 = Color3.new(1,1,1)
                             copy.TextSize = 12
                             copy.Text = "Copy " .. kind .. " Draft (not submitted)"
-                            copy.Visible = false
-                            copy.Parent = sub.Frame
+                            copy.Visible = true
+                            copy.Parent = sub.Inside
                             Corner(0,4,copy)
                             notice = Instance.new("TextLabel")
                             notice.Name = "DraftNotice"
-                            notice.Position = UDim2.fromOffset(5,isAppeal and 191 or 223)
+                            notice.Position = UDim2.fromOffset(5,isAppeal and 166 or 198)
                             notice.Size = UDim2.new(1,-10,0,42)
                             notice.BackgroundTransparency = 1
                             notice.TextColor3 = Color3.fromRGB(225,207,155)
@@ -14214,18 +14222,13 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             notice.TextWrapped = true
                             notice.TextXAlignment = Enum.TextXAlignment.Left
                             notice.Text = "Local draft only. Nothing is sent to Cloudflare."
-                            notice.Visible = false
-                            notice.Parent = sub.Frame
+                            notice.Visible = true
+                            notice.Parent = sub.Inside
                             local function setDraftVisible(show)
                                 opened = show == true
-                                sub.Frame.Size = UDim2.new(1,-6,0,opened and (isAppeal and 238 or 270) or 30)
+                                sub.Inside.Visible = opened
                                 sub.Button.Text = opened and "Close" or "Edit"
-                                for _,v in ipairs(sub.Frame:GetChildren()) do
-                                    if v == draftInput or v == titleInput or v == countLabel
-                                        or v == copy or v == notice then
-                                        v.Visible = opened
-                                    end
-                                end
+                                task.defer(parentScroll and syncViolationCanvas or syncPanelCanvas)
                             end
                             sub.SetDraftVisible = setDraftVisible
                             copy.MouseButton1Click:Connect(function()
@@ -14267,7 +14270,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         nextOrder += 1
                         draftUI.Frame.LayoutOrder = nextOrder
                     end
-                    draftUI.Frame.Size = UDim2.new(1,-6,0,30)
+                    draftUI.Frame.Size = UDim2.new(1,-6,0,0)
                     return function(value)
                         if type(draftUI.SetDraftVisible) == "function" then
                             draftUI.SetDraftVisible(value)
@@ -14296,10 +14299,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     -- large empty scrolling area behind.
                     local contentHeight = 290
                     if noticeUI and noticeUI.Frame then
-                        contentHeight = math.ceil(noticeUI.Frame.Size.Y.Offset) + 16
+                        contentHeight = math.ceil(noticeUI.Frame.AbsoluteSize.Y) + 16
                     end
                     local bodyHeight = math.clamp(contentHeight,64,360)
-                    violationUI.Frame.Size = UDim2.new(1,-6,0,violationOpen and (bodyHeight + 37) or 30)
+                    violationUI.Inside.Visible = violationOpen
                     violationUI.Button.Text = violationOpen and "Close" or "Open"
                     if violationScroll then
                         violationScroll.Size = UDim2.new(1,-8,0,bodyHeight)
@@ -14318,7 +14321,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     function(sub)
                         violationScroll = Instance.new("ScrollingFrame")
                         violationScroll.Name = "ViolationAppealUI"
-                        violationScroll.Position = UDim2.fromOffset(4,31)
+                        violationScroll.Position = UDim2.fromOffset(4,6)
                         violationScroll.Size = UDim2.new(1,-8,0,290)
                         violationScroll.BackgroundColor3 = Color3.fromRGB(25,32,46)
                         violationScroll.BackgroundTransparency = 0.1
@@ -14329,7 +14332,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         violationScroll.CanvasSize = UDim2.fromOffset(0,0)
                         violationScroll.ClipsDescendants = true
                         violationScroll.Visible = false
-                        violationScroll.Parent = sub.Frame
+                        violationScroll.Parent = sub.Inside
                         Corner(0,5,violationScroll)
                         local layout = Instance.new("UIListLayout")
                         layout.Padding = UDim.new(0,5)
@@ -14348,14 +14351,15 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end)
                 nextOrder += 1
                 violationUI.Frame.LayoutOrder = nextOrder
-                violationUI.Frame.Size = UDim2.new(1,-6,0,30)
+                violationUI.Frame.Size = UDim2.new(1,-6,0,0)
 
                 -- Keeping o() nested within o(), but rendering the notice as one
                 -- responsive card. UIListLayout and AutomaticSize handle long text.
                 noticeUI = o(violationScroll,"None","Moderation Notice",false,false,nil,false,false,nil,
                     function(sub)
                         sub.Frame.Name = "ViolationNotice"
-                        sub.Frame.Size = UDim2.new(1,-6,0,284)
+                        sub.Frame.Size = UDim2.new(1,-6,0,0)
+                        sub.Inside.Visible = true
                         sub.Frame.BackgroundColor3 = Color3.fromRGB(29,35,47)
                         sub.Frame.BackgroundTransparency = 0.08
                         sub.Frame.BorderSizePixel = 1
@@ -14364,11 +14368,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                         local body = Instance.new("Frame")
                         body.Name = "NoticeBody"
-                        body.Position = UDim2.fromOffset(5,5)
+                        body.Position = UDim2.fromOffset(5,0)
                         body.Size = UDim2.new(1,-10,0,0)
                         body.AutomaticSize = Enum.AutomaticSize.Y
                         body.BackgroundTransparency = 1
-                        body.Parent = sub.Frame
+                        body.Parent = sub.Inside
                         local bodyLayout = Instance.new("UIListLayout")
                         bodyLayout.Name = "NoticeLayout"
                         bodyLayout.FillDirection = Enum.FillDirection.Vertical
@@ -14579,10 +14583,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             local apSize = (appealOpen and not noticeCollapsed)
                                 and (math.ceil(appealLayout.AbsoluteContentSize.Y)+12) or 0
                             appealPanel.Size = UDim2.new(1,0,0,apSize)
-                            local h = math.ceil(bodyLayout.AbsoluteContentSize.Y)+12
-                            sub.Frame.Size = UDim2.new(1,-6,0,
-                                math.max(noticeCollapsed and 60 or 210,h))
-                            toggleViolation(violationOpen)
+                            -- NoticeBody and Inside grow by AutomaticSize.Y.
+                            -- Only recalculate the enclosing viewport height.
+                            task.defer(function() toggleViolation(violationOpen) end)
                             task.defer(function()
                                 syncViolationCanvas()
                                 syncPanelCanvas()
@@ -14688,7 +14691,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         task.defer(redrawNotice)
                     end)
                 noticeUI.Frame.LayoutOrder = 1
-                noticeUI.Frame.Size = UDim2.new(1,-6,0,284)
+                noticeUI.Frame.Size = UDim2.new(1,-6,0,0)
+                -- The notice row's size is automatic; reflow the viewport after changes.
+                noticeUI.Frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                    task.defer(function() toggleViolation(violationOpen) end)
+                end)
 
                 -- Only expose a visibly marked preview for UI design/testing.
                 -- Production moderation data must come from a separate verified server flow.
@@ -14730,7 +14737,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 if event == "button" then setPanelExpanded(not panelExpanded) end
             end)
         panelUI.Frame.LayoutOrder = 23
-        panelUI.Frame.Size = UDim2.new(1,-8,0,30)
+        panelUI.Frame.Size = UDim2.new(1,-8,0,0)
 
         -- The Settings page is a THIRD scrolling layer. Guard it too so that
         -- a newly expanded Feedback & Appeal section is never clipped at bottom.
