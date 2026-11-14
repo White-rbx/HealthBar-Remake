@@ -1,10 +1,11 @@
--- UniversalPresence.lua | ArcScriptCenter Phase 2 v0.5.41.3
+-- UniversalPresence.lua | ArcScriptCenter Phase 2 v0.5.41.4
 -- Backward-compatible replacement for UniversalPresence.lua v0.5.14
 -- Production ONLY | OFF by default | explicit per-feature opt-in
 -- Loading this ModuleScript/loadstring DOES NOT start any network requests.
 -- Compatible: .new(httpRequest, onStatus, profile), :start(true), :stop(), :isEnabled()
 -- New methods: :count(), :getStatus(), :setAdminNicknameConsent(),
---              :setAnalyticsConsent(), :setLeaderboardConsent(), :setAvatarConsent()
+--              :setAnalyticsConsent(), :setLeaderboardConsent(), :setAvatarConsent(),
+--              :setPublicNicknameConsent()
 -- All client-reported identities are unverified; this is NOT an authorization system.
 
 local HttpService = game:GetService("HttpService")
@@ -68,6 +69,7 @@ function Client.new(requestFunction, onStatus, profile)
         analytics = false,
         leaderboard = false,
         avatar = false,
+        publicNickname = false,
         generation = 0,
         running = false,
         pendingHeartbeat = false,
@@ -94,6 +96,7 @@ function Client:getStatus()
         analyticsConsent = self.analytics,
         leaderboardConsent = self.leaderboard,
         avatarConsent = self.avatar,
+        publicNicknameConsent = self.publicNickname,
         requestInProgress = self.running,
         lastAction = self.lastAction,
         lastHTTP = self.lastHTTP,
@@ -178,6 +181,12 @@ function Client:_heartbeatBody()
         body.analyticsUserId = tostring(self.player.UserId)
         body.leaderboardConsent = self.leaderboard
         body.avatarConsent = self.leaderboard and self.avatar
+    end
+    -- Separate public nickname permission; no account identifiers are sent
+    -- for nickname-only sharing. Public list receives DisplayName only.
+    if self.publicNickname then
+        body.publicNicknameConsent = true
+        body.publicNickname = tostring(self.player.DisplayName)
     end
     return body
 end
@@ -323,6 +332,22 @@ function Client:start(consent)
     return true
 end
 
+-- Independent public nickname opt-in for Arcsen Active User List.
+function Client:setPublicNicknameConsent(enabled)
+    if type(enabled) ~= "boolean" then return false, "Expected boolean" end
+    if enabled and not self.active then return false, "Enable Active User first" end
+    if self.publicNickname == enabled then return true end
+    local revoked = self.publicNickname and not enabled
+    self.publicNickname = enabled
+    if revoked and self.active then
+        -- /leave immediately clears the public name and the next heartbeat
+        -- restores the current anonymous/analytics/admin session if enabled.
+        self.pendingLeave = true
+    end
+    self:_queueHeartbeat()
+    return true
+end
+
 function Client:setAdminNicknameConsent(enabled)
     if type(enabled) ~= "boolean" then return false, "Expected boolean" end
     if enabled and not self.active then return false, "Enable Active User first" end
@@ -433,6 +458,7 @@ function Client:stop()
     self.active = false
     self.adminSharing = false
     self.adminDetails = false
+    self.publicNickname = false
     self.profile = nil
     self.analytics = false
     self.leaderboard = false
