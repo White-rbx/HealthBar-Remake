@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.32 ",
+	sion = " UIs 7.3.33 ",
 	logs = [[
+(:15/11/2026: A&F) Stage 16.32: Replace old Violation Notice UI with developer recovered ViolationAppealUI, convert creation and expansion into reusable functions, use semi-transparent nested ScrollingFrames and robust canvas sizing; keep previews local.
 (:15/11/2026: F&A) Stage 16.31: Select is created only for selector rows, lives under SelectButton rather than Inside; one dropdown open at a time; add SelectButton and dropdown lifecycle methods while preserving ui.Button compatibility.
 (:14/11/2026: A&F) Stage 16.30: o() Body now AutomaticSize.Y / zero Y size; added hidden, zero-Y auto-sized Inside content container at Y=25. Nested Feedback, Violation, API Custom Prompt and Memory inputs use ui.Inside; no manual outer row heights.
 (:14/11/2026: F) Stage 16.29: Remove TextBounds sizing from Feedback/Violation notices; use TextScaled with font constraints for fixed labels, and a wrapped TextLabel in its own scrollable Moderator Message viewport. Preserve nested canvas guards.
@@ -14324,458 +14325,866 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 end
                 makeDraftSection("Feedback")
 
-                -- Violation Notice UI (developer's 14/11/2026 wireframe).
-                -- Appeal is expanded *inside* the notice, not a separate top-level tab.
-                -- No user-provided ID is treated as authenticated moderation evidence.
-                local violationScroll, violationUI, noticeUI
-                local violationOpen, appealOpen = false, false
-                local noticeCollapsed = false
-                local violationPreview = nil
-                local banNoticeVisible = false
-                local redrawNotice = function() end
-                local showAppeal = function() end
+                -- Stage 16.32: factory rebuilt from the developer-supplied ViolationAppealUI_recovered.lua
+                -- Original hierarchy/colors/positions preserved; variable names normalized.
+                local function buildViolationUI(parent, onResize)
+                    -- Creating ScrollingFrame
+                    local outerScroll = Instance.new("ScrollingFrame")
+                    outerScroll.Active = true
+                    outerScroll.AnchorPoint = Vector2.new(0, 0)
+                    outerScroll.AutoLocalize = true
+                    outerScroll.BackgroundColor3 = Color3.new(0.0980392173, 0.125490203, 0.180392161)
+                    outerScroll.BackgroundTransparency = 0.5
+                    outerScroll.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    outerScroll.BorderSizePixel = 5
+                    outerScroll.BottomImage = "rbxasset://textures/ui/Scroll/scroll-bottom.png"
+                    outerScroll.CanvasPosition = Vector2.new(0, 0)
+                    outerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+                    outerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                    outerScroll.ClipsDescendants = true
+                    outerScroll.Draggable = false
+                    outerScroll.Interactable = true
+                    outerScroll.LayoutOrder = 0
+                    outerScroll.MidImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
+                    outerScroll.Name = "ViolationAppealUI"
+                    outerScroll.Position = UDim2.new(0, 0, 0, 0)
+                    outerScroll.Rotation = 0
+                    outerScroll.ScrollBarImageColor3 = Color3.new(1, 1, 1)
+                    outerScroll.ScrollBarImageTransparency = 0
+                    outerScroll.ScrollBarThickness = 4
+                    outerScroll.ScrollingEnabled = true
+                    outerScroll.Selectable = true
+                    outerScroll.SelectionGroup = true
+                    outerScroll.SelectionOrder = 0
+                    outerScroll.Size = UDim2.new(1, 0, 0, 350)
+                    outerScroll.TopImage = "rbxasset://textures/ui/Scroll/scroll-top.png"
+                    outerScroll.Visible = true
+                    outerScroll.ZIndex = 1
 
-                local function toggleViolation(show)
-                    violationOpen = show == true
-                    if not violationUI or not violationUI.Frame.Parent then return end
-                    -- AutomaticCanvasSize expands the scrollable canvas, while the
-                    -- viewport itself follows the actual notice height up to a
-                    -- mobile-friendly cap. A collapsed notice should not leave a
-                    -- large empty scrolling area behind.
-                    local contentHeight = 290
-                    if noticeUI and noticeUI.Frame then
-                        contentHeight = math.ceil(noticeUI.Frame.AbsoluteSize.Y) + 16
-                    end
-                    local bodyHeight = math.clamp(contentHeight,64,360)
-                    violationUI.Inside.Visible = violationOpen
-                    violationUI.Button.Text = violationOpen and "Close" or "Open"
-                    if violationScroll then
-                        violationScroll.Size = UDim2.new(1,-8,0,bodyHeight)
-                        violationScroll.Visible = violationOpen
-                        if not violationOpen then
-                            violationScroll.CanvasPosition = Vector2.zero
-                        end
-                    end
-                    task.defer(function()
-                        syncViolationCanvas()
-                        syncPanelCanvas()
+                    -- Creating UICorner
+                    local outerCorner = Instance.new("UICorner")
+                    outerCorner.Name = "UICorner"
+                    outerCorner.Parent = outerScroll
+
+                    -- Creating UIListLayout
+                    local outerLayout = Instance.new("UIListLayout")
+                    outerLayout.Name = "UIListLayout"
+                    outerLayout.Wraps = false
+                    outerLayout.Parent = outerScroll
+
+                    -- Creating Frame
+                    local violationCard = Instance.new("Frame")
+                    violationCard.Active = false
+                    violationCard.AnchorPoint = Vector2.new(0, 0)
+                    violationCard.AutoLocalize = true
+                    violationCard.BackgroundColor3 = Color3.new(0, 0.333333343, 1)
+                    violationCard.BackgroundTransparency = 0
+                    violationCard.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    violationCard.BorderSizePixel = 5
+                    violationCard.ClipsDescendants = false
+                    violationCard.Draggable = false
+                    violationCard.Interactable = true
+                    violationCard.LayoutOrder = 0
+                    violationCard.Name = "ViolationUI"
+                    violationCard.Position = UDim2.new(0, 0, 0, 0)
+                    violationCard.Rotation = 0
+                    violationCard.Selectable = false
+                    violationCard.SelectionGroup = false
+                    violationCard.SelectionOrder = 0
+                    violationCard.Size = UDim2.new(1, 0, 0, 50)
+                    violationCard.Visible = true
+                    violationCard.ZIndex = 1
+                    violationCard.Parent = outerScroll
+
+                    -- Creating UICorner
+                    local cardCorner = Instance.new("UICorner")
+                    cardCorner.Name = "UICorner"
+                    cardCorner.Parent = violationCard
+
+                    -- Creating TextLabel
+                    local noticeTitle = Instance.new("TextLabel")
+                    noticeTitle.Active = false
+                    noticeTitle.AnchorPoint = Vector2.new(0, 0)
+                    noticeTitle.AutoLocalize = true
+                    noticeTitle.BackgroundColor3 = Color3.new(0.639215708, 0.635294139, 0.647058845)
+                    noticeTitle.BackgroundTransparency = 1
+                    noticeTitle.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    noticeTitle.BorderSizePixel = 5
+                    noticeTitle.ClipsDescendants = false
+                    noticeTitle.Draggable = false
+                    noticeTitle.Interactable = true
+                    noticeTitle.LayoutOrder = 0
+                    noticeTitle.LineHeight = 1
+                    noticeTitle.MaxVisibleGraphemes = -1
+                    noticeTitle.Name = "Topic"
+                    noticeTitle.Position = UDim2.new(0, 0, 0, 0)
+                    noticeTitle.RichText = true
+                    noticeTitle.Rotation = 0
+                    noticeTitle.Selectable = false
+                    noticeTitle.SelectionGroup = false
+                    noticeTitle.SelectionOrder = 0
+                    noticeTitle.Size = UDim2.new(1, -105, 0, 40)
+                    noticeTitle.Text = "<b>Your behavior broke the rules</b>"
+                    noticeTitle.TextColor3 = Color3.new(1, 1, 1)
+                    noticeTitle.TextScaled = true
+                    noticeTitle.TextSize = 8
+                    noticeTitle.TextStrokeColor3 = Color3.new(1, 1, 1)
+                    noticeTitle.TextStrokeTransparency = 1
+                    noticeTitle.TextTransparency = 0
+                    noticeTitle.TextWrapped = true
+                    noticeTitle.Visible = true
+                    noticeTitle.ZIndex = 1
+                    noticeTitle.Parent = violationCard
+
+                    -- Creating TextButton
+                    local expandButton = Instance.new("TextButton")
+                    expandButton.Active = true
+                    expandButton.AnchorPoint = Vector2.new(0, 0)
+                    expandButton.AutoButtonColor = true
+                    expandButton.AutoLocalize = true
+                    expandButton.BackgroundColor3 = Color3.new(1, 1, 1)
+                    expandButton.BackgroundTransparency = 0
+                    expandButton.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    expandButton.BorderSizePixel = 5
+                    expandButton.ClipsDescendants = false
+                    expandButton.Draggable = false
+                    expandButton.Interactable = true
+                    expandButton.LayoutOrder = 0
+                    expandButton.LineHeight = 1
+                    expandButton.MaxVisibleGraphemes = -1
+                    expandButton.Modal = false
+                    expandButton.Name = "Button"
+                    expandButton.Position = UDim2.new(1, -100, 0, 0)
+                    expandButton.RichText = false
+                    expandButton.Rotation = 0
+                    expandButton.Selectable = true
+                    expandButton.Selected = false
+                    expandButton.SelectionGroup = false
+                    expandButton.SelectionOrder = 0
+                    expandButton.Size = UDim2.new(0, 100, 0, 40)
+                    expandButton.Text = "Open"
+                    expandButton.TextColor3 = Color3.new(0, 0, 0)
+                    expandButton.TextScaled = true
+                    expandButton.TextSize = 8
+                    expandButton.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    expandButton.TextStrokeTransparency = 1
+                    expandButton.TextTransparency = 0
+                    expandButton.TextWrapped = true
+                    expandButton.Visible = true
+                    expandButton.ZIndex = 1
+                    expandButton.Parent = violationCard
+
+                    -- Creating UICorner
+                    local expandCorner = Instance.new("UICorner")
+                    expandCorner.Name = "UICorner"
+                    expandCorner.Parent = expandButton
+
+                    -- Creating ScrollingFrame
+                    local detailsScroll = Instance.new("ScrollingFrame")
+                    detailsScroll.Active = true
+                    detailsScroll.AnchorPoint = Vector2.new(0, 0)
+                    detailsScroll.AutoLocalize = true
+                    detailsScroll.BackgroundColor3 = Color3.new(0, 0, 0.498039216)
+                    detailsScroll.BackgroundTransparency = 0.5
+                    detailsScroll.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    detailsScroll.BorderSizePixel = 5
+                    detailsScroll.BottomImage = "rbxasset://textures/ui/Scroll/scroll-bottom.png"
+                    detailsScroll.CanvasPosition = Vector2.new(0, 0)
+                    detailsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+                    detailsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                    detailsScroll.ClipsDescendants = true
+                    detailsScroll.Draggable = false
+                    detailsScroll.Interactable = true
+                    detailsScroll.LayoutOrder = 0
+                    detailsScroll.MidImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
+                    detailsScroll.Name = "Inside"
+                    detailsScroll.Position = UDim2.new(0, 0, 0, 45)
+                    detailsScroll.Rotation = 0
+                    detailsScroll.ScrollBarImageColor3 = Color3.new(1, 1, 1)
+                    detailsScroll.ScrollBarImageTransparency = 0
+                    detailsScroll.ScrollBarThickness = 4
+                    detailsScroll.ScrollingEnabled = true
+                    detailsScroll.Selectable = true
+                    detailsScroll.SelectionGroup = true
+                    detailsScroll.SelectionOrder = 0
+                    detailsScroll.Size = UDim2.new(1, 0, 0, 165)
+                    detailsScroll.TopImage = "rbxasset://textures/ui/Scroll/scroll-top.png"
+                    detailsScroll.Visible = false
+                    detailsScroll.ZIndex = 1
+                    detailsScroll.Parent = violationCard
+
+                    -- Creating UICorner
+                    local detailsCorner = Instance.new("UICorner")
+                    detailsCorner.Name = "UICorner"
+                    detailsCorner.Parent = detailsScroll
+
+                    -- Creating TextLabel
+                    local reasonLabel = Instance.new("TextLabel")
+                    reasonLabel.Active = false
+                    reasonLabel.AnchorPoint = Vector2.new(0, 0)
+                    reasonLabel.AutoLocalize = true
+                    reasonLabel.BackgroundColor3 = Color3.new(0.639215708, 0.635294139, 0.647058845)
+                    reasonLabel.BackgroundTransparency = 1
+                    reasonLabel.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    reasonLabel.BorderSizePixel = 1
+                    reasonLabel.ClipsDescendants = false
+                    reasonLabel.Draggable = false
+                    reasonLabel.Interactable = true
+                    reasonLabel.LayoutOrder = 0
+                    reasonLabel.LineHeight = 1
+                    reasonLabel.MaxVisibleGraphemes = -1
+                    reasonLabel.Name = "Reason"
+                    reasonLabel.Position = UDim2.new(0, 0, 0, 0)
+                    reasonLabel.RichText = false
+                    reasonLabel.Rotation = 0
+                    reasonLabel.Selectable = false
+                    reasonLabel.SelectionGroup = false
+                    reasonLabel.SelectionOrder = 0
+                    reasonLabel.Size = UDim2.new(1, 0, 0, 20)
+                    reasonLabel.Text = "Reason: Example"
+                    reasonLabel.TextColor3 = Color3.new(1, 1, 1)
+                    reasonLabel.TextScaled = true
+                    reasonLabel.TextSize = 8
+                    reasonLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    reasonLabel.TextStrokeTransparency = 1
+                    reasonLabel.TextTransparency = 0
+                    reasonLabel.TextWrapped = true
+                    reasonLabel.Visible = true
+                    reasonLabel.ZIndex = 1
+                    reasonLabel.Parent = detailsScroll
+
+                    -- Creating TextLabel
+                    local moderatorTitle = Instance.new("TextLabel")
+                    moderatorTitle.Active = false
+                    moderatorTitle.AnchorPoint = Vector2.new(0, 0)
+                    moderatorTitle.AutoLocalize = true
+                    moderatorTitle.BackgroundColor3 = Color3.new(0.639215708, 0.635294139, 0.647058845)
+                    moderatorTitle.BackgroundTransparency = 1
+                    moderatorTitle.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    moderatorTitle.BorderSizePixel = 1
+                    moderatorTitle.ClipsDescendants = false
+                    moderatorTitle.Draggable = false
+                    moderatorTitle.Interactable = true
+                    moderatorTitle.LayoutOrder = 0
+                    moderatorTitle.LineHeight = 1
+                    moderatorTitle.MaxVisibleGraphemes = -1
+                    moderatorTitle.Name = "ModeratorMessage"
+                    moderatorTitle.Position = UDim2.new(0, 0, 0, 20)
+                    moderatorTitle.RichText = false
+                    moderatorTitle.Rotation = 0
+                    moderatorTitle.Selectable = false
+                    moderatorTitle.SelectionGroup = false
+                    moderatorTitle.SelectionOrder = 0
+                    moderatorTitle.Size = UDim2.new(1, 0, 0, 20)
+                    moderatorTitle.Text = "Moderator message:"
+                    moderatorTitle.TextColor3 = Color3.new(1, 1, 1)
+                    moderatorTitle.TextScaled = true
+                    moderatorTitle.TextSize = 8
+                    moderatorTitle.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    moderatorTitle.TextStrokeTransparency = 1
+                    moderatorTitle.TextTransparency = 0
+                    moderatorTitle.TextWrapped = true
+                    moderatorTitle.Visible = true
+                    moderatorTitle.ZIndex = 1
+                    moderatorTitle.Parent = detailsScroll
+
+                    -- Creating ScrollingFrame
+                    local messageScroll = Instance.new("ScrollingFrame")
+                    messageScroll.Active = true
+                    messageScroll.AnchorPoint = Vector2.new(0, 0)
+                    messageScroll.AutoLocalize = true
+                    messageScroll.BackgroundColor3 = Color3.new(0, 0, 0.175879404)
+                    messageScroll.BackgroundTransparency = 0.5
+                    messageScroll.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    messageScroll.BorderSizePixel = 2
+                    messageScroll.BottomImage = "rbxasset://textures/ui/Scroll/scroll-bottom.png"
+                    messageScroll.CanvasPosition = Vector2.new(0, 0)
+                    messageScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+                    messageScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                    messageScroll.ClipsDescendants = true
+                    messageScroll.Draggable = false
+                    messageScroll.Interactable = true
+                    messageScroll.LayoutOrder = 0
+                    messageScroll.MidImage = "rbxasset://textures/ui/Scroll/scroll-middle.png"
+                    messageScroll.Name = "MessageBox"
+                    messageScroll.Position = UDim2.new(0, 0, 0, 40)
+                    messageScroll.Rotation = 0
+                    messageScroll.ScrollBarImageColor3 = Color3.new(1, 1, 1)
+                    messageScroll.ScrollBarImageTransparency = 0
+                    messageScroll.ScrollBarThickness = 4
+                    messageScroll.ScrollingEnabled = true
+                    messageScroll.Selectable = true
+                    messageScroll.SelectionGroup = true
+                    messageScroll.SelectionOrder = 0
+                    messageScroll.Size = UDim2.new(1, -10, 0, 100)
+                    messageScroll.TopImage = "rbxasset://textures/ui/Scroll/scroll-top.png"
+                    messageScroll.Visible = true
+                    messageScroll.ZIndex = 1
+                    messageScroll.Parent = detailsScroll
+
+                    -- Creating UICorner
+                    local messageCorner = Instance.new("UICorner")
+                    messageCorner.Name = "UICorner"
+                    messageCorner.Parent = messageScroll
+
+                    -- Creating TextLabel
+                    local messageLabel = Instance.new("TextLabel")
+                    messageLabel.Active = true
+                    messageLabel.AnchorPoint = Vector2.new(0, 0)
+                    messageLabel.AutoLocalize = true
+                    messageLabel.BackgroundColor3 = Color3.new(0.639215708, 0.635294139, 0.647058845)
+                    messageLabel.BackgroundTransparency = 1
+                    messageLabel.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    messageLabel.BorderSizePixel = 1
+                    messageLabel.ClipsDescendants = false
+                    messageLabel.Draggable = false
+                    messageLabel.Interactable = true
+                    messageLabel.LayoutOrder = 0
+                    messageLabel.LineHeight = 1
+                    messageLabel.MaxVisibleGraphemes = -1
+                    messageLabel.Name = "Message"
+                    messageLabel.Position = UDim2.new(0, 0, 0, 0)
+                    messageLabel.RichText = false
+                    messageLabel.Rotation = 0
+                    messageLabel.Selectable = false
+                    messageLabel.SelectionGroup = false
+                    messageLabel.SelectionOrder = 0
+                    messageLabel.Size = UDim2.new(1, -12, 0, 22)
+                    messageLabel.Text = "This is the example of moderator message."
+                    messageLabel.TextColor3 = Color3.new(1, 1, 1)
+                    messageLabel.TextScaled = false
+                    messageLabel.TextSize = 10
+                    messageLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    messageLabel.TextStrokeTransparency = 1
+                    messageLabel.TextTransparency = 0
+                    messageLabel.TextWrapped = true
+                    messageLabel.Visible = true
+                    messageLabel.ZIndex = 1
+                    messageLabel.Parent = messageScroll
+
+                    -- Creating TextLabel
+                    local violationID = Instance.new("TextLabel")
+                    violationID.Active = true
+                    violationID.AnchorPoint = Vector2.new(0, 0)
+                    violationID.AutoLocalize = true
+                    violationID.BackgroundColor3 = Color3.new(0.639215708, 0.635294139, 0.647058845)
+                    violationID.BackgroundTransparency = 1
+                    violationID.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    violationID.BorderSizePixel = 1
+                    violationID.ClipsDescendants = false
+                    violationID.Draggable = false
+                    violationID.Interactable = true
+                    violationID.LayoutOrder = 0
+                    violationID.LineHeight = 1
+                    violationID.MaxVisibleGraphemes = -1
+                    violationID.Name = "ViolationID"
+                    violationID.Position = UDim2.new(0, 0, 0, 150)
+                    violationID.RichText = false
+                    violationID.Rotation = 0
+                    violationID.Selectable = false
+                    violationID.SelectionGroup = false
+                    violationID.SelectionOrder = 0
+                    violationID.Size = UDim2.new(1, -115, 0, 20)
+                    violationID.Text = "ID: 0"
+                    violationID.TextColor3 = Color3.new(1, 1, 1)
+                    violationID.TextScaled = true
+                    violationID.TextSize = 8
+                    violationID.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    violationID.TextStrokeTransparency = 1
+                    violationID.TextTransparency = 0
+                    violationID.TextWrapped = true
+                    violationID.Visible = true
+                    violationID.ZIndex = 1
+                    violationID.Parent = detailsScroll
+
+                    -- Creating TextButton
+                    local appealButton = Instance.new("TextButton")
+                    appealButton.Active = true
+                    appealButton.AnchorPoint = Vector2.new(0, 0)
+                    appealButton.AutoButtonColor = true
+                    appealButton.AutoLocalize = true
+                    appealButton.BackgroundColor3 = Color3.new(1, 1, 1)
+                    appealButton.BackgroundTransparency = 0
+                    appealButton.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    appealButton.BorderSizePixel = 2
+                    appealButton.ClipsDescendants = false
+                    appealButton.Draggable = false
+                    appealButton.Interactable = true
+                    appealButton.LayoutOrder = 0
+                    appealButton.LineHeight = 1
+                    appealButton.MaxVisibleGraphemes = -1
+                    appealButton.Modal = false
+                    appealButton.Name = "OpenAppeal"
+                    appealButton.Position = UDim2.new(1, -100, 0, 150)
+                    appealButton.RichText = false
+                    appealButton.Rotation = 0
+                    appealButton.Selectable = true
+                    appealButton.Selected = false
+                    appealButton.SelectionGroup = false
+                    appealButton.SelectionOrder = 0
+                    appealButton.Size = UDim2.new(0, 100, 0, 20)
+                    appealButton.Text = "Open Appeal"
+                    appealButton.TextColor3 = Color3.new(0, 0, 0)
+                    appealButton.TextScaled = true
+                    appealButton.TextSize = 8
+                    appealButton.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    appealButton.TextStrokeTransparency = 1
+                    appealButton.TextTransparency = 0
+                    appealButton.TextWrapped = true
+                    appealButton.Visible = true
+                    appealButton.ZIndex = 1
+                    appealButton.Parent = detailsScroll
+
+                    -- Creating UICorner
+                    local appealButtonCorner = Instance.new("UICorner")
+                    appealButtonCorner.Name = "UICorner"
+                    appealButtonCorner.Parent = appealButton
+
+                    -- Creating Frame
+                    local appealFrame = Instance.new("Frame")
+                    appealFrame.Active = true
+                    appealFrame.AnchorPoint = Vector2.new(0, 0)
+                    appealFrame.AutoLocalize = true
+                    appealFrame.BackgroundColor3 = Color3.new(0.639215708, 0.635294139, 0.647058845)
+                    appealFrame.BackgroundTransparency = 1
+                    appealFrame.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    appealFrame.BorderSizePixel = 1
+                    appealFrame.ClipsDescendants = false
+                    appealFrame.Draggable = false
+                    appealFrame.Interactable = true
+                    appealFrame.LayoutOrder = 0
+                    appealFrame.Name = "Appeal"
+                    appealFrame.Position = UDim2.new(0, 0, 0, 175)
+                    appealFrame.Rotation = 0
+                    appealFrame.Selectable = false
+                    appealFrame.SelectionGroup = false
+                    appealFrame.SelectionOrder = 0
+                    appealFrame.Size = UDim2.new(1, -10, 0, 0)
+                    appealFrame.Visible = false
+                    appealFrame.ZIndex = 1
+                    appealFrame.Parent = detailsScroll
+
+                    -- Creating TextLabel
+                    local appealTitle = Instance.new("TextLabel")
+                    appealTitle.Active = true
+                    appealTitle.AnchorPoint = Vector2.new(0, 0)
+                    appealTitle.AutoLocalize = true
+                    appealTitle.BackgroundColor3 = Color3.new(0.639215708, 0.635294139, 0.647058845)
+                    appealTitle.BackgroundTransparency = 1
+                    appealTitle.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    appealTitle.BorderSizePixel = 1
+                    appealTitle.ClipsDescendants = false
+                    appealTitle.Draggable = false
+                    appealTitle.Interactable = true
+                    appealTitle.LayoutOrder = 0
+                    appealTitle.LineHeight = 1
+                    appealTitle.MaxVisibleGraphemes = -1
+                    appealTitle.Name = "Title"
+                    appealTitle.Position = UDim2.new(0, 0, 0, 0)
+                    appealTitle.RichText = false
+                    appealTitle.Rotation = 0
+                    appealTitle.Selectable = false
+                    appealTitle.SelectionGroup = false
+                    appealTitle.SelectionOrder = 0
+                    appealTitle.Size = UDim2.new(1, 0, 0, 20)
+                    appealTitle.Text = "Appeal"
+                    appealTitle.TextColor3 = Color3.new(1, 1, 1)
+                    appealTitle.TextScaled = true
+                    appealTitle.TextSize = 8
+                    appealTitle.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    appealTitle.TextStrokeTransparency = 1
+                    appealTitle.TextTransparency = 0
+                    appealTitle.TextWrapped = true
+                    appealTitle.Visible = true
+                    appealTitle.ZIndex = 1
+                    appealTitle.Parent = appealFrame
+
+                    -- Creating TextBox
+                    local appealInput = Instance.new("TextBox")
+                    appealInput.Active = true
+                    appealInput.AnchorPoint = Vector2.new(0, 0)
+                    appealInput.AutoLocalize = true
+                    appealInput.BackgroundColor3 = Color3.new(0, 0, 0.176470593)
+                    appealInput.BackgroundTransparency = 0
+                    appealInput.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    appealInput.BorderSizePixel = 2
+                    appealInput.ClearTextOnFocus = false
+                    appealInput.ClipsDescendants = false
+                    appealInput.Draggable = false
+                    appealInput.Interactable = true
+                    appealInput.LayoutOrder = 1
+                    appealInput.LineHeight = 1
+                    appealInput.MaxVisibleGraphemes = -1
+                    appealInput.MultiLine = true
+                    appealInput.Name = "AppealBox"
+                    appealInput.PlaceholderColor3 = Color3.new(0.477386922, 0.477386922, 0.477386922)
+                    appealInput.PlaceholderText = "Write here"
+                    appealInput.Position = UDim2.new(0, 0, 0, 0)
+                    appealInput.RichText = false
+                    appealInput.Rotation = 0
+                    appealInput.Selectable = true
+                    appealInput.SelectionGroup = false
+                    appealInput.SelectionOrder = 0
+                    appealInput.ShowNativeInput = true
+                    appealInput.Size = UDim2.new(1, -10, 0, 50)
+                    appealInput.Text = ""
+                    appealInput.TextColor3 = Color3.new(1, 1, 1)
+                    appealInput.TextEditable = true
+                    appealInput.TextScaled = false
+                    appealInput.TextSize = 10
+                    appealInput.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    appealInput.TextStrokeTransparency = 1
+                    appealInput.TextTransparency = 0
+                    appealInput.TextWrapped = true
+                    appealInput.Visible = true
+                    appealInput.ZIndex = 1
+                    appealInput.Parent = appealFrame
+
+                    -- Creating UICorner
+                    local appealInputCorner = Instance.new("UICorner")
+                    appealInputCorner.Name = "UICorner"
+                    appealInputCorner.Parent = appealInput
+
+                    -- Creating TextButton
+                    local submitButton = Instance.new("TextButton")
+                    submitButton.Active = true
+                    submitButton.AnchorPoint = Vector2.new(0, 0)
+                    submitButton.AutoButtonColor = true
+                    submitButton.AutoLocalize = true
+                    submitButton.BackgroundColor3 = Color3.new(1, 1, 1)
+                    submitButton.BackgroundTransparency = 0
+                    submitButton.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    submitButton.BorderSizePixel = 2
+                    submitButton.ClipsDescendants = false
+                    submitButton.Draggable = false
+                    submitButton.Interactable = true
+                    submitButton.LayoutOrder = 3
+                    submitButton.LineHeight = 1
+                    submitButton.MaxVisibleGraphemes = -1
+                    submitButton.Modal = false
+                    submitButton.Name = "TextButton"
+                    submitButton.Position = UDim2.new(0, 0, 0, 0)
+                    submitButton.RichText = false
+                    submitButton.Rotation = 0
+                    submitButton.Selectable = true
+                    submitButton.Selected = false
+                    submitButton.SelectionGroup = false
+                    submitButton.SelectionOrder = 0
+                    submitButton.Size = UDim2.new(1, -10, 0, 20)
+                    submitButton.Text = "Submit"
+                    submitButton.TextColor3 = Color3.new(0, 0, 0)
+                    submitButton.TextScaled = false
+                    submitButton.TextSize = 8
+                    submitButton.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    submitButton.TextStrokeTransparency = 1
+                    submitButton.TextTransparency = 0
+                    submitButton.TextWrapped = false
+                    submitButton.Visible = true
+                    submitButton.ZIndex = 1
+                    submitButton.Parent = appealFrame
+
+                    -- Creating UICorner
+                    local submitCorner = Instance.new("UICorner")
+                    submitCorner.Name = "UICorner"
+                    submitCorner.Parent = submitButton
+
+                    -- Creating UIListLayout
+                    local appealLayout = Instance.new("UIListLayout")
+                    appealLayout.Name = "UIListLayout"
+                    appealLayout.Wraps = false
+                    appealLayout.Parent = appealFrame
+
+                    -- Creating TextLabel
+                    local characterCounter = Instance.new("TextLabel")
+                    characterCounter.Active = true
+                    characterCounter.AnchorPoint = Vector2.new(0, 0)
+                    characterCounter.AutoLocalize = true
+                    characterCounter.BackgroundColor3 = Color3.new(0.639215708, 0.635294139, 0.647058845)
+                    characterCounter.BackgroundTransparency = 1
+                    characterCounter.BorderColor3 = Color3.new(0.105882354, 0.164705887, 0.20784314)
+                    characterCounter.BorderSizePixel = 1
+                    characterCounter.ClipsDescendants = false
+                    characterCounter.Draggable = false
+                    characterCounter.Interactable = true
+                    characterCounter.LayoutOrder = 2
+                    characterCounter.LineHeight = 1
+                    characterCounter.MaxVisibleGraphemes = -1
+                    characterCounter.Name = "TextLabel"
+                    characterCounter.Position = UDim2.new(0, 0, 0, 0)
+                    characterCounter.RichText = false
+                    characterCounter.Rotation = 0
+                    characterCounter.Selectable = false
+                    characterCounter.SelectionGroup = false
+                    characterCounter.SelectionOrder = 0
+                    characterCounter.Size = UDim2.new(1, -10, 0, 15)
+                    characterCounter.Text = "Character 0/1500"
+                    characterCounter.TextColor3 = Color3.new(1, 1, 1)
+                    characterCounter.TextScaled = true
+                    characterCounter.TextSize = 8
+                    characterCounter.TextStrokeColor3 = Color3.new(0, 0, 0)
+                    characterCounter.TextStrokeTransparency = 1
+                    characterCounter.TextTransparency = 0
+                    characterCounter.TextWrapped = true
+                    characterCounter.Visible = true
+                    characterCounter.ZIndex = 1
+                    characterCounter.Parent = appealFrame
+
+
+                    -- The uploaded UI did not include a parent for its root.
+                    outerScroll.Parent = parent
+                    outerScroll.LayoutOrder = 1
+                    local syncOuterCanvas = protectCanvas(outerScroll,outerLayout,24)
+
+                    -- A long moderator message remains readable without TextBounds or TextScaled.
+                    messageLabel.AutomaticSize = Enum.AutomaticSize.Y
+                    messageLabel.TextWrapped = true
+                    messageLabel.TextScaled = false
+                    messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+                    messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+                    local messageLayout = Instance.new("UIListLayout")
+                    messageLayout.Name = "MessageLayout"
+                    messageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                    messageLayout.Parent = messageScroll
+                    local messagePadding = Instance.new("UIPadding")
+                    messagePadding.PaddingLeft = UDim.new(0,5)
+                    messagePadding.PaddingRight = UDim.new(0,8)
+                    messagePadding.PaddingTop = UDim.new(0,5)
+                    messagePadding.PaddingBottom = UDim.new(0,5)
+                    messagePadding.Parent = messageScroll
+                    local syncMessageCanvas = protectCanvas(messageScroll,messageLayout,12)
+                    messageLabel:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                        task.defer(syncMessageCanvas)
                     end)
-                end
 
-                violationUI = o(panelScroll,"None","Violation",false,true,"Open",false,false,nil,
-                    function(sub)
-                        violationScroll = Instance.new("ScrollingFrame")
-                        violationScroll.Name = "ViolationAppealUI"
-                        violationScroll.Position = UDim2.fromOffset(4,6)
-                        violationScroll.Size = UDim2.new(1,-8,0,290)
-                        violationScroll.BackgroundColor3 = Color3.fromRGB(25,32,46)
-                        violationScroll.BackgroundTransparency = 0.1
-                        violationScroll.BorderSizePixel = 0
-                        violationScroll.ScrollBarThickness = 4
-                        violationScroll.ScrollingDirection = Enum.ScrollingDirection.Y
-                        violationScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-                        violationScroll.CanvasSize = UDim2.fromOffset(0,0)
-                        violationScroll.ClipsDescendants = true
-                        violationScroll.Visible = false
-                        violationScroll.Parent = sub.Inside
-                        Corner(0,5,violationScroll)
-                        local layout = Instance.new("UIListLayout")
-                        layout.Padding = UDim.new(0,5)
-                        layout.SortOrder = Enum.SortOrder.LayoutOrder
-                        layout.Parent = violationScroll
-                        local pad = Instance.new("UIPadding")
-                        pad.PaddingTop = UDim.new(0,4)
-                        pad.PaddingLeft = UDim.new(0,3)
-                        pad.PaddingRight = UDim.new(0,3)
-                        pad.PaddingBottom = UDim.new(0,4)
-                        pad.Parent = violationScroll
-                        syncViolationCanvas = protectCanvas(violationScroll, layout, 42)
-                    end,
-                    function(_,event)
-                        if event == "button" then toggleViolation(not violationOpen) end
-                    end)
-                nextOrder += 1
-                violationUI.Frame.LayoutOrder = nextOrder
-                violationUI.Frame.Size = UDim2.new(1,-6,0,0)
+                    -- The original recovered submit button is kept, but it is not a live API yet.
+                    -- Give it a visible truthful result rather than claiming an appeal was sent.
+                    local submissionNote = Instance.new("TextLabel")
+                    submissionNote.Name = "SubmissionStatus"
+                    submissionNote.LayoutOrder = 4
+                    submissionNote.Size = UDim2.new(1,-10,0,34)
+                    submissionNote.BackgroundTransparency = 1
+                    submissionNote.TextColor3 = Color3.fromRGB(255,213,152)
+                    submissionNote.TextSize = 11
+                    submissionNote.TextWrapped = true
+                    submissionNote.TextXAlignment = Enum.TextXAlignment.Left
+                    submissionNote.Text = ""
+                    submissionNote.Visible = false
+                    submissionNote.Parent = appealFrame
 
-                -- Keeping o() nested within o(), but rendering the notice as one
-                -- responsive card. UIListLayout and AutomaticSize handle long text.
-                noticeUI = o(violationScroll,"None","Moderation Notice",false,false,nil,false,false,nil,
-                    function(sub)
-                        sub.Frame.Name = "ViolationNotice"
-                        sub.Frame.Size = UDim2.new(1,-6,0,0)
-                        sub.Inside.Visible = true
-                        sub.Frame.BackgroundColor3 = Color3.fromRGB(29,35,47)
-                        sub.Frame.BackgroundTransparency = 0.08
-                        sub.Frame.BorderSizePixel = 1
-                        sub.Frame.ClipsDescendants = true
-                        sub.Label.Visible = false
-
-                        local body = Instance.new("Frame")
-                        body.Name = "NoticeBody"
-                        body.Position = UDim2.fromOffset(5,0)
-                        body.Size = UDim2.new(1,-10,0,0)
-                        body.AutomaticSize = Enum.AutomaticSize.Y
-                        body.BackgroundTransparency = 1
-                        body.Parent = sub.Inside
-                        local bodyLayout = Instance.new("UIListLayout")
-                        bodyLayout.Name = "NoticeLayout"
-                        bodyLayout.FillDirection = Enum.FillDirection.Vertical
-                        bodyLayout.SortOrder = Enum.SortOrder.LayoutOrder
-                        bodyLayout.Padding = UDim.new(0,7)
-                        bodyLayout.Parent = body
-
-                        local function addLabel(name, order, value, minHeight, textSize, background)
-                            local label = Instance.new("TextLabel")
-                            label.Name = name
-                            label.LayoutOrder = order
-                            label.Size = UDim2.new(1,0,0,minHeight)
-                            label.AutomaticSize = Enum.AutomaticSize.None
-                            label.TextScaled = true
-                            local sizeLimit = Instance.new("UITextSizeConstraint")
-                            sizeLimit.MinTextSize = math.max(10, textSize - 3)
-                            sizeLimit.MaxTextSize = textSize
-                            sizeLimit.Parent = label
-                            label.BackgroundTransparency = background and 0.15 or 1
-                            if background then label.BackgroundColor3 = Color3.fromRGB(17,23,33) end
-                            label.TextColor3 = Color3.fromRGB(235,242,252)
-                            label.TextSize = textSize
-                            label.TextWrapped = true
-                            label.TextXAlignment = Enum.TextXAlignment.Left
-                            label.TextYAlignment = Enum.TextYAlignment.Top
-                            label.Text = value
-                            label.Parent = body
-                            if background then Corner(0,4,label) end
-                            return label
+                    local expanded, appealExpanded = false, false
+                    local updatingLayout = false
+                    local function updateCanvas()
+                        if updatingLayout or not outerScroll.Parent then return end
+                        updatingLayout = true
+                        -- UIListLayout applies inside the Appeal form (not to the positioned Details).
+                        local appealHeight = math.max(110,math.ceil(appealLayout.AbsoluteContentSize.Y)+8)
+                        local newAppealHeight = appealExpanded and appealHeight or 0
+                        if appealFrame.Size.Y.Offset ~= newAppealHeight then
+                            appealFrame.Size = UDim2.new(1,-10,0,newAppealHeight)
                         end
-                        local function addButton(name, order, caption, parent, height)
-                            local button = Instance.new("TextButton")
-                            button.Name = name
-                            button.LayoutOrder = order
-                            button.Size = UDim2.new(1,0,0,height or 32)
-                            button.BackgroundColor3 = Color3.fromRGB(46,96,139)
-                            button.TextColor3 = Color3.new(1,1,1)
-                            button.TextSize = 13
-                            button.TextScaled = true
-                            local sizeLimit = Instance.new("UITextSizeConstraint")
-                            sizeLimit.MinTextSize = 10
-                            sizeLimit.MaxTextSize = 13
-                            sizeLimit.Parent = button
-                            button.Text = caption
-                            button.Parent = parent or body
-                            Corner(0,5,button)
-                            return button
-                        end
-
-                        local header = Instance.new("Frame")
-                        header.Name = "NoticeHeader"
-                        header.LayoutOrder = 1
-                        header.Size = UDim2.new(1,0,0,48)
-                        header.BackgroundTransparency = 1
-                        header.Parent = body
-                        local title = Instance.new("TextLabel")
-                        title.Name = "ViolationTitle"
-                        title.Size = UDim2.new(1,-40,1,0)
-                        title.BackgroundTransparency = 1
-                        title.Text = "Your behavior broke our rules"
-                        title.TextColor3 = Color3.new(1,1,1)
-                        title.TextSize = 17
-                        title.TextScaled = true
-                        local titleSizeLimit = Instance.new("UITextSizeConstraint")
-                        titleSizeLimit.MinTextSize = 13
-                        titleSizeLimit.MaxTextSize = 17
-                        titleSizeLimit.Parent = title
-                        title.TextWrapped = true
-                        title.TextXAlignment = Enum.TextXAlignment.Left
-                        title.TextYAlignment = Enum.TextYAlignment.Center
-                        title.Parent = header
-                        local close = Instance.new("TextButton")
-                        close.Name = "ToggleViolationNotice"
-                        close.Size = UDim2.fromOffset(30,30)
-                        close.Position = UDim2.new(1,-30,0,0)
-                        close.BackgroundColor3 = Color3.fromRGB(80,42,48)
-                        close.TextColor3 = Color3.new(1,1,1)
-                        close.TextSize = 16
-                        close.TextScaled = true
-                        close.Text = "X"
-                        close.Parent = header
-                        Corner(0,4,close)
-                        -- X toggles only this notice's body, not the Violation tab.
-                        -- The header stays visible in both states.
-                        local setNoticeCollapsed = function() end
-                        close.MouseButton1Click:Connect(function()
-                            setNoticeCollapsed(not noticeCollapsed)
+                        local contentBottom = appealExpanded and (175+appealHeight) or 175
+                        local detailsViewport = appealExpanded and math.min(310,contentBottom+6) or 185
+                        detailsScroll.Size = UDim2.new(1,0,0,detailsViewport)
+                        detailsScroll.CanvasSize = UDim2.fromOffset(0,contentBottom+24)
+                        local cardHeight = expanded and (45+detailsViewport+5) or 50
+                        violationCard.Size = UDim2.new(1,0,0,cardHeight)
+                        outerScroll.Size = UDim2.new(1,0,0,math.min(350,cardHeight+8))
+                        outerScroll.CanvasSize = UDim2.fromOffset(0,cardHeight+24)
+                        updatingLayout = false
+                        task.defer(function()
+                            if not outerScroll.Parent then return end
+                            syncMessageCanvas()
+                            syncOuterCanvas()
+                            if onResize then onResize() end
                         end)
+                    end
 
-                        local reasonLabel = addLabel("ViolationReason",2,"Reason: Not available",52,14,false)
-                        local moderatorTitle = addLabel("ModeratorMessageTitle",3,"Moderator message:",24,13,false)
-
-                        -- Moderator Message is its own scrollable viewport.
-                        -- Fixed font size keeps long moderator notes readable.
-                        local moderatorScroll = Instance.new("ScrollingFrame")
-                        moderatorScroll.Name = "ModeratorMessageScroll"
-                        moderatorScroll.LayoutOrder = 4
-                        moderatorScroll.Size = UDim2.new(1,0,0,116)
-                        moderatorScroll.BackgroundColor3 = Color3.fromRGB(17,23,33)
-                        moderatorScroll.BorderSizePixel = 0
-                        moderatorScroll.ScrollBarThickness = 4
-                        moderatorScroll.ScrollingDirection = Enum.ScrollingDirection.Y
-                        moderatorScroll.CanvasSize = UDim2.fromOffset(0,0)
-                        moderatorScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-                        moderatorScroll.ClipsDescendants = true
-                        moderatorScroll.Parent = body
-                        Corner(0,4,moderatorScroll)
-
-                        local moderatorLayout = Instance.new("UIListLayout")
-                        moderatorLayout.SortOrder = Enum.SortOrder.LayoutOrder
-                        moderatorLayout.Parent = moderatorScroll
-                        local moderatorPadding = Instance.new("UIPadding")
-                        moderatorPadding.PaddingTop = UDim.new(0,7)
-                        moderatorPadding.PaddingBottom = UDim.new(0,7)
-                        moderatorPadding.PaddingLeft = UDim.new(0,7)
-                        moderatorPadding.PaddingRight = UDim.new(0,9)
-                        moderatorPadding.Parent = moderatorScroll
-
-                        local messageLabel = Instance.new("TextLabel")
-                        messageLabel.Name = "ModeratorMessage"
-                        messageLabel.LayoutOrder = 1
-                        messageLabel.Size = UDim2.new(1,-6,0,24)
-                        messageLabel.AutomaticSize = Enum.AutomaticSize.Y
-                        messageLabel.BackgroundTransparency = 1
-                        messageLabel.TextColor3 = Color3.fromRGB(235,242,252)
-                        messageLabel.TextSize = 13
-                        messageLabel.TextScaled = false -- Do not shrink long messages
-                        messageLabel.TextWrapped = true
-                        messageLabel.TextXAlignment = Enum.TextXAlignment.Left
-                        messageLabel.TextYAlignment = Enum.TextYAlignment.Top
-                        messageLabel.Text = "No moderator message has been provided."
-                        messageLabel.Parent = moderatorScroll
-
-                        local syncModeratorCanvas = protectCanvas(moderatorScroll, moderatorLayout, 14)
-                        messageLabel:GetPropertyChangedSignal("AbsoluteSize"):Connect(
-                            function() task.defer(syncModeratorCanvas) end)
-
-                        local previewLabel = addLabel("ViolationSource",5,
-                            "No authenticated moderation record has been loaded.",42,11,false)
-                        previewLabel.TextColor3 = Color3.fromRGB(245,203,140)
-                        local open = addButton("OpenAppeal",6,"Open Appeal",body,34)
-
-                        local appealPanel = Instance.new("Frame")
-                        appealPanel.Name = "AppealExpanded"
-                        appealPanel.LayoutOrder = 7
-                        appealPanel.Size = UDim2.new(1,0,0,0)
-                        appealPanel.BackgroundColor3 = Color3.fromRGB(23,30,43)
-                        appealPanel.BorderSizePixel = 0
-                        appealPanel.Visible = false
-                        appealPanel.Parent = body
-                        Corner(0,5,appealPanel)
-                        local appealLayout = Instance.new("UIListLayout")
-                        appealLayout.Padding = UDim.new(0,6)
-                        appealLayout.SortOrder = Enum.SortOrder.LayoutOrder
-                        appealLayout.Parent = appealPanel
-                        local appealPad = Instance.new("UIPadding")
-                        appealPad.PaddingTop = UDim.new(0,6)
-                        appealPad.PaddingBottom = UDim.new(0,6)
-                        appealPad.PaddingLeft = UDim.new(0,6)
-                        appealPad.PaddingRight = UDim.new(0,6)
-                        appealPad.Parent = appealPanel
-
-                        local function appealLabel(name,order,value,height)
-                            local label = Instance.new("TextLabel")
-                            label.Name = name
-                            label.LayoutOrder = order
-                            label.Size = UDim2.new(1,-12,0,height)
-                            label.BackgroundTransparency = 1
-                            label.TextColor3 = Color3.fromRGB(225,236,252)
-                            label.TextSize = 12
-                            label.TextScaled = true
-                            local sizeLimit = Instance.new("UITextSizeConstraint")
-                            sizeLimit.MinTextSize = 10
-                            sizeLimit.MaxTextSize = 12
-                            sizeLimit.Parent = label
-                            label.TextWrapped = true
-                            label.TextXAlignment = Enum.TextXAlignment.Left
-                            label.Text = value
-                            label.Parent = appealPanel
-                            return label
+                    local function controllerSetExpanded(show)
+                        expanded = show == true
+                        detailsScroll.Visible = expanded
+                        expandButton.Text = expanded and "Close" or "Open"
+                        if not expanded then detailsScroll.CanvasPosition = Vector2.zero end
+                        updateCanvas()
+                    end
+                    local function controllerSetAppealExpanded(show)
+                        appealExpanded = show == true
+                        if appealExpanded and not expanded then
+                            expanded = true
+                            detailsScroll.Visible = true
+                            expandButton.Text = "Close"
                         end
-                        local idLabel = appealLabel("ViolationID",1,"Violation ID: Not provided",38)
-                        local caseLabel = appealLabel("AppealCaseID",2,"Appeal case ID: Not submitted",24)
-                        local appealBox = Instance.new("TextBox")
-                        appealBox.Name = "AppealDescription"
-                        appealBox.LayoutOrder = 3
-                        appealBox.Size = UDim2.new(1,-12,0,124)
-                        appealBox.BackgroundColor3 = Color3.fromRGB(35,43,59)
-                        appealBox.TextColor3 = Color3.new(1,1,1)
-                        appealBox.PlaceholderText = "Explain your appeal (50–1500 characters)."
-                        appealBox.Text = ""
-                        appealBox.TextSize = 13
-                        appealBox.TextWrapped = true
-                        appealBox.TextXAlignment = Enum.TextXAlignment.Left
-                        appealBox.TextYAlignment = Enum.TextYAlignment.Top
-                        appealBox.MultiLine = true
-                        appealBox.ClearTextOnFocus = false
-                        appealBox.Parent = appealPanel
-                        Corner(0,4,appealBox)
-                        local countLabel = appealLabel("AppealCharacterCount",4,"0/1500 characters",20)
-                        local copy = addButton("CopyAppealDraft",5,"Copy Appeal Draft (not submitted)",appealPanel,34)
-                        local status = appealLabel("AppealDraftStatus",6,
-                            "Draft only. Nothing is sent to Cloudflare.",43)
-                        status.TextColor3 = Color3.fromRGB(245,203,140)
-
-                        local function refreshHeight()
-                            if not sub.Frame.Parent then return end
-                            local apSize = (appealOpen and not noticeCollapsed)
-                                and (math.ceil(appealLayout.AbsoluteContentSize.Y)+12) or 0
-                            appealPanel.Size = UDim2.new(1,0,0,apSize)
-                            -- NoticeBody and Inside grow by AutomaticSize.Y.
-                            -- Only recalculate the enclosing viewport height.
-                            task.defer(function() toggleViolation(violationOpen) end)
+                        appealFrame.Visible = appealExpanded
+                        appealButton.Text = appealExpanded and "Close Appeal" or "Open Appeal"
+                        updateCanvas()
+                        if appealExpanded then
                             task.defer(function()
-                                syncViolationCanvas()
-                                syncPanelCanvas()
+                                if not detailsScroll.Parent then return end
+                                updateCanvas()
+                                detailsScroll.CanvasPosition = Vector2.new(0,
+                                    math.max(0, detailsScroll.AbsoluteCanvasSize.Y - detailsScroll.AbsoluteWindowSize.Y))
                             end)
                         end
-                        appealLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshHeight)
-                        bodyLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(refreshHeight)
-                        -- No TextBounds callbacks: the notice uses actual layout sizes.
-                        -- The moderator message scroll follows its own layout changes.
-                        moderatorScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(
-                            function() task.defer(syncModeratorCanvas) end)
+                    end
 
-                        setNoticeCollapsed = function(collapsed)
-                            noticeCollapsed = collapsed == true
-                            reasonLabel.Visible = not noticeCollapsed
-                            moderatorTitle.Visible = not noticeCollapsed
-                            moderatorScroll.Visible = not noticeCollapsed
-                            previewLabel.Visible = not noticeCollapsed
-                            open.Visible = not noticeCollapsed
-                            appealPanel.Visible = not noticeCollapsed and appealOpen
-                            -- Keep X visible and usable; its job is expand/collapse.
-                            close.Text = "X"
-                            task.defer(refreshHeight)
-                        end
-
-                        showAppeal = function(show)
-                            appealOpen = show == true
-                            -- The Appeal form is never opened behind a collapsed card.
-                            if appealOpen then setNoticeCollapsed(false) end
-                            appealPanel.Visible = appealOpen and not noticeCollapsed
-                            open.Text = appealOpen and "Close Appeal" or "Open Appeal"
-                            if not appealOpen then
-                                appealPanel.Size = UDim2.new(1,0,0,0)
-                            end
-                            task.defer(refreshHeight)
-                            toggleViolation(true)
-                            if appealOpen then
-                                task.defer(function()
-                                    refreshHeight()
-                                    task.defer(function()
-                                        if violationScroll and violationScroll.Parent then
-                                            syncViolationCanvas()
-                                            syncPanelCanvas()
-                                            violationScroll.CanvasPosition = Vector2.new(0,
-                                                math.max(0, violationScroll.AbsoluteCanvasSize.Y
-                                                    - violationScroll.AbsoluteWindowSize.Y))
-                                        end
-                                    end)
-                                end)
-                            end
-                        end
-                        open.MouseButton1Click:Connect(function() showAppeal(not appealOpen) end)
-                        appealBox:GetPropertyChangedSignal("Text"):Connect(function()
-                            local count = utf8.len(appealBox.Text) or #appealBox.Text
-                            countLabel.Text = tostring(count) .. "/1500 characters"
-                        end)
-                        copy.MouseButton1Click:Connect(function()
-                            local message = tostring(appealBox.Text or "")
-                            local length = utf8.len(message) or #message
-                            if length < 50 or length > 1500 then
-                                status.Text = "An appeal requires 50–1500 characters."
-                                return
-                            end
-                            if type(setclipboard) ~= "function" then
-                                status.Text = "Clipboard unavailable. Select and copy your text manually."
-                                appealBox:CaptureFocus()
-                                return
-                            end
-                            local vId = violationPreview and violationPreview.id or "Not provided"
-                            local textToCopy = "Appeal Draft\nViolation ID: " .. vId
-                                .. "\nUser ID: " .. tostring(player and player.UserId or "Unknown")
-                                .. "\n" .. message
-                            local ok = pcall(setclipboard,textToCopy)
-                            status.Text = ok and "Copied locally. NOT submitted to Cloudflare."
-                                or "Copy failed; select your draft manually."
-                        end)
-
-                        redrawNotice = function()
-                            if violationPreview then
-                                title.Text = "Your behavior broke our rules"
-                                reasonLabel.Text = "Reason: " .. violationPreview.reason
-                                messageLabel.Text = violationPreview.moderatorMessage
-                                idLabel.Text = "Violation ID: " .. violationPreview.id
-                                previewLabel.Text = "Local UI preview only — not an official moderation record."
-                            else
-                                title.Text = banNoticeVisible and "Your behavior broke our rules"
-                                    or "No violation notice available"
-                                reasonLabel.Text = "Reason: Not available"
-                                messageLabel.Text = "No moderator message has been provided."
-                                idLabel.Text = "Violation ID: Not provided"
-                                previewLabel.Text = banNoticeVisible
-                                    and "The ban policy does not include a verified violation ID or moderator note."
-                                    or "No authenticated moderation record has been loaded."
-                            end
-                            caseLabel.Text = "Appeal case ID: Not submitted"
-                            moderatorScroll.CanvasPosition = Vector2.zero
-                            task.defer(syncModeratorCanvas)
-                            task.defer(refreshHeight)
-                        end
-                        -- Start expanded, matching the supplied moderation mockup.
-                        -- The [PREVIEW] disclaimer lives in the body, not the title.
-                        setNoticeCollapsed(false)
-                        task.defer(redrawNotice)
+                    expandButton.MouseButton1Click:Connect(function()
+                        controllerSetExpanded(not expanded)
                     end)
-                noticeUI.Frame.LayoutOrder = 1
-                noticeUI.Frame.Size = UDim2.new(1,-6,0,0)
-                -- The notice row's size is automatic; reflow the viewport after changes.
-                noticeUI.Frame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-                    task.defer(function() toggleViolation(violationOpen) end)
-                end)
+                    appealButton.MouseButton1Click:Connect(function()
+                        controllerSetAppealExpanded(not appealExpanded)
+                    end)
 
-                -- Only expose a visibly marked preview for UI design/testing.
-                -- Production moderation data must come from a separate verified server flow.
+                    appealInput:GetPropertyChangedSignal("Text"):Connect(function()
+                        local n=utf8.len(appealInput.Text) or #appealInput.Text
+                        characterCounter.Text = "Character "..n.."/1500"
+                        if submissionNote.Visible then
+                            submissionNote.Visible = false
+                            submissionNote.Text = ""
+                            task.defer(updateCanvas)
+                        end
+                    end)
+
+                    submitButton.MouseButton1Click:Connect(function()
+                        local description=tostring(appealInput.Text or "")
+                        local n=utf8.len(description) or #description
+                        submissionNote.Visible=true
+                        if n < 50 or n > 1500 then
+                            submissionNote.Text="Appeal must be 50–1500 characters. Nothing submitted."
+                        elseif type(setclipboard)=="function" then
+                            local ok=pcall(setclipboard, "Appeal Draft\n"..violationID.Text.."\n"..description)
+                            submissionNote.Text=ok and "Draft copied. NOT submitted to Cloudflare."
+                                or "Clipboard failed. Draft remains local; NOT submitted."
+                        else
+                            submissionNote.Text="Draft saved only in this input. NOT submitted to Cloudflare."
+                        end
+                        task.defer(function()
+                            updateCanvas()
+                            if detailsScroll.Parent and detailsScroll.Visible then
+                                detailsScroll.CanvasPosition = Vector2.new(0,
+                                    math.max(0, detailsScroll.AbsoluteCanvasSize.Y - detailsScroll.AbsoluteWindowSize.Y))
+                            end
+                        end)
+                    end)
+
+                    appealLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                        task.defer(updateCanvas)
+                    end)
+                    outerLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                        task.defer(updateCanvas)
+                    end)
+
+                    local controller = {
+                        Root=outerScroll, Frame=violationCard, Inside=detailsScroll,
+                        Title=noticeTitle, Reason=reasonLabel, Message=messageLabel,
+                        ViolationID=violationID, MessageBox=messageScroll,
+                        Appeal=appealFrame, AppealBox=appealInput,
+                        Submit=submitButton, OpenAppeal=appealButton,
+                    }
+                    function controller.SetExpanded(show)
+                        controllerSetExpanded(show)
+                    end
+                    function controller.SetAppealExpanded(show)
+                        controllerSetAppealExpanded(show)
+                    end
+                    function controller.SetNotice(details,isBanned)
+                        -- UI previews are untrusted local examples, never authenticated moderation records.
+                        if details then
+                            noticeTitle.Text = "Your behavior broke the rules"
+                            reasonLabel.Text = "Reason: "..details.reason
+                            messageLabel.Text = details.moderatorMessage
+                            violationID.Text = "ID: "..details.id.." [PREVIEW]"
+                        else
+                            noticeTitle.Text = isBanned and "Your behavior broke the rules"
+                                or "No violation notice available"
+                            reasonLabel.Text = "Reason: Not available"
+                            messageLabel.Text = "No verified moderator message is available."
+                            violationID.Text = "ID: Not provided"
+                        end
+                        messageScroll.CanvasPosition = Vector2.zero
+                        submissionNote.Visible = false
+                        submissionNote.Text = ""
+                        task.defer(updateCanvas)
+                    end
+                    function controller.GetAppealDraft()
+                        return appealInput.Text
+                    end
+
+                    -- Match the uploaded initial state: inner notice collapsed, Appeal hidden.
+                    controller.SetExpanded(false)
+                    controller.SetAppealExpanded(false)
+                    controller.SetNotice(nil,false)
+                    task.defer(updateCanvas)
+                    return controller
+                end
+
+                -- The existing o() row remains the expandable "Violation" category.
+                -- Its children now come exclusively from the developer's recovered UI.
+                local violationRow, notice
+                local violationCategoryOpen = false
+                local violationPreview, banNoticeVisible = nil, false
+
+                local function setViolationCategoryExpanded(show)
+                    violationCategoryOpen = show == true
+                    if not violationRow or not violationRow.Frame.Parent then return end
+                    violationRow.Inside.Visible = violationCategoryOpen
+                    violationRow.Button.Text = violationCategoryOpen and "Close" or "Open"
+                    task.defer(syncPanelCanvas)
+                end
+
+                local function redrawViolation()
+                    if notice then notice.SetNotice(violationPreview,banNoticeVisible) end
+                    task.defer(syncPanelCanvas)
+                end
+
+                violationRow = o(panelScroll,"None","Violation",false,true,"Open",false,false,nil,
+                    function(row)
+                        notice = buildViolationUI(row.Inside, function()
+                            task.defer(syncPanelCanvas)
+                        end)
+                    end,
+                    function(_,event)
+                        if event == "button" then
+                            setViolationCategoryExpanded(not violationCategoryOpen)
+                        end
+                    end)
+                nextOrder += 1
+                violationRow.Frame.LayoutOrder = nextOrder
+                violationRow.Frame.Size = UDim2.new(1,-6,0,0)
+
+                loc.API.ArcScriptCenterViolationUI = notice
                 loc.API.PreviewArcScriptCenterViolation = function(details)
                     if type(details) ~= "table" then return false end
-                    local function safeValue(value,limit)
-                        if type(value) ~= "string" then return "" end
-                        value = value:gsub("[%c]", " "):sub(1,limit)
-                        return value
+                    local function safeText(v,limit)
+                        if type(v) ~= "string" then return "" end
+                        return v:gsub("[%c]"," "):sub(1,limit)
                     end
                     violationPreview = {
-                        id = safeValue(details.id,70),
-                        reason = safeValue(details.reason,120),
-                        moderatorMessage = safeValue(details.moderatorMessage,800),
+                        id = safeText(details.id,70),
+                        reason = safeText(details.reason,120),
+                        moderatorMessage = safeText(details.moderatorMessage,800)
                     }
                     if violationPreview.id == "" then violationPreview.id = "TEST-001" end
                     if violationPreview.reason == "" then violationPreview.reason = "Test" end
-                    if violationPreview.moderatorMessage == "" then violationPreview.moderatorMessage = "Example." end
-                    redrawNotice()
+                    if violationPreview.moderatorMessage == "" then
+                        violationPreview.moderatorMessage = "Example."
+                    end
+                    redrawViolation()
                     setPanelExpanded(true)
-                    toggleViolation(true)
+                    setViolationCategoryExpanded(true)
+                    notice.SetExpanded(true)
                     return true
                 end
                 loc.API.ClearArcScriptCenterViolationPreview = function()
                     violationPreview = nil
-                    redrawNotice()
+                    redrawViolation()
                     return true
                 end
                 loc.API.UpdateArcScriptCenterViolationBanState = function(isBanned)
                     banNoticeVisible = isBanned == true
-                    redrawNotice()
+                    redrawViolation()
                 end
                 openAppealDraft = function(show)
-                    if show then toggleViolation(true) end
-                    showAppeal(show)
+                    if show then setViolationCategoryExpanded(true) end
+                    if notice then notice.SetAppealExpanded(show) end
                 end
             end,
             function(_,event)
