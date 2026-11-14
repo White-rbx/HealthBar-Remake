@@ -1,5 +1,5 @@
 local ver = {
-	sion = " UIs 7.3.23 ",
+	sion = " UIs 7.3.24 ",
 	logs = [[
 (:9/11/2026: A) Stage 16.23: Built-in opt-in masked Leaderboard in Arcsen > Settings > ArcScriptCenter. Lazy public API reads with Today / This Year / All Time, Refresh, cached view, no admin credentials.
 (:7/11/2026: A) Stage 16.22: Create Lua Script In The Chat — Don't / Root Only / All Instance access. Root-only runner exposes UI proxies, all-mode excludes CoreGui.ExperienceSettings and descendants. Script cards pin permission and revoke on mode change.
@@ -1921,15 +1921,11 @@ local function addset(name, gname, r, g, b, uiandfunction)
   fm.Parent = Body_s
 
   btn_s.MouseButton1Click:Connect(function()
-    if More_s == false then
-      More_s = true
-      btn_s.Image = "rbxassetid://76063966669126"
-      fm.Visible = true
-    else
-      More_s = false
-      btn_s.Image = "rbxassetid://106910450665586"
-      fm.Visible = false
-    end
+    -- Read current visibility because Signed Policy can open a section automatically.
+    More_s = not fm.Visible
+    fm.Visible = More_s
+    btn_s.Image = More_s and "rbxassetid://76063966669126"
+        or "rbxassetid://106910450665586"
   end)
 
   if type(uiandfunction) == "function" then
@@ -13932,6 +13928,7 @@ task.spawn(function()
     local group = loc.API.ArcScriptCenterCloudSettings
     local statusLabel
     local retry
+    local revealAppealDraft = function() end
     if typeof(group) == "Instance" and group:IsA("GuiObject") then
         statusLabel = Instance.new("TextLabel")
         statusLabel.Name = "SignedPolicyStatus"
@@ -13955,71 +13952,267 @@ task.spawn(function()
         retry.Parent = group
         Corner(0,5,retry)
 
-        local appealTitle = Instance.new("TextLabel")
-        appealTitle.Name = "FeedbackAndAppeal"
-        appealTitle.Size = UDim2.new(1,-8,0,24)
-        appealTitle.LayoutOrder = 23
-        appealTitle.BackgroundTransparency = 1
-        appealTitle.TextColor3 = Color3.fromRGB(160,215,255)
-        appealTitle.TextSize = 15
-        appealTitle.TextXAlignment = Enum.TextXAlignment.Left
-        appealTitle.Text = "Feedback & Appeal  |  Appeal draft"
-        appealTitle.Parent = group
-
-        local appealDraft = Instance.new("TextBox")
-        appealDraft.Name = "AppealDraft"
-        appealDraft.Size = UDim2.new(1,-8,0,90)
-        appealDraft.LayoutOrder = 24
-        appealDraft.BackgroundColor3 = Color3.fromRGB(30,37,52)
-        appealDraft.TextColor3 = Color3.new(1,1,1)
-        appealDraft.PlaceholderText = "Describe why you are appealing. Draft stays on this device."
-        appealDraft.Text = ""
-        appealDraft.TextSize = 13
-        appealDraft.TextXAlignment = Enum.TextXAlignment.Left
-        appealDraft.TextYAlignment = Enum.TextYAlignment.Top
-        appealDraft.TextWrapped = true
-        appealDraft.MultiLine = true
-        appealDraft.ClearTextOnFocus = false
-        appealDraft.Parent = group
-        Corner(0,5,appealDraft)
-
-        local appealCopy = Instance.new("TextButton")
-        appealCopy.Name = "CopyAppealDraft"
-        appealCopy.Size = UDim2.new(1,-8,0,28)
-        appealCopy.LayoutOrder = 25
-        appealCopy.BackgroundColor3 = Color3.fromRGB(45,95,135)
-        appealCopy.TextColor3 = Color3.new(1,1,1)
-        appealCopy.TextSize = 13
-        appealCopy.Text = "Copy Appeal Draft (not submitted)"
-        appealCopy.Parent = group
-        Corner(0,5,appealCopy)
-
-        local appealInfo = Instance.new("TextLabel")
-        appealInfo.Name = "AppealDraftNotice"
-        appealInfo.Size = UDim2.new(1,-8,0,37)
-        appealInfo.LayoutOrder = 26
-        appealInfo.BackgroundTransparency = 1
-        appealInfo.TextColor3 = Color3.fromRGB(220,205,160)
-        appealInfo.TextSize = 11
-        appealInfo.TextWrapped = true
-        appealInfo.Text = "Appeal sending API is not connected yet. Copy the draft to the project's official support channel."
-        appealInfo.Parent = group
-
-        appealCopy.MouseButton1Click:Connect(function()
-            if type(setclipboard) == "function" then
-                local ok = pcall(setclipboard, tostring(appealDraft.Text or ""))
-                appealInfo.Text = ok and "Draft copied. Nothing has been submitted." or "Copy failed. Select and copy the text manually."
-            else
-                appealInfo.Text = "Clipboard unavailable; select and copy the draft manually. Nothing was submitted."
+        -- Feedback & Appeal: o() inside o() using a bounded ScrollingFrame.
+        -- This section is a LOCAL DRAFT UI. No feedback/appeal backend is claimed.
+        local panelExpanded = false
+        local panelScroll, panelUI
+        local openAppealDraft = function() end
+        local function setPanelExpanded(value)
+            panelExpanded = value == true
+            if not panelUI or not panelUI.Frame.Parent then return end
+            panelUI.Frame.Size = UDim2.new(1,-8,0,panelExpanded and 296 or 30)
+            panelUI.Button.Text = panelExpanded and "Close" or "Open"
+            if panelScroll then
+                panelScroll.Visible = panelExpanded
+                if not panelExpanded then panelScroll.CanvasPosition = Vector2.zero end
             end
-        end)
+        end
+
+        panelUI = o(group,"None","Feedback & Appeal",false,true,"Open",false,false,nil,
+            function(container)
+                container.Frame.Name = "FeedbackAndAppeal"
+                container.Frame.Size = UDim2.new(1,-8,0,30)
+
+                -- o() rows are children of this ScrollingFrame, which owns their layout.
+                panelScroll = Instance.new("ScrollingFrame")
+                panelScroll.Name = "FeedbackAppealSections"
+                panelScroll.Position = UDim2.fromOffset(4,29)
+                panelScroll.Size = UDim2.new(1,-8,0,260)
+                panelScroll.BackgroundColor3 = Color3.fromRGB(25,32,46)
+                panelScroll.BackgroundTransparency = 0.1
+                panelScroll.BorderSizePixel = 0
+                panelScroll.ScrollBarThickness = 4
+                panelScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+                panelScroll.CanvasSize = UDim2.fromOffset(0,0)
+                panelScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                panelScroll.ClipsDescendants = true
+                panelScroll.Visible = false
+                panelScroll.Parent = container.Frame
+                Corner(0,5,panelScroll)
+                local layout = Instance.new("UIListLayout")
+                layout.Name = "FeedbackAppealLayout"
+                layout.Padding = UDim.new(0,5)
+                layout.SortOrder = Enum.SortOrder.LayoutOrder
+                layout.Parent = panelScroll
+                local pad = Instance.new("UIPadding")
+                pad.PaddingTop = UDim.new(0,4)
+                pad.PaddingBottom = UDim.new(0,4)
+                pad.PaddingLeft = UDim.new(0,3)
+                pad.PaddingRight = UDim.new(0,3)
+                pad.Parent = panelScroll
+
+                -- Nested o() entries render within the existing Arcsen Settings UI.
+                local nextOrder = 0
+                local function infoSection(title, description)
+                    local infoText
+                    local item = o(panelScroll,"None",title,false,true,"Show",false,false,nil,
+                        function(sub)
+                            infoText = Instance.new("TextLabel")
+                            infoText.Name = "SectionNotice"
+                            infoText.Position = UDim2.fromOffset(6,31)
+                            infoText.Size = UDim2.new(1,-12,0,58)
+                            infoText.Text = description
+                            infoText.TextColor3 = Color3.fromRGB(210,223,240)
+                            infoText.TextSize = 12
+                            infoText.TextWrapped = true
+                            infoText.TextXAlignment = Enum.TextXAlignment.Left
+                            infoText.TextYAlignment = Enum.TextYAlignment.Top
+                            infoText.BackgroundTransparency = 1
+                            infoText.Visible = false
+                            infoText.Parent = sub.Frame
+                        end,
+                        function(_,event,sub)
+                            if event ~= "button" then return end
+                            local expanded = not infoText.Visible
+                            infoText.Visible = expanded
+                            sub.Frame.Size = UDim2.new(1,-6,0,expanded and 94 or 30)
+                            sub.Button.Text = expanded and "Hide" or "Show"
+                        end)
+                    nextOrder += 1
+                    item.Frame.LayoutOrder = nextOrder
+                    item.Frame.Size = UDim2.new(1,-6,0,30)
+                    return item
+                end
+
+                infoSection("Rules", "Use the official project rules when preparing a request. Explain the situation clearly; avoid spam and sharing passwords or tokens.")
+                infoSection("Reviewing", "Review status is not connected to Cloudflare yet. This row does not mean a request was submitted or is being reviewed.")
+                infoSection("Approved", "Approved submissions cannot be viewed yet. Review history will require a private, authenticated API.")
+                infoSection("Denied", "Denied submissions cannot be viewed yet. This is not a decision about your account.")
+                infoSection("Violation", "Violation records are not available in this client. Do not treat this row as a moderation verdict.")
+                infoSection("Spam Mail", "Spam filtering must be enforced on the server. This page is informational until the Feedback API is available.")
+
+                local function makeDraftSection(kind)
+                    local isAppeal = kind == "Appeal"
+                    local draftInput, titleInput, notice, countLabel
+                    local opened = false
+                    local draftUI
+                    local function updateCount()
+                        if not countLabel then return end
+                        local textValue = tostring(draftInput.Text or "")
+                        local length = utf8.len(textValue) or #textValue
+                        countLabel.Text = tostring(length) .. "/1500 characters | local draft only"
+                    end
+                    draftUI = o(panelScroll,"None",kind .. " Draft",false,true,"Edit",false,false,nil,
+                        function(sub)
+                            if not isAppeal then
+                                titleInput = Instance.new("TextBox")
+                                titleInput.Name = "ProblemTopic"
+                                titleInput.Position = UDim2.fromOffset(5,30)
+                                titleInput.Size = UDim2.new(1,-10,0,28)
+                                titleInput.BackgroundColor3 = Color3.fromRGB(36,44,61)
+                                titleInput.TextColor3 = Color3.new(1,1,1)
+                                titleInput.TextSize = 13
+                                titleInput.TextXAlignment = Enum.TextXAlignment.Left
+                                titleInput.PlaceholderText = "Problem topic (3–50 characters)"
+                                titleInput.ClearTextOnFocus = false
+                                titleInput.Text = ""
+                                titleInput.Visible = false
+                                titleInput.Parent = sub.Frame
+                                Corner(0,4,titleInput)
+                            end
+                            draftInput = Instance.new("TextBox")
+                            draftInput.Name = isAppeal and "AppealDraft" or "FeedbackDescription"
+                            draftInput.Position = UDim2.fromOffset(5,isAppeal and 30 or 62)
+                            draftInput.Size = UDim2.new(1,-10,0,106)
+                            draftInput.BackgroundColor3 = Color3.fromRGB(30,37,52)
+                            draftInput.TextColor3 = Color3.new(1,1,1)
+                            draftInput.TextSize = 13
+                            draftInput.TextXAlignment = Enum.TextXAlignment.Left
+                            draftInput.TextYAlignment = Enum.TextYAlignment.Top
+                            draftInput.TextWrapped = true
+                            draftInput.MultiLine = true
+                            draftInput.ClearTextOnFocus = false
+                            draftInput.PlaceholderText = isAppeal
+                                and "Explain your appeal here (50–1500 characters)."
+                                or "Describe the problem (50–1500 characters)."
+                            draftInput.Text = ""
+                            draftInput.Visible = false
+                            draftInput.Parent = sub.Frame
+                            Corner(0,4,draftInput)
+                            countLabel = Instance.new("TextLabel")
+                            countLabel.Name = "CharacterCount"
+                            countLabel.Position = UDim2.fromOffset(5,isAppeal and 139 or 171)
+                            countLabel.Size = UDim2.new(1,-10,0,18)
+                            countLabel.BackgroundTransparency = 1
+                            countLabel.TextColor3 = Color3.fromRGB(180,200,225)
+                            countLabel.TextXAlignment = Enum.TextXAlignment.Left
+                            countLabel.TextSize = 11
+                            countLabel.Visible = false
+                            countLabel.Parent = sub.Frame
+                            draftInput:GetPropertyChangedSignal("Text"):Connect(updateCount)
+                            updateCount()
+                            local copy = Instance.new("TextButton")
+                            copy.Name = "Copy" .. kind .. "Draft"
+                            copy.Position = UDim2.fromOffset(5,isAppeal and 160 or 192)
+                            copy.Size = UDim2.new(1,-10,0,28)
+                            copy.BackgroundColor3 = Color3.fromRGB(45,95,135)
+                            copy.TextColor3 = Color3.new(1,1,1)
+                            copy.TextSize = 12
+                            copy.Text = "Copy " .. kind .. " Draft (not submitted)"
+                            copy.Visible = false
+                            copy.Parent = sub.Frame
+                            Corner(0,4,copy)
+                            notice = Instance.new("TextLabel")
+                            notice.Name = "DraftNotice"
+                            notice.Position = UDim2.fromOffset(5,isAppeal and 191 or 223)
+                            notice.Size = UDim2.new(1,-10,0,42)
+                            notice.BackgroundTransparency = 1
+                            notice.TextColor3 = Color3.fromRGB(225,207,155)
+                            notice.TextSize = 11
+                            notice.TextWrapped = true
+                            notice.TextXAlignment = Enum.TextXAlignment.Left
+                            notice.Text = "Local draft only. Nothing is sent to Cloudflare."
+                            notice.Visible = false
+                            notice.Parent = sub.Frame
+                            local function setDraftVisible(show)
+                                opened = show == true
+                                sub.Frame.Size = UDim2.new(1,-6,0,opened and (isAppeal and 238 or 270) or 30)
+                                sub.Button.Text = opened and "Close" or "Edit"
+                                for _,v in ipairs(sub.Frame:GetChildren()) do
+                                    if v == draftInput or v == titleInput or v == countLabel
+                                        or v == copy or v == notice then
+                                        v.Visible = opened
+                                    end
+                                end
+                            end
+                            sub.SetDraftVisible = setDraftVisible
+                            copy.MouseButton1Click:Connect(function()
+                                local body = tostring(draftInput.Text or "")
+                                local n = utf8.len(body) or #body
+                                if n < 50 or n > 1500 then
+                                    notice.Text = "Description must contain 50–1500 characters. Nothing submitted."
+                                    return
+                                end
+                                local subject = ""
+                                if titleInput then
+                                    subject = tostring(titleInput.Text or ""):match("^%s*(.-)%s*$")
+                                    local subjectLength = utf8.len(subject) or #subject
+                                    if subjectLength < 3 or subjectLength > 50 then
+                                        notice.Text = "Problem topic must contain 3–50 characters."
+                                        return
+                                    end
+                                end
+                                local textToCopy = (isAppeal and "Appeal Draft" or "Feedback Draft") .. "\n"
+                                    .. (subject ~= "" and "Topic: " .. subject .. "\n" or "") .. body
+                                if type(setclipboard) ~= "function" then
+                                    notice.Text = "Clipboard unavailable; select the draft to copy manually."
+                                    draftInput:CaptureFocus()
+                                    return
+                                end
+                                local ok = pcall(setclipboard,textToCopy)
+                                notice.Text = ok and "Copied locally. NOT submitted to Cloudflare."
+                                    or "Copy failed; select the text manually."
+                            end)
+                        end,
+                        function(_,event,sub)
+                            if event == "button" and type(sub.SetDraftVisible) == "function" then
+                                sub.SetDraftVisible(not opened)
+                            end
+                        end)
+                    nextOrder += 1
+                    draftUI.Frame.LayoutOrder = nextOrder
+                    draftUI.Frame.Size = UDim2.new(1,-6,0,30)
+                    return function(value)
+                        if type(draftUI.SetDraftVisible) == "function" then
+                            draftUI.SetDraftVisible(value)
+                        end
+                    end
+                end
+                makeDraftSection("Feedback")
+                openAppealDraft = makeDraftSection("Appeal")
+            end,
+            function(_,event)
+                if event == "button" then setPanelExpanded(not panelExpanded) end
+            end)
+        panelUI.Frame.LayoutOrder = 23
+        panelUI.Frame.Size = UDim2.new(1,-8,0,30)
+
+        -- Called only on a verified signed UI policy indicating a ban.
+        revealAppealDraft = function()
+            setPanelExpanded(true)
+            openAppealDraft(true)
+            if panelScroll then
+                task.defer(function()
+                    if panelScroll.Parent then
+                        panelScroll.CanvasPosition = Vector2.new(0,
+                            math.max(0,panelScroll.AbsoluteCanvasSize.Y-panelScroll.AbsoluteSize.Y))
+                    end
+                end)
+            end
+        end
     end
 
     local function showSettings()
         oset = true
         set.Image = "rbxassetid://99070092445366"
         Tween(inf2,{Position=UDim2.new(0,0,-1,-5)},0.2)
-        if typeof(group) == "Instance" then group.Visible = true end
+        if typeof(group) == "Instance" then
+            group.Visible = true
+            local moreButton = group.Parent and group.Parent:FindFirstChild("more")
+            if moreButton and moreButton:IsA("ImageButton") then
+                moreButton.Image = "rbxassetid://76063966669126"
+            end
+        end
         if settings and settings:IsA("ScrollingFrame") then
             task.defer(function()
                 if settings.Parent then
@@ -14043,7 +14236,11 @@ task.spawn(function()
             overlay.Text = status == "banned"
                 and "Access to Arcsen is restricted. Open Settings > ArcScriptCenter > Feedback & Appeal."
                 or "ArcScriptCenter policy could not be verified. Chat is paused until a valid check is available."
-            if status == "banned" then showSettings() end
+            if status == "banned" and gate.status ~= "banned" then
+                -- Auto-open once on the status transition, not on every poll.
+                revealAppealDraft()
+                showSettings()
+            end
         else
             new.Active = true
             new.Visible = saved.newVisible
