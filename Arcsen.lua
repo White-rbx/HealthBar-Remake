@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.31 ",
+	sion = " UIs 7.3.32 ",
 	logs = [[
+(:15/11/2026: F&A) Stage 16.31: Select is created only for selector rows, lives under SelectButton rather than Inside; one dropdown open at a time; add SelectButton and dropdown lifecycle methods while preserving ui.Button compatibility.
 (:14/11/2026: A&F) Stage 16.30: o() Body now AutomaticSize.Y / zero Y size; added hidden, zero-Y auto-sized Inside content container at Y=25. Nested Feedback, Violation, API Custom Prompt and Memory inputs use ui.Inside; no manual outer row heights.
 (:14/11/2026: F) Stage 16.29: Remove TextBounds sizing from Feedback/Violation notices; use TextScaled with font constraints for fixed labels, and a wrapped TextLabel in its own scrollable Moderator Message viewport. Preserve nested canvas guards.
 (:14/11/2026: F) Stage 16.28: Guard nested Feedback/Violation/Settings CanvasSize against truncated scrolling; track UIListLayout and bottommost elements, preserve AutomaticCanvasSize.Y.
@@ -1989,7 +1990,7 @@ local function o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scrip
     txt.Parent = frame
     
     local btn_o = Instance.new("TextButton")
-    btn_o.Name = "Button"
+    btn_o.Name = isselect and "SelectButton" or "Button"
     btn_o.Size = UDim2.new(0, 100, 0, 20)
     btn_o.Position = UDim2.new(1, -100, 0, 0)
     btn_o.BackgroundColor3 = Color3.new(1, 1, 1)
@@ -2029,25 +2030,29 @@ local function o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scrip
         box_o.Position = UDim2.new(1, -100, 0, 0)
     end
 
-    local sd = Instance.new("ScrollingFrame")
-    sd.Name = "Select"
-    sd.Size = UDim2.new(0, 200, 0, 220)
-    sd.Position = UDim2.new(0, -100, 0, 25)
-    sd.BackgroundColor3 = btn_o.BackgroundColor3
-    sd.BackgroundTransparency = 0
-    sd.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    sd.CanvasSize = UDim2.new(0,0,0,0)
-    sd.ScrollingDirection = Enum.ScrollingDirection.Y
-    sd.ScrollBarThickness = 3
-    sd.BorderMode = Enum.BorderMode.Inset
-    sd.BorderSizePixel = 2
-    sd.Visible = false
-    sd.ClipsDescendants = true
-    sd.Parent = btn_o
-    sd.ZIndex = 2
-    Corner(0, 3, sd)
-
-    ListLayout(sd, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
+    -- Select is a dropdown owned by SelectButton. It is never a child of
+    -- Inside, Body, or ScreenGui, and non-selector rows do not create it.
+    local sd
+    if isselect then
+        sd = Instance.new("ScrollingFrame")
+        sd.Name = "Select"
+        sd.Size = UDim2.new(0, 200, 0, 220)
+        sd.Position = UDim2.new(0, -100, 0, 25)
+        sd.BackgroundColor3 = btn_o.BackgroundColor3
+        sd.BackgroundTransparency = 0
+        sd.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        sd.CanvasSize = UDim2.new(0,0,0,0)
+        sd.ScrollingDirection = Enum.ScrollingDirection.Y
+        sd.ScrollBarThickness = 3
+        sd.BorderMode = Enum.BorderMode.Inset
+        sd.BorderSizePixel = 2
+        sd.Visible = false
+        sd.ClipsDescendants = true
+        sd.Parent = btn_o -- btn_o.Name == "SelectButton" for selectors
+        sd.ZIndex = 2
+        Corner(0, 3, sd)
+        ListLayout(sd, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
+    end
 
     -- Expandable content goes into Inside, not directly into Body.
     -- Header controls (Name/Button/Input) stay on Body unless moved explicitly.
@@ -2067,12 +2072,50 @@ local function o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scrip
         Body = frame,
         Inside = inside, -- Put expandable children here
         Label = txt,
-        Button = btn_o,
+        Button = btn_o,  -- Backward-compatible alias for selector rows
+        SelectButton = isselect and btn_o or nil,
         Input = box_o,
-        Select = sd
+        Select = sd,
+        SelectOptions = {},
+        SelectedValue = nil
     }
 
+    -- The selector's lifecycle is independent of Inside expansion.
+    -- Keep one selector open at a time within this Arcsen instance.
+    ui.IsSelectOpen = function()
+        return sd ~= nil and sd.Parent == btn_o and sd.Visible
+    end
+    ui.CloseSelect = function()
+        if sd then sd.Visible = false end
+        if loc.ActiveSelectUI == ui then loc.ActiveSelectUI = nil end
+    end
+    ui.OpenSelect = function()
+        if not sd or not btn_o.Parent or not btn_o.Active
+            or not btn_o.Visible or not frame.Visible then return false end
+        if loc.ActiveSelectUI and loc.ActiveSelectUI ~= ui
+            and type(loc.ActiveSelectUI.CloseSelect) == "function" then
+            loc.ActiveSelectUI.CloseSelect()
+        end
+        sd.Visible = true
+        loc.ActiveSelectUI = ui
+        return true
+    end
+    ui.ToggleSelect = function()
+        if ui.IsSelectOpen() then
+            ui.CloseSelect()
+            return false
+        end
+        return ui.OpenSelect()
+    end
+
+    if isselect then
+        btn_o.Destroying:Connect(function()
+            if loc.ActiveSelectUI == ui then loc.ActiveSelectUI = nil end
+        end)
+    end
+
     local function addse(child, displayText)
+        if not sd then return nil end
         local value = tostring(child or "UnknownChild")
         displayText = tostring(displayText or value)
 
@@ -2087,10 +2130,12 @@ local function o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scrip
         btnb.Parent = sd
         btnb.ZIndex = 3
         Corner(0,3,btnb)
+        ui.SelectOptions[value] = btnb
 
         btnb.MouseButton1Click:Connect(function()
+            ui.SelectedValue = value
             btn_o.Text = displayText
-            sd.Visible = false
+            ui.CloseSelect()
 
             if type(callback) == "function" then
                 callback(value, "select", ui)
@@ -2104,7 +2149,7 @@ local function o(parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scrip
 
     btn_o.MouseButton1Click:Connect(function()
         if isselect then
-            sd.Visible = not sd.Visible
+            ui.ToggleSelect()
         elseif type(callback) == "function" then
             callback(btn_o.Text, "button", ui)
         end
