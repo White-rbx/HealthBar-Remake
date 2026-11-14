@@ -11,7 +11,7 @@ if _boot.__ES_BANNED == true or _boot.__ES_READY ~= true
     return false
 end
 
--- Loader script 7.50 (unified loc.o() expansion + Inside + AutomaticSize.Y; preserve v0.5.36 SetUp completion gate)
+-- Loader script 7.52 (Select stays under SelectButton, not Inside; matched o() Body/Inside interface with Arcsen 7.3.32; preserve SetUp gate)
 
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
@@ -404,6 +404,9 @@ ListLayout(scr, 0, 5, "HCenter","VTop","SLayout","FillV")
 
 local ocstate = false
 oc.MouseButton1Click:Connect(function()
+  if loc.ActiveSelectUI and type(loc.ActiveSelectUI.CloseSelect) == "function" then
+    loc.ActiveSelectUI.CloseSelect()
+  end
   if ocstate == false then
     ocstate = true
     oc.Image = "rbxassetid://111119256032094"
@@ -606,7 +609,8 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
     -- o(parent, fill, option_, isrt, isb, nbtnText, isselect, isi, tih,
     --   scriptFN, callback, selectedText)
     -- When isselect and isb are both true, the row gets:
-    -- [Select dropdown] [nbtn/action button].
+    -- [SelectButton (with Select dropdown)] [nbtn/action button].
+    -- Select is a child of SelectButton, NOT Inside or ScreenGui.
     -- Legacy API remains supported below.
     local modern = typeof(a) == "Instance"
     local parent, fill, option_, isrt, isb, tb, isselect, isi, tih, scriptFN, callback
@@ -752,6 +756,7 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
     local ui = {
         Parent = rowParent,
         Frame = frame,
+        Body = frame, -- Matches Arcsen o() without breaking existing ui.Frame callers
         Inside = inside,
         Label = label,
         Button = button, -- compatibility alias for the nbtn
@@ -834,11 +839,40 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
         selectFrame.BorderSizePixel = 1
         selectFrame.Visible = false
         selectFrame.ClipsDescendants = true
+        -- Dropdown remains owned by SelectButton, not by Body/Inside directly.
+        -- This keeps original relative positioning and avoids expanding Inside.
         selectFrame.Parent = selectButton
         selectFrame.ZIndex = 5
         Corner(0, 4, selectFrame)
         ListLayout(selectFrame, 0, 3, "HLeft", "VTop", "SLayout", "FillV")
         ui.Select = selectFrame
+
+        -- Centralized dropdown lifecycle: only one open Select at a time.
+        ui.IsSelectOpen = function()
+            return selectFrame.Parent == selectButton and selectFrame.Visible
+        end
+        ui.CloseSelect = function()
+            selectFrame.Visible = false
+            if loc.ActiveSelectUI == ui then loc.ActiveSelectUI = nil end
+        end
+        ui.OpenSelect = function()
+            if not selectButton.Parent or not selectButton.Active or not selectButton.Visible
+                or not frame.Visible then return false end
+            if loc.ActiveSelectUI ~= ui and loc.ActiveSelectUI
+                and type(loc.ActiveSelectUI.CloseSelect) == "function" then
+                loc.ActiveSelectUI.CloseSelect()
+            end
+            selectFrame.Visible = true
+            loc.ActiveSelectUI = ui
+            return true
+        end
+        ui.ToggleSelect = function()
+            if ui.IsSelectOpen() then
+                ui.CloseSelect()
+                return false
+            end
+            return ui.OpenSelect()
+        end
     end
 
     local function setOptionDisabled(optionButton, disabled)
@@ -875,7 +909,7 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
             if optionButton:GetAttribute("Disabled") then return end
             ui.SelectedValue = value
             selectButton.Text = value
-            selectFrame.Visible = false
+            ui.CloseSelect()
             if type(callback) == "function" then
                 callback(value, "select", ui)
             end
@@ -888,9 +922,11 @@ loc.o = function(a, b, c, d, e, f, g, h, i, j, k, l)
 
     if selectButton then
         selectButton.MouseButton1Click:Connect(function()
-            if selectButton.Active then
-                selectFrame.Visible = not selectFrame.Visible
-            end
+            if selectButton.Active then ui.ToggleSelect() end
+        end)
+        -- Clear tracked state if the original control is destroyed.
+        selectButton.Destroying:Connect(function()
+            if loc.ActiveSelectUI == ui then loc.ActiveSelectUI = nil end
         end)
     end
 
@@ -7016,8 +7052,8 @@ SetLanguageButtonsLocked = function(locked)
                 control.AutoButtonColor = not locked
             end
         end
-        if locked and L.LanguageSelect.Select then
-            L.LanguageSelect.Select.Visible = false
+        if locked and type(L.LanguageSelect.CloseSelect) == "function" then
+            L.LanguageSelect.CloseSelect()
         end
     end
 
