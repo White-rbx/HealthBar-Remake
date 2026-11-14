@@ -1,4 +1,4 @@
--- So this another script lol 2.957
+-- So this another script lol 2.958
 
 
 -- =====>> Saved Functions <<=====
@@ -647,7 +647,7 @@ Show or hide the Gif Animation Editor window.]],
 )
 
 --// =====================================================
---// ArcScriptCenter v0.5.41.3: UniversalPresence single owner (Function_Two Toggles)
+--// ArcScriptCenter v0.5.41.4: UniversalPresence single owner (Function_Two Toggles)
 --// Arcsen Settings is read-only. Public profiles/time require explicit consent.
 --// =====================================================
 do
@@ -657,6 +657,7 @@ do
     local pauseKey = "ACS_presence_pause_until"
     local neverKey = "ACS_presence_never_share"
     local profileKey = "ACS_admin_full_profile_opt_in_v2"
+    local nicknameKey = "ACS_public_nickname_opt_in_v1"
     local usageKey = "ACS_usage_time_opt_in"
     local rankKey = "ACS_leaderboard_opt_in"
     local avatarKey = "ACS_leaderboard_avatar_opt_in"
@@ -705,6 +706,7 @@ do
             local made, instance = pcall(factory.new)
             if made and type(instance) == "table" and type(instance.start) == "function"
                 and type(instance.setAdminProfileConsent) == "function"
+                and type(instance.setPublicNicknameConsent) == "function"
                 and type(instance.setAnalyticsConsent) == "function" then
                 adapter = instance
                 env[ownerKey] = adapter
@@ -725,6 +727,7 @@ do
     local function updateState()
         local active = isEnabled()
         local showAdmin = conf:Get(profileKey,false) == true
+        local showNickname = conf:Get(nicknameKey,false) == true
         local usage = conf:Get(usageKey,false) == true
         local ranking = usage and conf:Get(rankKey,false) == true
         local avatar = ranking and conf:Get(avatarKey,false) == true
@@ -739,6 +742,7 @@ do
                         end
                     end
                     apply("Full Admin profile consent", adapter.setAdminProfileConsent, showAdmin)
+                    apply("Public nickname consent", adapter.setPublicNicknameConsent, showNickname)
                     apply("Analytics consent", adapter.setAnalyticsConsent, usage)
                     apply("Leaderboard consent", adapter.setLeaderboardConsent, ranking)
                     apply("Avatar consent", adapter.setAvatarConsent, avatar)
@@ -753,6 +757,7 @@ do
         env.ArcScriptCenterConsentStatus = {
             activeUser=actual.active == true,
             showToAdmin=actual.adminProfileConsent == true,
+            publicNicknameConsent=actual.publicNicknameConsent == true,
             analyticsConsent=actual.analyticsConsent == true,
             leaderboardConsent=actual.leaderboardConsent == true,
             avatarConsent=actual.avatarConsent == true,
@@ -768,35 +773,44 @@ do
     end
 
     row,setMain=createToggle(BFrame,mainKey,"Share Active Status",
-        [[<b>Anonymous Active User</b> is shared only when ON (OFF by default). Turning OFF pauses for 24 hours.
+        [[<b>Anonymous Active User</b> Turning OFF pauses for 24 hours.
 Use Never Share to opt out permanently. Usage time and public leaderboard are separate OFF-by-default toggles.]],
         function(on)
             if initial then return end
             conf:Set(pauseKey,on and 0 or (os.time()+86400)); conf:Save()
             updateState()
-        end,false)
+        end, true)
     row.Name=mainKey
 
     local profileRow=createToggle(BFrame,profileKey,"Show Full Profile to Admin",
-        [[<b>Full Admin Profile</b> — OFF by default, requires fresh consent. When ON, authorized administrators can see your Roblox DisplayName (nickname), Username, UserId and public Avatar in the private dashboard to prepare a SetUp Ban Draft. This does not automatically ban you. Client-supplied details are not Roblox-verified.]],
-        function(on) if not initial then updateState() end end,false)
+        [[<b>Full Admin Profile</b> — On by default, requires fresh consent. When ON, authorized administrators can see your Roblox DisplayName (nickname), Username, UserId and public Avatar in the private dashboard to prepare a SetUp Ban Draft. This does not automatically ban you. Client-supplied details are not Roblox-verified.]],
+        function(on) if not initial then updateState() end end, true)
     profileRow.Name=profileKey
+
+    -- Opt-in public nickname visibility is NOT tied to private admin sharing.
+    local nicknameRow=createToggle(BFrame,nicknameKey,"Show Nickname in Arcsen Active User List",
+        [[<b>Public Nickname</b> — On by default. While Share Active Status is ON,
+other Arcsen users may see your Roblox DisplayName in the Active User List.
+Username, UserId, Avatar, admin details and usage time are not shared by this switch.
+Turn OFF to remove your public nickname from active sessions.]],
+        function(on) if not initial then updateState() end end,true)
+    nicknameRow.Name=nicknameKey
 
     local usageRow
     usageRow,setUsage=createToggle(BFrame,usageKey,"Count Usage Time",
-        [[<b>Accumulate usage time</b> — OFF by default. When enabled while Share Active Status is ON,
+        [[<b>Accumulate usage time</b> — On by default. When enabled while Share Active Status is ON,
 periodic heartbeats count approximately 30-second intervals on the Worker. Time is kept in D1 after logout.
 Turning OFF stops counting; turning it back ON resumes the total.]],
         function(on)
             if initial then return end
             if not on and conf:Get(rankKey,false) and setRank then setRank(false) end
             updateState()
-		end, false)
+		end, true)
     usageRow.Name=usageKey
 
     local rankRow
     rankRow,setRank=createToggle(BFrame,rankKey,"Show in Leaderboard",
-        [[<b>Public Leaderboard (opt-in)</b> — OFF by default. Shares self-reported nickname,
+        [[<b>Public Leaderboard (opt-in)</b> — On by default. Shares self-reported nickname,
 masked Username, masked UserID, and accumulated usage time. The ranking stays visible after logout.
 Turning this OFF removes the public profile without erasing recorded usage time.]],
         function(on)
@@ -809,7 +823,7 @@ Turning this OFF removes the public profile without erasing recorded usage time.
             end
             if not on and conf:Get(avatarKey,false) and setAvatar then setAvatar(false) end
             updateState()
-        end,false)
+        end, true)
     rankRow.Name=rankKey
 
     local avatarRow
