@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.35 ",
+	sion = " UIs 7.3.36 ",
 	logs = [[
+(:15/11/2026: A&F) Stage 16.35: Real, opt-in staging Feedback/Appeal submission with double-tap confirmation, in-session private receipts, manual case status lookup, response checks and copy credentials. Never touch production.
 (:15/11/2026: A&F) Stage 16.34: Separate Feedback 50–1500 from Appeal 50–5000 characters; keep local drafts and original 350px user-made Violation UI; server validation mirrors category-specific limits on staging.
 (:15/11/2026: A&F) Stage 16.33: Developer-revised Violation UI. Outer viewport fixed at 350px; AutomaticSize.Y for Violation card and Appeal; AutoCanvas for nested details and messages, new insets and left aligned text; all content stays local preview until staging API integration.
 (:15/11/2026: A&F) Stage 16.32: Replace old Violation Notice UI with developer recovered ViolationAppealUI, convert creation and expansion into reusable functions, use semi-transparent nested ScrollingFrames and robust canvas sizing; keep previews local.
@@ -14002,6 +14003,227 @@ task.spawn(function()
     local statusLabel
     local retry
     local revealAppealDraft = function() end
+    -- Stage 16.35: Feedback and Appeal only. Never reuse the production
+    -- Cloud/Policy URL or send administrative tokens from the client.
+    local CASE_STAGING_BASE = "https://arcscriptcenter-api-staging.kogpasan14.workers.dev"
+    local privateReceipts = {} -- Session only, not getgenv(), Global Memory, logs or disk.
+    loc.API.ArcScriptCenterCaseSession = {LastCaseId=nil, Count=0, Transport="STAGING only"}
+
+    local function caseLength(value)
+        return utf8.len(value) or #value
+    end
+    local function caseTrim(value)
+        if type(value) ~= "string" then return "" end
+        return value:gsub("^%s+", ""):gsub("%s+$", "")
+    end
+    local function caseValidate(kind, topic, description)
+        local limit = kind == "appeal" and 5000 or (kind == "feedback" and 1500 or 0)
+        local a,b = caseLength(topic),caseLength(description)
+        if limit == 0 or a < 3 or a > 50 then
+            return false, "Topic must contain 3–50 characters."
+        end
+        if b < 50 or b > limit then
+            return false, "Description must contain 50–"..limit.." characters."
+        end
+        if (topic..description):find("[%z\1-\8\11\12\14-\31]") then
+            return false, "Unsupported control characters in request."
+        end
+        return true
+    end
+
+    local function casePost(path, payload)
+        -- Called only from task.spawn; never blocks a button callback.
+        if path ~= "/api/v1/feedback/submit" and
+            path ~= "/api/v1/feedback/status" then
+            return nil, "Endpoint blocked", false
+        end
+        local requestFn = arcGetSuncRequest()
+        if type(requestFn) ~= "function" then
+            return nil, "This runtime has no HTTP request() support.", false
+        end
+        local okJSON, body = pcall(s.HttpService.JSONEncode,s.HttpService,payload)
+        if not okJSON or type(body) ~= "string" or #body > 32000 then
+            return nil, "Cannot encode request (oversized payload).", false
+        end
+        local ok, response = pcall(requestFn, {
+            Url = CASE_STAGING_BASE..path,
+            Method = "POST", Body = body, Timeout = 15,
+            Headers = {
+                ["Content-Type"] = "application/json",
+                ["Accept"] = "application/json",
+            },
+        })
+        if not ok or type(response) ~= "table" then
+            return nil, "Network error; submission outcome may be unknown. Check before retrying.", true
+        end
+        local status = tonumber(response.StatusCode or response.Status or 0) or 0
+        local raw = response.Body or response.body
+        if type(raw) ~= "string" or #raw > 65536 then
+            return nil, "Invalid response; outcome may be unknown.", true
+        end
+        local decoded, data = pcall(s.HttpService.JSONDecode,s.HttpService,raw)
+        if not decoded or type(data) ~= "table" then
+            return nil, "Invalid server JSON; outcome may be unknown.", true
+        end
+        if status < 200 or status >= 300 or data.ok ~= true then
+            return nil, ("HTTP "..status..": "..tostring(data.error or "Request rejected")):sub(1,180), false
+        end
+        return data, nil, false
+    end
+
+    local function caseRecord(kind, data)
+        if type(data) ~= "table" or type(data.id) ~= "string" or
+            not data.id:match("^[0-9a-fA-F%-]+$") or #data.id ~= 36 or
+            type(data.receipt) ~= "string" or #data.receipt ~= 64 or
+            not data.receipt:match("^[a-fA-F0-9]+$") then
+            return nil, "Server response was not a valid Case ID + receipt."
+        end
+        local item = {id=data.id, receipt=data.receipt, kind=kind, status="reviewing"}
+        privateReceipts[data.id] = item
+        loc.API.ArcScriptCenterCaseSession.LastCaseId = data.id
+        local c=0
+        for _ in pairs(privateReceipts) do c+=1 end
+        loc.API.ArcScriptCenterCaseSession.Count = c
+        return item
+    end
+
+    local function caseCheckStatus(id, receipt)
+        id=caseTrim(id)
+        receipt=caseTrim(receipt)
+        if #id ~= 36 or not id:match("^[0-9a-fA-F%-]+$") or
+            #receipt ~= 64 or not receipt:match("^[0-9a-fA-F]+$") then
+            return nil, "Enter a valid Case ID and private 64-character Receipt."
+        end
+        local data, err = casePost("/api/v1/feedback/status",{id=id,receipt=receipt})
+        if not data then return nil,err end
+        local record = data.case
+        if type(record) ~= "table" or record.id ~= id or
+            not ({reviewing=true,approved=true,denied=true,violation=true})[record.status] then
+            return nil, "Invalid case response."
+        end
+        if privateReceipts[id] then
+            privateReceipts[id].status = record.status
+        end
+        return record
+    end
+
+    local function caseSubmit(kind, topic, description)
+        topic,description=caseTrim(topic),caseTrim(description)
+        local valid,errorText=caseValidate(kind,topic,description)
+        if not valid then return nil,errorText,false end
+        local payload={kind=kind,topic=topic,description=description}
+        if kind == "appeal" then
+            local localPlayer=game:GetService("Players").LocalPlayer
+            if not localPlayer or localPlayer.UserId <= 0 then
+                return nil, "LocalPlayer UserId is unavailable.",false
+            end
+            payload.claimedUserId=tostring(localPlayer.UserId)
+            -- The server treats claimedUserId as unverified identity.
+        end
+        local data,err,uncertain=casePost("/api/v1/feedback/submit",payload)
+        if not data then return nil,err,uncertain end
+        local record,recordErr=caseRecord(kind,data)
+        if not record then return nil,recordErr,true end
+        return record,nil,false
+    end
+
+    local function caseCredentials(id)
+        local item=privateReceipts[id]
+        if not item then return nil end
+        return "Case ID: "..item.id.."\nReceipt: "..item.receipt
+    end
+
+    local function caseButton(parent,name,textValue,layoutOrder,y,height)
+        local button=Instance.new("TextButton")
+        button.Name=name
+        button.Text=textValue
+        button.LayoutOrder=layoutOrder or 0
+        button.Size=UDim2.new(1,-10,0,height or 26)
+        button.Position=UDim2.fromOffset(5,y or 0)
+        button.BackgroundColor3=Color3.fromRGB(46,84,118)
+        button.TextColor3=Color3.new(1,1,1)
+        button.TextSize=11
+        button.TextWrapped=true
+        button.Visible=true
+        button.Parent=parent
+        Corner(0,4,button)
+        return button
+    end
+
+    local function caseSetupCredentials(parent,layoutOrder,y,refresh)
+        local copy=caseButton(parent,"CopyCaseCredentials","Copy private Case ID + Receipt",layoutOrder,y)
+        copy.Visible=false
+        local reveal=caseButton(parent,"RevealCaseCredentials","Show private key (if clipboard unavailable)",layoutOrder+1,y+29)
+        reveal.Visible=false
+        local secretBox=Instance.new("TextBox")
+        secretBox.Name="PrivateCaseReceipt"
+        secretBox.LayoutOrder=layoutOrder+2
+        secretBox.Size=UDim2.new(1,-10,0,54)
+        secretBox.Position=UDim2.fromOffset(5,y+58)
+        secretBox.Text=""
+        secretBox.ClearTextOnFocus=false
+        secretBox.MultiLine=true
+        secretBox.TextWrapped=true
+        secretBox.TextEditable=false
+        secretBox.TextSize=10
+        secretBox.TextColor3=Color3.new(1,1,1)
+        secretBox.BackgroundColor3=Color3.fromRGB(30,37,52)
+        secretBox.Visible=false
+        secretBox.Parent=parent
+        local currentId=nil
+        local function setCase(id)
+            currentId=id
+            copy.Visible=id~=nil
+            reveal.Visible=id~=nil
+            secretBox.Visible=false
+            secretBox.Text=""
+            if refresh then task.defer(refresh) end
+        end
+        copy.MouseButton1Click:Connect(function()
+            local credentialText=caseCredentials(currentId)
+            if not credentialText then return end
+            if type(setclipboard)=="function" then
+                local ok=pcall(setclipboard,credentialText)
+                if ok then copy.Text="Copied (keep private)";return end
+            end
+            copy.Text="Clipboard unavailable – use Show private key"
+        end)
+        reveal.MouseButton1Click:Connect(function()
+            local shown=not secretBox.Visible
+            secretBox.Text=shown and (caseCredentials(currentId) or "") or ""
+            secretBox.Visible=shown
+            reveal.Text=shown and "Hide private key" or "Show private key (if clipboard unavailable)"
+            if refresh then task.defer(refresh) end
+        end)
+        return setCase
+    end
+
+    local function caseConfirmAndSend(state, payload, onSending, onDone)
+        -- Two deliberate taps with exactly the same request in <=15 seconds.
+        local valid,errorText=caseValidate(payload.kind,caseTrim(payload.topic),caseTrim(payload.description))
+        if not valid then onDone(nil,errorText,false);return end
+        if state.busy then return end
+        local token=payload.kind.."\0"..payload.topic.."\0"..payload.description
+        if state.confirm ~= token or os.clock()-(state.confirmedAt or 0)>15 then
+            state.confirm=token
+            state.confirmedAt=os.clock()
+            onDone(nil,"Tap Submit again within 15s to SEND to Cloudflare STAGING (not production).",false)
+            return
+        end
+        state.confirm=nil
+        state.busy=true
+        onSending()
+        task.spawn(function()
+            local ok,item,errorText,uncertain=pcall(caseSubmit,payload.kind,payload.topic,payload.description)
+            state.busy=false
+            if not ok then
+                onDone(nil,"Request error; submission outcome may be unknown.",true)
+            else
+                onDone(item,errorText,uncertain)
+            end
+        end)
+    end
+
     if typeof(group) == "Instance" and group:IsA("GuiObject") then
         statusLabel = Instance.new("TextLabel")
         statusLabel.Name = "SignedPolicyStatus"
@@ -14025,8 +14247,8 @@ task.spawn(function()
         retry.Parent = group
         Corner(0,5,retry)
 
-        -- Feedback & Appeal: o() inside o() using a bounded ScrollingFrame.
-        -- This section is a LOCAL DRAFT UI. No feedback/appeal backend is claimed.
+        -- Feedback & Appeal: developer-designed UI; explicit opt-in submission
+        -- only to the fixed STAGING Worker. Production and admin routes untouched.
         local panelExpanded = false
         local panelScroll, panelUI
         local openAppealDraft = function() end
@@ -14183,9 +14405,9 @@ Breaking the rules may result in a longer ban or a permanent ban. Please follow 
 
 More information in discord you can find the link at About or on the ScriptBlox/Hexhell
 ]==], true)
-                infoSection("Reviewing", "Review status is not connected to Cloudflare yet. This row does not mean a request was submitted or is being reviewed.")
-                infoSection("Approved", "Approved submissions cannot be viewed yet. Review history will require a private, authenticated API.")
-                infoSection("Denied", "Denied submissions cannot be viewed yet. This is not a decision about your account.")
+                infoSection("Reviewing", "A submitted case starts at Reviewing in Cloudflare STAGING. Use Check Existing Case with your private receipt to see its actual status. A local draft is not a submission.")
+                infoSection("Approved", "An Approved status is shown only after a successful STAGING status check with a matching Case ID and Receipt. It is not an account-wide status.")
+                infoSection("Denied", "A Denied status is shown only after a successful STAGING status check with a matching Case ID and Receipt. This section alone does not imply denial.")
                 -- Violation and its nested Appeal editor are built below,
                 -- after makeDraftSection() is defined. Spam Mail is admin-only.
 
@@ -14199,7 +14421,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         if not countLabel then return end
                         local textValue = tostring(draftInput.Text or "")
                         local length = utf8.len(textValue) or #textValue
-                        countLabel.Text = tostring(length) .. "/" .. tostring(maxCharacters) .. " characters | local draft only"
+                        countLabel.Text = tostring(length) .. "/" .. tostring(maxCharacters) .. " characters | STAGING"
                     end
                     draftUI = o(parentScroll or panelScroll,"None",kind .. " Draft",false,true,"Edit",false,false,nil,
                         function(sub)
@@ -14270,7 +14492,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             notice.TextSize = 11
                             notice.TextWrapped = true
                             notice.TextXAlignment = Enum.TextXAlignment.Left
-                            notice.Text = "Local draft only. Nothing is sent to Cloudflare."
+                            notice.Text = "Draft stays local until Submit is confirmed twice. STAGING only."
                             notice.Visible = true
                             notice.Parent = sub.Inside
                             local function setDraftVisible(show)
@@ -14304,9 +14526,57 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                     return
                                 end
                                 local ok = pcall(setclipboard,textToCopy)
-                                notice.Text = ok and "Copied locally. NOT submitted to Cloudflare."
+                                notice.Text = ok and "Copied locally. NOT submitted."
                                     or "Copy failed; select the text manually."
                             end)
+
+                            -- Network submission is separate from Copy Draft. Deliberate two-tap only.
+                            if not isAppeal then
+                                local send=caseButton(sub.Inside,"SubmitFeedback","Submit Feedback to STAGING",0,200,28)
+                                notice.Position=UDim2.fromOffset(5,232)
+                                notice.Size=UDim2.new(1,-10,0,64)
+                                local setCase=caseSetupCredentials(sub.Inside,0,300,syncPanelCanvas)
+                                sub.Inside.Size=UDim2.new(1,0,0,0)
+                                local sendState={busy=false}
+                                local function sendDone(item,err,uncertain)
+                                    send.Active=true
+                                    draftInput.TextEditable=true
+                                    if titleInput then titleInput.TextEditable=true end
+                                    send.Text="Submit Feedback to STAGING"
+                                    if item then
+                                        setCase(item.id)
+                                        notice.Text="Submitted to STAGING. Case ID: "..item.id..
+                                            " | reviewing | Identity not verified. Keep the receipt private."
+                                    else
+                                        notice.Text=err or "Submission not completed."
+                                        if type(err)=="string" and err:find("Tap Submit again",1,true) then
+                                            send.Text="Confirm: Send Feedback"
+                                        end
+                                        if uncertain then notice.Text=notice.Text.." Avoid sending a duplicate until status is checked." end
+                                    end
+                                    task.defer(syncPanelCanvas)
+                                end
+                                send.MouseButton1Click:Connect(function()
+                                    local topic=titleInput and titleInput.Text or ""
+                                    local body=draftInput.Text or ""
+                                    caseConfirmAndSend(sendState,{kind="feedback",topic=topic,description=body},
+                                        function()
+                                            send.Active=false
+                                            draftInput.TextEditable=false
+                                            if titleInput then titleInput.TextEditable=false end
+                                            send.Text="Sending to STAGING..."
+                                            notice.Text="Sending... Do not press again."
+                                        end,sendDone)
+                                end)
+                                titleInput:GetPropertyChangedSignal("Text"):Connect(function()
+                                    sendState.confirm=nil
+                                    if not sendState.busy then send.Text="Submit Feedback to STAGING" end
+                                end)
+                                draftInput:GetPropertyChangedSignal("Text"):Connect(function()
+                                    sendState.confirm=nil
+                                    if not sendState.busy then send.Text="Submit Feedback to STAGING" end
+                                end)
+                            end
                         end,
                         function(_,event,sub)
                             if event == "button" and type(sub.SetDraftVisible) == "function" then
@@ -14327,6 +14597,87 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end
                 end
                 makeDraftSection("Feedback")
+
+                -- Lookup uses explicit user-supplied Case ID + Receipt, no UserId lookup.
+                local lookupExpanded=false
+                local caseLookupRow=o(panelScroll,"None","Check Existing Case",false,true,"Open",false,false,nil,
+                    function(row)
+                        local idBox=Instance.new("TextBox")
+                        idBox.Name="CaseIDInput"
+                        idBox.Size=UDim2.new(1,-10,0,29)
+                        idBox.Position=UDim2.fromOffset(5,6)
+                        idBox.PlaceholderText="Case ID (UUID)"
+                        idBox.ClearTextOnFocus=false
+                        idBox.Text=""
+                        idBox.TextSize=12
+                        idBox.TextColor3=Color3.new(1,1,1)
+                        idBox.BackgroundColor3=Color3.fromRGB(30,37,52)
+                        idBox.Parent=row.Inside
+                        Corner(0,4,idBox)
+                        local receiptBox=Instance.new("TextBox")
+                        receiptBox.Name="ReceiptInput"
+                        receiptBox.Size=UDim2.new(1,-10,0,29)
+                        receiptBox.Position=UDim2.fromOffset(5,41)
+                        receiptBox.PlaceholderText="Private receipt (64 hex characters)"
+                        receiptBox.ClearTextOnFocus=false
+                        receiptBox.Text=""
+                        receiptBox.TextSize=12
+                        receiptBox.TextColor3=Color3.new(1,1,1)
+                        receiptBox.BackgroundColor3=Color3.fromRGB(30,37,52)
+                        receiptBox.Parent=row.Inside
+                        Corner(0,4,receiptBox)
+                        local checkButton=caseButton(row.Inside,"CheckStatus","Check Status (STAGING)",0,77,28)
+                        local useLast=caseButton(row.Inside,"UseLastSessionCase","Use Latest Session Case",0,110,28)
+                        useLast.MouseButton1Click:Connect(function()
+                            local item=privateReceipts[loc.API.ArcScriptCenterCaseSession.LastCaseId]
+                            if item then
+                                idBox.Text=item.id
+                                receiptBox.Text=item.receipt
+                            end
+                        end)
+                        local status=Instance.new("TextLabel")
+                        status.Name="CaseStatus"
+                        status.Position=UDim2.fromOffset(5,144)
+                        status.Size=UDim2.new(1,-10,0,70)
+                        status.BackgroundTransparency=1
+                        status.TextColor3=Color3.fromRGB(220,225,245)
+                        status.TextSize=12
+                        status.TextWrapped=true
+                        status.TextXAlignment=Enum.TextXAlignment.Left
+                        status.Text="Copy the private receipt before leaving the game. Not stored on disk."
+                        status.Parent=row.Inside
+                        local busy=false
+                        checkButton.MouseButton1Click:Connect(function()
+                            if busy then return end
+                            busy=true
+                            checkButton.Active=false
+                            status.Text="Checking STAGING..."
+                            task.spawn(function()
+                                local ok,record,err=pcall(caseCheckStatus,idBox.Text,receiptBox.Text)
+                                busy=false
+                                checkButton.Active=true
+                                if ok and record then
+                                    status.Text="Case "..record.id.." | "..record.status..
+                                        "\n"..tostring(record.publicNote or "No reviewer note yet."):sub(1,170)
+                                else
+                                    status.Text=ok and tostring(err or "Status lookup failed") or "Status check failed."
+                                end
+                                task.defer(syncPanelCanvas)
+                            end)
+                        end)
+                        row.Inside.Size=UDim2.new(1,0,0,222)
+                    end,
+                    function(_,event,row)
+                        if event=="button" then
+                            lookupExpanded=not lookupExpanded
+                            row.Inside.Visible=lookupExpanded
+                            row.Button.Text=lookupExpanded and "Close" or "Open"
+                            task.defer(syncPanelCanvas)
+                        end
+                    end)
+                nextOrder+=1
+                caseLookupRow.Frame.LayoutOrder=nextOrder
+                caseLookupRow.Frame.Size=UDim2.new(1,-6,0,0)
 
                 -- Stage 16.33: rebuilt from the developer-revised ViolationAppealUI posted 15/11/2026
                 -- Original hierarchy/colors/positions preserved, including 350px outer viewport; variables named semantically.
@@ -14982,12 +15333,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         task.defer(syncMessageCanvas)
                     end)
 
-                    -- The original recovered submit button is kept, but it is not a live API yet.
-                    -- Give it a visible truthful result rather than claiming an appeal was sent.
+                    -- Keep the developer-designed Submit button; wire it to STAGING explicitly.
                     local submissionNote = Instance.new("TextLabel")
                     submissionNote.Name = "SubmissionStatus"
                     submissionNote.LayoutOrder = 4
-                    submissionNote.Size = UDim2.new(1,-10,0,34)
+                    submissionNote.Size = UDim2.new(1,-10,0,48)
                     submissionNote.BackgroundTransparency = 1
                     submissionNote.TextColor3 = Color3.fromRGB(255,213,152)
                     submissionNote.TextSize = 11
@@ -15065,36 +15415,65 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         controllerSetAppealExpanded(not appealExpanded)
                     end)
 
+                    -- Declare before callbacks so Luau captures the local, not a nil global.
+                    local appealState={busy=false}
                     appealInput:GetPropertyChangedSignal("Text"):Connect(function()
                         local n=utf8.len(appealInput.Text) or #appealInput.Text
                         characterCounter.Text = "Character "..n.."/5000"
-                        if submissionNote.Visible then
+                        if submissionNote.Visible and not appealState.busy then
                             submissionNote.Visible = false
                             submissionNote.Text = ""
                             task.defer(updateCanvas)
                         end
                     end)
 
-                    submitButton.MouseButton1Click:Connect(function()
-                        local description=tostring(appealInput.Text or "")
-                        local n=utf8.len(description) or #description
+                    -- Case actions are hidden until a successful response contains a receipt.
+                    local setAppealCase=caseSetupCredentials(appealFrame,5,0,updateCanvas)
+                    local function appealDone(item,err,uncertain)
+                        submitButton.Active=true
+                        appealInput.TextEditable=true
+                        submitButton.Text="Submit"
                         submissionNote.Visible=true
-                        if n < 50 or n > 5000 then
-                            submissionNote.Text="Appeal must contain 50–5000 characters. Nothing submitted."
-                        elseif type(setclipboard)=="function" then
-                            local ok=pcall(setclipboard, "Appeal Draft\n"..violationID.Text.."\n"..description)
-                            submissionNote.Text=ok and "Draft copied. NOT submitted to Cloudflare."
-                                or "Clipboard failed. Draft remains local; NOT submitted."
+                        if item then
+                            setAppealCase(item.id)
+                            submissionNote.Text="Appeal sent to STAGING. Case ID: "..item.id..
+                                " | reviewing | UserId claim is not identity verification. Keep receipt private."
                         else
-                            submissionNote.Text="Draft saved only in this input. NOT submitted to Cloudflare."
+                            submissionNote.Text=err or "Submission not completed."
+                            if type(err)=="string" and err:find("Tap Submit again",1,true) then
+                                submitButton.Text="Confirm Submit"
+                            end
+                            if uncertain then
+                                submissionNote.Text=submissionNote.Text.." Check case before sending again."
+                            end
                         end
+                        task.defer(updateCanvas)
+                    end
+                    submitButton.MouseButton1Click:Connect(function()
+                        local description=appealInput.Text or ""
+                        -- The notice ID is a local preview unless verified through a separate API.
+                        -- Do not pass arbitrary preview data as evidence or an authenticated ID.
+                        local appealTopic="Violation appeal"
+                        caseConfirmAndSend(appealState,{
+                            kind="appeal",topic=appealTopic,description=description
+                        },function()
+                            submitButton.Active=false
+                            appealInput.TextEditable=false
+                            submitButton.Text="Sending to STAGING..."
+                            submissionNote.Visible=true
+                            submissionNote.Text="Sending appeal to STAGING..."
+                        end,appealDone)
                         task.defer(function()
                             updateCanvas()
                             if detailsScroll.Parent and detailsScroll.Visible then
-                                detailsScroll.CanvasPosition = Vector2.new(0,
-                                    math.max(0, detailsScroll.AbsoluteCanvasSize.Y - detailsScroll.AbsoluteWindowSize.Y))
+                                detailsScroll.CanvasPosition=Vector2.new(0,
+                                    math.max(0,detailsScroll.AbsoluteCanvasSize.Y-detailsScroll.AbsoluteWindowSize.Y))
                             end
                         end)
+                    end)
+                    appealInput:GetPropertyChangedSignal("Text"):Connect(function()
+                        appealState.confirm=nil
+                        if not appealState.busy then submitButton.Text="Submit" end
                     end)
 
                     appealLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
