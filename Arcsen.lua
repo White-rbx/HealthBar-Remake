@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.24 ",
+	sion = " UIs 7.3.25 ",
 	logs = [[
+(:14/11/2026: A) Stage 16.24: Added official ArcScriptCenter Rules to nested Feedback & Appeal; RichText sections expand to fit mobile width.
 (:9/11/2026: A) Stage 16.23: Built-in opt-in masked Leaderboard in Arcsen > Settings > ArcScriptCenter. Lazy public API reads with Today / This Year / All Time, Refresh, cached view, no admin credentials.
 (:7/11/2026: A) Stage 16.22: Create Lua Script In The Chat — Don't / Root Only / All Instance access. Root-only runner exposes UI proxies, all-mode excludes CoreGui.ExperienceSettings and descendants. Script cards pin permission and revoke on mode change.
 # -- Update logs --
@@ -14003,15 +14004,28 @@ task.spawn(function()
 
                 -- Nested o() entries render within the existing Arcsen Settings UI.
                 local nextOrder = 0
-                local function infoSection(title, description)
-                    local infoText
-                    local item = o(panelScroll,"None",title,false,true,"Show",false,false,nil,
+                -- All sections use o() inside the existing ScrollingFrame + UIListLayout.
+                -- Rules text is authored locally by the project developer, never
+                -- downloaded as unsanitized RichText from the Worker.
+                local function infoSection(title, description, allowRichText)
+                    local infoText, item
+                    local expanded = false
+                    local function resize()
+                        if not expanded or not item or not item.Frame.Parent or not infoText then return end
+                        -- TextBounds responds to screen width: no cropped rules on mobile.
+                        local measured = math.ceil(infoText.TextBounds.Y)
+                        local bodyHeight = math.max(allowRichText and 300 or 58, measured + 14)
+                        item.Frame.Size = UDim2.new(1,-6,0,32 + bodyHeight)
+                    end
+                    item = o(panelScroll,"None",title,false,true,"Show",false,false,nil,
                         function(sub)
                             infoText = Instance.new("TextLabel")
                             infoText.Name = "SectionNotice"
                             infoText.Position = UDim2.fromOffset(6,31)
-                            infoText.Size = UDim2.new(1,-12,0,58)
+                            infoText.Size = UDim2.new(1,-12,0,0)
+                            infoText.AutomaticSize = Enum.AutomaticSize.Y
                             infoText.Text = description
+                            infoText.RichText = allowRichText == true
                             infoText.TextColor3 = Color3.fromRGB(210,223,240)
                             infoText.TextSize = 12
                             infoText.TextWrapped = true
@@ -14020,13 +14034,15 @@ task.spawn(function()
                             infoText.BackgroundTransparency = 1
                             infoText.Visible = false
                             infoText.Parent = sub.Frame
+                            infoText:GetPropertyChangedSignal("TextBounds"):Connect(resize)
                         end,
                         function(_,event,sub)
                             if event ~= "button" then return end
-                            local expanded = not infoText.Visible
+                            expanded = not expanded
                             infoText.Visible = expanded
-                            sub.Frame.Size = UDim2.new(1,-6,0,expanded and 94 or 30)
+                            sub.Frame.Size = UDim2.new(1,-6,0,expanded and 110 or 30)
                             sub.Button.Text = expanded and "Hide" or "Show"
+                            if expanded then task.defer(resize) end
                         end)
                     nextOrder += 1
                     item.Frame.LayoutOrder = nextOrder
@@ -14034,7 +14050,22 @@ task.spawn(function()
                     return item
                 end
 
-                infoSection("Rules", "Use the official project rules when preparing a request. Explain the situation clearly; avoid spam and sharing passwords or tokens.")
+                infoSection("Rules", [==[
+<b><i>1. DON'T</i></b>
+• <b>1.1</b> No NSFW, racism, or hate
+• <b>1.2</b> No spam, scam, ads, or selling
+• <b>1.3</b> No malicious or suspicious links
+• <b>1.4</b> No inappropriate things
+• <b>1.5</b> Do not share your personal information
+• <b>1.6</b> Do not disclose personal information
+
+<b><i>2. MUST</i></b>
+• <b>2.1</b> Be respectful
+
+Breaking the rules may result in a longer ban or a permanent ban. Please follow the rules.
+
+More information in discord you can find the link at About or on the ScriptBlox/Hexhell
+]==], true)
                 infoSection("Reviewing", "Review status is not connected to Cloudflare yet. This row does not mean a request was submitted or is being reviewed.")
                 infoSection("Approved", "Approved submissions cannot be viewed yet. Review history will require a private, authenticated API.")
                 infoSection("Denied", "Denied submissions cannot be viewed yet. This is not a decision about your account.")
