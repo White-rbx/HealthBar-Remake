@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.25 ",
+	sion = " UIs 7.3.26 ",
 	logs = [[
+(:14/11/2026: A) Stage 16.25: Move Appeal draft UI inside expandable Violation; remove Spam Mail from user-facing Feedback & Appeal. Backend uses separate Staging.
 (:14/11/2026: A) Stage 16.24: Added official ArcScriptCenter Rules to nested Feedback & Appeal; RichText sections expand to fit mobile width.
 (:9/11/2026: A) Stage 16.23: Built-in opt-in masked Leaderboard in Arcsen > Settings > ArcScriptCenter. Lazy public API reads with Today / This Year / All Time, Refresh, cached view, no admin credentials.
 (:7/11/2026: A) Stage 16.22: Create Lua Script In The Chat — Don't / Root Only / All Instance access. Root-only runner exposes UI proxies, all-mode excludes CoreGui.ExperienceSettings and descendants. Script cards pin permission and revoke on mode change.
@@ -14069,10 +14070,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 infoSection("Reviewing", "Review status is not connected to Cloudflare yet. This row does not mean a request was submitted or is being reviewed.")
                 infoSection("Approved", "Approved submissions cannot be viewed yet. Review history will require a private, authenticated API.")
                 infoSection("Denied", "Denied submissions cannot be viewed yet. This is not a decision about your account.")
-                infoSection("Violation", "Violation records are not available in this client. Do not treat this row as a moderation verdict.")
-                infoSection("Spam Mail", "Spam filtering must be enforced on the server. This page is informational until the Feedback API is available.")
+                -- Violation and its nested Appeal editor are built below,
+                -- after makeDraftSection() is defined. Spam Mail is admin-only.
 
-                local function makeDraftSection(kind)
+                local function makeDraftSection(kind, parentScroll)
                     local isAppeal = kind == "Appeal"
                     local draftInput, titleInput, notice, countLabel
                     local opened = false
@@ -14083,7 +14084,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         local length = utf8.len(textValue) or #textValue
                         countLabel.Text = tostring(length) .. "/1500 characters | local draft only"
                     end
-                    draftUI = o(panelScroll,"None",kind .. " Draft",false,true,"Edit",false,false,nil,
+                    draftUI = o(parentScroll or panelScroll,"None",kind .. " Draft",false,true,"Edit",false,false,nil,
                         function(sub)
                             if not isAppeal then
                                 titleInput = Instance.new("TextBox")
@@ -14200,8 +14201,12 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 sub.SetDraftVisible(not opened)
                             end
                         end)
-                    nextOrder += 1
-                    draftUI.Frame.LayoutOrder = nextOrder
+                    if parentScroll then
+                        draftUI.Frame.LayoutOrder = 1
+                    else
+                        nextOrder += 1
+                        draftUI.Frame.LayoutOrder = nextOrder
+                    end
                     draftUI.Frame.Size = UDim2.new(1,-6,0,30)
                     return function(value)
                         if type(draftUI.SetDraftVisible) == "function" then
@@ -14210,7 +14215,70 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end
                 end
                 makeDraftSection("Feedback")
-                openAppealDraft = makeDraftSection("Appeal")
+
+                -- Violation contains its own scrollable section. Appeal is NOT
+                -- a top-level entry and the admin-only Spam Mail is never shown.
+                local violationScroll, violationUI
+                local violationOpen = false
+                local function toggleViolation(show)
+                    violationOpen = show == true
+                    if not violationUI or not violationUI.Frame.Parent then return end
+                    violationUI.Frame.Size = UDim2.new(1,-6,0,violationOpen and 302 or 30)
+                    violationUI.Button.Text = violationOpen and "Close" or "Open"
+                    if violationScroll then
+                        violationScroll.Visible = violationOpen
+                        if not violationOpen then
+                            violationScroll.CanvasPosition = Vector2.zero
+                        end
+                    end
+                end
+                violationUI = o(panelScroll,"None","Violation",false,true,"Open",false,false,nil,
+                    function(sub)
+                        violationScroll = Instance.new("ScrollingFrame")
+                        violationScroll.Name = "ViolationAppealUI"
+                        violationScroll.Position = UDim2.fromOffset(4,31)
+                        violationScroll.Size = UDim2.new(1,-8,0,266)
+                        violationScroll.BackgroundColor3 = Color3.fromRGB(25,32,46)
+                        violationScroll.BackgroundTransparency = 0.1
+                        violationScroll.BorderSizePixel = 0
+                        violationScroll.ScrollBarThickness = 4
+                        violationScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+                        violationScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                        violationScroll.CanvasSize = UDim2.fromOffset(0,0)
+                        violationScroll.ClipsDescendants = true
+                        violationScroll.Visible = false
+                        violationScroll.Parent = sub.Frame
+                        Corner(0,5,violationScroll)
+                        local layout = Instance.new("UIListLayout")
+                        layout.Padding = UDim.new(0,5)
+                        layout.SortOrder = Enum.SortOrder.LayoutOrder
+                        layout.Parent = violationScroll
+                        local pad = Instance.new("UIPadding")
+                        pad.PaddingTop = UDim.new(0,4)
+                        pad.PaddingLeft = UDim.new(0,3)
+                        pad.PaddingRight = UDim.new(0,3)
+                        pad.PaddingBottom = UDim.new(0,4)
+                        pad.Parent = violationScroll
+                    end,
+                    function(_,event)
+                        if event == "button" then toggleViolation(not violationOpen) end
+                    end)
+                nextOrder += 1
+                violationUI.Frame.LayoutOrder = nextOrder
+                violationUI.Frame.Size = UDim2.new(1,-6,0,30)
+                local openNestedAppeal = makeDraftSection("Appeal",violationScroll)
+                openAppealDraft = function(show)
+                    if show then toggleViolation(true) end
+                    openNestedAppeal(show)
+                    if show and violationScroll then
+                        task.defer(function()
+                            if violationScroll.Parent then
+                                violationScroll.CanvasPosition = Vector2.new(0,
+                                    math.max(0,violationScroll.AbsoluteCanvasSize.Y-violationScroll.AbsoluteSize.Y))
+                            end
+                        end)
+                    end
+                end
             end,
             function(_,event)
                 if event == "button" then setPanelExpanded(not panelExpanded) end
