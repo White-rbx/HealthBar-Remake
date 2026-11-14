@@ -1,6 +1,8 @@
 local ver = {
-	sion = " UIs 7.3.36 ",
+	sion = " UIs 7.3.38 ",
 	logs = [[
+(:15/11/2026: A&F) Stage 16.37: Receipt-authenticated 20-event Review History timeline in Check Existing Case; preserves reviewer public notes, imported-case disclaimer, mobile scrolling and 350px custom Violation viewport. Cloudflare STAGING 0.5.45.0.
+(:15/11/2026: A&F) Stage 16.36: Reviewing case edit/remove through Staging manage endpoint; authenticated case status gates editor, double confirmation for irreversible removal, checks on server revision/status, no credentials saved beyond session.
 (:15/11/2026: A&F) Stage 16.35: Real, opt-in staging Feedback/Appeal submission with double-tap confirmation, in-session private receipts, manual case status lookup, response checks and copy credentials. Never touch production.
 (:15/11/2026: A&F) Stage 16.34: Separate Feedback 50–1500 from Appeal 50–5000 characters; keep local drafts and original 350px user-made Violation UI; server validation mirrors category-specific limits on staging.
 (:15/11/2026: A&F) Stage 16.33: Developer-revised Violation UI. Outer viewport fixed at 350px; AutomaticSize.Y for Violation card and Appeal; AutoCanvas for nested details and messages, new insets and left aligned text; all content stays local preview until staging API integration.
@@ -14034,7 +14036,8 @@ task.spawn(function()
     local function casePost(path, payload)
         -- Called only from task.spawn; never blocks a button callback.
         if path ~= "/api/v1/feedback/submit" and
-            path ~= "/api/v1/feedback/status" then
+            path ~= "/api/v1/feedback/status" and
+            path ~= "/api/v1/feedback/manage" then
             return nil, "Endpoint blocked", false
         end
         local requestFn = arcGetSuncRequest()
@@ -14104,7 +14107,36 @@ task.spawn(function()
         if privateReceipts[id] then
             privateReceipts[id].status = record.status
         end
+        -- Receipt-authenticated history is returned together with /status.
+        -- Never infer events from current status when the server omits them.
+        record.reviewHistory = type(data.history) == "table" and data.history or nil
         return record
+    end
+
+    local function caseManage(operation,id,receipt,topic,description)
+        id,receipt=caseTrim(id),caseTrim(receipt)
+        if #id ~= 36 or not id:match("^[0-9a-fA-F%-]+$") or
+            #receipt ~= 64 or not receipt:match("^[a-fA-F0-9]+$") then
+            return nil,"Enter a valid Case ID and private Receipt.",false
+        end
+        if operation ~= "edit" and operation ~= "remove" then
+            return nil,"Invalid case action.",false
+        end
+        local payload={operation=operation,id=id,receipt=receipt}
+        if operation == "edit" then
+            topic,description=caseTrim(topic),caseTrim(description)
+            local record=privateReceipts[id]
+            local kind=record and record.kind
+            -- Existing cases pasted from another session may not be in memory;
+            -- the caller must verify their kind through /status first.
+            if kind ~= "feedback" and kind ~= "appeal" then
+                return nil,"Check the case status before editing.",false
+            end
+            local valid,err=caseValidate(kind,topic,description)
+            if not valid then return nil,err,false end
+            payload.topic,payload.description=topic,description
+        end
+        return casePost("/api/v1/feedback/manage",payload)
     end
 
     local function caseSubmit(kind, topic, description)
@@ -14598,7 +14630,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 end
                 makeDraftSection("Feedback")
 
-                -- Lookup uses explicit user-supplied Case ID + Receipt, no UserId lookup.
+                -- Reading and managing an existing STAGING case requires both
+                -- its Case ID and private Receipt. Nothing is queried automatically.
                 local lookupExpanded=false
                 local caseLookupRow=o(panelScroll,"None","Check Existing Case",false,true,"Open",false,false,nil,
                     function(row)
@@ -14614,6 +14647,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         idBox.BackgroundColor3=Color3.fromRGB(30,37,52)
                         idBox.Parent=row.Inside
                         Corner(0,4,idBox)
+
                         local receiptBox=Instance.new("TextBox")
                         receiptBox.Name="ReceiptInput"
                         receiptBox.Size=UDim2.new(1,-10,0,29)
@@ -14626,29 +14660,296 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         receiptBox.BackgroundColor3=Color3.fromRGB(30,37,52)
                         receiptBox.Parent=row.Inside
                         Corner(0,4,receiptBox)
+
                         local checkButton=caseButton(row.Inside,"CheckStatus","Check Status (STAGING)",0,77,28)
                         local useLast=caseButton(row.Inside,"UseLastSessionCase","Use Latest Session Case",0,110,28)
-                        useLast.MouseButton1Click:Connect(function()
-                            local item=privateReceipts[loc.API.ArcScriptCenterCaseSession.LastCaseId]
-                            if item then
-                                idBox.Text=item.id
-                                receiptBox.Text=item.receipt
-                            end
-                        end)
                         local status=Instance.new("TextLabel")
                         status.Name="CaseStatus"
                         status.Position=UDim2.fromOffset(5,144)
-                        status.Size=UDim2.new(1,-10,0,70)
+                        status.Size=UDim2.new(1,-10,0,124)
                         status.BackgroundTransparency=1
                         status.TextColor3=Color3.fromRGB(220,225,245)
                         status.TextSize=12
                         status.TextWrapped=true
                         status.TextXAlignment=Enum.TextXAlignment.Left
-                        status.Text="Copy the private receipt before leaving the game. Not stored on disk."
+                        status.TextYAlignment=Enum.TextYAlignment.Top
+                        status.Text="Check using Case ID + private Receipt. No data stored on disk."
                         status.Parent=row.Inside
+
+                        -- Stage 16.37: server-authenticated, read-only review timeline.
+                        -- This stays inside Check Existing Case, not the custom ViolationUI.
+                        local historyTitle=Instance.new("TextLabel")
+                        historyTitle.Name="ReviewHistoryTitle"
+                        historyTitle.Position=UDim2.fromOffset(5,275)
+                        historyTitle.Size=UDim2.new(1,-10,0,19)
+                        historyTitle.BackgroundTransparency=1
+                        historyTitle.Text="Review History (latest 20 events)"
+                        historyTitle.TextColor3=Color3.fromRGB(191,216,244)
+                        historyTitle.TextSize=12
+                        historyTitle.TextXAlignment=Enum.TextXAlignment.Left
+                        historyTitle.Parent=row.Inside
+
+                        local historyScroll=Instance.new("ScrollingFrame")
+                        historyScroll.Name="ReviewHistory"
+                        historyScroll.Position=UDim2.fromOffset(5,297)
+                        historyScroll.Size=UDim2.new(1,-10,0,166)
+                        historyScroll.BackgroundColor3=Color3.fromRGB(23,31,47)
+                        historyScroll.BackgroundTransparency=0.5
+                        historyScroll.BorderSizePixel=0
+                        historyScroll.ScrollBarThickness=4
+                        historyScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
+                        historyScroll.CanvasSize=UDim2.fromOffset(0,0)
+                        historyScroll.ScrollingDirection=Enum.ScrollingDirection.Y
+                        historyScroll.ClipsDescendants=true
+                        historyScroll.Parent=row.Inside
+                        Corner(0,5,historyScroll)
+                        local historyPadding=Instance.new("UIPadding")
+                        historyPadding.PaddingTop=UDim.new(0,4)
+                        historyPadding.PaddingBottom=UDim.new(0,6)
+                        historyPadding.PaddingLeft=UDim.new(0,5)
+                        historyPadding.PaddingRight=UDim.new(0,8)
+                        historyPadding.Parent=historyScroll
+                        local historyLayout=Instance.new("UIListLayout")
+                        historyLayout.Name="HistoryLayout"
+                        historyLayout.SortOrder=Enum.SortOrder.LayoutOrder
+                        historyLayout.Padding=UDim.new(0,5)
+                        historyLayout.Parent=historyScroll
+
+                        local function renderReviewHistory(events)
+                            for _,child in ipairs(historyScroll:GetChildren()) do
+                                if child:IsA("TextLabel") and child.Name:match("^HistoryEntry") then
+                                    child:Destroy()
+                                end
+                            end
+                            local shown=0
+                            if type(events)=="table" then
+                                for _,event in ipairs(events) do
+                                    if shown>=20 then break end
+                                    if type(event)=="table" and event.status~="spam_mail" then
+                                        shown+=1
+                                        local kind=type(event.type)=="string" and event.type or "unknown"
+                                        local state=type(event.status)=="string" and event.status or "unknown"
+                                        local when=tonumber(event.createdAt)
+                                        local stamp=when and when>0 and os.date("!%Y-%m-%d %H:%M UTC",math.floor(when)) or "Unknown time"
+                                        local revision=math.floor(tonumber(event.revision) or 0)
+                                        local note=type(event.publicNote)=="string" and event.publicNote or ""
+                                        local details=kind=="imported" and
+                                            "Existing case imported; events before this point are unavailable." or ""
+                                        if kind=="reviewed" and caseTrim(note)~="" then
+                                            details="Moderator: "..note:sub(1,800)
+                                        elseif kind=="reviewed" then
+                                            details="Moderator did not include a public note."
+                                        elseif kind=="edited" then
+                                            details="User edited the request."
+                                        elseif kind=="submitted" then
+                                            details="Request received."
+                                        end
+                                        local item=Instance.new("TextLabel")
+                                        item.Name="HistoryEntry"..shown
+                                        item.LayoutOrder=shown
+                                        item.BackgroundColor3=Color3.fromRGB(37,50,69)
+                                        item.BackgroundTransparency=0.2
+                                        item.BorderSizePixel=0
+                                        item.TextColor3=Color3.fromRGB(225,231,243)
+                                        item.TextSize=11
+                                        item.TextWrapped=true
+                                        item.TextXAlignment=Enum.TextXAlignment.Left
+                                        item.TextYAlignment=Enum.TextYAlignment.Top
+                                        item.AutomaticSize=Enum.AutomaticSize.Y
+                                        item.Size=UDim2.new(1,-3,0,34)
+                                        item.Text=stamp.." | "..kind.." | "..state.." | revision "..revision..
+                                            (details~="" and "\n"..details or "")
+                                        item.Parent=historyScroll
+                                        Corner(0,4,item)
+                                    end
+                                end
+                            end
+                            if shown==0 then
+                                local item=Instance.new("TextLabel")
+                                item.Name="HistoryEntryEmpty"
+                                item.LayoutOrder=1
+                                item.Size=UDim2.new(1,-5,0,45)
+                                item.BackgroundTransparency=1
+                                item.TextColor3=Color3.fromRGB(187,198,213)
+                                item.TextSize=11
+                                item.TextWrapped=true
+                                item.Text="No authenticated history supplied by STAGING."
+                                item.Parent=historyScroll
+                            end
+                            historyScroll.CanvasPosition=Vector2.new(0,0)
+                            task.defer(syncPanelCanvas)
+                        end
+
+                        local manage=Instance.new("Frame")
+                        manage.Name="ReviewingCaseManage"
+                        manage.Size=UDim2.new(1,-10,0,392)
+                        manage.Position=UDim2.fromOffset(5,476)
+                        manage.BackgroundColor3=Color3.fromRGB(26,37,55)
+                        manage.BackgroundTransparency=0.15
+                        manage.BorderSizePixel=0
+                        manage.Visible=false
+                        manage.Parent=row.Inside
+                        Corner(0,5,manage)
+
+                        local manageHeader=Instance.new("TextLabel")
+                        manageHeader.Name="ManageHeader"
+                        manageHeader.BackgroundTransparency=1
+                        manageHeader.Position=UDim2.fromOffset(5,5)
+                        manageHeader.Size=UDim2.new(1,-10,0,36)
+                        manageHeader.TextColor3=Color3.fromRGB(215,228,242)
+                        manageHeader.TextSize=11
+                        manageHeader.TextXAlignment=Enum.TextXAlignment.Left
+                        manageHeader.TextWrapped=true
+                        manageHeader.Text="Reviewing case – Edit or Remove (up to 5 changes)"
+                        manageHeader.Parent=manage
+
+                        local editTopic=Instance.new("TextBox")
+                        editTopic.Name="EditCaseTopic"
+                        editTopic.Position=UDim2.fromOffset(5,47)
+                        editTopic.Size=UDim2.new(1,-10,0,30)
+                        editTopic.Text=""
+                        editTopic.ClearTextOnFocus=false
+                        editTopic.TextSize=12
+                        editTopic.TextColor3=Color3.new(1,1,1)
+                        editTopic.TextXAlignment=Enum.TextXAlignment.Left
+                        editTopic.BackgroundColor3=Color3.fromRGB(30,37,52)
+                        editTopic.PlaceholderText="Topic (3–50 characters)"
+                        editTopic.Parent=manage
+                        Corner(0,4,editTopic)
+
+                        local editDescription=Instance.new("TextBox")
+                        editDescription.Name="EditCaseDescription"
+                        editDescription.Position=UDim2.fromOffset(5,84)
+                        editDescription.Size=UDim2.new(1,-10,0,143)
+                        editDescription.Text=""
+                        editDescription.TextSize=12
+                        editDescription.TextWrapped=true
+                        editDescription.MultiLine=true
+                        editDescription.ClearTextOnFocus=false
+                        editDescription.TextColor3=Color3.new(1,1,1)
+                        editDescription.TextXAlignment=Enum.TextXAlignment.Left
+                        editDescription.TextYAlignment=Enum.TextYAlignment.Top
+                        editDescription.BackgroundColor3=Color3.fromRGB(30,37,52)
+                        editDescription.PlaceholderText="Updated description"
+                        editDescription.Parent=manage
+                        Corner(0,4,editDescription)
+
+                        local editCount=Instance.new("TextLabel")
+                        editCount.Name="EditCharacterCount"
+                        editCount.Position=UDim2.fromOffset(5,233)
+                        editCount.Size=UDim2.new(1,-10,0,20)
+                        editCount.BackgroundTransparency=1
+                        editCount.TextColor3=Color3.fromRGB(175,203,231)
+                        editCount.TextXAlignment=Enum.TextXAlignment.Left
+                        editCount.TextSize=11
+                        editCount.Text="0/1500 characters"
+                        editCount.Parent=manage
+
+                        local editButton=caseButton(manage,"EditExistingCase","Save changes to STAGING",0,258,30)
+                        local removeButton=caseButton(manage,"RemoveExistingCase","Remove case (double confirm)",0,294,30)
+                        removeButton.BackgroundColor3=Color3.fromRGB(120,57,55)
+
+                        local manageNote=Instance.new("TextLabel")
+                        manageNote.Name="ManageNotice"
+                        manageNote.Position=UDim2.fromOffset(5,330)
+                        manageNote.Size=UDim2.new(1,-10,0,52)
+                        manageNote.BackgroundTransparency=1
+                        manageNote.TextColor3=Color3.fromRGB(235,214,175)
+                        manageNote.TextSize=11
+                        manageNote.TextXAlignment=Enum.TextXAlignment.Left
+                        manageNote.TextYAlignment=Enum.TextYAlignment.Top
+                        manageNote.TextWrapped=true
+                        manageNote.Text="Only Reviewing cases can be changed. Changes are checked by the server."
+                        manageNote.Parent=manage
+
+                        local latestRecord=nil
+                        local latestToken=nil
                         local busy=false
+                        local requestEpoch=0
+                        local removeConfirmation=nil
+                        local removeConfirmAt=0
+                        local function credentialsToken()
+                            return caseTrim(idBox.Text).."\0"..caseTrim(receiptBox.Text)
+                        end
+                        local function syncEditCount()
+                            local maxChars=(latestRecord and latestRecord.kind=="appeal") and 5000 or 1500
+                            local n=caseLength(editDescription.Text or "")
+                            editCount.Text=tostring(n).."/"..tostring(maxChars).." characters | STAGING"
+                            editCount.TextColor3=n>maxChars and Color3.fromRGB(255,120,120)
+                                or Color3.fromRGB(175,203,231)
+                        end
+                        local function setManaging(visible)
+                            manage.Visible=visible==true
+                            row.Inside.Size=UDim2.new(1,0,0,manage.Visible and 881 or 472)
+                            task.defer(syncPanelCanvas)
+                        end
+                        local function resetConfirmation()
+                            removeConfirmation=nil
+                            removeButton.Text="Remove case (double confirm)"
+                        end
+                        local function invalidateCase()
+                            requestEpoch+=1
+                            latestRecord=nil
+                            latestToken=nil
+                            resetConfirmation()
+                            setManaging(false)
+                            renderReviewHistory(nil)
+                        end
+                        idBox:GetPropertyChangedSignal("Text"):Connect(invalidateCase)
+                        receiptBox:GetPropertyChangedSignal("Text"):Connect(invalidateCase)
+                        editDescription:GetPropertyChangedSignal("Text"):Connect(syncEditCount)
+                        editTopic:GetPropertyChangedSignal("Text"):Connect(resetConfirmation)
+                        editDescription:GetPropertyChangedSignal("Text"):Connect(resetConfirmation)
+
+                        local function showRecord(record)
+                            latestRecord=record
+                            latestToken=credentialsToken()
+                            local revision=tonumber(record.revision) or 0
+                            local kind=tostring(record.kind or "unknown")
+                            local allowed=(record.status=="reviewing" and revision<5
+                                and (kind=="feedback" or kind=="appeal"))
+                            local note=caseTrim(tostring(record.publicNote or ""))
+                            if note=="" then note="No reviewer note yet." end
+                            status.Text="Case "..tostring(record.id).." | "..tostring(record.status)..
+                                " | "..kind.." | Revision "..revision.."/5\nLatest reviewer note: "..note:sub(1,120)..(#note>120 and "… (see Review History)" or "")..
+                                (allowed and "\nYou can edit/remove while Reviewing." or "\nRead-only: editing unavailable.")
+                            renderReviewHistory(record.reviewHistory)
+                            setManaging(allowed)
+                            if allowed then
+                                -- This authenticated status response grants the local UI a
+                                -- case kind; the Worker STILL independently enforces rules.
+                                privateReceipts[record.id]=privateReceipts[record.id] or {
+                                    id=record.id,receipt=caseTrim(receiptBox.Text),kind=kind,
+                                    status=record.status
+                                }
+                                privateReceipts[record.id].kind=kind
+                                privateReceipts[record.id].status=record.status
+                                editTopic.Text=tostring(record.topic or "")
+                                editDescription.Text=tostring(record.description or "")
+                                manageHeader.Text="Edit "..kind.." | revision "..revision.."/5 | Reviewing"
+                                manageNote.Text="Changes are only saved after you press Save. Remove needs confirmation."
+                                resetConfirmation()
+                                syncEditCount()
+                            end
+                        end
+
+                        useLast.MouseButton1Click:Connect(function()
+                            if busy then return end
+                            local item=privateReceipts[loc.API.ArcScriptCenterCaseSession.LastCaseId]
+                            if item then
+                                idBox.Text=item.id
+                                receiptBox.Text=item.receipt
+                                status.Text="Credentials loaded for this session. Tap Check Status."
+                            else
+                                status.Text="No case saved in this session. Paste your private credentials."
+                            end
+                        end)
+
                         checkButton.MouseButton1Click:Connect(function()
                             if busy then return end
+                            invalidateCase()
+                            local requestToken=credentialsToken()
+                            local epoch=requestEpoch
                             busy=true
                             checkButton.Active=false
                             status.Text="Checking STAGING..."
@@ -14656,16 +14957,124 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 local ok,record,err=pcall(caseCheckStatus,idBox.Text,receiptBox.Text)
                                 busy=false
                                 checkButton.Active=true
+                                if epoch~=requestEpoch or requestToken~=credentialsToken()
+                                    or not row.Frame.Parent then return end
                                 if ok and record then
-                                    status.Text="Case "..record.id.." | "..record.status..
-                                        "\n"..tostring(record.publicNote or "No reviewer note yet."):sub(1,170)
+                                    showRecord(record)
                                 else
                                     status.Text=ok and tostring(err or "Status lookup failed") or "Status check failed."
                                 end
                                 task.defer(syncPanelCanvas)
                             end)
                         end)
-                        row.Inside.Size=UDim2.new(1,0,0,222)
+
+                        editButton.MouseButton1Click:Connect(function()
+                            if busy or not latestRecord or not manage.Visible
+                                or credentialsToken()~=latestToken then return end
+                            local revision=tonumber(latestRecord.revision) or 0
+                            if latestRecord.status~="reviewing" or revision>=5 then
+                                invalidateCase()
+                                status.Text="Case changed; Check Status again."
+                                return
+                            end
+                            local kind=latestRecord.kind
+                            local topic=caseTrim(editTopic.Text)
+                            local description=caseTrim(editDescription.Text)
+                            local valid,err=caseValidate(kind,topic,description)
+                            if not valid then manageNote.Text=err;return end
+                            resetConfirmation()
+                            local id,receipt=caseTrim(idBox.Text),caseTrim(receiptBox.Text)
+                            local epoch=requestEpoch
+                            busy=true
+                            editButton.Active=false
+                            removeButton.Active=false
+                            editTopic.TextEditable=false
+                            editDescription.TextEditable=false
+                            manageNote.Text="Saving changes to STAGING..."
+                            task.spawn(function()
+                                local ok,result,errorText,uncertain=pcall(caseManage,"edit",id,receipt,topic,description)
+                                busy=false
+                                editButton.Active=true
+                                removeButton.Active=true
+                                editTopic.TextEditable=true
+                                editDescription.TextEditable=true
+                                if epoch~=requestEpoch or not row.Frame.Parent then return end
+                                if ok and result and result.ok==true and tonumber(result.revision) then
+                                    latestRecord.revision=tonumber(result.revision)
+                                    latestRecord.topic=topic
+                                    latestRecord.description=description
+                                    manageHeader.Text="Edit "..kind.." | revision "..latestRecord.revision.."/5 | Reviewing"
+                                    manageNote.Text="Saved to STAGING. Use Check Status to refresh server result."
+                                    if latestRecord.revision>=5 then
+                                        invalidateCase()
+                                        status.Text="Revision 5/5 reached. Case is now read-only. Check Status to verify."
+                                    else
+                                        status.Text="Saved to STAGING (revision "..latestRecord.revision.."/5). Check Status to refresh."
+                                    end
+                                else
+                                    manageNote.Text=ok and tostring(errorText or "Save failed") or "Save failed."
+                                    if uncertain then manageNote.Text=manageNote.Text.." Outcome uncertain; Check Status before retrying." end
+                                    if (type(errorText)=="string" and errorText:find("HTTP 409",1,true)) or uncertain then
+                                        invalidateCase()
+                                        status.Text="Case may have changed. Check Status before trying again."
+                                    end
+                                end
+                                task.defer(syncPanelCanvas)
+                            end)
+                        end)
+
+                        removeButton.MouseButton1Click:Connect(function()
+                            if busy or not latestRecord or not manage.Visible
+                                or credentialsToken()~=latestToken then return end
+                            if latestRecord.status~="reviewing" or (tonumber(latestRecord.revision) or 0)>=5 then
+                                invalidateCase()
+                                status.Text="Case changed; Check Status again."
+                                return
+                            end
+                            local token=credentialsToken().."\0"..tostring(latestRecord.revision)
+                            if removeConfirmation~=token or os.clock()-removeConfirmAt>15 then
+                                removeConfirmation=token
+                                removeConfirmAt=os.clock()
+                                removeButton.Text="CONFIRM REMOVE (15s)"
+                                manageNote.Text="Tap Remove again within 15s to remove this case from STAGING. This cannot be undone."
+                                return
+                            end
+                            resetConfirmation()
+                            local id,receipt=caseTrim(idBox.Text),caseTrim(receiptBox.Text)
+                            local epoch=requestEpoch
+                            busy=true
+                            removeButton.Active=false
+                            editButton.Active=false
+                            manageNote.Text="Removing case from STAGING..."
+                            task.spawn(function()
+                                local ok,result,errorText,uncertain=pcall(caseManage,"remove",id,receipt)
+                                busy=false
+                                removeButton.Active=true
+                                editButton.Active=true
+                                if epoch~=requestEpoch or not row.Frame.Parent then return end
+                                if ok and result and result.ok==true and result.removed==true then
+                                    privateReceipts[id]=nil
+                                    if loc.API.ArcScriptCenterCaseSession.LastCaseId==id then
+                                        loc.API.ArcScriptCenterCaseSession.LastCaseId=nil
+                                    end
+                                    local c=0
+                                    for _ in pairs(privateReceipts) do c+=1 end
+                                    loc.API.ArcScriptCenterCaseSession.Count=c
+                                    invalidateCase()
+                                    status.Text="Case removed from STAGING. This receipt can no longer access it."
+                                else
+                                    manageNote.Text=ok and tostring(errorText or "Remove failed") or "Remove failed."
+                                    if uncertain then manageNote.Text=manageNote.Text.." Outcome uncertain; Check Status before retrying." end
+                                    if (type(errorText)=="string" and errorText:find("HTTP 409",1,true)) or uncertain then
+                                        invalidateCase()
+                                        status.Text="Removal outcome uncertain or case changed. Check Status before retrying."
+                                    end
+                                end
+                                task.defer(syncPanelCanvas)
+                            end)
+                        end)
+                        setManaging(false)
+                        renderReviewHistory(nil)
                     end,
                     function(_,event,row)
                         if event=="button" then
