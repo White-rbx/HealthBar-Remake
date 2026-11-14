@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.38 ",
+	sion = " UIs 7.3.39 ",
 	logs = [[
+(:15/11/2026: A&F) Stage 16.38: Moderator-only history filter and clearer timestamp/response cards; STAGING status now returns server-owned canManage to avoid showing Edit/Remove for Spam Mail; staff-only audit API v0.5.46.1 (no admin key in client).
 (:15/11/2026: A&F) Stage 16.37: Receipt-authenticated 20-event Review History timeline in Check Existing Case; preserves reviewer public notes, imported-case disclaimer, mobile scrolling and 350px custom Violation viewport. Cloudflare STAGING 0.5.45.0.
 (:15/11/2026: A&F) Stage 16.36: Reviewing case edit/remove through Staging manage endpoint; authenticated case status gates editor, double confirmation for irreversible removal, checks on server revision/status, no credentials saved beyond session.
 (:15/11/2026: A&F) Stage 16.35: Real, opt-in staging Feedback/Appeal submission with double-tap confirmation, in-session private receipts, manual case status lookup, response checks and copy credentials. Never touch production.
@@ -14681,13 +14682,19 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         local historyTitle=Instance.new("TextLabel")
                         historyTitle.Name="ReviewHistoryTitle"
                         historyTitle.Position=UDim2.fromOffset(5,275)
-                        historyTitle.Size=UDim2.new(1,-10,0,19)
+                        historyTitle.Size=UDim2.new(1,-130,0,19)
                         historyTitle.BackgroundTransparency=1
                         historyTitle.Text="Review History (latest 20 events)"
                         historyTitle.TextColor3=Color3.fromRGB(191,216,244)
                         historyTitle.TextSize=12
                         historyTitle.TextXAlignment=Enum.TextXAlignment.Left
                         historyTitle.Parent=row.Inside
+
+                        local historyFilterButton=caseButton(row.Inside,"ReviewHistoryFilter","Moderator only",0,272,22)
+                        historyFilterButton.Position=UDim2.new(1,-119,0,272)
+                        historyFilterButton.Size=UDim2.new(0,114,0,22)
+                        historyFilterButton.TextSize=11
+                        historyFilterButton.BackgroundColor3=Color3.fromRGB(39,58,77)
 
                         local historyScroll=Instance.new("ScrollingFrame")
                         historyScroll.Name="ReviewHistory"
@@ -14715,7 +14722,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         historyLayout.Padding=UDim.new(0,5)
                         historyLayout.Parent=historyScroll
 
+                        local historyEvents=nil
+                        local moderatorOnly=false
                         local function renderReviewHistory(events)
+                            historyEvents=events
                             for _,child in ipairs(historyScroll:GetChildren()) do
                                 if child:IsA("TextLabel") and child.Name:match("^HistoryEntry") then
                                     child:Destroy()
@@ -14725,7 +14735,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             if type(events)=="table" then
                                 for _,event in ipairs(events) do
                                     if shown>=20 then break end
-                                    if type(event)=="table" and event.status~="spam_mail" then
+                                    if type(event)=="table" and event.status~="spam_mail"
+                                        and (not moderatorOnly or event.type=="reviewed") then
                                         shown+=1
                                         local kind=type(event.type)=="string" and event.type or "unknown"
                                         local state=type(event.status)=="string" and event.status or "unknown"
@@ -14747,17 +14758,23 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                         local item=Instance.new("TextLabel")
                                         item.Name="HistoryEntry"..shown
                                         item.LayoutOrder=shown
-                                        item.BackgroundColor3=Color3.fromRGB(37,50,69)
-                                        item.BackgroundTransparency=0.2
+                                        item.BackgroundColor3=(state=="approved" and Color3.fromRGB(33,83,62))
+                                            or (state=="denied" and Color3.fromRGB(88,45,50))
+                                            or (state=="violation" and Color3.fromRGB(95,67,41))
+                                            or Color3.fromRGB(37,50,69)
+                                        item.BackgroundTransparency=0.12
                                         item.BorderSizePixel=0
-                                        item.TextColor3=Color3.fromRGB(225,231,243)
+                                        item.TextColor3=Color3.fromRGB(236,242,250)
                                         item.TextSize=11
                                         item.TextWrapped=true
                                         item.TextXAlignment=Enum.TextXAlignment.Left
                                         item.TextYAlignment=Enum.TextYAlignment.Top
                                         item.AutomaticSize=Enum.AutomaticSize.Y
                                         item.Size=UDim2.new(1,-3,0,34)
-                                        item.Text=stamp.." | "..kind.." | "..state.." | revision "..revision..
+                                        item.Text=(kind=="reviewed" and "MODERATOR"
+                                            or kind=="edited" and "USER"
+                                            or kind=="submitted" and "SYSTEM" or "HISTORY")..
+                                            "  |  "..state.."  |  Rev "..revision.."\n"..stamp..
                                             (details~="" and "\n"..details or "")
                                         item.Parent=historyScroll
                                         Corner(0,4,item)
@@ -14773,12 +14790,23 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 item.TextColor3=Color3.fromRGB(187,198,213)
                                 item.TextSize=11
                                 item.TextWrapped=true
-                                item.Text="No authenticated history supplied by STAGING."
+                                item.Text=moderatorOnly and "No public moderator replies in this case history."
+                                    or "No authenticated history supplied by STAGING."
                                 item.Parent=historyScroll
                             end
+                            historyTitle.Text=moderatorOnly and ("Moderator replies ("..shown..")")
+                                or ("Review History ("..shown.." / latest 20)")
                             historyScroll.CanvasPosition=Vector2.new(0,0)
                             task.defer(syncPanelCanvas)
                         end
+                        historyFilterButton.MouseButton1Click:Connect(function()
+                            moderatorOnly=not moderatorOnly
+                            historyFilterButton.Text=moderatorOnly and "All events" or "Moderator only"
+                            renderReviewHistory(historyEvents)
+                        end)
+                        historyLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                            historyScroll.CanvasSize=UDim2.new(0,0,0,historyLayout.AbsoluteContentSize.Y+16)
+                        end)
 
                         local manage=Instance.new("Frame")
                         manage.Name="ReviewingCaseManage"
@@ -14906,8 +14934,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             latestToken=credentialsToken()
                             local revision=tonumber(record.revision) or 0
                             local kind=tostring(record.kind or "unknown")
-                            local allowed=(record.status=="reviewing" and revision<5
-                                and (kind=="feedback" or kind=="appeal"))
+                            -- STAGING supplies canManage from the database's REAL status.
+                            -- A hidden Spam Mail case may display as Reviewing but must
+                            -- never claim that Edit/Remove is available.
+                            local allowed=(record.canManage==true and record.status=="reviewing"
+                                and revision<5 and (kind=="feedback" or kind=="appeal"))
                             local note=caseTrim(tostring(record.publicNote or ""))
                             if note=="" then note="No reviewer note yet." end
                             status.Text="Case "..tostring(record.id).." | "..tostring(record.status)..
