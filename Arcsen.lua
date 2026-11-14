@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.34 ",
+	sion = " UIs 7.3.35 ",
 	logs = [[
+(:15/11/2026: A&F) Stage 16.34: Separate Feedback 50–1500 from Appeal 50–5000 characters; keep local drafts and original 350px user-made Violation UI; server validation mirrors category-specific limits on staging.
 (:15/11/2026: A&F) Stage 16.33: Developer-revised Violation UI. Outer viewport fixed at 350px; AutomaticSize.Y for Violation card and Appeal; AutoCanvas for nested details and messages, new insets and left aligned text; all content stays local preview until staging API integration.
 (:15/11/2026: A&F) Stage 16.32: Replace old Violation Notice UI with developer recovered ViolationAppealUI, convert creation and expansion into reusable functions, use semi-transparent nested ScrollingFrames and robust canvas sizing; keep previews local.
 (:15/11/2026: F&A) Stage 16.31: Select is created only for selector rows, lives under SelectButton rather than Inside; one dropdown open at a time; add SelectButton and dropdown lifecycle methods while preserving ui.Button compatibility.
@@ -14190,6 +14191,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                 local function makeDraftSection(kind, parentScroll)
                     local isAppeal = kind == "Appeal"
+                    local maxCharacters = isAppeal and 5000 or 1500
                     local draftInput, titleInput, notice, countLabel
                     local opened = false
                     local draftUI
@@ -14197,7 +14199,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         if not countLabel then return end
                         local textValue = tostring(draftInput.Text or "")
                         local length = utf8.len(textValue) or #textValue
-                        countLabel.Text = tostring(length) .. "/1500 characters | local draft only"
+                        countLabel.Text = tostring(length) .. "/" .. tostring(maxCharacters) .. " characters | local draft only"
                     end
                     draftUI = o(parentScroll or panelScroll,"None",kind .. " Draft",false,true,"Edit",false,false,nil,
                         function(sub)
@@ -14230,7 +14232,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             draftInput.MultiLine = true
                             draftInput.ClearTextOnFocus = false
                             draftInput.PlaceholderText = isAppeal
-                                and "Explain your appeal here (50–1500 characters)."
+                                and "Explain the situation and supporting evidence (50–5000 characters)."
                                 or "Describe the problem (50–1500 characters)."
                             draftInput.Text = ""
                             draftInput.Visible = true
@@ -14281,8 +14283,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             copy.MouseButton1Click:Connect(function()
                                 local body = tostring(draftInput.Text or "")
                                 local n = utf8.len(body) or #body
-                                if n < 50 or n > 1500 then
-                                    notice.Text = "Description must contain 50–1500 characters. Nothing submitted."
+                                if n < 50 or n > maxCharacters then
+                                    notice.Text = "Description must contain 50–" .. tostring(maxCharacters) .. " characters. Nothing submitted."
                                     return
                                 end
                                 local subject = ""
@@ -15077,8 +15079,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         local description=tostring(appealInput.Text or "")
                         local n=utf8.len(description) or #description
                         submissionNote.Visible=true
-                        if n < 50 or n > 1500 then
-                            submissionNote.Text="Staging accepts appeals of 50–1500 characters (UI counter shows 5000). Nothing submitted."
+                        if n < 50 or n > 5000 then
+                            submissionNote.Text="Appeal must contain 50–5000 characters. Nothing submitted."
                         elseif type(setclipboard)=="function" then
                             local ok=pcall(setclipboard, "Appeal Draft\n"..violationID.Text.."\n"..description)
                             submissionNote.Text=ok and "Draft copied. NOT submitted to Cloudflare."
