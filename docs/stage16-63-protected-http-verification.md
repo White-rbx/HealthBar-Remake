@@ -3,19 +3,28 @@
 This is a sandbox-only test note; the `main` branch, Production Cloudflare Worker, D1 and Pages remain unchanged.
 
 - Sandbox Worker: `arcscriptcenter-merge-sandbox-1658`
-- Version: `0.5.70.0-turnstile-sandbox-test` (uses only official dummy Turnstile testing keys)
+- Version: `0.5.70.0-turnstile-sandbox-test` (official **dummy** Turnstile test keys only)
 - Cloudflare Access: Worker-scoped self-hosted application, reusable allow policy for one authorized tester
 - Sandbox workers.dev enabled **behind Access**; preview URLs remain disabled
 
-## Manual smoke test
+## Observed browser result — 2026-11-15 (Asia/Bangkok)
 
-1. In a private/incognito browser, visit `https://arcscriptcenter-merge-sandbox-1658.kogpasan14.workers.dev/api/v1/health`.
-2. Without Access authentication the API health JSON **must not** be visible; the visitor should see the Access login or an Access denial.
-3. With the tester identity authenticated via Access, the health JSON should show `database: connected` and version `0.5.70.0-turnstile-sandbox-test`.
-4. A different identity must not be allowed. Do not paste passwords, cookies, Access tokens, Admin Keys or receipts in issues or logs.
+**PASS — Authenticated health flow, user-confirmed.** The tester reported encountering the Cloudflare Access verification page and, after completing the verification, receiving the live JSON response:
 
-**NOT YET VERIFIED:** This conversation's tools cannot reach the protected URL over HTTP, so browser E2E has not been claimed or performed.
+```json
+{"ok":true,"service":"ArcScriptCenter","version":"0.5.70.0-turnstile-sandbox-test","status":"online","database":"connected"}
+```
+
+This confirms the authorized browser's Access-to-Worker-to-D1 health flow. It **does not** independently confirm whether an unauthenticated incognito session was denied, whether an unauthorized identity is denied, or whether Feedback/Turnstile submit endpoints work live. The testing assistant cannot make direct external HTTP requests to the protected Worker via the connector.
+
+## Outstanding manual smoke tests
+
+1. In a new private/incognito browser with no Access session, open `https://arcscriptcenter-merge-sandbox-1658.kogpasan14.workers.dev/api/v1/health`.
+2. Before authentication, the API health JSON must **not** be visible; Access login or denial must be shown.
+3. Confirm an identity not on the allow policy is denied (do not use/share any credentials with ChatGPT).
+4. With the authorized tester already signed in, verify the exact health JSON version and database fields.
+5. Test HTTP error contracts and feedback/Turnstile only with synthetic cases after an agreed protected test procedure. Keep test receipts and Access/Admin credentials private.
 
 ## Release gate
 
-Do **not** promote to Production until access control has been verified in a browser, Siteverify is tested with real Turnstile keys on the correct hostname/action, the browser/Arcsen flow is integrated, and an independently restorable Production D1 backup exists.
+**Production: NO-GO.** Do **not** promote until the anonymous/unauthorized access checks pass, Siteverify is tested with **real** Turnstile keys under the correct hostname and action (dummy keys do not provide anti-spam security), browser/Arcsen integration is finished, live Feedback API negative/positive paths pass, and an independently restorable Production D1 backup has been verified.
