@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.68: Access Boundary Review and Release Gate Checklist
 
 Date: 2026-11-15 (Asia/Bangkok)
-Status: **Configuration review complete; unauthenticated and disallowed-identity browser tests pending.**
+Status: **Incognito unauthenticated browser showed Cloudflare Access Login (user-confirmed PASS); disallowed-identity authorization test still pending.**
 Production: **NO-GO**.
 
 ## 1. Stage 16.67 acceptance and cleanup carried forward
@@ -61,7 +61,7 @@ No Production or Staging Worker deployment, D1 mutation, Time Travel restore or 
 - [x] Access application/policy configuration read-only review.
 - [x] D1 environment isolation and current Time Travel bookmark availability.
 - [x] Synthetic isolated D1 Time Travel rollback drill (Stage16.66).
-- [ ] Actual unauthenticated browser Access login/denial outcome.
+- [x] Actual unauthenticated Incognito browser — Cloudflare Access Login was shown, confirmed by the authorized tester.
 - [ ] Actual disallowed-identity browser Access denial outcome, if authorized test identity is available.
 - [ ] Independent Production D1 export and restore **to a separate isolated environment** with integrity evidence; never restore over live Production for rehearsal.
 - [ ] Full Arcsen end-to-end integration and relevant error conditions.
@@ -82,3 +82,9 @@ Cloudflare's current Worker-level Access documentation states that protecting a 
 The Allow policy still has one email-selector policy with 1-hour session duration. No user email addresses, Access credentials or cookie values were accessed for this verification. The integration routes also have Worker-side `ctx.access` guards. **This is a configuration/route wiring check, not independent confirmation that unauthenticated or disallowed browser identities are rejected.**
 
 Attempts to fetch the private page through a generic external web retrieval tool were not supported by that tool; lack of access is **not** counted as a passing authorization test. Live Incognito Access checks remain pending.
+
+## 7. Anonymous Incognito Access smoke test — USER-CONFIRMED PASS
+
+On 2026-11-15, the authorized tester opened the private `/__stage1667/integration` URL in an Incognito window without an active Access session, following the procedure in Section 3, and confirmed that the expected Cloudflare Access login page **appeared** before the protected test page. This closes **only** the logged-out/unauthenticated browser challenge visibility check.
+
+This result does **not** prove that an authenticated identity outside the email allow list is denied. That separate authorization check remains pending. The assistant did not inspect screenshots from this particular test or request credentials, cookies, email addresses or JWTs.
