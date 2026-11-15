@@ -3,7 +3,7 @@
 Date: 2026-11-15 (Asia/Bangkok)
 Scope: **Cloudflare Access-protected Sandbox only**. Production stays **NO-GO**.
 
-## 1. Implementation — deployed, awaiting user browser tests
+## 1. Implementation — deployed; authorized browser integration tests 11/11 PASS
 
 Worker: `arcscriptcenter-merge-sandbox-1658`
 Code version: `0.5.73.0-feedback-real-integration-sandbox`
@@ -36,7 +36,7 @@ https://arcscriptcenter-merge-sandbox-1658.kogpasan14.workers.dev/__stage1667/in
 
 **No changes to Production code, Production D1 or Production credentials.**
 
-## 3. Test plan — awaiting browser results
+## 3. Browser test results — 11/11 PASS (authorized tester, screenshot dated 2026-11-15 22:37 Asia/Bangkok)
 
 The user should complete both real Turnstile widgets and run these two user-confirmed synthetic lifecycle cases:
 
@@ -54,7 +54,7 @@ The user should complete both real Turnstile widgets and run these two user-conf
 | appeal Removed receipt denied | HTTP 404 |
 | Simulated Siteverify outage | HTTP 503 |
 
-**Expected total: 11/11**. This is a target, not a claim of observed success.
+**Observed total: 11/11 PASS.** Authorized tester screenshot confirms both genuine Turnstile + Sandbox Feedback/Appeal lifecycle suites (5/5 each) and server-owned simulated Siteverify outage rejection (HTTP 503). The assistant did not independently replay browser requests.
 
 The simulated outage endpoint injects a server-owned transport failure to exercise fail-closed behavior. It does not call actual Siteverify or D1, cannot be chosen via a user-supplied flag, and is confined to the Access-protected Sandbox endpoint. It tests handling of simulated network failures **only**, not a real Cloudflare outage.
 
@@ -74,10 +74,14 @@ Separate from the authorized happy path:
 - [x] Stage16.66 real Turnstile read-only contract — tester confirmed 4/4.
 - [x] Stage16.66 isolated synthetic D1 restore — pass.
 - [x] Stage16.67 real-key integration code uploaded and deployed, eight bindings preserved.
-- [ ] Stage16.67 authorized browser Feedback/Appeal lifecycle and simulated fail-closed checks.
+- [x] Stage16.67 authorized browser Feedback/Appeal lifecycle and simulated fail-closed checks — 11/11 PASS (tester screenshot).
 - [ ] Cloudflare Access unauthorized and no-session checks.
 - [ ] Independently restorable **Production** backup validation.
 - [ ] Full Arcsen and browser integration release acceptance.
 - [ ] Explicit Production release and rollback authorization.
 
 Release status: **NO-GO**.
+
+## 6. Stage16.67 Sandbox cleanup — COMPLETE
+
+Following the authorized browser test, read-only D1 inspection found exactly one soft-deleted Feedback and one soft-deleted Appeal case marked with the expected Stage1667 Synthetic topics and exact known synthetic description. Both case IDs were unique; 6 linked history rows and no follow-up history rows existed. The Worker DB binding identity, the Sandbox D1 database name and Time Travel bookmark were verified before mutation. The cleanup deleted **6** linked `asc_feedback_history` rows and **2** matching `asc_feedback_cases` rows, using exact kind/topic/description/removed/created-time predicates. A post-cleanup query returned **0** Stage1667 case records and **0** orphaned feedback history records. Production and Staging remained untouched. Existing anonymous quota rows were not reset.
