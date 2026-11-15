@@ -72,3 +72,13 @@ Production stays **NO-GO**.
 References:
 - https://developers.cloudflare.com/cloudflare-one/access-controls/policies/policy-management/
 - https://developers.cloudflare.com/d1/reference/time-travel/
+
+## 6. Follow-up read-only Access Worker-binding verification
+
+Cloudflare's Access application has a destination of type `worker` and a concrete internal Worker ID. That ID was resolved through the Cloudflare Workers API and its `name` matched the intended `arcscriptcenter-merge-sandbox-1658` Sandbox Worker exactly. This is stronger evidence than matching the Access application display name alone.
+
+Cloudflare's current Worker-level Access documentation states that protecting a Worker covers every associated domain, including `workers.dev` and configured routes. Reference: https://developers.cloudflare.com/workers/configuration/cloudflare-access/
+
+The Allow policy still has one email-selector policy with 1-hour session duration. No user email addresses, Access credentials or cookie values were accessed for this verification. The integration routes also have Worker-side `ctx.access` guards. **This is a configuration/route wiring check, not independent confirmation that unauthenticated or disallowed browser identities are rejected.**
+
+Attempts to fetch the private page through a generic external web retrieval tool were not supported by that tool; lack of access is **not** counted as a passing authorization test. Live Incognito Access checks remain pending.
