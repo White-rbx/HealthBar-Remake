@@ -77,3 +77,9 @@ No Production Worker deploy, Production/Staging DB queries that mutate data, sec
 - Authorize provisioning of a dedicated real-key Turnstile widget in the pre-release account/domain, with secrets stored by the user through Cloudflare.
 - Run manual Access incognito/unauthorized identity checks.
 - Independently export and restore **a controlled backup** into an isolated test environment, with schema and record integrity verification, before considering a Production release. Do not restore the live Production D1 database as a rehearsal.
+
+## 7. Post-drill cleanup — COMPLETE
+
+After the report was committed, the disposable D1 test database was verified to contain only the three original synthetic fixture rows. All accessible Worker script bindings were checked to ensure no Worker used that D1 ID. The disposable database `asc-stage1666-recovery-drill-20261115` was then successfully deleted with the Cloudflare D1 API, leaving no running or connected drill database.
+
+This cleanup did not target the real Production, Staging or Stage16.64 Sandbox databases.
