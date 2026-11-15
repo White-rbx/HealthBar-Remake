@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.66: Real Turnstile Integration (Sandbox Only)
 
 Date: 2026-11-15 (Asia/Bangkok)
-Status: **Deployed; pending authorized browser confirmation.**
+Status: **Deployed; authorized tester reports all four real-key browser contract tests PASS (4/4), screenshot dated 2026-11-15 22:28 Asia/Bangkok.**
 Release gate: **Production NO-GO**
 
 ## User-configured Widget / Secret binding
@@ -38,16 +38,18 @@ The page includes buttons for four manually triggered checks: genuine token (200
 
 Existing `/__stage1664/contract` and the dummy tests remain unchanged except for the new Worker version string in the health assertion.
 
-## Browser tests — pending
+## Browser tests — confirmed by authorized tester
 
 After Access authentication open:
 https://arcscriptcenter-merge-sandbox-1658.kogpasan14.workers.dev/__stage1666/real-turnstile
 
-Expected:
-- Complete Turnstile; click **Verify Real Token** -> HTTP 200.
-- **Missing Token** -> HTTP 400.
-- **Invalid Token** -> HTTP 403.
-- After successful real token verification, **Replay Token** -> HTTP 403.
+Observed browser results (user-supplied screenshot; not independently replayed by the assistant):
+- **PASS** · Real token / hostname / action · **HTTP 200**
+- **PASS** · Missing token rejected · **HTTP 400**
+- **PASS** · Invalid token rejected · **HTTP 403**
+- **PASS** · Reused token rejected · **HTTP 403**
+
+Total: **4/4 PASS**. These results verify the isolated test verifier's expected HTTP contract on the real-key path. They do **not** certify end-to-end Feedback Submit integration, real-world anti-abuse efficacy, Access rejection of an unauthorized identity, siteverify outage fail-closed behavior, or Production readiness.
 
 If the widget does not render, verify the precise hostname, browser support, and CSP. If genuine token is rejected, verify widget sitekey/secret pairing, `hostname` and `action`. **Do not paste secrets or full Turnstile tokens into GitHub issues or ChatGPT.**
 
@@ -58,6 +60,6 @@ Note that this is a read-only verification surface, **not yet the real Feedback 
 - New real-key verification path is separate from dummy-mode Feedback Submit; it cannot create cases.
 - Existing Cloudflare Access application still guards the Sandbox hostname, with prior authorized browser entry.
 - No Production Worker deployments, no Production/Staging D1 writes or restores, no GitHub main changes, no secret key disclosures.
-- Production release **NO-GO** pending actual browser validation, independent backup/restore certification, Access denial tests, full app integration, and release approval.
+- Production release **NO-GO**. Real-key browser verification is confirmed (4/4); outstanding gates include independent Production backup/restore certification, Access denial tests, fail-closed outage testing, end-to-end Feedback/Appeal and Arcsen integration, and explicit release approval.
 
 Reference: https://developers.cloudflare.com/turnstile/get-started/server-side-validation/
