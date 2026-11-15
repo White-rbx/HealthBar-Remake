@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.71: Android System Push Notifications (Sandbox Pilot)
 
 Date: 2026-11-15 (Asia/Bangkok)
-Status: **Deployed to Sandbox and statically checked. Real Android browser/FCM push delivery tests PENDING.**
+Status: **Android system notification visually confirmed in user screenshot (2026-11-16); submission-triggered closed-tab end-to-end test remains pending.**
 Production: **NO-GO.**
 
 ## Feature clarification
@@ -76,3 +76,11 @@ The authorized tester reported that the initial Admin Key input could not be use
 Server-side push enrollment still requires **(1)** genuine Cloudflare Access context, **(2)** exact application audience, **(3)** a matching authenticated admin email verified against a SHA-256 hash held in a Worker `secret_text` binding, **(4)** correct Sandbox hostname, and **(5)** same-origin request for subscription changes. The existing Access policy was confirmed to have **exactly one** allowed email identity before generating this scoped binding. No email address or Access token was printed, stored in the GitHub report, or returned in the API response. This authorization adjustment affects **Stage16.71 push endpoints only**; the previous Admin Feedback moderation APIs still use `X-Admin-Key`.
 
 Sandbox deployment: `0.5.75.2-android-access-push-sandbox` (`b712c612-3d36-484a-83e1-5c4a1979b659`), 100% traffic on Sandbox Worker only. Read-back checks confirmed no Android page Admin Key input or header, the new Access identity authorization guard, all **12** bindings, the retained VAPID private secret, and unchanged Feedback integration paths. The Sandbox push subscription table still held **0** device subscriptions at the time of verification. Real Android push reception has **not** yet been confirmed.
+
+## Android system notification — user screenshot confirmation (2026-11-16, Asia/Bangkok)
+
+The authorized tester replied "ได้ผล" ("It worked") and supplied an Android screenshot showing a genuine **Chrome system notification** from the Sandbox Worker hostname `arcscriptcenter-merge-sandbox-1658.kogpasan14.workers.dev`. The displayed notification title was **ArcScriptCenter 🔔**, with the generic Thai Feedback/Appeal alert text. This establishes that **the Android OS notification was visibly delivered to the device** and displayed by Chrome, rather than merely appearing as an in-page UI toast.
+
+**PASS:** Android Chrome OS notification reception/visual display, evidenced by the user-supplied screenshot. **NOT YET VERIFIED:** whether that notification was triggered by the explicit Test Push button versus an actual new submission; whether the browser tab had been closed; real Feedback/Appeal submission-triggered background delivery; operational retry and de-duplication across devices. Do not assert those tests were completed from this screenshot alone.
+
+The screenshot does not contain an Admin Key, Push endpoint, subscription token, or personal account identifier in the project documentation. No private screenshot image has been committed to GitHub. Production remains **NO-GO** until the remaining release gates are met.
