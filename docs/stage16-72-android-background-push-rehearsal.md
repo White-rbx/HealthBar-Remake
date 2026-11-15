@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.72: Android Background Push Rehearsal
 
 Date: 2026-11-16 (Asia/Bangkok)
-Status: **Sandbox Worker deployed, access/route/D1 static checks PASS. Background Android reception still REQUIRES user/device confirmation.**
+Status: **Background Android notification PASS, user screenshot + D1 Cloudflare worker acceptance; live Real Turnstile submission→Push E2E still pending.**
 Production: **NO-GO.**
 
 ## Motivation
@@ -89,3 +89,29 @@ Production remains **NO-GO**. Remaining work includes actual mobile background s
 
 Cloudflare source:
 https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil
+
+## 2026-11-16 — Background Android notification accepted and received (PASS)
+
+After using the protected Stage16.72 background-push test, the authorized tester supplied an Android screenshot showing a genuine Chrome OS notification from the Sandbox hostname with title **ArcScriptCenter 🔔** and the generic Thai Feedback/Appeal new-submission text, and confirmed it appeared while following the background test workflow. This is owner-provided device evidence of **Android native notification reception for the delayed synthetic Background Push test**.
+
+Read-only Cloudflare Sandbox D1 inspection immediately afterward showed:
+
+| Metric | Verified result |
+|---|---:|
+| `asc_stage1672_test_control.last_result` | `accepted` |
+| Background test attempts | **1** |
+| Background test accepted | **1** |
+| Registered active Android subscriptions | **1** |
+| Subscription `last_sent_event_id` | **41** |
+| Stage1672 synthetic Feedback/Appeal cases remaining | **0** |
+| All Feedback history rows remaining | **0** |
+| Orphaned Feedback history rows | **0** |
+| D1 `PRAGMA quick_check` | `ok` |
+
+The persistent `last_sent_event_id=41` is an event cursor despite history cleanup; it does not mean 41 notifications were sent. No private endpoint, email, Admin Key or VAPID key was read or published. No additional pushes were initiated by this verification.
+
+Production and Staging Worker active versions were independently checked and remained unchanged: Production `298de84d-418c-489c-b133-c549c785f66e`, Staging `5b5040fb-6c04-4029-9c53-af15d3dda888`. Sandbox remains `33949b4d-e6da-4a9f-8e4a-f33f11ba9e03`.
+
+**Closed gate:** Android Background Push with delayed *synthetic* Feedback/Appeal event — **PASS (user-confirmed)**.
+
+**Still open:** A truly submitted Feedback/Appeal that passes Real Turnstile and the `fcSubmit` quota/transaction path, followed by genuine Android Push; real device retries, cleanup and Production safeguards. Stage16.72 did not exercise the Real Turnstile validation path.
