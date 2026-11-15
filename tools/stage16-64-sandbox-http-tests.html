@@ -61,7 +61,7 @@ async function check(name,path,body,expected,predicate,method){
 $('read').addEventListener('click',async()=>{
  if(busy)return;buttons(true);reset();
  const base={kind:'feedback',topic:'Stage1664 Negative Test',description:'Entirely synthetic and intentionally rejected feedback request for the private API verification run.',clientKey:key()};
- await check('Health and D1','/api/v1/health',undefined,[200],x=>x?.ok===true&&x?.database==='connected'&&x?.version==='0.5.70.0-turnstile-sandbox-test');
+ await check('Health and D1','/api/v1/health',undefined,[200],x=>x?.ok===true&&x?.database==='connected'&&x?.version==='0.5.71.0-protected-http-tests');
  await check('Unknown endpoint 404','/__stage1664/unknown',undefined,[404]);
  await check('Wrong method 405','/api/v1/feedback/submit',undefined,[405]);
  await check('Malformed submit 400','/api/v1/feedback/submit',{},[400]);
