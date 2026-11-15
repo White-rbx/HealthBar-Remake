@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.73: Real Turnstile Feedback/Appeal → Android Push E2E
 
 Date: 2026-11-16 (Asia/Bangkok)
-Status: **Sandbox deployed, route/binding/DB-source assertions PASS; live browser E2E test PENDING.**
+Status: **Sandbox REAL TURNSTILE → ANDROID PUSH E2E PASS: 2/2 accepted, 2/2 cleaned, user-confirmed Android reception in foreground/background; Production NO-GO.**
 Production: **NO-GO**.
 
 ## Background
@@ -84,8 +84,35 @@ No real message text or personally identifying data belongs in test cases. No ra
 - [x] Native Android Web Push test from Stage16.71 — user screenshot confirmed.
 - [x] Stage16.72 background synthetic Push — D1 `accepted` plus Android screenshot confirmed; cleanup 0 leftover.
 - [x] Stage16.73 real Turnstile Push test route deployed and statically verified.
-- [ ] Stage16.73 real Feedback submission → FCM acceptance → Android receipt, cleanup verified.
-- [ ] Stage16.73 real Appeal submission → FCM acceptance → Android receipt, cleanup verified.
+- [x] Stage16.73 **two real Turnstile-gated synthetic submissions** → Push accepted 2/2 → Android native delivery user-confirmed (both foreground and background app tests), with cleanup 2/2; specific kinds not persisted in the aggregate test counters.
+- [ ] Optional kind-specific Feedback-vs-Appeal per-run evidence and true app force-stop behavior (distinct from moving Chrome into the background) are not separately established from the aggregate counters.
 - [ ] Independent Production backup export and isolated restore certification, stage-specific D1 migration, Worker compatibility audit, disallowed-identity Access browser test and explicit signoff.
 
 **Production remains NO-GO.**
+
+## Stage16.73 verified Android real-submit results — 2026-11-16 (Asia/Bangkok)
+
+The authorized tester reported: **"ขึ้นแล้ว ผมได้ทดสอบทั้งยังไม่ปิดแอปและปิดแอป (Background App)"** — genuine Android notifications appeared when Chrome was in the foreground and when the browser had been backgrounded. This is a user-confirmed native notification observation. *Moving an app to the background does not by itself establish that notifications survive Android Force Stop.*
+
+Independent **read-only** Sandbox D1 inspection after the tester finished showed:
+
+| Test counter / check | Observed |
+|---|---:|
+| `asc_stage1673_real_push_control.attempts` | **2** |
+| `submitted` (actual `fcSubmit` path with real Siteverify, D1 write and quota) | **2** |
+| `accepted` (push-service acceptance; not itself device delivery proof) | **2** |
+| `cleaned` (synthetic cases) | **2** |
+| `last_result` | `accepted` |
+| Active Sandbox Android Push subscriptions | **1** |
+| Subscriber `last_sent_event_id` (dedup cursor only) | **43** |
+| All remaining `asc_feedback_cases` | **0** |
+| All remaining `asc_feedback_history` | **0** |
+| Orphaned history rows | **0** |
+| `PRAGMA quick_check` | **ok** |
+| `PRAGMA foreign_key_check` | **0 violations** |
+
+**PASS:** The Sandbox Real Turnstile `fcSubmit` transaction successfully committed two synthetic submissions and the standard VAPID broadcaster received two success responses; the user confirmed genuine Android notifications for both in-app and background-app testing. Cleanup has zero cases/history orphans remaining. This is **not** a Production test.
+
+**Evidence limitation:** The aggregate D1 control table records counts, not the submission `kind` for each attempt. Therefore the two successful attempts cannot be independently classified as specifically one Feedback and one Appeal using this control table after cleanup. User reported two app *states* tested, not an explicit per-kind breakdown. The existing Stage16.67 test separately covered both Feedback and Appeal lifecycles. Screenshots/credentials, private push subscription endpoint, admin identity, keys, receipts and Turnstile tokens were **not** exported to GitHub.
+
+**Next release gates remain open:** a disallowed-identity Access rejection check, Production-compatible schema/Worker review, independent production backup copied/restored only into an isolated target, operational monitoring/retries and explicit authorization before any Production change. **Production remains NO-GO.**
