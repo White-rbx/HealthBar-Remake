@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>ArcScriptCenter Sandbox HTTP Tests</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#11151c;color:#e8eef6}
+*{box-sizing:border-box}body{margin:0;padding:22px 14px 45px}main{max-width:780px;margin:auto}
+h1{font-size:1.5rem}h2{font-size:1.06rem;margin-top:0}
+p{line-height:1.6;color:#c5d0dc}
+section{margin:14px 0;padding:17px;border-radius:14px;background:#1b2330;border:1px solid #374254}
+button{font:inherit;font-weight:600;background:#276bb2;color:white;border:0;border-radius:10px;padding:13px 16px;min-height:44px;margin:5px 5px 5px 0}
+button:disabled{opacity:.5}.warning{border-left:3px solid #f2c86b;padding-left:10px}
+.result{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #384352;padding:10px 0}
+.pass{color:#8cf0b8}.fail{color:#ffabb0}small{color:#a8b6ca}code{font-size:.9em;overflow-wrap:anywhere}
+</style></head>
+<body><main>
+<small>ARCSCRIPTCENTER · PRIVATE SANDBOX · STAGE 16.64</small>
+<h1>Protected HTTP Contract Tests</h1>
+<p>หน้านี้อยู่หลัง Cloudflare Access และทดสอบเฉพาะ Sandbox Worker เท่านั้น ไม่ต้องใช้ Admin Key และไม่มีการอ่านหรือแก้ไขข้อมูล Production</p>
+<section>
+<h2>1. Safe Read-only & Rejection Checks</h2>
+<p>ตรวจ Health, Error Status, Receipt ที่ไม่ถูกต้อง และการปฏิเสธ Turnstile Token ปลอม ไม่มีการสร้าง Feedback</p>
+<button id="read">Run Safe Tests</button>
+</section>
+<section>
+<h2>2. Synthetic Feedback & Appeal</h2>
+<p>สร้างข้อมูลจำลองสองเคสจากการกดปุ่มโดยตั้งใจ ทดสอบ Submit, Status, Edit, Remove และปฏิเสธ Receipt หลังลบ</p>
+<p class="warning">ใช้งาน Official Dummy Turnstile Test Key บน Sandbox เท่านั้น ไม่ใช่การป้องกันสแปมจริง และการลบเคสเป็น Soft Delete ซึ่งต้องล้างข้อมูลจำลองใน D1 ภายหลัง</p>
+<button id="write">Run 2 Synthetic Cases</button>
+</section>
+<section><h2>Results</h2><p id="summary">ยังไม่ได้ทดสอบ</p><div id="results" aria-live="polite"></div><button id="copy">Copy Safe Summary</button>
+<p><small>Copy Summary ไม่รวม Receipt, Client Key, Access Token, Cookie หรือ Secret</small></p></section>
+</main>
+<script nonce="__NONCE__">
+(function(){
+'use strict';
+const $=id=>document.getElementById(id),results=[],area=$('results');
+let busy=false,used=false;
+function buttons(lock){busy=lock;$('read').disabled=lock;$('write').disabled=lock||used;}
+function record(name,pass,status){
+  results.push({name:name,pass:pass,status:status});
+  const el=document.createElement('div');el.className='result';
+  const label=document.createElement('span');label.textContent=name;
+  const result=document.createElement('strong');result.className=pass?'pass':'fail';result.textContent=(pass?'PASS':'FAIL')+' · '+status;
+  el.append(label,result);area.appendChild(el);
+  $('summary').textContent=results.filter(x=>x.pass).length+'/'+results.length+' passed';
+}
+function reset(){results.length=0;area.replaceChildren();$('summary').textContent='กำลังทดสอบ...';}
+function key(){return Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');}
+async function call(path,body,method){
+  const init={method:method||(body===undefined?'GET':'POST'),cache:'no-store',credentials:'same-origin'};
+  if(body!==undefined){init.headers={'Content-Type':'application/json'};init.body=JSON.stringify(body);}
+  const response=await fetch(path,init);
+  let parsed=null;try{parsed=await response.json();}catch(e){}
+  return{status:response.status,data:parsed};
+}
+async function check(name,path,body,expected,predicate,method){
+ try{
+  const r=await call(path,body,method);
+  record(name,expected.includes(r.status)&&(!predicate||predicate(r.data)),'HTTP '+r.status);
+ }catch(e){record(name,false,'Network error');}
+}
+$('read').addEventListener('click',async()=>{
+ if(busy)return;buttons(true);reset();
+ const base={kind:'feedback',topic:'Stage1664 Negative Test',description:'Entirely synthetic and intentionally rejected feedback request for the private API verification run.',clientKey:key()};
+ await check('Health and D1','/api/v1/health',undefined,[200],x=>x?.ok===true&&x?.database==='connected'&&x?.version==='0.5.70.0-turnstile-sandbox-test');
+ await check('Unknown endpoint 404','/__stage1664/unknown',undefined,[404]);
+ await check('Wrong method 405','/api/v1/feedback/submit',undefined,[405]);
+ await check('Malformed submit 400','/api/v1/feedback/submit',{},[400]);
+ await check('Missing Turnstile 400','/api/v1/feedback/submit',base,[400]);
+ await check('Invalid Turnstile 403','/api/v1/feedback/submit',{...base,turnstileToken:'NOT.A.VALID.TOKEN'},[403]);
+ await check('Invalid receipt 404','/api/v1/feedback/status',{id:'00000000-0000-4000-8000-000000000000',receipt:'0'.repeat(64)},[404]);
+ await check('Invalid manage 400','/api/v1/feedback/manage',{operation:'invalid'},[400]);
+ await check('No Admin Key 401','/api/v1/admin/feedback/list',undefined,[401]);
+ buttons(false);
+});
+$('write').addEventListener('click',async()=>{
+ if(busy||used)return;
+ if(!confirm('สร้าง 2 เคสจำลอง (Feedback และ Appeal) บน Sandbox แล้ว Soft Delete ใช่ไหม?'))return;
+ used=true;buttons(true);reset();
+ const clientKey=key();
+ for(const kind of ['feedback','appeal']){
+  let id=null,receipt=null,removed=false;
+  try{
+   const data={kind:kind,clientKey:clientKey,turnstileToken:'XXXX.DUMMY.TOKEN.XXXX',
+      topic:'Stage1664 Synthetic '+(kind==='feedback'?'Feedback':'Appeal'),
+      description:'This is a fabricated Stage 16.64 API acceptance test, not a real complaint, appeal, Roblox account, or identity.'};
+   if(kind==='appeal')data.claimedUserId='900000000000001';
+   const create=await call('/api/v1/feedback/submit',data);
+   const accepted=create.status===201&&create.data?.ok===true&&typeof create.data?.id==='string'&&/^[0-9a-f]{64}$/i.test(create.data.receipt||'');
+   record(kind+' Submit',accepted,'HTTP '+create.status);
+   if(!accepted)continue;
+   id=create.data.id;receipt=create.data.receipt;
+   const own={id:id,receipt:receipt};
+   const status=await call('/api/v1/feedback/status',own);
+   record(kind+' Status',status.status===200&&status.data?.ok===true,'HTTP '+status.status);
+   const edit=await call('/api/v1/feedback/manage',{...own,operation:'edit',topic:data.topic+' Edit',description:data.description});
+   record(kind+' Edit',edit.status===200&&edit.data?.ok===true,'HTTP '+edit.status);
+   const remove=await call('/api/v1/feedback/manage',{...own,operation:'remove'});
+   removed=remove.status===200&&remove.data?.removed===true;
+   record(kind+' Soft Remove',removed,'HTTP '+remove.status);
+   const gone=await call('/api/v1/feedback/status',own);
+   record(kind+' Removed receipt denied',gone.status===404,'HTTP '+gone.status);
+  }catch(e){record(kind+' lifecycle',false,'Network error');}
+  finally{
+   if(id&&receipt&&!removed){
+    try{const restore=await call('/api/v1/feedback/manage',{id:id,receipt:receipt,operation:'remove'});record(kind+' emergency soft removal',restore.status===200,'HTTP '+restore.status);}
+    catch(e){record(kind+' emergency soft removal',false,'Network error');}
+   }
+   id=null;receipt=null;
+  }
+ }
+ buttons(false);
+});
+$('copy').addEventListener('click',async()=>{
+ const report=['Stage16.64 Protected Sandbox HTTP Tests',...results.map(x=>(x.pass?'PASS ':'FAIL ')+x.name+' / '+x.status)].join('\n');
+ try{await navigator.clipboard.writeText(report);$('summary').textContent+=' · Copied';}
+ catch(e){$('summary').textContent+=' · Copy unavailable';}
+});
+})();
+</script></body></html>
