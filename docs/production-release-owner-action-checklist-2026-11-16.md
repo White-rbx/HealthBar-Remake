@@ -46,6 +46,22 @@ An independent, read-only Cloudflare Access authentication-log query returned **
 
 **Next release-blocking decision:** review/accept the proposed browser form and Arcsen link behavior; then separately authorize safe installation of *new* Production server-only bindings and a controlled HTTP validation path. This document does **not** authorize Worker, D1, Secrets or Cron changes.
 
+## Isolated browser UI preview — ready for owner inspection (2026-11-16)
+
+A **separate disposable Cloudflare Worker/Preview** was created to allow the owner to inspect the proposed Feedback & Appeal layout in an ordinary browser:
+
+**Preview URL:** https://feedback-browser-ui-review-asc-browser-form-review-20261116.kogpasan14.workers.dev
+
+- Isolated Cloudflare Worker: `asc-browser-form-review-20261116`; its normal `workers.dev` endpoint is **disabled** and only its Preview URLs are enabled.
+- The preview Worker is **not** the Production Candidate and contains **no binding, D1, secret, Cron, Production Access policy, or Production API**.
+- The page is visually derived from `sandbox/production-feedback-appeal-form.html` but renders the **official Cloudflare TEST sitekey** instead of the real Production sitekey.
+- The client test script contains **no submit/status/manage API functions**, all input/submit/manage controls are disabled, and the Worker responds to non-GET methods with HTTP **405**. The Feedback/Appeal select can switch the Test widget action between `feedback_submit` and `appeal_submit` so the owner can check the page and mobile layout.
+- The Cloudflare Preview deployment was created and compiled successfully (deployment ID `f93e5144-83de-499d-93be-5b18f541b252`). The Preview URL was verified through the official Cloudflare API; **browser HTTP / rendering are not yet observed**, and the previous Tool egress limitation remains in effect. This preview must **not** be used for real feedback or private information.
+- The full hash-pinned Production Candidate source remains review-only and has **not been deployed**. An isolated static UI Preview cannot certify the full Candidate's Server-side Siteverify, Access, data writes or Push.
+- **Roblox UI bridge:** Do **not** call `GuiService:OpenBrowserWindow()` from Luau. The user confirmed that the prior method is patched/unavailable. No unapproved in-game external-link bypass is planned. The browser form can be reviewed via its separately shared authorized browser link; Roblox-specific entry must follow current platform policy and remain separate from this static preview.
+
+**Owner inspection:** open the Preview URL in the normal mobile/desktop browser and check whether the test Turnstile widget loads and switching Feedback/Appeal updates the visible fields. **Do not enter personal data.** Once the preview is no longer needed, the disposable Preview Worker can be deleted without changing Production.
+
 ## Production Feedback/Appeal browser handoff — source complete (2026-11-16)
 
 **Implemented in GitHub review-only Candidate:** a mobile-friendly `GET /api/v1/feedback/form` page with a separate `GET /api/v1/feedback/form.js` script, using the **new public Production Turnstile sitekey** and action `feedback_submit` or `appeal_submit`. The page posts JSON only to the same-origin `/api/v1/feedback/submit` endpoint; the Worker verifies the token using real Siteverify before any D1 mutation. Appeal asks for the *claimed* Roblox UserId, not a password or confirmed Roblox login.
