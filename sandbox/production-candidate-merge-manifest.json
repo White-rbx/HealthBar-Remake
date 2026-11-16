@@ -116,9 +116,9 @@
     "status": "PASS_STATIC_REVIEW_ONLY",
     "actualProductionSourceHashMatches": true,
     "actualSandboxSourceHashMatches": true,
-    "candidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
-    "candidateBytesUtf8": 151540,
-    "candidateLengthUtf16": 149942,
+    "candidateSha256": "757a9211ba6643dd6d388772cbace0aa3dfdfa138610c13de129a6ce6c4941c7",
+    "candidateBytesUtf8": 151542,
+    "candidateLengthUtf16": 149944,
     "syntaxCheck": "PASS — JavaScript V8 parser with module `export default` changed to `const` solely for parse-only validation; not a Cloudflare Runtime deployment/test",
     "legacyRouteSourcePreserved": true,
     "onlyOneWorkerExport": true,
@@ -129,11 +129,21 @@
     "workerArtifactPersisted": false,
     "productionWorkerOrDatabaseModified": false,
     "productionDeploymentPermitted": false,
-    "nextGate": "Review runtime behavior, real configuration, source diff and backup/restore before separate Production authorization"
+    "nextGate": "Review runtime behavior, real configuration, source diff and backup/restore before separate Production authorization",
+    "previousCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
+    "scopeCorrection": {
+      "reason": "Original bare Android Push page path /api/v1/admin/push was outside /api/v1/admin/push/ Service Worker scope and could stall navigator.serviceWorker.ready.",
+      "correctedPagePath": "/api/v1/admin/push/",
+      "serviceWorkerScope": "/api/v1/admin/push/",
+      "result": "Full source reassembly in private memory and V8 JavaScript syntax PASS. GitHub Actions 6/6 isolated route contract tests PASS.",
+      "currentCandidateRuntimeHttpSmokeVerified": false,
+      "currentCandidateCloudflarePreviewCompiled": false,
+      "testBranchOnly": true
+    }
   },
   "preproductionPreviewEvidence": {
     "date": "2026-11-16",
-    "status": "PREVIEW_COMPILE_PASS__HTTP_NETWORK_BLOCKED__OFFLINE_NEGATIVE_TESTS_11_OF_11_PASS",
+    "status": "HISTORICAL_PREVIEW_COMPILE_PASS_FOR_OLD_CANDIDATE__CURRENT_SCOPED_CANDIDATE_NOT_PREVIEWED__HTTP_BLOCKED",
     "sourceCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
     "cloudflarePreview": {
       "isolatedWorkerResourceCreated": true,
@@ -170,6 +180,8 @@
     },
     "productionReleaseSecretsConfigured": false,
     "productionRuntimeHttpVerified": false,
-    "productionReleasePermitted": false
+    "productionReleasePermitted": false,
+    "supersededByScopedCandidateSha256": "757a9211ba6643dd6d388772cbace0aa3dfdfa138610c13de129a6ce6c4941c7",
+    "previewOfCurrentCandidatePerformed": false
   }
 }
