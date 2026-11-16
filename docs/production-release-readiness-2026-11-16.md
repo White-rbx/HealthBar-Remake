@@ -139,6 +139,29 @@ The GitHub `sandbox/production-candidate-merge-manifest.json` records the proof,
 **Decision remains NO-GO.** Do not infer that Production is ready based on a Preview upload alone.
 
 
+
+## Android Push Service Worker scope defect — fixed before release (2026-11-16)
+
+**Security/functional review finding:** The first review-only Candidate mapped the Android Push setup page from `/__stage1671/android-push` to **`/api/v1/admin/push`** (no trailing slash), while its JavaScript registered `/api/v1/admin/push/sw.js` with scope **`/api/v1/admin/push/`**. Because the setup page was outside that scope, Chrome's `navigator.serviceWorker.ready` could remain unresolved, preventing the Push subscription flow from completing even when the module compiles.
+
+**Fix committed to GitHub test branch only:**
+- Map the Android Push setup page to **`/api/v1/admin/push/`** (trailing slash) so it is controlled by the registered Service Worker.
+- Update the GET router for the page to the same slash-terminated path.
+- Explicitly keep this slash-terminated path in `ASC_RELEASE_NEW_PATHS`; the prior filtering of trailing-slash paths would otherwise silently exclude it.
+- Preserve the configured hostname gate, Cloudflare Access verification and real Turnstile verification. No real D1, Subscription, Push endpoint, secret, Production or Staging Worker change was made.
+
+**Test evidence:**
+- Added `sandbox/production-candidate-route-contract.test.mjs` with 6 checks for page URL, registration scope, script path, route registration, allowlist membership and security gates.
+- Added the checks to the existing read-only GitHub Actions workflow `.github/workflows/production-candidate-offline-review.yml`.
+- GitHub Actions run <https://github.com/White-rbx/HealthBar-Remake/actions/runs/43870419197> **SUCCESS — 6/6 PASS, 0 FAIL**, including existing manifest and source-hash fail-closed checks.
+- Reassembled using the two exact active Cloudflare Worker sources in **private memory**. The resulting corrected Candidate passed independent V8 JavaScript syntax parsing, Source SHA-256 pinning, legacy route retention, Service Worker scope and all previously mandated Sandbox-token exclusion/real-Siteverify/host-guard checks.
+- **Corrected Candidate SHA-256:** `757a9211ba6643dd6d388772cbace0aa3dfdfa138610c13de129a6ce6c4941c7`; **151,542 UTF-8 bytes**, **149,944 UTF-16 code units**.
+- The previous Candidate SHA `b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f` is **superseded** and its former Cloudflare Preview compilation does **not** establish that the corrected Candidate was compiled or exercised on Cloudflare.
+- The GitHub Manifest differentiates historical Preview evidence from the current corrected Candidate. **Live HTTP runtime verification remains blocked/unverified**, and no retry or bypass of the HTTP egress restriction was attempted.
+
+**Outcome:** Scope error addressed in the review-only Candidate; static route contract tests PASS. Browser-level Push subscription on a Cloudflare-hosted preproduction URL is **not yet observed**. Existing Production NO-GO and independent configuration/backup/authorization gates remain in place.
+
+
 ## 1. Evidence from live read-only Cloudflare audit
 
 | Environment | Active Worker version | Explicit SQL objects (tables + indexes + triggers) | D1 identity |
