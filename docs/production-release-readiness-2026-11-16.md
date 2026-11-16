@@ -183,6 +183,17 @@ The GitHub `sandbox/production-candidate-merge-manifest.json` records the proof,
 **Outcome:** Scope error addressed in the review-only Candidate; static route contract tests PASS. Browser-level Push subscription on a Cloudflare-hosted preproduction URL is **not yet observed**. Existing Production NO-GO and independent configuration/backup/authorization gates remain in place.
 
 
+## Production Access, Turnstile and recovery readiness — audited
+
+Read-only Cloudflare checks found **2 Access applications** but no verified Production host coverage from the returned metadata; **1 managed Turnstile widget matching the Sandbox host**, with no confirmed dedicated Production widget; and Production Worker **without the new Turnstile, Push Access or VAPID bindings**.
+
+Read-only D1 checks for Production, Staging and Sandbox: **quick_check=ok**, **0 foreign-key violations**, Time Travel bookmark available. Independent Production backup/export restoration is **not certified**.
+
+GitHub Actions run **43873600377** passed **28 Node + 7 Python SQLite tests (35/35)** including synthetic fail-closed Release Channel, Turnstile, hostname, Access AUD, admin identity and VAPID/DB configuration checks. These are static/offline tests, not real HTTP acceptance.
+
+Full operator checklist: [Production Access, Turnstile and Recovery Audit](production-access-turnstile-recovery-audit-2026-11-16.md). **Production remains NO-GO** until owner-controlled secrets/policies, approved HTTP testing and independent restore drill are complete.
+
+
 ## 1. Evidence from live read-only Cloudflare audit
 
 | Environment | Active Worker version | Explicit SQL objects (tables + indexes + triggers) | D1 identity |

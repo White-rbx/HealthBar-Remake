@@ -198,5 +198,24 @@
     "productionReleasePermitted": false,
     "supersededByScopedCandidateSha256": "9da9cf8a19995d3058d8f292424c49074377b3e5a7fe4727c31b65fce73e4841",
     "previewOfCurrentCandidatePerformed": false
+  },
+  "securityRecoveryAudit": {
+    "date": "2026-11-16",
+    "evidence": "Cloudflare read-only settings/Access widgets/Access Apps/D1 integrity + GitHub offline QA",
+    "workflowRun": "https://github.com/White-rbx/HealthBar-Remake/actions/runs/43873600377",
+    "nodeTestsPassed": 28,
+    "sqliteTestsPassed": 7,
+    "testsTotalPassed": 35,
+    "productionAccessHostCoverageVerified": false,
+    "productionTurnstileWidgetVerified": false,
+    "productionReleaseBindingSetComplete": false,
+    "databaseQuickCheckProduction": "ok",
+    "databaseForeignKeyViolationsProduction": 0,
+    "timeTravelBookmarkProductionAvailable": true,
+    "independentProductionExportRestoreCertified": false,
+    "productionHttpRuntimeAccepted": false,
+    "noSecretsReadOrChanged": true,
+    "noProductionOrStagingMutations": true,
+    "linkedRunbook": "docs/production-access-turnstile-recovery-audit-2026-11-16.md"
   }
 }
