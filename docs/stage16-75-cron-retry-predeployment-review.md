@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.75: Sandbox Cron Retry Predeployment Review
 
 Date: 2026-11-16 (Asia/Bangkok)
-Status: **CODE + GITHUB ACTIONS 18/18 OFFLINE TESTS PASS. NOT DEPLOYED. NO CRON TRIGGER ACTIVE.**
+Status: **CODE + GITHUB ACTIONS 25/25 OFFLINE TESTS PASS; LIVE SANDBOX SOURCE PREFLIGHT PASS. NOT DEPLOYED. NO CRON TRIGGER ACTIVE.**
 Production: **NO-GO**.
 
 ## Objective
@@ -164,3 +164,31 @@ Seven new simulated end-to-end cases were added, exercising the **actual Stage16
 7. Production release remains separate, requiring an isolated Production backup/restore rehearsal and explicit release authorization.
 
 **Current decision: Sandbox Cron remains NO-GO for live Android acceptance until scheduled handler and trigger can be deployed and verified. Production remains NO-GO.**
+
+## Fail-closed Worker assembly CI — 25/25 PASS (2026-11-16)
+
+**New offline builder (test branch only):** `sandbox/stage16-75-assemble.mjs`.
+**New Node tests:** `sandbox/stage16-75-assemble.test.mjs` (7 additional cases).
+
+The builder accepts an **explicitly provided local copy** of the Sandbox Worker script and the already-reviewed Stage16.75 helper. It does not download Worker source, access Cloudflare, read secret binding values or deploy anything. It rejects unexpected stage versions, duplicate or missing fetch/route anchors, an existing scheduled handler, a missing Admin Access identity guard, missing Outbox layer, missing existing Push/Feedback routes and invalid Cron schedule specification. It adds the `scheduled()` handler to a local review candidate and runs a Node syntax check. Source and output paths must be distinct. A local syntax-check candidate is **not** a deployed Worker.
+
+The first GitHub Actions CI pass with the new builder returned **24/25**: an expected fail-closed refusal used the less-specific export-anchor error message when the fixture contained an already installed scheduled handler. The builder was corrected to check for the existing handler *before* validating the fetch anchor. No Cloudflare deployment was attempted during this correction.
+
+**Verified GitHub-hosted CI run:** <https://github.com/White-rbx/HealthBar-Remake/actions/runs/43849634263> — **SUCCESS**. Job Logs independently showed **tests 25, pass 25, fail 0**. The workflow is restricted to the test branch, with `contents: read` and checkout credentials not persisted; there are no Cloudflare deployment/API steps.
+
+### Read-only live Sandbox source preflight after CI
+
+Cloudflare currently serves Stage16.74 `dfcc6017-5721-4e26-bf6e-a36b01fb844c`. Read-only examination of its source (not exported to GitHub) confirmed:
+
+- Exactly **2** expected Stage16.74 version string occurrences.
+- Exactly **1** real `export default { async fetch(...)` insertion anchor.
+- Exactly **1** Stage16.74 protected Push Health route anchor.
+- Expected `asc1674Deliver(env,id)`, `asc1674RetryDue(env)`, Admin Access identity guard and durable D1 Outbox are present.
+- Stage16.71/16.72/16.73 routes preserved.
+- Neither a Stage16.75 runner nor a pre-existing scheduled handler exists.
+- Existing **12** Worker bindings; DB still points to the isolated Sandbox D1.
+- Sandbox Cron Trigger schedules: **empty**. Telemetry: `runs=0`, `last_error='never'`.
+- D1 Outbox rows: **0**; Android Push subscriptions: **1**; `PRAGMA quick_check=ok`.
+- Production Worker `298de84d-418c-489c-b133-c549c785f66e` and Staging Worker `5b5040fb-6c04-4029-9c53-af15d3dda888` both unchanged at 100% traffic.
+
+**The remaining blocker is deploying the actual scheduled handler and Cron Trigger using an authorized Cloudflare workflow.** A previous upload attempt was blocked by the platform, and that block was not bypassed or retried. Offline CI cannot certify live Cron scheduling or Android delivery. Do **not** request Android Stage16.75 testing yet. Production remains **NO-GO**.
