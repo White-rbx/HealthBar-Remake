@@ -109,5 +109,26 @@
     "candidateSmokeTestPassed": false,
     "productionDeploymentPermitted": false
   },
-  "instructions": "Pinned source metadata and merge selection only. Does not contain or generate an executable production candidate. Never publish copied Worker source or secret values. Stop on source hash mismatch. Do not deploy or migrate without separate explicit production authorization."
+  "instructions": "Pinned source metadata and merge selection only. Does not contain or generate an executable production candidate. Never publish copied Worker source or secret values. Stop on source hash mismatch. Do not deploy or migrate without separate explicit production authorization.",
+  "assemblyEvidence": {
+    "date": "2026-11-16",
+    "method": "In-memory private assembly from exact active Cloudflare Production and Sandbox Worker source, against the pinned GitHub assembler and manifest",
+    "status": "PASS_STATIC_REVIEW_ONLY",
+    "actualProductionSourceHashMatches": true,
+    "actualSandboxSourceHashMatches": true,
+    "candidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
+    "candidateBytesUtf8": 151540,
+    "candidateLengthUtf16": 149942,
+    "syntaxCheck": "PASS — JavaScript V8 parser with module `export default` changed to `const` solely for parse-only validation; not a Cloudflare Runtime deployment/test",
+    "legacyRouteSourcePreserved": true,
+    "onlyOneWorkerExport": true,
+    "productionHostGuardPresent": true,
+    "productionRealTurnstileGuardPresent": true,
+    "productionAdminIdentityGuardPresent": true,
+    "sandboxDummyTokenAndTestRoutesExcluded": true,
+    "workerArtifactPersisted": false,
+    "productionWorkerOrDatabaseModified": false,
+    "productionDeploymentPermitted": false,
+    "nextGate": "Review runtime behavior, real configuration, source diff and backup/restore before separate Production authorization"
+  }
 }
