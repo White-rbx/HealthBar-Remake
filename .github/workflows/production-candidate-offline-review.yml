@@ -7,6 +7,7 @@ on:
     paths:
       - sandbox/production-candidate-assembler.mjs
       - sandbox/production-candidate-route-contract.test.mjs
+      - sandbox/test_production_candidate_cron_bootstrap.py
       - sandbox/production-candidate-merge-manifest.json
       - migrations/2026-11-16_stage1675_push_cron_additive_DRAFT.sql
       - .github/workflows/production-candidate-offline-review.yml
@@ -29,6 +30,8 @@ jobs:
         run: node --check sandbox/production-candidate-assembler.mjs
       - name: Verify Android Push page and Service Worker scope contracts
         run: node --test sandbox/production-candidate-route-contract.test.mjs
+      - name: Test Production-only Cron health schema and bootstrap using real SQLite
+        run: python3 -m unittest discover -s sandbox -p 'test_production_candidate_cron_bootstrap.py' -v
       - name: Validate manifest metadata
         run: |
           node --input-type=module <<'JS'

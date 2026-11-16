@@ -84,6 +84,12 @@ import {spawnSync} from "node:child_process";
   let outbox=find("durableOutbox");
   outbox=outbox.replaceAll("ascStage1671IsSandbox","ascReleaseDomainGate");
   let cron=find("cronRunner");
+  // Sandbox D1 health table only accepts sandbox_push_cron.
+  // Production has a separately seeded, production-only scope; fail closed on source drift.
+  const sandboxCronScope="'sandbox_push_cron'";
+  if(cron.split(sandboxCronScope).length!==5)
+    stop("Stage16.75 Cron health scope markers changed; review before release");
+  cron=cron.replaceAll(sandboxCronScope,"'production_push_cron'");
   cron=replaceOnce(cron,
     "if(!VERSION.includes('-sandbox')||env.ASC_TURNSTILE_MODE!=='sandbox-dummy'||\n    typeof env.ASC_PUSH_ACCESS_AUD!=='string'||\n    !/^[A-Za-z0-9_-]{32,128}$/.test(env.ASC_PUSH_ACCESS_AUD)||!env.DB||\n    controller?.cron!=='*/5 * * * *')return;",
     "if(!ascReleaseEnvReady(env)||controller?.cron!=='*/5 * * * *')return;",

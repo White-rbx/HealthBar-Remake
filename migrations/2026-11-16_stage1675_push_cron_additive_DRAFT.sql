@@ -1,7 +1,7 @@
--- ArcScriptCenter Production Candidate — Push + Cron schema-only additive migration.
+-- ArcScriptCenter Production Candidate — Push + Cron additive schema and Cron health bootstrap.
 -- DRAFT / REVIEW ONLY: NEVER apply to Production or Staging without owner approval.
 -- Derived from live Sandbox D1 sqlite_master definitions (2026-11-16).
--- Exactly 3 tables + 2 indexes, no sample data, secrets, subscriptions or test controls.
+-- Exactly 3 tables + 2 indexes, plus ONE non-user Cron health bootstrap row; no subscriptions, secrets or test controls.
 -- Apply AFTER reviewing and rehearsing the separate Stage16.69 18-object Feedback/Appeal migration.
 -- Requires independent backup/restore verification and source-code integration approval.
 
@@ -25,7 +25,11 @@ CREATE TABLE asc_push_delivery_outbox_v1 (
  );
 
 -- table: asc_push_cron_health_v1
-CREATE TABLE asc_push_cron_health_v1(scope TEXT PRIMARY KEY CHECK(scope='sandbox_push_cron'),runs INTEGER NOT NULL DEFAULT 0,last_started_unix INTEGER NOT NULL DEFAULT 0,last_finished_unix INTEGER NOT NULL DEFAULT 0,last_jobs INTEGER NOT NULL DEFAULT 0,last_attempted INTEGER NOT NULL DEFAULT 0,last_accepted INTEGER NOT NULL DEFAULT 0,last_failed INTEGER NOT NULL DEFAULT 0,last_error TEXT NOT NULL DEFAULT 'never' CHECK(last_error IN ('never','none','worker_error')));
+CREATE TABLE asc_push_cron_health_v1(scope TEXT PRIMARY KEY CHECK(scope='production_push_cron'),runs INTEGER NOT NULL DEFAULT 0,last_started_unix INTEGER NOT NULL DEFAULT 0,last_finished_unix INTEGER NOT NULL DEFAULT 0,last_jobs INTEGER NOT NULL DEFAULT 0,last_attempted INTEGER NOT NULL DEFAULT 0,last_accepted INTEGER NOT NULL DEFAULT 0,last_failed INTEGER NOT NULL DEFAULT 0,last_error TEXT NOT NULL DEFAULT 'never' CHECK(last_error IN ('never','none','worker_error')));
+
+-- Required operational bootstrap: exactly one non-user row, idempotent and zeroed.
+-- Without this, the Cron runner's UPDATE ... WHERE scope=? has nothing to update.
+INSERT OR IGNORE INTO asc_push_cron_health_v1(scope) VALUES('production_push_cron');
 
 -- index: idx_asc_push_outbox_due_v1
 CREATE INDEX idx_asc_push_outbox_due_v1 ON asc_push_delivery_outbox_v1(state,next_retry_unix,lease_until_unix);
