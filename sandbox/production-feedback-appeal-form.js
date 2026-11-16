@@ -7,7 +7,7 @@
   const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const receiptRegex=/^[0-9a-f]{64}$/i;
   const userid=/^[1-9][0-9]{0,15}$/;
-  let widget=null,token=null,pending=false,loadedCase=null;
+  let widget=null,token=null,pending=false,loadedCase=null,challengeGeneration=0;
   let clientKey=null;
   const status=(txt,error=false)=>{
     message.textContent=String(txt);
@@ -46,6 +46,8 @@
     }
   }
   function renderChallenge(){
+    // Late callbacks from a removed Turnstile widget must never enable Submit.
+    const generation=++challengeGeneration;
     token=null;
     submit.disabled=true;
     if(!window.turnstile){status("ไม่สามารถโหลด Turnstile ได้ กรุณาตรวจเครือข่าย",true);return}
@@ -55,10 +57,10 @@
       sitekey,
       action:kind.value==="appeal"?"appeal_submit":"feedback_submit",
       theme:"dark",
-      callback:t=>{token=t;setBusy(pending);status("ยืนยันเรียบร้อย ตรวจข้อความก่อนส่งคำร้อง")},
-      "expired-callback":()=>{token=null;submit.disabled=true;status("การยืนยันหมดอายุ กรุณายืนยันใหม่",true)},
-      "timeout-callback":()=>{token=null;submit.disabled=true;status("หมดเวลายืนยัน กรุณาลองอีกครั้ง",true)},
-      "error-callback":()=>{token=null;submit.disabled=true;status("Turnstile มีปัญหา กรุณาลองใหม่",true);return true}
+      callback:t=>{if(generation!==challengeGeneration)return;token=t;setBusy(pending);status("ยืนยันเรียบร้อย ตรวจข้อความก่อนส่งคำร้อง")},
+      "expired-callback":()=>{if(generation!==challengeGeneration)return;token=null;submit.disabled=true;status("การยืนยันหมดอายุ กรุณายืนยันใหม่",true)},
+      "timeout-callback":()=>{if(generation!==challengeGeneration)return;token=null;submit.disabled=true;status("หมดเวลายืนยัน กรุณาลองอีกครั้ง",true)},
+      "error-callback":()=>{if(generation!==challengeGeneration)return true;token=null;submit.disabled=true;status("Turnstile มีปัญหา กรุณาลองใหม่",true);return true}
     });
     status("กรุณายืนยัน Turnstile ก่อนส่งคำร้อง");
   }
@@ -148,6 +150,9 @@
         (c.publicNote?"\nหมายเหตุ: "+c.publicNote:"");
       $("case-section").hidden=false;
       kind.value=c.kind;
+      // A receipt lookup never returns claimed identity; do not keep a previous
+      // new-appeal UserId silently associated with this unrelated case.
+      userId.value="";
       $("userid-group").hidden=c.kind!=="appeal";
       $("length-hint").textContent=c.kind==="appeal"?"(50–5000 ตัวอักษร)":"(50–1500 ตัวอักษร)";
       topic.value=c.topic;

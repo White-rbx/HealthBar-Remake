@@ -240,3 +240,50 @@ test('removing a receipt-scoped case clears displayed secret receipt',async()=>{
  assert.equal(b.element('lookup-receipt').value,'');
  assert.equal(b.element('case-summary').textContent,'');
 });
+
+
+test('late callbacks from replaced Turnstile widgets never enable or invalidate Submit',()=>{
+ const b=mockBrowser();
+ const oldWidget=b.widgets.at(-1);
+ assert.equal(oldWidget.action,'feedback_submit');
+ b.element('kind').value='appeal';
+ b.listeners.get('kind:change')();
+ const current=b.widgets.at(-1);
+ assert.equal(current.action,'appeal_submit');
+ assert.equal(b.element('submit').disabled,true);
+ oldWidget.callback('old-feedback-token');
+ assert.equal(b.element('submit').disabled,true,'old feedback token must not unlock an Appeal submit');
+ const initialMessage=b.element('message').textContent;
+ oldWidget['expired-callback']();
+ oldWidget['timeout-callback']();
+ oldWidget['error-callback']();
+ assert.equal(b.element('message').textContent,initialMessage,'retired widget must not overwrite current state');
+ current.callback('new-appeal-token');
+ assert.equal(b.element('submit').disabled,false);
+ oldWidget['expired-callback']();
+ oldWidget['error-callback']();
+ assert.equal(b.element('submit').disabled,false,'retired errors must not invalidate current widget');
+ current['expired-callback']();
+ assert.equal(b.element('submit').disabled,true,'active token expiry still disables submit');
+ oldWidget.callback('old-feedback-token');
+ assert.equal(b.element('submit').disabled,true,'retired callbacks must stay invalid after expiry');
+ assert.equal(b.requests.length,0,'callbacks must never submit data automatically');
+});
+
+test('receipt lookup clears previously typed claimed UserId before editing an existing Appeal',async()=>{
+ const id='11111111-2222-4333-8444-555555555555';
+ const b=mockBrowser({
+  '/api/v1/feedback/status':{ok:true,case:{id,kind:'appeal',topic:'Old case',
+    description:'L'.repeat(65),status:'reviewing',revision:0,canManage:true,publicNote:''},history:[]}
+ });
+ b.element('kind').value='appeal';
+ b.listeners.get('kind:change')();
+ b.element('user-id').value='987654321';
+ b.element('lookup-id').value=id;
+ b.element('lookup-receipt').value='d'.repeat(64);
+ await b.click('check-status');
+ assert.equal(b.element('user-id').value,'','previous claimed identity must not leak into another case');
+ assert.equal(b.element('edit-case').disabled,false,'receipt-based Appeal edit remains enabled');
+ assert.equal(b.element('submit').disabled,true,'status lookup must not leave an old Turnstile token active');
+ assert.equal(b.requests.length,1);
+});
