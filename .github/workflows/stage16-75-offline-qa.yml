@@ -31,7 +31,7 @@ jobs:
         run: node --version
 
       - name: Offline Cron and route tests
-        run: node --test sandbox/stage16-75-cron-retry-runner.test.mjs sandbox/stage16-75-cron-assembly.test.mjs
+        run: node --test sandbox/stage16-75-*.test.mjs
 
       - name: Validate no Cron deployment side effects
         run: |
