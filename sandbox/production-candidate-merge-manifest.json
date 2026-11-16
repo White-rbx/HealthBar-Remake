@@ -100,7 +100,7 @@
     "disposableD1Rehearsal": "PASS—70/70; synthetic Feedback history+Outbox transition; quick_check=ok; no FK violations; disposable DB deleted",
     "productionCronHealthScope": "production_push_cron",
     "productionCronHealthBootstrap": "INSERT OR IGNORE INTO asc_push_cron_health_v1(scope) VALUES('production_push_cron')",
-    "productionCronHealthReview": "Pending CI and private current-source reassembly. Prior 70/70 Sandbox equivalence was for sandbox-scoped draft and does not validate this intentional Production-specific CHECK constraint."
+    "productionCronHealthReview": "PASS — official Cloudflare D1 disposable SQL rehearsal; 5 schema objects, one operational bootstrap row, update reaches row, repeated INSERT OR IGNORE preserves runs, quick_check=ok, no FK violations, disposable D1 deleted. GitHub Actions 7/7 Python SQLite tests plus 6/6 Node route-contract tests PASS."
   },
   "releaseGates": {
     "ownerProductionApproval": false,
@@ -112,16 +112,16 @@
     "candidateSmokeTestPassed": false,
     "productionDeploymentPermitted": false
   },
-  "instructions": "Pinned source metadata and merge selection only. Does not contain or generate an executable production candidate. Never publish copied Worker source or secret values. Stop on source hash mismatch. Do not deploy or migrate without separate explicit production authorization.",
+  "instructions": "Pinned source metadata and reviewed merge selection only. No Worker source or secret is embedded here. The assembler can generate a private review-only artifact but this is NOT permission to deploy or migrate. Stop on source hash mismatch. Require explicit separate Production approval.",
   "assemblyEvidence": {
     "date": "2026-11-16",
     "method": "In-memory private assembly from exact active Cloudflare Production and Sandbox Worker source, against the pinned GitHub assembler and manifest",
-    "status": "SUPERSEDED_BY_PRODUCTION_CRON_SCOPE_FIX__REASSEMBLY_REQUIRED",
+    "status": "PASS_STATIC_REVIEW_ONLY__PRODUCTION_CRON_SCOPE_FIXED",
     "actualProductionSourceHashMatches": true,
     "actualSandboxSourceHashMatches": true,
-    "candidateSha256": null,
-    "candidateBytesUtf8": null,
-    "candidateLengthUtf16": null,
+    "candidateSha256": "9da9cf8a19995d3058d8f292424c49074377b3e5a7fe4727c31b65fce73e4841",
+    "candidateBytesUtf8": 151554,
+    "candidateLengthUtf16": 149956,
     "syntaxCheck": "PASS — JavaScript V8 parser with module `export default` changed to `const` solely for parse-only validation; not a Cloudflare Runtime deployment/test",
     "legacyRouteSourcePreserved": true,
     "onlyOneWorkerExport": true,
@@ -132,7 +132,7 @@
     "workerArtifactPersisted": false,
     "productionWorkerOrDatabaseModified": false,
     "productionDeploymentPermitted": false,
-    "nextGate": "Reassemble after Production Cron scope fix; verify current SHA privately, then repeat preproduction runtime checks. No Production deploy.",
+    "nextGate": "Production-specific security and recovery audit, then authorized isolated runtime tests; no Production changes or deploy.",
     "previousCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
     "scopeCorrection": {
       "reason": "Original bare Android Push page path /api/v1/admin/push was outside /api/v1/admin/push/ Service Worker scope and could stall navigator.serviceWorker.ready.",
@@ -143,11 +143,22 @@
       "currentCandidateCloudflarePreviewCompiled": false,
       "testBranchOnly": true
     },
-    "previousScopedCandidateSha256": "757a9211ba6643dd6d388772cbace0aa3dfdfa138610c13de129a6ce6c4941c7"
+    "previousScopedCandidateSha256": "757a9211ba6643dd6d388772cbace0aa3dfdfa138610c13de129a6ce6c4941c7",
+    "productionCronScope": {
+      "scope": "production_push_cron",
+      "selectedCronReferencesRewritten": 4,
+      "remainingSandboxCronReferences": 0,
+      "privateSourceSHAValidation": true,
+      "privateSourceAssemblyPass": true,
+      "privateSyntaxCheckPass": true,
+      "candidateSha256": "9da9cf8a19995d3058d8f292424c49074377b3e5a7fe4727c31b65fce73e4841",
+      "allFourHealthStatementsUseProductionScope": true,
+      "productionOrStagingModified": false
+    }
   },
   "preproductionPreviewEvidence": {
     "date": "2026-11-16",
-    "status": "HISTORICAL_PREVIEW_COMPILE_PASS_FOR_OLD_CANDIDATE__CURRENT_SCOPED_CANDIDATE_NOT_PREVIEWED__HTTP_BLOCKED",
+    "status": "HISTORICAL_PREVIEW_COMPILE_PASS_FOR_UNCORRECTED_CANDIDATE__LATEST_PROD_SCOPE_CANDIDATE_NOT_PREVIEWED__HTTP_BLOCKED",
     "sourceCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
     "cloudflarePreview": {
       "isolatedWorkerResourceCreated": true,
@@ -185,7 +196,7 @@
     "productionReleaseSecretsConfigured": false,
     "productionRuntimeHttpVerified": false,
     "productionReleasePermitted": false,
-    "supersededByScopedCandidateSha256": "757a9211ba6643dd6d388772cbace0aa3dfdfa138610c13de129a6ce6c4941c7",
+    "supersededByScopedCandidateSha256": "9da9cf8a19995d3058d8f292424c49074377b3e5a7fe4727c31b65fce73e4841",
     "previewOfCurrentCandidatePerformed": false
   }
 }

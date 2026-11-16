@@ -7,6 +7,27 @@ Preparation branch: `stage16-63-protected-http-test`
 Production Worker: `arcscriptcenter-api`; staging: `arcscriptcenter-api-staging`; isolated Sandbox: `arcscriptcenter-merge-sandbox-1658`.
 
 
+
+## Production Cron telemetry bootstrap — resolved in review-only Candidate (2026-11-16)
+
+**Security/reliability finding:** The first Production migration draft copied Sandbox's SQL constraint `CHECK(scope='sandbox_push_cron')` and had **no bootstrap row** in `asc_push_cron_health_v1`. The Cron handler uses `UPDATE ... WHERE scope=...` and the health UI uses `SELECT ... WHERE scope=...`. With an empty table, an otherwise successful scheduled invocation would silently leave `Runs=0` and `Last result=never`. Copying Sandbox's scope into Production would also mix environment-specific operational records.
+
+**Fix committed only to the GitHub test branch:**
+
+- Production D1 schema now uses `CHECK(scope='production_push_cron')`.
+- Migration adds exactly **one non-user, idempotent operational bootstrap statement**: `INSERT OR IGNORE INTO asc_push_cron_health_v1(scope) VALUES('production_push_cron')`.
+- Review-only Worker assembler checks that the 4 expected Sandbox Cron scope references exist, then rewrites all 4 to `production_push_cron` before creating the Candidate. It fails closed if the upstream source changes.
+- No user Feedback record, Push endpoint, subscription, Secret or real Production telemetry is copied.
+- 7 Python SQLite tests were added, together with 6 existing Node route-contract tests: **13/13 PASS in actual GitHub Actions run** <https://github.com/White-rbx/HealthBar-Remake/actions/runs/43871855040>.
+- Production scope was also tested in a **new disposable Cloudflare D1** with official D1 APIs: 3 tables and 2 indexes created, exactly one initial `production_push_cron` row, `runs` successfully incremented to 1, repeat `INSERT OR IGNORE` preserved the counter, `PRAGMA quick_check=ok`, 0 foreign-key violations. The disposable D1 was **deleted successfully**. No existing Production, Staging or Sandbox D1 was modified.
+- Reassembled Candidate against the exact active, hash-pinned private Production and Sandbox Worker sources, in memory. V8 syntax PASS; all 4 Cron SQL references now use `production_push_cron` and 0 retain `sandbox_push_cron`. The original Production route body, Service Worker scope correction and Real Turnstile guard remain preserved.
+- **Latest review Candidate SHA-256:** `9da9cf8a19995d3058d8f292424c49074377b3e5a7fe4727c31b65fce73e4841`; **151,554 UTF-8 bytes**, **149,956 UTF-16 code units**. No complete Candidate source was committed publicly or uploaded to Production.
+
+**Correction to historical rehearsal evidence below:** The former 70/70 comparison proved the **earlier copied Sandbox-shaped** migration. The updated Production-only scope constraint intentionally differs from Sandbox, so that previous 70/70 comparison is **not** a fresh equivalence certification for the adapted DDL. The separate official Cloudflare D1 production-scope rehearsal above validates the new 5-object-and-bootstrap portion. The previously rehearsed 18 Feedback/Appeal objects are unchanged.
+
+**Release decision:** This blocker is resolved in the **review-only Candidate**. Live Production HTTP testing, production-owned Turnstile/Access/Push credentials, full recovery certification and explicit Production deployment approval remain **PENDING / NO-GO**.
+
+
 ## Additive Production-schema rehearsal — completed (2026-11-16)
 
 **Outcome: PASS for schema compatibility, NOT Production deployment authorization.** All live source and D1 reads were read-only for the existing Production, Staging and established Sandbox.
@@ -16,7 +37,7 @@ Production Worker: `arcscriptcenter-api`; staging: `arcscriptcenter-api-staging`
 The two source-controlled **draft** migration files now cover the **23** target application SQL objects:
 
 - `migrations/2026-11-15_stage1669_feedback_appeal_additive.sql`: **18** SQL objects (6 tables, 8 indexes, 4 triggers).
-- `migrations/2026-11-16_stage1675_push_cron_additive_DRAFT.sql`: **5** SQL objects (3 tables, 2 indexes) derived directly from live Sandbox `sqlite_master` definitions, with **no data, endpoints or secret values**.
+- `migrations/2026-11-16_stage1675_push_cron_additive_DRAFT.sql`: **5** SQL objects (3 tables, 2 indexes), with a **production-specific Cron health CHECK** and exactly one non-user bootstrap row; no subscription data, Push endpoints or secret values.
 
 Excluded explicitly: `asc_stage1672_test_control` and `asc_stage1673_real_push_control`. The new file is **review-only**; do not execute against Production or Staging without a separate explicit approval.
 
