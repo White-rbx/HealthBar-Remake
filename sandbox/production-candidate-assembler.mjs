@@ -205,7 +205,7 @@ ${pushRoutes}
     "async function asc1674Deliver",
     "async function asc1675CronRunner",
     "async scheduled(controller, env, ctx)",
-    "env.ASC_RELEASE_CHANNEL==='production'",
+    "env?.ASC_RELEASE_CHANNEL==='production'",
     "verdict.hostname!==env.ASC_TURNSTILE_HOSTNAME",
     "ASC_RELEASE_NEW_PATHS.has(path)"
   ];
