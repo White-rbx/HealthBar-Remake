@@ -38,6 +38,14 @@ An independent, read-only Cloudflare Access authentication-log query returned **
 
 **Next gate after browser confirmation:** owner-controlled binding/secret authorization and real Siteverify integration. Neither is authorized by this browser test. The existing Worker, D1, secrets, Access policy and Turnstile widget must remain unchanged for this acceptance check.
 
+## Recovery mechanism and Turnstile client integration checkpoint — 2026-11-16
+
+**Recovery technical drill: PASS (disposable D1 only).** A brand-new isolated D1 was populated with one synthetic baseline row, its Time Travel bookmark captured, and a second synthetic row inserted after the bookmark. An actual Cloudflare API `POST /time_travel/restore?bookmark=...` then restored the database successfully. Read-back proved the original row remained and the later row was absent; `PRAGMA quick_check=ok`. The temporary D1 was deleted and no existing Production, Staging or Sandbox database was restored or changed. This validates **the restore mechanism**, not the recoverability of private Production user records or a separately exported independent backup. Owner-approved Production recovery certification remains **PENDING**.
+
+**Turnstile client handoff blocker:** The review Candidate includes `ascStage1667SiteVerify` and checks real tokens for the correct hostname and action `feedback_submit` or `appeal_submit`. Its merger intentionally excludes the Sandbox-only browser test page `ASC_STAGE1667_HTML` and its synthetic tests. The repository therefore does **not yet supply a verified Production user-facing way to obtain and submit a genuine Turnstile token**. Do not claim that creating the production Widget alone makes in-app Roblox Feedback/Appeal functional. A verified browser challenge/submission handoff or equivalent authorized UI integration is required before feature rollout. Never send Turnstile secret or user token through GitHub or logs.
+
+**Next release-blocking decision:** agree on the production user-facing Turnstile challenge flow, then separately authorize installing *new* server-only production bindings with a reviewed deployment and acceptance plan. This document does **not** authorize Worker, D1, secrets or Cron changes.
+
 ## Completed and accepted
 
 - Sandbox Stage16.75 Web Push automatic retry: live Cloudflare Cron and Push Service accepted delivery on attempt two (HTTP 201); owner confirmed Android notification receipt. Synthetic QA data deleted.
@@ -56,7 +64,7 @@ An independent, read-only Cloudflare Access authentication-log query returned **
 |---|---|---|
 | 1. Cloudflare Access | **Provisioned** a production-host path-only app with a single owner allow policy; do not re-create. Existing Admin routes and GitHub integration unchanged | **Pending:** allowed/denied browser sessions and app AUD bound to Candidate |
 | 2. Real Turnstile + Push | **Managed Widget provisioned** for production domain and sitekey available; do not re-create. **Pending:** approved server secret installation and Production VAPID credentials | Real Siteverify hostname/action and invalid/replayed/outage tests; authorized Android subscription and Push |
-| 3. Recovery + HTTP acceptance | Obtain a verified independently accessible Production D1 backup/export and prove a controlled restoration procedure; run approved real HTTP pre-production tests | Recovery evidence and rollback operator identified; legacy routes, Feedback/Appeal, Access, Turnstile and device Push verified |
+| 3. Recovery + HTTP acceptance | **Isolated real D1 Time Travel restore mechanism PASS**. Independent Production data backup/restore certification and approved live HTTP tests still pending | Recovery evidence and rollback operator identified; legacy routes, Feedback/Appeal, Access, Turnstile and device Push verified |
 | 4. Final approval + rollout | Separately authorize Production D1 migration, Worker deployment, binding changes and Cron activation only after gates 1–3 | Pre-release backup bookmark, additive migration, canary checks, Cron/Outbox and rollback plan accepted |
 
 **Do not copy** Sandbox Turnstile secret, Access identity/AUD, VAPID private key, Push subscriptions, test records, Stage16.72/16.73 control tables or QA-only features into Production.

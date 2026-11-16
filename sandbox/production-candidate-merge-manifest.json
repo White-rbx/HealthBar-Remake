@@ -248,5 +248,29 @@
     "oldWorkerSecretsUnchanged": true,
     "sandboxResourcesUnchanged": true,
     "productionDeploymentPermitted": false
+  },
+  "recoveryDrill": {
+    "performedOn": "2026-11-16",
+    "isolation": "NEW_DISPOSABLE_D1_SYNTHETIC_ONLY",
+    "mechanism": "Cloudflare D1 Time Travel bookmark restore via official API",
+    "initialRowPreserved": true,
+    "postBookmarkRowRolledBack": true,
+    "quickCheck": "ok",
+    "disposableDatabaseDeleted": true,
+    "productionStagingSandboxDatabasesUnchanged": true,
+    "productionIndependentBackupRestoreCertified": false,
+    "nextRequired": "Owner-approved independent Production backup/export restore certification and rollback ownership"
+  },
+  "productionTurnstileClientGate": {
+    "widgetProvisioned": true,
+    "realServerSideVerifierPresentInReviewCandidate": true,
+    "expectedActions": [
+      "feedback_submit",
+      "appeal_submit"
+    ],
+    "sandboxBrowserIntegrationExcludedFromCandidate": true,
+    "productionEndUserTokenAcquisitionFlowValidated": false,
+    "note": "Do not equate real server Siteverify with a ready user-facing Turnstile flow. Browser challenge and submission handoff must be reviewed before production rollout.",
+    "productionDeploymentPermitted": false
   }
 }
