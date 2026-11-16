@@ -42,9 +42,19 @@ An independent, read-only Cloudflare Access authentication-log query returned **
 
 **Recovery technical drill: PASS (disposable D1 only).** A brand-new isolated D1 was populated with one synthetic baseline row, its Time Travel bookmark captured, and a second synthetic row inserted after the bookmark. An actual Cloudflare API `POST /time_travel/restore?bookmark=...` then restored the database successfully. Read-back proved the original row remained and the later row was absent; `PRAGMA quick_check=ok`. The temporary D1 was deleted and no existing Production, Staging or Sandbox database was restored or changed. This validates **the restore mechanism**, not the recoverability of private Production user records or a separately exported independent backup. Owner-approved Production recovery certification remains **PENDING**.
 
-**Turnstile client handoff blocker:** The review Candidate includes `ascStage1667SiteVerify` and checks real tokens for the correct hostname and action `feedback_submit` or `appeal_submit`. Its merger intentionally excludes the Sandbox-only browser test page `ASC_STAGE1667_HTML` and its synthetic tests. The repository therefore does **not yet supply a verified Production user-facing way to obtain and submit a genuine Turnstile token**. Do not claim that creating the production Widget alone makes in-app Roblox Feedback/Appeal functional. A verified browser challenge/submission handoff or equivalent authorized UI integration is required before feature rollout. Never send Turnstile secret or user token through GitHub or logs.
+**Turnstile client handoff update:** The Candidate's real server-side Siteverify handler is preserved and the Sandbox-only test page `ASC_STAGE1667_HTML` remains excluded. A separate, production-sitekey-matched browser form is now **implemented in the review-only Candidate** and static tests passed, but real browser-token acceptance and opening the page from Arcsen/Roblox remain **UNVERIFIED**. The User's actual UI integration is a separate next check, not a reason to create more Stage IDs. Never send a Turnstile secret, live token or secret receipt through GitHub or logs.
 
-**Next release-blocking decision:** agree on the production user-facing Turnstile challenge flow, then separately authorize installing *new* server-only production bindings with a reviewed deployment and acceptance plan. This document does **not** authorize Worker, D1, secrets or Cron changes.
+**Next release-blocking decision:** review/accept the proposed browser form and Arcsen link behavior; then separately authorize safe installation of *new* Production server-only bindings and a controlled HTTP validation path. This document does **not** authorize Worker, D1, Secrets or Cron changes.
+
+## Production Feedback/Appeal browser handoff — source complete (2026-11-16)
+
+**Implemented in GitHub review-only Candidate:** a mobile-friendly `GET /api/v1/feedback/form` page with a separate `GET /api/v1/feedback/form.js` script, using the **new public Production Turnstile sitekey** and action `feedback_submit` or `appeal_submit`. The page posts JSON only to the same-origin `/api/v1/feedback/submit` endpoint; the Worker verifies the token using real Siteverify before any D1 mutation. Appeal asks for the *claimed* Roblox UserId, not a password or confirmed Roblox login.
+
+The page also offers receipt-scoped status lookup, editing and soft removal using existing `/api/v1/feedback/status` and `/api/v1/feedback/manage` APIs. It displays the one-time secret receipt for the user to save privately; **the receipt and Turnstile token are not put into a URL or stored in long-lived browser storage**. A session-scoped pseudonymous random quota key is used. Security response headers include `no-store`, `nosniff`, `Referrer-Policy: no-referrer` and a restrictive Content Security Policy covering Cloudflare Turnstile.
+
+**Verified:** GitHub Actions [43882997625](https://github.com/White-rbx/HealthBar-Remake/actions/runs/43882997625) **41 Node + 7 SQLite = 48/48 tests PASS**. Current exact-source private assembly of the Production Candidate passed independent source hash pinning, preservation of legacy route body, Turnstile/host/access checks, and V8 syntax parsing. **Latest SHA-256:** `b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d`; 170,435 UTF-8 bytes / 165,761 UTF-16 code units.
+
+**Still pending:** Cloudflare Worker preview/live HTTP and full browser Turnstile confirmation on an explicitly approved test origin; verification that the actual Arcsen/Roblox UI opens the verified page, without placing user text, token or receipt in URL parameters. **Do not open the production `/api/v1/feedback/form` URL as if the new page is live**; the current deployed Worker still returns 404. Production Worker, D1, new secrets and Cron remain untouched. No deployment authorization implied.
 
 ## Completed and accepted
 
@@ -52,7 +62,7 @@ An independent, read-only Cloudflare Access authentication-log query returned **
 - Production Candidate assembled privately from exact hash-pinned Production and Sandbox source. Existing Production route body preserved, dummy Turnstile and Sandbox-only test routes removed.
 - Production-specific Cron health fixed to `production_push_cron` with idempotent operational bootstrap, verified in separate disposable real D1 and deleted afterward.
 - Android Push page changed to `/api/v1/admin/push/`, inside the Service Worker scope.
-- **Latest Candidate SHA-256:** `9da9cf8a19995d3058d8f292424c49074377b3e5a7fe4727c31b65fce73e4841` (review only).
+- **Latest Candidate SHA-256:** `b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d` (review only, browser form included).
 - **35/35 offline tests PASS** (28 Node + 7 SQLite).
 - Production/Staging/Sandbox D1 Time Travel bookmarks available; `quick_check=ok`, 0 foreign-key violations. This does **not** certify a Production backup restore.
 - Cloudflare Preview accepted an **older** Candidate for compilation; HTTP calls were blocked by the tool's network policy. This does **not** certify HTTP behavior of the latest Candidate.

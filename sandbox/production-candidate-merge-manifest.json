@@ -116,12 +116,12 @@
   "assemblyEvidence": {
     "date": "2026-11-16",
     "method": "In-memory private assembly from exact active Cloudflare Production and Sandbox Worker source, against the pinned GitHub assembler and manifest",
-    "status": "PASS_STATIC_REVIEW_ONLY__PRODUCTION_CRON_SCOPE_FIXED",
+    "status": "PASS_STATIC_REVIEW_ONLY__REAL_TURNSTILE_BROWSER_FORM_ADDED",
     "actualProductionSourceHashMatches": true,
     "actualSandboxSourceHashMatches": true,
-    "candidateSha256": "9da9cf8a19995d3058d8f292424c49074377b3e5a7fe4727c31b65fce73e4841",
-    "candidateBytesUtf8": 151554,
-    "candidateLengthUtf16": 149956,
+    "candidateSha256": "b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d",
+    "candidateBytesUtf8": 170435,
+    "candidateLengthUtf16": 165761,
     "syntaxCheck": "PASS — JavaScript V8 parser with module `export default` changed to `const` solely for parse-only validation; not a Cloudflare Runtime deployment/test",
     "legacyRouteSourcePreserved": true,
     "onlyOneWorkerExport": true,
@@ -132,7 +132,7 @@
     "workerArtifactPersisted": false,
     "productionWorkerOrDatabaseModified": false,
     "productionDeploymentPermitted": false,
-    "nextGate": "Production-specific security and recovery audit, then authorized isolated runtime tests; no Production changes or deploy.",
+    "nextGate": "Browser test on authorized isolated runtime and separately approved production secret/binding setup. Real Production HTTP and independent Production backup remain pending.",
     "previousCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
     "scopeCorrection": {
       "reason": "Original bare Android Push page path /api/v1/admin/push was outside /api/v1/admin/push/ Service Worker scope and could stall navigator.serviceWorker.ready.",
@@ -151,14 +151,35 @@
       "privateSourceSHAValidation": true,
       "privateSourceAssemblyPass": true,
       "privateSyntaxCheckPass": true,
-      "candidateSha256": "9da9cf8a19995d3058d8f292424c49074377b3e5a7fe4727c31b65fce73e4841",
+      "candidateSha256": "b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d",
       "allFourHealthStatementsUseProductionScope": true,
       "productionOrStagingModified": false
+    },
+    "previousCandidateBeforeBrowserFormSha256": "9da9cf8a19995d3058d8f292424c49074377b3e5a7fe4727c31b65fce73e4841",
+    "productionBrowserTurnstileForm": {
+      "htmlSource": "sandbox/production-feedback-appeal-form.html",
+      "jsSource": "sandbox/production-feedback-appeal-form.js",
+      "contractTests": "sandbox/production-candidate-browser-form.test.mjs",
+      "routes": [
+        "/api/v1/feedback/form",
+        "/api/v1/feedback/form.js"
+      ],
+      "productionPublicWidgetSitekey": "0x4AAAAAAGDcKTGgG4P3F1I4",
+      "noCredentialsInSource": true,
+      "noReceiptOrTurnstileTokenInUrl": true,
+      "anonymousQuotaKeySessionOnly": true,
+      "serverSideVerificationStillRequired": true,
+      "v8CandidateSyntaxPass": true,
+      "nodeTestsPassed": 41,
+      "pythonSQLiteTestsPassed": 7,
+      "githubActionsRun": "https://github.com/White-rbx/HealthBar-Remake/actions/runs/43882997625",
+      "realCloudflareBrowserTestPerformed": false,
+      "noProductionDeployment": true
     }
   },
   "preproductionPreviewEvidence": {
     "date": "2026-11-16",
-    "status": "HISTORICAL_PREVIEW_COMPILE_PASS_FOR_UNCORRECTED_CANDIDATE__LATEST_PROD_SCOPE_CANDIDATE_NOT_PREVIEWED__HTTP_BLOCKED",
+    "status": "HISTORIC_PREVIEW_PRIOR_TO_BROWSER_FORM__CURRENT_CANDIDATE_COMPILED_ONLY_IN_PRIVATE_V8__LIVE_HTTP_NOT_VERIFIED",
     "sourceCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
     "cloudflarePreview": {
       "isolatedWorkerResourceCreated": true,
@@ -196,7 +217,7 @@
     "productionReleaseSecretsConfigured": false,
     "productionRuntimeHttpVerified": false,
     "productionReleasePermitted": false,
-    "supersededByScopedCandidateSha256": "9da9cf8a19995d3058d8f292424c49074377b3e5a7fe4727c31b65fce73e4841",
+    "supersededByScopedCandidateSha256": "b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d",
     "previewOfCurrentCandidatePerformed": false
   },
   "securityRecoveryAudit": {
@@ -270,7 +291,13 @@
     ],
     "sandboxBrowserIntegrationExcludedFromCandidate": true,
     "productionEndUserTokenAcquisitionFlowValidated": false,
-    "note": "Do not equate real server Siteverify with a ready user-facing Turnstile flow. Browser challenge and submission handoff must be reviewed before production rollout.",
-    "productionDeploymentPermitted": false
+    "note": "Review-only browser form now obtains Turnstile token on the Production hostname, submits to same-origin public Feedback/Appeal API and provides receipt-scoped status/manage. GitHub code/static tests and private V8 Candidate syntax PASS. No real browser runtime test or Production deploy; link in Roblox/Arcsen not yet integrated.",
+    "productionDeploymentPermitted": false,
+    "sourceControlledBrowserFormAdded": true,
+    "browserFlowDraftComplete": true,
+    "browserFormRoutes": [
+      "/api/v1/feedback/form",
+      "/api/v1/feedback/form.js"
+    ]
   }
 }
