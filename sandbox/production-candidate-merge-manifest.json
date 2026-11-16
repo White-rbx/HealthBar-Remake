@@ -116,13 +116,13 @@
   "assemblyEvidence": {
     "date": "2026-11-16",
     "method": "In-memory private assembly from exact active Cloudflare Production and Sandbox Worker source, against the pinned GitHub assembler and manifest",
-    "status": "PASS_STATIC_REVIEW_ONLY__REAL_TURNSTILE_BROWSER_FORM_ADDED",
+    "status": "PASS_EXACT_SOURCE_ASSEMBLY_ONLY__APPEAL_RECEIPT_EDIT_FIX_INCLUDED",
     "actualProductionSourceHashMatches": true,
     "actualSandboxSourceHashMatches": true,
-    "candidateSha256": "b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d",
-    "candidateBytesUtf8": 170435,
-    "candidateLengthUtf16": 165761,
-    "syntaxCheck": "PASS — JavaScript V8 parser with module `export default` changed to `const` solely for parse-only validation; not a Cloudflare Runtime deployment/test",
+    "candidateSha256": "c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b",
+    "candidateBytesUtf8": 171269,
+    "candidateLengthUtf16": 166551,
+    "syntaxCheck": "Node --check PASS for assembler and edited browser form script in GitHub Actions 43902070352. Full assembled Candidate V8 syntax/Cloudflare runtime was not rerun after this JS-only change.",
     "legacyRouteSourcePreserved": true,
     "onlyOneWorkerExport": true,
     "productionHostGuardPresent": true,
@@ -132,7 +132,7 @@
     "workerArtifactPersisted": false,
     "productionWorkerOrDatabaseModified": false,
     "productionDeploymentPermitted": false,
-    "nextGate": "Browser test on authorized isolated runtime and separately approved production secret/binding setup. Real Production HTTP and independent Production backup remain pending.",
+    "nextGate": "Real browser/HTTP and independently approved production settings + backup gates remain. No deployment permission.",
     "previousCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
     "scopeCorrection": {
       "reason": "Original bare Android Push page path /api/v1/admin/push was outside /api/v1/admin/push/ Service Worker scope and could stall navigator.serviceWorker.ready.",
@@ -151,7 +151,7 @@
       "privateSourceSHAValidation": true,
       "privateSourceAssemblyPass": true,
       "privateSyntaxCheckPass": true,
-      "candidateSha256": "b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d",
+      "candidateSha256": "c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b",
       "allFourHealthStatementsUseProductionScope": true,
       "productionOrStagingModified": false
     },
@@ -169,17 +169,22 @@
       "noReceiptOrTurnstileTokenInUrl": true,
       "anonymousQuotaKeySessionOnly": true,
       "serverSideVerificationStillRequired": true,
-      "v8CandidateSyntaxPass": true,
-      "nodeTestsPassed": 41,
+      "v8CandidateSyntaxPass": null,
+      "nodeTestsPassed": 44,
       "pythonSQLiteTestsPassed": 7,
-      "githubActionsRun": "https://github.com/White-rbx/HealthBar-Remake/actions/runs/43882997625",
+      "githubActionsRun": "https://github.com/White-rbx/HealthBar-Remake/actions/runs/43902070352",
       "realCloudflareBrowserTestPerformed": false,
-      "noProductionDeployment": true
-    }
+      "noProductionDeployment": true,
+      "latestCandidateSourceAssemblyPass": true,
+      "implementedAppealEditWithoutReclaimingUserId": true,
+      "clearsRemovedCaseCredentials": true,
+      "latestCandidateSha256": "c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b"
+    },
+    "previousCandidateBeforeAppealEditSha256": "b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d"
   },
   "preproductionPreviewEvidence": {
     "date": "2026-11-16",
-    "status": "HISTORIC_PREVIEW_PRIOR_TO_BROWSER_FORM__CURRENT_CANDIDATE_COMPILED_ONLY_IN_PRIVATE_V8__LIVE_HTTP_NOT_VERIFIED",
+    "status": "HISTORIC_PREVIEW__CURRENT_CANDIDATE_SOURCE_ASSEMBLED__LIVE_BROWSER_HTTP_NOT_VERIFIED",
     "sourceCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
     "cloudflarePreview": {
       "isolatedWorkerResourceCreated": true,
@@ -217,7 +222,7 @@
     "productionReleaseSecretsConfigured": false,
     "productionRuntimeHttpVerified": false,
     "productionReleasePermitted": false,
-    "supersededByScopedCandidateSha256": "b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d",
+    "supersededByScopedCandidateSha256": "c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b",
     "previewOfCurrentCandidatePerformed": false
   },
   "securityRecoveryAudit": {

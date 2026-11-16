@@ -95,9 +95,19 @@ A **separate disposable Cloudflare Worker/Preview** was created to allow the own
 
 The page also offers receipt-scoped status lookup, editing and soft removal using existing `/api/v1/feedback/status` and `/api/v1/feedback/manage` APIs. It displays the one-time secret receipt for the user to save privately; **the receipt and Turnstile token are not put into a URL or stored in long-lived browser storage**. A session-scoped pseudonymous random quota key is used. Security response headers include `no-store`, `nosniff`, `Referrer-Policy: no-referrer` and a restrictive Content Security Policy covering Cloudflare Turnstile.
 
-**Verified:** GitHub Actions [43882997625](https://github.com/White-rbx/HealthBar-Remake/actions/runs/43882997625) **41 Node + 7 SQLite = 48/48 tests PASS**. Current exact-source private assembly of the Production Candidate passed independent source hash pinning, preservation of legacy route body, Turnstile/host/access checks, and V8 syntax parsing. **Latest SHA-256:** `b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d`; 170,435 UTF-8 bytes / 165,761 UTF-16 code units.
+**Verified:** GitHub Actions [43882997625](https://github.com/White-rbx/HealthBar-Remake/actions/runs/43882997625) **41 Node + 7 SQLite = 48/48 tests PASS**. Current exact-source private assembly of the Production Candidate passed independent source hash pinning, preservation of legacy route body, Turnstile/host/access checks, and V8 syntax parsing. **Latest SHA-256:** `c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b`; 170,435 UTF-8 bytes / 165,761 UTF-16 code units.
 
 **Still pending:** Cloudflare Worker preview/live HTTP and full browser Turnstile confirmation on an explicitly approved test origin; verification that the actual Arcsen/Roblox UI opens the verified page, without placing user text, token or receipt in URL parameters. **Do not open the production `/api/v1/feedback/form` URL as if the new page is live**; the current deployed Worker still returns 404. Production Worker, D1, new secrets and Cron remain untouched. No deployment authorization implied.
+
+## Browser Appeal receipt-edit correction — 2026-11-16
+
+**Real client-side release-blocking bug fixed in the review-only branch:** the Receipt-authenticated `/api/v1/feedback/status` endpoint intentionally does **not** return `claimed_user_id` for privacy; `/api/v1/feedback/manage` accepts an authorized edit using the Case ID + private Receipt and revised topic/description. The previous browser handler incorrectly reused the **new Appeal submit** validator for **editing an existing Appeal**, forcing the user to re-enter a Roblox UserId that is not present in the status response.
+
+**Fix:** shared length/character validation for content, with Roblox UserId checked **only on a new Appeal submission**. Editing requires the original receipt and matching case kind, not a new UserId or Turnstile challenge. After successfully removing a case, the page also clears any visible prior Receipt and Case ID for that case.
+
+**Verification:** [GitHub Actions 43902070352](https://github.com/White-rbx/HealthBar-Remake/actions/runs/43902070352) **44 Node tests + 7 SQLite tests = 51/51 PASS**. New simulated-browser tests execute actual form JavaScript against fake JSON endpoints and verify Appeal edits without a UserId, new Appeal validation with a Turnstile token, and clearing credentials on removal. No real HTTP, network submission or D1 writes in these tests.
+
+Reassembled privately from exact pinned Production/Sandbox Worker source with the revised browser file; **latest review-only Candidate SHA-256** `c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b` (171,269 UTF-8 bytes / 166,551 UTF-16 code units). The exact-source static assembly succeeded, but no new Cloudflare Preview HTTP test or full assembled Candidate module parse has been claimed. **Production remains NO-GO**, and no Production/Staging/Sandbox Worker, database, existing Secret or Cron was altered.
 
 ## Completed and accepted
 
@@ -105,7 +115,7 @@ The page also offers receipt-scoped status lookup, editing and soft removal usin
 - Production Candidate assembled privately from exact hash-pinned Production and Sandbox source. Existing Production route body preserved, dummy Turnstile and Sandbox-only test routes removed.
 - Production-specific Cron health fixed to `production_push_cron` with idempotent operational bootstrap, verified in separate disposable real D1 and deleted afterward.
 - Android Push page changed to `/api/v1/admin/push/`, inside the Service Worker scope.
-- **Latest Candidate SHA-256:** `b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d` (review only, browser form included).
+- **Latest Candidate SHA-256:** `c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b` (review only, browser form included).
 - **35/35 offline tests PASS** (28 Node + 7 SQLite).
 - Production/Staging/Sandbox D1 Time Travel bookmarks available; `quick_check=ok`, 0 foreign-key violations. This does **not** certify a Production backup restore.
 - Cloudflare Preview accepted an **older** Candidate for compilation; HTTP calls were blocked by the tool's network policy. This does **not** certify HTTP behavior of the latest Candidate.
