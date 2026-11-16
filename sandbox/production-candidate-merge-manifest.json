@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "ArcScriptCenter Production Candidate Merge Manifest",
+  "status": "REVIEW_ONLY_NOT_DEPLOYABLE",
+  "date": "2026-11-16",
+  "base": {
+    "worker": "arcscriptcenter-api",
+    "version": "0.5.41.5-phase1",
+    "sha256": "036a9f2410e877b51f5293315103e8a8f62ad940fb3f9e8d4efd0bd7e13e0a48",
+    "lengthUtf16": 71521,
+    "preserveAllLegacyRoutes": true,
+    "preserveGithubTokenBinding": true
+  },
+  "featureSource": {
+    "worker": "arcscriptcenter-merge-sandbox-1658",
+    "version": "0.5.79.0-cron-retry-sandbox",
+    "sha256": "dc4dedc563bd956ff9b24671f10c168d30728db4fe10e90954a1ad22db2bd24e",
+    "lengthUtf16": 201179,
+    "doNotCopyWholeWorker": true
+  },
+  "selectedComponents": [
+    {
+      "key": "feedbackApi",
+      "startAnchor": "const FC_STATUSES",
+      "endAnchor": "const ASC_STAGE1664_HTML",
+      "sanitize": [
+        "Remove dummy Turnstile Siteverify path and default",
+        "Require real Siteverify with exact hostname and feedback/appeal action",
+        "Retain quota and data validation",
+        "Retain old Worker routes unchanged"
+      ]
+    },
+    {
+      "key": "realTurnstileVerifier",
+      "startAnchor": "async function ascStage1667SiteVerify",
+      "endAnchor": "const ASC_STAGE1670_ADMIN_HTML",
+      "sanitize": [
+        "Require production hostname from owner-configured binding",
+        "Never copy hard-coded Sandbox hostname",
+        "Deny missing/invalid/replayed/outage tokens"
+      ]
+    },
+    {
+      "key": "adminNotificationsAndPush",
+      "startAnchor": "const ASC_STAGE1670_ADMIN_HTML",
+      "endAnchor": "const ASC_STAGE1672_PAGE",
+      "sanitize": [
+        "Replace Sandbox host identity checks with production-appropriate fail-closed Cloudflare Access checks",
+        "No Sandbox VAPID or Access credentials",
+        "Require explicit separate admin identity authorization",
+        "Review Service Worker scope, origin and admin routes"
+      ]
+    },
+    {
+      "key": "durableOutbox",
+      "startAnchor": "const ASC1674_HTML",
+      "endAnchor": "const ASC1675_CRON_HTML",
+      "sanitize": [
+        "Require release bindings and controlled admin auth",
+        "Retain leased atomic sending and max three attempts",
+        "Remove Sandbox-only UI labels/assumptions"
+      ]
+    },
+    {
+      "key": "cronRunner",
+      "startAnchor": "const ASC1675_CRON_HTML",
+      "endAnchor": "\nexport default {\n  async scheduled(",
+      "sanitize": [
+        "Require exact cron schedule and production configuration",
+        "Remove sandbox-dummy and version-sandbox checks rather than disabling safety",
+        "Only use reviewed isolated D1 binding and named status telemetry"
+      ]
+    }
+  ],
+  "excludedFromSource": [
+    "ASC_STAGE1664_HTML",
+    "ASC_STAGE1666_REAL_HTML",
+    "ASC_STAGE1667_HTML",
+    "ASC_STAGE1672_PAGE",
+    "ASC_STAGE1673_PAGE",
+    "ascStage1672Run",
+    "ascStage1673Submit",
+    "/__stage1664/",
+    "/__stage1666/",
+    "/__stage1667/",
+    "/__stage1672/",
+    "/__stage1673/"
+  ],
+  "schema": {
+    "legacyExplicitObjects": 47,
+    "additionExplicitObjects": 23,
+    "finalExplicitObjects": 70,
+    "excludeTables": [
+      "asc_stage1672_test_control",
+      "asc_stage1673_real_push_control"
+    ],
+    "additiveMigrations": [
+      "migrations/2026-11-15_stage1669_feedback_appeal_additive.sql",
+      "migrations/2026-11-16_stage1675_push_cron_additive_DRAFT.sql"
+    ],
+    "disposableD1Rehearsal": "PASS—70/70; synthetic Feedback history+Outbox transition; quick_check=ok; no FK violations; disposable DB deleted"
+  },
+  "releaseGates": {
+    "ownerProductionApproval": false,
+    "productionReleaseSecretsVerified": false,
+    "productionTurnstileSiteverifyApproved": false,
+    "productionAuthAndHostnameReviewed": false,
+    "independentBackupAndRestoreCertified": false,
+    "candidateSourceCodeBuiltAndReviewed": false,
+    "candidateSmokeTestPassed": false,
+    "productionDeploymentPermitted": false
+  },
+  "instructions": "Pinned source metadata and merge selection only. Does not contain or generate an executable production candidate. Never publish copied Worker source or secret values. Stop on source hash mismatch. Do not deploy or migrate without separate explicit production authorization."
+}
