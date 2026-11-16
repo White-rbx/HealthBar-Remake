@@ -91,7 +91,7 @@ import {spawnSync} from "node:child_process";
   const routeMap={
     "/__stage1670/admin-notifications":"/api/v1/admin/push/notifications",
     "/__stage1670/api/notifications":"/api/v1/admin/push/events",
-    "/__stage1671/android-push":"/api/v1/admin/push",
+    "/__stage1671/android-push":"/api/v1/admin/push/",
     "/__stage1671/sw.js":"/api/v1/admin/push/sw.js",
     "/__stage1671/key":"/api/v1/admin/push/key",
     "/__stage1671/subscription":"/api/v1/admin/push/subscription",
@@ -148,7 +148,7 @@ function ascReleaseEnvReady(env){
     "      if(path==='/api/v1/admin/push/retry'&&request.method==='POST')return await asc1674Retry(request,env,ctx);",
     "      if(path==='/api/v1/admin/push/notifications'&&request.method==='GET')return await ascStage1670Page(request,env,ctx);",
     "      if(path==='/api/v1/admin/push/events'&&request.method==='GET')return await ascStage1670Notifications(request,env,ctx);",
-    "      if(path==='/api/v1/admin/push'&&request.method==='GET')return await ascStage1671Document(request,env,ctx);",
+    "      if(path==='/api/v1/admin/push/'&&request.method==='GET')return await ascStage1671Document(request,env,ctx);",
     "      if(path==='/api/v1/admin/push/sw.js'&&request.method==='GET')return await ascStage1671Worker(request,env,ctx);",
     "      if((path==='/api/v1/admin/push/key'&&request.method==='GET')||(path==='/api/v1/admin/push/subscription'&&request.method==='POST'))return await ascStage1671Api(request,env,ctx);"
   ].join("\n");
@@ -157,7 +157,7 @@ function ascReleaseEnvReady(env){
     "/api/v1/admin/feedback","/api/v1/admin/feedback/history","/api/v1/admin/feedback/summary",
     "/api/v1/admin/feedback/list","/api/v1/admin/feedback/case","/api/v1/admin/feedback/activity",
     "/api/v1/admin/feedback/followup","/api/v1/admin/feedback/followup/details",
-    ...Object.values(routeMap).filter(x=>x.startsWith("/api/v1/admin/push")&&!x.endsWith("/"))
+    ...Object.values(routeMap).filter(x=>x.startsWith("/api/v1/admin/push")&&(x==="/api/v1/admin/push/"||!x.endsWith("/")))
   ];
   const routeGate=`
       // Additive release-candidate routes; legacy Production routes follow unchanged.
