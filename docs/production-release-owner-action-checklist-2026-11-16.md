@@ -13,9 +13,18 @@ This is the single operational owner handoff. Stop adding new Stage IDs and unne
 - **Read-back verified** the app's correct path, its single owner-only policy, Turnstile mode and domain, and unchanged Production/Staging Worker versions.
 - **Still pending:** Actual allowed/denied Access browser sessions, real Siteverify token + replay/outage tests, provisioning of new *approved* Worker binding/secret values, production VAPID setup, approved Pre-production HTTP and independent Backup/Restore certification.
 
-**Gate 1 is provisioned but not yet end-to-end verified. Gate 2 has a production widget but the server integration is not yet enabled. Neither is a Production Release GO.**
+**Gate 1: Production Access created and owner-authorized browser login PASS, but disallowed-identity rejection is still unverified. Gate 2: Production Turnstile widget created, but server-side Siteverify integration has not been enabled or tested. Production Release remains NO-GO.**
 
 ## Live Access browser acceptance — owner action (no deployment)
+
+### Verified owner login result — PASS (2026-11-16)
+
+The authorized owner opened the Production Access-protected Admin Push URL in an **incognito/private browser**, observed the Cloudflare Access login challenge, completed sign-in and then saw the current Production Worker's JSON **`{"ok":false,"error":"Not Found"}`**. That `404` response is **expected after successful Access authentication** because the currently deployed `0.5.41.5-phase1` Worker has not implemented this new path yet.
+
+An independent, read-only Cloudflare Access authentication-log query returned **2 Allow events** associated with the new Production Access application's ID and **0 Deny events** in the retrieved log window. The log events corroborate the owner browser report. Event counts do not indicate distinct identities. The Production Worker deployment version was independently checked and remained unchanged.
+
+**Owner-authorized sign-in: PASS.** **Denied/disallowed identity: NOT TESTED YET**, so the full Access acceptance gate is still pending. No passwords, OTP, owner email, cookies, Access tokens or identity details were recorded. No Worker, database, secret, Access policy or Turnstile setting was modified.
+
 
 **Verified by read-only API inspection:** The new Access app covers `arcscriptcenter-api.kogpasan14.workers.dev/api/v1/admin/push/*`, is linked to exactly one reusable Allow policy for the authenticated Cloudflare owner, and has an Access application AUD. The most recent read-only Access authentication logs contained **zero identifiable events for this new application**. This is **not** evidence of a successful login or a denial. A Cloudflare policy-test API call without a user identifier failed with `invalid_user_id`; no security control was bypassed or changed.
 
@@ -68,4 +77,4 @@ Current verified configuration: the Production Worker uses `arcscriptcenter-api.
 4. Verify authorized Access, real Siteverify, Feedback/Appeal, signed policy, Android Push subscription and live automatic retry. Enable Cron only after approved handler, credentials, schema and telemetry are ready.
 5. Record release result and close the work. If any hard gate fails, use pre-approved rollback; do not improvise changes on live data.
 
-**Current decision: NO-GO.** No more redundant Stage work. Access/Turnstile resource creation is complete; the next dependencies are verified owner login/denied login, approved server-side Siteverify and VAPID integration, approved HTTP testing, and recovery proof. Separate authorization is still required before any Worker bindings/Secrets or Production deployment/migration change.
+**Current decision: NO-GO.** No more redundant Stage work. Access/Turnstile resource creation and owner-authorized Access login are complete; next dependencies are **disallowed-identity rejection**, approved server-side Siteverify and VAPID integration, approved HTTP testing, and recovery proof. Separate authorization is required before any Worker bindings/Secrets or Production deployment/migration change.
