@@ -130,5 +130,46 @@
     "productionWorkerOrDatabaseModified": false,
     "productionDeploymentPermitted": false,
     "nextGate": "Review runtime behavior, real configuration, source diff and backup/restore before separate Production authorization"
+  },
+  "preproductionPreviewEvidence": {
+    "date": "2026-11-16",
+    "status": "PREVIEW_COMPILE_PASS__HTTP_NETWORK_BLOCKED__OFFLINE_NEGATIVE_TESTS_11_OF_11_PASS",
+    "sourceCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
+    "cloudflarePreview": {
+      "isolatedWorkerResourceCreated": true,
+      "isolatedWorkerDeployedOnPrimaryDomain": false,
+      "workersDevForPrimaryWorker": false,
+      "previewDeploymentAccepted": true,
+      "previewDeploymentId": "1dab78bd-e529-4cdd-ad46-5418bb38a519",
+      "previewBindings": 0,
+      "previewCronSchedules": 0,
+      "productionOrStagingDatabaseBinding": false,
+      "httpSmokeTest": "BLOCKED_BY_TOOL_NETWORK_EGRESS_403_NOT_WORKER_RESULT",
+      "attemptedAlternateNetworkPath": false,
+      "workerAndPreviewDeletedAfterTest": true,
+      "removalConfirmed": true
+    },
+    "offlineV8Smoke": {
+      "passed": 11,
+      "total": 11,
+      "usesExactLiveSourceCandidate": true,
+      "usesSyntheticEnvironmentOnly": true,
+      "checks": [
+        "legacy_bootstrap_200",
+        "legacy_chat_safety_200",
+        "retired_chat_410",
+        "feedback_without_DB_503",
+        "feedback_without_release_settings_503",
+        "admin_push_without_release_settings_503",
+        "cron_status_without_release_settings_503",
+        "feedback_wrong_hostname_404",
+        "admin_push_wrong_hostname_404",
+        "admin_push_no_access_session_401",
+        "cron_without_release_settings_noop"
+      ]
+    },
+    "productionReleaseSecretsConfigured": false,
+    "productionRuntimeHttpVerified": false,
+    "productionReleasePermitted": false
   }
 }
