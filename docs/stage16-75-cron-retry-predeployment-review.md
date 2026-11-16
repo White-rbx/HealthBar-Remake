@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.75: Sandbox Cron Retry Predeployment Review
 
 Date: 2026-11-16 (Asia/Bangkok)
-Status: **CODE + GITHUB ACTIONS 25/25 OFFLINE TESTS PASS; LIVE SANDBOX SOURCE PREFLIGHT PASS. NOT DEPLOYED. NO CRON TRIGGER ACTIVE.**
+Status: **CODE + GITHUB ACTIONS 28/28 OFFLINE TESTS PASS; LIVE SANDBOX BINDING PREFLIGHT PASS. NOT DEPLOYED. NO CRON TRIGGER ACTIVE.**
 Production: **NO-GO**.
 
 ## Objective
@@ -192,3 +192,33 @@ Cloudflare currently serves Stage16.74 `dfcc6017-5721-4e26-bf6e-a36b01fb844c`. R
 - Production Worker `298de84d-418c-489c-b133-c549c785f66e` and Staging Worker `5b5040fb-6c04-4029-9c53-af15d3dda888` both unchanged at 100% traffic.
 
 **The remaining blocker is deploying the actual scheduled handler and Cron Trigger using an authorized Cloudflare workflow.** A previous upload attempt was blocked by the platform, and that block was not bypassed or retried. Offline CI cannot certify live Cron scheduling or Android delivery. Do **not** request Android Stage16.75 testing yet. Production remains **NO-GO**.
+
+## Verified Sandbox binding guard compatibility — 28/28 CI (2026-11-16)
+
+Stage16.75 was strengthened to reject Cron execution if `ASC_PUSH_ACCESS_AUD` is missing, empty, too short/long, or not in its expected alphanumeric/underscore/hyphen format. The guard requires `ASC_TURNSTILE_MODE='sandbox-dummy'`, the `-sandbox` Worker version label, the exact `*/5 * * * *` schedule and a D1 binding.
+
+**Read-only Cloudflare Sandbox binding verification:**
+- `ASC_TURNSTILE_MODE` is a plain-text binding and exactly matches `sandbox-dummy`.
+- `ASC_PUSH_ACCESS_AUD` is a plain-text binding, 64 characters long, matching the expected 32–128 character character class. **The actual audience value is not documented here.**
+- `DB` remains an isolated Sandbox D1 binding.
+- Exactly **12** existing bindings remain present. No private VAPID key, admin email, access token, push endpoint or other secret value was read or published.
+
+The targeted changes were committed only to the GitHub test branch in `sandbox/stage16-75-cron-retry-runner.js`, `sandbox/stage16-75-cron-retry-runner.test.mjs`, and `sandbox/stage16-75-outbox-cron-integration.test.mjs`.
+
+The initial CI run revealed a **test fixture issue**: passing `audience: undefined` triggered the fixture's default value rather than simulating an absent binding, so the asserted refusal failed despite correctly functioning backend guard logic. The test case was fixed to pass `null` to model an absent binding, and GitHub Actions reran.
+
+**Verified GitHub-hosted run:** <https://github.com/White-rbx/HealthBar-Remake/actions/runs/43851138940>. Its logs explicitly reported:
+```
+tests 28
+pass 28
+fail 0
+```
+
+**Post-change Cloudflare read-only check:**
+- Production remains `298de84d-418c-489c-b133-c549c785f66e`, Staging remains `5b5040fb-6c04-4029-9c53-af15d3dda888`.
+- Sandbox remains Stage16.74 `dfcc6017-5721-4e26-bf6e-a36b01fb844c`.
+- Cloudflare Sandbox Cron schedules **[]**, health `runs=0,last_error=never`.
+- D1 Outbox **0 rows**, active Android Push subscriptions **1**.
+- `PRAGMA quick_check=ok`; `PRAGMA foreign_key_check` returned zero violations.
+
+**Important:** Offline 28/28 PASS does not establish a deployed Cron Trigger, successful scheduled event or Android live retry. The previous Worker upload was blocked by the execution platform's safety checks; no further attempt to bypass or re-upload it was made. **Production remains NO-GO**.
