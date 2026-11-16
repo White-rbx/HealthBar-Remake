@@ -2,7 +2,18 @@
 
 **2026-11-16 · Review only · PRODUCTION NO-GO**
 
-This is the single operational owner handoff. Stop adding new Stage IDs and unnecessary repeated audits. **No Production/Staging deployment, D1 migration, Secret change, Access policy change or Cron activation has been authorized.**
+This is the single operational owner handoff. Stop adding new Stage IDs and unnecessary repeated audits. **Owner expressly authorized NEW Production Access and Turnstile configuration on 2026-11-16, and those resources were created. This does NOT authorize Worker deployment, database migration, Cron activation, existing Secret changes or any other Production configuration modification.**
+
+## Owner-approved provisioning — completed (2026-11-16)
+
+- **Cloudflare Access application created:** `ArcScriptCenter Production - Admin Push Paths`, ID `90db170a-cb3d-493f-9396-aef470117795`, on the strictly scoped `arcscriptcenter-api.kogpasan14.workers.dev/api/v1/admin/push/*` only. Not a blanket Worker-level Access rule.
+- **Reusable Access allow policy created:** `ArcScriptCenter Production - Owner Admin Push Only`, ID `08da7b2e-1a56-453e-930f-471504755d75`, exact authenticated Cloudflare owner email selector only, single policy, eight-hour session. No owner email is included in this repository.
+- **Dedicated real Turnstile widget created:** `ArcScriptCenter Production - Real Turnstile`, `managed` mode, `no_clearance`; exactly one hostname: `arcscriptcenter-api.kogpasan14.workers.dev`. Its **public sitekey** is `0x4AAAAAAGDcKTGgG4P3F1I4`.
+- **Private widget secret remains only in Cloudflare:** the API verified that it is available; it was never copied to GitHub, chat, or Worker settings.
+- **Read-back verified** the app's correct path, its single owner-only policy, Turnstile mode and domain, and unchanged Production/Staging Worker versions.
+- **Still pending:** Actual allowed/denied Access browser sessions, real Siteverify token + replay/outage tests, provisioning of new *approved* Worker binding/secret values, production VAPID setup, approved Pre-production HTTP and independent Backup/Restore certification.
+
+**Gate 1 is provisioned but not yet end-to-end verified. Gate 2 has a production widget but the server integration is not yet enabled. Neither is a Production Release GO.**
 
 ## Completed and accepted
 
@@ -20,8 +31,8 @@ This is the single operational owner handoff. Stop adding new Stage IDs and unne
 
 | Gate | Owner/operator must do | PASS evidence required |
 |---|---|---|
-| 1. Cloudflare Access | Confirm the intended Production hostname and authorize a dedicated Access policy for new Admin Push endpoints; preserve existing Production Admin routes and GitHub integration | Allowed admin login succeeds; unauthenticated and disallowed identity fail; app AUD matches Candidate binding |
-| 2. Real Turnstile + Push | Configure a separate production-host-matched Turnstile widget, client sitekey, server-only Siteverify secret and distinct Production VAPID credentials; configure owner-controlled release bindings | Exact hostname and action verified; invalid/replayed/outage tokens rejected; authorized Android subscription and Push works |
+| 1. Cloudflare Access | **Provisioned** a production-host path-only app with a single owner allow policy; do not re-create. Existing Admin routes and GitHub integration unchanged | **Pending:** allowed/denied browser sessions and app AUD bound to Candidate |
+| 2. Real Turnstile + Push | **Managed Widget provisioned** for production domain and sitekey available; do not re-create. **Pending:** approved server secret installation and Production VAPID credentials | Real Siteverify hostname/action and invalid/replayed/outage tests; authorized Android subscription and Push |
 | 3. Recovery + HTTP acceptance | Obtain a verified independently accessible Production D1 backup/export and prove a controlled restoration procedure; run approved real HTTP pre-production tests | Recovery evidence and rollback operator identified; legacy routes, Feedback/Appeal, Access, Turnstile and device Push verified |
 | 4. Final approval + rollout | Separately authorize Production D1 migration, Worker deployment, binding changes and Cron activation only after gates 1–3 | Pre-release backup bookmark, additive migration, canary checks, Cron/Outbox and rollback plan accepted |
 
@@ -33,7 +44,7 @@ Retain Production: `DB`, `ARCSCRIPT_ADMIN_KEY`, `ARCSCRIPT_POLICY_SIGNING_KEY`, 
 
 New settings after approval: `ASC_RELEASE_CHANNEL` (`production`), `ASC_RELEASE_HOSTNAME`, `ASC_TURNSTILE_HOSTNAME`, `ASC_TURNSTILE_MODE` (`real`), `ASC_TURNSTILE_REAL_SECRET`, `ASC_FEEDBACK_QUOTA_KEY`, `ASC_PUSH_ACCESS_AUD`, `ASC_PUSH_ADMIN_EMAIL_SHA256`, `ASC_PUSH_VAPID_PRIVATE_JWK`, `ASC_PUSH_VAPID_PUBLIC_KEY`. Any client-side public sitekey must correspond to the production-specific widget. Use the Cloudflare secret store; do not paste secrets into GitHub or chat.
 
-Current read-only account discovery: the existing Production Worker has `workers.dev` enabled but the intended hostname must still be explicitly confirmed; there are 2 Access apps but production host policy coverage is unverified, and 1 Turnstile widget matched Sandbox rather than Production.
+Current verified configuration: the Production Worker uses `arcscriptcenter-api.kogpasan14.workers.dev`; dedicated owner-only Access and a distinct production-host-only Turnstile Widget were created without touching the existing Production Worker, Sandbox Access, or Sandbox Widget. Live authentication and the new Worker secret bindings remain pending.
 
 ### Deployment order (only after separate Production authorization)
 
@@ -43,4 +54,4 @@ Current read-only account discovery: the existing Production Worker has `workers
 4. Verify authorized Access, real Siteverify, Feedback/Appeal, signed policy, Android Push subscription and live automatic retry. Enable Cron only after approved handler, credentials, schema and telemetry are ready.
 5. Record release result and close the work. If any hard gate fails, use pre-approved rollback; do not improvise changes on live data.
 
-**Current decision: NO-GO.** No further tests should be invented just to delay the release. The next real dependency is an **explicit owner choice** about Production Access/Turnstile configuration. Configuring these services is separate from authorization to deploy or migrate.
+**Current decision: NO-GO.** No more redundant Stage work. Access/Turnstile resource creation is complete; the next dependencies are verified owner login/denied login, approved server-side Siteverify and VAPID integration, approved HTTP testing, and recovery proof. Separate authorization is still required before any Worker bindings/Secrets or Production deployment/migration change.

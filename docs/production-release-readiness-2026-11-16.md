@@ -194,6 +194,10 @@ GitHub Actions run **43873600377** passed **28 Node + 7 Python SQLite tests (35/
 Full operator checklist: [Production Access, Turnstile and Recovery Audit](production-access-turnstile-recovery-audit-2026-11-16.md). **Production remains NO-GO** until owner-controlled secrets/policies, approved HTTP testing and independent restore drill are complete.
 
 
+## Owner-authorized Access and Turnstile provisioning (2026-11-16)
+
+New Production path-only Access app and single-owner reusable allow policy were created, along with a dedicated Production managed Turnstile Widget. The owner email and private widget secret were not recorded. Live authentication and backend Siteverify remain unverified; no Worker, D1, existing Secrets or Cron was changed. The single authoritative next-action checklist is [Production Release Closure](production-release-owner-action-checklist-2026-11-16.md). **Production NO-GO continues.**
+
 ## 1. Evidence from live read-only Cloudflare audit
 
 | Environment | Active Worker version | Explicit SQL objects (tables + indexes + triggers) | D1 identity |

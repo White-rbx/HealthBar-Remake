@@ -217,5 +217,36 @@
     "noSecretsReadOrChanged": true,
     "noProductionOrStagingMutations": true,
     "linkedRunbook": "docs/production-access-turnstile-recovery-audit-2026-11-16.md"
+  },
+  "productionAccessTurnstileProvisioning": {
+    "date": "2026-11-16",
+    "ownerAuthorization": "Create and configure new Production Access and Turnstile only; no Worker/D1/Secret/Cron deployments",
+    "productionHost": "arcscriptcenter-api.kogpasan14.workers.dev",
+    "accessApp": {
+      "name": "ArcScriptCenter Production - Admin Push Paths",
+      "id": "90db170a-cb3d-493f-9396-aef470117795",
+      "domain": "arcscriptcenter-api.kogpasan14.workers.dev/api/v1/admin/push/*",
+      "singleOwnerPolicyId": "08da7b2e-1a56-453e-930f-471504755d75",
+      "ownerEmailOmitted": true,
+      "appAudiencePresentButNotPublished": true,
+      "session": "8h",
+      "ownerLoginVerified": false,
+      "unauthorizedAccountDeniedTested": false
+    },
+    "turnstile": {
+      "name": "ArcScriptCenter Production - Real Turnstile",
+      "mode": "managed",
+      "domains": [
+        "arcscriptcenter-api.kogpasan14.workers.dev"
+      ],
+      "publicSitekey": "0x4AAAAAAGDcKTGgG4P3F1I4",
+      "secretStoredInCloudflareOnly": true,
+      "workerSecretInstalled": false,
+      "realTokenBackendVerified": false
+    },
+    "oldWorkerBindingsAndVersionUnchanged": true,
+    "oldWorkerSecretsUnchanged": true,
+    "sandboxResourcesUnchanged": true,
+    "productionDeploymentPermitted": false
   }
 }

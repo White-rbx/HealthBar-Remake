@@ -2,6 +2,12 @@
 
 Date: 2026-11-16 (Asia/Bangkok). **Read-only live Cloudflare inspection and offline GitHub security QA. PRODUCTION NO-GO.**
 
+## Resource provisioning update (2026-11-16)
+
+The owner explicitly approved creating NEW Production Cloudflare Access and Turnstile resources without Worker, D1 or existing Secret modifications. Cloudflare verified a dedicated path-scoped Access app `90db170a-cb3d-493f-9396-aef470117795` linked to a new reusable single-owner policy `08da7b2e-1a56-453e-930f-471504755d75`, protecting only `arcscriptcenter-api.kogpasan14.workers.dev/api/v1/admin/push/*`. The production-only managed Turnstile Widget was also created with public sitekey `0x4AAAAAAGDcKTGgG4P3F1I4`. Its private secret remains in Cloudflare and is **not** stored in GitHub or installed on the Worker. The user's email and Access AUD are also **not** published.
+
+**Read-back PASSED:** owner-only policy, exact path, widget host, and unchanged Production/Staging Worker versions. **Not yet tested:** live Access login/denied identity, real Turnstile Siteverify, new Worker binding/Secret integration, VAPID, HTTP acceptance and independent D1 recovery. Prior sections below describe the pre-provisioning snapshot. **Release remains NO-GO.**
+
 ## Observed platform and security configuration
 
 - **Worker bindings:** Production and Staging each have 5 existing bindings (including DB, ARCSCRIPT_ADMIN_KEY, ARCSCRIPT_POLICY_SIGNING_KEY, ASC_ANALYTICS_HASH_KEY and GITHUB_TOKEN). Neither currently has the new Production Release Channel, real Turnstile Siteverify binding, Push Access AUD or VAPID credentials. Sandbox has 12 bindings, but these must **not** be copied to Production.
