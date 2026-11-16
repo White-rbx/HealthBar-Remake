@@ -54,3 +54,16 @@ Post-block verification via read-only Cloudflare API proved:
 **No user test for Stage16.75 should be requested while the scheduled handler and Cron trigger are inactive.**
 
 Cloudflare reference: https://developers.cloudflare.com/workers/configuration/cron-triggers/
+
+## Additional isolated D1 stale-lease rehearsal — PASS
+
+An extra **Sandbox D1 only** test exercised the exact proposed Cron stale-lease repair statement, without registering/sending any real push notification and while Cron triggers remained empty.
+
+- Created one clearly marked synthetic Feedback case and **two** artificial outbox rows with fabricated endpoint hashes.
+- One `sending` row had exhausted `attempts=3` and an expired lease; the repair correctly transitioned it to `dead` and cleared the lease.
+- A second `sending` row had `attempts=2` and an unexpired lease; it remained unchanged.
+- An atomic attempt to reclaim the exhausted row returned **zero** rows.
+- Cleanup deleted the exact synthetic case, both outbox rows and linked history. Remaining test cases/outbox/history = **0/0/0**, `PRAGMA quick_check=ok`.
+- No Android Push service request was sent. No Production/Staging mutation was involved.
+
+This increases confidence in the D1 transition logic but **does not** verify actual scheduled execution or make the feature live. Deployment remains blocked and **no Cron Trigger is configured**.
