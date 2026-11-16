@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.75: Sandbox Cron Retry Predeployment Review
 
 Date: 2026-11-16 (Asia/Bangkok)
-Status: **CODE + GITHUB ACTIONS 28/28 OFFLINE TESTS PASS; LIVE SANDBOX BINDING PREFLIGHT PASS. NOT DEPLOYED. NO CRON TRIGGER ACTIVE.**
+Status: **37/37 GITHUB ACTIONS OFFLINE TESTS PASS (28 Node + 9 real SQLite); SANDBOX PREFLIGHT PASS. NOT DEPLOYED. NO CRON TRIGGER ACTIVE.**
 Production: **NO-GO**.
 
 ## Objective
@@ -222,3 +222,48 @@ fail 0
 - `PRAGMA quick_check=ok`; `PRAGMA foreign_key_check` returned zero violations.
 
 **Important:** Offline 28/28 PASS does not establish a deployed Cron Trigger, successful scheduled event or Android live retry. The previous Worker upload was blocked by the execution platform's safety checks; no further attempt to bypass or re-upload it was made. **Production remains NO-GO**.
+
+## Real SQLite SQL contract tests — 37/37 GitHub Actions (2026-11-16)
+
+The authorized owner requested further development of the already-prepared Stage16.75 Cron retry workflow, while retaining the Sandbox-only and no-secret boundaries.
+
+A new Python standard-library-only test file was committed to the GitHub **test branch**:
+`sandbox/test_stage16_75_sqlite.py`
+
+It reads the actual SQL string literals from the committed Stage16.74 Outbox helper and Stage16.75 Cron runner source, then executes them against an **in-memory SQLite** database built from `migrations/2026-11-16_stage1674_push_delivery_outbox_sandbox_draft.sql` and a minimal **synthetic** Feedback case stub.
+
+The **9 passing SQLite cases** validate:
+1. D1 Outbox migration indexes and the unique `(case_id,endpoint_hash)` pair.
+2. SQL CHECK constraints reject invalid state or attempt count.
+3. The exact Worker `UPDATE ... RETURNING` claim is exclusive, and retry is not claimed before it is due.
+4. Delivered rows are not re-claimed after the lease window.
+5. A delivery with 3 attempted sends cannot be reclaimed.
+6. The claim rejects removed cases and `spam_mail` cases.
+7. The exact due-case query returns only cases whose retry time/lease has expired.
+8. The Cron runner's exhausted-lease repair marks only expired third-attempt leases `dead`.
+9. SQLite `PRAGMA quick_check` and `PRAGMA foreign_key_check` show no integrity violation.
+
+The GitHub Actions test-branch CI workflow `.github/workflows/stage16-75-offline-qa.yml` was updated to execute the SQLite suite alongside the existing Node VM and synthetic Outbox integration tests. It still uses `permissions: contents: read`, does not persist checkout credentials, and contains **no Cloudflare API/deployment or secret retrieval steps**.
+
+**Actual GitHub Actions run:**
+<https://github.com/White-rbx/HealthBar-Remake/actions/runs/43852677174>
+
+Runner logs:
+```
+Node tests 28; pass 28; fail 0
+SQLite tests 9; OK
+Combined checks 37/37 PASS
+```
+
+**Distinction:** SQLite tests exercise real SQLite constraints and SQL, unlike the prior JavaScript D1 mocks, but they do **not** connect to Cloudflare D1, invoke a scheduled Cloudflare Cron event, or send an Android Push. This validates SQL behavior in an isolated SQLite database, **not full live delivery**.
+
+### Cloudflare read-only post-CI verification
+
+- Production Worker `298de84d-418c-489c-b133-c549c785f66e` and Staging `5b5040fb-6c04-4029-9c53-af15d3dda888` unchanged.
+- Sandbox Worker still **Stage16.74** `dfcc6017-5721-4e26-bf6e-a36b01fb844c`; Stage16.75 is **not deployed**.
+- Sandbox Cron Trigger schedules **[]**, real Cron health `runs=0,last_error=never`.
+- D1 Outbox has **0** rows; registered Android Push subscribers **1**.
+- D1 `PRAGMA quick_check='ok'` and FK violation count **0**.
+- **No production, staging, sandbox Worker/D1 or Cron resource was mutated by this stage's new CI work.**
+
+**Remaining live gate:** an authorized Cloudflare Worker `scheduled()` deployment followed by a Sandbox-only Cron Trigger, observation of a real tick and one controlled push retry. The previous Worker upload was blocked; no bypass is attempted. Production **NO-GO**.
