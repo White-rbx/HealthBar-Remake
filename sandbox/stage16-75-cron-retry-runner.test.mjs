@@ -106,7 +106,7 @@ test("cron refuses non-Sandbox Turnstile environment", async () => {
 });
 
 test("cron refuses missing Access audience binding", async () => {
-  const runner = setup({ audience: undefined });
+  const runner = setup({ audience: null });
   await runner.run();
   assert.equal(runner.retryCalls, 0);
   assert.equal(runner.queries.length, 0);
