@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "ArcScriptCenter Production Candidate Merge Manifest",
   "status": "REVIEW_ONLY_NOT_DEPLOYABLE",
   "date": "2026-11-16",
