@@ -119,13 +119,23 @@ Reassembled privately from exact pinned Production/Sandbox Worker source with th
 
 **Outstanding and unchanged:** disallowed identity must be rejected in a real Access browser session, real Turnstile Siteverify/Android Push credentials and HTTP behavior require a separately approved environment, and an independent Production data backup/export restore must be verified before release. Production/Staging/Sandbox Worker, D1, existing Secrets and Cron untouched. **Release decision: NO-GO.**
 
+## Turnstile callback isolation and stale UserId privacy fix — 2026-11-16
+
+In the review-only browser UI, switching between Feedback and Appeal replaces the Turnstile widget. A delayed callback from the retired widget previously could re-enable Submit or invalidate a newer token. The UI now advances a **per-widget generation** on each render and ignores success/expiry/timeout/error callbacks belonging to retired widgets. Server-side Siteverify and action/hostname checks remain mandatory and unchanged.
+
+Receipt-scoped status lookup now clears any pre-existing `user-id` form field. The backend intentionally does not reveal the original claimant's Roblox UserId, and the UI must not carry a prior new-Appeal UserId into an unrelated case. Existing receipt-based Appeal editing remains available without the claimant ID.
+
+**Review-only checks:** [GitHub Actions 43907088814](https://github.com/White-rbx/HealthBar-Remake/actions/runs/43907088814) **48 Node + 7 SQLite = 55/55 PASS**. Added synthetic browser tests for retired-widget callbacks and preventing stale claimant fields during receipt status lookup. Exact pinned live Production/Sandbox Worker source privately reassembled with the updated browser JS; **SHA-256** `649709d0fdc2e4decd40d74a3cdf76afcf79279fcf6e280c5bf82c793c6bbf4d`, 171,933 UTF-8 bytes / 167,215 UTF-16 code units. Source assembly succeeded, but no full assembled Candidate module syntax parse or live HTTP/browser runtime certification was performed for this revision.
+
+Production, Staging, Sandbox, D1, existing Secrets and Cron unchanged. No new Production deployment authorization. **Production release remains NO-GO** pending independent Access denied-identity proof, real Siteverify/Push acceptance, verified backup/restore and owner approval.
+
 ## Completed and accepted
 
 - Sandbox Stage16.75 Web Push automatic retry: live Cloudflare Cron and Push Service accepted delivery on attempt two (HTTP 201); owner confirmed Android notification receipt. Synthetic QA data deleted.
 - Production Candidate assembled privately from exact hash-pinned Production and Sandbox source. Existing Production route body preserved, dummy Turnstile and Sandbox-only test routes removed.
 - Production-specific Cron health fixed to `production_push_cron` with idempotent operational bootstrap, verified in separate disposable real D1 and deleted afterward.
 - Android Push page changed to `/api/v1/admin/push/`, inside the Service Worker scope.
-- **Latest Candidate SHA-256:** `e542898dc9542d6be6d625a90b1890aa8bb17c459d7549fa57548edf3c595b8c` (review only, browser form, exact Production hostname and manifest Sitekey pinning included).
+- **Latest Candidate SHA-256:** `649709d0fdc2e4decd40d74a3cdf76afcf79279fcf6e280c5bf82c793c6bbf4d` (review only, exact Production hostname/sitekey pinning, protected Turnstile callbacks and stale UserId clearing included).
 - **35/35 offline tests PASS** (28 Node + 7 SQLite).
 - Production/Staging/Sandbox D1 Time Travel bookmarks available; `quick_check=ok`, 0 foreign-key violations. This does **not** certify a Production backup restore.
 - Cloudflare Preview accepted an **older** Candidate for compilation; HTTP calls were blocked by the tool's network policy. This does **not** certify HTTP behavior of the latest Candidate.
