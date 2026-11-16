@@ -90,3 +90,30 @@ Run in a checked-out test branch (Node 20+) using:
 **Test execution is not yet verified**: a local runner could not retrieve the GitHub files because the execution environment did not have DNS/network access to GitHub. The addition of the test suite alone does not establish the tests are passing.
 
 The previous Cloudflare Worker upload was blocked by platform safety checks, and this continuation made no attempt to circumvent that block. **No Worker code, Cron Trigger or existing D1 data was changed in this continuation.** The only mutations were documentation and new test file commits to `stage16-63-protected-http-test`. Production remains **NO-GO** and Stage16.75 is **not ready for a mobile acceptance test**.
+
+## Verified Node VM tests (11/11) — 2026-11-16
+
+The two existing Stage16.75 GitHub source files were fetched directly from the protected test branch, placed in a temporary local test workspace, and checked against GitHub blob SHA-1:
+
+| File | Verified Git blob SHA |
+|---|---|
+| `sandbox/stage16-75-cron-retry-runner.js` | `d36439121bf6e3e4fbb8aec3e6e6548bc75b445f` |
+| `sandbox/stage16-75-cron-retry-runner.test.mjs` | `7a82f2ad9b269d5cd6728b9be29f796061e59ea9` |
+
+The 6 pre-existing Node VM tests were then **actually executed** using Node 22.16.0, resulting in **6/6 PASS** (0 failures), with no Cloudflare calls, Worker deployments, database writes, or Android Push notifications.
+
+Five additional offline VM tests were prepared and committed as:
+`sandbox/stage16-75-cron-assembly.test.mjs`
+Git blob SHA: `d9d678c1cfba10931a6b0e6d2d38002461ebbfbf`.
+
+The added tests compile the helper and route fragment inside a simulated async fetch handler, reject unauthorized Cron Health page/API requests without database calls, validate aggregate-only status values, inspect no-store/CSP response headers, and reject unsupported methods. They also ran successfully.
+
+**Combined real local Node test execution: 11/11 PASS, 0 FAIL**:
+```sh
+node --test sandbox/stage16-75-*.test.mjs
+# tests 11; pass 11; fail 0
+```
+
+These are **offline unit/simulated route checks**, not deployed Cloudflare cron executions or actual Android notification receipts. Node's `--check` on the bare `stage16-75-cron-retry-runner.js` file is not applicable because it deliberately contains a route *fragment* with `await` intended to be injected inside a Worker's async fetch handler. The added assembly tests validated this intended insertion context separately.
+
+Current deployment remains Stage16.74, and Sandbox Cron schedules remain empty from the most recent read-only Cloudflare inspection. The earlier blocked Worker upload was **not retried or circumvented**. Keep Stage16.75 marked **prepared / tested locally / not deployed**, with Production **NO-GO**.
