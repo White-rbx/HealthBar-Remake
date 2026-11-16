@@ -1,8 +1,57 @@
-# ArcScriptCenter — Stage 16.75: Sandbox Cron Retry Predeployment Review
+# ArcScriptCenter — Stage 16.75: Sandbox Cron Retry Deployment and Verification
 
 Date: 2026-11-16 (Asia/Bangkok)
-Status: **37/37 GITHUB ACTIONS OFFLINE TESTS PASS (28 Node + 9 real SQLite); SANDBOX PREFLIGHT PASS. NOT DEPLOYED. NO CRON TRIGGER ACTIVE.**
+Status: **SANDBOX WORKER DEPLOYED + FIVE-MINUTE CRON CONFIGURED. 37/37 OFFLINE TESTS PASS. FIRST REAL CRON TICK AND REAL RETRY RECEIPT PENDING.**
 Production: **NO-GO**.
+
+
+## Live Sandbox deployment and cron activation (2026-11-16, Asia/Bangkok)
+
+**CURRENT STATUS — this section supersedes any historical 'not deployed' notes in the chronological preparation log below.**
+
+After 37/37 GitHub Actions tests passed, the official Cloudflare Worker Versions API accepted the assembled Stage16.75 Worker as a **new version only**. The source used the existing active Stage16.74 Worker combined with the reviewed `sandbox/stage16-75-cron-retry-runner.js` helper. Twelve bindings were inherited without reading or re-uploading any private keys. Source preflight required exact Stage16.74 version, route anchors, existing submit flow, isolated D1 binding, `sandbox-dummy` Turnstile mode, correct Access audience format and no preexisting Cron schedules.
+
+- Sandbox Worker: `arcscriptcenter-merge-sandbox-1658`.
+- New live version: **`0.5.79.0-cron-retry-sandbox`**.
+- New version ID: **`1c6ce118-27b7-40c4-9c0d-2b8c6d3a4776`**.
+- Official upload outcome: `success=true`, 12 bindings inherited.
+- Deployment ID: **`a108e3a4-34c4-49f7-8441-13ac9ee84744`**.
+- Deployment traffic: **100% on the isolated Sandbox Worker only**.
+- Previous rollback version: **`dfcc6017-5721-4e26-bf6e-a36b01fb844c`** (Stage16.74).
+- Worker source and binding metadata were inspected **after** deployment: both `scheduled(controller,env,ctx)` and `asc1675CronRunner` are present; Stage16.71/16.72/16.73/16.74 routes, Admin Access check, Outbox and original sender are preserved; all 12 binding names/types remain available.
+- Official Cron Trigger configuration: **`*/5 * * * *` (UTC)**, Cloudflare API `success=true`.
+- Cron Trigger created: **2026-11-16 11:00:54 UTC**, on the Sandbox Worker **only**.
+- A separate subsequent Cloudflare GET read-back confirmed the single Cron Trigger and the new Sandbox Worker version at 100% traffic.
+
+**Immediate post-deployment read-only health:**
+
+| Check | Cloudflare observed |
+|---|---|
+| `asc_push_cron_health_v1.runs` | **0** (first real tick not observed yet) |
+| `last_error` | `never` |
+| D1 Outbox rows | **0** |
+| Active Android Push subscriptions | **1** |
+| Sandbox D1 `PRAGMA quick_check` | **ok** |
+| Sandbox D1 foreign-key check | **0 violations** |
+| Synthetic case records remaining | **0** |
+| Production Worker active version | `298de84d-418c-489c-b133-c549c785f66e` (unchanged) |
+| Staging Worker active version | `5b5040fb-6c04-4029-9c53-af15d3dda888` (unchanged) |
+
+**Protected Admin Cron Health page:**
+
+`https://arcscriptcenter-merge-sandbox-1658.kogpasan14.workers.dev/__stage1675/cron-health`
+
+The page uses existing Cloudflare Access authorized Admin identity, not an Admin Key. It shows only aggregate Cron/Outbox counters. Browser authentication and live scheduled execution still need confirmation by the authorized tester.
+
+**Outstanding verification gates:**
+
+1. Observe `runs>0` in the Cron health D1 row **after actual Cloudflare propagation** (up to ~15 minutes for Cron changes); distinguish the trigger being configured from scheduled execution.
+2. Verify a genuinely due Sandbox Outbox row is processed through the Cron handler and retry controls without creating duplicate notifications. No synthetic case or push HTTP call was initiated during this deployment verification.
+3. Confirm the protected Cron Health page works on the user's Android Chrome with existing Access session.
+4. Review production backup/restore/migration and security approval separately before Production deployment. **Production remains NO-GO**.
+
+The Cron is a durable retry runner, not a guarantee of exactly-once push delivery. External push acceptance followed by Worker interruption can still result in a duplicate upon subsequent lease recovery.
+
 
 ## Objective
 
