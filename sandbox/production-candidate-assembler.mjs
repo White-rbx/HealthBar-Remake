@@ -108,7 +108,20 @@ import {spawnSync} from "node:child_process";
     "/__stage1675/status":"/api/v1/admin/push/cron/status",
     "/__stage1671/":"/api/v1/admin/push/"
   };
-  let features=[feedback,verifier,adminPush,outbox,cron].join("\n");
+  // Source-controlled, public-sitekey-only browser form; never include Server Secrets or Sandbox UI.
+  const formHtml=fs.readFileSync(new URL("./production-feedback-appeal-form.html",import.meta.url),"utf8");
+  const formJs=fs.readFileSync(new URL("./production-feedback-appeal-form.js",import.meta.url),"utf8");
+  if(!formHtml.includes('src="/api/v1/feedback/form.js"')||
+     !formHtml.includes("https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit")||
+     !formJs.includes('action:kind.value==="appeal"?"appeal_submit":"feedback_submit"')||
+     !formJs.includes("turnstileToken:oneTimeToken")||
+     !formJs.includes('credentials:"omit"')||
+     formHtml.includes("sandbox-dummy")||formJs.includes("sandbox-dummy"))
+    stop("Production browser Turnstile form contract changed");
+  const formServe="const ASC_RELEASE_FEEDBACK_FORM_HTML="+JSON.stringify(formHtml)+";\n"+
+    "const ASC_RELEASE_FEEDBACK_FORM_JS="+JSON.stringify(formJs)+";\n"+
+    "\nconst ASC_RELEASE_FEEDBACK_FORM_CSP=\"default-src 'none'; base-uri 'none'; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; style-src 'unsafe-inline' https://challenges.cloudflare.com; img-src 'self' data: https://challenges.cloudflare.com; form-action 'self'; frame-ancestors 'none'\";\nfunction ascReleaseFormResponse(body,contentType,html=false){\n return new Response(body,{status:200,headers:{\n  'Content-Type':contentType,'Cache-Control':'no-store, private',\n  'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',\n  'X-Frame-Options':'DENY',\n  ...(html?{'Content-Security-Policy':ASC_RELEASE_FEEDBACK_FORM_CSP}:{})\n }});\n}\nfunction ascReleaseFeedbackFormPage(){\n return ascReleaseFormResponse(ASC_RELEASE_FEEDBACK_FORM_HTML,'text/html; charset=utf-8',true);\n}\nfunction ascReleaseFeedbackFormScript(){\n return ascReleaseFormResponse(ASC_RELEASE_FEEDBACK_FORM_JS,'text/javascript; charset=utf-8');\n}\n";
+  let features=[feedback,verifier,adminPush,outbox,cron,formServe].join("\n");
   for(const [from,to] of Object.entries(routeMap).sort((a,b)=>b[0].length-a[0].length)){
     features=features.replaceAll(from,to);
   }
@@ -159,6 +172,7 @@ function ascReleaseEnvReady(env){
     "      if((path==='/api/v1/admin/push/key'&&request.method==='GET')||(path==='/api/v1/admin/push/subscription'&&request.method==='POST'))return await ascStage1671Api(request,env,ctx);"
   ].join("\n");
   const allNewPaths=[
+    "/api/v1/feedback/form","/api/v1/feedback/form.js",
     "/api/v1/feedback/submit","/api/v1/feedback/status","/api/v1/feedback/manage",
     "/api/v1/admin/feedback","/api/v1/admin/feedback/history","/api/v1/admin/feedback/summary",
     "/api/v1/admin/feedback/list","/api/v1/admin/feedback/case","/api/v1/admin/feedback/activity",
@@ -175,6 +189,8 @@ function ascReleaseEnvReady(env){
         if(path.startsWith('/api/v1/admin/push') &&
            !(await ascStage1671VerifiedAdmin(request,env,ctx)))
           return json({ok:false,error:'Authorized admin identity required'},401,origin);
+      if(path==='/api/v1/feedback/form'&&request.method==='GET')return ascReleaseFeedbackFormPage();
+      if(path==='/api/v1/feedback/form.js'&&request.method==='GET')return ascReleaseFeedbackFormScript();
 ${pushRoutes}
         ${feedbackRoutes.trimStart()}
         return json({ok:false,error:'Method Not Allowed'},405,origin);
@@ -211,6 +227,8 @@ ${pushRoutes}
     "function adminAuthenticated",
     "async function fcSubmit",
     "async function asc1674Deliver",
+    "function ascReleaseFeedbackFormPage",
+    "function ascReleaseFeedbackFormScript",
     "async function asc1675CronRunner",
     "async scheduled(controller, env, ctx)",
     "env?.ASC_RELEASE_CHANNEL==='production'",
