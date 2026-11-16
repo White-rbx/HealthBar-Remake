@@ -164,6 +164,8 @@ function ascReleaseEnvReady(env){
       if(ASC_RELEASE_NEW_PATHS.has(path)){
         if(!ascReleaseEnvReady(env))
           return json({ok:false,error:'Feature not configured'},503,origin);
+        if(url.hostname!==env.ASC_RELEASE_HOSTNAME)
+          return json({ok:false,error:'Not Found'},404,origin);
         if(path.startsWith('/api/v1/admin/push') &&
            !(await ascStage1671VerifiedAdmin(request,env,ctx)))
           return json({ok:false,error:'Authorized admin identity required'},401,origin);
@@ -206,6 +208,7 @@ ${pushRoutes}
     "async function asc1675CronRunner",
     "async scheduled(controller, env, ctx)",
     "env?.ASC_RELEASE_CHANNEL==='production'",
+    "url.hostname!==env.ASC_RELEASE_HOSTNAME",
     "verdict.hostname!==env.ASC_TURNSTILE_HOSTNAME",
     "ASC_RELEASE_NEW_PATHS.has(path)"
   ];
