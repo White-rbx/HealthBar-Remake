@@ -17,6 +17,17 @@ This is the single operational owner handoff. Stop adding new Stage IDs and unne
 
 ## Live Access browser acceptance — owner action (no deployment)
 
+### Fresh unauthenticated Access HTTP check — PASS (2026-11-16)
+
+Read-only HTTP/browser verification was performed using **Cloudflare Browser Rendering with no pre-existing login cookies or Access session**. No Cloudflare Access app, identity, Worker, route, D1, Secret, or Production deployment was changed.
+
+- `GET https://arcscriptcenter-api.kogpasan14.workers.dev/api/v1/admin/push/` rendered **`Sign in ・ Cloudflare Access`**, not the Admin Push dashboard or Production API health. This is a **PASS for anonymous-request Access interception**.
+- `GET https://arcscriptcenter-api.kogpasan14.workers.dev/` independently rendered the public ArcScriptCenter API health response (`service: ArcScriptCenter`, `status: online`) without an Access login. This is a **PASS for keeping the public root accessible**.
+- Cloudflare API read-back confirms the Access application is scoped to `arcscriptcenter-api.kogpasan14.workers.dev/api/v1/admin/push/*` and has exactly one attached `allow` policy.
+
+**Scope of proof:** The protected path is challenged for an unauthenticated visitor, and the unrelated root still works. **NOT YET PROVEN:** a fully authenticated but **non-owner** Cloudflare Access identity is denied; an authenticated owner can use the **new** Admin Push Candidate routes (those routes are not currently deployed). Do not count this as complete Access Gate 1 sign-off; only its anonymous Access interception subcheck is complete.
+
+
 ### Verified owner login result — PASS (2026-11-16)
 
 The authorized owner opened the Production Access-protected Admin Push URL in an **incognito/private browser**, observed the Cloudflare Access login challenge, completed sign-in and then saw the current Production Worker's JSON **`{"ok":false,"error":"Not Found"}`**. That `404` response is **expected after successful Access authentication** because the currently deployed `0.5.41.5-phase1` Worker has not implemented this new path yet.
