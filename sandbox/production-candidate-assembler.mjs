@@ -116,6 +116,7 @@ import {spawnSync} from "node:child_process";
      !formJs.includes('action:kind.value==="appeal"?"appeal_submit":"feedback_submit"')||
      !formJs.includes("turnstileToken:oneTimeToken")||
      !formJs.includes('credentials:"omit"')||
+     !formJs.includes(manifest.productionAccessTurnstileProvisioning.turnstile.publicSitekey)||
      formHtml.includes("sandbox-dummy")||formJs.includes("sandbox-dummy"))
     stop("Production browser Turnstile form contract changed");
   const formServe="const ASC_RELEASE_FEEDBACK_FORM_HTML="+JSON.stringify(formHtml)+";\n"+
@@ -136,6 +137,8 @@ function ascReleaseEnvReady(env){
   env?.ASC_RELEASE_CHANNEL==='production' &&
   env?.ASC_TURNSTILE_MODE==='real' &&
   typeof env.ASC_RELEASE_HOSTNAME==='string' &&
+  // A release-channel variable alone must never permit an unintended hostname.
+  env.ASC_RELEASE_HOSTNAME==='arcscriptcenter-api.kogpasan14.workers.dev' &&
   /^[a-z0-9.-]{4,253}$/i.test(env.ASC_RELEASE_HOSTNAME) &&
   env.ASC_TURNSTILE_HOSTNAME===env.ASC_RELEASE_HOSTNAME &&
   typeof env.ASC_TURNSTILE_REAL_SECRET==='string' &&

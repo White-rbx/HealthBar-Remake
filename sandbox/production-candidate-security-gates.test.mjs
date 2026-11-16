@@ -27,8 +27,8 @@ function validSynthetic() {
   return {
     ASC_RELEASE_CHANNEL: 'production',
     ASC_TURNSTILE_MODE: 'real',
-    ASC_RELEASE_HOSTNAME: 'release.example.invalid',
-    ASC_TURNSTILE_HOSTNAME: 'release.example.invalid',
+    ASC_RELEASE_HOSTNAME: 'arcscriptcenter-api.kogpasan14.workers.dev',
+    ASC_TURNSTILE_HOSTNAME: 'arcscriptcenter-api.kogpasan14.workers.dev',
     ASC_TURNSTILE_REAL_SECRET: 'synthetic-only-not-a-secret-123456',
     ASC_FEEDBACK_QUOTA_KEY: 'synthetic-only-quota-not-a-secret-123456',
     ASC_PUSH_ACCESS_AUD: 'a'.repeat(64),
@@ -55,6 +55,7 @@ const denyCases = [
   ['dummy Turnstile mode', e => e.ASC_TURNSTILE_MODE = 'sandbox-dummy'],
   ['missing hostname', e => delete e.ASC_RELEASE_HOSTNAME],
   ['mismatched Turnstile host', e => e.ASC_TURNSTILE_HOSTNAME = 'other.example.invalid'],
+  ['wrong host even when release and Turnstile host match each other', e => {e.ASC_RELEASE_HOSTNAME = 'unapproved.example.invalid';e.ASC_TURNSTILE_HOSTNAME = 'unapproved.example.invalid'}],
   ['malformed release hostname', e => e.ASC_RELEASE_HOSTNAME = 'bad/host'],
   ['missing real Siteverify secret', e => delete e.ASC_TURNSTILE_REAL_SECRET],
   ['short real Siteverify secret', e => e.ASC_TURNSTILE_REAL_SECRET = 'short'],
@@ -76,6 +77,7 @@ for (const [label, mutate] of denyCases) {
   });
 }
 test('admin routing requires configured hostname and Access identity', () => {
+  assert.ok(source.includes("env.ASC_RELEASE_HOSTNAME==='arcscriptcenter-api.kogpasan14.workers.dev'"));
   assert.ok(source.includes('if(url.hostname!==env.ASC_RELEASE_HOSTNAME)'));
   assert.ok(source.includes("if(path.startsWith('/api/v1/admin/push')"));
   assert.ok(source.includes('await ascStage1671VerifiedAdmin(request,env,ctx)'));
@@ -84,4 +86,9 @@ test('admin routing requires configured hostname and Access identity', () => {
 });
 test('assembler prohibits dummy challenge path after merge', () => {
   assert.ok(source.includes('if(candidate.includes("ascVerifyFeedbackChallenge")'));
+});
+
+
+test('production browser sitekey must match provisioned manifest value', () => {
+  assert.ok(source.includes("formJs.includes(manifest.productionAccessTurnstileProvisioning.turnstile.publicSitekey)"));
 });
