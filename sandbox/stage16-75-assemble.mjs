@@ -21,13 +21,14 @@ export function assembleStage1675(source, runner) {
  check(typeof source==='string'&&source.length>1000&&source.length<1000000,'unexpected source size');
  check(typeof runner==='string'&&runner.length>3000&&runner.length<30000,'unexpected runner size');
  check(occurrences(source,PREVIOUS)===2,'expected precisely two Stage16.74 version markers');
+ // Report pre-existing scheduled handlers before generic export-anchor mismatch.
+ check(!source.includes('async scheduled(controller, env, ctx)'),
+       'scheduled handler is already present');
+ check(!source.includes('/__stage1675/')&&!source.includes('async function asc1675CronRunner'),
+       'Cron runner is already present');
  check(occurrences(source,ANCHOR)===1,'main export/fetch anchor must be unique');
  check(occurrences(source,ROUTE_ANCHOR)===1,'Stage16.74 health route must be unique');
  check(occurrences(runner,HELPERS_MARKER)===1,'Cron runner split marker must be unique');
- check(!source.includes('/__stage1675/')&&!source.includes('async function asc1675CronRunner'),
-       'Cron runner is already present');
- check(!source.includes('async scheduled(controller, env, ctx)'),
-       'scheduled handler is already present');
  check(source.includes('async function asc1674RetryDue(env)'),
        'verified Stage16.74 due queue missing');
  check(source.includes('async function asc1674Deliver(env,id)'),
