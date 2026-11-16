@@ -15,6 +15,20 @@ This is the single operational owner handoff. Stop adding new Stage IDs and unne
 
 **Gate 1 is provisioned but not yet end-to-end verified. Gate 2 has a production widget but the server integration is not yet enabled. Neither is a Production Release GO.**
 
+## Live Access browser acceptance — owner action (no deployment)
+
+**Verified by read-only API inspection:** The new Access app covers `arcscriptcenter-api.kogpasan14.workers.dev/api/v1/admin/push/*`, is linked to exactly one reusable Allow policy for the authenticated Cloudflare owner, and has an Access application AUD. The most recent read-only Access authentication logs contained **zero identifiable events for this new application**. This is **not** evidence of a successful login or a denial. A Cloudflare policy-test API call without a user identifier failed with `invalid_user_id`; no security control was bypassed or changed.
+
+**Owner test URL:** https://arcscriptcenter-api.kogpasan14.workers.dev/api/v1/admin/push/
+
+1. Open the URL in a **private/incognito browser window**, without signing in, and note whether Cloudflare Access shows a sign-in challenge rather than sending the request directly to the old Worker.
+2. Authenticate with the **authorized owner identity** through the normal Cloudflare Access interface. Never share a one-time sign-in code, password, identity token, cookie or screenshot of credentials.
+3. After Access authentication succeeds, the existing Production Worker may correctly reply with **`404 Not Found`** for this path: the current live Worker is version `0.5.41.5-phase1` and does **not yet implement** the new Admin Push URL. **A post-authentication Worker 404 is expected and must not be misreported as a failed Access login.**
+4. To prove disallowed identity rejection, a separate controlled attempt using an identity that is **not included** in the owner policy is still necessary; never add a broad Everyone/Email Domain policy just to make testing easier.
+5. Only after those browser observations, recheck *aggregated* Access authentication logs filtered to the new app; do not copy user emails or authentication events into GitHub.
+
+**Next gate after browser confirmation:** owner-controlled binding/secret authorization and real Siteverify integration. Neither is authorized by this browser test. The existing Worker, D1, secrets, Access policy and Turnstile widget must remain unchanged for this acceptance check.
+
 ## Completed and accepted
 
 - Sandbox Stage16.75 Web Push automatic retry: live Cloudflare Cron and Push Service accepted delivery on attempt two (HTTP 201); owner confirmed Android notification receipt. Synthetic QA data deleted.
