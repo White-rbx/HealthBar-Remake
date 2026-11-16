@@ -48,6 +48,19 @@ An independent, read-only Cloudflare Access authentication-log query returned **
 
 ## Isolated browser UI preview — ready for owner inspection (2026-11-16)
 
+### Initial base deployment troubleshooting — outcome (2026-11-16)
+
+**Issue reproduced before and after approved isolated Worker initial deployment:** the owner saw Cloudflare's `There is nothing here yet` page from the original stable Preview. Cloudflare Browser Rendering independently retrieved the same placeholder from both the stable Preview URL and the immutable Deployment 2 URL.
+
+The owner authorized the next safe troubleshooting step: **initial deployment of the existing, isolated `asc-browser-form-review-20261116` Worker only**. The operator verified its isolated identity, disabled normal `workers.dev` URL, enabled Preview URLs, zero bindings, exact test-only source code (no real Production Sitekey/Secret, D1, or submit API). A new Worker version `2dd74e53-68a0-4fda-9c3b-d7865ea1f313` was uploaded and initially deployed at 100% as Worker deployment `182ade93-ece0-49a0-b28c-269ea2f9c42e`.
+
+**Verified after base deployment:** `deployed_on` now exists, `workers.dev` remains disabled, Preview URLs enabled, no bindings; Production, Staging, Sandbox Worker versions unchanged. The original Preview still showed the same Placeholder in Cloudflare Browser Rendering. As one final isolated preview refresh, Deployment 3 `f44155d7-cd73-4804-96a9-27649df665cc` was created; Browser Rendering returned the same placeholder. The isolated base Version URL also returned `Page not found` placeholder. Thus **initial deployment and Preview refresh DO NOT RESOLVE the reported URL routing issue**.
+
+Cloudflare API read-back confirms the Preview has a compiled `worker.js` module, a GET HTML route and official Turnstile **TEST** Sitekey, not a Server Secret. There is no proof the requests reach this Worker: the problem is **routing/publication or a separate Cloudflare edge layer until independently determined**. Avoid claiming the cause is definitively missing first deployment or a UI JavaScript error.
+
+**Current status:** Browser Preview acceptance FAIL, not ready for normal users. Stop creating repetitive Deployments. Recommended next controlled diagnostic would be either (a) explicitly authorize enabling the **normal workers.dev URL of this disposable, no-binding Worker only** for an isolated HTTP comparison (and disable after), **or** (b) inspect/test the Preview routing through Cloudflare dashboard/support without changing settings. No Production/Staging/Sandbox Worker, D1, Access, Turnstile, Cron or existing Secrets may be modified to fix this test Preview. The isolated initial deployment itself is intentionally retained for diagnosis.
+
+
 ### Owner screenshot and isolated Preview refresh (2026-11-16)
 
 The owner opened the first stable Preview URL on Android/Chrome and observed Cloudflare's **"There is nothing here yet"** placeholder, **not** the UI. **Browser Preview acceptance: FAIL for the initial URL test.** This must not be misreported as an application UI success.
