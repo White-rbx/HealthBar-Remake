@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.75: Sandbox Cron Retry Deployment and Verification
 
 Date: 2026-11-16 (Asia/Bangkok)
-Status: **SANDBOX WORKER DEPLOYED + FIVE-MINUTE CRON CONFIGURED. FIRST REAL CRON TICK CONFIRMED. 37/37 OFFLINE TESTS PASS. REAL OUTBOX RETRY RECEIPT PENDING.**
+Status: **SANDBOX 37/37 OFFLINE QA PASS + LIVE CRON PASS + LIVE OUTBOX AUTO-RETRY ACCEPTED (HTTP 201, SECOND ATTEMPT) + SYNTHETIC DATA CLEANUP PASS. ANDROID NOTIFICATION DISPLAY PENDING DEVICE CONFIRMATION. PRODUCTION NO-GO.**
 Production: **NO-GO**.
 
 
@@ -72,6 +72,35 @@ The authorized Android tester opened the protected Cron Health page and observed
 A separate Cloudflare GET confirmed the single Cron schedule `*/5 * * * *` on the isolated Sandbox Worker and active version `1c6ce118-27b7-40c4-9c0d-2b8c6d3a4776` at 100%. The Sandbox D1 Outbox had **no pending rows**; `PRAGMA quick_check` returned `ok`. There was one active Android Push subscription.
 
 **Verification outcome:** Cron Trigger activation, live scheduled event invocation, execution of the Stage16.75 runner and D1 telemetry update are now **PASS**. Zero processed jobs is correct when the Outbox is empty. This does **not yet** establish successful automatic retry and delivery of a genuinely due queued Web Push message. That is the **remaining Sandbox acceptance step**, followed by separate production-change approval. No synthetic Push was sent during this read-only confirmation. **Production remains NO-GO**.
+
+
+
+## Live Stage16.75 automatic retry acceptance — confirmed (2026-11-16)
+
+**Scope:** Existing isolated Cloudflare Sandbox Worker, isolated D1, one already registered Android Push subscription. No Production or Staging changes. This is a live Worker-Cron-to-Push-Service test, **not** a claim of observing an Android notification on the device.
+
+**Preparation:** Read-only preflight established the active version `1c6ce118-27b7-40c4-9c0d-2b8c6d3a4776` at 100%, exact `*/5 * * * *` Cron schedule, healthy D1, no preexisting Feedback cases/Outbox rows and exactly one enabled subscription. The official Cloudflare D1 API inserted one clearly labeled synthetic Feedback case using NULL user identity. Its normal case-history insert trigger recorded a synthetic `submitted` event. One Outbox item was staged in `state='retry'`, `attempts=1`, `last_http_status=503`, `next_retry_unix` already due. **The first failed HTTP attempt was simulated as database state rather than performed on an actual Push Service.**
+
+**Cloudflare's scheduled invocation, not an admin manual retry, processed the staged Outbox item.** A separate read-only D1 query after the next Cron tick confirmed:
+
+| Evidence | D1 observed |
+|---|---|
+| Cron runs | **3** |
+| Last Cron jobs | **1** |
+| Last Cron attempts | **1** |
+| Last Cron accepted | **1** |
+| Last Cron failed | **0** |
+| Last Cron error | **none** |
+| Synthetic Outbox final state before cleanup | **delivered** |
+| Synthetic Outbox attempts | **2** |
+| Actual Push Service response | **HTTP 201** |
+| Last delivery lease | **0** (released) |
+
+The live result proves that the Stage16.75 scheduled runner selected a due, previously failed **synthetic** Outbox row, retried it via the real Web Push endpoint, and recorded Push Service acceptance on the second attempt. **HTTP 201 is acceptance by Push Service, not proof that Android displayed a notification.** The existing Service Worker uses a generic Feedback/Appeal notification body; the user was informed the expected notification would be synthetic.
+
+**Cleanup:** Immediately after confirming the delivery receipt, the Sandbox D1 API removed exactly the synthetic Outbox row, the synthetic history event, and the synthetic Feedback case by their exact test identifier and constrained case metadata. Independent D1 SELECT queries verified **0** matching cases, **0** Outbox rows and **0** history events remaining. One Android Push subscription remains active. `PRAGMA quick_check` returned `ok`; `PRAGMA foreign_key_check` returned **0** violations. Cron aggregate telemetry remains in place as a non-identifying audit.
+
+**Acceptance:** The **automatic Cron Retry / Push Service** layer is **PASS** on Sandbox. The only outstanding device-side confirmation is whether Android Chrome actually displayed the synthetic notification. Production remains **NO-GO** until separate production readiness, migration/rollback and authorization review; this test did not deploy to Production or Staging.
 
 
 ## Objective
