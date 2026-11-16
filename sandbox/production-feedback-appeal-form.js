@@ -82,14 +82,21 @@
       return body;
     }finally{clearTimeout(timeout)}
   }
-  function validateForm(){
-    const k=kind.value, t=topic.value.trim(),d=description.value.trim();
-    const max=k==="appeal"?5000:1500;
+  function validateCaseFields(k){
+    const t=topic.value.trim(),d=description.value.trim();
+    const max=k==="appeal"?5000:k==="feedback"?1500:0;
+    if(!max)throw Error("ประเภทคำร้องไม่ถูกต้อง");
     if(unicodeCount(t)<3||unicodeCount(t)>50)throw Error("หัวข้อต้องมี 3–50 ตัวอักษร");
     if(unicodeCount(d)<50||unicodeCount(d)>max)throw Error("รายละเอียดต้องมี 50–"+max+" ตัวอักษร");
-    if(k==="appeal"&&(!userid.test(userId.value)||!Number.isSafeInteger(Number(userId.value))))
+    return {kind:k,topic:t,description:d};
+  }
+  function validateForm(){
+    const data=validateCaseFields(kind.value);
+    // Claimed Roblox UserId is required only for NEW appeals.
+    // The receipt-scoped manage API intentionally never returns the claim.
+    if(data.kind==="appeal"&&(!userid.test(userId.value)||!Number.isSafeInteger(Number(userId.value))))
       throw Error("Appeal ต้องมี Roblox UserId ที่ถูกต้อง");
-    return {kind:k,topic:t,description:d,claimedUserId:k==="appeal"?userId.value.trim():undefined};
+    return {...data,claimedUserId:data.kind==="appeal"?userId.value.trim():undefined};
   }
   $("request-form").addEventListener("submit",async event=>{
     event.preventDefault();
@@ -153,8 +160,13 @@
   $("edit-case").addEventListener("click",async()=>{
     if(pending||!loadedCase?.canManage)return;
     let key,body;
-    try{key=keyData();body=validateForm()}catch(e){status(e.message,true);return}
-    if(body.kind!==loadedCase.kind){status("ประเภทคำร้องเปลี่ยนไม่ได้",true);return}
+    try{
+      key=keyData();
+      if(kind.value!==loadedCase.kind)throw Error("ประเภทคำร้องเปลี่ยนไม่ได้");
+      // Existing appeal edits are receipt-authorized. Re-entering a Roblox
+      // UserId would be unnecessary and may leak more identity information.
+      body=validateCaseFields(loadedCase.kind);
+    }catch(e){status(e.message,true);return}
     if(!confirm("ยืนยันแก้ไขคำร้องด้วยข้อความจากฟอร์มด้านบน?"))return;
     setBusy(true);
     try{
@@ -171,8 +183,15 @@
     setBusy(true);
     try{
       await post("/api/v1/feedback/manage",{...key,operation:"remove"});
+      const removedCaseId=key.id;
       loadedCase=null;$("case-section").hidden=true;
+      $("case-summary").textContent="";
       $("lookup-receipt").value="";
+      if($("created-id").value===removedCaseId){
+        $("created-receipt").value="";
+        $("created-id").value="";
+        $("receipt-section").hidden=true;
+      }
       status("ลบคำร้องแล้ว");
     }catch(e){status("ลบไม่สำเร็จ: "+e.message,true)}
     finally{setBusy(false)}
