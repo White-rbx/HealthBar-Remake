@@ -110,3 +110,133 @@ test('synthetic browser initial load renders Feedback action without real fetch'
  assert.equal(get('userid-group').hidden,false);
  assert.equal(network,0);
 });
+
+
+function mockBrowser(responses={}) {
+ const elements=new Map(), listeners=new Map(), requests=[], widgets=[];
+ const element=id=>{
+  if(!elements.has(id)){
+   const e={value:'',disabled:false,hidden:false,textContent:'',dataset:{},
+     replaceChildren(){},addEventListener(event,callback){listeners.set(id+':'+event,callback)}};
+   elements.set(id,e);
+  }
+  return elements.get(id);
+ };
+ element('kind').value='feedback';
+ const turnstile={
+  render(_container,opts){widgets.push(opts);return 'widget-'+widgets.length},
+  remove(){},reset(){}
+ };
+ const confirmCalls=[];
+ const w={turnstile,addEventListener(event,callback){listeners.set('window:'+event,callback)}};
+ const ctx={
+  document:{getElementById:element},
+  window:w,
+  crypto:{getRandomValues(array){array.fill(0x2a);return array}},
+  sessionStorage:{getItem(){return null},setItem(){}},
+  AbortController,
+  fetch:async(path,options)=>{
+   requests.push({path,body:JSON.parse(options.body),method:options.method,
+     mode:options.mode,credentials:options.credentials,cache:options.cache});
+   const answer=responses[path];
+   if(!answer)throw Error('UNEXPECTED API: '+path);
+   const payload=typeof answer==='function'?answer():answer;
+   return{ok:payload.ok,status:payload.ok?200:400,json:async()=>payload};
+  },
+  navigator:{clipboard:{writeText:async()=>{}}},
+  confirm:message=>{confirmCalls.push(message);return true},
+  setTimeout,clearTimeout
+ };
+ runInNewContext(js,ctx,{timeout:1000});
+ listeners.get('window:load')();
+ return {element,listeners,requests,widgets,confirmCalls,click:id=>listeners.get(id+':click')()};
+}
+
+test('appeal receipt can edit without re-entering unexposed Roblox UserId',async()=>{
+ const id='11111111-2222-4333-8444-555555555555';
+ const receipt='b'.repeat(64);
+ const responses={
+  '/api/v1/feedback/status':{ok:true,case:{id,kind:'appeal',
+    topic:'Existing appeal',description:'D'.repeat(60),status:'reviewing',
+    revision:0,canManage:true,publicNote:''},history:[]},
+  '/api/v1/feedback/manage':{ok:true,removed:false,revision:1}
+ };
+ const b=mockBrowser(responses);
+ b.element('lookup-id').value=id;
+ b.element('lookup-receipt').value=receipt;
+ await b.click('check-status');
+ assert.equal(b.requests.length,1);
+ assert.equal(b.element('kind').value,'appeal');
+ assert.equal(b.element('user-id').value,'','status API does not expose claimed UserId');
+ assert.equal(b.element('edit-case').disabled,false);
+ b.element('topic').value='Corrected appeal';
+ b.element('description').value='E'.repeat(65);
+ await b.click('edit-case');
+ assert.equal(b.requests.length,2,'edit must post even without a claim');
+ const update=b.requests[1];
+ assert.equal(update.path,'/api/v1/feedback/manage');
+ assert.equal(update.body.operation,'edit');
+ assert.equal(update.body.id,id);
+ assert.equal(update.body.receipt,receipt);
+ assert.equal(update.body.topic,'Corrected appeal');
+ assert.equal(update.body.description,'E'.repeat(65));
+ assert.equal(Object.hasOwn(update.body,'claimedUserId'),false);
+ assert.equal(Object.hasOwn(update.body,'turnstileToken'),false);
+ assert.equal(update.mode,'same-origin');
+ assert.equal(update.credentials,'omit');
+ assert.equal(update.cache,'no-store');
+ assert.equal(b.element('case-section').hidden,true,'refresh status after edit');
+});
+
+test('new appeal still requires claimed Roblox UserId and valid Turnstile token',async()=>{
+ const id='11111111-2222-4333-8444-555555555555',receipt='a'.repeat(64);
+ const b=mockBrowser({'/api/v1/feedback/submit':{ok:true,id,receipt,status:'reviewing'}});
+ b.element('kind').value='appeal';
+ b.listeners.get('kind:change')();
+ b.element('topic').value='New appeal request';
+ b.element('description').value='A'.repeat(65);
+ const widget=b.widgets.at(-1);
+ assert.equal(widget.action,'appeal_submit');
+ widget.callback('synthetic-test-token');
+ assert.equal(b.element('submit').disabled,false);
+ const submit=b.listeners.get('request-form:submit');
+ await submit({preventDefault(){}});
+ assert.equal(b.requests.length,0,'invalid missing user ID must not send API request');
+ assert.match(b.element('message').textContent,/UserId/);
+ b.element('user-id').value='123456789';
+ await submit({preventDefault(){}});
+ assert.equal(b.requests.length,1);
+ const data=b.requests[0];
+ assert.equal(data.path,'/api/v1/feedback/submit');
+ assert.equal(data.body.kind,'appeal');
+ assert.equal(data.body.claimedUserId,'123456789');
+ assert.equal(data.body.turnstileToken,'synthetic-test-token');
+ assert.match(data.body.clientKey,/^[a-f0-9]{64}$/i);
+ assert.equal(b.element('created-receipt').value,receipt);
+ assert.equal(b.element('created-id').value,id);
+ assert.equal(b.element('submit').disabled,true,'token must be reset after consumption');
+});
+
+test('removing a receipt-scoped case clears displayed secret receipt',async()=>{
+ const id='11111111-2222-4333-8444-555555555555',receipt='c'.repeat(64);
+ const b=mockBrowser({
+  '/api/v1/feedback/status':{ok:true,case:{id,kind:'feedback',
+    topic:'Existing problem',description:'D'.repeat(55),status:'reviewing',
+    revision:0,canManage:true,publicNote:''},history:[]},
+  '/api/v1/feedback/manage':{ok:true,removed:true,revision:1}
+ });
+ b.element('created-id').value=id;
+ b.element('created-receipt').value=receipt;
+ b.element('receipt-section').hidden=false;
+ b.element('lookup-id').value=id;
+ b.element('lookup-receipt').value=receipt;
+ await b.click('check-status');
+ await b.click('remove-case');
+ assert.equal(b.requests.length,2);
+ assert.equal(b.requests[1].body.operation,'remove');
+ assert.equal(b.element('created-id').value,'');
+ assert.equal(b.element('created-receipt').value,'');
+ assert.equal(b.element('receipt-section').hidden,true);
+ assert.equal(b.element('lookup-receipt').value,'');
+ assert.equal(b.element('case-summary').textContent,'');
+});
