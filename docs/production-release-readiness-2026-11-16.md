@@ -53,7 +53,13 @@ The GitHub test branch now includes `sandbox/production-candidate-merge-manifest
 - Excluded: Stage16.64/16.66/16.67/16.72/16.73 testing pages and routes; test-only D1 tables.
 - **No Production Worker source snapshot, private Push endpoint, Admin credential, secret binding value or user record was committed.**
 
-This manifest is **not** a completed merged Worker and cannot be deployed. The source merge must still adapt dummy Turnstile logic, hardcoded Sandbox hostname checks, Admin Access identity checks, Service Worker scope and the `scheduled()` guard to fail-closed Production-specific settings, while preserving all legacy Production functionality. Review and verify the resulting candidate before any deployment.
+The manifest and source boundary selection have now been supplemented by a **local-only, review-only assembler**: `sandbox/production-candidate-assembler.mjs`. It requires the exact private Production/Sandbox source snapshots and rejects any hash mismatch before creating output. It selects only reviewed feature-family sections, replaces Sandbox-specific real/dummy verification paths with production-oriented fail-closed guards, preserves the legacy Production route body, strips test-only routes and runs a local Node syntax check on its generated candidate. It has **no Cloudflare API invocation and never deploys**. It does not publish Worker source or secret values to GitHub.
+
+**Actual GitHub-hosted offline review result:** <https://github.com/White-rbx/HealthBar-Remake/actions/runs/43862268650> — **SUCCESS**. The Workflow verified the assembler's Node syntax, validated the review-only manifest and confirmed that input files with incorrect SHA-256 values are **rejected before output**. The first Workflow run had a typo in the pinned checkout SHA and failed at setup; the SHA was corrected to the working pinned checkout version used by the project's previous CI.
+
+**Important distinction:** The assembler has **not yet been executed end-to-end with both private Worker source snapshots**. Neither a complete, assembled Candidate artifact nor a live preproduction acceptance test is certified by this report. The selected code is still a review draft; the production-specific Access hostname, real Turnstile widget/configuration, VAPID/admin credentials, backup/recovery and final source review are all separate release gates.
+
+**Updated decision:** Isolated 23-object D1 schema rehearsal PASS; review-only source integration tooling and offline negative-input review PASS. Production Candidate **NOT RELEASE READY**, **Production NO-GO**.
 
 **Updated Gate:** Additive SQL compatibility on isolated D1 **PASS**. Source merge, true Production configuration, independently verified Production backup/restore, code review, preproduction acceptance and Production authorization **PENDING — NO-GO**.
 
