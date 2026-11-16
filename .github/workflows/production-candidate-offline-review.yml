@@ -40,6 +40,21 @@ jobs:
           assert.match(m.featureSource.sha256,/^[a-f0-9]{64}$/);
           console.log('Review-only source manifest valid; no cloud credentials loaded');
           JS
+      - name: Validate candidate host and real-human-verification guards in assembler
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const code=fs.readFileSync('sandbox/production-candidate-assembler.mjs','utf8');
+          assert.ok(code.includes("if(url.hostname!==env.ASC_RELEASE_HOSTNAME)"));
+          assert.ok(code.includes("if(!ascReleaseEnvReady(env))"));
+          assert.ok(code.includes("const human = await ascStage1667SiteVerify(b,env);"));
+          assert.ok(code.includes("verdict.hostname!==env.ASC_TURNSTILE_HOSTNAME"));
+          assert.ok(code.includes("if(path.startsWith('/api/v1/admin/push')"));
+          assert.ok(code.includes("await ascStage1671VerifiedAdmin(request,env,ctx)"));
+          assert.ok(code.includes("async scheduled(controller, env, ctx)"));
+          console.log('Candidate source guards present; release still NO-GO');
+          JS
       - name: Fail closed on source hash mismatch
         run: |
           if node sandbox/production-candidate-assembler.mjs \
