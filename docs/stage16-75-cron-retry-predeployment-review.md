@@ -67,3 +67,26 @@ An extra **Sandbox D1 only** test exercised the exact proposed Cron stale-lease 
 - No Android Push service request was sent. No Production/Staging mutation was involved.
 
 This increases confidence in the D1 transition logic but **does not** verify actual scheduled execution or make the feature live. Deployment remains blocked and **no Cron Trigger is configured**.
+
+## 2026-11-16 — Cloudflare/GitHub continuation (read-only environment check)
+
+The authorized owner explicitly requested continuation with both the Cloudflare and GitHub connectors. Fresh read-only Cloudflare checks confirmed the state remained **unchanged**:
+- Production version: `298de84d-418c-489c-b133-c549c785f66e` (100%).
+- Staging version: `5b5040fb-6c04-4029-9c53-af15d3dda888` (100%).
+- Sandbox version: `dfcc6017-5721-4e26-bf6e-a36b01fb844c` (100%): **Stage16.74**, not Stage16.75.
+- Sandbox Cron schedules: empty; telemetry `runs=0`, `last_error=never`.
+- Registered Android subscriptions: **1**.
+- D1 delivery outbox: **0** rows.
+- Sandbox D1 quick check: `ok`.
+
+A no-dependency local Node test suite was added to the protected GitHub test branch:
+`sandbox/stage16-75-cron-retry-runner.test.mjs`.
+
+It statically loads the **actual draft helper source** into an isolated Node VM and defines six checks: valid Sandbox schedule invocation, rejection of unexpected cron schedule, rejection of non-Sandbox version, rejection of non-Sandbox Turnstile mode, aggregate error telemetry when the retry callback throws, and expected security/source guards. It performs **no real Cloudflare requests and sends no Android notification**.
+
+Run in a checked-out test branch (Node 20+) using:
+`node --test sandbox/stage16-75-cron-retry-runner.test.mjs`
+
+**Test execution is not yet verified**: a local runner could not retrieve the GitHub files because the execution environment did not have DNS/network access to GitHub. The addition of the test suite alone does not establish the tests are passing.
+
+The previous Cloudflare Worker upload was blocked by platform safety checks, and this continuation made no attempt to circumvent that block. **No Worker code, Cron Trigger or existing D1 data was changed in this continuation.** The only mutations were documentation and new test file commits to `stage16-63-protected-http-test`. Production remains **NO-GO** and Stage16.75 is **not ready for a mobile acceptance test**.
