@@ -48,6 +48,20 @@ An independent, read-only Cloudflare Access authentication-log query returned **
 
 ## Isolated browser UI preview — ready for owner inspection (2026-11-16)
 
+### Owner screenshot and isolated Preview refresh (2026-11-16)
+
+The owner opened the first stable Preview URL on Android/Chrome and observed Cloudflare's **"There is nothing here yet"** placeholder, **not** the UI. **Browser Preview acceptance: FAIL for the initial URL test.** This must not be misreported as an application UI success.
+
+Root-cause hypothesis from the official Cloudflare metadata: the isolated Worker's `previews_enabled` flag was **false when Preview Deployment 1 was created**, and it was set to **true only afterward**. A new Deployment 2 was therefore created by patching the latest Preview Deployment's annotations after confirming `previews_enabled=true` and `enabled=false` (normal Worker route disabled).
+
+- New Deployment 2 ID: `1e48d629-59be-439e-b53d-117a36a8ce7b`.
+- New immutable Deployment URL: https://1e48d629-asc-browser-form-review-20261116.kogpasan14.workers.dev
+- Stable Preview URL (latest Deployment): https://feedback-browser-ui-review-asc-browser-form-review-20261116.kogpasan14.workers.dev
+- Verified through Cloudflare API: new Deployment `number=2`, one compiled main module, **zero bindings**, Preview URLs enabled, normal Worker URL disabled.
+- **Still unverified:** the owner has not yet opened Deployment 2 in an actual browser, and automated HTTP access from the authorized tool environment is restricted. The screenshot proves the initial page was not yet publicly served; the metadata does **not** prove the refresh fixed it.
+- No Production, Staging or existing Sandbox changes. No D1/Secret changes.
+
+
 A **separate disposable Cloudflare Worker/Preview** was created to allow the owner to inspect the proposed Feedback & Appeal layout in an ordinary browser:
 
 **Preview URL:** https://feedback-browser-ui-review-asc-browser-form-review-20261116.kogpasan14.workers.dev
