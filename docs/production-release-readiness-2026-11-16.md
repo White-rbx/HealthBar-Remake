@@ -57,11 +57,41 @@ The manifest and source boundary selection have now been supplemented by a **loc
 
 **Actual GitHub-hosted offline review result:** <https://github.com/White-rbx/HealthBar-Remake/actions/runs/43862268650> — **SUCCESS**. The Workflow verified the assembler's Node syntax, validated the review-only manifest and confirmed that input files with incorrect SHA-256 values are **rejected before output**. The first Workflow run had a typo in the pinned checkout SHA and failed at setup; the SHA was corrected to the working pinned checkout version used by the project's previous CI.
 
-**Important distinction:** The assembler has **not yet been executed end-to-end with both private Worker source snapshots**. Neither a complete, assembled Candidate artifact nor a live preproduction acceptance test is certified by this report. The selected code is still a review draft; the production-specific Access hostname, real Turnstile widget/configuration, VAPID/admin credentials, backup/recovery and final source review are all separate release gates.
+**Updated distinction (see first real-source assembly above):** The assembler was subsequently executed against both exact live Worker snapshots **in memory**, and its assembled candidate passed V8 parse-only verification and safety-string checks. It is not a persisted/release-ready artifact and has not passed Cloudflare Worker runtime tests. The production-specific Access hostname, real Turnstile widget/configuration, VAPID/admin credentials, backup/recovery and final source review are still separate release gates.
 
 **Updated decision:** Isolated 23-object D1 schema rehearsal PASS; review-only source integration tooling and offline negative-input review PASS. Production Candidate **NOT RELEASE READY**, **Production NO-GO**.
 
 **Updated Gate:** Additive SQL compatibility on isolated D1 **PASS**. Source merge, true Production configuration, independently verified Production backup/restore, code review, preproduction acceptance and Production authorization **PENDING — NO-GO**.
+
+
+
+## First real-source Production candidate assembly — review-only PASS (2026-11-16)
+
+**Scope:** Authorized read-only Cloudflare Worker source retrieval and GitHub test-branch assembler/manifest updates; **no Worker version upload, deployment, D1 write, Secret change or source publication.** Source bytes were processed in memory and were **not committed** to the public GitHub repository.
+
+The exact active Worker sources were independently SHA-256 verified:
+
+| Source | Version | SHA-256 |
+|---|---|---|
+| Production baseline | `0.5.41.5-phase1` | `036a9f2410e877b51f5293315103e8a8f62ad940fb3f9e8d4efd0bd7e13e0a48` |
+| Sandbox feature source | `0.5.79.0-cron-retry-sandbox` | `dc4dedc563bd956ff9b24671f10c168d30728db4fe10e90954a1ad22db2bd24e` |
+
+The pinned `sandbox/production-candidate-assembler.mjs` was executed against those exact inputs in an isolated JavaScript test harness, with private read/write file operations replaced by in-memory shims. The generated candidate was inspected **without uploading it**. Its source body was syntax-checked by V8 after replacing its sole module `export default` with a non-executed `const` declaration **for parse-only validation**; this is **not** a full Node or Cloudflare Worker runtime integration test.
+
+**Verified assembly result:**
+- **Candidate SHA-256:** `b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f`
+- **UTF-8 bytes:** 151,540; UTF-16 code units: 149,942.
+- **V8 JavaScript syntax:** PASS, one Worker default export.
+- **Original Production legacy route body:** retained byte-for-byte in generated candidate.
+- **Real Feedback & Appeal Siteverify:** required; previous dummy verification helper removed.
+- **Host restriction:** new Feedback/Push routes fail closed when `url.hostname!==env.ASC_RELEASE_HOSTNAME`.
+- **Admin Push Access:** identity verification remains required.
+- **Disallowed test code:** no dummy token, Sandbox hostname, or Stage16.72/16.73 routes in generated candidate.
+- **No executable candidate file persisted to GitHub or uploaded to Cloudflare;** this was private in-memory source review only.
+
+The first real-source pass stopped at a misaligned check for `env.ASC_RELEASE_CHANNEL` versus the safe optional-chain `env?.ASC_RELEASE_CHANNEL`; the assembler invariant was corrected and real-source assembly then passed. An additional hostname guard was added after review, and the source was **reassembled and re-verified** to produce the final hash above. The latest CI run <https://github.com/White-rbx/HealthBar-Remake/actions/runs/43864440030> passed assembler syntax, manifest checks, fail-closed wrong-input rejection and the source guard static checks. **CI does not itself fetch the live private Cloudflare Worker sources or execute a Cloudflare runtime test.**
+
+**Decision:** The real-source **review candidate assembly** gate is PASS. However `releaseGates.candidateSourceCodeBuiltAndReviewed` remains **false** because runtime behavior, full diff/security inspection, authorized production-specific secrets and independent recovery certification are still pending. **Production remains NO-GO.** The next step is a private candidate runtime validation behind an isolated preproduction boundary, not a Production deployment.
 
 
 ## 1. Evidence from live read-only Cloudflare audit
