@@ -1,0 +1,56 @@
+name: Production candidate offline review (NO DEPLOY)
+
+on:
+  push:
+    branches:
+      - stage16-63-protected-http-test
+    paths:
+      - sandbox/production-candidate-assembler.mjs
+      - sandbox/production-candidate-merge-manifest.json
+      - migrations/2026-11-16_stage1675_push_cron_additive_DRAFT.sql
+      - .github/workflows/production-candidate-offline-review.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  safe-review:
+    name: Review candidate builder syntax and fail-closed behavior
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout test branch (read-only)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914c # v4.3.0 pinned
+        with:
+          persist-credentials: false
+      - name: Verify candidate assembler syntax
+        run: node --check sandbox/production-candidate-assembler.mjs
+      - name: Validate manifest metadata
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const m=JSON.parse(fs.readFileSync('sandbox/production-candidate-merge-manifest.json','utf8'));
+          assert.equal(m.status,'REVIEW_ONLY_NOT_DEPLOYABLE');
+          assert.equal(m.releaseGates.productionDeploymentPermitted,false);
+          assert.equal(m.schema.finalExplicitObjects,70);
+          assert.equal(m.selectedComponents.length,5);
+          assert.match(m.base.sha256,/^[a-f0-9]{64}$/);
+          assert.match(m.featureSource.sha256,/^[a-f0-9]{64}$/);
+          console.log('Review-only source manifest valid; no cloud credentials loaded');
+          JS
+      - name: Fail closed on source hash mismatch
+        run: |
+          if node sandbox/production-candidate-assembler.mjs \
+            --production sandbox/production-candidate-merge-manifest.json \
+            --sandbox sandbox/production-candidate-merge-manifest.json \
+            --output /tmp/asc-candidate-should-never-exist.mjs; then
+            echo 'UNSAFE: assembler accepted unpinned sources'
+            exit 1
+          fi
+          test ! -f /tmp/asc-candidate-should-never-exist.mjs
+      - name: Assert no deployment privileges
+        run: |
+          test ! -e wrangler.toml
+          echo 'No Cloudflare deploy step, no production secrets, test branch only'
