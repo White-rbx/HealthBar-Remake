@@ -8,6 +8,9 @@ on:
       - sandbox/production-candidate-assembler.mjs
       - sandbox/production-candidate-route-contract.test.mjs
       - sandbox/production-candidate-security-gates.test.mjs
+      - sandbox/production-candidate-browser-form.test.mjs
+      - sandbox/production-feedback-appeal-form.html
+      - sandbox/production-feedback-appeal-form.js
       - sandbox/test_production_candidate_cron_bootstrap.py
       - sandbox/production-candidate-merge-manifest.json
       - migrations/2026-11-16_stage1675_push_cron_additive_DRAFT.sql
@@ -27,10 +30,12 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pinned, verified in existing CI
         with:
           persist-credentials: false
-      - name: Verify candidate assembler syntax
-        run: node --check sandbox/production-candidate-assembler.mjs
+      - name: Verify candidate assembler and browser form script syntax
+        run: |
+          node --check sandbox/production-candidate-assembler.mjs
+          node --check sandbox/production-feedback-appeal-form.js
       - name: Verify Android Push scope and Production security fail-closed contracts
-        run: node --test sandbox/production-candidate-route-contract.test.mjs sandbox/production-candidate-security-gates.test.mjs
+        run: node --test sandbox/production-candidate-route-contract.test.mjs sandbox/production-candidate-security-gates.test.mjs sandbox/production-candidate-browser-form.test.mjs
       - name: Test Production-only Cron health schema and bootstrap using real SQLite
         run: python3 -m unittest discover -s sandbox -p 'test_production_candidate_cron_bootstrap.py' -v
       - name: Validate manifest metadata
