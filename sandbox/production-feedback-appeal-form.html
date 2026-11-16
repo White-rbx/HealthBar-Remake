@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>ArcScriptCenter · Feedback &amp; Appeal</title>
+<style>
+:root{font:16px/1.5 system-ui,-apple-system,"Noto Sans Thai",sans-serif;color:#ecf0f8;background:#10151f}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px 14px 56px}
+main{width:min(100%,720px);margin:auto}h1{font-size:clamp(1.4rem,4vw,2rem);margin:0 0 4px}
+h2{font-size:1.1rem;margin:0 0 12px}p{margin:8px 0 14px}.muted,small{color:#b6c2d4}
+article{background:#192231;border:1px solid #334157;border-radius:16px;padding:18px;margin:18px 0}
+label{display:block;font-weight:600;margin:14px 0 5px}input,textarea,select,button{font:inherit}
+input,textarea,select{display:block;width:100%;border:1px solid #63758f;border-radius:9px;padding:10px 12px;background:#111a29;color:#fff}
+textarea{resize:vertical;min-height:140px}input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid #7aaeff;outline-offset:2px}
+button{border:0;border-radius:10px;padding:12px 16px;background:#6ca7ff;color:#0d1929;font-weight:750;cursor:pointer;min-height:46px}
+button:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#36465e;color:#edf4ff}
+.danger{background:#b83944;color:#fff}.actions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}
+.actions>*{flex:1 1 130px}.note{border-left:3px solid #76a8ff;padding-left:12px}
+.help{font-weight:400;font-size:.87rem;color:#bccade}
+.output{display:block;white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #4b5d75;background:#111925;padding:12px;border-radius:8px;min-height:42px}
+[hidden]{display:none!important}#challenge{margin:18px 0;min-height:65px}#message{padding:12px;border-radius:8px;background:#111d30}
+#message[data-error="true"]{border:1px solid #e27b83}#message[data-error="false"]{border:1px solid #648cb6}
+</style>
+<script src="/api/v1/feedback/form.js" defer></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
+</head>
+<body>
+<main>
+<header>
+<h1>ArcScriptCenter</h1>
+<p class="muted">Feedback &amp; Appeal · ระบบส่งคำร้องผ่านเบราว์เซอร์</p>
+<p class="note">ไม่ต้องใส่รหัสผ่าน, OTP, อีเมล หรือข้อมูลส่วนตัวอื่น ๆ การระบุ Roblox UserId สำหรับ Appeal เป็นเพียงคำกล่าวอ้าง ไม่ใช่การยืนยันตัวตน</p>
+</header>
+<article>
+<h2>ส่งคำร้อง / Submit a request</h2>
+<form id="request-form" autocomplete="off">
+<label for="kind">ประเภท / Type</label>
+<select id="kind" name="kind">
+<option value="feedback">Feedback / แจ้งปัญหา</option>
+<option value="appeal">Appeal / อุทธรณ์</option>
+</select>
+<div id="userid-group" hidden>
+<label for="user-id">Roblox UserId (Appeal เท่านั้น)</label>
+<input id="user-id" inputmode="numeric" pattern="[1-9][0-9]{0,15}" maxlength="16" placeholder="ตัวเลข UserId ไม่ใช่ Username">
+<small>โปรดอย่าใส่รหัสผ่านหรืออีเมล การอุทธรณ์ยังต้องผ่านการตรวจสอบ</small>
+</div>
+<label for="topic">หัวข้อ / Topic <span class="help">(3–50 ตัวอักษร)</span></label>
+<input id="topic" maxlength="100" required placeholder="สรุปเรื่องสั้น ๆ">
+<label for="description">รายละเอียด / Description <span class="help" id="length-hint">(50–1500 ตัวอักษร)</span></label>
+<textarea id="description" maxlength="6000" required placeholder="อธิบายปัญหา หรือเหตุผลในการอุทธรณ์"></textarea>
+<p class="muted">เนื้อหาต้องเป็นไปตามกฎ ArcScriptCenter และไม่ควรมีข้อมูลส่วนตัว</p>
+<div id="challenge" aria-label="Turnstile human verification"></div>
+<div class="actions"><button type="submit" id="submit" disabled>ยืนยันและส่งคำร้อง</button></div>
+</form>
+</article>
+<article>
+<h2>หลักฐานการส่ง / Private receipt</h2>
+<p class="muted">จะแสดงเมื่อส่งสำเร็จเท่านั้น เก็บเลขคำร้องและ Receipt ไว้เป็นความลับ หากปิดหน้านี้โดยไม่ได้บันทึก Receipt อาจตรวจหรือแก้ไขคำร้องไม่ได้</p>
+<div id="receipt-section" hidden>
+<label for="created-id">เลขคำร้อง / Case ID</label>
+<input id="created-id" readonly spellcheck="false">
+<label for="created-receipt">Receipt (เก็บเป็นความลับ)</label>
+<input id="created-receipt" readonly spellcheck="false">
+<div class="actions"><button type="button" id="copy-receipt" class="secondary">คัดลอกข้อมูลคำร้อง</button></div>
+</div>
+</article>
+<article>
+<h2>ตรวจสถานะ / Review, Edit or Remove</h2>
+<p class="muted">กรอก Case ID และ Receipt เพื่อดูสถานะ หรือแก้ไข/ลบคำร้องที่ยังอยู่ในสถานะ Reviewing</p>
+<label for="lookup-id">Case ID</label>
+<input id="lookup-id" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+<label for="lookup-receipt">Receipt</label>
+<input id="lookup-receipt" autocomplete="off" spellcheck="false" placeholder="64 hexadecimal characters">
+<div class="actions"><button type="button" id="check-status" class="secondary">ดูสถานะ</button></div>
+<div id="case-section" hidden>
+<p class="output" id="case-summary" aria-live="polite"></p>
+<div class="actions">
+<button type="button" id="edit-case" class="secondary" disabled>แก้ไขด้วยข้อความด้านบน</button>
+<button type="button" id="remove-case" class="danger" disabled>ลบคำร้อง</button>
+</div>
+</div>
+</article>
+<p id="message" data-error="false" role="status" aria-live="polite">กำลังโหลดระบบยืนยัน Turnstile…</p>
+<small>หน้านี้ให้บริการจาก Production origin เดียวกับ API ไม่ส่ง Turnstile token หรือ Receipt ผ่าน URL ไม่เก็บ Receipt ใน Local Storage</small>
+</main>
+</body>
+</html>
