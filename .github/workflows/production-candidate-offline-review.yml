@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout test branch (read-only)
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914c # v4.3.0 pinned
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pinned, verified in existing CI
         with:
           persist-credentials: false
       - name: Verify candidate assembler syntax
