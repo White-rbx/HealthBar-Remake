@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.75: Sandbox Cron Retry Deployment and Verification
 
 Date: 2026-11-16 (Asia/Bangkok)
-Status: **SANDBOX 37/37 OFFLINE QA PASS + LIVE CRON PASS + LIVE OUTBOX AUTO-RETRY ACCEPTED (HTTP 201, SECOND ATTEMPT) + SYNTHETIC DATA CLEANUP PASS. ANDROID NOTIFICATION DISPLAY PENDING DEVICE CONFIRMATION. PRODUCTION NO-GO.**
+Status: **SANDBOX ACCEPTANCE COMPLETE: 37/37 OFFLINE QA PASS + LIVE CRON PASS + LIVE OUTBOX AUTO-RETRY ACCEPTED (HTTP 201, SECOND ATTEMPT) + ANDROID NOTIFICATION RECEIVED (USER-CONFIRMED) + SYNTHETIC DATA CLEANUP PASS. PRODUCTION NO-GO.**
 Production: **NO-GO**.
 
 
@@ -101,6 +101,25 @@ The live result proves that the Stage16.75 scheduled runner selected a due, prev
 **Cleanup:** Immediately after confirming the delivery receipt, the Sandbox D1 API removed exactly the synthetic Outbox row, the synthetic history event, and the synthetic Feedback case by their exact test identifier and constrained case metadata. Independent D1 SELECT queries verified **0** matching cases, **0** Outbox rows and **0** history events remaining. One Android Push subscription remains active. `PRAGMA quick_check` returned `ok`; `PRAGMA foreign_key_check` returned **0** violations. Cron aggregate telemetry remains in place as a non-identifying audit.
 
 **Acceptance:** The **automatic Cron Retry / Push Service** layer is **PASS** on Sandbox. The only outstanding device-side confirmation is whether Android Chrome actually displayed the synthetic notification. Production remains **NO-GO** until separate production readiness, migration/rollback and authorization review; this test did not deploy to Production or Staging.
+
+
+
+## Android device confirmation — Stage16.75 Sandbox acceptance
+
+**User-confirmed, 2026-11-16 (Asia/Bangkok).** After the Cloudflare D1 record confirmed a scheduled Outbox retry as `delivered` with `attempts=2` and Push Service **HTTP 201**, the authorized Android tester explicitly confirmed: **"Android ได้รับ Notification จาก ArcScriptCenter ในการทดสอบ Stage 16.75 แล้ว!"** The tester noted notifications had been turned off/silenced, so the alert was not noticed immediately. This is a **user-reported device receipt**, not independent instrumentation of an Android display event, and no notification screenshot or personal information is retained.
+
+**Sandbox acceptance complete:**
+- GitHub Actions offline QA: **37/37 PASS** (28 Node + 9 real SQLite).
+- Deployed Stage16.75 Sandbox Worker and Cloudflare 5-minute Cron: **PASS**.
+- Live Cron D1 telemetry `runs>=3`, runner `last_error='none'`: **PASS**.
+- Scheduled retry of one synthetic `retry` Outbox row, initial failure represented by simulated `attempts=1,last_http_status=503`: **PASS**.
+- Actual Web Push endpoint acceptance at second attempt: **HTTP 201, PASS**.
+- Android notification received: **PASS — confirmed by authorized user**, despite silenced/disabled alert settings.
+- Synthetic Feedback, history and Outbox cleanup: **PASS, 0 residual records**.
+- Sandbox D1 integrity and registered Android subscription retained: **PASS**.
+- Production and Staging deployment: **NOT PERFORMED**. **Production NO-GO** pending separate readiness, backup/restore, migration and authorization checks.
+
+**Closure:** Stage16.75 **Sandbox** Automatic Android Push Retry is finished. No further synthetic Push or Cron configuration change is necessary for this acceptance test.
 
 
 ## Objective
