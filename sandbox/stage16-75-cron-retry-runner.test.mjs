@@ -20,6 +20,8 @@ function setup({
   mode = "sandbox-dummy",
   cron = "*/5 * * * *",
   shouldThrow = false,
+  audience = "a".repeat(64),
+  hasDb = true,
   result = { jobs: 2, attempted: 2, accepted: 1, failed: 1 },
 } = {}) {
   const queries = [];
@@ -41,8 +43,8 @@ function setup({
   };
   const env = {
     ASC_TURNSTILE_MODE: mode,
-    ASC_PUSH_ACCESS_AUD: "test-audience",
-    DB: db,
+    ASC_PUSH_ACCESS_AUD: audience,
+    DB: hasDb ? db : undefined,
   };
   const context = vm.createContext({
     VERSION: version,
@@ -98,6 +100,29 @@ test("cron refuses non-Sandbox Worker version", async () => {
 
 test("cron refuses non-Sandbox Turnstile environment", async () => {
   const runner = setup({ mode: "production" });
+  await runner.run();
+  assert.equal(runner.retryCalls, 0);
+  assert.equal(runner.queries.length, 0);
+});
+
+test("cron refuses missing Access audience binding", async () => {
+  const runner = setup({ audience: undefined });
+  await runner.run();
+  assert.equal(runner.retryCalls, 0);
+  assert.equal(runner.queries.length, 0);
+});
+
+test("cron refuses malformed or empty Access audience", async () => {
+  for (const audience of ["", "short", "a".repeat(129), "invalid audience with spaces"]) {
+    const runner = setup({ audience });
+    await runner.run();
+    assert.equal(runner.retryCalls, 0);
+    assert.equal(runner.queries.length, 0);
+  }
+});
+
+test("cron refuses missing D1 binding", async () => {
+  const runner = setup({ hasDb: false });
   await runner.run();
   assert.equal(runner.retryCalls, 0);
   assert.equal(runner.queries.length, 0);

@@ -100,7 +100,7 @@ function harness(outcomes=[{ok:true,status:201}],stateOverrides={}){
   throw Error("Unexpected simulated SQL: "+sql.slice(0,180));
  };
  const env={
-  ASC_TURNSTILE_MODE:"sandbox-dummy",ASC_PUSH_ACCESS_AUD:"synthetic-audience",
+  ASC_TURNSTILE_MODE:"sandbox-dummy",ASC_PUSH_ACCESS_AUD:"a".repeat(64),
   DB:{prepare(sql){let args=[];return {
    bind(...values){args=values;return this},
    async all(){return query(sql,args,"all")},
