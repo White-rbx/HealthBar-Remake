@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.75: Sandbox Cron Retry Predeployment Review
 
 Date: 2026-11-16 (Asia/Bangkok)
-Status: **CODE PREPARED, NOT DEPLOYED. NO CRON TRIGGER ACTIVE.**
+Status: **CODE + GITHUB ACTIONS 18/18 OFFLINE TESTS PASS. NOT DEPLOYED. NO CRON TRIGGER ACTIVE.**
 Production: **NO-GO**.
 
 ## Objective
@@ -117,3 +117,50 @@ node --test sandbox/stage16-75-*.test.mjs
 These are **offline unit/simulated route checks**, not deployed Cloudflare cron executions or actual Android notification receipts. Node's `--check` on the bare `stage16-75-cron-retry-runner.js` file is not applicable because it deliberately contains a route *fragment* with `await` intended to be injected inside a Worker's async fetch handler. The added assembly tests validated this intended insertion context separately.
 
 Current deployment remains Stage16.74, and Sandbox Cron schedules remain empty from the most recent read-only Cloudflare inspection. The earlier blocked Worker upload was **not retried or circumvented**. Keep Stage16.75 marked **prepared / tested locally / not deployed**, with Production **NO-GO**.
+
+## CI verified 18/18 via GitHub Actions — 2026-11-16
+
+A strictly offline GitHub Actions workflow was added on the **test branch only**:
+`.github/workflows/stage16-75-offline-qa.yml`.
+
+Security: `permissions: contents: read`; checkout GitHub Action is SHA-pinned with `persist-credentials: false`; no Cloudflare API calls, secrets, production writes or deployment steps exist in this workflow. The job runs on push to `stage16-63-protected-http-test` and only when Stage16.75 tests or workflow configuration change.
+
+**Actual GitHub-hosted workflow** `https://github.com/White-rbx/HealthBar-Remake/actions/runs/43848508255` completed with `conclusion=success`. Its Job Logs explicitly reported:
+
+```
+tests 18
+pass 18
+fail 0
+```
+
+Additional integration test source:
+`sandbox/stage16-75-outbox-cron-integration.test.mjs`
+
+Seven new simulated end-to-end cases were added, exercising the **actual Stage16.74 Outbox and Stage16.75 Cron helper code**, with fake D1 and a fake Push Service. Tests cover: one-time delivered send despite repeated ticks, transient HTTP 503 backoff and recovery, HTTP 410 subscription revocation, spam-case cancel, concurrent delivery claims, three-attempt limit, and expired exhausted sending lease repair.
+
+**Only offline mock tests have been run.** No Android Push messages were emitted by these CI runs. GitHub Actions has not authenticated to or deployed Cloudflare.
+
+### Final read-only Cloudflare preflight after CI success
+
+- Production Worker: `298de84d-418c-489c-b133-c549c785f66e` (100%), unchanged.
+- Staging Worker: `5b5040fb-6c04-4029-9c53-af15d3dda888` (100%), unchanged.
+- Sandbox Worker: **still Stage16.74** `dfcc6017-5721-4e26-bf6e-a36b01fb844c` (100%).
+- Sandbox Cron schedules: `[]` — **none configured**.
+- Cron health D1: `runs=0, last_error=never`.
+- D1 Outbox queue: **0** active or terminal rows.
+- Android subscriptions: **1**.
+- Sandbox D1 `PRAGMA quick_check=ok`; FK violations **0**.
+- Cloudflare Access application matches the protected Sandbox worker; exactly one allow policy with one specific-email selector. No email address or other identity value was exported.
+- Existing Sandbox DB binding is still the isolated Sandbox D1.
+
+### Safe next activation gate (not executed)
+
+1. Resolve the blocked official Cloudflare Worker upload through authorized product permissions or a normal supported deployment process. Do **not** bypass safety checks.
+2. Upload a new **Sandbox-only** Worker version assembled from Stage16.74 current Worker source plus the reviewed Stage16.75 helper/route, retaining all existing bindings by *inheritance*, with no secret values read or uploaded.
+3. Validate uploaded version binding names/types and code read-back before deploying to Sandbox.
+4. Add Cron `*/5 * * * *` **to the Sandbox Worker only, after a verified scheduled handler is live**. The Cloudflare Cron schedule API updates the script's full schedules array; preserve existing entries if any are found.
+5. Confirm live `asc_push_cron_health_v1.runs` increments over a real Cron tick, then test a controlled due-row retry with a synthetic subscription and no private message content.
+6. In case of unexpected behavior, first remove the Sandbox Cron trigger, then roll Sandbox Worker back to verified Stage16.74 version; inspect D1 outbox states before any retry.
+7. Production release remains separate, requiring an isolated Production backup/restore rehearsal and explicit release authorization.
+
+**Current decision: Sandbox Cron remains NO-GO for live Android acceptance until scheduled handler and trigger can be deployed and verified. Production remains NO-GO.**
