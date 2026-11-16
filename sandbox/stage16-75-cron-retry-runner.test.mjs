@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import { webcrypto } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -51,7 +52,7 @@ function setup({
       return result;
     },
     Response,
-    crypto,
+    crypto: webcrypto,
     Date,
     Math,
     Number,
