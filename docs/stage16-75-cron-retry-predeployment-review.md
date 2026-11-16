@@ -1,7 +1,7 @@
 # ArcScriptCenter — Stage 16.75: Sandbox Cron Retry Deployment and Verification
 
 Date: 2026-11-16 (Asia/Bangkok)
-Status: **SANDBOX WORKER DEPLOYED + FIVE-MINUTE CRON CONFIGURED. 37/37 OFFLINE TESTS PASS. FIRST REAL CRON TICK AND REAL RETRY RECEIPT PENDING.**
+Status: **SANDBOX WORKER DEPLOYED + FIVE-MINUTE CRON CONFIGURED. FIRST REAL CRON TICK CONFIRMED. 37/37 OFFLINE TESTS PASS. REAL OUTBOX RETRY RECEIPT PENDING.**
 Production: **NO-GO**.
 
 
@@ -51,6 +51,27 @@ The page uses existing Cloudflare Access authorized Admin identity, not an Admin
 4. Review production backup/restore/migration and security approval separately before Production deployment. **Production remains NO-GO**.
 
 The Cron is a durable retry runner, not a guarantee of exactly-once push delivery. External push acceptance followed by Worker interruption can still result in a duplicate upon subsequent lease recovery.
+
+
+
+## First observed live Cron execution — confirmed (2026-11-16)
+
+The authorized Android tester opened the protected Cron Health page and observed **`Runs: 1`**, **`Last result: none`**. A fresh, independent **read-only Cloudflare D1 query** confirmed the exact same aggregate health row:
+
+| Field | Verified Sandbox D1 |
+|---|---|
+| `runs` | **1** |
+| `last_started_unix` | `1794827434` |
+| `last_finished_unix` | `1794827434` |
+| `last_jobs` | **0** |
+| `last_attempted` | **0** |
+| `last_accepted` | **0** |
+| `last_failed` | **0** |
+| `last_error` | **none** |
+
+A separate Cloudflare GET confirmed the single Cron schedule `*/5 * * * *` on the isolated Sandbox Worker and active version `1c6ce118-27b7-40c4-9c0d-2b8c6d3a4776` at 100%. The Sandbox D1 Outbox had **no pending rows**; `PRAGMA quick_check` returned `ok`. There was one active Android Push subscription.
+
+**Verification outcome:** Cron Trigger activation, live scheduled event invocation, execution of the Stage16.75 runner and D1 telemetry update are now **PASS**. Zero processed jobs is correct when the Outbox is empty. This does **not yet** establish successful automatic retry and delivery of a genuinely due queued Web Push message. That is the **remaining Sandbox acceptance step**, followed by separate production-change approval. No synthetic Push was sent during this read-only confirmation. **Production remains NO-GO**.
 
 
 ## Objective
