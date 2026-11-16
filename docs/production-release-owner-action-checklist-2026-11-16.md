@@ -95,7 +95,7 @@ A **separate disposable Cloudflare Worker/Preview** was created to allow the own
 
 The page also offers receipt-scoped status lookup, editing and soft removal using existing `/api/v1/feedback/status` and `/api/v1/feedback/manage` APIs. It displays the one-time secret receipt for the user to save privately; **the receipt and Turnstile token are not put into a URL or stored in long-lived browser storage**. A session-scoped pseudonymous random quota key is used. Security response headers include `no-store`, `nosniff`, `Referrer-Policy: no-referrer` and a restrictive Content Security Policy covering Cloudflare Turnstile.
 
-**Verified:** GitHub Actions [43882997625](https://github.com/White-rbx/HealthBar-Remake/actions/runs/43882997625) **41 Node + 7 SQLite = 48/48 tests PASS**. Current exact-source private assembly of the Production Candidate passed independent source hash pinning, preservation of legacy route body, Turnstile/host/access checks, and V8 syntax parsing. **Latest SHA-256:** `c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b`; 170,435 UTF-8 bytes / 165,761 UTF-16 code units.
+**Verified:** GitHub Actions [43882997625](https://github.com/White-rbx/HealthBar-Remake/actions/runs/43882997625) **41 Node + 7 SQLite = 48/48 tests PASS**. Current exact-source private assembly of the Production Candidate passed independent source hash pinning, preservation of legacy route body, Turnstile/host/access checks, and V8 syntax parsing. **Then-current SHA-256:** `b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d`; 170,435 UTF-8 bytes / 165,761 UTF-16 code units.
 
 **Still pending:** Cloudflare Worker preview/live HTTP and full browser Turnstile confirmation on an explicitly approved test origin; verification that the actual Arcsen/Roblox UI opens the verified page, without placing user text, token or receipt in URL parameters. **Do not open the production `/api/v1/feedback/form` URL as if the new page is live**; the current deployed Worker still returns 404. Production Worker, D1, new secrets and Cron remain untouched. No deployment authorization implied.
 
@@ -107,7 +107,17 @@ The page also offers receipt-scoped status lookup, editing and soft removal usin
 
 **Verification:** [GitHub Actions 43902070352](https://github.com/White-rbx/HealthBar-Remake/actions/runs/43902070352) **44 Node tests + 7 SQLite tests = 51/51 PASS**. New simulated-browser tests execute actual form JavaScript against fake JSON endpoints and verify Appeal edits without a UserId, new Appeal validation with a Turnstile token, and clearing credentials on removal. No real HTTP, network submission or D1 writes in these tests.
 
-Reassembled privately from exact pinned Production/Sandbox Worker source with the revised browser file; **latest review-only Candidate SHA-256** `c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b` (171,269 UTF-8 bytes / 166,551 UTF-16 code units). The exact-source static assembly succeeded, but no new Cloudflare Preview HTTP test or full assembled Candidate module parse has been claimed. **Production remains NO-GO**, and no Production/Staging/Sandbox Worker, database, existing Secret or Cron was altered.
+Reassembled privately from exact pinned Production/Sandbox Worker source with the revised browser file; **then-current review-only Candidate SHA-256** `c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b` (171,269 UTF-8 bytes / 166,551 UTF-16 code units). The exact-source static assembly succeeded, but no new Cloudflare Preview HTTP test or full assembled Candidate module parse has been claimed. **Production remains NO-GO**, and no Production/Staging/Sandbox Worker, database, existing Secret or Cron was altered.
+
+## Production Access structural review and strict host/sitekey pins — 2026-11-16
+
+**Read-only Cloudflare Access verification:** the Production Admin Push Access Application remains restricted to `arcscriptcenter-api.kogpasan14.workers.dev/api/v1/admin/push/*` with exactly **one attached Allow policy**, consisting of exactly **one configured owner-email selector**. The policy is reusable; no attached bypass policy exists. Other Access applications/policies exist for separate products, not attached to this Admin Push Application. Neither the email nor identity details were exported into GitHub. **This verifies structure, not a real denied-login browser session.** The latter remains required for sign-off.
+
+**Source-controlled Candidate hardening:** `ascReleaseEnvReady` now rejects any `ASC_RELEASE_HOSTNAME` other than the exact registered Production origin `arcscriptcenter-api.kogpasan14.workers.dev`, even if a forged release and Turnstile hostname match each other. Candidate source assembly also fails if the browser JS omits the **public** Turnstile Sitekey recorded in the provisioned Production Widget manifest. No Turnstile Secret or identity is embedded in source. The existing server-side Siteverify hostname/action enforcement remains unchanged.
+
+**Verification:** [GitHub Actions 43904685438](https://github.com/White-rbx/HealthBar-Remake/actions/runs/43904685438) **46 Node + 7 Python SQLite = 53/53 tests PASS** (synthetic fail-closed host tests, static sitekey contract, prior Feedback/Appeal client and SQL tests). The latest Candidate was assembled privately from exact hash-pinned active Cloudflare Worker source in memory with SHA-256 `e542898dc9542d6be6d625a90b1890aa8bb17c459d7549fa57548edf3c595b8c`, 171,426 UTF-8 bytes, 166,708 UTF-16 code units. **This is source assembly, not a new full-Candidate syntax/HTTP/production acceptance test.**
+
+**Outstanding and unchanged:** disallowed identity must be rejected in a real Access browser session, real Turnstile Siteverify/Android Push credentials and HTTP behavior require a separately approved environment, and an independent Production data backup/export restore must be verified before release. Production/Staging/Sandbox Worker, D1, existing Secrets and Cron untouched. **Release decision: NO-GO.**
 
 ## Completed and accepted
 
@@ -115,7 +125,7 @@ Reassembled privately from exact pinned Production/Sandbox Worker source with th
 - Production Candidate assembled privately from exact hash-pinned Production and Sandbox source. Existing Production route body preserved, dummy Turnstile and Sandbox-only test routes removed.
 - Production-specific Cron health fixed to `production_push_cron` with idempotent operational bootstrap, verified in separate disposable real D1 and deleted afterward.
 - Android Push page changed to `/api/v1/admin/push/`, inside the Service Worker scope.
-- **Latest Candidate SHA-256:** `c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b` (review only, browser form included).
+- **Latest Candidate SHA-256:** `e542898dc9542d6be6d625a90b1890aa8bb17c459d7549fa57548edf3c595b8c` (review only, browser form, exact Production hostname and manifest Sitekey pinning included).
 - **35/35 offline tests PASS** (28 Node + 7 SQLite).
 - Production/Staging/Sandbox D1 Time Travel bookmarks available; `quick_check=ok`, 0 foreign-key violations. This does **not** certify a Production backup restore.
 - Cloudflare Preview accepted an **older** Candidate for compilation; HTTP calls were blocked by the tool's network policy. This does **not** certify HTTP behavior of the latest Candidate.

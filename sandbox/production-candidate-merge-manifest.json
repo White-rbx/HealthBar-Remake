@@ -116,12 +116,12 @@
   "assemblyEvidence": {
     "date": "2026-11-16",
     "method": "In-memory private assembly from exact active Cloudflare Production and Sandbox Worker source, against the pinned GitHub assembler and manifest",
-    "status": "PASS_EXACT_SOURCE_ASSEMBLY_ONLY__APPEAL_RECEIPT_EDIT_FIX_INCLUDED",
+    "status": "PASS_EXACT_SOURCE_ASSEMBLY_ONLY__EXACT_HOSTNAME_AND_PUBLIC_SITEKEY_PINNED",
     "actualProductionSourceHashMatches": true,
     "actualSandboxSourceHashMatches": true,
-    "candidateSha256": "c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b",
-    "candidateBytesUtf8": 171269,
-    "candidateLengthUtf16": 166551,
+    "candidateSha256": "e542898dc9542d6be6d625a90b1890aa8bb17c459d7549fa57548edf3c595b8c",
+    "candidateBytesUtf8": 171426,
+    "candidateLengthUtf16": 166708,
     "syntaxCheck": "Node --check PASS for assembler and edited browser form script in GitHub Actions 43902070352. Full assembled Candidate V8 syntax/Cloudflare runtime was not rerun after this JS-only change.",
     "legacyRouteSourcePreserved": true,
     "onlyOneWorkerExport": true,
@@ -132,7 +132,7 @@
     "workerArtifactPersisted": false,
     "productionWorkerOrDatabaseModified": false,
     "productionDeploymentPermitted": false,
-    "nextGate": "Real browser/HTTP and independently approved production settings + backup gates remain. No deployment permission.",
+    "nextGate": "Production Access disallowed-identity browser verification, owner-approved real token/Push HTTP acceptance, independent Production backup/export validation, release authorization. No Production deployment permitted.",
     "previousCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
     "scopeCorrection": {
       "reason": "Original bare Android Push page path /api/v1/admin/push was outside /api/v1/admin/push/ Service Worker scope and could stall navigator.serviceWorker.ready.",
@@ -151,7 +151,7 @@
       "privateSourceSHAValidation": true,
       "privateSourceAssemblyPass": true,
       "privateSyntaxCheckPass": true,
-      "candidateSha256": "c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b",
+      "candidateSha256": "e542898dc9542d6be6d625a90b1890aa8bb17c459d7549fa57548edf3c595b8c",
       "allFourHealthStatementsUseProductionScope": true,
       "productionOrStagingModified": false
     },
@@ -170,21 +170,36 @@
       "anonymousQuotaKeySessionOnly": true,
       "serverSideVerificationStillRequired": true,
       "v8CandidateSyntaxPass": null,
-      "nodeTestsPassed": 44,
+      "nodeTestsPassed": 46,
       "pythonSQLiteTestsPassed": 7,
-      "githubActionsRun": "https://github.com/White-rbx/HealthBar-Remake/actions/runs/43902070352",
+      "githubActionsRun": "https://github.com/White-rbx/HealthBar-Remake/actions/runs/43904685438",
       "realCloudflareBrowserTestPerformed": false,
       "noProductionDeployment": true,
       "latestCandidateSourceAssemblyPass": true,
       "implementedAppealEditWithoutReclaimingUserId": true,
       "clearsRemovedCaseCredentials": true,
-      "latestCandidateSha256": "c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b"
+      "latestCandidateSha256": "e542898dc9542d6be6d625a90b1890aa8bb17c459d7549fa57548edf3c595b8c",
+      "productionOriginPinnedTo": "arcscriptcenter-api.kogpasan14.workers.dev",
+      "sitekeyCheckedAgainstManifest": true,
+      "prodAccessPolicyReadOnlyAudit": {
+        "checkedOn": "2026-11-16",
+        "appAttachedPolicyCount": 1,
+        "scope": "arcscriptcenter-api.kogpasan14.workers.dev/api/v1/admin/push/*",
+        "reusablePolicy": true,
+        "allowOnlyOneConfiguredEmailSelector": true,
+        "attachedPolicyDecision": "allow",
+        "noAttachedBypassPolicy": true,
+        "deniedAlternateIdentityBrowserEvidence": false,
+        "scopeLimitedToAdminPush": true,
+        "result": "STRUCTURAL_ONLY__REAL_DENY_TEST_PENDING"
+      }
     },
-    "previousCandidateBeforeAppealEditSha256": "b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d"
+    "previousCandidateBeforeAppealEditSha256": "b2446b530202da655de94752a6b9d88d541e39712024e1bf71b776a79c41338d",
+    "previousCandidateBeforeHostAndSitekeyPinSha256": "c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b"
   },
   "preproductionPreviewEvidence": {
     "date": "2026-11-16",
-    "status": "HISTORIC_PREVIEW__CURRENT_CANDIDATE_SOURCE_ASSEMBLED__LIVE_BROWSER_HTTP_NOT_VERIFIED",
+    "status": "HISTORIC_PREVIEW__LATEST_EXACT_SOURCE_CANDIDATE_ASSEMBLED_ONLY__LIVE_HTTP_UNVERIFIED",
     "sourceCandidateSha256": "b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f",
     "cloudflarePreview": {
       "isolatedWorkerResourceCreated": true,
@@ -222,7 +237,7 @@
     "productionReleaseSecretsConfigured": false,
     "productionRuntimeHttpVerified": false,
     "productionReleasePermitted": false,
-    "supersededByScopedCandidateSha256": "c0baf75e0b693b4154f5261bdb28f758e59165bb3c0fdbfbad040b22129dfa7b",
+    "supersededByScopedCandidateSha256": "e542898dc9542d6be6d625a90b1890aa8bb17c459d7549fa57548edf3c595b8c",
     "previewOfCurrentCandidatePerformed": false
   },
   "securityRecoveryAudit": {
