@@ -94,6 +94,51 @@ The first real-source pass stopped at a misaligned check for `env.ASC_RELEASE_CH
 **Decision:** The real-source **review candidate assembly** gate is PASS. However `releaseGates.candidateSourceCodeBuiltAndReviewed` remains **false** because runtime behavior, full diff/security inspection, authorized production-specific secrets and independent recovery certification are still pending. **Production remains NO-GO.** The next step is a private candidate runtime validation behind an isolated preproduction boundary, not a Production deployment.
 
 
+
+## Isolated Cloudflare Worker Preview — compilation PASS; HTTP check blocked (2026-11-16)
+
+**Purpose:** Verify that the exact hash-pinned Production Candidate can be compiled by the Cloudflare Worker Preview service, without deploying to the live Production or Staging Worker and without providing D1, Secret, Access or Cron bindings.
+
+- Created **one disposable new Cloudflare Worker resource**, separate from the Production, Staging and established Sandbox Worker.
+- Its normal `workers.dev` subdomain was **disabled**; the Worker had **no regular deployment**.
+- Created an isolated **Preview** on that Worker with no D1, no Secrets, no Cron and no inherited bindings.
+- Uploaded the exact approved Candidate SHA-256 `b76138e01e7384d9ba6bd2efe56682af9f323d13a6c128ff51db9232bac4ed9f` (**151,540 UTF-8 bytes**, compatibility date `2026-11-04`) directly to a **Preview Deployment**, not a Production or Staging deployment.
+- **Cloudflare Preview Deployment API accepted the Worker code:** deployment ID `1dab78bd-e529-4cdd-ad46-5418bb38a519`, no bindings. This verifies **Cloudflare-side Preview upload/compilation**; it does **not** verify feature-level runtime responses.
+- Attempted six HTTP requests to the isolated Preview. **All were blocked by the tool's network egress layer** with `403 Forbidden: requests to ... are not allowed` before reaching the Worker. These `403` responses are **not Cloudflare Worker authorization results** and must **not** be counted as passing or failing HTTP smoke tests. **No alternate network path or workaround was attempted.**
+- After checking the isolated Worker's preview and zero live regular deployments, deleted the entire disposable Worker and Preview. The resource no longer appears in the Worker list. There is **no remaining public test URL or leaked preview binding**.
+
+### Independent offline V8 request-handler tests — 11/11 PASS
+
+Using the same two exact live Cloudflare source versions and the pinned GitHub assembler, assembled the Candidate **in memory** and instantiated its default Worker export under a minimal JavaScript V8 harness with synthetic Request/Response/Headers/URL stand-ins. This is an **offline code-path test**, not the full Cloudflare runtime. No real user data, D1 access, secret or network requests were involved.
+
+| Test | Expected / observed | Result |
+|---|---|---|
+| Legacy bootstrap | `200` | PASS |
+| Legacy chat-safety read-only status | `200` | PASS |
+| Retired OpenChat endpoint | `410` | PASS |
+| Feedback submission, DB missing | `503` | PASS |
+| Feedback submission, release configuration missing | `503` | PASS |
+| Admin Push health, release configuration missing | `503` | PASS |
+| Cron status API, release configuration missing | `503` | PASS |
+| Feedback submitted against wrong hostname with synthetic configuration | `404` | PASS |
+| Admin Push against wrong hostname with synthetic configuration | `404` | PASS |
+| Admin Push without Cloudflare Access identity | `401` | PASS |
+| Cron scheduled handler without production settings | No error, no work performed | PASS |
+
+**Result: 11/11 PASS (offline V8 harness), plus Cloudflare Preview compilation PASS, but Live Preview HTTP Smoke: BLOCKED / NOT VERIFIED.**
+
+The GitHub `sandbox/production-candidate-merge-manifest.json` records the proof, explicitly distinguishes these layers and retains all Production NO-GO flags. The Preview was never linked to the real Production database or secrets. The deployed Production, Staging and established Sandbox Workers were **not modified**.
+
+### Remaining release blockers
+
+- Complete a real end-to-end **isolated Pre-production HTTP** acceptance test through an approved connectivity path; do **not** bypass the current tool egress block.
+- Independently review the complete Candidate's security and behavior, including signed policy, legacy admin functions and Push Service Worker scope.
+- Provision a real Production Turnstile widget/sitekey and server-side secret, host-bound Cloudflare Access, VAPID and required release bindings under the owner's control (not in public GitHub or chats).
+- Verify full Production backup, restoration and rollback drill. Then request **separate explicit Production release authorization**.
+
+**Decision remains NO-GO.** Do not infer that Production is ready based on a Preview upload alone.
+
+
 ## 1. Evidence from live read-only Cloudflare audit
 
 | Environment | Active Worker version | Explicit SQL objects (tables + indexes + triggers) | D1 identity |
