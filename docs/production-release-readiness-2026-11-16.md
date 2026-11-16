@@ -6,6 +6,58 @@ Repository: `White-rbx/HealthBar-Remake`
 Preparation branch: `stage16-63-protected-http-test`  
 Production Worker: `arcscriptcenter-api`; staging: `arcscriptcenter-api-staging`; isolated Sandbox: `arcscriptcenter-merge-sandbox-1658`.
 
+
+## Additive Production-schema rehearsal — completed (2026-11-16)
+
+**Outcome: PASS for schema compatibility, NOT Production deployment authorization.** All live source and D1 reads were read-only for the existing Production, Staging and established Sandbox.
+
+### Additive Migration artifacts
+
+The two source-controlled **draft** migration files now cover the **23** target application SQL objects:
+
+- `migrations/2026-11-15_stage1669_feedback_appeal_additive.sql`: **18** SQL objects (6 tables, 8 indexes, 4 triggers).
+- `migrations/2026-11-16_stage1675_push_cron_additive_DRAFT.sql`: **5** SQL objects (3 tables, 2 indexes) derived directly from live Sandbox `sqlite_master` definitions, with **no data, endpoints or secret values**.
+
+Excluded explicitly: `asc_stage1672_test_control` and `asc_stage1673_real_push_control`. The new file is **review-only**; do not execute against Production or Staging without a separate explicit approval.
+
+### Isolated Cloudflare D1 rehearsal
+
+Created a **new disposable and unbound** D1 database, named `asc-stage1675-release23-rehearsal-20261116`; verified it was distinct from all three application D1 databases. Read only schema definitions of the **current live Production** and established **Sandbox** databases. Verified all 47 current Production explicit SQL definitions match the identically named Sandbox definitions after conservative whitespace/quote normalization. Sandbox contains 25 additional entries; excluded two test controls and retained exactly 23 application additions.
+
+Applied exactly **68 CREATE statements** to the disposable D1 in type order: 31 tables, 33 indexes and 4 triggers. Two internal/system tables (`_cf_KV`, initially present, and SQLite's automatically created `sqlite_sequence`) were not manually recreated.
+
+Independent post-rehearsal D1 queries confirmed:
+
+| Check | Observed |
+|---|---|
+| Explicit SQLite schema definitions | **70/70 match** Production + 23 vetted additions |
+| Missing / extra schema objects | **0 / 0** |
+| D1 `PRAGMA quick_check` | **ok** |
+| D1 `PRAGMA foreign_key_check` | **0** |
+| Test-only Stage16.72/16.73 tables | **Excluded** |
+| Production/Staging D1 writes | **None** |
+
+A single synthetic Feedback row was inserted only in the disposable D1, which generated one `submitted` history event via the database trigger. A synthetic Outbox item was advanced using SQL through **retry → sending → delivered**, with attempt count 2, verifying its constraints and lease/state transition. The `201` stored in this fixture was **simulated SQL data, not a real Web Push HTTP response**. No actual device Push was attempted in this rehearsal.
+
+The isolated database was then **successfully deleted** after verifying that it was not bound to any Worker and contained only the synthetic fixture. No residual rehearsal DB or fixture remains.
+
+**Note:** The first preflight attempt was stopped by an incorrectly escaped SQL-statement-checking regex before any DDL was executed. The guard was corrected, preflight rerun and the complete rehearsal passed. This was a local preflight issue, not a Production or D1 migration failure.
+
+### Pinned Worker source merge manifest
+
+The GitHub test branch now includes `sandbox/production-candidate-merge-manifest.json` containing **only** SHA-256 source fingerprints, allowlisted code-section boundaries, safety exclusions and missing release gates:
+
+- Production base: `0.5.41.5-phase1` (71,521 UTF-16 code units).
+- Sandbox feature reference: `0.5.79.0-cron-retry-sandbox` (201,179 UTF-16 code units).
+- Selected code families: Feedback/Appeal, genuine Siteverify, Admin Notifications/Web Push, Durable Outbox, automatic Cron.
+- Excluded: Stage16.64/16.66/16.67/16.72/16.73 testing pages and routes; test-only D1 tables.
+- **No Production Worker source snapshot, private Push endpoint, Admin credential, secret binding value or user record was committed.**
+
+This manifest is **not** a completed merged Worker and cannot be deployed. The source merge must still adapt dummy Turnstile logic, hardcoded Sandbox hostname checks, Admin Access identity checks, Service Worker scope and the `scheduled()` guard to fail-closed Production-specific settings, while preserving all legacy Production functionality. Review and verify the resulting candidate before any deployment.
+
+**Updated Gate:** Additive SQL compatibility on isolated D1 **PASS**. Source merge, true Production configuration, independently verified Production backup/restore, code review, preproduction acceptance and Production authorization **PENDING — NO-GO**.
+
+
 ## 1. Evidence from live read-only Cloudflare audit
 
 | Environment | Active Worker version | Explicit SQL objects (tables + indexes + triggers) | D1 identity |
