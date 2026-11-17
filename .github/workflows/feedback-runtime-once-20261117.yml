@@ -19,11 +19,17 @@ jobs:
         shell: bash
         env:
           QA_URL: https://feedback-runtime-qa-20261117-arcscriptcenter-merge-sandbox-1658.kogpasan14.workers.dev/__qa/once
+          QA_IMMUTABLE_URL: https://7adcb3bf-arcscriptcenter-merge-sandbox-1658.kogpasan14.workers.dev/__qa/once
         run: |
           set -euo pipefail
           code=$(curl --silent --show-error --location --max-time 35 --retry 0 --request POST \
             --output /tmp/qa-result.json --write-out '%{http_code}' "$QA_URL")
-          echo "Preview HTTP status: $code"
+          echo "Named Preview HTTP status: $code"
+          if [ "$code" != "200" ]; then
+            code=$(curl --silent --show-error --location --max-time 35 --retry 0 --request POST \
+              --output /tmp/qa-result.json --write-out '%{http_code}' "$QA_IMMUTABLE_URL")
+            echo "Immutable Preview HTTP status: $code"
+          fi
           if [ "$code" != "200" ]; then
             echo "::error::The one-shot isolated runtime check did not pass"
             cat /tmp/qa-result.json
