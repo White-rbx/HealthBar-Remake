@@ -139,6 +139,7 @@ export function createOidcSandbox({
   safeConfig(clientId, redirectUri);
   if (typeof pendingStore?.put !== 'function' || typeof pendingStore?.take !== 'function' ||
       typeof sessionStore?.put !== 'function' || typeof sessionStore?.get !== 'function' ||
+      typeof sessionStore?.delete !== 'function' ||
       typeof exchangeCode !== 'function' || typeof getRobloxJwks !== 'function') {
     throw new TypeError('Server-side OAuth stores and trusted adapters required');
   }
@@ -199,8 +200,14 @@ export function createOidcSandbox({
           !Number.isSafeInteger(session.expiresAt) || session.expiresAt <= now) return null;
       return { verified: true, method: 'roblox_oidc', sub: session.sub, expiresAt: session.expiresAt };
     },
-    clearSessionCookie() {
-      return secureCookie(SESSION_COOKIE, '', 0);
+    async logout(request) {
+      // Clearing the browser cookie alone is not session revocation.
+      const sessionCookie = readUniqueCookie(request, SESSION_COOKIE);
+      if (sessionCookie) {
+        const sessionKey = await sha256Base64url(sessionCookie, webcrypto);
+        await sessionStore.delete(sessionKey);
+      }
+      return { clearCookie: secureCookie(SESSION_COOKIE, '', 0) };
     },
   });
 }
