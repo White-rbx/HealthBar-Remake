@@ -1,3 +1,18 @@
+# UPDATED — Real native Feedback UserId acceptance passed (2026-11-17)
+
+**PASS — Latest owner STAGING screenshot + independently verified read-only D1 aggregates.** The previous report below records the historical period when Feedback had no UserId. This new result supersedes that pending functional gate.
+
+- The owner opened the **real Admin Dashboard STAGING** case review in their mobile browser and shared a screenshot showing a **Feedback** case with `Claimed Roblox UserId: … (unverified)`, status `reviewing`, and the original Admin review controls.
+- We deliberately do **not** reproduce the actual claimed UserId, case ID, topic, description, user details, or screenshot in GitHub. The source image remains in the ChatGPT conversation.
+- Read-only aggregate query against `arcscriptcenter-staging` D1 after the test showed **2 Feedback cases, 1 with a nonempty `claimed_user_id`**, and **2 Appeal cases, both with a nonempty `claimed_user_id`**. Earlier aggregate before this test: Feedback 1 total/0 with ID, Appeal 2 total/2 with ID.
+- This independently supports that a new Feedback claim was persisted, and the screenshot supports the same functional field displaying correctly in the online Admin review UI.
+- Confirmed path: owner-tested native Feedback → STAGING Worker v41 → STAGING D1 → authenticated STAGING Admin Dashboard. The exact UserId is intentionally not treated as account-ownership proof.
+- **No admin moderation decision, follow-up change, or destructive operation was performed by the assistant.** No new D1 writes or Production deployment.
+- **QA is not Production approval.** Remains to complete independent Production D1 backup+restore verification, restricted admin actions testing as appropriate, rollback planning, and explicit owner approval before any Production promotion.
+- The test case's free-text content should be reviewed under the project's existing Rules; QA success does not imply content moderation approval. Test records can be removed through the ordinary authorized case/receipt workflow after verification.
+
+---
+
 # STAGING Feedback UserId acceptance — 2026-11-17
 
 **Current status: STAGING UI render passes synthetic offline QA; real native Feedback-with-UserId end-to-end test is still open.**
