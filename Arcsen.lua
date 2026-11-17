@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.39 ",
+	sion = " UIs 7.3.40 ",
 	logs = [[
+(:17/11/2026: A&F) Stage 16.76 Arcsen browser bridge: add Copy Secure Test URL under the existing Feedback & Appeal panel to open real Turnstile in a Cloudflare Access-protected Sandbox browser; preserve existing STAGING Submit and developer-designed Violation/Appeal UI. No client secret, Access cookie or receipt is sent or stored by this bridge.
 (:15/11/2026: A&F) Stage 16.38: Moderator-only history filter and clearer timestamp/response cards; STAGING status now returns server-owned canManage to avoid showing Edit/Remove for Spam Mail; staff-only audit API v0.5.46.1 (no admin key in client).
 (:15/11/2026: A&F) Stage 16.37: Receipt-authenticated 20-event Review History timeline in Check Existing Case; preserves reviewer public notes, imported-case disclaimer, mobile scrolling and 350px custom Violation viewport. Cloudflare STAGING 0.5.45.0.
 (:15/11/2026: A&F) Stage 16.36: Reviewing case edit/remove through Staging manage endpoint; authenticated case status gates editor, double confirmation for irreversible removal, checks on server revision/status, no credentials saved beyond session.
@@ -14630,6 +14631,74 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end
                 end
                 makeDraftSection("Feedback")
+
+                -- Stage 16.76: Browser handoff for genuine Turnstile, without
+                -- copying Access credentials or sending a token from Luau.
+                -- This is deliberately separate from existing STAGING actions.
+                -- The browser must run the Turnstile widget in its own origin.
+                do
+                local browserBridgeURL =
+                    "https://arcscriptcenter-merge-sandbox-1658.kogpasan14.workers.dev/__stage1676/arcsen-bridge"
+                loc.API.ArcScriptCenterBrowserBridgeURL = browserBridgeURL
+                local browserBridgeOpen = false
+                local browserRow = o(panelScroll,"None","Browser Turnstile (Sandbox)",false,true,"Open",false,false,nil,
+                    function(row)
+                        local notice = Instance.new("TextLabel")
+                        notice.Name = "SandboxBrowserBridgeNotice"
+                        notice.Position = UDim2.fromOffset(6,5)
+                        notice.Size = UDim2.new(1,-12,0,85)
+                        notice.BackgroundTransparency = 1
+                        notice.TextColor3 = Color3.fromRGB(209,223,244)
+                        notice.TextSize = 12
+                        notice.TextXAlignment = Enum.TextXAlignment.Left
+                        notice.TextYAlignment = Enum.TextYAlignment.Top
+                        notice.TextWrapped = true
+                        notice.Text = "Real Turnstile cannot run inside a Luau HTTP request. " ..
+                            "Copy the protected test page URL, open it in Chrome, then sign in " ..
+                            "through Cloudflare Access. Paste a synthetic draft there. " ..
+                            "This does not submit anything from Arcsen."
+                        notice.Parent = row.Inside
+                        local copyURL = caseButton(row.Inside,"CopySandboxBrowserURL",
+                            "Copy protected Browser URL",0,95,31)
+                        local result = Instance.new("TextLabel")
+                        result.Name = "BridgeCopyStatus"
+                        result.Position = UDim2.fromOffset(6,134)
+                        result.Size = UDim2.new(1,-12,0,49)
+                        result.BackgroundTransparency = 1
+                        result.TextColor3 = Color3.fromRGB(242,209,153)
+                        result.TextSize = 12
+                        result.TextWrapped = true
+                        result.TextXAlignment = Enum.TextXAlignment.Left
+                        result.TextYAlignment = Enum.TextYAlignment.Top
+                        result.Text = "SANDBOX ONLY. Use the existing Copy Draft button separately. " ..
+                            "Never include a Receipt, Access token or Secret in a URL."
+                        result.Parent = row.Inside
+                        local function copyLink()
+                            if type(setclipboard) ~= "function" then
+                                result.Text = "Clipboard is unavailable. Copy the URL from the project documentation."
+                                task.defer(syncPanelCanvas)
+                                return false
+                            end
+                            local copied = pcall(setclipboard,browserBridgeURL)
+                            result.Text = copied and "URL copied. Open Chrome, paste the URL and complete Cloudflare Access." 
+                                or "Unable to copy. No request has been submitted."
+                            task.defer(syncPanelCanvas)
+                            return copied
+                        end
+                        loc.API.CopyArcScriptCenterBrowserBridgeURL = copyLink
+                        copyURL.MouseButton1Click:Connect(copyLink)
+                    end,
+                    function(_,event,row)
+                        if event ~= "button" then return end
+                        browserBridgeOpen = not browserBridgeOpen
+                        row.Inside.Visible = browserBridgeOpen
+                        row.Button.Text = browserBridgeOpen and "Close" or "Open"
+                        task.defer(syncPanelCanvas)
+                    end)
+                nextOrder += 1
+                browserRow.Frame.LayoutOrder = nextOrder
+                browserRow.Frame.Size = UDim2.new(1,-6,0,0)
+                end -- Stage16.76 local bridge scope; avoid retaining extra top-level Luau locals.
 
                 -- Reading and managing an existing STAGING case requires both
                 -- its Case ID and private Receipt. Nothing is queried automatically.
