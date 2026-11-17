@@ -1,0 +1,35 @@
+name: Stage 16.87 - Isolated Gateway Trust Boundary QA
+on:
+  push:
+    branches: [stage16-87-trust-boundary-sandbox]
+  pull_request:
+    paths:
+      - 'sandbox/stage16-87-*'
+      - 'sandbox/stage16-86-runtime/stage16-87-*'
+      - 'docs/stage16-87-*'
+      - '.github/workflows/stage16-87-trust-boundary.yml'
+permissions:
+  contents: read
+jobs:
+  closed-gateway:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install local Miniflare workerd
+        run: npm install --no-audit --no-fund --prefix sandbox/stage16-86-runtime
+      - name: Closed-default gateway and spoofed request unit tests
+        run: node --test sandbox/stage16-87-restricted-gateway.test.mjs
+      - name: Workerd D1 runtime with sandbox Access and ingress test stubs
+        run: node --test sandbox/stage16-86-runtime/stage16-87-local-worker.test.mjs
+      - name: Previous Stage16.86 local Worker D1 regression
+        run: node --test sandbox/stage16-86-runtime/runtime.test.mjs
+      - name: Stage16.85 rate limiter and explicit consent regressions
+        run: node --test sandbox/stage16-85-rate-consent.test.mjs
+      - name: Stage16.83 pairing regressions
+        run: node --test sandbox/stage16-83-pairing.test.mjs
+      - name: English browser UI copy regressions
+        run: node --test sandbox/stage16-86-english-ui.test.mjs sandbox/stage16-86-browser-demo/static-safety.test.mjs
