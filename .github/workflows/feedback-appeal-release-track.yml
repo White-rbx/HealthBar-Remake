@@ -22,6 +22,8 @@ jobs:
           node-version: '22'
       - name: Feedback and Appeal release policy and English UI checks
         run: node --test sandbox/feedback-release-contract.test.mjs
+      - name: Optional unverified UserId Worker patch and Admin metadata tests
+        run: node --test sandbox/feedback-unverified-claim-worker-patch.test.mjs
       - name: Existing production browser form end-to-end synthetic tests
         run: node --test sandbox/production-candidate-browser-form.test.mjs
       - name: Existing route isolation and security gate regressions
