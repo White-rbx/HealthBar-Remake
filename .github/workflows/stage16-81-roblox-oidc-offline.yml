@@ -1,0 +1,29 @@
+name: Stage 16.81 - Roblox OIDC Offline Security Tests
+on:
+  push:
+    branches:
+      - stage16-81-roblox-oidc-sandbox
+  pull_request:
+    paths:
+      - 'sandbox/stage16-81-*'
+      - '.github/workflows/stage16-81-roblox-oidc-offline.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify OAuth PKCE / signed Roblox ID token / session boundaries
+        run: node --test sandbox/stage16-81-roblox-oidc-sandbox.test.mjs
+      - name: Verify previous violation history contract
+        run: node --test sandbox/stage16-80-verified-violation-history.test.mjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify offline D1 schema isolation
+        run: python sandbox/test_stage16_80_sqlite.py
