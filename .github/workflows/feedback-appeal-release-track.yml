@@ -28,6 +28,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: All-in-one Feedback release QA — D1 limiter and additive schema
+        run: node --test sandbox/feedback-release-rate-guard.test.mjs
       - name: Production code review and no-deploy regression
         run: node --test sandbox/feedback-production-code-audit.test.mjs
       - name: Feedback and Appeal release policy and English UI checks
