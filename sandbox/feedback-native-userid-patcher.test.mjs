@@ -6,6 +6,7 @@ import {CLAIMED_ID_COPY,patchNativeClaimedUserId} from './feedback-native-userid
 const fixture=()=>{
   const clientJS=[
     "'use strict';",
+    '(()=>{',
     '// Full-size synthetic fixture for source-anchored contract checks only.',
     'const fakeBody = '+JSON.stringify('abc'.repeat(500))+';',
     '  function faDetailLine(label,value){return {label,value};}',
@@ -37,7 +38,7 @@ test('patches existing Feedback & Appeal detail, and embedded Pages Worker, exac
   assert.equal(o.clientJS.includes(CLAIMED_ID_COPY.replacement),true);
   const embedded=JSON.parse(o.workerJS.match(/^const MOD_SCRIPT = (".*");$/m)?.[1]);
   assert.equal(embedded,o.clientJS);
-  assert.doesNotThrow(()=>new Script(o.clientJS.replace(/^\(\)\);$/m,'')+''));
+  assert.doesNotThrow(()=>new Script(o.clientJS));
 });
 test('user-provided ID renders for BOTH Feedback and Appeal without granting ownership',()=>{
   const o=patchNativeClaimedUserId(...Object.values(fixture()));
