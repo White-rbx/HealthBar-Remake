@@ -64,7 +64,7 @@ test('untrusted ingress is refused even if sandbox access says yes',async()=>{
   assert.equal(f.calls.rate,0);
 });
 test('missing or malformed network identity fails closed',async()=>{
-  for(const networkId of ['', 'bad net', 'a'.repeat(129),undefined]){
+  for(const networkId of ['', 'bad net', 'a'.repeat(129),null]){
     const f=fixture({networkId});
     assert.equal((await f.hit()).status,403);
     assert.equal(f.calls.rate,0);
