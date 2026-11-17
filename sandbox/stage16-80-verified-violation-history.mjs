@@ -10,7 +10,7 @@ const AUTH_SOURCE = new Set(['roblox_oidc', 'trusted_game_server']);
 const MAX_NOTICES = 50;
 const MAX_HISTORY_PER_NOTICE = 20;
 
-const NOTICE_SQL = \`
+const NOTICE_SQL = `
 SELECT l.notice_id AS id, n.reason AS reason,
        n.moderator_message AS moderatorMessage,
        l.appeal_status AS appealStatus,
@@ -20,9 +20,9 @@ FROM asc_verified_violation_subjects AS l
 JOIN asc_violation_notices AS n ON n.id = l.notice_id
 WHERE l.subject_user_id = ?1
 ORDER BY n.created_unix DESC, l.notice_id ASC
-LIMIT 50\`;
+LIMIT 50`;
 
-const HISTORY_SQL = \`
+const HISTORY_SQL = `
 SELECT e.notice_id AS noticeId, e.event_status AS status, e.event_type AS action,
        e.public_note AS publicNote, e.created_unix AS createdAt
 FROM (
@@ -34,7 +34,7 @@ FROM (
   WHERE l.subject_user_id = ?1
 ) AS e
 WHERE e.rank_in_notice <= 20
-ORDER BY e.created_unix DESC, e.notice_id ASC\`;
+ORDER BY e.created_unix DESC, e.notice_id ASC`;
 
 function resultJson(body, status = 200) {
   return new Response(JSON.stringify(body), {
