@@ -33,6 +33,7 @@ function memoryStore() {
     async put(key,value) {map.set(key,value);},
     async get(key) {return map.get(key) ?? null;},
     async take(key) {const value=map.get(key)??null;map.delete(key);return value;},
+    async delete(key) {map.delete(key);},
   };
 }
 function createFixture() {
@@ -181,4 +182,14 @@ test('Stage16.80 integration: only browser session can access account-bound hist
   assert.equal(verified.status,200);
   const payload=await verified.json();
   assert.equal(payload.identityVerified,true);assert.equal(payload.hasHistory,false);
+});
+
+test('logout revokes the server session instead of only deleting client cookie',async()=>{
+  const f=createFixture(),b=await begin(f),r=await finish(f,b);
+  const request=sessionRequest(r.setCookie);
+  assert.equal((await f.integration.resolveVerifiedPrincipal(request)).sub,'111');
+  const loggedOut=await f.integration.logout(request);
+  assert.match(loggedOut.clearCookie,/Max-Age=0/);
+  assert.equal(f.sessionStore.map.size,0);
+  assert.equal(await f.integration.resolveVerifiedPrincipal(request),null);
 });
