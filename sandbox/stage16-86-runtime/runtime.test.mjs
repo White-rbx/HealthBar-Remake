@@ -20,7 +20,9 @@ before(async () => {
     scriptPath:fileURLToPath(new URL('../stage16-86-test-worker.mjs',import.meta.url)),
     modules:true,
     modulesRules:[{type:'ESModule',include:['**/*.mjs']}],
-    compatibilityDate:'2026-11-13',
+    // This Miniflare workerd binary currently supports through 2026-08-06.
+    // Local test compatibility != deployed Cloudflare Worker compatibility date.
+    compatibilityDate:'2026-08-06',
     d1Databases:['DB'],
     bindings:{
       STAGE1686_LOCAL_ONLY:'enabled-for-workerd-tests',
