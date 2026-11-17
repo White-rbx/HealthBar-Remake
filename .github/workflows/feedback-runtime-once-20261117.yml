@@ -1,0 +1,43 @@
+name: ArcScriptCenter — One-shot isolated Worker Preview runtime test
+# Run only when this exact QA workflow is first added or edited.
+# Never execute against Production or current STAGING endpoints.
+on:
+  push:
+    branches: [feedback-appeal-release-track]
+    paths:
+      - '.github/workflows/feedback-runtime-once-20261117.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preview-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call isolated synthetic-only Preview once
+        shell: bash
+        env:
+          QA_URL: https://feedback-runtime-qa-20261117-arcscriptcenter-merge-sandbox-1658.kogpasan14.workers.dev/__qa/once
+        run: |
+          set -euo pipefail
+          code=$(curl --silent --show-error --location --max-time 35 --retry 0 --request POST \
+            --output /tmp/qa-result.json --write-out '%{http_code}' "$QA_URL")
+          echo "Preview HTTP status: $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::The one-shot isolated runtime check did not pass"
+            cat /tmp/qa-result.json
+            exit 1
+          fi
+          node -e '
+            const fs=require("node:fs");
+            const r=JSON.parse(fs.readFileSync("/tmp/qa-result.json","utf8"));
+            if(!r.ok||r.source!=="isolated-preview-synthetic-only"||
+               r.summary.acceptedFirstNetwork!==6||
+               r.summary.overLimitStatus!==429||
+               r.summary.secondNetworkAccepted!==true||
+               r.summary.untrustedEdgeStatus!==503)
+              throw Error("Isolated runtime quota contract failed");
+            console.log("PASS: real Worker Preview runtime + isolated D1 concurrency-safe quota test");
+            console.log(JSON.stringify({ok:r.ok,summary:r.summary,edgeMetadataPresent:r.edgeMetadataPresent}));
+          '
