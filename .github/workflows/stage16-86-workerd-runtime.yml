@@ -1,0 +1,33 @@
+name: Stage 16.86 - Real Local Workerd D1 Binding QA
+on:
+  push:
+    branches: [stage16-86-workerd-runtime-qa]
+  pull_request:
+    paths:
+      - 'sandbox/stage16-86-*'
+      - 'sandbox/stage16-85-d1-rate-limiter.mjs'
+      - 'sandbox/stage16-83-pairing-router.mjs'
+      - '.github/workflows/stage16-86-workerd-runtime.yml'
+permissions:
+  contents: read
+jobs:
+  workerd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated local runtime dependency
+        run: npm install --no-audit --no-fund --prefix sandbox/stage16-86-runtime
+      - name: Exercise Worker with local workerd + D1 binding
+        run: node --test sandbox/stage16-86-runtime/runtime.test.mjs
+      - name: Stage 16.85 security regressions
+        run: node --test sandbox/stage16-85-rate-consent.test.mjs
+      - name: Stage 16.85 SQLite concurrency
+        run: python sandbox/test_stage16_85_sqlite.py
+      - name: Stage 16.83 pairing regression
+        run: node --test sandbox/stage16-83-pairing.test.mjs
+      - name: Stage 16.81 Roblox OAuth mock regression
+        run: node --test sandbox/stage16-81-roblox-oidc-sandbox.test.mjs
