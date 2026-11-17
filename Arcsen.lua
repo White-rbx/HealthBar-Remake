@@ -14149,13 +14149,14 @@ task.spawn(function()
         local valid,errorText=caseValidate(kind,topic,description)
         if not valid then return nil,errorText,false end
         local payload={kind=kind,topic=topic,description=description}
-        if kind == "appeal" then
-            local localPlayer=game:GetService("Players").LocalPlayer
-            if not localPlayer or localPlayer.UserId <= 0 then
-                return nil, "LocalPlayer UserId is unavailable.",false
-            end
+        -- Sender identity is optional metadata for Feedback, not authentication.
+        -- Appeals still need a UserId claim to help moderators locate a case.
+        -- Server MUST treat this client-supplied value as unverified.
+        local localPlayer=game:GetService("Players").LocalPlayer
+        if localPlayer and type(localPlayer.UserId)=="number" and localPlayer.UserId>0 then
             payload.claimedUserId=tostring(localPlayer.UserId)
-            -- The server treats claimedUserId as unverified identity.
+        elseif kind == "appeal" then
+            return nil, "A Roblox UserId is required for Appeal.",false
         end
         local data,err,uncertain=casePost("/api/v1/feedback/submit",payload)
         if not data then return nil,err,uncertain end
