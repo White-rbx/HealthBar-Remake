@@ -7,7 +7,7 @@ import {QUOTAS,createReleaseFeedbackRateGuard} from './feedback-release-rate-gua
 const schema=readFileSync(new URL('../migrations/feedback_release_additive_REVIEW_ONLY_20261117.sql',import.meta.url),'utf8');
 function fixture({badDB=false}={}){
   const sqlite=new DatabaseSync(':memory:');
-  sqlite.exec('CREATE TABLE original_service (id INTEGER PRIMARY KEY, name TEXT); INSERT INTO original_service VALUES (1, "preserved");');
+  sqlite.exec("CREATE TABLE original_service (id INTEGER PRIMARY KEY, name TEXT); INSERT INTO original_service VALUES (1, 'preserved');");
   sqlite.exec(schema);
   let network='synthetic-alpha',trusted=true,time=1763400000000;
   const db={prepare(sql){return {bind(...params){return {
