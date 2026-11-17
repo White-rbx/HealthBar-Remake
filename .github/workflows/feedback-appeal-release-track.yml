@@ -25,6 +25,8 @@ jobs:
         run: node --test sandbox/feedback-release-contract.test.mjs
       - name: Optional unverified UserId Worker patch and Admin metadata tests
         run: node --test sandbox/feedback-unverified-claim-worker-patch.test.mjs
+      - name: Main Dashboard read-only Admin Inbox integration checks
+        run: node --test sandbox/feedback-dashboard-staging-adapter.test.mjs
       - name: Existing production browser form end-to-end synthetic tests
         run: node --test sandbox/production-candidate-browser-form.test.mjs
       - name: Existing route isolation and security gate regressions
