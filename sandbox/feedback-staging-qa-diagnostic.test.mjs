@@ -25,8 +25,10 @@ test('diagnostic only adds categorised 503 results in the STAGING candidate',()=
   assert.match(diagnosed,/const id=crypto.randomUUID/);
   assert.match(diagnosed,/stagingQA:request\.headers\.get\('User-Agent'\)==='ASC-Staging-Synthetic-Smoke\/1\.0'/);
   assert.match(diagnosed,/reason:'dependency'/);
-  for(const code of ['host','worker-or-method','tls-metadata','ip-metadata'])
+  for(const code of ['host','tls-metadata','ip-metadata'])
     assert.ok(diagnosed.includes('reason:"'+code+'"'),code);
+  for(const code of ['method','cf-worker-and-x-real-ip','cf-worker','x-real-ip'])
+    assert.ok(diagnosed.includes('"'+code+'"'),code);
   assert.match(diagnosed,/reason:'edge-'\+edge\.reason/);
   assert.match(diagnosed,/reason:result\.reason/);
   assert.match(diagnosed,/return result\.allowed\?null:/);
