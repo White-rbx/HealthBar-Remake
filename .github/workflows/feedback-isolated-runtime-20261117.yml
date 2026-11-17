@@ -1,0 +1,43 @@
+name: ArcScriptCenter — Isolated Worker Runtime QA (single run)
+on:
+  push:
+    branches: [feedback-appeal-release-track]
+    paths:
+      - '.github/workflows/feedback-isolated-runtime-20261117.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Execute synthetic-only D1 rate limiter on disposable Worker
+        shell: bash
+        env:
+          QA_URL: https://asc-feedback-synthetic-runtime-20261117.kogpasan14.workers.dev/__qa/once
+        run: |
+          set -euo pipefail
+          code=$(curl --silent --show-error --location --retry 0 --max-time 35 \
+            --request POST --output /tmp/qa.json --write-out '%{http_code}' "$QA_URL")
+          echo "Disposable Worker HTTP status: $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::Isolated Worker HTTP runtime test failed"
+            cat /tmp/qa.json
+            exit 1
+          fi
+          node -e '
+            const fs=require("node:fs");
+            const j=JSON.parse(fs.readFileSync("/tmp/qa.json","utf8"));
+            if(j.ok!==true||j.firstNetworkAccepted!==6||
+              j.firstNetworkNextStatus!==429||
+              j.secondNetworkAccepted!==true||j.untrustedStatus!==503)
+                throw Error("Live Cloudflare Worker / D1 quota check mismatch");
+            console.log("PASS: live Worker + isolated D1 rate limiter");
+            console.log(JSON.stringify({
+              firstNetworkAccepted:j.firstNetworkAccepted,
+              firstNetworkNextStatus:j.firstNetworkNextStatus,
+              secondNetworkAccepted:j.secondNetworkAccepted,
+              untrustedStatus:j.untrustedStatus,
+              edgeMetadataPresent:j.edgeMetadataPresent
+            }));
+          '
