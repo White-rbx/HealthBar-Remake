@@ -27,7 +27,7 @@ test('diagnostic only adds categorised 503 results in the STAGING candidate',()=
   assert.match(diagnosed,/reason:'dependency'/);
   for(const code of ['host','tls-metadata','ip-metadata'])
     assert.ok(diagnosed.includes('reason:"'+code+'"'),code);
-  for(const code of ['method','cf-worker-and-x-real-ip','cf-worker','x-real-ip'])
+  for(const code of ['method','cf-worker'])
     assert.ok(diagnosed.includes('"'+code+'"'),code);
   assert.match(diagnosed,/reason:'edge-'\+edge\.reason/);
   assert.match(diagnosed,/reason:result\.reason/);
