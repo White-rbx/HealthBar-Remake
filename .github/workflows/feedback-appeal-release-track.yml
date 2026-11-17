@@ -28,6 +28,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: All-in-one Feedback review candidate builder and legacy route checks
+        run: node --test sandbox/feedback-release-candidate-builder.test.mjs
       - name: All-in-one Feedback release QA — D1 limiter and additive schema
         run: node --test sandbox/feedback-release-rate-guard.test.mjs
       - name: Production code review and no-deploy regression
