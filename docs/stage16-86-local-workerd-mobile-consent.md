@@ -33,14 +33,14 @@ Files:
 - `sandbox/stage16-86-browser-demo/app.js`
 - `sandbox/stage16-86-browser-demo/static-safety.test.mjs`
 
-Mobile-readable Thai static demo, NOT intended to replace the owner's ExperienceSettings/Arcsen custom UI design:
+English-language, mobile-readable static demo (all visible prompts, warnings, buttons, and error messages), NOT intended to replace the owner's ExperienceSettings/Arcsen custom UI design:
 1. User manually enters the code shown in their own Arcsen device.
 2. The same-origin browser POST to `/pair/browser/preview` obtains a 60-second browser-only confirmation token, but only with an already verified server session.
 3. User manually retypes the code into an empty second field and checks an unchecked-by-default own-device consent checkbox.
 4. Same-origin browser POST to `/pair/browser/approve` includes `confirmedCode` and `acknowledgeOwnDevice:true`.
 5. Success gives only non-privileged pairing approval; no OAuth token or private Roblox UserId enters Luau.
 
-The demo uses textContent (not HTML insertion), stores browser-only confirmation challenges only in JS memory, uses same-origin credentials, and does not embed or call third-party scripts. This demo is code in a GitHub branch and is **not hosted**, not connected to live OAuth and not certified against phishing.
+The demo includes an English-only text regression test and uses textContent (not HTML insertion), stores browser-only confirmation challenges only in JS memory, uses same-origin credentials, and does not embed or call third-party scripts. This demo is code in a GitHub branch and is **not hosted**, not connected to live OAuth and not certified against phishing.
 
 ## Remaining blockers
 
