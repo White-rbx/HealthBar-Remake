@@ -15,6 +15,8 @@ test('Feedback is available without Roblox OAuth or account age gating',()=>{
   assert.equal(contract.feedback.requiresRobloxOidc,false);
   assert.equal(contract.feedback.requiresRobloxAccountAge,false);
   assert.equal(contract.feedback.requiresClaimedUserId,false);
+  assert.equal(contract.feedback.acceptsOptionalClaimedUserId,true);
+  assert.equal(contract.feedback.claimedUserIdIsNotIdentityProof,true);
   assert.equal(contract.feedback.requiresTurnstile,true);
   for(const js of [files.prodJs,files.sandboxJs]){
     assert.match(js,/claimedUserId:data\.kind==="appeal"\?userId\.value\.trim\(\):undefined/);
