@@ -1,4 +1,4 @@
-name: Feedback Dashboard - Offline Review Preview
+name: Feedback Dashboard - Existing UI Integrity Preview
 # Generates an artifact only when the actual adapter or its workflow changes.
 # Uses push on this review branch because workflow_dispatch requires a
 # workflow file on the default branch to appear in GitHub's manual-run UI.
@@ -45,12 +45,15 @@ jobs:
           if(!source.includes('<title>ArcScriptCenter — Cloud Control Center</title>'))
             throw Error('Unexpected Pages source; stop');
           const html=prepareFeedbackDashboardStagingHtml(source);
-          if(!html.includes('id="page-feedback"'))throw Error('No Feedback tab generated');
-          if(!html.includes('Claimed UserId: '))throw Error('Unverified sender label missing');
+          // Native Dashboard already has Feedback & Appeal; never duplicate it.
+          if(!html.includes('id="page-feedback-appeal"'))throw Error('Native Feedback page missing');
+          if(html.includes('id="page-feedback"'))throw Error('Duplicate Feedback page must not be generated');
+          if(!html.includes('Feedback and Appeal UserIds are user-provided, unverified claims'))
+            throw Error('Unverified sender notice missing');
           fs.writeFileSync('dashboard-preview/index.html',html);
           fs.writeFileSync('dashboard-preview/README.txt',
             'REVIEW-ONLY Dashboard preview based on immutable STAGING Pages deployment.\n'+
-            'Contains an Admin-only, read-only Feedback case list with claimed UserId labeled Unverified.\n'+
+            'Preserves the original Admin Feedback & Appeal page and updates its unverified-sender warning only.\n'+
             'NO Cloudflare deployment. NO Production changes. Admin API must separately authorize each request.\n');
           fs.unlinkSync('dashboard-preview/index-source.html');
           JS
