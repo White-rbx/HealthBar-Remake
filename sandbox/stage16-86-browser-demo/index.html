@@ -6,7 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <title>Arcsen — Confirm Device Pairing (Sandbox Demo)</title>
   <style>
-    :root { color-scheme: dark; font-family: system-ui, "Noto Sans Thai", sans-serif; }
+    :root { color-scheme: dark; font-family: system-ui, Arial, sans-serif; }
     * { box-sizing: border-box; }
     body { margin: 0; background: #111820; color: #f2f5fc; line-height: 1.5; }
     main { width: min(100% - 28px, 550px); margin: 32px auto 48px; }
@@ -34,38 +34,38 @@
 <body>
   <main>
     <article>
-      <h1>ยืนยันการจับคู่ Arcsen</h1>
-      <p class="muted">ตัวอย่างหน้าจอสำหรับ Stage 16.86 — ยังไม่ได้เปิดใช้งานจริง</p>
+      <h1>Confirm Arcsen Pairing</h1>
+      <p class="muted">Stage 16.86 preview — not available for live use.</p>
       <p class="alert" role="note">ให้อนุมัติเฉพาะรหัสที่ปรากฏใน Arcsen บนอุปกรณ์ของคุณเองเท่านั้น หากมีคนอื่นส่งรหัสมาให้ทางแชท <strong>อย่าอนุมัติ</strong></p>
 
       <form id="lookup" autocomplete="off">
-        <label for="lookup-code">รหัสจาก Arcsen ของคุณ</label>
+        <label for="lookup-code">Pairing code from your Arcsen</label>
         <input id="lookup-code" type="text" required
           maxlength="19" pattern="[A-Z2-7]{4}(-[A-Z2-7]{4}){3}"
           spellcheck="false" autocapitalize="characters" autocomplete="off"
           placeholder="ABCD-EFGH-JKLM-NPQR" aria-describedby="lookup-help">
-        <p id="lookup-help" class="muted">อ่านรหัสจากแอปบนอุปกรณ์ของคุณเอง แล้วกรอกด้วยตัวเอง</p>
-        <button type="submit" id="lookup-button">ตรวจสอบรหัส</button>
+        <p id="lookup-help" class="muted">Read the code from Arcsen on your own device and enter it yourself.</p>
+        <button type="submit" id="lookup-button">Check Code</button>
       </form>
 
       <section id="approval" hidden aria-live="polite">
-        <h2>ตรวจสอบรหัสให้ตรงกัน</h2>
-        <p class="muted">รหัสบนหน้าจอนี้ต้องตรงกับรหัสใน Arcsen ของคุณ</p>
+        <h2>Verify the Code</h2>
+        <p class="muted">Make sure this code matches the one displayed in your Arcsen.</p>
         <p class="code" id="preview-code"></p>
         <p class="muted" id="expires"></p>
         <form id="confirm" autocomplete="off">
-          <label for="confirmed-code">พิมพ์รหัสอีกครั้งด้วยตัวเอง</label>
+          <label for="confirmed-code">Re-enter the code yourself</label>
           <input id="confirmed-code" type="text" required maxlength="19"
             pattern="[A-Z2-7]{4}(-[A-Z2-7]{4}){3}"
             spellcheck="false" autocapitalize="characters" autocomplete="off"
-            placeholder="กรอกรหัสอีกครั้ง">
+            placeholder="Re-enter the code">
           <label class="checkbox" for="own-device">
             <input type="checkbox" id="own-device">
-            <span>ฉันเป็นผู้เริ่มจับคู่นี้บนอุปกรณ์ของตัวเอง และตรวจสอบแล้วว่ารหัสทั้งสองตรงกัน</span>
+            <span>I started this pairing request on my own device and have checked that both codes match.</span>
           </label>
           <div class="actions">
-            <button id="approve" type="submit" disabled>ยืนยันการจับคู่</button>
-            <button id="cancel" class="secondary" type="button">ยกเลิก</button>
+            <button id="approve" type="submit" disabled>Approve Pairing</button>
+            <button id="cancel" class="secondary" type="button">Cancel</button>
           </div>
         </form>
       </section>
