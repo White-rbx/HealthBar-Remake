@@ -5,7 +5,9 @@ const html=readFileSync(new URL('./index.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('./app.js',import.meta.url),'utf8');
 
 test('demo never embeds OAuth credentials or user identity in Luau or links',()=>{
-  assert.doesNotMatch(html+js,/localStorage|sessionStorage|document\.cookie|innerHTML|oauth\/v1\/token|refresh_token|access_token|id_token|claimedUserId|window\.location\s*=/i);
+  // Ignore the explanatory safety comment, but inspect all executable JS.
+  const executableJs=js.replace(/\/\*[\s\S]*?\*\//g,'').replace(/^\s*\/\/.*$/gm,'');
+  assert.doesNotMatch(html+executableJs,/localStorage|sessionStorage|document\.cookie|innerHTML|oauth\/v1\/token|refresh_token|access_token|id_token|claimedUserId|window\.location\s*=/i);
   assert.doesNotMatch(html,/<script[^>]+src=["']https?:/i);
   assert.match(js,/credentials:'same-origin'/);
   assert.match(js,/redirect:'error'/);
