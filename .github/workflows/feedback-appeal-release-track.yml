@@ -1,15 +1,22 @@
 name: Feedback and Appeal — Consolidated Release Track QA
+# One automatic run per PR update, not duplicate push + pull_request runs.
 on:
-  push:
-    branches: [feedback-appeal-release-track]
   pull_request:
+    branches: [stage16-87-trust-boundary-sandbox]
     paths:
       - 'sandbox/feedback-*'
       - 'sandbox/arcsen-v7.3.43-feedback-optional-userid.patch'
       - 'sandbox/production-feedback-appeal-form.*'
       - 'sandbox/stage16-76-arcsen-bridge.*'
       - 'docs/feedback-appeal-release-track.md'
+      - 'docs/feedback-dashboard-staging-integration.md'
       - '.github/workflows/feedback-appeal-release-track.yml'
+  workflow_dispatch:
+
+# A new commit cancels superseded checks for this same PR.
+concurrency:
+  group: feedback-release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
