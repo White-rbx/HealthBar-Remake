@@ -97,7 +97,7 @@ export function prepareFeedbackCandidate({production,staging,rateModule}){
   return {source:output,sha256:SHA(output),sourceSha:{production:SHA(production),staging:SHA(staging)},
     newRoutes:ACTIONS.length,ownerReleaseApproval:false,status:'REVIEW_ONLY_DO_NOT_DEPLOY'};
 }
-const current=fileURLToPath(import.meta.url);
+const current=import.meta.url.startsWith('file:')?fileURLToPath(import.meta.url):null;
 if(process.argv[1]===current){
   const args=process.argv.slice(2);
   if(args.length!==6||args[0]!=='--production'||args[2]!=='--staging'||args[4]!=='--output')
