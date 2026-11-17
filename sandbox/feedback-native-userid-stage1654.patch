@@ -1,0 +1,10 @@
+--- a/feedback-appeal.js (Stage16.54)
++++ b/feedback-appeal.js (Review Candidate)
+@@ -196,7 +196,7 @@
+     faEl('faSelectedStatus').textContent=faText(c.status);
+     const dl=document.createElement('dl');
+     dl.append(faDetailLine('Case ID',c.id),faDetailLine('Type',c.kind),faDetailLine('Status',c.status));
+-    if(c.kind==='appeal')dl.append(faDetailLine('Claimed Roblox UserId',faText(c.claimed_user_id||'None')+' (unverified)'));
++    if(c.kind==='feedback'||c.kind==='appeal')dl.append(faDetailLine('Claimed Roblox UserId',faText(c.claimed_user_id??'Not provided')+' (unverified)'));
+     dl.append(faDetailLine('Revision',c.revision),faDetailLine('Created',faFormat(c.created_unix)),
+       faDetailLine('Case age',faCaseAgeLabel(c)),faDetailLine('Updated',faFormat(c.updated_unix)));
