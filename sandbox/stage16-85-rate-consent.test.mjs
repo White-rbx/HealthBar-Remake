@@ -123,7 +123,7 @@ test('unknown action never hits D1',async()=>{
 test('missing trusted edge identity fails closed (never trust X-Forwarded-For)',async()=>{
   const f=fixture();
   for(const network of [undefined,'',' ', 'x'.repeat(140)]) {
-    await assert.rejects(()=>f.check('start',network),/Trusted client network ID unavailable/);
+    await assert.rejects(()=>f.limiter.checkRateLimit({action:'start',request:{trustedNetwork:network}}),/Trusted client network ID unavailable/);
   }
   assert.equal(f.calls.length,0);
 });
