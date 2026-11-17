@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Arcsen — Confirm Device Pairing (Sandbox Demo)</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, "Noto Sans Thai", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #111820; color: #f2f5fc; line-height: 1.5; }
+    main { width: min(100% - 28px, 550px); margin: 32px auto 48px; }
+    article { background: #202b38; border: 1px solid #45596e; border-radius: 14px; padding: clamp(16px, 5vw, 26px); }
+    h1 { font-size: clamp(1.5rem, 5vw, 2rem); margin: 0 0 8px; }
+    h2 { font-size: 1.12rem; margin: 20px 0 8px; }
+    p { margin: 8px 0 14px; }
+    .muted { color: #bfcedc; }
+    .alert { background: #3b3024; border-left: 4px solid #f6bb73; border-radius: 6px; padding: 12px 14px; }
+    .code { font: 600 clamp(1.05rem, 4.8vw, 1.6rem) ui-monospace, monospace; letter-spacing: .03em; }
+    label { display: block; font-weight: 600; margin: 14px 0 6px; }
+    input[type=text] { font: 600 1.12rem ui-monospace, monospace; width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #8faecb; background: #13202c; color: #fff; }
+    input:focus, button:focus-visible { outline: 3px solid #8ed8ff; outline-offset: 3px; }
+    button { min-height: 46px; padding: 10px 16px; border: 0; border-radius: 8px; background: #94d8ff; color: #0e2234; font: 700 1rem system-ui, sans-serif; cursor: pointer; }
+    button.secondary { background: #425468; color: #fff; }
+    button:disabled { opacity: .48; cursor: not-allowed; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .checkbox { display: flex; gap: 12px; align-items: flex-start; font-weight: 500; }
+    .checkbox input { width: 21px; height: 21px; flex-shrink: 0; margin-top: 3px; accent-color: #94d8ff; }
+    #status { min-height: 2em; margin-top: 20px; }
+    [hidden] { display: none !important; }
+  </style>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <main>
+    <article>
+      <h1>ยืนยันการจับคู่ Arcsen</h1>
+      <p class="muted">ตัวอย่างหน้าจอสำหรับ Stage 16.86 — ยังไม่ได้เปิดใช้งานจริง</p>
+      <p class="alert" role="note">ให้อนุมัติเฉพาะรหัสที่ปรากฏใน Arcsen บนอุปกรณ์ของคุณเองเท่านั้น หากมีคนอื่นส่งรหัสมาให้ทางแชท <strong>อย่าอนุมัติ</strong></p>
+
+      <form id="lookup" autocomplete="off">
+        <label for="lookup-code">รหัสจาก Arcsen ของคุณ</label>
+        <input id="lookup-code" type="text" required
+          maxlength="19" pattern="[A-Z2-7]{4}(-[A-Z2-7]{4}){3}"
+          spellcheck="false" autocapitalize="characters" autocomplete="off"
+          placeholder="ABCD-EFGH-JKLM-NPQR" aria-describedby="lookup-help">
+        <p id="lookup-help" class="muted">อ่านรหัสจากแอปบนอุปกรณ์ของคุณเอง แล้วกรอกด้วยตัวเอง</p>
+        <button type="submit" id="lookup-button">ตรวจสอบรหัส</button>
+      </form>
+
+      <section id="approval" hidden aria-live="polite">
+        <h2>ตรวจสอบรหัสให้ตรงกัน</h2>
+        <p class="muted">รหัสบนหน้าจอนี้ต้องตรงกับรหัสใน Arcsen ของคุณ</p>
+        <p class="code" id="preview-code"></p>
+        <p class="muted" id="expires"></p>
+        <form id="confirm" autocomplete="off">
+          <label for="confirmed-code">พิมพ์รหัสอีกครั้งด้วยตัวเอง</label>
+          <input id="confirmed-code" type="text" required maxlength="19"
+            pattern="[A-Z2-7]{4}(-[A-Z2-7]{4}){3}"
+            spellcheck="false" autocapitalize="characters" autocomplete="off"
+            placeholder="กรอกรหัสอีกครั้ง">
+          <label class="checkbox" for="own-device">
+            <input type="checkbox" id="own-device">
+            <span>ฉันเป็นผู้เริ่มจับคู่นี้บนอุปกรณ์ของตัวเอง และตรวจสอบแล้วว่ารหัสทั้งสองตรงกัน</span>
+          </label>
+          <div class="actions">
+            <button id="approve" type="submit" disabled>ยืนยันการจับคู่</button>
+            <button id="cancel" class="secondary" type="button">ยกเลิก</button>
+          </div>
+        </form>
+      </section>
+
+      <p id="status" role="status" aria-live="polite"></p>
+      <p class="muted">การอนุมัติรหัสไม่ใช่การยืนยันตัวตนของ Roblox Client และไม่ปลดล็อกข้อมูล Violation ส่วนตัวหรือสิทธิ์ผู้ดูแล</p>
+    </article>
+  </main>
+</body>
+</html>
