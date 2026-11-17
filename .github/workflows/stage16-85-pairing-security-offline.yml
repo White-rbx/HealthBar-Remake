@@ -1,0 +1,43 @@
+name: Stage 16.85 - Pairing Abuse and Consent Offline Security QA
+on:
+  push:
+    branches: [stage16-85-pairing-security-sandbox]
+  pull_request:
+    paths:
+      - 'sandbox/stage16-85-*'
+      - 'sandbox/test_stage16_85_sqlite.py'
+      - 'sandbox/stage16-83-pairing-router.mjs'
+      - 'sandbox/stage16-83-pairing.test.mjs'
+      - 'migrations/*stage1685*'
+      - 'docs/stage16-85-*'
+      - '.github/workflows/stage16-85-pairing-security-offline.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Stage 16.85 multi-worker rate limits, consent and fail-closed tests
+        run: node --test sandbox/stage16-85-rate-consent.test.mjs
+      - name: Stage 16.85 real SQLite atomic concurrency checks
+        run: python sandbox/test_stage16_85_sqlite.py
+      - name: Stage 16.84 migration isolation guard
+        run: node --test sandbox/stage16-84-d1-isolation-guard.test.mjs
+      - name: Stage 16.83 pairing behavior regressions with explicit consent
+        run: node --test sandbox/stage16-83-pairing.test.mjs
+      - name: Stage 16.83 SQLite pairing race regressions
+        run: python sandbox/test_stage16_83_sqlite.py
+      - name: Stage 16.82 OAuth session regressions
+        run: node --test sandbox/stage16-82-oauth-adapters.test.mjs
+      - name: Stage 16.81 Roblox OIDC verification regressions
+        run: node --test sandbox/stage16-81-roblox-oidc-sandbox.test.mjs
+      - name: Stage 16.80 Violation history isolation regressions
+        run: node --test sandbox/stage16-80-verified-violation-history.test.mjs

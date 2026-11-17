@@ -74,7 +74,7 @@ async function preview(f,code,options={}) {
   return post(f,'/pair/browser/preview',{code},{browser:true,...options});
 }
 async function approve(f,code,confirmationToken,options={}) {
-  return post(f,'/pair/browser/approve',{code,confirmationToken},{browser:true,...options});
+  return post(f,'/pair/browser/approve',{code,confirmationToken,confirmedCode:code,acknowledgeOwnDevice:true},{browser:true,...options});
 }
 
 test('start produces high entropy base32 pairingCode and unguessable poll-only capability',async()=>{
@@ -244,7 +244,8 @@ test('POST only, no credentials CORS, no cache and no redirects from untrusted c
 test('all parser and authorization errors are free of user IDs and session secrets',async()=>{
   const f=fixture();
   const fail=await post(f,'/pair/browser/approve',{code:'invalid',confirmationToken:'nope'},{browser:true});
-  assert.equal(fail.response.status,403);
+  // Invalid consent payload is now a 400 before authorization/ceremony.
+  assert.equal(fail.response.status,400);
   const s=JSON.stringify(fail.body);
   assert.ok(!s.includes('111'));
   assert.ok(!s.includes('browser-only-secret'));

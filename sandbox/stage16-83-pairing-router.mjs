@@ -3,6 +3,8 @@
  * No credentialed CORS. All credentialed browser operations require same Origin.
  * Untrusted clients may only start/poll/cancel a NON-PRIVILEGED pairing ceremony.
  * A deployment MUST supply a real distributed rate limiter, no bypass fallback.
+ * Stage 16.85: approval requires exact code re-entry and a deliberate browser
+ * consent checkbox. Browser UI must NOT auto-fill the confirmedCode field.
  */
 const HEADERS={
   'Cache-Control':'no-store, private',
@@ -105,8 +107,10 @@ export function createStage1683PairingRouter({ceremony,publicOrigin,checkRateLim
         if(!result.ok)return reply({ok:false,error:'Pairing unavailable'},403);
         return reply(result);
       }
-      if(!onlyFields(body,['code','confirmationToken'])||
-         typeof body.code!=='string'||typeof body.confirmationToken!=='string') {
+      if(!onlyFields(body,['code','confirmationToken','confirmedCode','acknowledgeOwnDevice'])||
+         typeof body.code!=='string'||typeof body.confirmationToken!=='string'||
+         typeof body.confirmedCode!=='string'||body.confirmedCode!==body.code||
+         body.acknowledgeOwnDevice!==true) {
         return reply({ok:false,error:'Invalid request'},400);
       }
       const result=await ceremony.approve({request,code:body.code,confirmationToken:body.confirmationToken});
