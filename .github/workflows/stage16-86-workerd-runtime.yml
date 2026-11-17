@@ -23,6 +23,8 @@ jobs:
         run: npm install --no-audit --no-fund --prefix sandbox/stage16-86-runtime
       - name: Exercise Worker with local workerd + D1 binding
         run: node --test sandbox/stage16-86-runtime/runtime.test.mjs
+      - name: English-only UI copy across tracked browser references
+        run: node --test sandbox/stage16-86-english-ui.test.mjs
       - name: Mobile browser consent demo safety checks
         run: node --test sandbox/stage16-86-browser-demo/static-safety.test.mjs
       - name: Stage 16.85 security regressions
