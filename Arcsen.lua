@@ -1,6 +1,8 @@
 local ver = {
-	sion = " UIs 7.3.41 ",
+	sion = " UIs 7.3.43 ",
 	logs = [[
+(:17/11/2026: A&F) Stage 16.79: Move Feedback Review/Approved/Denied and receipt-only Check Existing Case into a nested Feedback category; build conditional Violation category with Review/Approved/Denied/History and status-indexed LayoutOrder (blue=0/orange=1/red=2/green=3). Keep custom 350px Violation/Appeal notice. No unverified identity or false Violation history; staging only, never Production.
+(:17/11/2026: A&F) Stage 16.78: Hide Violation notice entirely when no authenticated, account-bound violation has been verified. No Violation category, no false "No violation notice" banner and no preview auto-open. Preserve custom 350px ViolationAppealUI as a hidden standalone notice; Appeal remains nested, not a top-level section. Current signed UI policy is advisory and identityVerified=false, so it MUST NOT trigger a confirmed-violation notice. No backend/Production changes.
 (:17/11/2026: A&F) Stage 16.77: Native Arcsen sender preview shows LocalPlayer DisplayName, @Username and UserId in Feedback & Appeal; avoids Browser Bridge navigation. WARNING: client identity is unverified on server; do not use it for moderation actions until Roblox OAuth or trusted server attestation is implemented. No HTTP/Production API changes.
 (:17/11/2026: A&F) Stage 16.76 Arcsen browser bridge: add Copy Secure Test URL under the existing Feedback & Appeal panel to open real Turnstile in a Cloudflare Access-protected Sandbox browser; preserve existing STAGING Submit and developer-designed Violation/Appeal UI. No client secret, Access cookie or receipt is sent or stored by this bridge.
 (:15/11/2026: A&F) Stage 16.38: Moderator-only history filter and clearer timestamp/response cards; STAGING status now returns server-owned canManage to avoid showing Edit/Remove for Spam Mail; staff-only audit API v0.5.46.1 (no admin key in client).
@@ -14293,6 +14295,7 @@ task.spawn(function()
         -- Recalculate after child frames change size (including expanded Appeal UI).
         local syncPanelCanvas = function() end
         local syncViolationCanvas = function() end
+        local syncFeedbackCanvas = function() end
         local function protectCanvas(scroll, list, tailSpace)
             if not scroll or not list then return function() end end
             scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -14429,15 +14432,15 @@ task.spawn(function()
                 -- All sections use o() inside the existing ScrollingFrame + UIListLayout.
                 -- Rules text is authored locally by the project developer, never
                 -- downloaded as unsanitized RichText from the Worker.
-                local function infoSection(title, description, allowRichText)
+                local function infoSection(title, description, allowRichText, destination, subOrder)
                     local infoText, item
                     local expanded = false
                     local function resize()
                         if item and item.Frame.Parent then
-                            task.defer(syncPanelCanvas)
+                            task.defer(destination and syncFeedbackCanvas or syncPanelCanvas)
                         end
                     end
-                    item = o(panelScroll,"None",title,false,true,"Show",false,false,nil,
+                    item = o(destination or panelScroll,"None",title,false,true,"Show",false,false,nil,
                         function(sub)
                             infoText = Instance.new("TextLabel")
                             infoText.Name = "SectionNotice"
@@ -14463,10 +14466,19 @@ task.spawn(function()
                             sub.Button.Text = expanded and "Hide" or "Show"
                             task.defer(resize)
                         end)
-                    nextOrder += 1
-                    item.Frame.LayoutOrder = nextOrder
+                    if destination then
+                        item.Frame.LayoutOrder = subOrder or 0
+                    else
+                        nextOrder += 1
+                        item.Frame.LayoutOrder = nextOrder
+                    end
                     item.Frame.Size = UDim2.new(1,-6,0,0)
-                    return item
+                    return item, function(text)
+                        if infoText and infoText.Parent then
+                            infoText.Text = tostring(text or "")
+                            task.defer(destination and syncFeedbackCanvas or syncPanelCanvas)
+                        end
+                    end
                 end
 
                 infoSection("Rules", [==[
@@ -14485,11 +14497,70 @@ Breaking the rules may result in a longer ban or a permanent ban. Please follow 
 
 More information in discord you can find the link at About or on the ScriptBlox/Hexhell
 ]==], true)
-                infoSection("Reviewing", "A submitted case starts at Reviewing in Cloudflare STAGING. Use Check Existing Case with your private receipt to see its actual status. A local draft is not a submission.")
-                infoSection("Approved", "An Approved status is shown only after a successful STAGING status check with a matching Case ID and Receipt. It is not an account-wide status.")
-                infoSection("Denied", "A Denied status is shown only after a successful STAGING status check with a matching Case ID and Receipt. This section alone does not imply denial.")
-                -- Violation and its nested Appeal editor are built below,
-                -- after makeDraftSection() is defined. Spam Mail is admin-only.
+                -- Stage 16.79: Feedback is a real expandable category, not three
+                -- unrelated status rows in the top-level Feedback & Appeal list.
+                local feedbackScroll
+                local feedbackExpanded = false
+                local feedbackCategory = o(panelScroll,"None","Feedback",false,true,"Open",false,false,nil,
+                    function(section)
+                        feedbackScroll = Instance.new("ScrollingFrame")
+                        feedbackScroll.Name = "FeedbackSubcategories"
+                        feedbackScroll.Position = UDim2.fromOffset(3,4)
+                        feedbackScroll.Size = UDim2.new(1,-6,0,270)
+                        feedbackScroll.BackgroundColor3 = Color3.fromRGB(25,32,46)
+                        feedbackScroll.BackgroundTransparency = 0.35
+                        feedbackScroll.BorderSizePixel = 0
+                        feedbackScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+                        feedbackScroll.ScrollBarThickness = 4
+                        feedbackScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                        feedbackScroll.CanvasSize = UDim2.fromOffset(0,0)
+                        feedbackScroll.Parent = section.Inside
+                        Corner(0,5,feedbackScroll)
+                        local nestedLayout = Instance.new("UIListLayout")
+                        nestedLayout.Name = "FeedbackLayout"
+                        nestedLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                        nestedLayout.Padding = UDim.new(0,5)
+                        nestedLayout.Parent = feedbackScroll
+                        local nestedPad = Instance.new("UIPadding")
+                        nestedPad.PaddingTop = UDim.new(0,5)
+                        nestedPad.PaddingBottom = UDim.new(0,6)
+                        nestedPad.PaddingLeft = UDim.new(0,3)
+                        nestedPad.PaddingRight = UDim.new(0,3)
+                        nestedPad.Parent = feedbackScroll
+                        syncFeedbackCanvas = protectCanvas(feedbackScroll,nestedLayout,42)
+                    end,
+                    function(_,event,section)
+                        if event ~= "button" then return end
+                        feedbackExpanded = not feedbackExpanded
+                        section.Inside.Visible = feedbackExpanded
+                        section.Button.Text = feedbackExpanded and "Close" or "Open"
+                        task.defer(syncFeedbackCanvas)
+                        task.defer(syncPanelCanvas)
+                    end)
+                nextOrder += 1
+                feedbackCategory.Frame.LayoutOrder = nextOrder
+                feedbackCategory.Frame.Size = UDim2.new(1,-6,0,0)
+
+                -- These headings are status groups, NOT claims about the user's
+                -- account. Content updates only after a receipt-authenticated lookup.
+                local _, setFeedbackReview = infoSection("Review",
+                    "No authenticated Reviewing feedback case checked. Use Check Existing Case with your private receipt.",
+                    false,feedbackScroll,1)
+                local _, setFeedbackApproved = infoSection("Approved",
+                    "No authenticated Approved feedback case checked. Use Check Existing Case with your private receipt.",
+                    false,feedbackScroll,2)
+                local _, setFeedbackDenied = infoSection("Denied",
+                    "No authenticated Denied feedback case checked. Use Check Existing Case with your private receipt.",
+                    false,feedbackScroll,3)
+                local function updateFeedbackCaseSections(record)
+                    local status = record and record.kind == "feedback" and record.status or nil
+                    local summary = status and ("Verified STAGING case " .. tostring(record.id) ..
+                        " | status " .. tostring(status) .. " | " .. tostring(record.topic or "")) or nil
+                    setFeedbackReview(status == "reviewing" and summary or "No Reviewing feedback case selected.")
+                    setFeedbackApproved(status == "approved" and summary or "No Approved feedback case selected.")
+                    setFeedbackDenied(status == "denied" and summary or "No Denied feedback case selected.")
+                end
+                -- Violation and nested Appeal are created later. Spam Mail is admin-only.
 
                 local function makeDraftSection(kind, parentScroll)
                     local isAppeal = kind == "Appeal"
@@ -14579,7 +14650,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 opened = show == true
                                 sub.Inside.Visible = opened
                                 sub.Button.Text = opened and "Close" or "Edit"
-                                task.defer(parentScroll and syncViolationCanvas or syncPanelCanvas)
+                                task.defer(parentScroll == feedbackScroll and syncFeedbackCanvas or
+                                (parentScroll and syncViolationCanvas or syncPanelCanvas))
                             end
                             sub.SetDraftVisible = setDraftVisible
                             copy.MouseButton1Click:Connect(function()
@@ -14615,7 +14687,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 local send=caseButton(sub.Inside,"SubmitFeedback","Submit Feedback to STAGING",0,200,28)
                                 notice.Position=UDim2.fromOffset(5,232)
                                 notice.Size=UDim2.new(1,-10,0,64)
-                                local setCase=caseSetupCredentials(sub.Inside,0,300,syncPanelCanvas)
+                                local setCase=caseSetupCredentials(sub.Inside,0,300,syncFeedbackCanvas)
                                 sub.Inside.Size=UDim2.new(1,0,0,0)
                                 local sendState={busy=false}
                                 local function sendDone(item,err,uncertain)
@@ -14634,7 +14706,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                         end
                                         if uncertain then notice.Text=notice.Text.." Avoid sending a duplicate until status is checked." end
                                     end
-                                    task.defer(syncPanelCanvas)
+                                    task.defer(syncFeedbackCanvas)
                                 end
                                 send.MouseButton1Click:Connect(function()
                                     local topic=titleInput and titleInput.Text or ""
@@ -14663,7 +14735,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 sub.SetDraftVisible(not opened)
                             end
                         end)
-                    if parentScroll then
+                    if parentScroll == feedbackScroll then
+                        draftUI.Frame.LayoutOrder = 0
+                    elseif parentScroll then
                         draftUI.Frame.LayoutOrder = 1
                     else
                         nextOrder += 1
@@ -14676,7 +14750,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         end
                     end
                 end
-                makeDraftSection("Feedback")
+                makeDraftSection("Feedback",feedbackScroll)
 
                 -- Stage 16.77: Browser Bridge removed from this native Arcsen panel.
                 -- No web link, Turnstile token, Receipt or credential is sent by this UI.
@@ -14685,7 +14759,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 -- Reading and managing an existing STAGING case requires both
                 -- its Case ID and private Receipt. Nothing is queried automatically.
                 local lookupExpanded=false
-                local caseLookupRow=o(panelScroll,"None","Check Existing Case",false,true,"Open",false,false,nil,
+                local caseLookupRow=o(feedbackScroll,"None","Check Existing Case",false,true,"Open",false,false,nil,
                     function(row)
                         local idBox=Instance.new("TextBox")
                         idBox.Name="CaseIDInput"
@@ -14973,6 +15047,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             resetConfirmation()
                             setManaging(false)
                             renderReviewHistory(nil)
+                            updateFeedbackCaseSections(nil)
                         end
                         idBox:GetPropertyChangedSignal("Text"):Connect(invalidateCase)
                         receiptBox:GetPropertyChangedSignal("Text"):Connect(invalidateCase)
@@ -14982,6 +15057,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                         local function showRecord(record)
                             latestRecord=record
+                            updateFeedbackCaseSections(record)
                             latestToken=credentialsToken()
                             local revision=tonumber(record.revision) or 0
                             local kind=tostring(record.kind or "unknown")
@@ -15166,13 +15242,12 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             task.defer(syncPanelCanvas)
                         end
                     end)
-                nextOrder+=1
-                caseLookupRow.Frame.LayoutOrder=nextOrder
+                caseLookupRow.Frame.LayoutOrder=4
                 caseLookupRow.Frame.Size=UDim2.new(1,-6,0,0)
 
                 -- Stage 16.33: rebuilt from the developer-revised ViolationAppealUI posted 15/11/2026
                 -- Original hierarchy/colors/positions preserved, including 350px outer viewport; variables named semantically.
-                local function buildViolationUI(parent, onResize)
+                local function buildViolationUI(parent, onResize, initiallyHidden)
                     -- Creating ScrollingFrame
                     local outerScroll = Instance.new("ScrollingFrame")
                     outerScroll.Active = false
@@ -15204,7 +15279,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     outerScroll.SelectionOrder = 0
                     outerScroll.Size = UDim2.new(1, 0, 0, 350)
                     outerScroll.TopImage = "rbxasset://textures/ui/Scroll/scroll-top.png"
-                    outerScroll.Visible = true
+                    outerScroll.Visible = initiallyHidden ~= true
                     outerScroll.ZIndex = 1
 
                     -- Creating UICorner
@@ -15994,12 +16069,13 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         controllerSetAppealExpanded(show)
                     end
                     function controller.SetNotice(details,isBanned)
-                        -- UI previews are untrusted local examples, never authenticated moderation records.
+                        -- Only show when a separately authenticated, user-bound
+                        -- server record is available (never from client preview).
                         if details then
                             noticeTitle.Text = "<b>Your behavior broke the rules</b>"
                             reasonLabel.Text = "Reason: "..details.reason
                             messageLabel.Text = details.moderatorMessage
-                            violationID.Text = "ID: "..details.id.." [PREVIEW]"
+                            violationID.Text = "ID: "..details.id
                         else
                             noticeTitle.Text = isBanned and "<b>Your behavior broke the rules</b>"
                                 or "<b>No violation notice available</b>"
@@ -16024,76 +16100,197 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     return controller
                 end
 
-                -- The existing o() row remains the expandable "Violation" category.
-                -- Its children now come exclusively from the developer's recovered UI.
-                local violationRow, notice
-                local violationCategoryOpen = false
-                local violationPreview, banNoticeVisible = nil, false
-
-                local function setViolationCategoryExpanded(show)
-                    violationCategoryOpen = show == true
-                    if not violationRow or not violationRow.Frame.Parent then return end
-                    violationRow.Inside.Visible = violationCategoryOpen
-                    violationRow.Button.Text = violationCategoryOpen and "Close" or "Open"
-                    task.defer(syncPanelCanvas)
-                end
-
-                local function redrawViolation()
-                    if notice then notice.SetNotice(violationPreview,banNoticeVisible) end
-                    task.defer(syncPanelCanvas)
-                end
-
-                violationRow = o(panelScroll,"None","Violation",false,true,"Open",false,false,nil,
-                    function(row)
-                        notice = buildViolationUI(row.Inside, function()
-                            task.defer(syncPanelCanvas)
-                        end)
+                -- Stage 16.79: Violation is an actual conditional category with
+                -- Review / Approved / Denied / History. No authenticated history
+                -- means the entire category is hidden (not an empty tab).
+                -- The current signed policy still has identityVerified=false;
+                -- it is NEVER enough to claim a confirmed violation.
+                local violationSubScroll, violationReviewRow
+                local violationApprovedRow, violationDeniedRow, violationHistoryRow
+                local violationLayoutSync = function() end
+                local violationCategoryExpanded = false
+                local violationCategory = o(panelScroll,"None","Violation",false,true,"Open",false,false,nil,
+                    function(section)
+                        violationSubScroll = Instance.new("ScrollingFrame")
+                        violationSubScroll.Name = "ViolationSubcategories"
+                        violationSubScroll.Position = UDim2.fromOffset(3,4)
+                        violationSubScroll.Size = UDim2.new(1,-6,0,305)
+                        violationSubScroll.BackgroundColor3 = Color3.fromRGB(25,32,46)
+                        violationSubScroll.BackgroundTransparency = 0.35
+                        violationSubScroll.BorderSizePixel = 0
+                        violationSubScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+                        violationSubScroll.ScrollBarThickness = 4
+                        violationSubScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                        violationSubScroll.CanvasSize = UDim2.fromOffset(0,0)
+                        violationSubScroll.Parent = section.Inside
+                        Corner(0,5,violationSubScroll)
+                        local categoryLayout = Instance.new("UIListLayout")
+                        categoryLayout.Name = "ViolationLayout"
+                        categoryLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                        categoryLayout.Padding = UDim.new(0,5)
+                        categoryLayout.Parent = violationSubScroll
+                        violationLayoutSync = protectCanvas(violationSubScroll,categoryLayout,42)
                     end,
-                    function(_,event)
-                        if event == "button" then
-                            setViolationCategoryExpanded(not violationCategoryOpen)
-                        end
+                    function(_,event,section)
+                        if event ~= "button" or not section.Frame.Visible then return end
+                        violationCategoryExpanded = not violationCategoryExpanded
+                        section.Inside.Visible = violationCategoryExpanded
+                        section.Button.Text = violationCategoryExpanded and "Close" or "Open"
+                        task.defer(violationLayoutSync)
+                        task.defer(syncPanelCanvas)
                     end)
                 nextOrder += 1
-                violationRow.Frame.LayoutOrder = nextOrder
-                violationRow.Frame.Size = UDim2.new(1,-6,0,0)
+                violationCategory.Frame.LayoutOrder = nextOrder
+                violationCategory.Frame.Size = UDim2.new(1,-6,0,0)
+                violationCategory.Frame.Visible = false
 
-                loc.API.ArcScriptCenterViolationUI = notice
-                loc.API.PreviewArcScriptCenterViolation = function(details)
-                    if type(details) ~= "table" then return false end
-                    local function safeText(v,limit)
-                        if type(v) ~= "string" then return "" end
-                        return v:gsub("[%c]"," "):sub(1,limit)
+                local function violationSubcategory(title,order)
+                    local expanded = false
+                    local section = o(violationSubScroll,"None",title,false,true,"Show",false,false,nil,
+                        nil,function(_,event,sub)
+                            if event ~= "button" then return end
+                            expanded = not expanded
+                            sub.Inside.Visible = expanded
+                            sub.Button.Text = expanded and "Hide" or "Show"
+                            task.defer(violationLayoutSync)
+                            task.defer(syncPanelCanvas)
+                        end)
+                    section.Frame.Name = "Violation"..title
+                    section.Frame.LayoutOrder = order
+                    section.Frame.Size = UDim2.new(1,-6,0,0)
+                    -- LayoutOrder on the notice actually participates in sorting.
+                    local itemsLayout=Instance.new("UIListLayout")
+                    itemsLayout.Name="Violation"..title.."ItemsLayout"
+                    itemsLayout.SortOrder=Enum.SortOrder.LayoutOrder
+                    itemsLayout.Padding=UDim.new(0,4)
+                    itemsLayout.Parent=section.Inside
+                    return section
+                end
+                violationReviewRow = violationSubcategory("Review",0)
+                violationApprovedRow = violationSubcategory("Approved",1)
+                violationDeniedRow = violationSubcategory("Denied",2)
+                violationHistoryRow = violationSubcategory("History",3)
+
+                local historyText=Instance.new("TextLabel")
+                historyText.Name="ViolationHistoryText"
+                historyText.BackgroundTransparency=1
+                historyText.Position=UDim2.fromOffset(6,4)
+                historyText.Size=UDim2.new(1,-12,0,0)
+                historyText.AutomaticSize=Enum.AutomaticSize.Y
+                historyText.TextWrapped=true
+                historyText.TextXAlignment=Enum.TextXAlignment.Left
+                historyText.TextYAlignment=Enum.TextYAlignment.Top
+                historyText.TextSize=12
+                historyText.TextColor3=Color3.fromRGB(200,215,235)
+                historyText.Text="Verified violation history unavailable."
+                historyText.Parent=violationHistoryRow.Inside
+
+                -- Retain the developer's original 350px notice, with Appeal
+                -- nested INSIDE it. It is never placed at Feedback & Appeal root.
+                local violationNotice = buildViolationUI(violationReviewRow.Inside,function()
+                    task.defer(violationLayoutSync)
+                    task.defer(syncPanelCanvas)
+                end,true)
+                violationNotice.Root.Name="VerifiedViolationNotice"
+                violationNotice.Root.Size=UDim2.new(1,-6,0,350)
+                violationNotice.Root.LayoutOrder=0
+                violationNotice.Root.Visible=false
+
+                local statusConfig={
+                    not_appealed={order=0,color=Color3.fromRGB(40,90,175),row=violationReviewRow},
+                    reviewing={order=1,color=Color3.fromRGB(180,105,30),row=violationReviewRow},
+                    denied={order=2,color=Color3.fromRGB(155,45,45),row=violationDeniedRow},
+                    approved={order=3,color=Color3.fromRGB(35,135,70),row=violationApprovedRow},
+                }
+                local function hideViolationNotice()
+                    if not violationNotice.Root.Parent then return end
+                    violationCategory.Frame.Visible=false
+                    violationCategory.Frame.BackgroundColor3=Color3.new(1,1,1)
+                    violationCategory.Label.TextColor3=Color3.new(1,1,1)
+                    violationCategory.Inside.Visible=false
+                    violationCategoryExpanded=false
+                    violationCategory.Button.Text="Open"
+                    violationNotice.Root.Visible=false
+                    violationNotice.SetAppealExpanded(false)
+                    violationNotice.SetExpanded(false)
+                    task.defer(violationLayoutSync)
+                    task.defer(syncPanelCanvas)
+                end
+
+                -- Future server integration ONLY: require an independently
+                -- authenticated Roblox-user-bound violation history. Never
+                -- trust claimedUserId or a client-supplied verified=true flag.
+                local function renderAuthenticatedViolation(details,identityVerified)
+                    local status = type(details)=="table" and details.appealStatus or nil
+                    local config = statusConfig[status]
+                    if identityVerified ~= true or not config or
+                        type(details.id)~="string" or details.id=="" or
+                        type(details.reason)~="string" or details.reason=="" or
+                        type(details.moderatorMessage)~="string" or details.moderatorMessage=="" then
+                        hideViolationNotice()
+                        return false
                     end
-                    violationPreview = {
-                        id = safeText(details.id,70),
-                        reason = safeText(details.reason,120),
-                        moderatorMessage = safeText(details.moderatorMessage,800)
-                    }
-                    if violationPreview.id == "" then violationPreview.id = "TEST-001" end
-                    if violationPreview.reason == "" then violationPreview.reason = "Test" end
-                    if violationPreview.moderatorMessage == "" then
-                        violationPreview.moderatorMessage = "Example."
+                    violationNotice.SetNotice({
+                        id=details.id:sub(1,70),
+                        reason=details.reason:sub(1,120),
+                        moderatorMessage=details.moderatorMessage:sub(1,800),
+                    },true)
+                    violationNotice.Root.Parent=config.row.Inside
+                    violationNotice.Root.LayoutOrder=config.order
+                    violationNotice.Root.BackgroundColor3=config.color
+                    violationCategory.Frame.BackgroundColor3=config.color
+                    violationCategory.Label.TextColor3=config.color
+                    violationNotice.Root.Visible=true
+                    violationNotice.SetAppealExpanded(false)
+                    violationNotice.SetExpanded(true)
+                    -- Approved is final for this case. Reviewing/Denied may only
+                    -- appeal again if backend explicitly authorizes it.
+                    local canAppeal=(status=="not_appealed") or
+                        (status=="denied" and details.canAppealAgain==true)
+                    violationNotice.OpenAppeal.Visible=canAppeal
+                    violationNotice.OpenAppeal.Active=canAppeal
+                    violationNotice.Submit.Active=canAppeal
+                    violationNotice.Submit.Visible=canAppeal
+                    for _,section in ipairs({violationReviewRow,violationApprovedRow,violationDeniedRow}) do
+                        local selected=section==config.row
+                        section.Inside.Visible=selected
+                        section.Button.Text=selected and "Hide" or "Show"
                     end
-                    redrawViolation()
+                    local events=type(details.history)=="table" and details.history or {}
+                    local lines={}
+                    for i=1,math.min(#events,20) do
+                        local event=events[i]
+                        if type(event)=="table" then
+                            local label=tostring(event.status or event.action or "History"):sub(1,55)
+                            local when=tostring(event.at or event.createdAt or ""):sub(1,45)
+                            lines[#lines+1]=label .. (when~="" and " — "..when or "")
+                        end
+                    end
+                    historyText.Text=#lines>0 and table.concat(lines,"\n") or "No additional verified history entries."
+                    violationCategory.Frame.Visible=true
+                    violationCategory.Inside.Visible=true
+                    violationCategoryExpanded=true
+                    violationCategory.Button.Text="Close"
                     setPanelExpanded(true)
-                    setViolationCategoryExpanded(true)
-                    notice.SetExpanded(true)
+                    task.defer(violationLayoutSync)
+                    task.defer(syncPanelCanvas)
                     return true
                 end
-                loc.API.ClearArcScriptCenterViolationPreview = function()
-                    violationPreview = nil
-                    redrawViolation()
-                    return true
+                -- A future authenticated backend handler may use the PRIVATE
+                -- renderer. It is intentionally not exported to loc.API/getgenv.
+                -- The current STAGING API cannot supply that identity proof.
+                loc.API.ArcScriptCenterViolationUI=nil
+                loc.API.PreviewArcScriptCenterViolation=nil
+                loc.API.ClearArcScriptCenterViolationPreview=nil
+                loc.API.UpdateArcScriptCenterViolationBanState=function(_)
+                    hideViolationNotice()
+                    return false
                 end
-                loc.API.UpdateArcScriptCenterViolationBanState = function(isBanned)
-                    banNoticeVisible = isBanned == true
-                    redrawViolation()
+                openAppealDraft=function(_)
+                    hideViolationNotice()
                 end
-                openAppealDraft = function(show)
-                    if show then setViolationCategoryExpanded(true) end
-                    if notice then notice.SetAppealExpanded(show) end
-                end
+                -- No invocation: no verified account-bound history yet.
+
             end,
             function(_,event)
                 if event == "button" then setPanelExpanded(not panelExpanded) end
@@ -16111,11 +16308,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
         -- Called only on a verified signed UI policy indicating a ban.
         revealAppealDraft = function()
             setPanelExpanded(true)
-            -- Open Violation, but leave the Appeal form collapsed until Open Appeal is clicked.
+            -- Signed policy is only an advisory hint (identityVerified=false).
+            -- Keep the Settings/Feedback panel reachable without showing a
+            -- false confirmed Violation notice or opening an Appeal editor.
             openAppealDraft(false)
-            if type(loc.API.UpdateArcScriptCenterViolationBanState) == "function" then
-                loc.API.UpdateArcScriptCenterViolationBanState(true)
-            end
             if panelScroll then
                 task.defer(function()
                     if panelScroll.Parent then
@@ -16175,8 +16371,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
             c_box.TextEditable = saved.textEditable
             overlay.Visible = false
         end
+        -- No authenticated violation attached to this advisory policy.
+        -- Keep the notice hidden even if the signed UI hint says "banned".
         if type(loc.API.UpdateArcScriptCenterViolationBanState) == "function" then
-            loc.API.UpdateArcScriptCenterViolationBanState(status == "banned")
+            loc.API.UpdateArcScriptCenterViolationBanState(false)
         end
         gate.status = status
         gate.lastError = reason
