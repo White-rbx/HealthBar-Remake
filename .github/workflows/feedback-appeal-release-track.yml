@@ -28,6 +28,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Production code review and no-deploy regression
+        run: node --test sandbox/feedback-production-code-audit.test.mjs
       - name: Feedback and Appeal release policy and English UI checks
         run: node --test sandbox/feedback-release-contract.test.mjs
       - name: Optional unverified UserId Worker patch and Admin metadata tests
