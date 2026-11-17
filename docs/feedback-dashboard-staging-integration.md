@@ -35,9 +35,21 @@ The initial code scan missed this because it searched for literal `feedback` in 
 - `sandbox/feedback-dashboard-staging-adapter.test.mjs` explicitly guards preservation of existing navigation, Admin Key unlock and editor.
 - `.github/workflows/feedback-dashboard-preview.yml` rebuilds a review-only immutable-source ZIP and rejects duplicate Feedback navigation.
 
-**Still open for UI functionality:** The server's admin case API already selects `claimed_user_id`, but an earlier server-side embedded admin-console implementation rendered that field only when `kind === 'appeal'`. The authoritative deployed Pages Functions JavaScript for `/__asc1649/feedback-appeal.js` has not yet been recovered and reviewed. Therefore **do not claim that the native STAGING Pages Dashboard already displays an Unverified UserId for ordinary Feedback**. That rendering change must be applied to the original Admin case-detail function, preserving its existing UI and authorization.
+**UI functionality status (verified 2026-11-17):** The existing Admin API already selects `claimed_user_id`. The exact current STAGING Preview JS and CSS match the saved Stage16.54 sources byte-for-byte; `faRenderDetail(c)` **currently renders that identifier only when `kind === 'appeal'`**. We have prepared and offline-tested a one-line patch for both Feedback and Appeal, with `Not provided (unverified)` when absent, but it has **NOT** been published to Pages. Existing native Admin layout and account permissions are preserved.
 
 A Pages Direct Upload needs proper asset-upload authorization. No Pages deployment was attempted, and Production remains untouched.
+
+
+### Correct Pages origin and immutable source check — PASS
+
+- **Use the pinned Preview URL:** https://416b162f.arcscriptcenter-dashboard-staging.pages.dev/
+- The generic project domain serves the SPA fallback `text/html` for `/__asc1649/feedback-appeal.js`; that does **not** demonstrate the pinned Preview deployment is broken.
+- The pinned Preview returns HTTP 200 for HTML, JS, and CSS with correct MIME types. SHA-256 matches saved Stage16.54 JS and CSS exactly. The original HTML byte hash also matches after reversing the new copy-only warning.
+- Browser Run read-only checks at mobile (390×844) and desktop (1280×900) found **1 original Feedback navigation item, 1 original page, 0 duplicate panels, 0 page script errors**.
+- Admin API without a key: **401 Unauthorized**. This verifies denial without credentials, not authenticated authorization or full CORS operation.
+- New GitHub CI guard: `sandbox/feedback-pages-preview-integrity.test.mjs`. This is public immutable source verification only; no user cases or Admin Key are accessed.
+
+**Deployment status:** The native patched Candidate ZIP has not been uploaded as a Pages deployment because protected Pages upload authorization is still unresolved. No Pages project, Production Worker or Production D1 has been changed.
 
 ## 3. Deployment blocker and next release gate
 

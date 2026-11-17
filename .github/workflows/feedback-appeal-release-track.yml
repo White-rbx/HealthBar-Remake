@@ -32,6 +32,8 @@ jobs:
         run: node --test sandbox/feedback-release-contract.test.mjs
       - name: Optional unverified UserId Worker patch and Admin metadata tests
         run: node --test sandbox/feedback-unverified-claim-worker-patch.test.mjs
+      - name: Verify immutable STAGING Pages source (public assets only)
+        run: node --test sandbox/feedback-pages-preview-integrity.test.mjs
       - name: Original Dashboard Feedback and Appeal UserId display regression
         run: node --test sandbox/feedback-native-userid-patcher.test.mjs
       - name: Main Dashboard read-only Admin Inbox integration checks
