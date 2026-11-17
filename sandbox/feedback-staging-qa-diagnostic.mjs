@@ -36,7 +36,7 @@ export function addStagingQADiagnostics(patched) {
     "  if(!env?.DB||typeof env.ASC_FEEDBACK_RATE_SECRET!=='string'||env.ASC_FEEDBACK_RATE_SECRET.length<32)return {status:503,reason:'dependency'};");
   for(const [source,code] of [
     ["    if(new URL(req.url).hostname!=='"+STAGING_HOST+"')return {verified:false};",'host'],
-    ["    if(req.method!=='POST'||req.headers.has('CF-Worker')||req.headers.has('X-Real-IP'))return {verified:false};",'worker-or-method'],
+    ["    if(req.method!=='POST'||req.headers.has('CF-Worker'))return {verified:false};",'worker-or-method'],
     ["    if(!req.cf||typeof req.cf.tlsVersion!=='string')return {verified:false};",'tls-metadata'],
     ["    if(!ip||ip.length>64||!/^[0-9a-f:.]+$/i.test(ip))return {verified:false};",'ip-metadata']
   ]) {
@@ -45,11 +45,10 @@ export function addStagingQADiagnostics(patched) {
   // Identify which request property caused the original combined 503.
   // These are boolean categories only; no raw request headers are returned.
   output=swapOnce(output,
-    '    if(req.method!==\'POST\'||req.headers.has(\'CF-Worker\')||req.headers.has(\'X-Real-IP\'))return {verified:false,reason:"worker-or-method"};',
+    '    if(req.method!==\'POST\'||req.headers.has(\'CF-Worker\'))return {verified:false,reason:"worker-or-method"};',
     [
       '    if(req.method!==\'POST\')return {verified:false,reason:"method"};',
-      '    if(req.headers.has(\'CF-Worker\'))return {verified:false,reason:req.headers.has(\'X-Real-IP\')?"cf-worker-and-x-real-ip":"cf-worker"};',
-      '    if(req.headers.has(\'X-Real-IP\'))return {verified:false,reason:"x-real-ip"};'
+      '    if(req.headers.has(\'CF-Worker\'))return {verified:false,reason:"cf-worker"};'
     ].join('\n'));
   output=swapOnce(output,
     '  const result=await ascStagingRateFactory({db:env.DB,secret:env.ASC_FEEDBACK_RATE_SECRET,verifyEdge}).take(request);',
