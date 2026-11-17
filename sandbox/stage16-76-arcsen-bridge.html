@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="th">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <title>ArcScriptCenter · Arcsen Sandbox Browser Bridge</title>
 <style>
-:root{font:16px/1.5 system-ui,-apple-system,"Noto Sans Thai",sans-serif;color:#ecf0f8;background:#10151f}
+:root{font:16px/1.5 system-ui,-apple-system,Arial,sans-serif;color:#ecf0f8;background:#10151f}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px 14px 56px}
 main{width:min(100%,720px);margin:auto}h1{font-size:clamp(1.4rem,4vw,2rem);margin:0 0 4px}
 h2{font-size:1.1rem;margin:0 0 12px}p{margin:8px 0 14px}.muted,small{color:#b6c2d4}
@@ -30,62 +30,62 @@ button:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#36465e;col
 <main>
 <header>
 <h1>ArcScriptCenter · Arcsen Bridge</h1>
-<p class="note"><strong>SANDBOX ONLY — ไม่ใช่ Production</strong> ใช้เฉพาะข้อความจำลองเพื่อทดสอบ Arcsen → Browser → Real Turnstile → Sandbox D1 เท่านั้น ข้อมูลทดสอบจะอยู่ใน Sandbox จนกว่าจะลบผ่าน Receipt</p>
-<p class="muted">Feedback &amp; Appeal · ระบบส่งคำร้องผ่านเบราว์เซอร์</p>
-<p class="note">ไม่ต้องใส่รหัสผ่าน, OTP, อีเมล หรือข้อมูลส่วนตัวอื่น ๆ การระบุ Roblox UserId สำหรับ Appeal เป็นเพียงคำกล่าวอ้าง ไม่ใช่การยืนยันตัวตน</p>
+<p class="note"><strong>SANDBOX ONLY — Not Production</strong> Use synthetic content only to test Arcsen → Browser → Turnstile → Sandbox D1. Test records remain in the Sandbox until removed using the Receipt.</p>
+<p class="muted">Feedback &amp; Appeal · Browser request form</p>
+<p class="note">Never enter passwords, OTPs, email addresses, or other personal details. A claimed Roblox UserId in an appeal does not prove account ownership.</p>
 </header>
 <article>
-<h2>ส่งคำร้อง / Submit a request</h2>
+<h2>Submit a Request</h2>
 <form id="request-form" autocomplete="off">
-<label for="kind">ประเภท / Type</label>
+<label for="kind">Request Type</label>
 <select id="kind" name="kind">
-<option value="feedback">Feedback / แจ้งปัญหา</option>
-<option value="appeal">Appeal / อุทธรณ์</option>
+<option value="feedback">Feedback</option>
+<option value="appeal">Appeal</option>
 </select>
 <div id="userid-group" hidden>
-<label for="user-id">Test Roblox UserId (Appeal จำลองเท่านั้น)</label>
+<label for="user-id">Test Roblox UserId (Simulated Appeals Only)</label>
 <input id="user-id" inputmode="numeric" pattern="[1-9][0-9]{0,15}" maxlength="16" value="900000000000001" readonly>
-<small>ใช้หมายเลขจำลอง ห้ามใส่หมายเลขบัญชีจริงใน Sandbox</small>
-<small>โปรดอย่าใส่รหัสผ่านหรืออีเมล การอุทธรณ์ยังต้องผ่านการตรวจสอบ</small>
+<small>Use the synthetic ID only. Never enter a real account ID in this Sandbox.</small>
+<small>Do not enter a password or email address. Appeals are subject to review.</small>
 </div>
-<label for="topic">หัวข้อ / Topic <span class="help">(3–50 ตัวอักษร)</span></label>
-<input id="topic" maxlength="100" required placeholder="สรุปเรื่องสั้น ๆ">
-<label for="description">รายละเอียด / Description <span class="help" id="length-hint">(50–1500 ตัวอักษร)</span></label>
-<textarea id="description" maxlength="6000" required placeholder="อธิบายปัญหา หรือเหตุผลในการอุทธรณ์"></textarea>
-<p class="muted">เนื้อหาต้องเป็นไปตามกฎ ArcScriptCenter และไม่ควรมีข้อมูลส่วนตัว</p>
+<label for="topic">Topic <span class="help">(3–50 characters)</span></label>
+<input id="topic" maxlength="100" required placeholder="Briefly describe your request">
+<label for="description">Description <span class="help" id="length-hint">(50–1500 characters)</span></label>
+<textarea id="description" maxlength="6000" required placeholder="Describe the issue or reason for your appeal"></textarea>
+<p class="muted">Please follow the ArcScriptCenter Rules and do not include personal information.</p>
 <div id="challenge" aria-label="Turnstile human verification"></div>
-<div class="actions"><button type="submit" id="submit" disabled>ส่งคำร้องทดสอบไป Sandbox</button></div>
+<div class="actions"><button type="submit" id="submit" disabled>Submit Test Request to Sandbox</button></div>
 </form>
 </article>
 <article>
-<h2>หลักฐานการส่ง / Private receipt</h2>
-<p class="muted">จะแสดงเมื่อส่งสำเร็จเท่านั้น เก็บเลขคำร้องและ Receipt ไว้เป็นความลับ หากปิดหน้านี้โดยไม่ได้บันทึก Receipt อาจตรวจหรือแก้ไขคำร้องไม่ได้</p>
+<h2>Private Receipt</h2>
+<p class="muted">A private receipt appears only after successful submission. Keep your Case ID and Receipt confidential. If you close this page without saving your Receipt, you may lose the ability to review or edit your request.</p>
 <div id="receipt-section" hidden>
-<label for="created-id">เลขคำร้อง / Case ID</label>
+<label for="created-id">Case ID</label>
 <input id="created-id" readonly spellcheck="false">
-<label for="created-receipt">Receipt (เก็บเป็นความลับ)</label>
+<label for="created-receipt">Receipt (Keep Private)</label>
 <input id="created-receipt" readonly spellcheck="false">
-<div class="actions"><button type="button" id="copy-receipt" class="secondary">คัดลอกข้อมูลคำร้อง</button></div>
+<div class="actions"><button type="button" id="copy-receipt" class="secondary">Copy Request Details</button></div>
 </div>
 </article>
 <article>
-<h2>ตรวจสถานะ / Review, Edit or Remove</h2>
-<p class="muted">กรอก Case ID และ Receipt เพื่อดูสถานะ หรือแก้ไข/ลบคำร้องที่ยังอยู่ในสถานะ Reviewing</p>
+<h2>Review, Edit or Remove</h2>
+<p class="muted">Enter your Case ID and Receipt to check the status, or to edit or remove a request that is still under review.</p>
 <label for="lookup-id">Case ID</label>
 <input id="lookup-id" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
 <label for="lookup-receipt">Receipt</label>
 <input id="lookup-receipt" autocomplete="off" spellcheck="false" placeholder="64 hexadecimal characters">
-<div class="actions"><button type="button" id="check-status" class="secondary">ดูสถานะ</button></div>
+<div class="actions"><button type="button" id="check-status" class="secondary">Check Status</button></div>
 <div id="case-section" hidden>
 <p class="output" id="case-summary" aria-live="polite"></p>
 <div class="actions">
-<button type="button" id="edit-case" class="secondary" disabled>แก้ไขด้วยข้อความด้านบน</button>
-<button type="button" id="remove-case" class="danger" disabled>ลบคำร้อง</button>
+<button type="button" id="edit-case" class="secondary" disabled>Edit Using the Text Above</button>
+<button type="button" id="remove-case" class="danger" disabled>Remove Request</button>
 </div>
 </div>
 </article>
-<p id="message" data-error="false" role="status" aria-live="polite">กำลังโหลดระบบยืนยัน Turnstile…</p>
-<small>Protected Sandbox ผ่าน Cloudflare Access เท่านั้น · Turnstile ตรวจสอบที่ Server · ไม่ส่ง Token หรือ Receipt ผ่าน URL และไม่เก็บ Receipt ลง Local Storage · อย่าปิดหน้าเว็บก่อนบันทึก Receipt หรือ Remove เคสจำลอง</small>
+<p id="message" data-error="false" role="status" aria-live="polite">Loading Turnstile verification…</p>
+<small>Protected Sandbox accessible only through Cloudflare Access. Turnstile is verified on the server. Tokens and Receipts are never sent through URLs, and Receipts are not saved to Local Storage. Save your Receipt or remove your test case before closing this page.</small>
 </main>
 </body>
 </html>

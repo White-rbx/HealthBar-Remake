@@ -2,21 +2,21 @@
 
 Status: **UX contract / draft only**, not a deployed page. Existing ExperienceSettings UI remains owned by the project designer.
 
-## Safety message (Thai default)
+## Safety message (English default)
 
-**ยืนยันการจับคู่ Arcsen**
+**Confirm Arcsen Pairing**
 
-“ให้อนุมัติเฉพาะรหัสที่ปรากฏบน Arcsen ในอุปกรณ์ของคุณเองเท่านั้น อย่าใช้รหัสที่คนอื่นส่งมาให้ในแชทหรือเว็บไซต์อื่น หากคุณไม่ได้เริ่มจับคู่นี้ ให้กดยกเลิกทันที”
+“Only approve a code shown in Arcsen on your own device. If someone sent you a code through chat or another website, do not approve it. Cancel if you did not start this pairing.”
 
-**แสดงรหัส** — Show the pairing code retrieved from server browser-only `/pair/browser/preview`. Read-only, visually large and easy to compare on mobile.
+**Pairing Code** — Show the pairing code retrieved from server browser-only `/pair/browser/preview`. Read-only, visually large and easy to compare on mobile.
 
-**ช่องกรอกรหัสอีกครั้ง** — The owner manually types the code visible on their own Arcsen UI into `confirmedCode`. Do NOT pre-fill, auto-paste, auto-complete, or populate from URL/query, device, previous response, or clipboard.
+**Re-enter Pairing Code** — The owner manually types the code visible on their own Arcsen UI into `confirmedCode`. Do NOT pre-fill, auto-paste, auto-complete, or populate from URL/query, device, previous response, or clipboard.
 
-**Checkbox (unchecked by default):** “ฉันเป็นผู้เริ่มจับคู่บนอุปกรณ์ของตัวเอง และยืนยันว่ารหัสทั้งสองตรงกัน”
+**Checkbox (unchecked by default):** “I started this pairing request on my own device and have checked that both codes match.”
 
-Only enable **ยืนยันการจับคู่ / Approve Pairing** if the full code matches exactly, the browser has a verified server-side session and the checkbox is explicitly checked. Server must independently enforce those same conditions.
+Only enable **Approve Pairing** if the full code matches exactly, the browser has a verified server-side session and the checkbox is explicitly checked. Server must independently enforce those same conditions.
 
-Provide **ยกเลิก / Cancel** and a clear “Expires in 60 seconds” indicator on the browser. Pairing expires after 5 minutes overall.
+Provide **Cancel** and a clear “Expires in 60 seconds” indicator on the browser. Pairing expires after 5 minutes overall.
 
 ## Browser request
 
