@@ -1,0 +1,12 @@
+{
+  "name": "arcscriptcenter-stage16-86-workerd-smoke",
+  "private": true,
+  "type": "module",
+  "description": "Local Miniflare/workerd-only CI harness; never deploy",
+  "scripts": {
+    "test": "node --test runtime.test.mjs"
+  },
+  "devDependencies": {
+    "miniflare": "^4.0.0"
+  }
+}
