@@ -18,25 +18,26 @@ Worker: `arcscriptcenter-api-staging`.
 
 **Limit:** No postdeployment synthetic Feedback submit / private Admin authenticated E2E was executed by this tool session, to avoid creating user records or handling Admin credentials. The owner reported previous Sandbox/Arcsen testing had passed, but that does not prove the newly deployed STAGING Worker path end to end.
 
-## 2. Dashboard Pages — preview built, NOT deployed
+## 2. Dashboard Pages — important correction after full browser QA
 
-- Existing Pages STAGING project: `arcscriptcenter-dashboard-staging`.
-- Original latest preview deployment ID `416b162f-883f-4caa-b0ac-47d3f7458503` (source branch `stage16-54-verified-unlock`).
-- The pinned original HTML had no Feedback navigation or panel.
-- `sandbox/feedback-dashboard-staging-adapter.mjs` adds one **read-only** `Feedback & Appeal` tab using existing sidebar, panel styling and API base.
-- Admin Case list uses existing protected `GET /api/v1/admin/feedback?status=` route and requires the real X-Admin-Key. All fields render through DOM `textContent`.
-- The Admin Key lives only in page JavaScript memory with explicit Lock and ten-minute expiry. No credential in links, persistent storage or scripts.
-- The UI displays **Claimed UserId: <value> (Unverified)**. Real Username/Nickname are **not** returned by current Admin API; UI honestly displays `Username / Nickname: Not provided by API` rather than fabricating a name.
-- The Spam Mail filter is **admin-only**. No public Violation History or user's Appeal authority is added.
+**Do not deploy the earlier duplicate-tab preview ZIP.** The original STAGING Dashboard already has a fully designed Feedback & Appeal area. Its route is `#feedback-appeal` (not `#feedback`), and the original HTML includes:
 
-GitHub workflow `.github/workflows/feedback-dashboard-preview.yml` downloads the immutable public STAGING deployment via HTTPS, pins the exact HTTP response MD5 plus source anchors, creates a `dashboard-preview/index.html` + logo and uploads a ZIP artifact.
+- Navigation `data-page="feedback-appeal"` with `id="asc1649FeedbackNav"`.
+- Existing `<section id="page-feedback-appeal">`, case queue, Admin Key unlock, filters, selected-case editor, follow-up tools and moderation activity.
+- External Pages Functions assets `/__asc1649/feedback-appeal.js` and `/__asc1649/feedback-appeal.css`. Those are **NOT** among the static files in the local ZIP and must be verified on the hosted Pages environment.
 
-- GitHub Actions preview generation **PASSED**: https://github.com/White-rbx/HealthBar-Remake/actions/runs/44084489098
-- Release-track tests **PASSED**: https://github.com/White-rbx/HealthBar-Remake/actions/runs/44084498245
-- Preview ZIP artifact: `arcsen-feedback-dashboard-preview-review-only`.
-- Output is a **review-only local HTML bundle**, not an active Cloudflare Pages release.
+The initial code scan missed this because it searched for literal `feedback` in `data-page` values instead of also recognizing `feedback-appeal`. It unintentionally inserted a second Feedback sidebar button plus a second Admin Key field. A local Chromium smoke test of that duplicate panel passed with mock API data, but that does **not** validate or justify the duplicate design. The screenshots/artifact from the older build are **deprecated**.
 
-A first CI attempt incorrectly assumed the Cloudflare Pages **asset-store hash** equaled the raw HTTP response MD5. It failed closed; code was corrected to pin the actual HTTPS response digest, `4f04057ac9b3934356553499eab5cf9a`, together with the immutable deployment URL and expected source anchors. The final preview workflow passed.
+**Corrected implementation:**
+
+- `sandbox/feedback-dashboard-staging-adapter.mjs` now verifies the exact existing native Feedback page and external script anchors, refuses a duplicate `#feedback` panel, and **only** updates the existing warning text to describe both Feedback and Appeal sender UserIds as *unverified claims*.
+- No sidebar button, new password field, extra fetch request, moderator control or replacement UI is injected.
+- `sandbox/feedback-dashboard-staging-adapter.test.mjs` explicitly guards preservation of existing navigation, Admin Key unlock and editor.
+- `.github/workflows/feedback-dashboard-preview.yml` rebuilds a review-only immutable-source ZIP and rejects duplicate Feedback navigation.
+
+**Still open for UI functionality:** The server's admin case API already selects `claimed_user_id`, but an earlier server-side embedded admin-console implementation rendered that field only when `kind === 'appeal'`. The authoritative deployed Pages Functions JavaScript for `/__asc1649/feedback-appeal.js` has not yet been recovered and reviewed. Therefore **do not claim that the native STAGING Pages Dashboard already displays an Unverified UserId for ordinary Feedback**. That rendering change must be applied to the original Admin case-detail function, preserving its existing UI and authorization.
+
+A Pages Direct Upload needs proper asset-upload authorization. No Pages deployment was attempted, and Production remains untouched.
 
 ## 3. Deployment blocker and next release gate
 
