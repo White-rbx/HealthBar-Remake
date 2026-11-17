@@ -1,0 +1,35 @@
+name: Stage 16.82 - OAuth State and Session Sandbox QA
+on:
+  push:
+    branches:
+      - stage16-82-oauth-state-session-sandbox
+  pull_request:
+    paths:
+      - 'sandbox/stage16-82-*'
+      - 'sandbox/test_stage16_82_sqlite.py'
+      - 'migrations/*stage1682*'
+      - '.github/workflows/stage16-82-oauth-offline.yml'
+permissions:
+  contents: read
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Stage16.82 OAuth D1 adapter and callback simulations
+        run: node --test sandbox/stage16-82-oauth-adapters.test.mjs
+      - name: Stage16.82 actual SQLite SQL contract and replay race
+        run: python sandbox/test_stage16_82_sqlite.py
+      - name: Stage16.81 OIDC security regression
+        run: node --test sandbox/stage16-81-roblox-oidc-sandbox.test.mjs
+      - name: Stage16.80 history backend regression
+        run: node --test sandbox/stage16-80-verified-violation-history.test.mjs
+      - name: Stage16.80 database regression
+        run: python sandbox/test_stage16_80_sqlite.py
