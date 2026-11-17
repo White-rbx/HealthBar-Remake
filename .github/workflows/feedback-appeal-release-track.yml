@@ -1,0 +1,34 @@
+name: Feedback and Appeal — Consolidated Release Track QA
+on:
+  push:
+    branches: [feedback-appeal-release-track]
+  pull_request:
+    paths:
+      - 'sandbox/feedback-release-*'
+      - 'sandbox/production-feedback-appeal-form.*'
+      - 'sandbox/stage16-76-arcsen-bridge.*'
+      - 'docs/feedback-appeal-release-track.md'
+      - '.github/workflows/feedback-appeal-release-track.yml'
+permissions:
+  contents: read
+jobs:
+  browser-feedback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Feedback and Appeal release policy and English UI checks
+        run: node --test sandbox/feedback-release-contract.test.mjs
+      - name: Existing production browser form end-to-end synthetic tests
+        run: node --test sandbox/production-candidate-browser-form.test.mjs
+      - name: Existing route isolation and security gate regressions
+        run: node --test sandbox/production-candidate-route-contract.test.mjs sandbox/production-candidate-security-gates.test.mjs
+      - name: Existing Stage16.87 trust-boundary regression
+        run: node --test sandbox/stage16-87-restricted-gateway.test.mjs
+      - name: Existing Stage16.83 pairing regression
+        run: node --test sandbox/stage16-83-pairing.test.mjs
+      - name: Existing English UI design contract
+        run: node --test sandbox/stage16-86-english-ui.test.mjs sandbox/stage16-86-browser-demo/static-safety.test.mjs
