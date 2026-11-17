@@ -1,0 +1,35 @@
+name: Stage 16.83 - Browser Approved Pairing Offline QA
+on:
+  push:
+    branches:
+      - stage16-83-browser-approved-pairing-sandbox
+  pull_request:
+    paths:
+      - 'sandbox/stage16-83-*'
+      - 'sandbox/test_stage16_83_sqlite.py'
+      - 'migrations/*stage1683*'
+      - '.github/workflows/stage16-83-pairing-offline.yml'
+permissions:
+  contents: read
+jobs:
+  pairing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pairing ceremony and browser security tests
+        run: node --test sandbox/stage16-83-pairing.test.mjs
+      - name: Pairing SQLite real SQL and concurrency race
+        run: python sandbox/test_stage16_83_sqlite.py
+      - name: Stage16.82 OAuth session adapter regression
+        run: node --test sandbox/stage16-82-oauth-adapters.test.mjs
+      - name: Stage16.81 OIDC signature verification regression
+        run: node --test sandbox/stage16-81-roblox-oidc-sandbox.test.mjs
+      - name: Stage16.80 History regression
+        run: node --test sandbox/stage16-80-verified-violation-history.test.mjs
