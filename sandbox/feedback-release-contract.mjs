@@ -11,6 +11,8 @@ export const FEEDBACK_RELEASE_CONTRACT = Object.freeze({
     requiresRobloxAccountAge: false,
     requiresTurnstile: true,
     requiresClaimedUserId: false,
+    acceptsOptionalClaimedUserId: true,
+    claimedUserIdIsNotIdentityProof: true,
     topicMin: 3, topicMax: 50,
     descriptionMin: 50, descriptionMax: 1500,
     allowedOperations: ['submit','status-by-receipt','edit-by-receipt','remove-by-receipt'],
