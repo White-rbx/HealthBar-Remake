@@ -74,7 +74,7 @@ async function preview(f,code,options={}) {
   return post(f,'/pair/browser/preview',{code},{browser:true,...options});
 }
 async function approve(f,code,confirmationToken,options={}) {
-  return post(f,'/pair/browser/approve',{code,confirmationToken},{browser:true,...options});
+  return post(f,'/pair/browser/approve',{code,confirmationToken,confirmedCode:code,acknowledgeOwnDevice:true},{browser:true,...options});
 }
 
 test('start produces high entropy base32 pairingCode and unguessable poll-only capability',async()=>{
