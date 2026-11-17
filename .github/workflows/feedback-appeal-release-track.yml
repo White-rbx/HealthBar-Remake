@@ -32,6 +32,8 @@ jobs:
         run: node --test sandbox/feedback-release-candidate-builder.test.mjs
       - name: All-in-one Feedback release QA — D1 limiter and additive schema
         run: node --test sandbox/feedback-release-rate-guard.test.mjs
+      - name: STAGING-only rate candidate source-pin and fail-closed checks
+        run: node --test sandbox/feedback-staging-rate-rollout.test.mjs
       - name: Production code review and no-deploy regression
         run: node --test sandbox/feedback-production-code-audit.test.mjs
       - name: Feedback and Appeal release policy and English UI checks
