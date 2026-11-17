@@ -26,7 +26,7 @@ test('demo only contacts documented same-origin pairing endpoints',()=>{
   assert.match(js,/post\('\/pair\/browser\/preview'/);
   assert.match(js,/post\('\/pair\/browser\/approve'/);
   assert.doesNotMatch(js,/fetch\(['"]https?:\/\//);
-  assert.match(html,/ชื่อ|รหัส/);
+  assert.match(html,/Pairing code from your Arcsen/);
 });
 test('demo uses textContent instead of HTML insertion of server fields',()=>{
   assert.match(js,/el\('preview-code'\)\.textContent=r\.pairingCode/);
@@ -34,7 +34,17 @@ test('demo uses textContent instead of HTML insertion of server fields',()=>{
   assert.match(html,/role="status" aria-live="polite"/);
 });
 test('reference page is explicitly non-live and does not replace designer UI',()=>{
-  assert.match(html,/ยังไม่ได้เปิดใช้งานจริง/);
-  assert.match(html,/ไม่ใช่การยืนยันตัวตนของ Roblox Client/);
+  assert.match(html,/not available for live use/);
+  assert.match(html,/does not verify the Roblox client's identity/);
   assert.match(js,/UX reference/);
+});
+
+test('all visible HTML and JavaScript messages are in English',()=>{
+  assert.match(html,/<html lang="en">/);
+  assert.doesNotMatch(html+js,/\p{Script=Thai}/u);
+  assert.match(html,/Confirm Arcsen Pairing/);
+  assert.match(html,/Approve Pairing/);
+  assert.match(html,/do not approve it/i);
+  assert.match(js,/Confirmation expired/);
+  assert.match(js,/Pairing approved/);
 });
