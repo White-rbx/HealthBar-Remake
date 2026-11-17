@@ -48,7 +48,7 @@ test('rejects source drift, missing anchors and duplicate installation',()=>{
   assert.throws(()=>patchStagingRateSource(fixture.replace(OLD_STAGING_QUOTA,''),limiter),/anchor/);
   const installed=patchStagingRateSource(fixture,limiter);
   assert.throws(()=>patchStagingRateSource(installed,limiter),/anchor|already installed/);
-  assert.throws(()=>patchStagingRateSource(fixture,limiter+'\\nimport x from \"bad\";'),/unsupported imports/);
+  assert.throws(()=>patchStagingRateSource(fixture,limiter+'\nimport x from \"bad\";'),/unsupported imports/);
 });
 test('this source contains no automatic Cloudflare deployment or D1 migration',()=>{
   const code=readFileSync(new URL('./feedback-staging-rate-rollout.mjs',import.meta.url),'utf8');
