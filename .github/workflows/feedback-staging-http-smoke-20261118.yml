@@ -1,8 +1,11 @@
 name: ArcScriptCenter — STAGING one-shot HTTP Feedback smoke
-# Manual-only QA: never run synthetic writes automatically on PR updates.
+# Single reviewed STAGING diagnostic run; revert to manual-only immediately after.
 # Synthetic case only; no production requests, admin credentials or real Roblox identity.
 on:
-  workflow_dispatch:
+  pull_request:
+    branches: [stage16-87-trust-boundary-sandbox]
+    paths:
+      - '.github/workflows/feedback-staging-http-smoke-20261118.yml'
 permissions:
   contents: read
 jobs:
@@ -36,7 +39,18 @@ jobs:
                   with urllib.request.urlopen(req, timeout=25) as res:
                       return res.status, json.loads(res.read(100000))
               except urllib.error.HTTPError as exc:
-                  # Do not dump untrusted response content into Action logs.
+                  # Only print a fixed, non-sensitive diagnostic category.
+                  try:
+                      payload = json.loads(exc.read(4096))
+                  except (ValueError, OSError):
+                      payload = {}
+                  reason = payload.get('stagingQA') if isinstance(payload, dict) else None
+                  allowed = {'dependency', 'edge-host', 'edge-worker-or-method',
+                             'edge-tls-metadata', 'edge-ip-metadata',
+                             'rate-unavailable', 'trusted-edge-unavailable',
+                             'clock-unavailable', 'rate-limited'}
+                  if reason in allowed:
+                      print('STAGING RATE DIAG:', reason)
                   return exc.code, {}
           case_id = None
           receipt = None
