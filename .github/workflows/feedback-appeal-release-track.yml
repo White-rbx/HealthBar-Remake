@@ -4,7 +4,8 @@ on:
     branches: [feedback-appeal-release-track]
   pull_request:
     paths:
-      - 'sandbox/feedback-release-*'
+      - 'sandbox/feedback-*'
+      - 'sandbox/arcsen-v7.3.43-feedback-optional-userid.patch'
       - 'sandbox/production-feedback-appeal-form.*'
       - 'sandbox/stage16-76-arcsen-bridge.*'
       - 'docs/feedback-appeal-release-track.md'
