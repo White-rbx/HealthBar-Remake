@@ -1,61 +1,60 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Script} from 'node:vm';
 import {prepareFeedbackDashboardStagingHtml} from './feedback-dashboard-staging-adapter.mjs';
 
-const NAV='<button class="nav-item" data-page="warnings"><svg><use href="#i-bell"></use></svg> Global Warnings <span class="mini" id="warningNavCount">0</span></button>';
-const PAGES="const pages = {dashboard:'Dashboard','active-users':'Active Users',warnings:'Global Warnings',bans:'Ban Management',audit:'Audit Logs',api:'API & Security'};";
-const fixture=()=>[
-  '<!doctype html><html lang="en"><body>',
-  '<div class="sidebar">'+NAV+'</div>',
-  '<main class="content"><section class="page" id="page-dashboard"></section><section class="page" id="page-api"></section></main>',
-  '<script>(() => {',
-  "  const API_BASE = 'https://arcscriptcenter-api-staging.kogpasan14.workers.dev';",
-  "  const $=id=>document.getElementById(id);",
-  PAGES,
-  "  function closeMenu() {}",
-  "  function go(page) {",
-  "    if(page==='audit' && typeof auditState !== 'undefined' && auditState.key) auditLoad(false);",
-  "  }",
-  "})();</script>",
-  '<!-- '+ 'SYNTHETIC-CI-FIXTURE '.repeat(260)+' -->',
-  '</body></html>'
+const NAV='<button type="button" class="nav-item" data-page="feedback-appeal" id="asc1649FeedbackNav" aria-label="Feedback and Appeal">Feedback &amp; Appeal</button>';
+const SECTION='<section class="page" id="page-feedback-appeal">';
+const SCRIPT='<script defer src="/__asc1649/feedback-appeal.js"></script>';
+const WARNING='<div class="fa-muted-warning" role="note"><b>Private admin workspace.</b> Do not share your Admin Key or screenshots containing personal submissions. A claimed Roblox UserId is not verified identity. Spam Mail is admin-only.</div>';
+const original=()=>[
+ '<!doctype html><html lang="en"><body>',
+ '<nav>'+NAV+'</nav>',
+ SECTION,
+ WARNING,
+ '<input id="faAdminKey" type="password"><button id="faUnlock">Unlock</button>',
+ '<div id="faCaseList"></div><div id="faCaseDetail"></div>',
+ '</section>',
+ '<script>',
+ "const API_BASE = 'https://arcscriptcenter-api-staging.kogpasan14.workers.dev';",
+ '</script>',
+ SCRIPT,
+ '<!-- '+ 'EXACT-STAGING-SOURCE-FIXTURE '.repeat(280)+' -->',
+ '</body></html>'
 ].join('\n');
 
-test('additive new Feedback tab keeps original nav and pages intact',()=>{
-  const old=fixture(),html=prepareFeedbackDashboardStagingHtml(old);
-  for(const x of ['data-page="warnings"','data-page="feedback"','id="page-dashboard"','id="page-api"','id="page-feedback"']){
-    assert.ok(html.includes(x),x);
-  }
-  assert.ok(html.includes("feedback:'Feedback & Appeal'"));
-  assert.match(html,/Claimed UserId: /);
-  assert.match(html,/Unverified/);
-  assert.match(html,/Spam Mail \(Admin Only\)/);
-  assert.ok(html.length>old.length);
+test('existing Feedback navigation, case editor and Pages JS remain unchanged',()=>{
+ const before=original(),after=prepareFeedbackDashboardStagingHtml(before);
+ for(const anchor of [NAV,SECTION,SCRIPT,'id="faAdminKey"','id="faCaseDetail"','id="faUnlock"']){
+  assert.equal(after.split(anchor).length,before.split(anchor).length,'Native UI anchor changed: '+anchor);
+ }
+ assert.equal(after.split('data-page="feedback-appeal"').length,2);
+ assert.equal(after.split('id="page-feedback-appeal"').length,2);
+ assert.equal(after.split('id="faAdminKey"').length,2);
+ assert.doesNotMatch(after,/id="page-feedback"|data-page="feedback"/);
+ assert.match(after,/Feedback and Appeal UserIds are user-provided, unverified claims/);
+ assert.match(after,/Spam Mail is admin-only/);
 });
-test('new inline JS is syntactically valid and never stores credentials or executes raw case HTML',()=>{
-  const html=prepareFeedbackDashboardStagingHtml(fixture());
-  const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
-  assert.ok(script);
-  assert.doesNotThrow(()=>new Script(script));
-  assert.match(script,/headers:\{Accept:'application\/json','X-Admin-Key':ascFb.key\}/);
-  assert.match(script,/data\.adminOnly!==true/);
-  assert.match(script,/credentials:'omit'/);
-  assert.match(script,/ascFbText\('p'/);
-  assert.match(script,/\.textContent=/);
-  assert.doesNotMatch(script,/localStorage\.setItem|sessionStorage\.setItem|innerHTML\s*=\s*c\./);
+
+test('fail closed for earlier mistakenly duplicated Feedback panel',()=>{
+ assert.throws(()=>prepareFeedbackDashboardStagingHtml(original()+'<section class="page" id="page-feedback"></section>'),/Duplicate Feedback/);
+ assert.throws(()=>prepareFeedbackDashboardStagingHtml(original().replace(SECTION,'')),/native Feedback page/);
+ assert.throws(()=>prepareFeedbackDashboardStagingHtml(original().replace(NAV,'')),/native sidebar/);
+ assert.throws(()=>prepareFeedbackDashboardStagingHtml(original().replace(SCRIPT,'')),/native Pages JS/);
+ assert.throws(()=>prepareFeedbackDashboardStagingHtml(original().replace('staging.kogpasan14','kogpasan14')),/non-STAGING/);
 });
-test('missing/mismatched anchors and production HTML are rejected',()=>{
-  const src=fixture();
-  assert.throws(()=>prepareFeedbackDashboardStagingHtml(src.replace("arcscriptcenter-api-staging","arcscriptcenter-api")),/STAGING only/);
-  assert.throws(()=>prepareFeedbackDashboardStagingHtml(src.replace(NAV,'')),/sidebar/);
-  const patched=prepareFeedbackDashboardStagingHtml(src);
-  assert.throws(()=>prepareFeedbackDashboardStagingHtml(patched),/Duplicate/);
+
+test('no new authentication, network requests, browser storage or case access added',()=>{
+ const before=original(),after=prepareFeedbackDashboardStagingHtml(before);
+ const delta=after.length-before.length;
+ assert.ok(delta>0&&delta<200,'Only warning copy should change');
+ assert.equal(after.includes('ascFbLoad'),false);
+ assert.equal(after.includes('asc-fb-key'),false);
+ assert.equal(after.includes('X-Admin-Key'),false);
+ assert.equal(after.includes('localStorage'),false);
+ assert.equal(after.includes('claimed_user_id'),false); // native JS owns data rendering
 });
-test('request is read-only: no case submission, moderation mutations or public data access',()=>{
-  const html=prepareFeedbackDashboardStagingHtml(fixture());
-  assert.match(html,/\/api\/v1\/admin\/feedback\?status=/);
-  assert.match(html,/method:'GET'/);
-  assert.doesNotMatch(html,/\/api\/v1\/feedback\/submit|\/api\/v1\/violation\/history/);
-  assert.match(html,/Account name:|Username \/ Nickname: Not provided by API/);
+
+test('source drift stops auto-enhancement instead of inventing alternate UI',()=>{
+ assert.throws(()=>prepareFeedbackDashboardStagingHtml(original().replace(WARNING,'Different security warning')),/warning changed/);
+ assert.throws(()=>prepareFeedbackDashboardStagingHtml(original()+WARNING),/warning changed/);
 });
