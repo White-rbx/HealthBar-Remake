@@ -1,9 +1,9 @@
 name: ArcScriptCenter — STAGING one-shot HTTP Feedback smoke
-# This one-off QA runs only when this exact workflow file is first added or edited.
+# This one-off PR QA runs only when this exact workflow file is edited.
 # Synthetic case only; no production requests, admin credentials or real Roblox identity.
 on:
-  push:
-    branches: [feedback-appeal-release-track]
+  pull_request:
+    branches: [stage16-87-trust-boundary-sandbox]
     paths:
       - '.github/workflows/feedback-staging-http-smoke-20261118.yml'
 permissions:
