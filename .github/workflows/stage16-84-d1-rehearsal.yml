@@ -1,0 +1,37 @@
+name: Stage 16.84 - Isolated D1 Rehearsal Offline Guard
+on:
+  push:
+    branches: [stage16-84-isolated-d1-rehearsal]
+  pull_request:
+    paths:
+      - 'sandbox/stage16-84-*'
+      - 'docs/stage16-84-*'
+      - '.github/workflows/stage16-84-d1-rehearsal.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Migration isolation guard
+        run: node --test sandbox/stage16-84-d1-isolation-guard.test.mjs
+      - name: Stage16.83 pairing and mock browser tests
+        run: node --test sandbox/stage16-83-pairing.test.mjs
+      - name: Stage16.83 SQLite concurrency tests
+        run: python sandbox/test_stage16_83_sqlite.py
+      - name: Stage16.82 OAuth state and session tests
+        run: node --test sandbox/stage16-82-oauth-adapters.test.mjs
+      - name: Stage16.82 SQLite atomic state consumption
+        run: python sandbox/test_stage16_82_sqlite.py
+      - name: Stage16.81 token verification regression
+        run: node --test sandbox/stage16-81-roblox-oidc-sandbox.test.mjs
+      - name: Stage16.80 verified history regression
+        run: node --test sandbox/stage16-80-verified-violation-history.test.mjs
