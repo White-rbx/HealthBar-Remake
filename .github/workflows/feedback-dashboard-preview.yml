@@ -1,12 +1,17 @@
 name: Feedback Dashboard - Offline Review Preview
+# Generates an artifact only when the actual adapter or its workflow changes.
+# Uses push on this review branch because workflow_dispatch requires a
+# workflow file on the default branch to appear in GitHub's manual-run UI.
 on:
   push:
     branches: [feedback-appeal-release-track]
     paths:
       - '.github/workflows/feedback-dashboard-preview.yml'
       - 'sandbox/feedback-dashboard-staging-adapter.mjs'
-      - 'sandbox/feedback-dashboard-staging-adapter.test.mjs'
   workflow_dispatch:
+concurrency:
+  group: feedback-dashboard-preview-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
