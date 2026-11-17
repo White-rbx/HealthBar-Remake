@@ -35,7 +35,7 @@ test('fail-closed guard targets only the reviewed STAGING hostname',()=>{
   assert.match(updated,new RegExp(STAGING_HOST.replace(/\./g,'\\.')));
   assert.match(updated,/ASC_FEEDBACK_RATE_SECRET/);
   assert.match(updated,/CF-Worker/);
-  assert.match(updated,/X-Real-IP/);
+  assert.doesNotMatch(updated,/req\.headers\.has\('X-Real-IP'\)/);
   assert.match(updated,/request\.cf|req\.cf/);
   assert.match(updated,/CF-Connecting-IP/);
   assert.match(updated,/return 503/);
