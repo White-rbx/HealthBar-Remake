@@ -42,6 +42,15 @@ export function addStagingQADiagnostics(patched) {
   ]) {
     output=swapOnce(output,source,source.replace('{verified:false}','{verified:false,reason:"'+code+'"}'));
   }
+  // Identify which request property caused the original combined 503.
+  // These are boolean categories only; no raw request headers are returned.
+  output=swapOnce(output,
+    '    if(req.method!==\'POST\'||req.headers.has(\'CF-Worker\')||req.headers.has(\'X-Real-IP\'))return {verified:false,reason:"worker-or-method"};',
+    [
+      '    if(req.method!==\'POST\')return {verified:false,reason:"method"};',
+      '    if(req.headers.has(\'CF-Worker\'))return {verified:false,reason:req.headers.has(\'X-Real-IP\')?"cf-worker-and-x-real-ip":"cf-worker"};',
+      '    if(req.headers.has(\'X-Real-IP\'))return {verified:false,reason:"x-real-ip"};'
+    ].join('\n'));
   output=swapOnce(output,
     '  const result=await ascStagingRateFactory({db:env.DB,secret:env.ASC_FEEDBACK_RATE_SECRET,verifyEdge}).take(request);',
     [
