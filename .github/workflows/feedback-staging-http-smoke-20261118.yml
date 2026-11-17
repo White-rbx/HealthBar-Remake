@@ -1,11 +1,8 @@
 name: ArcScriptCenter — STAGING one-shot HTTP Feedback smoke
-# Single reviewed STAGING diagnostic run; revert to manual-only immediately after.
+# Manual-only: never repeat STAGING synthetic writes on ordinary PR updates.
 # Synthetic case only; no production requests, admin credentials or real Roblox identity.
 on:
-  pull_request:
-    branches: [stage16-87-trust-boundary-sandbox]
-    paths:
-      - '.github/workflows/feedback-staging-http-smoke-20261118.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
