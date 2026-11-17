@@ -52,7 +52,7 @@ export function addStagingQADiagnostics(patched) {
   output=swapOnce(output,
     '  return result.allowed?null:result.status;',
     '  return result.allowed?null:{status:result.status,reason:result.reason};');
-  if(!output.includes('stagingQA:')||!output.includes("edge-ip-metadata")||
+  if(!output.includes('stagingQA:')||!output.includes('reason:"ip-metadata"')||
      !output.includes("reason:'dependency'")||!output.includes("reason:result.reason"))
     throw Error('Diagnostic output missing one of the required fail-closed branches');
   return output;
