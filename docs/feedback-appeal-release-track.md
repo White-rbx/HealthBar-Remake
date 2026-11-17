@@ -48,3 +48,29 @@ Changed in this PR:
 5. **Production NO-GO** until independent backup/restore verification, full security review, and explicit owner approval. Production/staging API and database were **not modified** by this PR.
 
 Do not count Draft PRs as an actual release. The next user-visible goal is a functioning, owner-tested Arcsen Feedback journey, not a new sequence of Stage numbers.
+
+## Optional, explicitly UNVERIFIED sender UserId (native Arcsen + server review patch)
+
+**Design decision:** Do not require Roblox OAuth, Pairing, an account-age check, or proof of ownership to send ordinary Feedback or an Appeal claim. A sender may identify a Roblox UserId, but it is a **claim**, not an authenticated session.
+
+- The existing client source was inspected from the user's original v7.3.43 Stage16.79 Lua. It currently sends `claimedUserId` **only for Appeal**.
+- A reviewed patch `sandbox/arcsen-v7.3.43-feedback-optional-userid.patch` changes that ONE native submit block: Feedback now optionally includes `LocalPlayer.UserId` when available, and Appeal keeps the numeric UserId requirement for locating a case.
+- The patched complete Lua is supplied separately in this conversation for private manual testing; the 926 KB owner-authored UI source has **not** been pushed to the public repository or replaced in live Roblox.
+- Original Lua SHA-256: `320d02e058bfff78b55fab9119f038ac5d0c9bcc1f931eeffa816ebfb6d85930`.
+- Patched Lua SHA-256: `45535aebc01f66cf596125b08b81e7d9d06e132c2237a8390a1620e7eb291515`.
+
+**Live STAGING backend observation (read-only):** `fcSubmit` currently forces `claimed_user_id=NULL` on Feedback and stores that column only on Appeal. The existing Admin list query already selects `claimed_user_id`; the public receipt-scoped case status API deliberately does not return that field.
+
+`sandbox/feedback-unverified-claim-worker-patch.mjs` is a **strict, fail-closed SOURCE PATCH GENERATOR**, not a deployed Worker. After reviewing the exact isolated sandbox Worker source, it can make the server accept an optional numeric claim for *either* kind using the **existing D1 column**, with no migration:
+
+- Feedback without an ID is accepted.
+- Feedback with a numeric-format ID stores the claim, not an identity proof.
+- Appeal keeps a mandatory numeric-format ID, not ownership verification.
+- The Admin list can display `Claimed UserId: … (Unverified)`. An authenticated moderator may use that for case discovery; a public client cannot query a person's entire Violation History with that ID.
+- All status/edit/remove operations still require the per-case private Receipt, and sensitive data remains inaccessible without separate authorization.
+
+The browser form remains compatible and can still send Feedback without an ID. We do **not** request usernames/display names in the public browser form or add extra personal information fields. Names in the native sender preview remain client-side, unverified, and **are not yet present in the admin list**.
+
+**Implementation status:** patched Lua file + strict server patch helper + offline tests are ready for review. The Worker source is **not** stored in the repository, and **no Worker or D1 database was modified/deployed**. To make Feedback UserIds appear in the online Admin Dashboard, an authorized reviewer must first apply the helper to the exact reviewed Sandbox Worker source and deploy only after separate approval. Do not claim this already works end-to-end.
+
+**Do not conflate format validation with account verification.** Checking that a claim is a plausible numeric UserId does not confirm ownership and does not introduce a minimum account age requirement.
