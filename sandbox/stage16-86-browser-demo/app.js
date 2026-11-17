@@ -33,13 +33,13 @@ function eligible() {
 function update() {
   if (preview && Date.now() >= expiresAt) {
     reset();
-    notice('หมดเวลาการยืนยันแล้ว กรุณาเริ่มตรวจสอบรหัสใหม่');
+    notice('Confirmation expired. Please check your pairing code again.');
     return;
   }
   el('approve').disabled = !eligible();
   if (preview) {
     const seconds = Math.max(0, Math.ceil((expiresAt - Date.now())/1000));
-    el('expires').textContent = 'ยืนยันภายใน ' + seconds + ' วินาที';
+    el('expires').textContent = 'Confirm within ' + seconds + ' seconds';
   }
 }
 async function post(path, data) {
@@ -53,11 +53,11 @@ async function post(path, data) {
   });
   let body;
   try { body = await response.json(); }
-  catch { throw Error('ไม่สามารถอ่านผลตอบกลับจาก Server'); }
+  catch { throw Error('Could not read the server response.'); }
   if(!response.ok || body?.ok !== true) {
-    if(response.status===429) throw Error('ส่งคำขอมากเกินไป กรุณาลองอีกครั้งภายหลัง');
-    if(response.status===403) throw Error('ไม่สามารถยืนยันบัญชีหรือรหัสนี้ได้');
-    throw Error('ไม่สามารถดำเนินการได้ กรุณาลองใหม่');
+    if(response.status===429) throw Error('Too many requests. Please try again later.');
+    if(response.status===403) throw Error('Unable to verify this account or pairing code.');
+    throw Error('Something went wrong. Please try again.');
   }
   return body;
 }
@@ -68,7 +68,7 @@ el('lookup').addEventListener('submit',async(event)=>{
   notice('');
   const entered=code(el('lookup-code').value);
   if(!codePattern.test(entered)) {
-    notice('รูปแบบรหัสไม่ถูกต้อง');
+    notice('Invalid pairing code format.');
     return;
   }
   busy = true;
@@ -80,7 +80,7 @@ el('lookup').addEventListener('submit',async(event)=>{
        typeof r.confirmationToken!=='string' ||
        !/^[A-Za-z0-9_-]{43}$/.test(r.confirmationToken) ||
        typeof r.expiresIn!=='number' || r.expiresIn<=0 || r.expiresIn>60) {
-      throw Error('Server ส่งข้อมูลการยืนยันไม่ถูกต้อง');
+      throw Error('The server returned an invalid confirmation.');
     }
     preview={code:r.pairingCode,confirmationToken:r.confirmationToken};
     expiresAt=Date.now()+r.expiresIn*1000;
@@ -89,9 +89,9 @@ el('lookup').addEventListener('submit',async(event)=>{
     el('confirmed-code').value='';
     el('own-device').checked=false;
     el('approval').hidden=false;
-    notice('ตรวจสอบรหัสใน Arcsen ของคุณก่อนกดยืนยัน');
+    notice('Compare this code with the one shown in your Arcsen before approving.');
   } catch(e) {
-    notice(e instanceof Error ? e.message : 'ไม่สามารถตรวจสอบรหัส');
+    notice(e instanceof Error ? e.message : 'Unable to check the code.');
   } finally {
     busy=false;
     el('lookup-button').disabled=false;
@@ -104,17 +104,17 @@ el('own-device').addEventListener('change',update);
 el('lookup-code').addEventListener('input',()=>{
   if(preview) {
     reset();
-    notice('รหัสถูกเปลี่ยน กรุณากดตรวจสอบรหัสอีกครั้ง');
+    notice('The pairing code changed. Check the new code again.');
   }
 });
 el('cancel').addEventListener('click',()=>{
   reset();
-  notice('ยกเลิกการยืนยันแล้ว');
+  notice('Confirmation canceled.');
 });
 el('confirm').addEventListener('submit',async(event)=>{
   event.preventDefault();
   if(!eligible()) {
-    notice('ตรวจสอบและกรอกรหัสด้วยตัวเอง พร้อมทำเครื่องหมายยืนยันก่อน');
+    notice('Re-enter the matching code and confirm that this is your own device.');
     return;
   }
   busy=true;
@@ -126,12 +126,12 @@ el('confirm').addEventListener('submit',async(event)=>{
       confirmationToken:preview.confirmationToken,
       acknowledgeOwnDevice:true,
     });
-    if(result.approved!==true) throw Error('การยืนยันไม่สำเร็จ');
+    if(result.approved!==true) throw Error('Pairing approval failed.');
     reset();
     el('lookup-code').value='';
-    notice('อนุมัติการจับคู่แล้ว คุณสามารถปิดหน้านี้ได้');
+    notice('Pairing approved. You can close this page now.');
   } catch(e) {
-    notice(e instanceof Error ? e.message : 'การยืนยันไม่สำเร็จ');
+    notice(e instanceof Error ? e.message : 'Pairing approval failed.');
   } finally {
     busy=false;
     update();
