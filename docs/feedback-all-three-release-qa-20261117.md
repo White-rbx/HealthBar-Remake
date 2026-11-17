@@ -63,3 +63,11 @@ Reverify these IDs immediately before any future release: deployments can change
 6. Obtain **explicit owner Production approval** after a green end-to-end acceptance. Do not merge Draft PR #16 or deploy Production automatically.
 
 **Outcome:** All three engineering workstreams are packaged for a **single owner review / QA round**, not three more stages. Only the isolated QA D1 was created/changed. Production and existing STAGING Workers/Pages/D1 are untouched in this round.
+
+## Additional private source merge preflight — live Workers (read-only)
+
+Using the current Cloudflare-connected Production and STAGING Worker source in **memory**, strict source pins matched. A dry review assembly of the Feedback core, Admin extensions, a rate-guard wrapper and a small legacy-preserving route overlay produced **104,613 bytes** of source text. The old shared STAGING quota block was removed, and the original Production ban-check route was still present. Only a diagnostic summary was returned, never the assembled private Worker source or secrets.
+
+**Important verification limit:** Cloudflare's connector refused dynamic source compilation with `Code generation from strings disallowed for this context`. Therefore runtime/syntax validation of that exact full live-source merge is **NOT PASSED**, and the private review candidate must not be deployed. The GitHub builder's 15-route synthetic fixture tests and the original Worker source hash checks are independent evidence, not a substitute for compiling and executing the complete assembled Worker in an isolated runtime. This must be completed before any Production approval.
+
+The new limiter has also **not** been deployed to the current STAGING Worker. Only the new isolated synthetic QA D1 was created and used. Owner testing can review this PR's QA and local suite in one round, but cannot yet validate the new limiter via the live Arcsen STAGING API.
