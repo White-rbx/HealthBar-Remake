@@ -54,7 +54,7 @@ jobs:
         run: node --test sandbox/feedback-client-auto-userid-qa.test.mjs
       - name: Ban Selection and Duration separation test
         run: node --test sandbox/arcscriptcenter-ban-selection-duration.test.mjs
-      - name: Ban Selection and Duration: 4 combinations, legacy and expiry
+      - name: 'Ban Selection and Duration — four combinations, legacy and expiry'
         run: node --test sandbox/arcscriptcenter-ban-selection-duration-classification.test.mjs
       - name: Unknown Feedback Trash 30-day retention / Admin authorization (SQLite)
         run: node --test sandbox/feedback-unknown-case-trash.test.mjs
