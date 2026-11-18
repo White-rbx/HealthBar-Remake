@@ -48,6 +48,8 @@ jobs:
         run: node --test sandbox/feedback-native-userid-patcher.test.mjs
       - name: Main Dashboard read-only Admin Inbox integration checks
         run: node --test sandbox/feedback-dashboard-staging-adapter.test.mjs
+      - name: Roblox public username directory and private Admin Ban/Case lookup checks
+        run: node --test sandbox/feedback-admin-directory.test.mjs
       - name: Existing production browser form end-to-end synthetic tests
         run: node --test sandbox/production-candidate-browser-form.test.mjs
       - name: Existing route isolation and security gate regressions
