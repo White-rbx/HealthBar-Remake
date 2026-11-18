@@ -8,7 +8,9 @@ export const TRASH_SECONDS=2592000;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NO_ID="(claimed_user_id IS NULL OR TRIM(claimed_user_id)='')";
 const okTime=n=>Number.isSafeInteger(n)&&n>1000000000&&n<4102444800;
-// Cloudflare D1 meta.changes may include FK cascades and trigger writes.\n// Treat at least one affected row as success, not an exact-one count.\nconst changedAtLeastOnce=r=>Number(r?.meta?.changes??r?.changes??0)>=1;
+// Cloudflare D1 meta.changes may include FK cascades and trigger writes.
+// Treat at least one affected row as success, not an exact-one count.
+const changedAtLeastOnce=r=>Number(r?.meta?.changes??r?.changes??0)>=1;
 const response=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
 const pageIndex=q=>q===null?0:/^(0|[1-9][0-9]{0,3})$/.test(q)?Number(q):null;
 
@@ -104,7 +106,8 @@ export async function purgeExpiredUnknownTrash(db,now=Math.floor(Date.now()/1000
   targets.push(db.prepare('DELETE FROM asc_feedback_cases WHERE id IN ('+elig+')').bind(id,now));
   // Single D1 transaction, deletes all history + original case; FK cascades Trash marker.
   const result=await db.batch(targets);
-  // A successful case deletion can report 2+ changes due to ON DELETE CASCADE.\n  if(changedAtLeastOnce(result[3]))purged++;
+  // A successful case deletion can report 2+ changes due to ON DELETE CASCADE.
+  if(changedAtLeastOnce(result[3]))purged++;
  }
  return {purged,examined:due.length,nowUnix:now};
 }
