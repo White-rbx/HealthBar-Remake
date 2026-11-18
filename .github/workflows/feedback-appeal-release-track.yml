@@ -62,6 +62,10 @@ jobs:
         run: node --test sandbox/feedback-unknown-trash-admin-gateway-staging.test.mjs
       - name: Live isolated QA Admin Trash HTTP denial and CORS smoke
         run: node --test sandbox/feedback-unknown-trash-admin-qa-http-smoke.test.mjs
+      - name: Live STAGING Admin Trash HTTP denial and CORS smoke
+        env:
+          ASC_TRASH_SMOKE_HOST: https://arcscriptcenter-trash-admin-staging.kogpasan14.workers.dev
+        run: node --test sandbox/feedback-unknown-trash-admin-qa-http-smoke.test.mjs
       - name: Existing production browser form end-to-end synthetic tests
         run: node --test sandbox/production-candidate-browser-form.test.mjs
       - name: Existing route isolation and security gate regressions
