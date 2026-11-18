@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.48 ",
+	sion = " UIs 7.3.49 ",
 	logs = [[
+(:18/11/2026: A&F) STAGING: preserve receipt-verified feedback cases marked status=violation in a separate Feedback > Flagged (Policy) section, clearly distinguished from account-bound Violation notice. Show Case Closed and include flagged in Total/New/refresh. Optional opt-in Roblox UserId claim on new Feedback submissions (default OFF; unverified; not account authentication). Existing cases cannot gain a UserId retroactively. No Worker/D1/Production changes.
 (:18/11/2026: A&F) STAGING v7.3.48: make receipt-only Feedback Refresh fair across more than twelve cases, show last successful verification times, and clear locally cached cases that now return a confirmed HTTP 404; failed network requests never imply Admin approval/denial or a closed case. Keep per-session receipts, moderator-only updates, conditional Violation, Production untouched.
 (:18/11/2026: A&F) STAGING: add a manual Refresh Case Status button under Restore Previous Case. It rechecks only receipt-verified session Feedback, instantly moves approved/denied cases to the Case Closed groups, preserves unread moderator updates, displays checked/closed/error counts and throttles repeated taps. The existing 45-second refresh remains. No server, Production, Admin, or persistent-receipt changes.
 (:18/11/2026: A&F) STAGING: make session-only case counts understandable after UI reload. Add Restore Previous Case shortcut that expands and scrolls to the receipt-authenticated lookup, without saving receipts, guessing account-wide totals, or changing backend. Previous cases rejoin Review/Approved/Denied after valid status check.
@@ -14175,11 +14176,21 @@ task.spawn(function()
         return casePost("/api/v1/feedback/manage",payload)
     end
 
-    local function caseSubmit(kind, topic, description)
+    local function caseSubmit(kind, topic, description, optionalClaimedUserId)
         topic,description=caseTrim(topic),caseTrim(description)
         local valid,errorText=caseValidate(kind,topic,description)
         if not valid then return nil,errorText,false end
         local payload={kind=kind,topic=topic,description=description}
+        if kind == "feedback" and optionalClaimedUserId ~= nil then
+            -- Client-side consent is explicit; the Worker stores this as UNVERIFIED.
+            -- Never use this claim as proof of account ownership or ban authority.
+            local localPlayer=game:GetService("Players").LocalPlayer
+            if not localPlayer or localPlayer.UserId <= 0 or
+                tostring(localPlayer.UserId) ~= tostring(optionalClaimedUserId) then
+                return nil,"Roblox UserId unavailable. Disable the optional ID toggle and retry.",false
+            end
+            payload.claimedUserId=tostring(localPlayer.UserId)
+        end
         if kind == "appeal" then
             local localPlayer=game:GetService("Players").LocalPlayer
             if not localPlayer or localPlayer.UserId <= 0 then
@@ -14273,7 +14284,8 @@ task.spawn(function()
         local valid,errorText=caseValidate(payload.kind,caseTrim(payload.topic),caseTrim(payload.description))
         if not valid then onDone(nil,errorText,false);return end
         if state.busy then return end
-        local token=payload.kind.."\0"..payload.topic.."\0"..payload.description
+        local token=payload.kind.."\0"..payload.topic.."\0"..payload.description..
+            "\0"..tostring(payload.claimedUserId or "")
         if state.confirm ~= token or os.clock()-(state.confirmedAt or 0)>15 then
             state.confirm=token
             state.confirmedAt=os.clock()
@@ -14284,7 +14296,7 @@ task.spawn(function()
         state.busy=true
         onSending()
         task.spawn(function()
-            local ok,item,errorText,uncertain=pcall(caseSubmit,payload.kind,payload.topic,payload.description)
+            local ok,item,errorText,uncertain=pcall(caseSubmit,payload.kind,payload.topic,payload.description,payload.claimedUserId)
             state.busy=false
             if not ok then
                 onDone(nil,"Request error; submission outcome may be unknown.",true)
@@ -14520,9 +14532,9 @@ task.spawn(function()
                             -- never authorizes other people's Feedback or Violation history.
                             local id = tostring(record.id or "")
                             local state = tostring(record.status or "reviewing")
-                            local isClosed = state == "approved" or state == "denied"
+                            local isClosed = state == "approved" or state == "denied" or state == "violation"
                             local accent = state == "approved" and Color3.fromRGB(94,222,133)
-                                or state == "denied" and Color3.fromRGB(255,125,125)
+                                or (state == "denied" or state == "violation") and Color3.fromRGB(255,125,125)
                                 or Color3.fromRGB(244,191,91)
                             local card = Instance.new("Frame")
                             card.Name = "FeedbackCaseCard"
@@ -14559,6 +14571,7 @@ task.spawn(function()
                             cardText("CaseTopic",topic:sub(1,70),28,32,12,Color3.fromRGB(226,234,244))
                             local progress = state == "approved" and "CASE CLOSED — APPROVED"
                                 or state == "denied" and "CASE CLOSED — DENIED"
+                                or state == "violation" and "CASE CLOSED — POLICY VIOLATION"
                                 or "REVIEWING — Waiting for moderator"
                             cardText("CaseProgress",progress,62,28,12,accent)
                             local note = caseTrim(tostring(record.publicNote or ""))
@@ -14875,8 +14888,12 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     "No verified Approved feedback case in this session.",false,feedbackScroll,2,true)
                 local _, setFeedbackDenied, countDenied, renderDeniedCases = infoSection("Denied",
                     "No verified Denied feedback case in this session.",false,feedbackScroll,3,true)
+                -- A feedback case marked violation is a CLOSED FEEDBACK CASE.
+                -- This does NOT reveal or create a Roblox account's private Violation tab.
+                local _, setFeedbackFlagged, countFlagged, renderFlaggedCases = infoSection("Flagged (Policy)",
+                    "No receipt-verified Feedback flagged by moderation in this session.",false,feedbackScroll,4,true)
                 local function updateFeedbackCaseSections()
-                    local buckets = {reviewing={},approved={},denied={}}
+                    local buckets = {reviewing={},approved={},denied={},violation={}}
                     for _,item in pairs(privateReceipts) do
                         if item.verified == true and item.kind == "feedback" and
                             buckets[item.status] and type(item.receipt) == "string" then
@@ -14896,13 +14913,16 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         "No completed Approved feedback case in this session." or "")
                     setFeedbackDenied(#buckets.denied == 0 and
                         "No completed Denied feedback case in this session." or "")
+                    setFeedbackFlagged(#buckets.violation == 0 and
+                        "No closed Feedback with a policy violation status in this session. This is not an account ban." or "")
                     renderReviewCases(buckets.reviewing)
                     renderApprovedCases(buckets.approved)
                     renderDeniedCases(buckets.denied)
+                    renderFlaggedCases(buckets.violation)
                 end
                 updateCaseCounters = function()
-                    local counts={reviewing=0,approved=0,denied=0}
-                    local unread={reviewing=0,approved=0,denied=0}
+                    local counts={reviewing=0,approved=0,denied=0,violation=0}
+                    local unread={reviewing=0,approved=0,denied=0,violation=0}
                     local known=false
                     for _,item in pairs(privateReceipts) do
                         if item.verified and item.kind=="feedback" then
@@ -14917,11 +14937,13 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     countReview(known and counts.reviewing or nil,known and unread.reviewing or nil)
                     countApproved(known and counts.approved or nil,known and unread.approved or nil)
                     countDenied(known and counts.denied or nil,known and unread.denied or nil)
+                    countFlagged(known and counts.violation or nil,known and unread.violation or nil)
                     updateFeedbackCaseSections()
                     task.defer(syncFeedbackCanvas)
                 end
                 onFeedbackGroupOpened = function(groupName)
-                    local key=groupName=="Review" and "reviewing" or string.lower(groupName)
+                    local key=groupName=="Review" and "reviewing"
+                        or groupName=="Flagged (Policy)" and "violation" or string.lower(groupName)
                     for _,item in pairs(privateReceipts) do
                         if item.kind=="feedback" and item.status==key then
                             item.unread=false
@@ -15058,14 +15080,34 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                             -- Network submission is separate from Copy Draft. Deliberate two-tap only.
                             if not isAppeal then
-                                local send=caseButton(sub.Inside,"SubmitFeedback","Submit Feedback to STAGING",0,200,28)
-                                notice.Position=UDim2.fromOffset(5,232)
-                                notice.Size=UDim2.new(1,-10,0,64)
-                                local setCase=caseSetupCredentials(sub.Inside,0,300,syncFeedbackCanvas)
-                                sub.Inside.Size=UDim2.new(1,0,0,0)
                                 local sendState={busy=false}
+                                local shareClaim=false -- always OFF by default
+                                local shareId=caseButton(sub.Inside,"ShareOptionalRobloxUserId",
+                                    "Include my Roblox UserId: OFF (unverified)",0,200,30)
+                                shareId.BackgroundColor3=Color3.fromRGB(62,74,91)
+                                shareId.TextSize=10
+                                local send=caseButton(sub.Inside,"SubmitFeedback","Submit Feedback to STAGING",0,234,28)
+                                notice.Position=UDim2.fromOffset(5,267)
+                                notice.Size=UDim2.new(1,-10,0,64)
+                                local setCase=caseSetupCredentials(sub.Inside,0,336,syncFeedbackCanvas)
+                                sub.Inside.Size=UDim2.new(1,0,0,0)
+                                shareId.MouseButton1Click:Connect(function()
+                                    if sendState.busy then return end
+                                    shareClaim=not shareClaim
+                                    shareId.Text=shareClaim
+                                        and "Include my Roblox UserId: ON (unverified)"
+                                        or "Include my Roblox UserId: OFF (unverified)"
+                                    shareId.BackgroundColor3=shareClaim
+                                        and Color3.fromRGB(46,100,85) or Color3.fromRGB(62,74,91)
+                                    sendState.confirm=nil
+                                    send.Text="Submit Feedback to STAGING"
+                                    notice.Text=shareClaim
+                                        and "Opted in: new Feedback includes a client-claimed UserId. It is NOT verified identity."
+                                        or "UserId sharing OFF. Feedback remains anonymous; old cases cannot be changed."
+                                end)
                                 local function sendDone(item,err,uncertain)
                                     send.Active=true
+                                    shareId.Interactable=true
                                     draftInput.TextEditable=true
                                     if titleInput then titleInput.TextEditable=true end
                                     send.Text="Submit Feedback to STAGING"
@@ -15086,9 +15128,18 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 send.MouseButton1Click:Connect(function()
                                     local topic=titleInput and titleInput.Text or ""
                                     local body=draftInput.Text or ""
-                                    caseConfirmAndSend(sendState,{kind="feedback",topic=topic,description=body},
+                                    local player=game:GetService("Players").LocalPlayer
+                                    local idClaim=shareClaim and player and player.UserId>0
+                                        and tostring(player.UserId) or nil
+                                    if shareClaim and not idClaim then
+                                        notice.Text="Roblox UserId unavailable. Turn sharing OFF or retry later."
+                                        return
+                                    end
+                                    caseConfirmAndSend(sendState,{kind="feedback",topic=topic,
+                                        description=body,claimedUserId=idClaim},
                                         function()
                                             send.Active=false
+                                            shareId.Interactable=false
                                             draftInput.TextEditable=false
                                             if titleInput then titleInput.TextEditable=false end
                                             send.Text="Sending to STAGING..."
@@ -15672,7 +15723,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             task.defer(syncPanelCanvas)
                         end
                     end)
-                caseLookupRow.Frame.LayoutOrder=4
+                caseLookupRow.Frame.LayoutOrder=5
                 caseLookupRow.Frame.Size=UDim2.new(1,-6,0,0)
                 -- The receipt lookup section already performs server authorization
                 -- and caches only successfully verified cases in privateReceipts.
@@ -15731,7 +15782,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 local requestOk,record,errorText=pcall(caseCheckStatus,id,item.receipt,false)
                                 if requestOk and record then
                                     result.checked+=1
-                                    if record.status=="approved" or record.status=="denied" then
+                                    if record.status=="approved" or record.status=="denied"
+                                        or record.status=="violation" then
                                         result.closed+=1
                                     end
                                     onFeedbackCaseRefresh(record)
