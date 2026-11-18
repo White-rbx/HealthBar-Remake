@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const BRANCH='https://stage16-54-verified-unlock.arcscriptcenter-dashboard-staging.pages.dev';
-const IMMUTABLE='https://fc001ca0.arcscriptcenter-dashboard-staging.pages.dev';
+const IMMUTABLE='https://da89f55b.arcscriptcenter-dashboard-staging.pages.dev';
 const API='https://arcscriptcenter-api-staging.kogpasan14.workers.dev';
 const TRASH='https://arcscriptcenter-trash-admin-staging.kogpasan14.workers.dev';
 async function request(url,options={}){
@@ -24,14 +24,14 @@ test('branch Preview has canonical static assets and injected native User Case p
  const {response,body}=await getBranchPage();
  assert.equal(response.status,200);
  assert.match(response.headers.get('content-type')||'',/text\/html/i);
- assert.equal(response.headers.get('X-ASC1649-Integration'),'injected-staging-preview');
- assert.match(body,/id="faUsersCase"/);
- assert.match(body,/id="faUsersLoad"/);
- assert.match(body,/id="faTrashLoad"/);
- assert.match(body,/id="faUnknownTrash"/);
- assert.match(body,/data-page="bans"/);
- assert.match(body,/id="page-bans"/);
- assert.match(body,/data-page="feedback-appeal"/);
+ assert.equal(response.headers.get('X-ASC1649-Integration'),'injected-users-case-native');
+ assert.ok(body.includes('id="faUsersCase"'),'missing native User Case section');
+ assert.ok(body.includes('id="faUsersLoad"'),'missing Load Users button');
+ assert.ok(body.includes('id="faTrashLoad"'),'missing Trash button');
+ assert.ok(body.includes('id="faUnknownTrash"'),'missing Trash panel');
+ assert.ok(body.includes('data-page="bans"'),'missing Ban Management');
+ assert.ok(body.includes('id="page-bans"'),'missing Ban page');
+ assert.ok(body.includes('data-page="feedback-appeal"'),'missing native Feedback nav');
  assert.equal((body.match(/id="faUsersCase"/g)||[]).length,1);
 });
 test('native Feedback and User Case JS/CSS endpoints are served with correct MIME',async()=>{
@@ -83,7 +83,7 @@ test('new Trash Gateway denies unauthenticated list and move requests',async()=>
 test('noncanonical Preview is immutable while API denies its unknown Origin',async()=>{
  const r=await request(IMMUTABLE+'/');
  assert.equal(r.status,200);
- assert.match(await r.text(),/id="faUsersCase"/);
+ assert.ok((await r.text()).includes('id="faUsersCase"'),'immutable Preview missing User Case');
  const denied=await request(API+'/api/v1/admin/feedback/summary',{headers:{Origin:IMMUTABLE}});
  assert.equal(denied.status,403);
 });
