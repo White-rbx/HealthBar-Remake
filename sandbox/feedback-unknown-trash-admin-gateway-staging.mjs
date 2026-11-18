@@ -30,10 +30,12 @@ async function existingAdminAuthenticated(request,env){
  if(!approvedOrigin(request,origin))return false;
  // Authenticated GET to the existing STAGING Admin API. Do not copy or
  // log the key. No application code can set adminOnly=true by itself.
- const source=new Request(AUTH_URL,{method:'GET',headers:{
-  'Origin':origin,'X-Admin-Key':key,'Accept':'application/json'
- },redirect:'error',cache:'no-store'});
  try{
+  // The Workers runtime does not support all browser RequestInit cache modes.
+  // The existing Admin summary response is already Cache-Control: no-store.
+  const source=new Request(AUTH_URL,{method:'GET',headers:{
+   'Origin':origin,'X-Admin-Key':key,'Accept':'application/json'
+  }});
   const out=await env.AUTH_API.fetch(source);
   if(out.status!==200)return false;
   const json=await out.json();
