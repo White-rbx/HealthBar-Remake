@@ -10,7 +10,7 @@ const SCHEMA= [
 'CREATE TABLE asc_feedback_followup_details_history(case_id TEXT,event_type TEXT);',
 'CREATE TABLE asc_feedback_unknown_trash(case_id TEXT PRIMARY KEY REFERENCES asc_feedback_cases(id) ON DELETE CASCADE, trashed_unix INTEGER NOT NULL CHECK(trashed_unix>0), purge_unix INTEGER NOT NULL CHECK(purge_unix-trashed_unix=2592000));'
 ].join('\n');
-function setup(kind='feedback',idClaim=null,removed=0){
+function setup(kind='feedback',idClaim=null,removed=0,simulateD1Meta=false){
  const sql=new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON');sql.exec(SCHEMA);
  sql.prepare('INSERT INTO asc_feedback_cases(id,receipt_hash,kind,claimed_user_id,topic,removed,updated_unix) VALUES(?,?,?,?,?,?,?)')
  .run(ID,'synthetic_hash',kind,idClaim,'Synthetic test',removed,NOW-100);
@@ -19,7 +19,7 @@ function setup(kind='feedback',idClaim=null,removed=0){
     first:async()=>q.get(...params)||null,all:async()=>({results:q.all(...params)}),
     run:async()=>({meta:{changes:q.run(...params).changes}})}}}},
   async batch(stmts){sql.exec('BEGIN IMMEDIATE');try{
-   const out=[];for(const stmt of stmts)out.push(await stmt.run());
+   const out=[];for(const stmt of stmts){\n    const v=await stmt.run();\n    // Cloudflare D1 meta.changes includes writes from triggers/FK cascades.\n    if(simulateD1Meta&&v.meta.changes>0)v.meta.changes+=1;\n    out.push(v);\n   }
    sql.exec('COMMIT');return out;
   }catch(e){sql.exec('ROLLBACK');throw e;}}
  };
@@ -93,5 +93,20 @@ test('GET list needs admin and returns no Receipt hash or Admin Notes',async()=>
   const res=await handler(req,{DB:f.db});const body=await res.text();
   assert.equal(res.status,200);assert.equal(JSON.parse(body).items.length,1);
   assert.doesNotMatch(body,/synthetic_hash|receipt_hash|admin_note/);
+ }finally{f.close()}
+});
+
+test('Cloudflare D1 meta.changes includes extra trigger and FK cascade writes',async()=>{
+ const f=setup('feedback',null,0,true);
+ try{
+  const move=await f.call(f.create(),'move');
+  assert.equal(move.status,200,'move must not reject meta.changes=2');
+  const restore=await f.call(f.create(),'restore');
+  assert.equal(restore.status,200,'restore must not reject meta.changes=2');
+  assert.equal((await f.call(f.create(),'move')).status,200);
+  assert.equal((await purgeExpiredUnknownTrash(f.db,NOW+TRASH_SECONDS)).purged,1,
+   'cascade delete must still count as one purged CASE, not zero');
+  assert.equal(f.count('asc_feedback_cases'),0);
+  assert.equal(f.count('asc_feedback_unknown_trash'),0);
  }finally{f.close()}
 });
