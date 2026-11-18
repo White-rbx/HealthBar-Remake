@@ -1,6 +1,8 @@
 local ver = {
-	sion = " UIs 7.3.46 ",
+	sion = " UIs 7.3.48 ",
 	logs = [[
+(:18/11/2026: A&F) STAGING v7.3.48: make receipt-only Feedback Refresh fair across more than twelve cases, show last successful verification times, and clear locally cached cases that now return a confirmed HTTP 404; failed network requests never imply Admin approval/denial or a closed case. Keep per-session receipts, moderator-only updates, conditional Violation, Production untouched.
+(:18/11/2026: A&F) STAGING: add a manual Refresh Case Status button under Restore Previous Case. It rechecks only receipt-verified session Feedback, instantly moves approved/denied cases to the Case Closed groups, preserves unread moderator updates, displays checked/closed/error counts and throttles repeated taps. The existing 45-second refresh remains. No server, Production, Admin, or persistent-receipt changes.
 (:18/11/2026: A&F) STAGING: make session-only case counts understandable after UI reload. Add Restore Previous Case shortcut that expands and scrolls to the receipt-authenticated lookup, without saving receipts, guessing account-wide totals, or changing backend. Previous cases rejoin Review/Approved/Denied after valid status check.
 (:18/11/2026: A&F) STAGING: add individual receipt-verified Feedback case cards inside Review/Approved/Denied, including live progress, moderator note, Case Closed and View Status. Submitted Feedback appears in Review immediately; the 45-second active-panel status refresh moves cards after admin decisions. No account-wide listing or Production changes.
 (:18/11/2026: A&F) STAGING Native Acceptance: display Case Closed (Approved/Denied/Violation) after receipt-authenticated server status; refresh session-only known receipts every 45 seconds while Feedback is expanded, preserve privacy and refresh on demand; show Total/New counters for Feedback status subcategories, where New means unread status change, not server-wide totals. No Production changes.
@@ -14092,7 +14094,8 @@ task.spawn(function()
         end
         -- A 201 response is proof of this submitted case, not of Roblox account identity.
         local item = {id=data.id, receipt=data.receipt, kind=kind,
-            status="reviewing", verified=true, unread=false}
+            status="reviewing", verified=true, unread=false,
+            lastCheckedAt=os.time()}
         privateReceipts[data.id] = item
         loc.API.ArcScriptCenterCaseSession.LastCaseId = data.id
         local c=0
@@ -14133,6 +14136,7 @@ task.spawn(function()
         cached.topic = type(record.topic)=="string" and record.topic or cached.topic
         cached.updatedAt = tonumber(record.updatedAt) or cached.updatedAt
         cached.publicNote = type(record.publicNote)=="string" and record.publicNote or nil
+        cached.lastCheckedAt = os.time() -- only after a receipt-authenticated 200
         cached.verified = true
         if markRead ~= false then cached.unread = false end
         local c=0
@@ -14501,7 +14505,8 @@ task.spawn(function()
                             signatures[#signatures+1] = table.concat({
                                 tostring(case.id or ""),tostring(case.status or ""),
                                 tostring(case.topic or ""),tostring(case.publicNote or ""),
-                                tostring(case.updatedAt or ""),tostring(case.unread == true)
+                                tostring(case.updatedAt or ""),tostring(case.unread == true),
+                                tostring(case.lastCheckedAt or "")
                             },"\0")
                         end
                         local signature = table.concat(signatures,"\1")
@@ -14522,7 +14527,7 @@ task.spawn(function()
                             local card = Instance.new("Frame")
                             card.Name = "FeedbackCaseCard"
                             card.LayoutOrder = order
-                            card.Size = UDim2.new(1,0,0,164)
+                            card.Size = UDim2.new(1,0,0,185)
                             card.BackgroundColor3 = Color3.fromRGB(29,41,58)
                             card.BackgroundTransparency = 0.05
                             card.BorderSizePixel = 0
@@ -14561,9 +14566,14 @@ task.spawn(function()
                                 or (isClosed and "Moderator decision recorded. No public note."
                                     or "Submitted to STAGING. Awaiting moderator decision.")
                             cardText("ModeratorProgressNote",detail,90,37,11,Color3.fromRGB(195,208,225))
+                            local checkedAt=tonumber(record.lastCheckedAt)
+                            local checkedLabel=checkedAt and checkedAt>0
+                                and ("Last confirmed: "..os.date("!%Y-%m-%d %H:%M UTC",checkedAt))
+                                or "Not yet refreshed"
+                            cardText("LastConfirmed",checkedLabel,128,18,10,Color3.fromRGB(171,190,209))
                             local view = Instance.new("TextButton")
                             view.Name = "OpenVerifiedCase"
-                            view.Position = UDim2.fromOffset(8,132)
+                            view.Position = UDim2.fromOffset(8,153)
                             view.Size = UDim2.new(1,-16,0,26)
                             view.Text = "View status / review history"
                             view.TextSize = 11
@@ -14683,8 +14693,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 local feedbackScroll
                 local feedbackExpanded = false
                 local refreshKnownFeedbackCases = function() end
+                local feedbackRefreshBusy = false
                 local onFeedbackCaseRefresh = function() end
                 local feedbackRefreshEpoch = 0
+                local feedbackRefreshCursor = 1 -- prevent starving linked cases after the first 12
                 local feedbackCategory
                 resumeFeedbackRefresh = function()
                     if not feedbackExpanded or not panelExpanded or
@@ -14768,6 +14780,91 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 Corner(0,5,restorePrevious)
                 restorePrevious.MouseButton1Click:Connect(function()
                     openPreviousFeedbackCase()
+                end)
+                -- Manual, receipt-scoped refresh of the session's known Feedback.
+                -- The public API has no account-wide case list: no receipt = no case.
+                local refreshCasePanel=Instance.new("Frame")
+                refreshCasePanel.Name="FeedbackRefreshPanel"
+                refreshCasePanel.LayoutOrder=-1
+                refreshCasePanel.Size=UDim2.new(1,-12,0,56)
+                refreshCasePanel.BackgroundTransparency=1
+                refreshCasePanel.Parent=feedbackScroll
+
+                local refreshCaseButton=Instance.new("TextButton")
+                refreshCaseButton.Name="RefreshFeedbackCases"
+                refreshCaseButton.Size=UDim2.new(1,0,0,28)
+                refreshCaseButton.BackgroundColor3=Color3.fromRGB(42,98,124)
+                refreshCaseButton.BorderSizePixel=0
+                refreshCaseButton.Font=Enum.Font.Gotham
+                refreshCaseButton.TextColor3=Color3.fromRGB(245,250,255)
+                refreshCaseButton.TextSize=12
+                refreshCaseButton.Text="Refresh Case Status (STAGING)"
+                refreshCaseButton.Parent=refreshCasePanel
+                Corner(0,5,refreshCaseButton)
+
+                local refreshCaseNote=Instance.new("TextLabel")
+                refreshCaseNote.Name="FeedbackRefreshStatus"
+                refreshCaseNote.Position=UDim2.fromOffset(2,31)
+                refreshCaseNote.Size=UDim2.new(1,-4,0,24)
+                refreshCaseNote.BackgroundTransparency=1
+                refreshCaseNote.TextColor3=Color3.fromRGB(180,204,230)
+                refreshCaseNote.Font=Enum.Font.Gotham
+                refreshCaseNote.TextSize=10
+                refreshCaseNote.TextWrapped=true
+                refreshCaseNote.TextXAlignment=Enum.TextXAlignment.Left
+                refreshCaseNote.TextYAlignment=Enum.TextYAlignment.Top
+                refreshCaseNote.Text="Refresh checks your linked cases. Restore a past case first."
+                refreshCaseNote.Parent=refreshCasePanel
+                local lastManualCaseRefresh=-math.huge
+                refreshCaseButton.MouseButton1Click:Connect(function()
+                    if not feedbackExpanded or not panelExpanded or not feedbackScroll.Parent then return end
+                    if feedbackRefreshBusy then
+                        refreshCaseNote.Text="Status check already running."
+                        return
+                    end
+                    local now=os.clock()
+                    if now-lastManualCaseRefresh<8 then
+                        refreshCaseNote.Text="Refresh available again shortly."
+                        return
+                    end
+                    local hasCases=false
+                    for _,item in pairs(privateReceipts) do
+                        if item.verified==true and item.kind=="feedback"
+                            and type(item.receipt)=="string" then
+                            hasCases=true
+                            break
+                        end
+                    end
+                    if not hasCases then
+                        refreshCaseNote.Text="No linked Feedback yet. Use Restore previous case first."
+                        return
+                    end
+                    lastManualCaseRefresh=now
+                    refreshCaseButton.Text="Refreshing case status..."
+                    refreshCaseButton.Interactable=false
+                    refreshCaseNote.Text="Checking your verified cases with STAGING..."
+                    task.spawn(function()
+                        local ok,result,errorMessage=pcall(refreshKnownFeedbackCases)
+                        if refreshCaseButton.Parent then
+                            refreshCaseButton.Interactable=true
+                            refreshCaseButton.Text="Refresh Case Status (STAGING)"
+                            if not ok or not result then
+                                refreshCaseNote.Text="Could not refresh. Please try again later."
+                                refreshCaseNote.TextColor3=Color3.fromRGB(255,175,160)
+                            else
+                                refreshCaseNote.TextColor3=result.failed>0
+                                    and Color3.fromRGB(255,195,150)
+                                    or Color3.fromRGB(169,222,192)
+                                refreshCaseNote.Text="Checked "..tostring(result.checked).."/"..tostring(result.total)..
+                                    " | Closed: "..tostring(result.closed)..
+                                    (result.unavailable>0 and (" | Unavailable: "..tostring(result.unavailable)) or "")..
+                                    (result.failed>0 and (" | Retry needed: "..tostring(result.failed)) or "")..
+                                    (result.total>result.attempted and " | More cases: refresh again" or "")
+                            end
+                            task.defer(syncFeedbackCanvas)
+                            task.defer(syncPanelCanvas)
+                        end
+                    end)
                 end)
 
                 -- These headings are status groups, NOT claims about the user's
@@ -15375,8 +15472,14 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             end
                         end
 
-                        onFeedbackCaseRefresh = function(record)
-                            if not row.Frame.Parent or not latestRecord or latestRecord.id~=record.id then return end
+                        onFeedbackCaseRefresh = function(record,unavailableId)
+                            if not row.Frame.Parent or not latestRecord then return end
+                            if unavailableId and latestRecord.id==unavailableId then
+                                invalidateCase() -- remove access to stale Edit/Remove UI
+                                status.Text="This previously verified case is no longer accessible. It may have been removed. No moderator decision can be inferred."
+                                return
+                            end
+                            if not record or latestRecord.id~=record.id then return end
                             if record.status~=latestRecord.status or
                                 tonumber(record.updatedAt)~=tonumber(latestRecord.updatedAt) then
                                 -- Never overwrite an in-progress Reviewing draft.
@@ -15595,28 +15698,76 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 end
 
                 refreshKnownFeedbackCases = function()
-                    local ids={}
-                    for id,item in pairs(privateReceipts) do
-                        if item.verified and item.kind=="feedback" and type(item.receipt)=="string" then
-                            ids[#ids+1]=id
-                        end
-                    end
-                    table.sort(ids)
-                    -- No account-wide API and no Admin credentials; at most 12
-                    -- receipt-scoped requests per refresh cycle (45 seconds).
-                    for i=1,math.min(12,#ids) do
-                        if not feedbackExpanded or not panelExpanded or not feedbackCategory.Frame.Parent then break end
-                        local id=ids[i]
-                        local item=privateReceipts[id]
-                        if item and item.receipt then
-                            local record=caseCheckStatus(id,item.receipt,false)
-                            if record then
-                                updateCaseCounters()
-                                onFeedbackCaseRefresh(record)
+                    -- Manual taps and the existing 45-second loop share one gate.
+                    -- Do not race a request or expose another user's records.
+                    if feedbackRefreshBusy then return nil,"Status refresh already running" end
+                    feedbackRefreshBusy=true
+                    local ok,summary=pcall(function()
+                        local ids={}
+                        for id,item in pairs(privateReceipts) do
+                            if item.verified and item.kind=="feedback"
+                                and type(item.receipt)=="string" then
+                                ids[#ids+1]=id
                             end
                         end
-                        task.wait(0.15)
-                    end
+                        table.sort(ids)
+                        local result={total=#ids,attempted=0,checked=0,closed=0,
+                            unavailable=0,failed=0}
+                        local epoch=feedbackRefreshEpoch
+                        local limit=math.min(12,#ids)
+                        local start=#ids>0 and ((feedbackRefreshCursor-1)%#ids)+1 or 1
+                        -- No account-wide API and no Admin credentials. Rotate the
+                        -- starting position so all linked cases get checked eventually.
+                        for offset=0,limit-1 do
+                            if not feedbackExpanded or not panelExpanded
+                                or not feedbackCategory.Frame.Parent
+                                or epoch~=feedbackRefreshEpoch then break end
+                            local index=((start-1+offset)%#ids)+1
+                            local id=ids[index]
+                            local item=privateReceipts[id]
+                            if item and item.verified==true and item.kind=="feedback"
+                                and type(item.receipt)=="string" then
+                                result.attempted+=1
+                                local requestOk,record,errorText=pcall(caseCheckStatus,id,item.receipt,false)
+                                if requestOk and record then
+                                    result.checked+=1
+                                    if record.status=="approved" or record.status=="denied" then
+                                        result.closed+=1
+                                    end
+                                    onFeedbackCaseRefresh(record)
+                                elseif requestOk and type(errorText)=="string"
+                                    and errorText:find("HTTP 404:",1,true)==1 then
+                                    -- A previously verified receipt no longer resolves.
+                                    -- This is NOT an Approved or Denied decision.
+                                    -- Drop the stale SESSION card only, never delete D1.
+                                    privateReceipts[id]=nil
+                                    if loc.API.ArcScriptCenterCaseSession.LastCaseId==id then
+                                        loc.API.ArcScriptCenterCaseSession.LastCaseId=nil
+                                    end
+                                    local count=0
+                                    for _ in pairs(privateReceipts) do count+=1 end
+                                    loc.API.ArcScriptCenterCaseSession.Count=count
+                                    onFeedbackCaseRefresh(nil,id)
+                                    result.unavailable+=1
+                                else
+                                    -- 400/429/5xx/network uncertainty must NOT be
+                                    -- described as a completed or removed case.
+                                    result.failed+=1
+                                end
+                            end
+                            if offset+1<limit then task.wait(0.15) end
+                        end
+                        if #ids>0 then
+                            feedbackRefreshCursor=((start-1+result.attempted)%#ids)+1
+                        else
+                            feedbackRefreshCursor=1
+                        end
+                        updateCaseCounters() -- Migrate cards between status groups.
+                        return result
+                    end)
+                    feedbackRefreshBusy=false
+                    if not ok then return nil,"Unexpected refresh error" end
+                    return summary
                 end
 
                 -- Stage 16.33: rebuilt from the developer-revised ViolationAppealUI posted 15/11/2026
