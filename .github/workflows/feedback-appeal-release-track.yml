@@ -1,5 +1,6 @@
 name: Feedback and Appeal — Consolidated Release Track QA
 # One automatic run per PR update, not duplicate push + pull_request runs.
+# Banned Check Center Selection UI regression check: source validation updated 19 Nov 2026.
 on:
   pull_request:
     branches: [stage16-87-trust-boundary-sandbox]
