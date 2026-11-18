@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-const HOST='https://arcscriptcenter-trash-admin-qa.kogpasan14.workers.dev';
+const HOST=process.env.ASC_TRASH_SMOKE_HOST || 'https://arcscriptcenter-trash-admin-qa.kogpasan14.workers.dev';
 const PATH='/api/v1/admin/feedback/unknown-trash';
 const ORIGIN='https://arcscriptcenter-dashboard-staging.pages.dev';
 async function call(method,path=PATH,{origin=ORIGIN,headers={},body}={}){
