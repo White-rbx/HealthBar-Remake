@@ -18,7 +18,7 @@ test('client visibly discloses new Feedback UserId inclusion and removes opt-in 
 test('client requires LocalPlayer UserId and includes it in Feedback payload',()=>{
  assert.match(inserted,/if kind == "feedback" then/);
  assert.match(inserted,/localPlayer\.UserId <= 0/);
- assert.match(inserted,/payload\.claimedUserId=tostring\(localPlayer\.UserId\)/);
+ assert.match(patch,/payload\.claimedUserId=tostring\(localPlayer\.UserId\)/);
  assert.match(inserted,/if not idClaim then/);
  assert.match(inserted,/Roblox UserId unavailable. Rejoin and retry/);
 });
