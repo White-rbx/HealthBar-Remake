@@ -1,6 +1,7 @@
 local ver = {
-	sion = " UIs 7.3.45 ",
+	sion = " UIs 7.3.46 ",
 	logs = [[
+(:18/11/2026: A&F) STAGING: make session-only case counts understandable after UI reload. Add Restore Previous Case shortcut that expands and scrolls to the receipt-authenticated lookup, without saving receipts, guessing account-wide totals, or changing backend. Previous cases rejoin Review/Approved/Denied after valid status check.
 (:18/11/2026: A&F) STAGING: add individual receipt-verified Feedback case cards inside Review/Approved/Denied, including live progress, moderator note, Case Closed and View Status. Submitted Feedback appears in Review immediately; the 45-second active-panel status refresh moves cards after admin decisions. No account-wide listing or Production changes.
 (:18/11/2026: A&F) STAGING Native Acceptance: display Case Closed (Approved/Denied/Violation) after receipt-authenticated server status; refresh session-only known receipts every 45 seconds while Feedback is expanded, preserve privacy and refresh on demand; show Total/New counters for Feedback status subcategories, where New means unread status change, not server-wide totals. No Production changes.
 (:17/11/2026: A&F) Stage 16.79: Move Feedback Review/Approved/Denied and receipt-only Check Existing Case into a nested Feedback category; build conditional Violation category with Review/Approved/Denied/History and status-indexed LayoutOrder (blue=0/orange=1/red=2/green=3). Keep custom 350px Violation/Appeal notice. No unverified identity or false Violation history; staging only, never Production.
@@ -14485,6 +14486,9 @@ task.spawn(function()
                 end
                 local onFeedbackGroupOpened = function() end
                 local openKnownFeedbackCase = function() end
+                -- A new UI execution has no previous private receipts. The user must
+                -- deliberately re-enter Case ID + Receipt to re-link a past case.
+                local openPreviousFeedbackCase = function() end
                 local function infoSection(title, description, allowRichText, destination, subOrder, countsEnabled)
                     local infoText, item, casesFrame
                     local previousCardSignature
@@ -14739,15 +14743,32 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 feedbackCategory.Frame.Size = UDim2.new(1,-6,0,0)
                 local counterScopeNote=Instance.new("TextLabel")
                 counterScopeNote.Name="SessionCountScopeNote"
-                counterScopeNote.LayoutOrder=-1
-                counterScopeNote.Size=UDim2.new(1,-12,0,31)
+                counterScopeNote.LayoutOrder=-3
+                counterScopeNote.Size=UDim2.new(1,-12,0,40)
                 counterScopeNote.BackgroundTransparency=1
                 counterScopeNote.TextColor3=Color3.fromRGB(173,193,221)
                 counterScopeNote.TextSize=10
                 counterScopeNote.TextWrapped=true
                 counterScopeNote.TextXAlignment=Enum.TextXAlignment.Left
-                counterScopeNote.Text="Counts show verified cases in THIS session only. New = unread moderator status updates."
+                counterScopeNote.Text="Total: - means no case linked yet in this session. Restore a prior case with its ID + private Receipt. New = unread moderator updates."
                 counterScopeNote.Parent=feedbackScroll
+                -- Native shortcut: scroll to the existing authenticated lookup.
+                -- Never request cases by Roblox UserId or persist any receipt.
+                local restorePrevious=Instance.new("TextButton")
+                restorePrevious.Name="RestorePreviousFeedbackCase"
+                restorePrevious.LayoutOrder=-2
+                restorePrevious.Size=UDim2.new(1,-12,0,28)
+                restorePrevious.BackgroundColor3=Color3.fromRGB(48,84,112)
+                restorePrevious.BorderSizePixel=0
+                restorePrevious.TextColor3=Color3.fromRGB(239,247,255)
+                restorePrevious.Font=Enum.Font.Gotham
+                restorePrevious.TextSize=12
+                restorePrevious.Text="Restore previous case (ID + Receipt)"
+                restorePrevious.Parent=feedbackScroll
+                Corner(0,5,restorePrevious)
+                restorePrevious.MouseButton1Click:Connect(function()
+                    openPreviousFeedbackCase()
+                end)
 
                 -- These headings are status groups, NOT claims about the user's
                 -- account. Content updates only after a receipt-authenticated lookup.
@@ -15550,6 +15571,28 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end)
                 caseLookupRow.Frame.LayoutOrder=4
                 caseLookupRow.Frame.Size=UDim2.new(1,-6,0,0)
+                -- The receipt lookup section already performs server authorization
+                -- and caches only successfully verified cases in privateReceipts.
+                -- This shortcut changes navigation only; it does not call any API.
+                openPreviousFeedbackCase = function()
+                    if not caseLookupRow.Frame.Parent or not feedbackScroll.Parent then return end
+                    lookupExpanded=true
+                    caseLookupRow.Inside.Visible=true
+                    caseLookupRow.Button.Text="Close"
+                    local note=caseLookupRow.Inside:FindFirstChild("CaseStatus")
+                    if note and note:IsA("TextLabel") then
+                        note.Text="Paste your saved Case ID and private Receipt, then tap Check Status (STAGING). Your case will reappear in Review, Approved or Denied for this session."
+                    end
+                    task.defer(syncFeedbackCanvas)
+                    task.defer(syncPanelCanvas)
+                    task.defer(function()
+                        if not caseLookupRow.Frame.Parent or not feedbackScroll.Parent then return end
+                        local y=caseLookupRow.Frame.AbsolutePosition.Y
+                            - feedbackScroll.AbsolutePosition.Y
+                            + feedbackScroll.CanvasPosition.Y
+                        feedbackScroll.CanvasPosition=Vector2.new(0,math.max(0,math.floor(y-8)))
+                    end)
+                end
 
                 refreshKnownFeedbackCases = function()
                     local ids={}
