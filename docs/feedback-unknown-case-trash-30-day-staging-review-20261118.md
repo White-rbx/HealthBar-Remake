@@ -1,5 +1,6 @@
 # ArcScriptCenter — Unknown Feedback Case Trash / 30 days
 
+> **Implementation update (18 Nov 2026):** The additive Trash table and index are NOW INSTALLED in STAGING D1, and the separate STAGING-only hourly purge Worker and Cron are NOW DEPLOYED. The Admin move/restore API and native Dashboard UI are STILL NOT DEPLOYED; no cases have been moved or deleted. For the verified current rollout state see [STAGING infrastructure activation](feedback-unknown-trash-staging-infrastructure-activated-20261118.md). Older paragraphs below describe the original pre-deployment review state.\n\n
 **Status:** STAGING review-only source and synthetic QA complete. **NOT deployed.** PR #16 remains Draft. Production unchanged.
 
 ## Owner requirements
