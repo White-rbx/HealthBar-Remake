@@ -80,6 +80,8 @@ jobs:
         run: node --test sandbox/stage16-87-restricted-gateway.test.mjs
       - name: Existing Stage16.83 pairing regression
         run: node --test sandbox/stage16-83-pairing.test.mjs
+      - name: Validate Ban Mode routed through SetUp, Main Loader, UI Loader and Arcsen
+        run: node --test sandbox/ban-mode-staging-loader-integration.test.mjs
       - name: Inspect public Ban Check Center markup on native STAGING Preview
         run: node --test sandbox/ban-check-center-public-dom-inspect.test.mjs
       - name: Existing English UI design contract
