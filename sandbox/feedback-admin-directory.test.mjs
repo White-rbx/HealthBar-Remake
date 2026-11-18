@@ -56,7 +56,9 @@ test('Ban Directory classification and ambiguity preserve exact UserId',async()=
  const permanent={userId:'12345',username:'OldUsername',reason:'Spam',description:'',startAt:'2026-11-01 10:00',expiresAt:''};
  const temporary={userId:'67890',username:'OtherUser',reason:'Spam',description:'',startAt:'2026-11-01 10:00',expiresAt:'2026-11-30 10:00'};
  const list=await decorateManagedBanEntries([permanent,temporary],{directory:d,nowUnix:1795000000});
- assert.deepEqual(list.map(r=>r.ban.label),['Banned','Temporary Banned']);
+ assert.deepEqual(list.map(r=>r.ban.label),['Selection not set · Permanent','Selection not set · Temporary']);
+ assert.deepEqual(list.map(r=>r.ban.selection),['unassigned','unassigned']);
+ assert.deepEqual(list.map(r=>r.ban.duration),['permanent','temporary']);
  assert.ok(list.every(r=>r.ownerVerified===false));
  const matches=await findManagedBansByName([permanent,temporary],'Snow Wolf',{directory:d});
  assert.deepEqual(matches.map(x=>x.userId),['12345','67890']);
