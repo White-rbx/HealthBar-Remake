@@ -29,13 +29,19 @@ function el(doc,tag,text,className){
  * @param {{loadUsers:(search:string,page:number)=>Promise<any>,
  * loadCases:(subject:string,page:number)=>Promise<any>,
  * onOpenCase:(caseId:string)=>void,
- * isAdminUnlocked:()=>boolean}} api
+ * isAdminUnlocked:()=>boolean,
+ * loadTrash?:(page:number)=>Promise<any>,
+ * moveUnknownCaseToTrash?:(caseId:string)=>Promise<any>,
+ * restoreUnknownCase?:(caseId:string)=>Promise<any>,
+ * confirmAction?:(message:string)=>boolean}} api
  */
 export function mountUsersCaseSection(host,api){
  if(!host||!api||['loadUsers','loadCases','onOpenCase','isAdminUnlocked'].some(k=>typeof api[k]!=='function'))
   throw Error('Existing Admin Dashboard callbacks required');
  if(host.querySelector('[data-asc-users-case]'))throw Error("User's Case already mounted");
  const doc=host.ownerDocument;
+ const trashEnabled=['loadTrash','moveUnknownCaseToTrash','restoreUnknownCase'].every(k=>typeof api[k]==='function');
+ const confirmAction=message=>typeof api.confirmAction==='function'?api.confirmAction(message):doc.defaultView?.confirm?.(message)===true;
  const section=el(doc,'section',null,'fa-users-case');
  section.dataset.ascUsersCase='true';section.hidden=true;
  const heading=el(doc,'h3',"User's Case");
@@ -52,11 +58,18 @@ export function mountUsersCaseSection(host,api){
  const prev=el(doc,'button','Previous');prev.type='button';
  const next=el(doc,'button','Next');next.type='button';
  const paging=el(doc,'div');paging.append(prev,next);
- section.append(heading,help,form,message,list,cases,paging);
+ const trash=el(doc,'section',null,'fa-unknown-case-trash');
+ const trashHeading=el(doc,'h4','Unknown Case Trash');
+ const trashHelp=el(doc,'p','Only unlinked Feedback can be moved. Admin can restore it before permanent deletion 30 days after moving.');
+ const viewTrash=el(doc,'button','View Trash / Refresh');viewTrash.type='button';
+ const trashMessage=el(doc,'p','', 'fa-muted');trashMessage.setAttribute('role','status');
+ const trashItems=el(doc,'div');const trashPaging=el(doc,'div');
+ trash.hidden=!trashEnabled;trash.append(trashHeading,trashHelp,viewTrash,trashMessage,trashItems,trashPaging);
+ section.append(heading,help,form,message,list,cases,paging,trash);
  host.append(section);
  let generation=0,currentQuery='',page=0,activeSubject=null,busy=false;
  function clear(node){node.replaceChildren()}
- function locked(){if(api.isAdminUnlocked())return false;section.hidden=true;clear(list);clear(cases);message.textContent='';return true}
+ function locked(){if(api.isAdminUnlocked())return false;section.hidden=true;clear(list);clear(cases);clear(trashItems);clear(trashPaging);trashMessage.textContent='';message.textContent='';return true}
  async function loadUsers(){
   if(locked())return;
   const stamp=++generation;busy=true;find.disabled=prev.disabled=next.disabled=true;
@@ -93,7 +106,21 @@ export function mountUsersCaseSection(host,api){
     const row=el(doc,'button');row.type='button';row.className='fa-case-row';
     row.append(el(doc,'span',`${item.kind} · ${caseStatus(item.status)}`),el(doc,'small',item.topic||'Untitled case'));
     row.addEventListener('click',()=>{if(!locked())api.onOpenCase(item.id)});
-    cases.append(row);
+    const wrap=el(doc,'div');wrap.append(row);
+    if(trashEnabled&&subject==='unlinked'&&item.kind==='feedback'){
+     const move=el(doc,'button','Move Unknown Case To Trash');move.type='button';
+     move.addEventListener('click',async()=>{
+      if(locked()||!confirmAction('Move this unlinked Feedback to Trash? It will be permanently deleted 30 days after moving. Case: '+item.id))return;
+      move.disabled=true;
+      try{const result=await api.moveUnknownCaseToTrash(item.id);
+       if(result?.ok!==true||result?.adminOnly!==true||result?.id!==item.id)throw Error('Move was not confirmed by Admin API');
+       status.textContent='Moved case to Trash. Restore is available before the 30-day deadline.';
+       await loadUsers();await loadTrash(0);
+      }catch{status.textContent='Could not move case to Trash. Check Admin access.';}
+      finally{move.disabled=false;}
+     });wrap.append(move);
+    }
+    cases.append(wrap);
    }
    const navigation=el(doc,'div');
    const back=el(doc,'button','Previous');back.type='button';back.disabled=userPage===0;
@@ -103,6 +130,35 @@ export function mountUsersCaseSection(host,api){
    navigation.append(back,forward);cases.append(navigation);
   }catch{if(stamp===generation)status.textContent='Unable to load cases.';}
  }
+ async function loadTrash(trashPage=0){
+  if(!trashEnabled||locked())return;
+  const stamp=++generation;clear(trashItems);clear(trashPaging);viewTrash.disabled=true;
+  trashMessage.textContent='Loading Trash…';
+  try{
+   const data=await api.loadTrash(trashPage);
+   if(stamp!==generation||locked())return;
+   if(data?.ok!==true||data?.adminOnly!==true||!Array.isArray(data.items))throw Error('Unexpected Trash result');
+   for(const item of data.items){
+    const row=el(doc,'div');row.append(el(doc,'strong',item.topic||'Unknown Feedback'),
+      el(doc,'small','Case '+item.id+' · Scheduled deletion: '+new Date(item.purgeAt*1000).toISOString()));
+    const restore=el(doc,'button','Restore');restore.type='button';
+    restore.addEventListener('click',async()=>{
+     if(locked()||!confirmAction('Restore this Unknown Feedback case? '+item.id))return;
+     restore.disabled=true;
+     try{const out=await api.restoreUnknownCase(item.id);
+      if(out?.ok!==true||out?.adminOnly!==true||out?.id!==item.id)throw Error('Not restored');
+      await loadTrash(trashPage);await loadUsers();
+     }catch{trashMessage.textContent='Restore failed. Verify the deadline and Admin access.';}
+     finally{restore.disabled=false;}
+    });row.append(restore);trashItems.append(row);
+   }
+   trashMessage.textContent=data.items.length?'Trash page '+(trashPage+1):'Trash is empty.';
+   if(trashPage>0){const prevTrash=el(doc,'button','Previous');prevTrash.type='button';prevTrash.addEventListener('click',()=>loadTrash(trashPage-1));trashPaging.append(prevTrash)}
+   if(data.hasMore){const nextTrash=el(doc,'button','Next');nextTrash.type='button';nextTrash.addEventListener('click',()=>loadTrash(trashPage+1));trashPaging.append(nextTrash)}
+  }catch{if(stamp===generation)trashMessage.textContent='Cannot read Trash. Check Admin access.';}
+  finally{if(stamp===generation)viewTrash.disabled=false;}
+ }
+ if(trashEnabled)viewTrash.addEventListener('click',()=>loadTrash(0));
  form.addEventListener('submit',event=>{
   event.preventDefault();if(busy||locked())return;
   try{currentQuery=normalizeUserSearch(search.value);page=0;activeSubject=null;loadUsers()}
@@ -111,6 +167,6 @@ export function mountUsersCaseSection(host,api){
  prev.addEventListener('click',()=>{if(page>0&&!busy){page--;loadUsers();}});
  next.addEventListener('click',()=>{if(!busy){page++;loadUsers();}});
  return {refresh(){if(locked())return;section.hidden=false;return loadUsers()},
-   close(){generation++;section.hidden=true;clear(list);clear(cases);search.value='';currentQuery='';activeSubject=null;page=0},
+   close(){generation++;section.hidden=true;clear(list);clear(cases);clear(trashItems);clear(trashPaging);search.value='';currentQuery='';activeSubject=null;page=0},
    destroy(){generation++;section.remove()}};
 }
