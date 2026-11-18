@@ -19,7 +19,12 @@ function setup(kind='feedback',idClaim=null,removed=0,simulateD1Meta=false){
     first:async()=>q.get(...params)||null,all:async()=>({results:q.all(...params)}),
     run:async()=>({meta:{changes:q.run(...params).changes}})}}}},
   async batch(stmts){sql.exec('BEGIN IMMEDIATE');try{
-   const out=[];for(const stmt of stmts){\n    const v=await stmt.run();\n    // Cloudflare D1 meta.changes includes writes from triggers/FK cascades.\n    if(simulateD1Meta&&v.meta.changes>0)v.meta.changes+=1;\n    out.push(v);\n   }
+   const out=[];for(const stmt of stmts){
+    const v=await stmt.run();
+    // Cloudflare D1 meta.changes includes writes from triggers/FK cascades.
+    if(simulateD1Meta&&v.meta.changes>0)v.meta.changes+=1;
+    out.push(v);
+   }
    sql.exec('COMMIT');return out;
   }catch(e){sql.exec('ROLLBACK');throw e;}}
  };
