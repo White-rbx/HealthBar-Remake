@@ -8,7 +8,7 @@ export const TRASH_SECONDS=2592000;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NO_ID="(claimed_user_id IS NULL OR TRIM(claimed_user_id)='')";
 const okTime=n=>Number.isSafeInteger(n)&&n>1000000000&&n<4102444800;
-const changes=r=>Number(r?.meta?.changes??r?.changes??0);
+// Cloudflare D1 meta.changes may include FK cascades and trigger writes.\n// Treat at least one affected row as success, not an exact-one count.\nconst changedAtLeastOnce=r=>Number(r?.meta?.changes??r?.changes??0)>=1;
 const response=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
 const pageIndex=q=>q===null?0:/^(0|[1-9][0-9]{0,3})$/.test(q)?Number(q):null;
 
@@ -62,7 +62,7 @@ export function createUnknownCaseTrashHandler({adminAuthenticated,originAllowed,
       "kind='feedback' AND removed=0 AND "+NO_ID+' AND EXISTS(SELECT 1 FROM asc_feedback_unknown_trash WHERE case_id=? AND trashed_unix=?)')
       .bind(now,id,id,now)
     ]);
-    if(changes(batch[0])!==1||changes(batch[1])!==1)throw Error('Move conflict');
+    if(!changedAtLeastOnce(batch[0])||!changedAtLeastOnce(batch[1]))throw Error('Move conflict');
     return response({ok:true,adminOnly:true,action,id,trashedAt:now,purgeAt:now+TRASH_SECONDS});
    }
    const c=await db.prepare('SELECT t.purge_unix,c.removed,c.kind,c.claimed_user_id FROM asc_feedback_unknown_trash t '+
@@ -77,7 +77,7 @@ export function createUnknownCaseTrashHandler({adminAuthenticated,originAllowed,
     db.prepare('DELETE FROM asc_feedback_unknown_trash WHERE case_id=? AND purge_unix>? '+
       'AND EXISTS(SELECT 1 FROM asc_feedback_cases WHERE id=? AND removed=0)').bind(id,now,id)
    ]);
-   if(changes(batch[0])!==1||changes(batch[1])!==1)throw Error('Restore conflict');
+   if(!changedAtLeastOnce(batch[0])||!changedAtLeastOnce(batch[1]))throw Error('Restore conflict');
    return response({ok:true,adminOnly:true,action,id,restoredAt:now});
   }catch{return response({ok:false,error:'Unknown Trash case changed or operation failed'},409)}
  };
@@ -104,7 +104,7 @@ export async function purgeExpiredUnknownTrash(db,now=Math.floor(Date.now()/1000
   targets.push(db.prepare('DELETE FROM asc_feedback_cases WHERE id IN ('+elig+')').bind(id,now));
   // Single D1 transaction, deletes all history + original case; FK cascades Trash marker.
   const result=await db.batch(targets);
-  if(changes(result[3])===1)purged++;
+  // A successful case deletion can report 2+ changes due to ON DELETE CASCADE.\n  if(changedAtLeastOnce(result[3]))purged++;
  }
  return {purged,examined:due.length,nowUnix:now};
 }
