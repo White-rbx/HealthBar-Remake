@@ -25,6 +25,10 @@ local allowed = {
     ["z8_Arcsen"] = true,   -- forward-compatible name
 }
 local saved = setmetatable({}, { __mode = "k" })
+local previous = env.ESRestrictedTopbarController
+if type(previous) == "table" and type(previous.stop) == "function" then
+    pcall(previous.stop)
+end
 local connections = {}
 local stopped = false
 local disabledColor = Color3.fromRGB(89, 89, 89)
@@ -34,6 +38,7 @@ local function lockButton(button)
     if not saved[button] then
         saved[button] = {
             interactable = button.Interactable,
+            active = button.Active,
             autoColor = button.AutoButtonColor,
             color = button.BackgroundColor3
         }
@@ -64,15 +69,6 @@ table.insert(connections, topbar.ChildAdded:Connect(function(child)
     if child.Name == "TopButtons" then watch(child) else lockButton(child) end
 end))
 
-local previous = env.ESRestrictedTopbarController
-if type(previous) == "table" and type(previous.stop) == "function" then
-    -- Do not let an older controller restore a newly applied restriction.
-    -- The old controller is stopped before the next controller is published.
-    pcall(previous.stop)
-    for _, desc in ipairs(holder:GetDescendants()) do lockButton(desc) end
-    if more then for _, desc in ipairs(more:GetDescendants()) do lockButton(desc) end end
-end
-
 local controller = {}
 function controller.stop()
     if stopped then return end
@@ -84,7 +80,7 @@ function controller.stop()
         if button and button.Parent then
             pcall(function()
                 button.Interactable = state.interactable
-                button.Active = state.interactable
+                button.Active = state.active
                 button.AutoButtonColor = state.autoColor
                 button.BackgroundColor3 = state.color
             end)
