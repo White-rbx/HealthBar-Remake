@@ -1510,6 +1510,23 @@ if not isRestrictedMode then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Editor.lua"))()
 end
 
+-- Apply the Restricted UI lock BEFORE Arcsen can create chat controls.
+-- Server-side account authorization is a separate required release gate.
+if isRestrictedMode then
+    local okGate, gateResult = pcall(function()
+        local gateCode = game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/RestrictedMode-Topbar-STAGING.lua")
+        return assert(loadstring(gateCode))()
+    end)
+    if not okGate or gateResult ~= true then
+        warn("[ES][Restricted] Missing UI gate; cannot enable unrestricted UI.")
+        local gui = game:GetService("CoreGui"):FindFirstChild("ExperienceSettings")
+        if gui and gui:IsA("ScreenGui") then gui.Enabled = false end
+        local menu = gui and gui:FindFirstChild("Menu")
+        if menu and menu:IsA("GuiObject") then menu.Visible = false end
+        return
+    end
+end
+
 -- Arcsen stays available for Settings > ArcScriptCenter > Feedback & Appeal.
 -- STAGING-only patched UI is read-only while Restricted Mode is active.
 local arcsenUrl = isRestrictedMode
@@ -1521,23 +1538,6 @@ print("[ Arcsen ] Successful loaded.")
 if not isRestrictedMode then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search.lua"))()
     print("[ Search ] Successful loaded.")
-else
-    -- Additional UI-only guard. Real AI/API moderation still needs server enforcement.
-    local okGate, errorGate = pcall(function()
-        local gateCode = game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/RestrictedMode-Topbar-STAGING.lua")
-        local gateChunk = assert(loadstring(gateCode))
-        gateChunk()
-    end)
-    if not okGate then
-        warn("[ES][Restricted] Guard unavailable: " .. tostring(errorGate))
-        -- A broken guard must not expose the unrestricted UI.
-        local root = game:GetService("CoreGui"):FindFirstChild("ExperienceSettings")
-        if root then
-            local menu = root:FindFirstChild("Menu")
-            if menu then menu.Enabled = false end
-        end
-        return
-    end
 end
 
 -- Anniversary (The event has ended.)
