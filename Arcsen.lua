@@ -1,6 +1,8 @@
 local ver = {
-	sion = " UIs 7.3.43 ",
+	sion = " UIs 7.3.45 ",
 	logs = [[
+(:18/11/2026: A&F) STAGING: add individual receipt-verified Feedback case cards inside Review/Approved/Denied, including live progress, moderator note, Case Closed and View Status. Submitted Feedback appears in Review immediately; the 45-second active-panel status refresh moves cards after admin decisions. No account-wide listing or Production changes.
+(:18/11/2026: A&F) STAGING Native Acceptance: display Case Closed (Approved/Denied/Violation) after receipt-authenticated server status; refresh session-only known receipts every 45 seconds while Feedback is expanded, preserve privacy and refresh on demand; show Total/New counters for Feedback status subcategories, where New means unread status change, not server-wide totals. No Production changes.
 (:17/11/2026: A&F) Stage 16.79: Move Feedback Review/Approved/Denied and receipt-only Check Existing Case into a nested Feedback category; build conditional Violation category with Review/Approved/Denied/History and status-indexed LayoutOrder (blue=0/orange=1/red=2/green=3). Keep custom 350px Violation/Appeal notice. No unverified identity or false Violation history; staging only, never Production.
 (:17/11/2026: A&F) Stage 16.78: Hide Violation notice entirely when no authenticated, account-bound violation has been verified. No Violation category, no false "No violation notice" banner and no preview auto-open. Preserve custom 350px ViolationAppealUI as a hidden standalone notice; Appeal remains nested, not a top-level section. Current signed UI policy is advisory and identityVerified=false, so it MUST NOT trigger a confirmed-violation notice. No backend/Production changes.
 (:17/11/2026: A&F) Stage 16.77: Native Arcsen sender preview shows LocalPlayer DisplayName, @Username and UserId in Feedback & Appeal; avoids Browser Bridge navigation. WARNING: client identity is unverified on server; do not use it for moderation actions until Roblox OAuth or trusted server attestation is implemented. No HTTP/Production API changes.
@@ -14014,6 +14016,7 @@ task.spawn(function()
     -- Cloud/Policy URL or send administrative tokens from the client.
     local CASE_STAGING_BASE = "https://arcscriptcenter-api-staging.kogpasan14.workers.dev"
     local privateReceipts = {} -- Session only, not getgenv(), Global Memory, logs or disk.
+    local updateCaseCounters = function() end -- Assigned after Feedback subcategory UI is created.
     loc.API.ArcScriptCenterCaseSession = {LastCaseId=nil, Count=0, Transport="STAGING only"}
 
     local function caseLength(value)
@@ -14086,16 +14089,19 @@ task.spawn(function()
             not data.receipt:match("^[a-fA-F0-9]+$") then
             return nil, "Server response was not a valid Case ID + receipt."
         end
-        local item = {id=data.id, receipt=data.receipt, kind=kind, status="reviewing"}
+        -- A 201 response is proof of this submitted case, not of Roblox account identity.
+        local item = {id=data.id, receipt=data.receipt, kind=kind,
+            status="reviewing", verified=true, unread=false}
         privateReceipts[data.id] = item
         loc.API.ArcScriptCenterCaseSession.LastCaseId = data.id
         local c=0
         for _ in pairs(privateReceipts) do c+=1 end
         loc.API.ArcScriptCenterCaseSession.Count = c
+        task.defer(updateCaseCounters)
         return item
     end
 
-    local function caseCheckStatus(id, receipt)
+    local function caseCheckStatus(id, receipt, markRead)
         id=caseTrim(id)
         receipt=caseTrim(receipt)
         if #id ~= 36 or not id:match("^[0-9a-fA-F%-]+$") or
@@ -14109,9 +14115,29 @@ task.spawn(function()
             not ({reviewing=true,approved=true,denied=true,violation=true})[record.status] then
             return nil, "Invalid case response."
         end
-        if privateReceipts[id] then
-            privateReceipts[id].status = record.status
+        -- A valid private receipt authorizes this CASE only. Never infer
+        -- account-wide history/counts from a claimed UserId or Admin totals.
+        local cached = privateReceipts[id]
+        if not cached then
+            cached = {id=id, receipt=receipt, verified=true, unread=false}
+            privateReceipts[id] = cached
+        elseif cached.verified and markRead == false and
+            ((cached.status and cached.status ~= record.status) or
+            (type(record.publicNote)=="string" and record.publicNote~=""
+                and record.publicNote~=cached.publicNote)) then
+            cached.unread = true -- New moderator status or public note.
         end
+        cached.id, cached.receipt = id, receipt
+        cached.kind, cached.status = record.kind, record.status
+        cached.topic = type(record.topic)=="string" and record.topic or cached.topic
+        cached.updatedAt = tonumber(record.updatedAt) or cached.updatedAt
+        cached.publicNote = type(record.publicNote)=="string" and record.publicNote or nil
+        cached.verified = true
+        if markRead ~= false then cached.unread = false end
+        local c=0
+        for _ in pairs(privateReceipts) do c+=1 end
+        loc.API.ArcScriptCenterCaseSession.Count = c
+        task.defer(updateCaseCounters)
         -- Receipt-authenticated history is returned together with /status.
         -- Never infer events from current status when the server omits them.
         record.reviewHistory = type(data.history) == "table" and data.history or nil
@@ -14149,19 +14175,20 @@ task.spawn(function()
         local valid,errorText=caseValidate(kind,topic,description)
         if not valid then return nil,errorText,false end
         local payload={kind=kind,topic=topic,description=description}
-        -- Sender identity is optional metadata for Feedback, not authentication.
-        -- Appeals still need a UserId claim to help moderators locate a case.
-        -- Server MUST treat this client-supplied value as unverified.
-        local localPlayer=game:GetService("Players").LocalPlayer
-        if localPlayer and type(localPlayer.UserId)=="number" and localPlayer.UserId>0 then
+        if kind == "appeal" then
+            local localPlayer=game:GetService("Players").LocalPlayer
+            if not localPlayer or localPlayer.UserId <= 0 then
+                return nil, "LocalPlayer UserId is unavailable.",false
+            end
             payload.claimedUserId=tostring(localPlayer.UserId)
-        elseif kind == "appeal" then
-            return nil, "A Roblox UserId is required for Appeal.",false
+            -- The server treats claimedUserId as unverified identity.
         end
         local data,err,uncertain=casePost("/api/v1/feedback/submit",payload)
         if not data then return nil,err,uncertain end
         local record,recordErr=caseRecord(kind,data)
         if not record then return nil,recordErr,true end
+        record.topic = topic -- Local summary only; never persisted to a different service.
+        task.defer(updateCaseCounters)
         return record,nil,false
     end
 
@@ -14290,6 +14317,7 @@ task.spawn(function()
         local panelExpanded = false
         local panelScroll, panelUI
         local openAppealDraft = function() end
+        local resumeFeedbackRefresh = function() end
 
         -- Stage 16.28: protect nested scrolling containers against a short canvas.
         -- AutomaticCanvasSize.Y remains enabled; CanvasSize is a reliable MINIMUM.
@@ -14347,6 +14375,7 @@ task.spawn(function()
                 panelScroll.Visible = panelExpanded
                 if not panelExpanded then panelScroll.CanvasPosition = Vector2.zero end
             end
+            if panelExpanded then task.defer(resumeFeedbackRefresh) end
         end
 
         panelUI = o(group,"None","Feedback & Appeal",false,true,"Open",false,false,nil,
@@ -14433,13 +14462,131 @@ task.spawn(function()
                 -- All sections use o() inside the existing ScrollingFrame + UIListLayout.
                 -- Rules text is authored locally by the project developer, never
                 -- downloaded as unsanitized RichText from the Worker.
-                local function infoSection(title, description, allowRichText, destination, subOrder)
-                    local infoText, item
+                -- Compact, always-visible two-line status rows for narrow mobile UI.
+                -- This count is only for successfully receipt-verified session cases.
+                local function addSessionCounts(section)
+                    section.Inside.Position = UDim2.fromOffset(0,43)
+                    local counter = Instance.new("TextLabel")
+                    counter.Name = "SessionCaseCounters"
+                    counter.Position = UDim2.fromOffset(6,21)
+                    counter.Size = UDim2.new(1,-12,0,17)
+                    counter.BackgroundTransparency = 1
+                    counter.Font = Enum.Font.Gotham
+                    counter.TextColor3 = Color3.fromRGB(179,209,239)
+                    counter.TextXAlignment = Enum.TextXAlignment.Left
+                    counter.TextSize = 11
+                    counter.Text = "Total: - | New: -"
+                    counter.Parent = section.Frame
+                    return function(total, unread)
+                        if not counter.Parent then return end
+                        counter.Text = "Total: " .. (total ~= nil and tostring(total) or "-") ..
+                            " | New: " .. (unread ~= nil and tostring(unread) or "-")
+                    end
+                end
+                local onFeedbackGroupOpened = function() end
+                local openKnownFeedbackCase = function() end
+                local function infoSection(title, description, allowRichText, destination, subOrder, countsEnabled)
+                    local infoText, item, casesFrame
+                    local previousCardSignature
                     local expanded = false
+                    local function renderCaseCards(cases)
+                        if not casesFrame or not casesFrame.Parent then return end
+                        cases = cases or {}
+                        local signatures = {}
+                        for _,case in ipairs(cases) do
+                            signatures[#signatures+1] = table.concat({
+                                tostring(case.id or ""),tostring(case.status or ""),
+                                tostring(case.topic or ""),tostring(case.publicNote or ""),
+                                tostring(case.updatedAt or ""),tostring(case.unread == true)
+                            },"\0")
+                        end
+                        local signature = table.concat(signatures,"\1")
+                        if previousCardSignature == signature then return end
+                        previousCardSignature = signature
+                        for _,child in ipairs(casesFrame:GetChildren()) do
+                            if child:IsA("GuiObject") then child:Destroy() end
+                        end
+                        for order,record in ipairs(cases) do
+                            -- Receipt-verified session data only. A claimed Roblox UserId
+                            -- never authorizes other people's Feedback or Violation history.
+                            local id = tostring(record.id or "")
+                            local state = tostring(record.status or "reviewing")
+                            local isClosed = state == "approved" or state == "denied"
+                            local accent = state == "approved" and Color3.fromRGB(94,222,133)
+                                or state == "denied" and Color3.fromRGB(255,125,125)
+                                or Color3.fromRGB(244,191,91)
+                            local card = Instance.new("Frame")
+                            card.Name = "FeedbackCaseCard"
+                            card.LayoutOrder = order
+                            card.Size = UDim2.new(1,0,0,164)
+                            card.BackgroundColor3 = Color3.fromRGB(29,41,58)
+                            card.BackgroundTransparency = 0.05
+                            card.BorderSizePixel = 0
+                            card.Parent = casesFrame
+                            Corner(0,6,card)
+
+                            local function cardText(name,value,y,height,fontSize,color)
+                                local label = Instance.new("TextLabel")
+                                label.Name = name
+                                label.Position = UDim2.fromOffset(8,y)
+                                label.Size = UDim2.new(1,-16,0,height)
+                                label.BackgroundTransparency = 1
+                                label.Font = Enum.Font.Gotham
+                                label.Text = value
+                                label.TextSize = fontSize
+                                label.TextColor3 = color
+                                label.TextWrapped = true
+                                label.TextXAlignment = Enum.TextXAlignment.Left
+                                label.TextYAlignment = Enum.TextYAlignment.Center
+                                label.RichText = false
+                                label.Parent = card
+                                return label
+                            end
+                            local shortId = id:sub(1,8)
+                            local headline = (record.unread and "NEW • " or "") .. "Feedback #" .. shortId
+                            cardText("CaseHeading",headline,6,20,12,accent)
+                            local topic = caseTrim(tostring(record.topic or ""))
+                            if topic == "" then topic = "Feedback received" end
+                            cardText("CaseTopic",topic:sub(1,70),28,32,12,Color3.fromRGB(226,234,244))
+                            local progress = state == "approved" and "CASE CLOSED — APPROVED"
+                                or state == "denied" and "CASE CLOSED — DENIED"
+                                or "REVIEWING — Waiting for moderator"
+                            cardText("CaseProgress",progress,62,28,12,accent)
+                            local note = caseTrim(tostring(record.publicNote or ""))
+                            local detail = note ~= "" and ("Moderator: " .. note:sub(1,125))
+                                or (isClosed and "Moderator decision recorded. No public note."
+                                    or "Submitted to STAGING. Awaiting moderator decision.")
+                            cardText("ModeratorProgressNote",detail,90,37,11,Color3.fromRGB(195,208,225))
+                            local view = Instance.new("TextButton")
+                            view.Name = "OpenVerifiedCase"
+                            view.Position = UDim2.fromOffset(8,132)
+                            view.Size = UDim2.new(1,-16,0,26)
+                            view.Text = "View status / review history"
+                            view.TextSize = 11
+                            view.TextColor3 = Color3.new(1,1,1)
+                            view.BackgroundColor3 = Color3.fromRGB(51,88,120)
+                            view.BorderSizePixel = 0
+                            view.Parent = card
+                            Corner(0,4,view)
+                            view.MouseButton1Click:Connect(function()
+                                openKnownFeedbackCase(id)
+                            end)
+                        end
+                        task.defer(syncFeedbackCanvas)
+                        task.defer(syncPanelCanvas)
+                    end
                     local function resize()
                         if item and item.Frame.Parent then
                             task.defer(destination and syncFeedbackCanvas or syncPanelCanvas)
                         end
+                    end
+                    local function setGroupOpen(value)
+                        expanded = value == true
+                        if not item or not item.Frame.Parent then return end
+                        item.Inside.Visible = expanded
+                        item.Button.Text = expanded and "Hide" or "Show"
+                        if expanded and countsEnabled then onFeedbackGroupOpened(title) end
+                        task.defer(resize)
                     end
                     item = o(destination or panelScroll,"None",title,false,true,"Show",false,false,nil,
                         function(sub)
@@ -14458,14 +14605,42 @@ task.spawn(function()
                             infoText.BackgroundTransparency = 1
                             infoText.Visible = true
                             infoText.Parent = sub.Inside
+                            if countsEnabled then
+                                local list = Instance.new("UIListLayout")
+                                list.Name = "CaseGroupLayout"
+                                list.SortOrder = Enum.SortOrder.LayoutOrder
+                                list.Padding = UDim.new(0,5)
+                                list.Parent = sub.Inside
+                                local inset = Instance.new("UIPadding")
+                                inset.PaddingTop = UDim.new(0,4)
+                                inset.PaddingBottom = UDim.new(0,6)
+                                inset.PaddingLeft = UDim.new(0,6)
+                                inset.PaddingRight = UDim.new(0,6)
+                                inset.Parent = sub.Inside
+                                infoText.LayoutOrder = 0
+                                infoText.Position = UDim2.fromOffset(0,0)
+                                infoText.Size = UDim2.new(1,0,0,0)
+                                casesFrame = Instance.new("Frame")
+                                casesFrame.Name = "VerifiedCaseCards"
+                                casesFrame.LayoutOrder = 1
+                                casesFrame.Size = UDim2.new(1,0,0,0)
+                                casesFrame.AutomaticSize = Enum.AutomaticSize.Y
+                                casesFrame.BackgroundTransparency = 1
+                                casesFrame.Parent = sub.Inside
+                                local cardLayout = Instance.new("UIListLayout")
+                                cardLayout.Name = "CaseCardLayout"
+                                cardLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                                cardLayout.Padding = UDim.new(0,6)
+                                cardLayout.Parent = casesFrame
+                                cardLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                                    task.defer(resize)
+                                end)
+                            end
                             infoText:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() task.defer(resize) end)
                         end,
                         function(_,event,sub)
                             if event ~= "button" then return end
-                            expanded = not expanded
-                            sub.Inside.Visible = expanded
-                            sub.Button.Text = expanded and "Hide" or "Show"
-                            task.defer(resize)
+                            setGroupOpen(not expanded)
                         end)
                     if destination then
                         item.Frame.LayoutOrder = subOrder or 0
@@ -14474,12 +14649,13 @@ task.spawn(function()
                         item.Frame.LayoutOrder = nextOrder
                     end
                     item.Frame.Size = UDim2.new(1,-6,0,0)
+                    local setCounts = countsEnabled and addSessionCounts(item) or nil
                     return item, function(text)
                         if infoText and infoText.Parent then
                             infoText.Text = tostring(text or "")
                             task.defer(destination and syncFeedbackCanvas or syncPanelCanvas)
                         end
-                    end
+                    end, setCounts, renderCaseCards, setGroupOpen
                 end
 
                 infoSection("Rules", [==[
@@ -14502,7 +14678,25 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 -- unrelated status rows in the top-level Feedback & Appeal list.
                 local feedbackScroll
                 local feedbackExpanded = false
-                local feedbackCategory = o(panelScroll,"None","Feedback",false,true,"Open",false,false,nil,
+                local refreshKnownFeedbackCases = function() end
+                local onFeedbackCaseRefresh = function() end
+                local feedbackRefreshEpoch = 0
+                local feedbackCategory
+                resumeFeedbackRefresh = function()
+                    if not feedbackExpanded or not panelExpanded or
+                        not feedbackCategory or not feedbackCategory.Frame.Parent then return end
+                    feedbackRefreshEpoch += 1
+                    local currentEpoch = feedbackRefreshEpoch
+                    task.spawn(function()
+                        while feedbackExpanded and panelExpanded and
+                            currentEpoch==feedbackRefreshEpoch and feedbackCategory.Frame.Parent do
+                            local ok = pcall(refreshKnownFeedbackCases)
+                            if not ok then break end
+                            task.wait(45)
+                        end
+                    end)
+                end
+                feedbackCategory = o(panelScroll,"None","Feedback",false,true,"Open",false,false,nil,
                     function(section)
                         feedbackScroll = Instance.new("ScrollingFrame")
                         feedbackScroll.Name = "FeedbackSubcategories"
@@ -14533,33 +14727,94 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     function(_,event,section)
                         if event ~= "button" then return end
                         feedbackExpanded = not feedbackExpanded
+                        feedbackRefreshEpoch += 1
                         section.Inside.Visible = feedbackExpanded
                         section.Button.Text = feedbackExpanded and "Close" or "Open"
+                        if feedbackExpanded then resumeFeedbackRefresh() end
                         task.defer(syncFeedbackCanvas)
                         task.defer(syncPanelCanvas)
                     end)
                 nextOrder += 1
                 feedbackCategory.Frame.LayoutOrder = nextOrder
                 feedbackCategory.Frame.Size = UDim2.new(1,-6,0,0)
+                local counterScopeNote=Instance.new("TextLabel")
+                counterScopeNote.Name="SessionCountScopeNote"
+                counterScopeNote.LayoutOrder=-1
+                counterScopeNote.Size=UDim2.new(1,-12,0,31)
+                counterScopeNote.BackgroundTransparency=1
+                counterScopeNote.TextColor3=Color3.fromRGB(173,193,221)
+                counterScopeNote.TextSize=10
+                counterScopeNote.TextWrapped=true
+                counterScopeNote.TextXAlignment=Enum.TextXAlignment.Left
+                counterScopeNote.Text="Counts show verified cases in THIS session only. New = unread moderator status updates."
+                counterScopeNote.Parent=feedbackScroll
 
                 -- These headings are status groups, NOT claims about the user's
                 -- account. Content updates only after a receipt-authenticated lookup.
-                local _, setFeedbackReview = infoSection("Review",
-                    "No authenticated Reviewing feedback case checked. Use Check Existing Case with your private receipt.",
-                    false,feedbackScroll,1)
-                local _, setFeedbackApproved = infoSection("Approved",
-                    "No authenticated Approved feedback case checked. Use Check Existing Case with your private receipt.",
-                    false,feedbackScroll,2)
-                local _, setFeedbackDenied = infoSection("Denied",
-                    "No authenticated Denied feedback case checked. Use Check Existing Case with your private receipt.",
-                    false,feedbackScroll,3)
-                local function updateFeedbackCaseSections(record)
-                    local status = record and record.kind == "feedback" and record.status or nil
-                    local summary = status and ("Verified STAGING case " .. tostring(record.id) ..
-                        " | status " .. tostring(status) .. " | " .. tostring(record.topic or "")) or nil
-                    setFeedbackReview(status == "reviewing" and summary or "No Reviewing feedback case selected.")
-                    setFeedbackApproved(status == "approved" and summary or "No Approved feedback case selected.")
-                    setFeedbackDenied(status == "denied" and summary or "No Denied feedback case selected.")
+                local _, setFeedbackReview, countReview, renderReviewCases, openReviewCards = infoSection("Review",
+                    "No verified Reviewing feedback case in this session.",false,feedbackScroll,1,true)
+                local _, setFeedbackApproved, countApproved, renderApprovedCases = infoSection("Approved",
+                    "No verified Approved feedback case in this session.",false,feedbackScroll,2,true)
+                local _, setFeedbackDenied, countDenied, renderDeniedCases = infoSection("Denied",
+                    "No verified Denied feedback case in this session.",false,feedbackScroll,3,true)
+                local function updateFeedbackCaseSections()
+                    local buckets = {reviewing={},approved={},denied={}}
+                    for _,item in pairs(privateReceipts) do
+                        if item.verified == true and item.kind == "feedback" and
+                            buckets[item.status] and type(item.receipt) == "string" then
+                            table.insert(buckets[item.status],item)
+                        end
+                    end
+                    for _,bucket in pairs(buckets) do
+                        table.sort(bucket,function(a,b)
+                            local at,bt=tonumber(a.updatedAt) or 0,tonumber(b.updatedAt) or 0
+                            if at ~= bt then return at > bt end
+                            return tostring(a.id) < tostring(b.id)
+                        end)
+                    end
+                    setFeedbackReview(#buckets.reviewing == 0 and
+                        "No Feedback waiting for moderator review in this session." or "")
+                    setFeedbackApproved(#buckets.approved == 0 and
+                        "No completed Approved feedback case in this session." or "")
+                    setFeedbackDenied(#buckets.denied == 0 and
+                        "No completed Denied feedback case in this session." or "")
+                    renderReviewCases(buckets.reviewing)
+                    renderApprovedCases(buckets.approved)
+                    renderDeniedCases(buckets.denied)
+                end
+                updateCaseCounters = function()
+                    local counts={reviewing=0,approved=0,denied=0}
+                    local unread={reviewing=0,approved=0,denied=0}
+                    local known=false
+                    for _,item in pairs(privateReceipts) do
+                        if item.verified and item.kind=="feedback" then
+                            known=true
+                            local status=caseTrim(item.status)
+                            if counts[status]~=nil then
+                                counts[status]+=1
+                                if item.unread then unread[status]+=1 end
+                            end
+                        end
+                    end
+                    countReview(known and counts.reviewing or nil,known and unread.reviewing or nil)
+                    countApproved(known and counts.approved or nil,known and unread.approved or nil)
+                    countDenied(known and counts.denied or nil,known and unread.denied or nil)
+                    updateFeedbackCaseSections()
+                    task.defer(syncFeedbackCanvas)
+                end
+                onFeedbackGroupOpened = function(groupName)
+                    local key=groupName=="Review" and "reviewing" or string.lower(groupName)
+                    for _,item in pairs(privateReceipts) do
+                        if item.kind=="feedback" and item.status==key then
+                            item.unread=false
+                        end
+                    end
+                    updateCaseCounters()
+                end
+                task.defer(updateCaseCounters)
+                local function showSubmittedFeedback()
+                    openReviewCards(true) -- Immediately show the new case in Review.
+                    task.defer(syncFeedbackCanvas)
                 end
                 -- Violation and nested Appeal are created later. Spam Mail is admin-only.
 
@@ -14698,8 +14953,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                     send.Text="Submit Feedback to STAGING"
                                     if item then
                                         setCase(item.id)
-                                        notice.Text="Submitted to STAGING. Case ID: "..item.id..
-                                            " | reviewing | Identity not verified. Keep the receipt private."
+                                        notice.Text="Submitted to STAGING. Your case now appears in Review as 'Waiting for moderator'."..
+                                            " Case ID: "..item.id.." | Keep the receipt private."
+                                        task.defer(showSubmittedFeedback)
                                     else
                                         notice.Text=err or "Submission not completed."
                                         if type(err)=="string" and err:find("Tap Submit again",1,true) then
@@ -15058,7 +15314,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                         local function showRecord(record)
                             latestRecord=record
-                            updateFeedbackCaseSections(record)
+                            updateCaseCounters()
                             latestToken=credentialsToken()
                             local revision=tonumber(record.revision) or 0
                             local kind=tostring(record.kind or "unknown")
@@ -15069,9 +15325,15 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 and revision<5 and (kind=="feedback" or kind=="appeal"))
                             local note=caseTrim(tostring(record.publicNote or ""))
                             if note=="" then note="No reviewer note yet." end
-                            status.Text="Case "..tostring(record.id).." | "..tostring(record.status)..
+                            local closed=record.status=="approved" or record.status=="denied"
+                                or record.status=="violation"
+                            local stateText=closed and ("CASE CLOSED — "..string.upper(tostring(record.status)))
+                                or ("Case "..tostring(record.status))
+                            status.Text=stateText.." | Case "..tostring(record.id)..
                                 " | "..kind.." | Revision "..revision.."/5\nLatest reviewer note: "..note:sub(1,120)..(#note>120 and "… (see Review History)" or "")..
-                                (allowed and "\nYou can edit/remove while Reviewing." or "\nRead-only: editing unavailable.")
+                                (closed and "\nFinal moderator decision. This case is read-only."
+                                    or (allowed and "\nYou can edit/remove while Reviewing."
+                                        or "\nRead-only: editing unavailable."))
                             renderReviewHistory(record.reviewHistory)
                             setManaging(allowed)
                             if allowed then
@@ -15092,6 +15354,21 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             end
                         end
 
+                        onFeedbackCaseRefresh = function(record)
+                            if not row.Frame.Parent or not latestRecord or latestRecord.id~=record.id then return end
+                            if record.status~=latestRecord.status or
+                                tonumber(record.updatedAt)~=tonumber(latestRecord.updatedAt) then
+                                -- Never overwrite an in-progress Reviewing draft.
+                                -- A final Admin decision closes the editor immediately.
+                                if record.status=="approved" or record.status=="denied"
+                                    or record.status=="violation" then
+                                    showRecord(record)
+                                else
+                                    status.Text="Moderator updated this case. Tap Check Status to view the latest note."
+                                end
+                            end
+                        end
+
                         useLast.MouseButton1Click:Connect(function()
                             if busy then return end
                             local item=privateReceipts[loc.API.ArcScriptCenterCaseSession.LastCaseId]
@@ -15104,7 +15381,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             end
                         end)
 
-                        checkButton.MouseButton1Click:Connect(function()
+                        local function requestStatusLookup()
                             if busy then return end
                             invalidateCase()
                             local requestToken=credentialsToken()
@@ -15123,9 +15400,32 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 else
                                     status.Text=ok and tostring(err or "Status lookup failed") or "Status check failed."
                                 end
+                                task.defer(syncFeedbackCanvas)
                                 task.defer(syncPanelCanvas)
                             end)
-                        end)
+                        end
+                        checkButton.MouseButton1Click:Connect(requestStatusLookup)
+                        openKnownFeedbackCase = function(id)
+                            if busy or not row.Frame.Parent then return end
+                            local item=privateReceipts[id]
+                            if not item or item.verified~=true or item.kind~="feedback" or
+                                type(item.receipt)~="string" then return end
+                            lookupExpanded=true
+                            row.Inside.Visible=true
+                            row.Button.Text="Close"
+                            idBox.Text=item.id
+                            receiptBox.Text=item.receipt
+                            task.defer(syncFeedbackCanvas)
+                            task.defer(syncPanelCanvas)
+                            task.defer(function()
+                                if row.Frame.Parent and feedbackScroll and feedbackScroll.Parent then
+                                    local y = row.Frame.AbsolutePosition.Y - feedbackScroll.AbsolutePosition.Y
+                                        + feedbackScroll.CanvasPosition.Y
+                                    feedbackScroll.CanvasPosition = Vector2.new(0,math.max(0,math.floor(y-8)))
+                                end
+                            end)
+                            requestStatusLookup()
+                        end
 
                         editButton.MouseButton1Click:Connect(function()
                             if busy or not latestRecord or not manage.Visible
@@ -15162,6 +15462,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                     latestRecord.revision=tonumber(result.revision)
                                     latestRecord.topic=topic
                                     latestRecord.description=description
+                                    if privateReceipts[id] then
+                                        privateReceipts[id].topic=topic
+                                        task.defer(updateCaseCounters)
+                                    end
                                     manageHeader.Text="Edit "..kind.." | revision "..latestRecord.revision.."/5 | Reviewing"
                                     manageNote.Text="Saved to STAGING. Use Check Status to refresh server result."
                                     if latestRecord.revision>=5 then
@@ -15220,6 +15524,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                     for _ in pairs(privateReceipts) do c+=1 end
                                     loc.API.ArcScriptCenterCaseSession.Count=c
                                     invalidateCase()
+                                    task.defer(updateCaseCounters)
                                     status.Text="Case removed from STAGING. This receipt can no longer access it."
                                 else
                                     manageNote.Text=ok and tostring(errorText or "Remove failed") or "Remove failed."
@@ -15245,6 +15550,31 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end)
                 caseLookupRow.Frame.LayoutOrder=4
                 caseLookupRow.Frame.Size=UDim2.new(1,-6,0,0)
+
+                refreshKnownFeedbackCases = function()
+                    local ids={}
+                    for id,item in pairs(privateReceipts) do
+                        if item.verified and item.kind=="feedback" and type(item.receipt)=="string" then
+                            ids[#ids+1]=id
+                        end
+                    end
+                    table.sort(ids)
+                    -- No account-wide API and no Admin credentials; at most 12
+                    -- receipt-scoped requests per refresh cycle (45 seconds).
+                    for i=1,math.min(12,#ids) do
+                        if not feedbackExpanded or not panelExpanded or not feedbackCategory.Frame.Parent then break end
+                        local id=ids[i]
+                        local item=privateReceipts[id]
+                        if item and item.receipt then
+                            local record=caseCheckStatus(id,item.receipt,false)
+                            if record then
+                                updateCaseCounters()
+                                onFeedbackCaseRefresh(record)
+                            end
+                        end
+                        task.wait(0.15)
+                    end
+                end
 
                 -- Stage 16.33: rebuilt from the developer-revised ViolationAppealUI posted 15/11/2026
                 -- Original hierarchy/colors/positions preserved, including 350px outer viewport; variables named semantically.
@@ -16159,6 +16489,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     section.Frame.Name = "Violation"..title
                     section.Frame.LayoutOrder = order
                     section.Frame.Size = UDim2.new(1,-6,0,0)
+                    -- Until authenticated, server-bound violation history exists,
+                    -- counters remain unknown; never derive totals from claimed UserId.
+                    section.SetSessionCounts = addSessionCounts(section)
                     -- LayoutOrder on the notice actually participates in sorting.
                     local itemsLayout=Instance.new("UIListLayout")
                     itemsLayout.Name="Violation"..title.."ItemsLayout"
