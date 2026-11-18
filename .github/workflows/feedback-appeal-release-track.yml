@@ -54,6 +54,8 @@ jobs:
         run: node --test sandbox/feedback-client-auto-userid-qa.test.mjs
       - name: Ban Selection and Duration separation test
         run: node --test sandbox/arcscriptcenter-ban-selection-duration.test.mjs
+      - name: Unknown Feedback Trash 30-day retention / Admin authorization (SQLite)
+        run: node --test sandbox/feedback-unknown-case-trash.test.mjs
       - name: Existing production browser form end-to-end synthetic tests
         run: node --test sandbox/production-candidate-browser-form.test.mjs
       - name: Existing route isolation and security gate regressions
