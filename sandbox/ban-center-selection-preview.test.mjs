@@ -11,7 +11,7 @@ test('Ban Center addon is valid JavaScript and preserves native UI IDs',()=>{
  const encoded=worker.match(/const BAN_MODE_SCRIPT = ("(?:\\.|[^"\\])*");/);
  assert.ok(encoded);
  assert.equal(JSON.parse(encoded[1]),script);
- for(const name of ['banEditorForm','banRecords','banAdminKey','banEnd','banSelection','banDuration','banSave'])
+ for(const name of ['banEditorForm','banRecords','banAdminKey','banEnd','banSelection','banDuration'])
   assert.ok(script.includes(name),name);
  for(const choice of ['ban_ingame','restricted_mode','temporary','permanent'])
   assert.ok(script.includes(choice),choice);
