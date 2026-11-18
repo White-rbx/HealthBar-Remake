@@ -68,6 +68,8 @@ jobs:
         run: node --test sandbox/feedback-unknown-trash-admin-qa-http-smoke.test.mjs
       - name: Memory-only Admin Key native Trash Dashboard callback bridge
         run: node --test sandbox/feedback-unknown-trash-dashboard-bridge.test.mjs
+      - name: Live native Pages User's Case Preview and Admin CORS smoke
+        run: node --test sandbox/feedback-users-case-preview-real-http.test.mjs
       - name: Existing production browser form end-to-end synthetic tests
         run: node --test sandbox/production-candidate-browser-form.test.mjs
       - name: Existing route isolation and security gate regressions
