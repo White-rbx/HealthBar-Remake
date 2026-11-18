@@ -28,11 +28,23 @@ export function classifyManagedBan(entry, nowUnix=Math.floor(Date.now()/1000)) {
   const start=fromICT(entry.startAt), end=fromICT(entry.expiresAt);
   if (Number.isNaN(start)||Number.isNaN(end) || (start!==null&&end!==null&&end<=start))
     throw new Error('Invalid managed ban schedule');
+  // Selection is independent from Duration. Existing managed bans have no
+  // selection field, so NEVER derive it from whether expiresAt is populated.
+  const selection=entry.selection==null||entry.selection===''?'unassigned':entry.selection;
+  if(!['ban_ingame','restricted_mode','unassigned'].includes(selection))
+    throw new Error('Invalid Ban Selection');
+  const duration=end===null?'permanent':'temporary';
+  if(entry.duration!==undefined&&entry.duration!==duration)
+    throw new Error('Ban Duration contradicts expiry');
+  const selectionLabel=selection==='ban_ingame'?'Ban in-game':
+    selection==='restricted_mode'?'Restricted Mode':'Selection not set';
+  const durationLabel=duration==='temporary'?'Temporary':'Permanent';
+  const shared={selection,duration,expiresAt:end,userId:entry.userId};
   if (start!==null&&nowUnix<start)
-    return {label:'Scheduled Ban',type:'scheduled',active:false,expiresAt:end,userId:entry.userId};
+    return {...shared,label:'Scheduled · '+selectionLabel+' · '+durationLabel,type:'scheduled',active:false};
   if (end!==null&&nowUnix>=end)
-    return {label:'Expired',type:'expired',active:false,expiresAt:end,userId:entry.userId};
-  return {label:end===null?'Banned':'Temporary Banned',type:end===null?'banned':'temporary_banned',active:true,expiresAt:end,userId:entry.userId};
+    return {...shared,label:'Expired · '+selectionLabel+' · '+durationLabel,type:'expired',active:false};
+  return {...shared,label:selectionLabel+' · '+durationLabel,type:'active',active:true};
 }
 
 /**
@@ -70,5 +82,5 @@ export function describeVerifiedBanNotice({entry, verifiedServerPrincipal, linke
     return null;
   const ban=classifyManagedBan(entry,nowUnix);
   if (!ban.active) return null;
-  return {id:linkedNoticeId,reason,moderatorMessage,appealStatus,banType:ban.type,expiresAt:ban.expiresAt,identityVerified:true};
+  return {id:linkedNoticeId,reason,moderatorMessage,appealStatus,banStatus:ban.type,banSelection:ban.selection,banDuration:ban.duration,expiresAt:ban.expiresAt,identityVerified:true};
 }
