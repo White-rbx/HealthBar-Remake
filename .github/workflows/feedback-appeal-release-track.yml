@@ -50,6 +50,8 @@ jobs:
         run: node --test sandbox/feedback-dashboard-staging-adapter.test.mjs
       - name: Roblox public username directory and private Admin Ban/Case lookup checks
         run: node --test sandbox/feedback-admin-directory.test.mjs
+      - name: Arcsen v7.3.51 auto UserId and unverified identity static checks
+        run: node --test sandbox/feedback-client-auto-userid-qa.test.mjs
       - name: Existing production browser form end-to-end synthetic tests
         run: node --test sandbox/production-candidate-browser-form.test.mjs
       - name: Existing route isolation and security gate regressions
