@@ -1,6 +1,8 @@
 local ver = {
-	sion = " UIs 7.3.49 ",
+	sion = " UIs 7.3.51 ",
 	logs = [[
+(:18/11/2026: Feedback & Appeal Beta) STAGING v7.3.51: remove the optional include-UserId toggle from new Feedback. Tell the sender in a non-interactive label that their LocalPlayer UserId is included for Admin case linking; the Worker still marks this as an unverified claim, not proof of identity or permission for bans. Fail submit clearly if Roblox UserId is unavailable; never silently send anonymous. Existing old unlinked cases remain unlinked. No Cloudflare Pages/Worker/Production changes.
+(:18/11/2026: A&F) STAGING: Beta label, clearer anonymous Feedback attribution, and future VERIFIED Violation display for permanent/temporary ban with expiry (no Client identity proof, no backend changes).
 (:18/11/2026: A&F) STAGING: preserve receipt-verified feedback cases marked status=violation in a separate Feedback > Flagged (Policy) section, clearly distinguished from account-bound Violation notice. Show Case Closed and include flagged in Total/New/refresh. Optional opt-in Roblox UserId claim on new Feedback submissions (default OFF; unverified; not account authentication). Existing cases cannot gain a UserId retroactively. No Worker/D1/Production changes.
 (:18/11/2026: A&F) STAGING v7.3.48: make receipt-only Feedback Refresh fair across more than twelve cases, show last successful verification times, and clear locally cached cases that now return a confirmed HTTP 404; failed network requests never imply Admin approval/denial or a closed case. Keep per-session receipts, moderator-only updates, conditional Violation, Production untouched.
 (:18/11/2026: A&F) STAGING: add a manual Refresh Case Status button under Restore Previous Case. It rechecks only receipt-verified session Feedback, instantly moves approved/denied cases to the Case Closed groups, preserves unread moderator updates, displays checked/closed/error counts and throttles repeated taps. The existing 45-second refresh remains. No server, Production, Admin, or persistent-receipt changes.
@@ -14181,13 +14183,17 @@ task.spawn(function()
         local valid,errorText=caseValidate(kind,topic,description)
         if not valid then return nil,errorText,false end
         local payload={kind=kind,topic=topic,description=description}
-        if kind == "feedback" and optionalClaimedUserId ~= nil then
-            -- Client-side consent is explicit; the Worker stores this as UNVERIFIED.
-            -- Never use this claim as proof of account ownership or ban authority.
+        if kind == "feedback" then
+            -- The user's Roblox account identifier is attached to new Feedback.
+            -- Server still treats it as UNVERIFIED / claimed; never authorize
+            -- bans, unbans, private Violation, or account ownership from this.
             local localPlayer=game:GetService("Players").LocalPlayer
-            if not localPlayer or localPlayer.UserId <= 0 or
+            if not localPlayer or localPlayer.UserId <= 0 then
+                return nil,"Roblox UserId unavailable. Please rejoin and retry.",false
+            end
+            if optionalClaimedUserId ~= nil and
                 tostring(localPlayer.UserId) ~= tostring(optionalClaimedUserId) then
-                return nil,"Roblox UserId unavailable. Disable the optional ID toggle and retry.",false
+                return nil,"Roblox UserId changed. Please retry.",false
             end
             payload.claimedUserId=tostring(localPlayer.UserId)
         end
@@ -14395,7 +14401,7 @@ task.spawn(function()
             if panelExpanded then task.defer(resumeFeedbackRefresh) end
         end
 
-        panelUI = o(group,"None","Feedback & Appeal",false,true,"Open",false,false,nil,
+        panelUI = o(group,"None","Feedback & Appeal (Beta Feature)",false,true,"Open",false,false,nil,
             function(container)
                 container.Frame.Name = "FeedbackAndAppeal"
                 container.Frame.Size = UDim2.new(1,-8,0,0)
@@ -15081,39 +15087,35 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             -- Network submission is separate from Copy Draft. Deliberate two-tap only.
                             if not isAppeal then
                                 local sendState={busy=false}
-                                local shareClaim=false -- always OFF by default
-                                local shareId=caseButton(sub.Inside,"ShareOptionalRobloxUserId",
-                                    "Include my Roblox UserId: OFF (unverified)",0,200,30)
-                                shareId.BackgroundColor3=Color3.fromRGB(62,74,91)
-                                shareId.TextSize=10
+                                -- Inform users that their Roblox UserId is automatically
+                                -- included in new Feedback for Admin case search (not verified).
+                                local shareInfo=Instance.new("TextLabel")
+                                shareInfo.Name="RobloxUserIdSubmissionNotice"
+                                shareInfo.Size=UDim2.new(1,-10,0,30)
+                                shareInfo.Position=UDim2.fromOffset(5,200)
+                                shareInfo.BackgroundColor3=Color3.fromRGB(62,74,91)
+                                shareInfo.BorderSizePixel=0
+                                shareInfo.Text="Your Roblox UserId is included for Admin review (unverified)."
+                                shareInfo.TextColor3=Color3.fromRGB(231,238,247)
+                                shareInfo.Font=Enum.Font.Gotham
+                                shareInfo.TextSize=10
+                                shareInfo.TextWrapped=true
+                                shareInfo.Parent=sub.Inside
+                                Corner(0,6,shareInfo)
                                 local send=caseButton(sub.Inside,"SubmitFeedback","Submit Feedback to STAGING",0,234,28)
                                 notice.Position=UDim2.fromOffset(5,267)
                                 notice.Size=UDim2.new(1,-10,0,64)
                                 local setCase=caseSetupCredentials(sub.Inside,0,336,syncFeedbackCanvas)
                                 sub.Inside.Size=UDim2.new(1,0,0,0)
-                                shareId.MouseButton1Click:Connect(function()
-                                    if sendState.busy then return end
-                                    shareClaim=not shareClaim
-                                    shareId.Text=shareClaim
-                                        and "Include my Roblox UserId: ON (unverified)"
-                                        or "Include my Roblox UserId: OFF (unverified)"
-                                    shareId.BackgroundColor3=shareClaim
-                                        and Color3.fromRGB(46,100,85) or Color3.fromRGB(62,74,91)
-                                    sendState.confirm=nil
-                                    send.Text="Submit Feedback to STAGING"
-                                    notice.Text=shareClaim
-                                        and "Opted in: new Feedback includes a client-claimed UserId. It is NOT verified identity."
-                                        or "UserId sharing OFF. Feedback remains anonymous; old cases cannot be changed."
-                                end)
                                 local function sendDone(item,err,uncertain)
                                     send.Active=true
-                                    shareId.Interactable=true
                                     draftInput.TextEditable=true
                                     if titleInput then titleInput.TextEditable=true end
                                     send.Text="Submit Feedback to STAGING"
                                     if item then
                                         setCase(item.id)
-                                        notice.Text="Submitted to STAGING. Your case now appears in Review as 'Waiting for moderator'."..
+                                        notice.Text="Submitted to STAGING. Your case is waiting for moderator review."..
+                                            " Roblox UserId included for Admin search (unverified)."..
                                             " Case ID: "..item.id.." | Keep the receipt private."
                                         task.defer(showSubmittedFeedback)
                                     else
@@ -15129,17 +15131,16 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                     local topic=titleInput and titleInput.Text or ""
                                     local body=draftInput.Text or ""
                                     local player=game:GetService("Players").LocalPlayer
-                                    local idClaim=shareClaim and player and player.UserId>0
+                                    local idClaim=player and player.UserId>0
                                         and tostring(player.UserId) or nil
-                                    if shareClaim and not idClaim then
-                                        notice.Text="Roblox UserId unavailable. Turn sharing OFF or retry later."
+                                    if not idClaim then
+                                        notice.Text="Roblox UserId unavailable. Rejoin and retry."
                                         return
                                     end
                                     caseConfirmAndSend(sendState,{kind="feedback",topic=topic,
                                         description=body,claimedUserId=idClaim},
                                         function()
                                             send.Active=false
-                                            shareId.Interactable=false
                                             draftInput.TextEditable=false
                                             if titleInput then titleInput.TextEditable=false end
                                             send.Text="Sending to STAGING..."
@@ -16649,8 +16650,26 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         -- Only show when a separately authenticated, user-bound
                         -- server record is available (never from client preview).
                         if details then
-                            noticeTitle.Text = "<b>Your behavior broke the rules</b>"
-                            reasonLabel.Text = "Reason: "..details.reason
+                            -- Information-only ban type from a future independently
+                            -- authenticated account-bound moderation record.
+                            -- This renderer is PRIVATE and cannot authorize bans.
+                            local banType = details.banType
+                            if banType == "banned" then
+                                noticeTitle.Text = "<b>Banned — Permanent</b>"
+                            elseif banType == "temporary_banned" then
+                                noticeTitle.Text = "<b>Temporary Banned</b>"
+                            else
+                                noticeTitle.Text = "<b>Your behavior broke the rules</b>"
+                            end
+                            local expires = tonumber(details.expiresAt)
+                            local expiresText = ""
+                            if banType == "temporary_banned" and expires and expires >= 946684800 then
+                                expiresText = "\nExpires: "..os.date("!%Y-%m-%d %H:%M UTC", expires)
+                                if expires <= os.time() then
+                                    expiresText = expiresText .. " (expired; server decides access)"
+                                end
+                            end
+                            reasonLabel.Text = "Reason: "..details.reason .. expiresText
                             messageLabel.Text = details.moderatorMessage
                             violationID.Text = "ID: "..details.id
                         else
@@ -16803,7 +16822,15 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 local function renderAuthenticatedViolation(details,identityVerified)
                     local status = type(details)=="table" and details.appealStatus or nil
                     local config = statusConfig[status]
-                    if identityVerified ~= true or not config or
+                    local banType = type(details)=="table" and details.banType or nil
+                    local expiresAt = type(details)=="table" and details.expiresAt or nil
+                    -- Ban type is distinct from appeal status. Ban details are
+                    -- accepted only from an independently verified account-bound
+                    -- server response; a claimedUserId is NOT proof.
+                    local validBanType = banType==nil or banType=="banned" or
+                        (banType=="temporary_banned" and type(expiresAt)=="number" and
+                            expiresAt>=946684800 and expiresAt<=4102444800)
+                    if identityVerified ~= true or not config or not validBanType or
                         type(details.id)~="string" or details.id=="" or
                         type(details.reason)~="string" or details.reason=="" or
                         type(details.moderatorMessage)~="string" or details.moderatorMessage=="" then
@@ -16814,6 +16841,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         id=details.id:sub(1,70),
                         reason=details.reason:sub(1,120),
                         moderatorMessage=details.moderatorMessage:sub(1,800),
+                        banType=banType,
+                        expiresAt=expiresAt,
                     },true)
                     violationNotice.Root.Parent=config.row.Inside
                     violationNotice.Root.LayoutOrder=config.order
@@ -16857,7 +16886,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     return true
                 end
                 -- A future authenticated backend handler may use the PRIVATE
-                -- renderer. It is intentionally not exported to loc.API/getgenv.
+                -- renderer for a real Permanent/Temporary ban Notice. It must
+                -- provide independently verified Roblox account binding and
+                -- server-enforced expiry; claimed UserId cannot grant access.
+                -- It is intentionally not exported to loc.API/getgenv.
                 -- The current STAGING API cannot supply that identity proof.
                 loc.API.ArcScriptCenterViolationUI=nil
                 loc.API.PreviewArcScriptCenterViolation=nil
@@ -16875,6 +16907,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
             function(_,event)
                 if event == "button" then setPanelExpanded(not panelExpanded) end
             end)
+        if panelUI.Label then
+            panelUI.Label.TextWrapped = true
+            panelUI.Label.TextScaled = true
+        end
         panelUI.Frame.LayoutOrder = 23
         panelUI.Frame.Size = UDim2.new(1,-8,0,0)
 
