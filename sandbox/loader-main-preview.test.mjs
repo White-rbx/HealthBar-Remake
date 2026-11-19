@@ -5,7 +5,10 @@ import {readFileSync} from 'node:fs';
 const p = 'sandbox/LoaderMainPreview.lua';
 const main = readFileSync(p,'utf8');
 const stage = readFileSync('sandbox/Loader-Main-BanMode-STAGING.lua','utf8');
-const setup = readFileSync('sandbox/ExperienceSettings-SetUp-BanMode-STAGING.lua','utf8');
+const setup = readFileSync('sandbox/ExperienceSettings-SetUp-Preview.lua','utf8');
+const setupStage = readFileSync('sandbox/ExperienceSettings-SetUp-BanMode-STAGING.lua','utf8');
+const arcsen = readFileSync('sandbox/Arcsen-Preview.lua','utf8');
+const arcsenStage = readFileSync('sandbox/Arcsen-BanMode-STAGING.lua','utf8');
 
 const previewUrl = 'https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/';
 const count = (re,s) => [...s.matchAll(re)].length;
@@ -35,13 +38,18 @@ test('real Loader source was reused faithfully with only preview-target substitu
     '-- accounts, to avoid accidentally invoking the normal live Arcsen in a test.\n'+
     'local arcsenUrl = "'+previewUrl+'Arcsen-BanMode-STAGING.lua"'
   );
-  assert.equal(prefix, protectedArcsen, 'unexpected drift from reviewed real Loader/BanMode source');
+  const isolated=protectedArcsen
+    .replace(previewUrl+'ExperienceSettings-SetUp-BanMode-STAGING.lua',
+      previewUrl+'ExperienceSettings-SetUp-Preview.lua')
+    .replace(previewUrl+'Arcsen-BanMode-STAGING.lua',
+      previewUrl+'Arcsen-Preview.lua');
+  assert.equal(prefix, isolated, 'unexpected drift from reviewed real Loader/BanMode source');
 });
 
 test('SetUp, UI Loader, topbar guard and Arcsen are all connected to staging',()=>{
-  for(const file of ['ExperienceSettings-SetUp-BanMode-STAGING.lua',
+  for(const file of ['ExperienceSettings-SetUp-Preview.lua',
     'Loader-UI-BanMode-STAGING.lua','RestrictedMode-Topbar-STAGING.lua',
-    'Arcsen-BanMode-STAGING.lua','LoaderMainPreview.lua'])
+    'Arcsen-Preview.lua','LoaderMainPreview.lua'])
     assert.ok(main.includes(previewUrl+file), 'staging URL missing: '+file);
   assert.doesNotMatch(main,/heads\/loadstring\/ExperienceSettings-SetUp\.lua/);
   assert.doesNotMatch(main,/heads\/loadstring\/Arcsen\.lua/);
@@ -68,4 +76,44 @@ test('reviewed preview never writes managed bans or live server policy',()=>{
   assert.doesNotMatch(main,/arcscriptcenter-ban-v2-qa\.kogpasan14\.workers\.dev/);
   assert.doesNotMatch(main,/getgenv\(\)\.ArcsenRestrictedPreviewAllowed/);
   // This is still a real loader. Runtime and server authorization QA remain necessary.
+});
+
+test('SetUp Preview is a full isolated copy of the BanMode SetUp and preserves both choices',()=>{
+  assert.ok(setup.includes(setupStage),'review source copied without removing SetUp');
+  assert.match(setup,/__ES_BAN_SELECTION/);
+  assert.match(setup,/__ES_BAN_DURATION/);
+  assert.match(setup,/__ES_RESTRICTED_MODE/);
+});
+
+test('Arcsen Preview extends the full staged Arcsen while staying on the staging feedback endpoint',()=>{
+  assert.ok(arcsen.length>arcsenStage.length,'full Arcsen source retained');
+  assert.match(arcsen,/arcscriptcenter-api-staging\.kogpasan14\.workers\.dev/);
+  assert.match(arcsen,/loc\.API\.PolicyReadOnly/);
+  assert.match(arcsen,/identityVerified=false/);
+  assert.match(arcsen,/PrivateCaseReceipt/);
+  assert.match(arcsen,/caseVaultValid\(entry\.id,entry\.receipt\)/);
+});
+
+test('cross-session restore requires explicit opt-in and same local UserId, then validates receipt with server',()=>{
+  assert.match(arcsen,/local caseVaultConsent=false/);
+  assert.match(arcsen,/RememberCasesOnThisDevice/);
+  assert.match(arcsen,/rememberPending~=intent or os\.clock\(\)-rememberPendingAt>15/);
+  assert.match(arcsen,/decoded\.userId~=tostring\(player\.UserId\)/);
+  assert.match(arcsen,/decoded\.consent~=true/);
+  assert.match(arcsen,/privateReceipts\[entry\.id\]=\{/);
+  assert.match(arcsen,/verified=false,unread=false/);
+  assert.match(arcsen,/pcall\(caseCheckStatus,/);
+  assert.match(arcsen,/casePost\("\/api\/v1\/feedback\/status",\{id=id,receipt=receipt\}\)/);
+  assert.match(arcsen,/caseVaultConsent=true/);
+  assert.match(arcsen,/if caseVaultConsent then caseVaultSave\(\) end/);
+  assert.match(arcsen,/local CASE_VAULT_CAP=24/);
+  assert.match(arcsen,/type\(delfile\)=="function"/);
+  assert.doesNotMatch(arcsen,/local caseVaultConsent=true/);
+});
+
+test('no automatic account-wide lookup, unverified identity does not authorize cases',()=>{
+  assert.match(arcsen,/Every restored credential MUST be re-verified/);
+  assert.match(arcsen,/No account-wide API and no Admin credentials/);
+  assert.match(arcsen,/privateReceipts\[savedCredential\.id\]=nil/);
+  assert.doesNotMatch(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/admin\/bans"/);
 });
