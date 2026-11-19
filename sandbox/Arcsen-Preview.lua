@@ -2,8 +2,9 @@
 -- STAGING Case Delivery: periodic active-client polling; no local receipt persistence.
 -- No Production or original Arcsen is modified. No account-bound identity is inferred.
 local ver = {
-	sion = " UIs 7.3.54 STAGING Preview ",
+	sion = " UIs 7.3.55 STAGING Preview ",
 	logs = [[
+(:19/11/2026: Arcsen Preview 7.3.55) New Chat clears the prior selected tab, previews the typed UTF-8 input as a temporary tab title, then lets AI rename the sent chat. HereChat Chat Safety and explicit Age Group (Unchecked - <9) warnings keep only one latest notice, replacing previous warnings after rejoin; no age is inferred from UserId or denied chat permission.
 (:19/11/2026: QA Preview v7.3.54) Remove Remember Cases UI and disk Receipt vault; send active:true heartbeat-like case request every 45 seconds only with server-verified device session; Case Delivery separately from Active User metrics. Refresh and Check Server's case combines live delivery with in-session receipt refresh; manual ID+Receipt fallback remains.
 (:18/11/2026: Feedback & Appeal Beta) STAGING v7.3.51: remove the optional include-UserId toggle from new Feedback. Tell the sender in a non-interactive label that their LocalPlayer UserId is included for Admin case linking; the Worker still marks this as an unverified claim, not proof of identity or permission for bans. Fail submit clearly if Roblox UserId is unavailable; never silently send anonymous. Existing old unlinked cases remain unlinked. No Cloudflare Pages/Worker/Production changes.
 (:18/11/2026: A&F) STAGING: Beta label, clearer anonymous Feedback attribution, and future VERIFIED Violation display for permanent/temporary ban with expiry (no Client identity proof, no backend changes).
@@ -11241,6 +11242,9 @@ loc.API.CreateChat = function(firstMessage)
         TitleGenerated = false
     }
     loc.API.ChatData[loc.API.NewChatID].Tab = addchat(nil, tempTitle, loc.API.NewChatID)
+    -- New's draft was not selected; after Send the real new chat is selected.
+    local selectedScale = loc.API.ChatData[loc.API.NewChatID].Tab:FindFirstChildOfClass("UIScale")
+    if selectedScale then Tween(selectedScale, {Scale = 1}, 0.2) end
     loc.API.ActiveChatID = loc.API.NewChatID
     return loc.API.NewChatID
 end
