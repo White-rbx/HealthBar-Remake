@@ -5455,6 +5455,9 @@ local function addchat(file, gen, nchat)
 
   btn.MouseButton1Click:Connect(function()
     if loc.API.PolicyReadOnly == true then return end
+    if type(loc.API.ClearNewChatDraftTab) == "function" then
+      loc.API.ClearNewChatDraftTab()
+    end
     for _, item in ipairs(loc.API.ChatList) do
       local itemScale = item:FindFirstChildOfClass("UIScale")
       if itemScale then Tween(itemScale, {Scale = 0.8}, 0.2) end
@@ -11191,6 +11194,26 @@ loc.API.RetryFrom = function(chatID, assistantIndex)
     loc.API.GenerateResponse(chatID, loc.API.RetryUserIndex)
 end
 
+-- A draft title is only visual until the first message is sent.
+-- Preserve UTF-8 character boundaries (including Thai) and never send
+-- this preview text to an extra title-generation request.
+loc.API.FormatTempChatTitle = function(value)
+    local title = tostring(value or ""):gsub("[%c]", " "):gsub("%s+", " ")
+    title = title:gsub("^%s+", ""):gsub("%s+$", "")
+    if title == "" then return "New Chat" end
+    local ok,cutoff = pcall(utf8.offset,title,49)
+    if ok and cutoff then title = title:sub(1,cutoff-1) .. "…" end
+    if not ok then title = title:sub(1,120) end
+    return title
+end
+
+loc.API.ClearNewChatDraftTab = function()
+    if loc.API.NewChatDraftTab then
+        if loc.API.NewChatDraftTab.Parent then loc.API.NewChatDraftTab:Destroy() end
+        loc.API.NewChatDraftTab = nil
+    end
+end
+
 loc.API.CreateChat = function(firstMessage)
     if loc.API.PolicyReadOnly == true then return nil, "Policy restricted" end
     -- HttpService is stored in the shared service table (`s`); the old local declaration is commented out.
@@ -11202,9 +11225,11 @@ loc.API.CreateChat = function(firstMessage)
         loc.API.NewChatID = tostring(os.time()) .. "-" .. tostring(math.random(100000, 999999)) .. "-" .. tostring(math.floor(os.clock() * 1000000))
     end
     loc.API.GUIDOK = nil
+    local tempTitle = loc.API.FormatTempChatTitle(firstMessage)
+    loc.API.ClearNewChatDraftTab()
     loc.API.ChatData[loc.API.NewChatID] = {
         ID = loc.API.NewChatID,
-        Title = "New Chat",
+        Title = tempTitle,
         Messages = {},
         State = "Normal",
         StateBackgroundRGB = loc.API.ColorToRGB(loc.API.StatePalette.Normal[1]),
@@ -11212,7 +11237,7 @@ loc.API.CreateChat = function(firstMessage)
         Busy = false,
         TitleGenerated = false
     }
-    loc.API.ChatData[loc.API.NewChatID].Tab = addchat(nil, "New Chat", loc.API.NewChatID)
+    loc.API.ChatData[loc.API.NewChatID].Tab = addchat(nil, tempTitle, loc.API.NewChatID)
     loc.API.ActiveChatID = loc.API.NewChatID
     return loc.API.NewChatID
 end
@@ -11757,17 +11782,48 @@ loc.API.LoadChats = function()
     end
 end
 
--- New only opens a blank draft view; a tab is created after the first valid sent message.
+-- New Chat deselects all existing tabs; the unsent draft tab is
+-- visual only and is replaced with a real chat after the first valid Send.
 new.MouseButton1Click:Connect(function()
     if loc.API.PolicyReadOnly == true then return end
     if type(loc.API.EditingMessage) == "table" and type(loc.API.CancelMessageEdit) == "function" then
         loc.API.CancelMessageEdit(nil, nil, nil, true)
+    end
+    -- Clear the old selected tab's scale even if it is still present.
+    for _, item in ipairs(loc.API.ChatList) do
+        local itemScale = item:FindFirstChildOfClass("UIScale")
+        if itemScale then Tween(itemScale, {Scale = 0.8}, 0.2) end
     end
     loc.API.ActiveChatID = nil
     c_box.Text = ""
     if loc.API.PendingInputFiles then loc.API.PendingInputFiles = {} end
     if type(loc.API.RefreshPendingAttachmentUI) == "function" then loc.API.RefreshPendingAttachmentUI() end
     loc.API.RenderChat(nil)
+    loc.API.ClearNewChatDraftTab()
+    local draft = Instance.new("TextLabel")
+    draft.Name = "NewChatDraftPreview"
+    draft.Size = UDim2.new(1,0,0,40)
+    draft.BackgroundColor3 = Color3.fromRGB(255,255,255)
+    draft.BackgroundTransparency = 0.88
+    draft.BorderSizePixel = 0
+    draft.TextColor3 = Color3.new(1,1,1)
+    draft.TextSize = 19
+    draft.TextXAlignment = Enum.TextXAlignment.Left
+    draft.TextTruncate = Enum.TextTruncate.AtEnd
+    draft.Text = "New Chat"
+    draft.Parent = scr
+    Corner(0,5,draft)
+    loc.API.NewChatDraftTab = draft
+end)
+
+-- Mirror draft text as the temporary tab title while typing. The actual
+-- ChatData.Title will be set on first Send and AI can rename it later.
+c_box:GetPropertyChangedSignal("Text"):Connect(function()
+    if loc.API.ActiveChatID ~= nil then return end
+    local draft = loc.API.NewChatDraftTab
+    if draft and draft.Parent then
+        draft.Text = loc.API.FormatTempChatTitle(c_box.Text)
+    end
 end)
 
 c_b_send.MouseButton1Click:Connect(function()
