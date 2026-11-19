@@ -91,6 +91,8 @@ jobs:
         run: node --test sandbox/ban-mode-staging-loader-integration.test.mjs
       - name: Native Ban Center Selection and Duration UI safety
         run: node --test sandbox/ban-center-selection-preview.test.mjs
+      - name: Native Ban Center QA Save/Load security and Admin session reuse
+        run: node --test sandbox/ban-center-v2-qa-save-ui.test.mjs
       - name: Live STAGING Banned Check Center Selection Preview HTTP smoke
         run: node --test sandbox/ban-center-mode-live-preview-http.test.mjs
       - name: Inspect public Ban Check Center markup on native STAGING Preview
