@@ -29,12 +29,19 @@
  const duration=field('banDuration','Ban Duration *',[
   ['temporary','Temporary — expires at the date below'],['permanent','Permanent — no expiry']
  ]);
- const note=node('p','STAGING Preview: selections are visible, but saving is disabled until the Ban API supports Selection + Duration. Existing bans are not modified.','field-note');
+ const note=node('p','STAGING Preview: GitHub saving is disabled until the Ban API supports Selection + Duration. Save to QA Sandbox stores test records only.','field-note');
  note.id='banModeNotice';note.setAttribute('role','status');note.style.gridColumn='1 / -1';
  grid.insertBefore(selection.wrap,grid.firstChild);
  grid.insertBefore(duration.wrap,selection.wrap.nextSibling);
  grid.insertBefore(note,duration.wrap.nextSibling);
  const list=new Map();let loadId=0;let locked=true;
+ // The original native Ban Unlock handler clears its input after reading.
+ // Capture that same key ONLY in this tab's closure, before it is cleared.
+ // No second Login, URL parameters, cookies or browser storage.
+ let sessionKey='';
+ const qaEndpoint='https://arcscriptcenter-ban-v2-qa.kogpasan14.workers.dev/api/v1/admin/bans/v2/qa';
+ const qaState={revision:0,entries:[],loaded:false,busy:false};
+
  const idMatch=/User ID ([1-9][0-9]{0,15})/;
  const status=msg=>{note.textContent=msg};
  const classify=e=>{
@@ -63,7 +70,7 @@
   }
  }
  async function reload(){
-  const key=keyField.value;
+  const key=sessionKey;
   const generation=++loadId;
   if(typeof key!=='string'||key.length<32){
    locked=true;list.clear();updateCards();
@@ -75,7 +82,7 @@
     method:'GET',mode:'cors',credentials:'omit',cache:'no-store',redirect:'error',
     headers:{'Accept':'application/json','X-Admin-Key':key}
    });
-   if(generation!==loadId||keyField.value!==key)return;
+   if(generation!==loadId||sessionKey!==key)return;
    const data=await r.json();
    if(!r.ok||data?.ok!==true||!Array.isArray(data.entries))throw Error('Not authorized or unavailable');
    list.clear();for(const entry of data.entries)if(/^[1-9][0-9]{0,15}$/.test(String(entry?.userId||'')))list.set(String(entry.userId),entry);
@@ -100,20 +107,143 @@
  });
  const observer=new MutationObserver(()=>{updateCards()});
  observer.observe(records,{childList:true,subtree:true});
- document.getElementById('banUnlock')?.addEventListener('click',()=>setTimeout(reload,1500));
- document.getElementById('banRefresh')?.addEventListener('click',()=>setTimeout(reload,150));
+ document.getElementById('banUnlock')?.addEventListener('click',()=>{
+  sessionKey=keyField.value.trim();
+  if(sessionKey.length<32){sessionKey='';return;}
+  setTimeout(()=>{void reload();void qaLoad();},850);
+ },true);
+ document.getElementById('banRefresh')?.addEventListener('click',()=>{
+  setTimeout(()=>{void reload();void qaLoad();},150);
+ });
  document.getElementById('banLock')?.addEventListener('click',()=>{
-  loadId++;list.clear();locked=true;selection.select.value='';duration.select.value='permanent';syncDuration();
+  loadId++;sessionKey='';list.clear();locked=true;
+  qaState.entries=[];qaState.revision=0;qaState.loaded=false;renderQa();
+  selection.select.value='';duration.select.value='permanent';syncDuration();
   updateCards();status('Locked. Existing Admin session and list are cleared from this preview.');
  });
  document.getElementById('banClear')?.addEventListener('click',()=>{
   selection.select.value='';duration.select.value='permanent';syncDuration()
  });
+
+ // Save to a separate QA D1 only. This never commits the live GitHub ban block.
+ const actionRow=form.querySelector('.form-actions');
+ const saveQa=node('button','Save to QA Sandbox');
+ saveQa.type='button';saveQa.id='banSaveQaOnly';saveQa.className='btn btn-soft';
+ const loadQaButton=node('button','Load QA Bans');
+ loadQaButton.type='button';loadQaButton.id='banLoadQaOnly';loadQaButton.className='btn';
+ if(actionRow)actionRow.append(saveQa,loadQaButton);
+ const qaPanel=node('section',undefined,'panel panel-pad');
+ qaPanel.id='banQaOnlyPanel';qaPanel.style.marginTop='18px';
+ const qaHeading=node('h3','QA Sandbox — not active bans');
+ const qaMessage=node('p','Unlock the existing Admin account to test saving Ban Selection v2. Nothing here affects Roblox users.','field-note');
+ qaMessage.id='banQaStatus';qaMessage.setAttribute('role','status');
+ const qaRecords=node('div');qaRecords.id='banQaRecords';qaRecords.className='list-stack';
+ qaPanel.append(qaHeading,qaMessage,qaRecords);
+ records.parentElement?.append(qaPanel);
+
+ function qaStatus(message){qaMessage.textContent=String(message)}
+ function renderQa(){
+  qaRecords.replaceChildren();
+  if(!qaState.loaded){qaRecords.append(node('p','QA list is locked or not loaded.'));return}
+  if(qaState.entries.length===0){qaRecords.append(node('p','No QA entries.'));return}
+  for(const entry of qaState.entries){
+   const row=node('div',undefined,'fa-user-case-row');
+   row.style.padding='10px';row.style.border='1px solid var(--line)';
+   row.style.marginTop='8px';
+   row.append(
+    node('strong',(entry.username||'Unknown username')+' · UserId '+entry.userId+' [QA ONLY]'),
+    node('p','Selection: '+(entry.selection==='restricted_mode'?'Restricted Mode':entry.selection==='ban_ingame'?'Ban in-game':'Unassigned legacy')),
+    node('p','Duration: '+(entry.duration==='temporary'?'Temporary':'Permanent')+
+      (entry.expiresAt?' · Until '+entry.expiresAt+' ICT':''))
+   );
+   const edit=node('button','Edit QA entry');edit.type='button';edit.className='btn btn-sm';
+   edit.addEventListener('click',()=>{
+    if(!sessionKey)return;
+    doc.getElementById('banUserId').value=entry.userId;
+    doc.getElementById('banUserId').readOnly=false;
+    doc.getElementById('banUsername').value=entry.username;
+    doc.getElementById('banReason').value=entry.reason;
+    doc.getElementById('banDescription').value=entry.description;
+    doc.getElementById('banStart').value=entry.startAt.replace(' ','T');
+    endField.value=entry.expiresAt.replace(' ','T');
+    selection.select.value=entry.selection==='unassigned'?'':entry.selection;
+    duration.select.value=entry.duration;syncDuration();
+    qaStatus('QA entry loaded into editor. No live ban is affected.');
+   });
+   row.append(edit);qaRecords.append(row);
+  }
+ }
+ async function qaRequest(method,payload){
+  const key=sessionKey,generation=loadId;
+  if(!key||key.length<32)throw Error('Unlock the existing Admin account first');
+  const response=await fetch(qaEndpoint,{
+   method,mode:'cors',credentials:'omit',redirect:'error',cache:'no-store',
+   headers:{Accept:'application/json','X-Admin-Key':key,
+     ...(method==='POST'?{'Content-Type':'application/json'}:{})},
+   ...(method==='POST'?{body:JSON.stringify(payload)}:{})
+  });
+  if(key!==sessionKey||loadId!==generation)throw Error('Admin session changed');
+  let data;
+  try{data=await response.json()}catch{throw Error('Invalid QA API response')}
+  if(!response.ok||data?.ok!==true||data?.adminOnly!==true||data?.qaOnly!==true)
+   throw Error(data?.error||'QA API returned '+response.status);
+  return data;
+ }
+ async function qaLoad(){
+  if(qaState.busy)return;
+  qaState.busy=true;qaStatus('Loading isolated QA records…');
+  try{
+   const data=await qaRequest('GET');
+   if(data.document?.schema!==2||!Array.isArray(data.document.entries)||
+      !Number.isSafeInteger(data.revision))throw Error('Invalid QA schema');
+   qaState.entries=data.document.entries;
+   qaState.revision=data.revision;qaState.loaded=true;
+   renderQa();qaStatus('QA Sandbox loaded. Revision '+data.revision+'. Never affects actual bans.');
+  }catch(e){qaState.loaded=false;qaState.entries=[];renderQa();qaStatus('QA Load: '+e.message)}
+  finally{qaState.busy=false}
+ }
+ function entryFromForm(){
+  const value=id=>doc.getElementById(id).value.trim();
+  return {userId:value('banUserId'),username:value('banUsername'),
+   reason:value('banReason'),description:value('banDescription'),
+   startAt:doc.getElementById('banStart').value.replace('T',' '),
+   expiresAt:endField.value.replace('T',' '),
+   selection:selection.select.value,duration:duration.select.value};
+ }
+ saveQa.addEventListener('click',async()=>{
+  if(qaState.busy)return;
+  if(!sessionKey){qaStatus('Unlock existing Admin access first.');return}
+  const entry=entryFromForm();
+  if(!/^[1-9][0-9]{0,15}$/.test(entry.userId)||
+     !['ban_ingame','restricted_mode'].includes(entry.selection)||
+     !['temporary','permanent'].includes(entry.duration)||
+     (entry.duration==='temporary'&&!entry.expiresAt)||
+     (entry.duration==='permanent'&&entry.expiresAt)||
+     entry.reason.length<3){
+   qaStatus('Invalid form: select Ban Type, Duration, and required fields.');
+   return;
+  }
+  if(!window.confirm('Save UserId '+entry.userId+' to QA ONLY? This does not ban anyone or change GitHub.'))return;
+  qaState.busy=true;saveQa.disabled=true;
+  try{
+   if(!qaState.loaded){qaState.busy=false;await qaLoad();qaState.busy=true}
+   if(!qaState.loaded)throw Error('QA list could not be loaded');
+   const result=await qaRequest('POST',{action:'upsert',entry,expectedRevision:qaState.revision});
+   if(result.document?.schema!==2||!result.saved)throw Error('QA Save was not confirmed');
+   qaState.entries=result.document.entries;qaState.revision=result.revision;
+   qaState.loaded=true;renderQa();
+   qaStatus('Saved to QA Sandbox, revision '+result.revision+'. No live ban was changed.');
+  }catch(e){qaStatus('QA Save rejected: '+e.message+' (refresh QA records before retry)')}
+  finally{qaState.busy=false;saveQa.disabled=false}
+ });
+ loadQaButton.addEventListener('click',()=>{void qaLoad()});
+ renderQa();
+
  // PREVIEW-ONLY: The existing submit script serializes v1 fields and would
  // silently discard Selection; stop the submit BEFORE the original listener.
  form.addEventListener('submit',e=>{
   e.preventDefault();e.stopImmediatePropagation();
-  status('Preview only: no ban was saved. Backend schema v2 and a reviewed Admin POST are required.');
+  status('GitHub Save is disabled while schema v1 is live. Use Save to QA Sandbox to test v2 only.');
  },true);
  duration.select.value='permanent';syncDuration();updateCards();
 })();
