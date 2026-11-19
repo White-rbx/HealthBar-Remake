@@ -14824,6 +14824,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 local feedbackScroll
                 local feedbackExpanded = false
                 local refreshKnownFeedbackCases = function() end
+                local pollVerifiedServerCases = function() end -- bound after Feedback UI exists
                 local feedbackRefreshBusy = false
                 local onFeedbackCaseRefresh = function() end
                 local feedbackRefreshEpoch = 0
@@ -14839,6 +14840,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             currentEpoch==feedbackRefreshEpoch and feedbackCategory.Frame.Parent do
                             local ok = pcall(refreshKnownFeedbackCases)
                             if not ok then break end
+                            -- Client is active in Feedback: ask Server for linked cases.
+                            -- Does not touch the Active User analytics/presence feature.
+                            pcall(pollVerifiedServerCases)
                             task.wait(45)
                         end
                     end)
@@ -14979,6 +14983,137 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end
                     paintRemember()
                     task.defer(syncFeedbackCanvas)
+                end)
+
+                -- SERVER CASE DELIVERY (STAGING Preview ONLY).
+                -- No UserId parameter, no Admin key, no receipt persistence here.
+                -- The eventual verified OAuth-device flow must install a
+                -- *short-lived server-issued token provider* in this API.
+                -- If no provider exists, this UI deliberately makes NO network calls.
+                local serverCasesFrame=Instance.new("Frame")
+                serverCasesFrame.Name="ServerCaseDeliveryPreview"
+                serverCasesFrame.LayoutOrder=-4
+                serverCasesFrame.Size=UDim2.new(1,-12,0,0)
+                serverCasesFrame.AutomaticSize=Enum.AutomaticSize.Y
+                serverCasesFrame.BackgroundColor3=Color3.fromRGB(27,43,56)
+                serverCasesFrame.BackgroundTransparency=0.1
+                serverCasesFrame.BorderSizePixel=0
+                serverCasesFrame.Parent=feedbackScroll
+                Corner(0,5,serverCasesFrame)
+                local deliveryLayout=Instance.new("UIListLayout")
+                deliveryLayout.FillDirection=Enum.FillDirection.Vertical
+                deliveryLayout.Padding=UDim.new(0,4)
+                deliveryLayout.Parent=serverCasesFrame
+                local deliveryTitle=Instance.new("TextLabel")
+                deliveryTitle.Name="ServerCaseDeliveryTitle"
+                deliveryTitle.Size=UDim2.new(1,-8,0,23)
+                deliveryTitle.BackgroundTransparency=1
+                deliveryTitle.Text="Server Case Delivery (STAGING Preview)"
+                deliveryTitle.TextColor3=Color3.fromRGB(215,232,249)
+                deliveryTitle.TextSize=11
+                deliveryTitle.TextXAlignment=Enum.TextXAlignment.Left
+                deliveryTitle.Parent=serverCasesFrame
+                local deliveryButton=Instance.new("TextButton")
+                deliveryButton.Name="RequestServerCases"
+                deliveryButton.Size=UDim2.new(1,-8,0,28)
+                deliveryButton.BackgroundColor3=Color3.fromRGB(42,98,124)
+                deliveryButton.Text="Check Server Cases"
+                deliveryButton.TextColor3=Color3.new(1,1,1)
+                deliveryButton.TextSize=11
+                deliveryButton.Parent=serverCasesFrame
+                Corner(0,5,deliveryButton)
+                local deliveryResult=Instance.new("TextLabel")
+                deliveryResult.Name="ServerCaseDeliveryResults"
+                deliveryResult.Size=UDim2.new(1,-10,0,0)
+                deliveryResult.AutomaticSize=Enum.AutomaticSize.Y
+                deliveryResult.BackgroundTransparency=1
+                deliveryResult.TextWrapped=true
+                deliveryResult.TextXAlignment=Enum.TextXAlignment.Left
+                deliveryResult.TextYAlignment=Enum.TextYAlignment.Top
+                deliveryResult.TextColor3=Color3.fromRGB(188,207,226)
+                deliveryResult.TextSize=11
+                deliveryResult.RichText=false
+                deliveryResult.Text="Verified device session not linked yet. Client UserId alone cannot retrieve cases."
+                deliveryResult.Parent=serverCasesFrame
+                local lastDeliveryRequest=-math.huge
+                local deliveryBusy=false
+                local function serverCaseToken()
+                    -- Never claim that getgenv flags or LocalPlayer.UserId are proof.
+                    -- A trusted session module must supply this callback.
+                    local provider=loc.API.GetVerifiedCaseSessionToken
+                    if type(provider)~="function" then return nil end
+                    local ok,token=pcall(provider)
+                    if ok and type(token)=="string" and #token>=32 and #token<=1024
+                        and token:match("^[A-Za-z0-9_.%-]+$") then
+                        return token
+                    end
+                    return nil
+                end
+                pollVerifiedServerCases=function(force)
+                    if deliveryBusy or not feedbackExpanded or not panelExpanded
+                        or not serverCasesFrame.Parent then return end
+                    if not force and os.clock()-lastDeliveryRequest<60 then return end
+                    local token=serverCaseToken()
+                    if not token then
+                        deliveryResult.Text="Not linked: a server-verified Roblox session is required. No UserId-only lookup."
+                        return
+                    end
+                    local requestFn=arcGetSuncRequest()
+                    if type(requestFn)~="function" then
+                        deliveryResult.Text="HTTP request capability unavailable."
+                        return
+                    end
+                    lastDeliveryRequest=os.clock()
+                    deliveryBusy=true
+                    deliveryButton.Interactable=false
+                    deliveryResult.Text="Checking server-linked cases..."
+                    task.spawn(function()
+                        local ok,response=pcall(requestFn,{
+                            Url=CASE_STAGING_BASE.."/api/v1/client/cases/poll",
+                            Method="POST",Body="{}",Timeout=15,
+                            Headers={
+                                ["Content-Type"]="application/json",
+                                ["Accept"]="application/json",
+                                ["Authorization"]="Bearer "..token
+                            }
+                        })
+                        deliveryBusy=false
+                        if not serverCasesFrame.Parent then return end
+                        deliveryButton.Interactable=true
+                        local code=ok and type(response)=="table"
+                            and tonumber(response.StatusCode or response.Status) or 0
+                        if code==401 then
+                            deliveryResult.Text="Verified session required or expired."
+                        elseif code==404 then
+                            deliveryResult.Text="STAGING Case Delivery route is not deployed yet."
+                        elseif code~=200 or type(response.Body)~="string" then
+                            deliveryResult.Text="Server Case Delivery unavailable (HTTP "..tostring(code)..")."
+                        else
+                            local parsed,data=pcall(s.HttpService.JSONDecode,s.HttpService,response.Body)
+                            if not parsed or type(data)~="table"
+                                or data.ok~=true or data.serverVerified~=true
+                                or type(data.cases)~="table" then
+                                deliveryResult.Text="Untrusted server response rejected."
+                            else
+                                local lines={"Verified server-linked Feedback: "..tostring(math.min(#data.cases,30))}
+                                for i=1,math.min(#data.cases,12) do
+                                    local item=data.cases[i]
+                                    if type(item)=="table" and item.kind=="feedback"
+                                        and type(item.id)=="string"
+                                        and type(item.status)=="string" then
+                                        local topic=tostring(item.topic or ""):sub(1,50)
+                                        lines[#lines+1]=item.status.." | "..topic.." | "..item.id:sub(1,8)
+                                    end
+                                end
+                                if #data.cases>12 then lines[#lines+1]="More cases available on next page." end
+                                deliveryResult.Text=table.concat(lines,"\n")
+                            end
+                        end
+                        task.defer(syncFeedbackCanvas)
+                    end)
+                end
+                deliveryButton.MouseButton1Click:Connect(function()
+                    pollVerifiedServerCases(true)
                 end)
                 -- Manual, receipt-scoped refresh of the session's known Feedback.
                 -- The public API has no account-wide case list: no receipt = no case.
