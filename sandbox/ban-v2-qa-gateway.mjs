@@ -7,10 +7,12 @@
  * The original Admin Key stays in memory; no secret is copied, logged or stored.
  * This server cannot affect a user's actual Roblox ExperienceSettings access.
  */
-import {applyBanChange,parseBanDocument} from './managed-ban-schema-v2.mjs';
+import {applyBanChange,parseBanDocument,migrateBanDocument} from './managed-ban-schema-v2.mjs';
 
 const AUTH_URL='https://arcscriptcenter-api-staging.kogpasan14.workers.dev/api/v1/admin/feedback/summary';
 const ROUTE='/api/v1/admin/bans/v2/qa';
+const COMPAT_ROUTE='/api/v1/admin/bans/v2/compatibility';
+const BANS_URL='https://arcscriptcenter-api-staging.kogpasan14.workers.dev/api/v1/admin/bans';
 const ALLOWED_ORIGINS=new Set([
  'https://arcscriptcenter-dashboard-staging.pages.dev',
  'https://50369475.arcscriptcenter-dashboard-staging.pages.dev',
@@ -40,6 +42,35 @@ async function checkAdmin(request,env){
     Number.isSafeInteger(data?.summary?.total);
  }catch{return false}
 }
+/**
+ * Read the existing GitHub-managed Ban list through the ORIGINAL Admin API,
+ * then perform a read-only migration preview. This never writes a new JSON
+ * managed Ban block to GitHub or the existing STAGING D1 snapshot.
+ */
+async function previewLegacyCompatibility(request,env,origin){
+ if(request.method!=='GET')return reply({ok:false,error:'Compatibility preview is read-only'},405,origin);
+ const key=request.headers.get('X-Admin-Key')||'';
+ try{
+  if(typeof env.AUTH_API?.fetch!=='function')throw Error('Service binding missing');
+  const req=new Request(BANS_URL,{method:'GET',headers:{
+   'Origin':origin,'X-Admin-Key':key,'Accept':'application/json'
+  }});
+  const upstream=await env.AUTH_API.fetch(req);
+  if(upstream.status!==200)throw Error('Existing Admin Ban source unavailable');
+  const raw=await upstream.json();
+  if(raw?.ok!==true||!Array.isArray(raw.entries)||
+     typeof raw.sha!=='string'||!/^[0-9a-f]{40}$/i.test(raw.sha))
+     throw Error('Original Ban source is incompatible');
+  // The old deployed API is schema v1; once it upgrades, it will explicitly
+  // return schema:2. Never guess a schema from entry contents.
+  const sourceSchema=raw.schema===undefined?1:raw.schema;
+  const v2=migrateBanDocument({schema:sourceSchema,entries:raw.entries});
+  return reply({ok:true,adminOnly:true,qaOnly:true,readOnly:true,
+   sourceSchema,sourceSha:raw.sha,
+   entriesRead:v2.entries.length,document:v2,
+   legacyUnassigned:v2.entries.filter(e=>e.selection==='unassigned').length},200,origin);
+ }catch{return reply({ok:false,error:'Original Ban source unavailable or invalid'},503,origin)}
+}
 function validateRequest(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||
     !Number.isSafeInteger(body.expectedRevision)||body.expectedRevision<0)throw Error('Invalid revision');
@@ -57,7 +88,7 @@ export function createBanV2QaGateway({adminAuthenticated=checkAdmin}={}){
    const origin=request.headers.get('Origin')||'';
    if(!ALLOWED_ORIGINS.has(origin))return reply({ok:false,error:'Origin not allowed'},403);
    const url=new URL(request.url);
-   if(url.pathname!==ROUTE)return reply({ok:false,error:'Not found'},404,origin);
+   if(url.pathname!==ROUTE&&url.pathname!==COMPAT_ROUTE)return reply({ok:false,error:'Not found'},404,origin);
    if(request.method==='OPTIONS'){
     return new Response(null,{status:204,headers:{
      'Access-Control-Allow-Origin':origin,
@@ -68,6 +99,7 @@ export function createBanV2QaGateway({adminAuthenticated=checkAdmin}={}){
    }
    if(!['GET','POST'].includes(request.method))return reply({ok:false,error:'Method not allowed'},405,origin);
    if(!await adminAuthenticated(request,env))return reply({ok:false,error:'Unauthorized'},401,origin);
+   if(url.pathname===COMPAT_ROUTE)return previewLegacyCompatibility(request,env,origin);
    if(!env.DB||typeof env.DB.prepare!=='function')return reply({ok:false,error:'QA database unavailable'},503,origin);
    try{
     const row=await env.DB.prepare('SELECT document_json, revision FROM asc_ban_v2_qa WHERE id = 1').first();
