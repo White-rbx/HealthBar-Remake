@@ -51,3 +51,21 @@ test('QA API CORS only allows existing approved origin',async()=>{
  assert.equal(bad.status,403);
  assert.equal(bad.headers.get('Access-Control-Allow-Origin'),null);
 });
+
+
+test('read-only Ban v1 to v2 Compatibility Preview button is served on live Pages',async()=>{
+ const r=await req(PREVIEW+'/__asc1650/ban-mode.js');
+ assert.equal(r.status,200);
+ const js=await r.text();
+ for(const word of ['Preview Ban v1 → v2','banPreviewBanV2','banV2CompatibilityResults',
+  'compatEndpoint','Original schema:','No GitHub changes were made',
+  'sourceSchema','readOnly!==true']){
+  assert.ok(js.includes(word),word);
+ }
+});
+test('read-only source compatibility HTTP route denies unauthenticated requests',async()=>{
+ const url='https://arcscriptcenter-ban-v2-qa.kogpasan14.workers.dev/api/v1/admin/bans/v2/compatibility';
+ const r=await req(url,{headers:{Origin:PREVIEW}});
+ assert.equal(r.status,401,await r.text());
+ assert.equal(r.headers.get('Cache-Control'),'no-store');
+});
