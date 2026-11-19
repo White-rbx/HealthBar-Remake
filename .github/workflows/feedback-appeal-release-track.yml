@@ -99,7 +99,7 @@ jobs:
         run: node --test sandbox/stage16-83-pairing.test.mjs
       - name: Case Delivery — verified active client, no Account/Analytics leak
         run: node --test sandbox/feedback-case-delivery-staging.test.mjs
-      - name: Real LoaderMainPreview with isolated SetUp/Arcsen and opt-in case restore
+      - name: Real LoaderMainPreview with isolated SetUp/Arcsen and New Chat/HereChat QA
         run: node --test sandbox/loader-main-preview.test.mjs
       - name: Validate Ban Mode routed through SetUp, Main Loader, UI Loader and Arcsen
         run: node --test sandbox/ban-mode-staging-loader-integration.test.mjs
