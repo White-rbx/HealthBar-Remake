@@ -53,7 +53,7 @@ local ok,err =
 
 		loadstring(
 			game:HttpGet(
-				"https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/ExperienceSettings-SetUp-BanMode-STAGING.lua"
+				"https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/ExperienceSettings-SetUp-Preview.lua"
 			)
 		)()
 
@@ -1538,7 +1538,7 @@ end
 -- STAGING-only patched UI is read-only while Restricted Mode is active.
 -- This PREVIEW always uses the STAGING Arcsen source, including for unbanned QA
 -- accounts, to avoid accidentally invoking the normal live Arcsen in a test.
-local arcsenUrl = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/Arcsen-BanMode-STAGING.lua"
+local arcsenUrl = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/Arcsen-Preview.lua"
 loadstring(game:HttpGet(arcsenUrl))()
 print("[ Arcsen ] Successful loaded.")
 
