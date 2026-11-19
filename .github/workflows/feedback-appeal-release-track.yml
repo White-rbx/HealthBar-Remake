@@ -6,6 +6,8 @@ on:
     branches: [stage16-87-trust-boundary-sandbox]
     paths:
       - 'sandbox/feedback-*'
+      - 'sandbox/LoaderMainPreview.lua'
+      - 'sandbox/loader-main-preview.test.mjs'
       - 'sandbox/arcsen-v7.3.43-feedback-optional-userid.patch'
       - 'sandbox/production-feedback-appeal-form.*'
       - 'sandbox/stage16-76-arcsen-bridge.*'
@@ -91,6 +93,8 @@ jobs:
         run: node --test sandbox/stage16-87-restricted-gateway.test.mjs
       - name: Existing Stage16.83 pairing regression
         run: node --test sandbox/stage16-83-pairing.test.mjs
+      - name: Isolated Loader Main Preview (no ban/API writes, all 4 combinations)
+        run: node --test sandbox/loader-main-preview.test.mjs
       - name: Validate Ban Mode routed through SetUp, Main Loader, UI Loader and Arcsen
         run: node --test sandbox/ban-mode-staging-loader-integration.test.mjs
       - name: Native Ban Center Selection and Duration UI safety
