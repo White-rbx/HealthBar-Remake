@@ -166,7 +166,11 @@ local function render()
         b.AutoButtonColor=allowed
         b.BackgroundColor3=allowed and colors.blue or colors.disabled
     end
-    holder.Visible=expanded
+    -- Keep Open/Close reachable even after collapsing the mock contents.
+    holder.Visible=true
+    for _,b in ipairs(buttons) do
+        b.Visible=expanded or b==buttons[1]
+    end
     toggle.Visible=expanded
     settings.Visible=expanded
     violation.Visible=expanded and syntheticVerified
