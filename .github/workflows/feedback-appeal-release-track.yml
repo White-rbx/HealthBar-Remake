@@ -93,7 +93,7 @@ jobs:
         run: node --test sandbox/stage16-87-restricted-gateway.test.mjs
       - name: Existing Stage16.83 pairing regression
         run: node --test sandbox/stage16-83-pairing.test.mjs
-      - name: Isolated Loader Main Preview (no ban/API writes, all 4 combinations)
+      - name: Real LoaderMainPreview copy from loadstring/Loader.lua and STAGING BanMode wiring
         run: node --test sandbox/loader-main-preview.test.mjs
       - name: Validate Ban Mode routed through SetUp, Main Loader, UI Loader and Arcsen
         run: node --test sandbox/ban-mode-staging-loader-integration.test.mjs
