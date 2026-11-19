@@ -181,6 +181,8 @@ test('HereChat Age Group warning is opt-in to explicit status and replaces an ex
   assert.match(arcsen,/table\.insert\(chat\.Messages,item\)/);
   assert.match(arcsen,/chatAgeGroup = \(savedMessage\.role == "chat-safety"\) and savedMessage\.chatAgeGroup or nil/);
   assert.match(arcsen,/loc\.API\.ShowHereChatAgeGroupWarning\(status\.ageGroup\)/);
+  assert.match(arcsen,/metadata\.source == "HereChat" and metadata\.kind == "chat_safety"/);
+  assert.match(arcsen,/loc\.API\.ShowHereChatAgeGroupWarning\(metadata\.ageGroup\)/);
   assert.match(arcsen,/CanUserChatAsync\(player\.UserId\)/);
   assert.match(arcsen,/CanUserChatAsync\s*\n\s*-- does not identify an account.s age/);
   assert.match(arcsen,/if type\(loc\.API\.SaveChats\)=="function" then loc\.API\.SaveChats\(\) end/);
