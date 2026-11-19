@@ -2,8 +2,9 @@
 -- STAGING Case Delivery: periodic active-client polling; no local receipt persistence.
 -- No Production or original Arcsen is modified. No account-bound identity is inferred.
 local ver = {
-	sion = " UIs 7.3.56 STAGING Preview ",
+	sion = " UIs 7.3.57 STAGING Preview ",
 	logs = [[
+(:20/11/2026: QA Preview v7.3.57) Remove redundant Check Server Cases and Link this case to my verified account UI. Use only Refresh and Check Server's case; keep automatic verified-session delivery as a backend gate, no client-claimed UserId disclosure. One-case Receipt restoration remains.
 (:19/11/2026: STAGING v7.3.56) Rejoin case missing: honest UI diagnosis when verified Case Delivery endpoint/session is not installed. Avoid presenting 0 locally linked cases as no server records; guide user to private Case ID + Receipt recovery. No Server/Production changes.
 (:19/11/2026: Arcsen Preview 7.3.55) New Chat clears the prior selected tab, previews the typed UTF-8 input as a temporary tab title, then lets AI rename the sent chat. HereChat Chat Safety and explicit Age Group (Unchecked - <9) warnings keep only one latest notice, replacing previous warnings after rejoin; no age is inferred from UserId or denied chat permission.
 (:19/11/2026: QA Preview v7.3.54) Remove Remember Cases UI and disk Receipt vault; send active:true heartbeat-like case request every 45 seconds only with server-verified device session; Case Delivery separately from Active User metrics. Refresh and Check Server's case combines live delivery with in-session receipt refresh; manual ID+Receipt fallback remains.
@@ -14988,15 +14989,6 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 deliveryTitle.TextSize=11
                 deliveryTitle.TextXAlignment=Enum.TextXAlignment.Left
                 deliveryTitle.Parent=serverCasesFrame
-                local deliveryButton=Instance.new("TextButton")
-                deliveryButton.Name="RequestServerCases"
-                deliveryButton.Size=UDim2.new(1,-8,0,28)
-                deliveryButton.BackgroundColor3=Color3.fromRGB(42,98,124)
-                deliveryButton.Text="Check Server Cases"
-                deliveryButton.TextColor3=Color3.new(1,1,1)
-                deliveryButton.TextSize=11
-                deliveryButton.Parent=serverCasesFrame
-                Corner(0,5,deliveryButton)
                 local deliveryResult=Instance.new("TextLabel")
                 deliveryResult.Name="ServerCaseDeliveryResults"
                 deliveryResult.Size=UDim2.new(1,-10,0,0)
@@ -15008,7 +15000,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 deliveryResult.TextColor3=Color3.fromRGB(188,207,226)
                 deliveryResult.TextSize=11
                 deliveryResult.RichText=false
-                deliveryResult.Text="Automatic rejoin recovery is NOT connected to STAGING yet. Cases may still exist on Server. Use Restore previous case (ID + private Receipt)."
+                deliveryResult.Text="Automatic case sync is not deployed yet. No account-verification button is required here. Cases may still exist on Server; restore an older case using ID + private Receipt."
                 deliveryResult.Parent=serverCasesFrame
                 local lastDeliveryRequest=-math.huge
                 local deliveryBusy=false
@@ -15029,7 +15021,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     if not force and os.clock()-lastDeliveryRequest<30 then return end
                     local token=serverCaseToken()
                     if not token then
-                        deliveryResult.Text="Server case sync is NOT connected: no verified device session. This does not mean your cases were deleted. Tap Restore previous case (ID + private Receipt)."
+                        deliveryResult.Text="Automatic server sync is not ready. No verification button is needed in this UI. Your previous cases may still exist; you can restore a specific case with its ID + private Receipt."
                         return
                     end
                     local requestFn=arcGetSuncRequest()
@@ -15039,7 +15031,6 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end
                     lastDeliveryRequest=os.clock()
                     deliveryBusy=true
-                    deliveryButton.Interactable=false
                     deliveryResult.Text="Checking server-linked cases..."
                     task.spawn(function()
                         local ok,response=pcall(requestFn,{
@@ -15053,7 +15044,6 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         })
                         deliveryBusy=false
                         if not serverCasesFrame.Parent then return end
-                        deliveryButton.Interactable=true
                         local code=ok and type(response)=="table"
                             and tonumber(response.StatusCode or response.Status) or 0
                         if code==401 then
@@ -15095,117 +15085,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         task.wait(45)
                     end
                 end)
-                deliveryButton.MouseButton1Click:Connect(function()
-                    pollVerifiedServerCases(true)
-                end)
-                -- Existing legacy Feedback becomes auto-deliverable only after
-                -- the verified owner explicitly links it using a private Receipt.
-                -- The Server checks BOTH the identity session and receipt hash.
-                local linkId=Instance.new("TextBox")
-                linkId.Name="ServerCaseLinkId"
-                linkId.LayoutOrder=4
-                linkId.Size=UDim2.new(1,-10,0,28)
-                linkId.Text=""
-                linkId.PlaceholderText="Link previous Case ID (UUID)"
-                linkId.ClearTextOnFocus=false
-                linkId.TextSize=11
-                linkId.TextColor3=Color3.new(1,1,1)
-                linkId.BackgroundColor3=Color3.fromRGB(35,48,65)
-                linkId.Parent=serverCasesFrame
-                Corner(0,4,linkId)
-                local linkReceipt=Instance.new("TextBox")
-                linkReceipt.Name="ServerCaseLinkPrivateReceipt"
-                linkReceipt.LayoutOrder=5
-                linkReceipt.Size=UDim2.new(1,-10,0,28)
-                linkReceipt.Text=""
-                linkReceipt.PlaceholderText="Private Receipt (64 hex, never share)"
-                linkReceipt.ClearTextOnFocus=false
-                linkReceipt.TextSize=11
-                linkReceipt.TextColor3=Color3.new(1,1,1)
-                linkReceipt.BackgroundColor3=Color3.fromRGB(35,48,65)
-                linkReceipt.Parent=serverCasesFrame
-                Corner(0,4,linkReceipt)
-                local linkButton=Instance.new("TextButton")
-                linkButton.Name="LinkVerifiedOwnerCase"
-                linkButton.LayoutOrder=6
-                linkButton.Size=UDim2.new(1,-10,0,28)
-                linkButton.Text="Link this case to my verified account"
-                linkButton.TextSize=11
-                linkButton.TextColor3=Color3.new(1,1,1)
-                linkButton.BackgroundColor3=Color3.fromRGB(42,98,124)
-                linkButton.Parent=serverCasesFrame
-                Corner(0,4,linkButton)
-                local linkStatus=Instance.new("TextLabel")
-                linkStatus.Name="ServerLinkStatus"
-                linkStatus.LayoutOrder=7
-                linkStatus.Size=UDim2.new(1,-10,0,0)
-                linkStatus.AutomaticSize=Enum.AutomaticSize.Y
-                linkStatus.Text="Only with verified session and Receipt. Admin and Active User analytics are not involved."
-                linkStatus.TextColor3=Color3.fromRGB(184,208,230)
-                linkStatus.TextSize=10
-                linkStatus.TextWrapped=true
-                linkStatus.BackgroundTransparency=1
-                linkStatus.Parent=serverCasesFrame
-                local linkBusy=false
-                linkButton.MouseButton1Click:Connect(function()
-                    if linkBusy or not feedbackExpanded or not panelExpanded then return end
-                    local token=serverCaseToken()
-                    if not token then
-                        linkStatus.Text="Link unavailable: verified server-issued device session required."
-                        return
-                    end
-                    local id=tostring(linkId.Text or ""):gsub("^%s+",""):gsub("%s+$","")
-                    local receipt=tostring(linkReceipt.Text or ""):gsub("^%s+",""):gsub("%s+$","")
-                    if #id~=36 or not id:match("^[0-9a-fA-F%-]+$")
-                        or #receipt~=64 or not receipt:match("^[0-9a-fA-F]+$") then
-                        linkStatus.Text="Enter a valid Case ID and private Receipt."
-                        return
-                    end
-                    local requestFn=arcGetSuncRequest()
-                    if type(requestFn)~="function" then
-                        linkStatus.Text="HTTP request capability unavailable."
-                        return
-                    end
-                    linkBusy=true
-                    linkButton.Interactable=false
-                    linkStatus.Text="Linking with verified STAGING server..."
-                    task.spawn(function()
-                        local ok,response=pcall(requestFn,{
-                            Url=CASE_STAGING_BASE.."/api/v1/client/cases/link",
-                            Method="POST",Timeout=15,
-                            Body=s.HttpService:JSONEncode({id=id,receipt=receipt}),
-                            Headers={
-                                ["Content-Type"]="application/json",
-                                ["Accept"]="application/json",
-                                ["Authorization"]="Bearer "..token
-                            }
-                        })
-                        linkBusy=false
-                        if not linkButton.Parent then return end
-                        linkButton.Interactable=true
-                        local http=ok and type(response)=="table"
-                            and tonumber(response.StatusCode or response.Status) or 0
-                        if http==200 then
-                            local parsed,data=pcall(s.HttpService.JSONDecode,s.HttpService,response.Body or "")
-                            if parsed and type(data)=="table" and data.linked==true then
-                                linkReceipt.Text="" -- clear secret from visible UI after success
-                                linkStatus.Text="Server confirmed owner link. Refreshing cases..."
-                                task.defer(function() pollVerifiedServerCases(true) end)
-                            else
-                                linkStatus.Text="Server link response could not be verified."
-                            end
-                        elseif http==404 then
-                            linkStatus.Text="Case not found, linked to another account, or route not deployed."
-                        elseif http==401 then
-                            linkStatus.Text="Verified session required or expired."
-                        else
-                            linkStatus.Text="Could not link case (HTTP "..tostring(http)..")."
-                        end
-                        task.defer(syncFeedbackCanvas)
-                    end)
-                end)
-                -- Manual refresh combines session receipt status and authenticated Server Case Delivery.
-                -- No lookup by claimed UserId; server-owned cases require a verified device session.
+                -- The existing Refresh button is the ONLY manual server-check action.
+                -- Case Delivery may poll automatically when a trusted server session exists.
+                -- Never disclose private cases from a client-asserted UserId.
                 local refreshCasePanel=Instance.new("Frame")
                 refreshCasePanel.Name="FeedbackRefreshPanel"
                 refreshCasePanel.LayoutOrder=-1
