@@ -45,3 +45,20 @@ test('no purge or arbitrary admin path on isolated QA Worker',async()=>{
  const r=await call('GET','/api/v1/admin/bans/v2/purge');
  assert.equal(r.status,404,await r.text());
 });
+
+
+test('legacy Ban v1 to v2 Compatibility Preview is private and returns 401 without Admin Key',async()=>{
+ const r=await call('GET','/api/v1/admin/bans/v2/compatibility');
+ assert.equal(r.status,401,await r.text());
+ assert.equal(r.headers.get('Cache-Control'),'no-store');
+});
+test('Compatibility Preview rejects wrong synthetic key without source data',async()=>{
+ const r=await call('GET','/api/v1/admin/bans/v2/compatibility',{
+  headers:{'X-Admin-Key':'QA-SYNTHETIC-INVALID-ADMIN-KEY-DO-NOT-USE'}
+ });
+ assert.equal(r.status,401,await r.text());
+});
+test('read-only Compatibility Preview rejects hostile origin',async()=>{
+ const r=await call('GET','/api/v1/admin/bans/v2/compatibility',{origin:'https://evil.example'});
+ assert.equal(r.status,403,await r.text());
+});
