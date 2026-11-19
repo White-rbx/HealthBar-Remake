@@ -4,7 +4,7 @@
 local ver = {
 	sion = " UIs 7.3.54 STAGING Preview ",
 	logs = [[
-(:19/11/2026: QA Preview v7.3.54) Remove Remember Cases UI and disk Receipt vault; use server-verified active-session Case Delivery separately from Active User metrics. Refresh and Check Server's case combines live delivery with in-session receipt refresh; manual ID+Receipt fallback remains.
+(:19/11/2026: QA Preview v7.3.54) Remove Remember Cases UI and disk Receipt vault; send active:true heartbeat-like case request every 45 seconds only with server-verified device session; Case Delivery separately from Active User metrics. Refresh and Check Server's case combines live delivery with in-session receipt refresh; manual ID+Receipt fallback remains.
 (:18/11/2026: Feedback & Appeal Beta) STAGING v7.3.51: remove the optional include-UserId toggle from new Feedback. Tell the sender in a non-interactive label that their LocalPlayer UserId is included for Admin case linking; the Worker still marks this as an unverified claim, not proof of identity or permission for bans. Fail submit clearly if Roblox UserId is unavailable; never silently send anonymous. Existing old unlinked cases remain unlinked. No Cloudflare Pages/Worker/Production changes.
 (:18/11/2026: A&F) STAGING: Beta label, clearer anonymous Feedback attribution, and future VERIFIED Violation display for permanent/temporary ban with expiry (no Client identity proof, no backend changes).
 (:18/11/2026: A&F) STAGING: preserve receipt-verified feedback cases marked status=violation in a separate Feedback > Flagged (Policy) section, clearly distinguished from account-bound Violation notice. Show Case Closed and include flagged in Total/New/refresh. Optional opt-in Roblox UserId claim on new Feedback submissions (default OFF; unverified; not account authentication). Existing cases cannot gain a UserId retroactively. No Worker/D1/Production changes.
@@ -14887,7 +14887,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 end
                 pollVerifiedServerCases=function(force)
                     if deliveryBusy or not gate.active or not serverCasesFrame.Parent then return end
-                    if not force and os.clock()-lastDeliveryRequest<60 then return end
+                    if not force and os.clock()-lastDeliveryRequest<30 then return end
                     local token=serverCaseToken()
                     if not token then
                         deliveryResult.Text="Not linked: a server-verified Roblox session is required. No UserId-only lookup."
@@ -14905,7 +14905,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     task.spawn(function()
                         local ok,response=pcall(requestFn,{
                             Url=CASE_STAGING_BASE.."/api/v1/client/cases/poll",
-                            Method="POST",Body="{}",Timeout=15,
+                            Method="POST",Body='{"active":true}',Timeout=15,
                             Headers={
                                 ["Content-Type"]="application/json",
                                 ["Accept"]="application/json",
