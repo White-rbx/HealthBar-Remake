@@ -8379,11 +8379,14 @@ loc.API.DrawMessage = function(chatID, index, message)
 
     if message.role == "chat-safety" then
         local kind = tostring(message.chatSafetyKind or "")
-        if kind ~= "self" and kind ~= "peers" then return nil end
-        local headline = kind == "self" and "🔒 Chat unavailable" or "🔒 Some chat connections unavailable"
-        local explanation = kind == "self"
-            and "Roblox chat permissions currently prevent this account from using in-experience text chat."
-            or "Some players in this server cannot chat with you under Roblox chat permissions."
+        if kind ~= "self" and kind ~= "peers" and kind ~= "age-group" then return nil end
+        local headline = kind == "age-group" and "⚠️ Age Group (Unchecked - <9)"
+            or (kind == "self" and "🔒 Chat unavailable" or "🔒 Some chat connections unavailable")
+        local explanation = kind == "age-group"
+            and "This label does not prove the account's age. Roblox determines chat availability; Arcsen cannot verify age groups."
+            or (kind == "self"
+                and "Roblox chat permissions currently prevent this account from using in-experience text chat."
+                or "Some players in this server cannot chat with you under Roblox chat permissions.")
         return meg(headline, "System", "Left", true, 255, 180, 0, nil, {
             NoCounter = true,
             IsStatus = true,
@@ -11669,6 +11672,7 @@ loc.API.SaveChats = function()
             table.insert(loc.API.SaveData.Chats[chatID].Messages, {
                 role = savedMessage.role,
                 chatSafetyKind = (savedMessage.role == "chat-safety") and savedMessage.chatSafetyKind or nil,
+                chatAgeGroup = (savedMessage.role == "chat-safety") and savedMessage.chatAgeGroup or nil,
                 text = tostring(savedMessage.text or ""),
                 richText = savedMessage.richText == true,
                 isSyn = savedMessage.isSyn == true,
@@ -13338,59 +13342,122 @@ end
 -- local player's own chat permission; it does not infer peer restrictions.
 -- No messages, age data, IPs, or message lengths are sent to Cloudflare.
 loc.API.ChatSafety = {
-    chatAvailable = nil, -- nil = unknown
-    noticesShown = {self = false},
+    chatAvailable = nil,
+    noticesShown = {self = false, ["age-group"] = false}
 }
 
-loc.API.ShowChatSafetyNotice = function(kind)
-    if kind == true then kind = "self" end -- compatibility with earlier caller
-    if kind ~= "self" then return false end
-    local cs = loc.API.ChatSafety
-    if cs.noticesShown.self then return false end
-    cs.noticesShown.self = true
+-- Only an explicit chat-age status can show this category. CanUserChatAsync
+-- does not identify an account's age; never infer "<9" from denied chat.
+loc.API.ShowHereChatAgeGroupWarning = function(group)
+    if group ~= "Unchecked" and group ~= "<9" and group ~= "Unchecked - <9" then return false end
+    return loc.API.ShowChatSafetyNotice("age-group",group)
+end
 
-    local entry = {
-        role = "chat-safety", chatSafetyKind = "self", text = "",
-        timestamp = os.time(), richText = false,
+loc.API.ShowChatSafetyNotice = function(kind,group)
+    if kind == true then kind = "self" end
+    if kind ~= "self" and kind ~= "age-group" then return false end
+    if kind == "age-group" and group ~= "Unchecked"
+        and group ~= "<9" and group ~= "Unchecked - <9" then return false end
+    local cs=loc.API.ChatSafety
+    local item={
+        role="chat-safety",chatSafetyKind=kind,
+        chatAgeGroup=kind=="age-group" and group or nil,
+        text="",timestamp=os.time(),richText=false
     }
     if type(loc.API.EnsureHereChatTab) == "function" then
-        local id = loc.API.EnsureHereChatTab(false)
-        local chat = id and loc.API.ChatData[id]
+        local id=loc.API.EnsureHereChatTab(false)
+        local chat=id and loc.API.ChatData[id]
         if chat then
-            table.insert(chat.Messages, entry)
-            if type(loc.API.NotifyNewChatMessage) == "function" then
-                loc.API.NotifyNewChatMessage(id, #chat.Messages)
+            local count,same=0,0
+            for _,old in ipairs(chat.Messages) do
+                if type(old)=="table" and old.role=="chat-safety" then
+                    count+=1
+                    if old.chatSafetyKind==item.chatSafetyKind
+                        and old.chatAgeGroup==item.chatAgeGroup then same+=1 end
+                end
             end
-            if type(loc.RecordMessageForCounter) == "function" then
+            -- Same warning already visible: suppress duplicates, including
+            -- saved messages restored on a later Roblox session.
+            if count==1 and same==1 then
+                cs.noticesShown[kind]=true
+                return false
+            end
+            -- Different or repeated warning: replace old system notice only.
+            for index=#chat.Messages,1,-1 do
+                if type(chat.Messages[index])=="table"
+                    and chat.Messages[index].role=="chat-safety" then
+                    table.remove(chat.Messages,index)
+                end
+            end
+            table.insert(chat.Messages,item)
+            cs.noticesShown.self=kind=="self"
+            cs.noticesShown["age-group"]=kind=="age-group"
+            if type(loc.API.ClearNewMessageMarker)=="function" then
+                loc.API.ClearNewMessageMarker(id)
+            end
+            if type(loc.API.NotifyNewChatMessage)=="function" then
+                loc.API.NotifyNewChatMessage(id,#chat.Messages)
+            end
+            if count==0 and type(loc.RecordMessageForCounter)=="function" then
                 loc.RecordMessageForCounter("system")
             end
-            if type(loc.API.SaveChats) == "function" then loc.API.SaveChats() end
-            if tostring(loc.API.ActiveChatID or "") == tostring(id) then
-                if type(loc.API.RenderChat) == "function" then
-                    loc.API.RenderChat(id, true)
-                end
+            if type(loc.API.SaveChats)=="function" then loc.API.SaveChats() end
+            if tostring(loc.API.ActiveChatID or "")==tostring(id)
+                and type(loc.API.RenderChat)=="function" then
+                loc.API.RenderChat(id,true)
             end
             return true
         end
     end
-
-    meg("🔒 Chat unavailable", "System", "Left", true, 255, 180, 0, nil, {
-        WarningText = "Roblox chat permissions currently prevent in-experience text chat.",
-        IsStatus = true,
+    if cs.noticesShown[kind] then return false end
+    cs.noticesShown[kind]=true
+    meg("🔒 Chat unavailable","System","Left",true,255,180,0,nil,{
+        WarningText="Roblox chat availability is controlled by Roblox.",IsStatus=true
     })
     return true
 end
 
 loc.API.ApplyChatSafetyStatus = function(status)
-    if type(status) ~= "table" or status.kind ~= "chat_safety" then return false end
-    if type(status.chatAvailable) ~= "boolean" then return false end
-    local cs = loc.API.ChatSafety
-    if cs.chatAvailable ~= status.chatAvailable then
-        cs.chatAvailable = status.chatAvailable
-        cs.noticesShown.self = false
-        if status.chatAvailable == false then
+    if type(status)~="table" or status.kind~="chat_safety" then return false end
+    if type(status.chatAvailable)~="boolean" then
+        -- A trusted caller may supply an Age Group warning independently.
+        return loc.API.ShowHereChatAgeGroupWarning(status.ageGroup)
+    end
+    local cs=loc.API.ChatSafety
+    local changed=cs.chatAvailable~=status.chatAvailable
+    cs.chatAvailable=status.chatAvailable
+    if not status.chatAvailable then
+        local group=status.ageGroup
+        if group=="Unchecked" or group=="<9" or group=="Unchecked - <9" then
+            loc.API.ShowHereChatAgeGroupWarning(group)
+        else
             loc.API.ShowChatSafetyNotice("self")
         end
+    elseif changed then
+        local id=tostring(loc.API.HereChatTabID or "")
+        local chat=loc.API.ChatData[id]
+        if chat then
+            local removed=false
+            for index=#chat.Messages,1,-1 do
+                if type(chat.Messages[index])=="table"
+                    and chat.Messages[index].role=="chat-safety" then
+                    table.remove(chat.Messages,index)
+                    removed=true
+                end
+            end
+            if removed then
+                if type(loc.API.ClearNewMessageMarker)=="function" then
+                    loc.API.ClearNewMessageMarker(id)
+                end
+                if type(loc.API.SaveChats)=="function" then loc.API.SaveChats() end
+                if tostring(loc.API.ActiveChatID or "")==id
+                    and type(loc.API.RenderChat)=="function" then
+                    loc.API.RenderChat(id,true)
+                end
+            end
+        end
+        cs.noticesShown.self=false
+        cs.noticesShown["age-group"]=false
     end
     return true
 end
