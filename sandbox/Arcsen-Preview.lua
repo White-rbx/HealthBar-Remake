@@ -15105,7 +15105,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                         lines[#lines+1]=item.status.." | "..topic.." | "..item.id:sub(1,8)
                                     end
                                 end
-                                if #data.cases>12 then lines[#lines+1]="More cases available on next page." end
+                                if #data.cases>12 then lines[#lines+1]="Additional linked cases are not shown in this preview." end
                                 deliveryResult.Text=table.concat(lines,"\n")
                             end
                         end
