@@ -12744,6 +12744,17 @@ do
         commandCore.setOutput(function(message, level, metadata)
             metadata = type(metadata) == "table" and metadata or {}
 
+            -- Trusted HereChat module may supply an explicit chat-age status.
+            -- Never infer age from message text or a failed CanUserChatAsync.
+            if metadata.source == "HereChat" and metadata.kind == "chat_safety" then
+                task.defer(function()
+                    if type(loc.API.ShowHereChatAgeGroupWarning) == "function" then
+                        loc.API.ShowHereChatAgeGroupWarning(metadata.ageGroup)
+                    end
+                end)
+                return
+            end
+
             if metadata.source == "HereChat" and level == "chat" then
                 if type(loc.API.AppendHereChatMessage) == "function" then
                     loc.API.AppendHereChatMessage(message, metadata)
