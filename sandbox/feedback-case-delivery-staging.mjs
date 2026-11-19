@@ -3,9 +3,11 @@
  * This module registers NOTHING by import. Mount only after reviewed OAuth
  * browser confirmation + a short-lived, server-issued DEVICE session verifier.
  * Never authorize via LocalPlayer.UserId, claimed_user_id, headers or an
- * "active" analytics record. A request from a verified active client polls.
+ * "active" analytics record. An authenticated POST {active:true}
+ * is a heartbeat-like signal only for THIS Case Delivery request; it is
+ * never account authorization, presence analytics, or a stored Active User.
  *
- * Routes: POST /api/v1/client/cases/poll  body {}
+ * Routes: POST /api/v1/client/cases/poll  body {active:true}
  *         POST /api/v1/client/cases/link  body {id,receipt}
  * Independent of Analytics / Active User counts and Admin dashboard.
  */
@@ -85,7 +87,10 @@ export function createCaseDeliveryHandler({resolveActivePrincipal,checkRateLimit
    return result({ok:false,error:'Database unavailable'},503);
 
   if(url.pathname===CASE_DELIVERY_POLL){
-   if(Object.keys(body).length!==0)return result({ok:false,error:'Unexpected fields'},400);
+   // This is a heartbeat-style request; client "active" is only intent.
+   // Authorization remains the independently verified device principal.
+   if(Object.keys(body).length!==1||body.active!==true)
+    return result({ok:false,error:'Active case session required'},400);
    try{
     const sql="SELECT c.id,c.kind,c.status,c.topic,c.updated_unix,c.revision,c.public_note "
       +"FROM asc_feedback_case_owners o JOIN asc_feedback_cases c ON c.id=o.case_id "
@@ -93,7 +98,8 @@ export function createCaseDeliveryHandler({resolveActivePrincipal,checkRateLimit
       +"ORDER BY c.updated_unix DESC,c.id ASC LIMIT 30";
     const query=await env.DB.prepare(sql).bind(subject).all();
     const rows=(query.results||[]).map(cleanCase);
-    return result({ok:true,serverVerified:true,delivery:'active-poll',cases:rows});
+    return result({ok:true,serverVerified:true,delivery:'active-poll',
+      activeForThisRequest:true,heartbeatSeconds:45,cases:rows});
    }catch{return result({ok:false,error:'Case delivery unavailable'},503);}
   }
   if(Object.keys(body).length!==2||!Object.hasOwn(body,'id')
