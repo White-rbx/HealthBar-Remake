@@ -117,7 +117,7 @@ test('removed and spam Mail stay private; no Admin routing or active users analy
  f.cases.get(uuid).removed=1;
  assert.deepEqual((await f.send(CASE_DELIVERY_POLL)).json.cases,[]);
  const src=readFileSync('sandbox/feedback-case-delivery-staging.mjs','utf8');
- assert.doesNotMatch(src,/asc_presence_sessions|asc_usage_live_sessions|/api/v1/admin/feedback/);
+ assert.doesNotMatch(src,/asc_presence_sessions|asc_usage_live_sessions|\/api\/v1\/admin\/feedback/);
 });
 test('denied methods, unexpected fields, oversized body and missing D1 fail closed',async()=>{
  const f=mock();
