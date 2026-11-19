@@ -1,10 +1,10 @@
 -- Arcsen Preview | Full source copied from sandbox/Arcsen-BanMode-STAGING.lua
--- Adds opt-in STAGING-only local case-receipt restoration after rejoin.
+-- STAGING Case Delivery: periodic active-client polling; no local receipt persistence.
 -- No Production or original Arcsen is modified. No account-bound identity is inferred.
 local ver = {
-	sion = " UIs 7.3.53 STAGING Preview ",
+	sion = " UIs 7.3.54 STAGING Preview ",
 	logs = [[
-(:19/11/2026: QA Preview) Opt-in Remember Cases on this device for private STAGING Feedback receipts; double confirmation, validate each receipt after rejoin, manual restore available, original Arcsen unchanged.
+(:19/11/2026: QA Preview v7.3.54) Remove Remember Cases UI and disk Receipt vault; use server-verified active-session Case Delivery separately from Active User metrics. Refresh and Check Server's case combines live delivery with in-session receipt refresh; manual ID+Receipt fallback remains.
 (:18/11/2026: Feedback & Appeal Beta) STAGING v7.3.51: remove the optional include-UserId toggle from new Feedback. Tell the sender in a non-interactive label that their LocalPlayer UserId is included for Admin case linking; the Worker still marks this as an unverified claim, not proof of identity or permission for bans. Fail submit clearly if Roblox UserId is unavailable; never silently send anonymous. Existing old unlinked cases remain unlinked. No Cloudflare Pages/Worker/Production changes.
 (:18/11/2026: A&F) STAGING: Beta label, clearer anonymous Feedback attribution, and future VERIFIED Violation display for permanent/temporary ban with expiry (no Client identity proof, no backend changes).
 (:18/11/2026: A&F) STAGING: preserve receipt-verified feedback cases marked status=violation in a separate Feedback > Flagged (Policy) section, clearly distinguished from account-bound Violation notice. Show Case Closed and include flagged in Total/New/refresh. Optional opt-in Roblox UserId claim on new Feedback submissions (default OFF; unverified; not account authentication). Existing cases cannot gain a UserId retroactively. No Worker/D1/Production changes.
@@ -14042,99 +14042,6 @@ task.spawn(function()
     local updateCaseCounters = function() end -- Assigned after Feedback subcategory UI is created.
     loc.API.ArcScriptCenterCaseSession = {LastCaseId=nil, Count=0, Transport="STAGING only"}
 
-    -- Arcsen Preview ONLY: optional on-device case receipt vault.
-    -- OFF by default. A receipt is a bearer secret: enable only by an
-    -- explicit double-tap. It is never sent to Admin, logs or GitHub.
-    -- A readable local file is NOT encrypted nor safe on shared devices.
-    -- Every restored credential MUST be re-verified by /feedback/status.
-    local caseVaultConsent=false
-    local caseVaultPath="ExperienceSettings/Arcsen/CaseReceipts-STAGING-"..
-        tostring(player and player.UserId or "invalid")..".json"
-    local CASE_VAULT_CAP=24
-    local function caseVaultAvailable()
-        return player and player.UserId>0
-            and type(isfile)=="function" and type(readfile)=="function"
-            and type(writefile)=="function"
-    end
-    local function caseVaultValid(id,receipt)
-        return type(id)=="string" and #id==36
-            and id:match("^[a-fA-F0-9%-]+$")~=nil
-            and type(receipt)=="string" and #receipt==64
-            and receipt:match("^[a-fA-F0-9]+$")~=nil
-    end
-    local function caseVaultSave()
-        if not caseVaultConsent or not caseVaultAvailable() then
-            return false,"Local persistence disabled or unavailable."
-        end
-        local entries={}
-        for id,record in pairs(privateReceipts) do
-            if type(record)=="table" and caseVaultValid(id,record.receipt) then
-                table.insert(entries,{id=id,receipt=record.receipt})
-            end
-        end
-        table.sort(entries,function(a,b) return a.id < b.id end)
-        if #entries>CASE_VAULT_CAP then
-            return false,"Too many linked cases for local storage."
-        end
-        local ok=pcall(function()
-            loc.API.EnsureArcsenStorage()
-            writefile(caseVaultPath,s.HttpService:JSONEncode({
-                version=1,scope="ArcScriptCenter-STAGING-feedback",
-                userId=tostring(player.UserId),consent=true,cases=entries
-            }))
-        end)
-        return ok,ok and nil or "Could not save the local file."
-    end
-    local function caseVaultRestore()
-        if not caseVaultAvailable() then return nil,"Local read/write unavailable." end
-        local ok,decoded=pcall(function()
-            if not isfile(caseVaultPath) then return nil end
-            return s.HttpService:JSONDecode(readfile(caseVaultPath))
-        end)
-        if not ok then return nil,"Stored file could not be read." end
-        if decoded==nil then return nil,"Off" end
-        if type(decoded)~="table" or decoded.version~=1
-            or decoded.scope~="ArcScriptCenter-STAGING-feedback"
-            or decoded.userId~=tostring(player.UserId)
-            or decoded.consent~=true or type(decoded.cases)~="table"
-            or #decoded.cases>CASE_VAULT_CAP then
-            return nil,"Stored data was rejected. No case was trusted."
-        end
-        caseVaultConsent=true
-        local pending={}
-        local seen={}
-        for _,entry in ipairs(decoded.cases) do
-            if type(entry)=="table" and caseVaultValid(entry.id,entry.receipt)
-                and not seen[entry.id] then
-                seen[entry.id]=true
-                privateReceipts[entry.id]={
-                    id=entry.id,receipt=entry.receipt,
-                    verified=false,unread=false
-                }
-                table.insert(pending,{id=entry.id,receipt=entry.receipt})
-            end
-        end
-        return pending,nil
-    end
-    local function caseVaultErase()
-        if not caseVaultAvailable() then return false end
-        local ok=pcall(function()
-            if type(delfile)=="function" and isfile(caseVaultPath) then
-                delfile(caseVaultPath)
-            else
-                loc.API.EnsureArcsenStorage()
-                -- When file deletion is unavailable, overwrite with NO secrets.
-                writefile(caseVaultPath,s.HttpService:JSONEncode({
-                    version=1,scope="ArcScriptCenter-STAGING-feedback",
-                    userId=tostring(player.UserId),consent=false,cases={}
-                }))
-            end
-        end)
-        if ok then caseVaultConsent=false end
-        return ok
-    end
-
-
     local function caseLength(value)
         return utf8.len(value) or #value
     end
@@ -14210,7 +14117,7 @@ task.spawn(function()
             status="reviewing", verified=true, unread=false,
             lastCheckedAt=os.time()}
         privateReceipts[data.id] = item
-        if caseVaultConsent then caseVaultSave() end
+        
         loc.API.ArcScriptCenterCaseSession.LastCaseId = data.id
         local c=0
         for _ in pairs(privateReceipts) do c+=1 end
@@ -14253,7 +14160,7 @@ task.spawn(function()
         cached.lastCheckedAt = os.time() -- only after a receipt-authenticated 200
         cached.verified = true
         if markRead ~= false then cached.unread = false end
-        if caseVaultConsent then caseVaultSave() end
+        
         local c=0
         for _ in pairs(privateReceipts) do c+=1 end
         loc.API.ArcScriptCenterCaseSession.Count = c
@@ -14840,9 +14747,6 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             currentEpoch==feedbackRefreshEpoch and feedbackCategory.Frame.Parent do
                             local ok = pcall(refreshKnownFeedbackCases)
                             if not ok then break end
-                            -- Client is active in Feedback: ask Server for linked cases.
-                            -- Does not touch the Active User analytics/presence feature.
-                            pcall(pollVerifiedServerCases)
                             task.wait(45)
                         end
                     end)
@@ -14917,74 +14821,6 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     openPreviousFeedbackCase()
                 end)
 
-                -- Explicit local persistence, disabled unless the user consents.
-                local remember=Instance.new("TextButton")
-                remember.Name="RememberCasesOnThisDevice"
-                remember.LayoutOrder=-2
-                remember.Size=UDim2.new(1,-12,0,30)
-                remember.BackgroundColor3=Color3.fromRGB(48,84,112)
-                remember.BorderSizePixel=0
-                remember.TextColor3=Color3.fromRGB(239,247,255)
-                remember.TextSize=11
-                remember.TextWrapped=true
-                remember.Text="Remember Cases on this device: OFF"
-                remember.Parent=feedbackScroll
-                Corner(0,5,remember)
-
-                local rememberNote=Instance.new("TextLabel")
-                rememberNote.Name="RememberCasesNotice"
-                rememberNote.LayoutOrder=-2
-                rememberNote.Size=UDim2.new(1,-12,0,38)
-                rememberNote.BackgroundTransparency=1
-                rememberNote.TextColor3=Color3.fromRGB(215,191,158)
-                rememberNote.TextWrapped=true
-                rememberNote.TextSize=10
-                rememberNote.TextXAlignment=Enum.TextXAlignment.Left
-                rememberNote.Text="Optional STAGING preview: private Receipts remain in memory until enabled."
-                rememberNote.Parent=feedbackScroll
-                local rememberPending=nil
-                local rememberPendingAt=0
-                local function paintRemember()
-                    remember.Text=caseVaultConsent
-                        and "Remember Cases on this device: ON (tap to clear)"
-                        or "Remember Cases on this device: OFF"
-                    remember.BackgroundColor3=caseVaultConsent
-                        and Color3.fromRGB(32,113,81)
-                        or Color3.fromRGB(48,84,112)
-                end
-                remember.MouseButton1Click:Connect(function()
-                    if not caseVaultAvailable() then
-                        rememberNote.Text="This runtime cannot read/write local files. Use ID + private Receipt to restore manually."
-                        return
-                    end
-                    local intent=caseVaultConsent and "clear" or "enable"
-                    if rememberPending~=intent or os.clock()-rememberPendingAt>15 then
-                        rememberPending=intent
-                        rememberPendingAt=os.clock()
-                        if intent=="enable" then
-                            rememberNote.Text="Privacy warning: this saves PRIVATE Receipts in a readable local file, not encrypted. Anyone with file access could use them. Tap again within 15s to opt in."
-                        else
-                            rememberNote.Text="Tap again within 15s to erase saved Receipts on this device. Server cases are NOT deleted."
-                        end
-                        return
-                    end
-                    rememberPending=nil
-                    if intent=="enable" then
-                        caseVaultConsent=true
-                        local ok,reason=caseVaultSave()
-                        if not ok then caseVaultConsent=false end
-                        rememberNote.Text=ok and
-                            "Opt-in enabled. New linked cases are saved locally; rejoin will validate them with STAGING."
-                            or tostring(reason)
-                    else
-                        rememberNote.Text=caseVaultErase()
-                            and "Local receipt file cleared. Server cases unchanged."
-                            or "Local file could not be cleared; please delete the file using your file manager."
-                    end
-                    paintRemember()
-                    task.defer(syncFeedbackCanvas)
-                end)
-
                 -- SERVER CASE DELIVERY (STAGING Preview ONLY).
                 -- No UserId parameter, no Admin key, no receipt persistence here.
                 -- The eventual verified OAuth-device flow must install a
@@ -15050,8 +14886,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     return nil
                 end
                 pollVerifiedServerCases=function(force)
-                    if deliveryBusy or not feedbackExpanded or not panelExpanded
-                        or not serverCasesFrame.Parent then return end
+                    if deliveryBusy or not gate.active or not serverCasesFrame.Parent then return end
                     if not force and os.clock()-lastDeliveryRequest<60 then return end
                     local token=serverCaseToken()
                     if not token then
@@ -15112,6 +14947,15 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         task.defer(syncFeedbackCanvas)
                     end)
                 end
+                -- Similar cadence to Active User heartbeat but completely separate:
+                -- only a verified case-session token causes a network request.
+                -- This does NOT update or count Active Users / analytics.
+                task.spawn(function()
+                    while gate.active and serverCasesFrame.Parent do
+                        pcall(pollVerifiedServerCases,false)
+                        task.wait(45)
+                    end
+                end)
                 deliveryButton.MouseButton1Click:Connect(function()
                     pollVerifiedServerCases(true)
                 end)
@@ -15221,8 +15065,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         task.defer(syncFeedbackCanvas)
                     end)
                 end)
-                -- Manual, receipt-scoped refresh of the session's known Feedback.
-                -- The public API has no account-wide case list: no receipt = no case.
+                -- Manual refresh combines session receipt status and authenticated Server Case Delivery.
+                -- No lookup by claimed UserId; server-owned cases require a verified device session.
                 local refreshCasePanel=Instance.new("Frame")
                 refreshCasePanel.Name="FeedbackRefreshPanel"
                 refreshCasePanel.LayoutOrder=-1
@@ -15238,7 +15082,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 refreshCaseButton.Font=Enum.Font.Gotham
                 refreshCaseButton.TextColor3=Color3.fromRGB(245,250,255)
                 refreshCaseButton.TextSize=12
-                refreshCaseButton.Text="Refresh Case Status (STAGING)"
+                refreshCaseButton.Text="Refresh and Check Server's case"
                 refreshCaseButton.Parent=refreshCasePanel
                 Corner(0,5,refreshCaseButton)
 
@@ -15253,7 +15097,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 refreshCaseNote.TextWrapped=true
                 refreshCaseNote.TextXAlignment=Enum.TextXAlignment.Left
                 refreshCaseNote.TextYAlignment=Enum.TextYAlignment.Top
-                refreshCaseNote.Text="Refresh checks your linked cases. Restore a past case first."
+                refreshCaseNote.Text="Checks server-owned cases plus linked cases from this session."
                 refreshCaseNote.Parent=refreshCasePanel
                 local lastManualCaseRefresh=-math.huge
                 refreshCaseButton.MouseButton1Click:Connect(function()
@@ -15267,27 +15111,18 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         refreshCaseNote.Text="Refresh available again shortly."
                         return
                     end
-                    local hasCases=false
-                    for _,item in pairs(privateReceipts) do
-                        if item.verified==true and item.kind=="feedback"
-                            and type(item.receipt)=="string" then
-                            hasCases=true
-                            break
-                        end
-                    end
-                    if not hasCases then
-                        refreshCaseNote.Text="No linked Feedback yet. Use Restore previous case first."
-                        return
-                    end
+                    -- Allow server lookup even if this session knows no Receipts.
+                    -- The authenticated server may already own linked cases.
                     lastManualCaseRefresh=now
                     refreshCaseButton.Text="Refreshing case status..."
                     refreshCaseButton.Interactable=false
-                    refreshCaseNote.Text="Checking your verified cases with STAGING..."
+                    refreshCaseNote.Text="Checking session cases and requesting Server Case Delivery..."
                     task.spawn(function()
+                        pcall(pollVerifiedServerCases,true)
                         local ok,result,errorMessage=pcall(refreshKnownFeedbackCases)
                         if refreshCaseButton.Parent then
                             refreshCaseButton.Interactable=true
-                            refreshCaseButton.Text="Refresh Case Status (STAGING)"
+                            refreshCaseButton.Text="Refresh and Check Server's case"
                             if not ok or not result then
                                 refreshCaseNote.Text="Could not refresh. Please try again later."
                                 refreshCaseNote.TextColor3=Color3.fromRGB(255,175,160)
@@ -15380,48 +15215,6 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 end
                 task.defer(updateCaseCounters)
 
-                -- Restore only with prior explicit opt-in, then validate each
-                -- saved case against the STAGING receipt endpoint. Never trust
-                -- the local file alone for an Approved/Denied status.
-                task.spawn(function()
-                    local pending,reason=caseVaultRestore()
-                    paintRemember()
-                    if not pending then
-                        if reason and reason~="Off" then
-                            rememberNote.Text=tostring(reason)
-                        end
-                        return
-                    end
-                    local confirmed,unavailable,failed=0,0,0
-                    if #pending>0 then
-                        rememberNote.Text="Validating saved case receipts with STAGING..."
-                    else
-                        rememberNote.Text="Remember Cases is ON; no cases saved yet."
-                    end
-                    for _,savedCredential in ipairs(pending) do
-                        if not gate.active or not remember.Parent then break end
-                        local ok,record,errorText=pcall(caseCheckStatus,
-                            savedCredential.id,savedCredential.receipt,false)
-                        if ok and record then
-                            confirmed+=1
-                        elseif ok and type(errorText)=="string"
-                            and errorText:find("HTTP 404:",1,true)==1 then
-                            privateReceipts[savedCredential.id]=nil
-                            unavailable+=1
-                            caseVaultSave()
-                        else
-                            failed+=1
-                        end
-                        task.wait(0.65) -- avoid a startup request burst
-                    end
-                    task.defer(updateCaseCounters)
-                    if remember.Parent then
-                        rememberNote.Text="Restored "..confirmed.." verified case(s)"
-                            ..(unavailable>0 and (" | Unavailable: "..unavailable) or "")
-                            ..(failed>0 and (" | Retry manually: "..failed) or "")
-                        task.defer(syncFeedbackCanvas)
-                    end
-                end)
                 local function showSubmittedFeedback()
                     openReviewCards(true) -- Immediately show the new case in Review.
                     task.defer(syncFeedbackCanvas)
@@ -16157,7 +15950,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 if epoch~=requestEpoch or not row.Frame.Parent then return end
                                 if ok and result and result.ok==true and result.removed==true then
                                     privateReceipts[id]=nil
-                                    if caseVaultConsent then caseVaultSave() end
+                                    
                                     if loc.API.ArcScriptCenterCaseSession.LastCaseId==id then
                                         loc.API.ArcScriptCenterCaseSession.LastCaseId=nil
                                     end
@@ -16259,7 +16052,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                     -- This is NOT an Approved or Denied decision.
                                     -- Drop the stale SESSION card only, never delete D1.
                                     privateReceipts[id]=nil
-                                    if caseVaultConsent then caseVaultSave() end
+                                    
                                     if loc.API.ArcScriptCenterCaseSession.LastCaseId==id then
                                         loc.API.ArcScriptCenterCaseSession.LastCaseId=nil
                                     end
