@@ -55,7 +55,7 @@ function mock({subject='1199',active=true,verified=true,method='roblox_oidc_devi
   clock:()=>now
  });
  const request=(path,body={},h={})=>new Request(site+path,{method:'POST',headers:{'content-type':'application/json',...h},body:JSON.stringify(body)});
- const send=async (path,body={},headers={})=>{const res=await handler(request(path,body,headers),{DB});return {code:res.status,headers:res.headers,json:await res.json()};};
+ const send=async (path,body=path===CASE_DELIVERY_POLL?{active:true}:{},headers={})=>{const res=await handler(request(path,body,headers),{DB});return {code:res.status,headers:res.headers,json:await res.json()};};
  return {send,handler,cases,owners,calls,DB,request};
 }
 test('closed unless independently verified ACTIVE OAuth-device session; no analytics shortcuts',async()=>{
@@ -77,6 +77,8 @@ test('unlinked claimed_user_id does NOT disclose cases even when verified',async
  const f=mock(),r=await f.send(CASE_DELIVERY_POLL);
  assert.equal(r.code,200);assert.deepEqual(r.json.cases,[]);
  assert.equal(r.json.serverVerified,true);
+ assert.equal(r.json.activeForThisRequest,true);
+ assert.equal(r.json.heartbeatSeconds,45);
  assert.equal(r.headers.get('cache-control'),'private, no-store');
  assert.equal(r.headers.get('access-control-allow-origin'),null);
 });
@@ -124,8 +126,11 @@ test('denied methods, unexpected fields, oversized body and missing D1 fail clos
  const bad=await f.handler(new Request(site+CASE_DELIVERY_POLL,{method:'GET'}),{DB:f.DB});
  assert.equal(bad.status,405);
  assert.equal((await f.send(CASE_DELIVERY_POLL,{userId:'1199'})).code,400);
+ assert.equal((await f.send(CASE_DELIVERY_POLL,{})).code,400);
+ assert.equal((await f.send(CASE_DELIVERY_POLL,{active:false})).code,400);
+ assert.equal((await f.send(CASE_DELIVERY_POLL,{active:true,userId:'1199'})).code,400);
  assert.equal((await f.send(CASE_DELIVERY_LINK,{id:uuid,receipt,claimedUserId:'1199'})).code,400);
- const missing=await f.handler(f.request(CASE_DELIVERY_POLL),{});
+ const missing=await f.handler(f.request(CASE_DELIVERY_POLL,{active:true}),{});
  assert.equal(missing.status,503);
  assert.equal((await f.send('/api/v1/admin/feedback/list')).code,404);
 });
