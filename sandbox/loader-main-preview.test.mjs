@@ -91,31 +91,40 @@ test('Arcsen Preview extends the full staged Arcsen while staying on the staging
   assert.match(arcsen,/loc\.API\.PolicyReadOnly/);
   assert.match(arcsen,/identityVerified=false/);
   assert.match(arcsen,/PrivateCaseReceipt/);
-  assert.match(arcsen,/caseVaultValid\(entry\.id,entry\.receipt\)/);
+
 });
 
-test('cross-session restore requires explicit opt-in and same local UserId, then validates receipt with server',()=>{
-  assert.match(arcsen,/local caseVaultConsent=false/);
-  assert.match(arcsen,/RememberCasesOnThisDevice/);
-  assert.match(arcsen,/rememberPending~=intent or os\.clock\(\)-rememberPendingAt>15/);
-  assert.match(arcsen,/decoded\.userId~=tostring\(player\.UserId\)/);
-  assert.match(arcsen,/decoded\.consent~=true/);
-  assert.match(arcsen,/privateReceipts\[entry\.id\]=\{/);
-  assert.match(arcsen,/verified=false,unread=false/);
-  assert.match(arcsen,/pcall\(caseCheckStatus,/);
+test('Arcsen Preview no longer exposes Remember or on-device Case Receipt storage',()=>{
+  for(const forbidden of [
+    'caseVault','caseVaultConsent','caseVaultPath','caseVaultSave',
+    'caseVaultRestore','RememberCasesOnThisDevice','RememberCasesNotice',
+    'CaseReceipts-STAGING-','rememberPending','paintRemember'
+  ]) assert.ok(!arcsen.includes(forbidden),'stale Remember artifact: '+forbidden);
+  assert.match(arcsen,/local privateReceipts = \{\}/);
   assert.match(arcsen,/casePost\("\/api\/v1\/feedback\/status",\{id=id,receipt=receipt\}\)/);
-  assert.match(arcsen,/caseVaultConsent=true/);
-  assert.match(arcsen,/if caseVaultConsent then caseVaultSave\(\) end/);
-  assert.match(arcsen,/local CASE_VAULT_CAP=24/);
-  assert.match(arcsen,/type\(delfile\)=="function"/);
-  assert.doesNotMatch(arcsen,/local caseVaultConsent=true/);
+  assert.match(arcsen,/Restore previous case \(ID \+ Receipt\)/);
 });
 
-test('no automatic account-wide lookup, unverified identity does not authorize cases',()=>{
-  assert.match(arcsen,/Every restored credential MUST be re-verified/);
-  assert.match(arcsen,/No account-wide API and no Admin credentials/);
-  assert.match(arcsen,/privateReceipts\[savedCredential\.id\]=nil/);
+test('active Case Delivery requires verified session, never claimed Roblox UserId',()=>{
+  assert.match(arcsen,/GetVerifiedCaseSessionToken/);
+  assert.match(arcsen,/No UserId parameter, no Admin key, no receipt persistence/);
+  assert.match(arcsen,/if not token then/);
+  assert.match(arcsen,/while gate.active and serverCasesFrame.Parent do/);
+  assert.match(arcsen,/pcall\(pollVerifiedServerCases,false\)/);
+  assert.match(arcsen,/task.wait\(45\)/);
+  assert.match(arcsen,/Method="POST",Body='\{"active":true\}'/);
+  assert.match(arcsen,/if not force and os.clock\(\)-lastDeliveryRequest<30 then return end/);
+  assert.match(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/poll"/);
+  assert.match(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/link"/);
   assert.doesNotMatch(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/admin\/bans"/);
+});
+
+test('refresh button checks both session receipts and server Case Delivery without early exit',()=>{
+  assert.equal(count(/refreshCaseButton.Text="Refresh and Check Server's case"/g,arcsen),2);
+  assert.match(arcsen,/pcall\(pollVerifiedServerCases,true\)/);
+  assert.match(arcsen,/pcall\(refreshKnownFeedbackCases\)/);
+  assert.doesNotMatch(arcsen,/refreshCaseButton.Text="Refresh Case Status \(STAGING\)"/);
+  assert.doesNotMatch(arcsen,/if not hasCases then/);
 });
 
 test('Arcsen server-linked Case Delivery is active-only, verified-token-only and STAGING-only',()=>{
@@ -123,8 +132,8 @@ test('Arcsen server-linked Case Delivery is active-only, verified-token-only and
   assert.match(arcsen,/RequestServerCases/);
   assert.match(arcsen,/GetVerifiedCaseSessionToken/);
   assert.match(arcsen,/if not token then/);
-  assert.match(arcsen,/not feedbackExpanded or not panelExpanded/);
-  assert.match(arcsen,/pcall\(pollVerifiedServerCases\)/);
+  assert.match(arcsen,/if deliveryBusy or not gate.active or not serverCasesFrame.Parent then return end/);
+  assert.match(arcsen,/pcall\(pollVerifiedServerCases,false\)/);
   assert.match(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/poll"/);
   assert.match(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/link"/);
   assert.match(arcsen,/\["Authorization"\]="Bearer "\.\.token/);
