@@ -59,6 +59,8 @@ jobs:
         run: node --test sandbox/managed-ban-schema-v2.test.mjs
       - name: Ban v2 isolated QA Admin API authentication and Save tests
         run: node --test sandbox/ban-v2-qa-gateway.test.mjs
+      - name: Backward-compatible schema1 and schema2 source-of-truth Ban preview
+        run: node --test sandbox/ban-v2-source-compat.test.mjs
       - name: Live deployed Ban v2 QA HTTP denial and CORS smoke
         run: node --test sandbox/ban-v2-qa-live-http-smoke.test.mjs
       - name: 'Ban Selection and Duration — four combinations, legacy and expiry'
