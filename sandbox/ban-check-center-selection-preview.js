@@ -40,6 +40,7 @@
  // No second Login, URL parameters, cookies or browser storage.
  let sessionKey='';
  const qaEndpoint='https://arcscriptcenter-ban-v2-qa.kogpasan14.workers.dev/api/v1/admin/bans/v2/qa';
+ const compatEndpoint='https://arcscriptcenter-ban-v2-qa.kogpasan14.workers.dev/api/v1/admin/bans/v2/compatibility';
  const qaState={revision:0,entries:[],loaded:false,busy:false};
 
  const idMatch=/User ID ([1-9][0-9]{0,15})/;
@@ -118,6 +119,7 @@
  document.getElementById('banLock')?.addEventListener('click',()=>{
   loadId++;sessionKey='';list.clear();locked=true;
   qaState.entries=[];qaState.revision=0;qaState.loaded=false;renderQa();
+  migrationResults.replaceChildren();
   selection.select.value='';duration.select.value='permanent';syncDuration();
   updateCards();status('Locked. Existing Admin session and list are cleared from this preview.');
  });
@@ -131,14 +133,20 @@
  saveQa.type='button';saveQa.id='banSaveQaOnly';saveQa.className='btn btn-soft';
  const loadQaButton=node('button','Load QA Bans');
  loadQaButton.type='button';loadQaButton.id='banLoadQaOnly';loadQaButton.className='btn';
- if(actionRow)actionRow.append(saveQa,loadQaButton);
+ const previewMigration=node('button','Preview Ban v1 → v2');
+ previewMigration.type='button';previewMigration.id='banPreviewBanV2';previewMigration.className='btn btn-soft';
+ if(actionRow)actionRow.append(saveQa,loadQaButton,previewMigration);
  const qaPanel=node('section',undefined,'panel panel-pad');
  qaPanel.id='banQaOnlyPanel';qaPanel.style.marginTop='18px';
  const qaHeading=node('h3','QA Sandbox — not active bans');
  const qaMessage=node('p','Unlock the existing Admin account to test saving Ban Selection v2. Nothing here affects Roblox users.','field-note');
  qaMessage.id='banQaStatus';qaMessage.setAttribute('role','status');
  const qaRecords=node('div');qaRecords.id='banQaRecords';qaRecords.className='list-stack';
- qaPanel.append(qaHeading,qaMessage,qaRecords);
+ const migrationTitle=node('h4','GitHub Ban v1 → v2 Read-only Preview');
+ migrationTitle.style.marginTop='15px';
+ const migrationResults=node('div');migrationResults.id='banV2CompatibilityResults';
+ const migrationNotice=node('p','Preview only. The original GitHub Ban List is never overwritten.','field-note');
+ qaPanel.append(qaHeading,qaMessage,qaRecords,migrationTitle,migrationNotice,migrationResults);
  records.parentElement?.append(qaPanel);
 
  function qaStatus(message){qaMessage.textContent=String(message)}
@@ -173,10 +181,10 @@
    row.append(edit);qaRecords.append(row);
   }
  }
- async function qaRequest(method,payload){
+ async function qaRequest(method,payload,target=qaEndpoint){
   const key=sessionKey,generation=loadId;
   if(!key||key.length<32)throw Error('Unlock the existing Admin account first');
-  const response=await fetch(qaEndpoint,{
+  const response=await fetch(target,{
    method,mode:'cors',credentials:'omit',redirect:'error',cache:'no-store',
    headers:{Accept:'application/json','X-Admin-Key':key,
      ...(method==='POST'?{'Content-Type':'application/json'}:{})},
@@ -236,6 +244,38 @@
   }catch(e){qaStatus('QA Save rejected: '+e.message+' (refresh QA records before retry)')}
   finally{qaState.busy=false;saveQa.disabled=false}
  });
+ async function showBanMigrationPreview(){
+  if(!sessionKey){qaStatus('Unlock existing Admin access first.');return}
+  if(qaState.busy)return;
+  qaState.busy=true;previewMigration.disabled=true;
+  migrationResults.replaceChildren(node('p','Checking original Ban schema…'));
+  try{
+   const result=await qaRequest('GET',undefined,compatEndpoint);
+   if(result.readOnly!==true||result.document?.schema!==2||
+      !Array.isArray(result.document.entries)||
+      ![1,2].includes(result.sourceSchema))
+    throw Error('Unexpected compatibility response');
+   migrationResults.replaceChildren();
+   migrationResults.append(node('p',
+    'Original schema: '+result.sourceSchema+' → Preview schema: 2. '+
+    result.entriesRead+' entries, '+result.legacyUnassigned+
+    ' legacy entries preserve SetUp-only mode.'));
+   for(const e of result.document.entries){
+    const row=node('div',undefined,'fa-user-case-row');
+    row.style.padding='8px';row.style.marginTop='6px';
+    row.append(
+      node('strong',(e.username||'User')+' · UserId '+e.userId),
+      node('small','Selection: '+(e.selection==='unassigned'?'Selection not set (SetUp-only)':e.selection)+
+        ' · Duration: '+e.duration)
+    );
+    migrationResults.append(row);
+   }
+   qaStatus('Compatibility Preview succeeded. No GitHub changes were made.');
+  }catch(e){
+   migrationResults.replaceChildren(node('p','Compatibility check failed: '+e.message));
+  }finally{qaState.busy=false;previewMigration.disabled=false}
+ }
+ previewMigration.addEventListener('click',()=>{void showBanMigrationPreview()});
  loadQaButton.addEventListener('click',()=>{void qaLoad()});
  renderQa();
 
