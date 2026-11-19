@@ -44,3 +44,17 @@ Source paths checked against actual GitHub `loadstring/ExperienceSettings-SetUp.
 ## Read-only data verification
 
 At final audit: **7 STAGING Feedback cases, 3 unknown UserId, 0 removed, 0 in Trash**. No real managed ban was changed, no D1 mutation and no Production change. The hourly Trash Cron remains separate.
+
+
+## Real LoaderMainPreview correction (2026-11-19)
+
+An earlier 239-line fake PlayerGui fixture called `sandbox/LoaderMainPreview.lua` was **replaced**, at the owner's request, with a **full actual Loader.lua-derived entrypoint**. This is NOT a mock UI. The original source comes from `loadstring/Loader.lua` (Git blob `9d6af20cf93610adf9be2e49bf61edabe8903f38`, 1,665 lines); the reviewed `sandbox/Loader-Main-BanMode-STAGING.lua` differs in 10 focused edit regions for routing Ban Selection/Duration and staging dependencies. The executable preview is `sandbox/LoaderMainPreview.lua` (about 1,712 lines).
+
+- Start exactly that preview entrypoint in an **owner-authorized Roblox STAGING/test environment** rather than running the canonical production `loadstring/Loader.lua` as a test. There is no automatic production installation.
+- The real Loader Main boot sequence remains: SetUp → readiness/scanning → SetUp screen closes → Get Load/Always Load gate → Main GUI → Arcsen and optional tools.
+- Ban in-game uses only the staged SetUp restriction gate. Restricted Mode passes SetUp and Loader main with the restricted TopBar module, staged Arcsen read-only UI, and Editor/Search/RecommendedScript skipped.
+- The preview scans its **own** `LoaderMainPreview.lua` path rather than an unrelated UI Loader. Both unrestricted and Restricted routes use the STAGING Arcsen file in Preview, not live Arcsen.
+- It uses STAGING Lua source paths on PR branch `feedback-appeal-release-track`; no Production GitHub file/Worker/D1 is overwritten. The preview is **not synthetic**: it may read the existing GitHub-managed ban source. Run with isolated QA identities only, not actual moderation cases.
+- The attached CI test `sandbox/loader-main-preview.test.mjs` verifies exact derivation from the reviewed BanMode Loader with only two preview-specific changes, boot/GUI invariants and staging URL routing. It is **static/source QA**. No claim of Roblox client runtime QA, validated account ownership, or server-side restriction enforcement.
+
+**Remaining manual QA:** Check a synthetic unbanned client and separately reviewed Ban in-game/Restricted Mode cases with Temporary/Permanent duration; verify that the real Loader completes, allowed TopBar buttons remain interactive, disallowed tools/chat are inaccessible, Feedback & Appeal remains visible and no unverified Violation is invented. Server enforcement remains a release blocker before any Production rollout.
