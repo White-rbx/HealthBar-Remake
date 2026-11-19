@@ -24,12 +24,12 @@ session tokens or the owner-link table to the Admin Dashboard.
   receipt linking, polling on rejoin, removed and spam_mail privacy.
 - `sandbox/Arcsen-Preview.lua`: an isolated full Arcsen copy with a native
   **Server Case Delivery** subsection inside Feedback & Appeal > Feedback,
-  a `Check Server Cases` control and an explicit `Link this case to my
-  verified account` form for legacy cases. It runs polling only while the
-  Arcsen session is active (45s loop with 30s minimum spacing); the Feedback
-  panel need not be expanded. The polling request sends **no UserId**, no Admin
-  key and no receipt; only active:true and a verified session token. Link
-  requires a private Receipt once and clears that input upon success.
+  no extra account-verification or owner-linking button. Users have the
+  single **Refresh and Check Server's case** control and the existing
+  **Restore previous case (ID + Receipt)** fallback. It runs polling only
+  while Arcsen is active (45s loop with 30s minimum spacing); Feedback
+  need not be expanded. Poll sends **no UserId**, Admin key, or Receipt,
+  only active:true and a trusted server session token.
 - `sandbox/LoaderMainPreview.lua` is still linked to
   `sandbox/ExperienceSettings-SetUp-Preview.lua` and
   `sandbox/Arcsen-Preview.lua`. Production sources untouched.
@@ -94,3 +94,7 @@ backup/restore attempts as part of this UI-only review.
 - The button is exactly **Refresh and Check Server's case**. It refreshes session receipt-verified cases and attempts a verified server case check even when there are no session Receipts.
 - Arcsen Preview sends POST /api/v1/client/cases/poll with body {active:true} periodically while it is active, only after a verified device-token provider exists. active:true denotes a heartbeat request, not identity proof. Active User analytics and counts are separate and unchanged.
 - Current Worker endpoints remain review-only in GitHub, not deployed; the OAuth-device session token issuer and a reviewed STAGING integration are pending. Static QA passing does not establish live Roblox behavior.
+
+## 2026-11-20 — No extra verify/link buttons
+
+Removed the separate Check Server Cases button and the Link this case to my verified account form from `sandbox/Arcsen-Preview.lua`. The UI now uses only `Refresh and Check Server's case` to attempt a server poll, and retains the existing private `ID + Receipt` restoration flow for an individually owned case. The backend's review-only `/api/v1/client/cases/link` contract remains in GitHub but is NOT exposed through the Preview UI or deployed. **Do not** bypass account authorization by trusting a client-supplied Roblox UserId: any client can claim another number. A future frictionless client can avoid asking for verification on every refresh only after a trusted server session has already been established. No Worker/D1 migrations or Production changes were made.
