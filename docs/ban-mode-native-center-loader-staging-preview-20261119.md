@@ -58,3 +58,20 @@ An earlier 239-line fake PlayerGui fixture called `sandbox/LoaderMainPreview.lua
 - The attached CI test `sandbox/loader-main-preview.test.mjs` verifies exact derivation from the reviewed BanMode Loader with only two preview-specific changes, boot/GUI invariants and staging URL routing. It is **static/source QA**. No claim of Roblox client runtime QA, validated account ownership, or server-side restriction enforcement.
 
 **Remaining manual QA:** Check a synthetic unbanned client and separately reviewed Ban in-game/Restricted Mode cases with Temporary/Permanent duration; verify that the real Loader completes, allowed TopBar buttons remain interactive, disallowed tools/chat are inaccessible, Feedback & Appeal remains visible and no unverified Violation is invented. Server enforcement remains a release blocker before any Production rollout.
+
+## 2026-11-19 — Actual Loader + isolated SetUp/Arcsen Preview, Rejoin feedback
+
+**User test:** Dashboard shows a Feedback case with Denied status, but Arcsen after rejoin says no Denied case "in this session". Source confirms privateReceipts is recreated empty on each execution and had no disk persistence; this does NOT show the server case was deleted. Client-claimed Roblox UserId is NOT verified account identity.
+
+- sandbox/LoaderMainPreview.lua is the full real Loader derived from the existing loadstring/Loader.lua with STAGING BanMode routing.
+- sandbox/ExperienceSettings-SetUp-Preview.lua is a full, isolated copy of the BanMode SetUp source.
+- sandbox/Arcsen-Preview.lua is a full, isolated copy of the staging Arcsen source, adding consented on-device case recovery.
+- LoaderMainPreview.lua now points to these two Preview copies. The original BanMode sources, live Loader, STAGING canonical API and Production are unchanged.
+
+**Remember Cases (STAGING Preview):** in Feedback & Appeal → Feedback, tap "Remember Cases on this device" twice within 15 seconds to opt in. This stores only valid Case IDs and private 64-character Receipts in a readable, unencrypted local file scoped by the LocalPlayer UserId under ExperienceSettings/Arcsen/; it is NOT suitable for a shared device or as a server identity proof. Disable with another double-tap to delete the file or overwrite it with an empty disabled record. Case storage is OFF by default.
+
+On rejoin, when local isfile/readfile/writefile functions are available, previously consented Receipts are loaded as unverified and never displayed as actual case decisions until POST /api/v1/feedback/status validates each receipt with STAGING. No account-wide listing by claimed UserId, no Admin credentials, no new API endpoints, no server writes. Confirmed HTTP 404 removes a stale local receipt. A network failure preserves it for retry. If local storage is unavailable, manual "Restore previous case (ID + Receipt)" remains the fallback.
+
+**Important:** Cases submitted before opt-in require manually restoring the original private ID + Receipt one time. The dashboard Case ID alone is not enough. Do not paste private receipts into public messages.
+
+Static CI checks the actual Loader and Preview source boundaries. Real Roblox rejoin/runtime and server-side authorization QA remain open. PR #16 is Draft; Production untouched.
