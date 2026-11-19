@@ -57,6 +57,8 @@ jobs:
         run: node --test sandbox/arcscriptcenter-ban-selection-duration.test.mjs
       - name: Ban Schema v2 migration and safe GitHub Lua patch tests
         run: node --test sandbox/managed-ban-schema-v2.test.mjs
+      - name: Ban v2 isolated QA Admin API authentication and Save tests
+        run: node --test sandbox/ban-v2-qa-gateway.test.mjs
       - name: 'Ban Selection and Duration — four combinations, legacy and expiry'
         run: node --test sandbox/arcscriptcenter-ban-selection-duration-classification.test.mjs
       - name: Unknown Feedback Trash 30-day retention / Admin authorization (SQLite)
