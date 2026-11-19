@@ -187,3 +187,15 @@ test('HereChat Age Group warning is opt-in to explicit status and replaces an ex
   assert.match(arcsen,/CanUserChatAsync\s*\n\s*-- does not identify an account.s age/);
   assert.match(arcsen,/if type\(loc\.API\.SaveChats\)=="function" then loc\.API\.SaveChats\(\) end/);
 });
+
+
+test('Rejoin without a verified case delivery backend never claims account has no cases',()=>{
+  assert.match(arcsen,/Automatic rejoin recovery is NOT connected to STAGING yet/);
+  assert.match(arcsen,/Server case sync is NOT connected: no verified device session/);
+  assert.match(arcsen,/STAGING Case Delivery API not deployed/);
+  assert.match(arcsen,/No case loaded\. Server sync unavailable; use Restore previous case/);
+  assert.match(arcsen,/No Denied case loaded here; rejoin auto-sync is not connected/);
+  assert.match(arcsen,/Restore previous case \(ID \+ Receipt\)/);
+  assert.match(arcsen,/\/api\/v1\/feedback\/status/);
+  assert.doesNotMatch(arcsen,/No completed Denied feedback case in this session/);
+});
