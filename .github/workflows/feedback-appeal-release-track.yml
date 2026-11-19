@@ -9,6 +9,8 @@ on:
       - 'sandbox/LoaderMainPreview.lua'
       - 'sandbox/ExperienceSettings-SetUp-Preview.lua'
       - 'sandbox/Arcsen-Preview.lua'
+      - 'sandbox/feedback-case-delivery-staging.*'
+      - 'migrations/feedback_case_owner_links_STAGING_REVIEW_ONLY_20261119.sql'
       - 'sandbox/loader-main-preview.test.mjs'
       - 'sandbox/arcsen-v7.3.43-feedback-optional-userid.patch'
       - 'sandbox/production-feedback-appeal-form.*'
@@ -95,6 +97,8 @@ jobs:
         run: node --test sandbox/stage16-87-restricted-gateway.test.mjs
       - name: Existing Stage16.83 pairing regression
         run: node --test sandbox/stage16-83-pairing.test.mjs
+      - name: Case Delivery — verified active client, no Account/Analytics leak
+        run: node --test sandbox/feedback-case-delivery-staging.test.mjs
       - name: Real LoaderMainPreview with isolated SetUp/Arcsen and opt-in case restore
         run: node --test sandbox/loader-main-preview.test.mjs
       - name: Validate Ban Mode routed through SetUp, Main Loader, UI Loader and Arcsen
