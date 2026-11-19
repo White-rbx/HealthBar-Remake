@@ -15115,6 +15115,112 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 deliveryButton.MouseButton1Click:Connect(function()
                     pollVerifiedServerCases(true)
                 end)
+                -- Existing legacy Feedback becomes auto-deliverable only after
+                -- the verified owner explicitly links it using a private Receipt.
+                -- The Server checks BOTH the identity session and receipt hash.
+                local linkId=Instance.new("TextBox")
+                linkId.Name="ServerCaseLinkId"
+                linkId.LayoutOrder=4
+                linkId.Size=UDim2.new(1,-10,0,28)
+                linkId.Text=""
+                linkId.PlaceholderText="Link previous Case ID (UUID)"
+                linkId.ClearTextOnFocus=false
+                linkId.TextSize=11
+                linkId.TextColor3=Color3.new(1,1,1)
+                linkId.BackgroundColor3=Color3.fromRGB(35,48,65)
+                linkId.Parent=serverCasesFrame
+                Corner(0,4,linkId)
+                local linkReceipt=Instance.new("TextBox")
+                linkReceipt.Name="ServerCaseLinkPrivateReceipt"
+                linkReceipt.LayoutOrder=5
+                linkReceipt.Size=UDim2.new(1,-10,0,28)
+                linkReceipt.Text=""
+                linkReceipt.PlaceholderText="Private Receipt (64 hex, never share)"
+                linkReceipt.ClearTextOnFocus=false
+                linkReceipt.TextSize=11
+                linkReceipt.TextColor3=Color3.new(1,1,1)
+                linkReceipt.BackgroundColor3=Color3.fromRGB(35,48,65)
+                linkReceipt.Parent=serverCasesFrame
+                Corner(0,4,linkReceipt)
+                local linkButton=Instance.new("TextButton")
+                linkButton.Name="LinkVerifiedOwnerCase"
+                linkButton.LayoutOrder=6
+                linkButton.Size=UDim2.new(1,-10,0,28)
+                linkButton.Text="Link this case to my verified account"
+                linkButton.TextSize=11
+                linkButton.TextColor3=Color3.new(1,1,1)
+                linkButton.BackgroundColor3=Color3.fromRGB(42,98,124)
+                linkButton.Parent=serverCasesFrame
+                Corner(0,4,linkButton)
+                local linkStatus=Instance.new("TextLabel")
+                linkStatus.Name="ServerLinkStatus"
+                linkStatus.LayoutOrder=7
+                linkStatus.Size=UDim2.new(1,-10,0,0)
+                linkStatus.AutomaticSize=Enum.AutomaticSize.Y
+                linkStatus.Text="Only with verified session and Receipt. Admin and Active User analytics are not involved."
+                linkStatus.TextColor3=Color3.fromRGB(184,208,230)
+                linkStatus.TextSize=10
+                linkStatus.TextWrapped=true
+                linkStatus.BackgroundTransparency=1
+                linkStatus.Parent=serverCasesFrame
+                local linkBusy=false
+                linkButton.MouseButton1Click:Connect(function()
+                    if linkBusy or not feedbackExpanded or not panelExpanded then return end
+                    local token=serverCaseToken()
+                    if not token then
+                        linkStatus.Text="Link unavailable: verified server-issued device session required."
+                        return
+                    end
+                    local id=tostring(linkId.Text or ""):gsub("^%s+",""):gsub("%s+$","")
+                    local receipt=tostring(linkReceipt.Text or ""):gsub("^%s+",""):gsub("%s+$","")
+                    if #id~=36 or not id:match("^[0-9a-fA-F%-]+$")
+                        or #receipt~=64 or not receipt:match("^[0-9a-fA-F]+$") then
+                        linkStatus.Text="Enter a valid Case ID and private Receipt."
+                        return
+                    end
+                    local requestFn=arcGetSuncRequest()
+                    if type(requestFn)~="function" then
+                        linkStatus.Text="HTTP request capability unavailable."
+                        return
+                    end
+                    linkBusy=true
+                    linkButton.Interactable=false
+                    linkStatus.Text="Linking with verified STAGING server..."
+                    task.spawn(function()
+                        local ok,response=pcall(requestFn,{
+                            Url=CASE_STAGING_BASE.."/api/v1/client/cases/link",
+                            Method="POST",Timeout=15,
+                            Body=s.HttpService:JSONEncode({id=id,receipt=receipt}),
+                            Headers={
+                                ["Content-Type"]="application/json",
+                                ["Accept"]="application/json",
+                                ["Authorization"]="Bearer "..token
+                            }
+                        })
+                        linkBusy=false
+                        if not linkButton.Parent then return end
+                        linkButton.Interactable=true
+                        local http=ok and type(response)=="table"
+                            and tonumber(response.StatusCode or response.Status) or 0
+                        if http==200 then
+                            local parsed,data=pcall(s.HttpService.JSONDecode,s.HttpService,response.Body or "")
+                            if parsed and type(data)=="table" and data.linked==true then
+                                linkReceipt.Text="" -- clear secret from visible UI after success
+                                linkStatus.Text="Server confirmed owner link. Refreshing cases..."
+                                task.defer(function() pollVerifiedServerCases(true) end)
+                            else
+                                linkStatus.Text="Server link response could not be verified."
+                            end
+                        elseif http==404 then
+                            linkStatus.Text="Case not found, linked to another account, or route not deployed."
+                        elseif http==401 then
+                            linkStatus.Text="Verified session required or expired."
+                        else
+                            linkStatus.Text="Could not link case (HTTP "..tostring(http)..")."
+                        end
+                        task.defer(syncFeedbackCanvas)
+                    end)
+                end)
                 -- Manual, receipt-scoped refresh of the session's known Feedback.
                 -- The public API has no account-wide case list: no receipt = no case.
                 local refreshCasePanel=Instance.new("Frame")
