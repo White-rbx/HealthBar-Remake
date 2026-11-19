@@ -115,8 +115,21 @@ test('active Case Delivery requires verified session, never claimed Roblox UserI
   assert.match(arcsen,/Method="POST",Body='\{"active":true\}'/);
   assert.match(arcsen,/if not force and os.clock\(\)-lastDeliveryRequest<30 then return end/);
   assert.match(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/poll"/);
-  assert.match(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/link"/);
   assert.doesNotMatch(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/admin\/bans"/);
+});
+
+
+test('Case Delivery UI has no manual account verification or duplicate Check Server Cases button',()=>{
+  for(const removed of ['Link this case to my verified account','LinkVerifiedOwnerCase',
+    'ServerCaseLinkId','ServerCaseLinkPrivateReceipt','RequestServerCases',
+    'local linkButton','deliveryButton']) {
+    assert.ok(!arcsen.includes(removed),'stale account verification control: '+removed);
+  }
+  assert.match(arcsen,/Automatic case sync is not deployed yet/);
+  assert.match(arcsen,/The existing Refresh button is the ONLY manual server-check action/);
+  assert.match(arcsen,/Refresh and Check Server's case/);
+  assert.match(arcsen,/serverCaseToken\(\)/);
+  assert.match(arcsen,/privateReceipts = \{\}/);
 });
 
 test('refresh button checks both session receipts and server Case Delivery without early exit',()=>{
@@ -129,16 +142,12 @@ test('refresh button checks both session receipts and server Case Delivery witho
 
 test('Arcsen server-linked Case Delivery is active-only, verified-token-only and STAGING-only',()=>{
   assert.match(arcsen,/ServerCaseDeliveryPreview/);
-  assert.match(arcsen,/RequestServerCases/);
   assert.match(arcsen,/GetVerifiedCaseSessionToken/);
   assert.match(arcsen,/if not token then/);
   assert.match(arcsen,/if deliveryBusy or not gate.active or not serverCasesFrame.Parent then return end/);
   assert.match(arcsen,/pcall\(pollVerifiedServerCases,false\)/);
   assert.match(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/poll"/);
-  assert.match(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/link"/);
   assert.match(arcsen,/\["Authorization"\]="Bearer "\.\.token/);
-  assert.match(arcsen,/LinkVerifiedOwnerCase/);
-  assert.match(arcsen,/linkReceipt\.Text=""/);
   assert.match(arcsen,/serverVerified~=true/);
   assert.match(arcsen,/deliveryResult\.RichText=false/);
   assert.doesNotMatch(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/poll"\s*\+.*UserId/);
