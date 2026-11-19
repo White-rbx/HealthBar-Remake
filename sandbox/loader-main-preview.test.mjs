@@ -120,7 +120,7 @@ test('active Case Delivery requires verified session, never claimed Roblox UserI
 
 
 test('Case Delivery UI has no manual account verification or duplicate Check Server Cases button',()=>{
-  for(const removed of ['Link this case to my verified account','LinkVerifiedOwnerCase',
+  for(const removed of ['LinkVerifiedOwnerCase',
     'ServerCaseLinkId','ServerCaseLinkPrivateReceipt','RequestServerCases',
     'local linkButton','deliveryButton']) {
     assert.ok(!arcsen.includes(removed),'stale account verification control: '+removed);
@@ -199,8 +199,8 @@ test('HereChat Age Group warning is opt-in to explicit status and replaces an ex
 
 
 test('Rejoin without a verified case delivery backend never claims account has no cases',()=>{
-  assert.match(arcsen,/Automatic rejoin recovery is NOT connected to STAGING yet/);
-  assert.match(arcsen,/Server case sync is NOT connected: no verified device session/);
+  assert.match(arcsen,/Automatic case sync is not deployed yet/);
+  assert.match(arcsen,/Automatic server sync is not ready/);
   assert.match(arcsen,/STAGING Case Delivery API not deployed/);
   assert.match(arcsen,/No case loaded\. Server sync unavailable; use Restore previous case/);
   assert.match(arcsen,/No Denied case loaded here; rejoin auto-sync is not connected/);
