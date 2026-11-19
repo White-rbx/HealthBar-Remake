@@ -87,7 +87,12 @@ export function createBanV2QaGateway({adminAuthenticated=checkAdmin}={}){
     if(body.expectedRevision!==row.revision)
      return reply({ok:false,error:'QA revision conflict; refresh first'},409,origin);
     let next;
-    try{next=applyBanChange(document,body)}
+    // expectedRevision is concurrency metadata, not a Ban entry field.
+    // Pass only the validated domain action into the strict schema engine.
+    const change=body.action==='upsert'
+     ?{action:'upsert',entry:body.entry}
+     :{action:'remove',userId:body.userId};
+    try{next=applyBanChange(document,change)}
     catch(e){return reply({ok:false,error:e.message},400,origin)}
     const updated=await env.DB.prepare(
       'UPDATE asc_ban_v2_qa SET document_json=?, revision=revision+1 WHERE id=1 AND revision=?'
