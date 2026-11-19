@@ -143,3 +143,45 @@ test('Arcsen server-linked Case Delivery is active-only, verified-token-only and
   assert.match(arcsen,/deliveryResult\.RichText=false/);
   assert.doesNotMatch(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/poll"\s*\+.*UserId/);
 });
+
+test('New Chat draft has no stale selected tab and only becomes a chat on Send',()=>{
+  assert.match(arcsen,/new\.MouseButton1Click:Connect\(function\(\)/);
+  assert.match(arcsen,/-- Clear the old selected tab.s scale even if it is still present/);
+  assert.match(arcsen,/for _, item in ipairs\(loc\.API\.ChatList\) do\s*\n\s*local itemScale = item:FindFirstChildOfClass\("UIScale"\)\s*\n\s*if itemScale then Tween\(itemScale, \{Scale = 0\.8\}, 0\.2\) end/);
+  assert.match(arcsen,/loc\.API\.ActiveChatID = nil\s*\n\s*c_box\.Text = ""/);
+  assert.match(arcsen,/loc\.API\.RenderChat\(nil\)\s*\n\s*loc\.API\.ClearNewChatDraftTab\(\)/);
+  assert.match(arcsen,/draft\.Name = "NewChatDraftPreview"/);
+  assert.match(arcsen,/c_box:GetPropertyChangedSignal\("Text"\):Connect\(function\(\)/);
+  assert.match(arcsen,/draft\.Text = loc\.API\.FormatTempChatTitle\(c_box\.Text\)/);
+  assert.match(arcsen,/if loc\.API\.ActiveChatID ~= nil then return end/);
+  assert.match(arcsen,/loc\.API\.ChatData\[loc\.API\.NewChatID\]\.Tab = addchat\(nil, tempTitle, loc\.API\.NewChatID\)/);
+  assert.match(arcsen,/if selectedScale then Tween\(selectedScale, \{Scale = 1\}, 0\.2\) end/);
+});
+
+test('first message is temporary UTF-8 title until AI generates its own',()=>{
+  assert.match(arcsen,/loc\.API\.FormatTempChatTitle = function\(value\)/);
+  assert.match(arcsen,/pcall\(utf8\.offset,title,49\)/);
+  assert.match(arcsen,/local tempTitle = loc\.API\.FormatTempChatTitle\(firstMessage\)/);
+  assert.match(arcsen,/Title = tempTitle,/);
+  assert.match(arcsen,/TitleGenerated = false/);
+  assert.match(arcsen,/loc\.API\.TitleChat\(chatID,loc\.API\.ChatData\[chatID\]\.Messages\[1\]\.text\)/);
+  assert.match(arcsen,/loc\.API\.ChatData\[tostring\(chatID\)\]\.Title = loc\.API\.TitleResult/);
+  assert.match(arcsen,/loc\.API\.ChatData\[tostring\(chatID\)\]\.TitleGenerated = true/);
+  assert.match(arcsen,/loc\.API\.ClearNewChatDraftTab\(\)/);
+});
+
+test('HereChat Age Group warning is opt-in to explicit status and replaces an existing notice',()=>{
+  assert.match(arcsen,/loc\.API\.ShowHereChatAgeGroupWarning = function\(group\)/);
+  assert.match(arcsen,/group ~= "Unchecked" and group ~= "<9" and group ~= "Unchecked - <9"/);
+  assert.match(arcsen,/kind == "age-group" and "⚠️ Age Group \(Unchecked - <9\)"/);
+  assert.match(arcsen,/-- Same warning already visible: suppress duplicates/);
+  assert.match(arcsen,/if count==1 and same==1 then/);
+  assert.match(arcsen,/for index=#chat\.Messages,1,-1 do/);
+  assert.match(arcsen,/and chat\.Messages\[index\]\.role=="chat-safety" then\s*\n\s*table\.remove\(chat\.Messages,index\)/);
+  assert.match(arcsen,/table\.insert\(chat\.Messages,item\)/);
+  assert.match(arcsen,/chatAgeGroup = \(savedMessage\.role == "chat-safety"\) and savedMessage\.chatAgeGroup or nil/);
+  assert.match(arcsen,/loc\.API\.ShowHereChatAgeGroupWarning\(status\.ageGroup\)/);
+  assert.match(arcsen,/CanUserChatAsync\(player\.UserId\)/);
+  assert.match(arcsen,/A failed\s*\n\s*-- CanUserChatAsync is not evidence/);
+  assert.match(arcsen,/if type\(loc\.API\.SaveChats\)=="function" then loc\.API\.SaveChats\(\) end/);
+});
