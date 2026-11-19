@@ -4,16 +4,16 @@
 
 `Client active → Arcsen → Server → Case → Arcsen → Client`
 
-Only an **active Arcsen Feedback & Appeal panel** initiates a request. It is NOT
-the existing presence, metrics or "Active User" count. No server push to offline
-users; the client periodically polls while open and active, then retrieves the
-latest status after rejoin. Does not create new Admin UI or expose internal
+While Arcsen Preview runs, a 45-second heartbeat-like POST {active:true}
+checks Case Delivery only if a verified device-session token exists. It is NOT
+the existing presence, metrics or Active User count. No server push to offline
+users; a new verified request follows rejoin. Does not create new Admin UI or expose internal
 session tokens or the owner-link table to the Admin Dashboard.
 
 ## What is committed to PR #16
 
 - `sandbox/feedback-case-delivery-staging.mjs`: REVIEW-ONLY Worker handler
-  for `POST /api/v1/client/cases/poll` (body `{}`) and
+  for `POST /api/v1/client/cases/poll` (body `{active:true}`) and
   `POST /api/v1/client/cases/link` (one-time ID + private Receipt).
 - `migrations/feedback_case_owner_links_STAGING_REVIEW_ONLY_20261119.sql`:
   **UNAPPLIED** additive D1 owner mapping keyed by case ID with exact
@@ -26,8 +26,9 @@ session tokens or the owner-link table to the Admin Dashboard.
   **Server Case Delivery** subsection inside Feedback & Appeal > Feedback,
   a `Check Server Cases` control and an explicit `Link this case to my
   verified account` form for legacy cases. It runs polling only while the
-  Feedback UI is expanded/active (45s existing loop with 60s min interval).
-  The polling request sends **no UserId**, no Admin key and no receipt. Link
+  Arcsen session is active (45s loop with 30s minimum spacing); the Feedback
+  panel need not be expanded. The polling request sends **no UserId**, no Admin
+  key and no receipt; only active:true and a verified session token. Link
   requires a private Receipt once and clears that input upon success.
 - `sandbox/LoaderMainPreview.lua` is still linked to
   `sandbox/ExperienceSettings-SetUp-Preview.lua` and
@@ -85,3 +86,11 @@ PR #16 remains Draft; this change has no Cloudflare/D1/Admin schema writes.
 Rollback is dropping the unmounted candidate routes or reverting the Preview
 branch code; data migration is not activated. Do not repeat previous Production
 backup/restore attempts as part of this UI-only review.
+
+
+## Update 2026-11-19: Remove Remember, refresh + server heartbeat
+
+- Removed Remember Cases on this device controls, local file save/restore, and consent logic from **Arcsen Preview**. Previously saved files on a user's device are not deleted by updating GitHub source.
+- The button is exactly **Refresh and Check Server's case**. It refreshes session receipt-verified cases and attempts a verified server case check even when there are no session Receipts.
+- Arcsen Preview sends POST /api/v1/client/cases/poll with body {active:true} periodically while it is active, only after a verified device-token provider exists. active:true denotes a heartbeat request, not identity proof. Active User analytics and counts are separate and unchanged.
+- Current Worker endpoints remain review-only in GitHub, not deployed; the OAuth-device session token issuer and a reviewed STAGING integration are pending. Static QA passing does not establish live Roblox behavior.
