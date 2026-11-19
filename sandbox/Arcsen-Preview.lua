@@ -2,8 +2,9 @@
 -- STAGING Case Delivery: periodic active-client polling; no local receipt persistence.
 -- No Production or original Arcsen is modified. No account-bound identity is inferred.
 local ver = {
-	sion = " UIs 7.3.55 STAGING Preview ",
+	sion = " UIs 7.3.56 STAGING Preview ",
 	logs = [[
+(:19/11/2026: STAGING v7.3.56) Rejoin case missing: honest UI diagnosis when verified Case Delivery endpoint/session is not installed. Avoid presenting 0 locally linked cases as no server records; guide user to private Case ID + Receipt recovery. No Server/Production changes.
 (:19/11/2026: Arcsen Preview 7.3.55) New Chat clears the prior selected tab, previews the typed UTF-8 input as a temporary tab title, then lets AI rename the sent chat. HereChat Chat Safety and explicit Age Group (Unchecked - <9) warnings keep only one latest notice, replacing previous warnings after rejoin; no age is inferred from UserId or denied chat permission.
 (:19/11/2026: QA Preview v7.3.54) Remove Remember Cases UI and disk Receipt vault; send active:true heartbeat-like case request every 45 seconds only with server-verified device session; Case Delivery separately from Active User metrics. Refresh and Check Server's case combines live delivery with in-session receipt refresh; manual ID+Receipt fallback remains.
 (:18/11/2026: Feedback & Appeal Beta) STAGING v7.3.51: remove the optional include-UserId toggle from new Feedback. Tell the sender in a non-interactive label that their LocalPlayer UserId is included for Admin case linking; the Worker still marks this as an unverified claim, not proof of identity or permission for bans. Fail submit clearly if Roblox UserId is unavailable; never silently send anonymous. Existing old unlinked cases remain unlinked. No Cloudflare Pages/Worker/Production changes.
@@ -14933,13 +14934,13 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 local counterScopeNote=Instance.new("TextLabel")
                 counterScopeNote.Name="SessionCountScopeNote"
                 counterScopeNote.LayoutOrder=-3
-                counterScopeNote.Size=UDim2.new(1,-12,0,40)
+                counterScopeNote.Size=UDim2.new(1,-12,0,54)
                 counterScopeNote.BackgroundTransparency=1
                 counterScopeNote.TextColor3=Color3.fromRGB(173,193,221)
                 counterScopeNote.TextSize=10
                 counterScopeNote.TextWrapped=true
                 counterScopeNote.TextXAlignment=Enum.TextXAlignment.Left
-                counterScopeNote.Text="Total: - means no case linked yet in this session. Restore a prior case with its ID + private Receipt. New = unread moderator updates."
+                counterScopeNote.Text="Total: - means no verified case loaded in THIS session, not that Server has no cases. Rejoin auto-sync is not connected yet. Restore using Case ID + private Receipt. New = unread updates."
                 counterScopeNote.Parent=feedbackScroll
                 -- Native shortcut: scroll to the existing authenticated lookup.
                 -- Never request cases by Roblox UserId or persist any receipt.
@@ -15007,7 +15008,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 deliveryResult.TextColor3=Color3.fromRGB(188,207,226)
                 deliveryResult.TextSize=11
                 deliveryResult.RichText=false
-                deliveryResult.Text="Verified device session not linked yet. Client UserId alone cannot retrieve cases."
+                deliveryResult.Text="Automatic rejoin recovery is NOT connected to STAGING yet. Cases may still exist on Server. Use Restore previous case (ID + private Receipt)."
                 deliveryResult.Parent=serverCasesFrame
                 local lastDeliveryRequest=-math.huge
                 local deliveryBusy=false
@@ -15028,7 +15029,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     if not force and os.clock()-lastDeliveryRequest<30 then return end
                     local token=serverCaseToken()
                     if not token then
-                        deliveryResult.Text="Not linked: a server-verified Roblox session is required. No UserId-only lookup."
+                        deliveryResult.Text="Server case sync is NOT connected: no verified device session. This does not mean your cases were deleted. Tap Restore previous case (ID + private Receipt)."
                         return
                     end
                     local requestFn=arcGetSuncRequest()
@@ -15058,7 +15059,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         if code==401 then
                             deliveryResult.Text="Verified session required or expired."
                         elseif code==404 then
-                            deliveryResult.Text="STAGING Case Delivery route is not deployed yet."
+                            deliveryResult.Text="STAGING Case Delivery API not deployed. Cannot automatically load cases after Rejoin. Use Restore previous case with ID + Receipt."
                         elseif code~=200 or type(response.Body)~="string" then
                             deliveryResult.Text="Server Case Delivery unavailable (HTTP "..tostring(code)..")."
                         else
@@ -15208,7 +15209,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 local refreshCasePanel=Instance.new("Frame")
                 refreshCasePanel.Name="FeedbackRefreshPanel"
                 refreshCasePanel.LayoutOrder=-1
-                refreshCasePanel.Size=UDim2.new(1,-12,0,56)
+                refreshCasePanel.Size=UDim2.new(1,-12,0,80)
                 refreshCasePanel.BackgroundTransparency=1
                 refreshCasePanel.Parent=feedbackScroll
 
@@ -15227,7 +15228,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 local refreshCaseNote=Instance.new("TextLabel")
                 refreshCaseNote.Name="FeedbackRefreshStatus"
                 refreshCaseNote.Position=UDim2.fromOffset(2,31)
-                refreshCaseNote.Size=UDim2.new(1,-4,0,24)
+                refreshCaseNote.Size=UDim2.new(1,-4,0,46)
                 refreshCaseNote.BackgroundTransparency=1
                 refreshCaseNote.TextColor3=Color3.fromRGB(180,204,230)
                 refreshCaseNote.Font=Enum.Font.Gotham
@@ -15235,7 +15236,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 refreshCaseNote.TextWrapped=true
                 refreshCaseNote.TextXAlignment=Enum.TextXAlignment.Left
                 refreshCaseNote.TextYAlignment=Enum.TextYAlignment.Top
-                refreshCaseNote.Text="Checks server-owned cases plus linked cases from this session."
+                refreshCaseNote.Text="Server rejoin sync is not deployed. Session cases can still be checked with ID + Receipt."
                 refreshCaseNote.Parent=refreshCasePanel
                 local lastManualCaseRefresh=-math.huge
                 refreshCaseButton.MouseButton1Click:Connect(function()
@@ -15268,11 +15269,14 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 refreshCaseNote.TextColor3=result.failed>0
                                     and Color3.fromRGB(255,195,150)
                                     or Color3.fromRGB(169,222,192)
-                                refreshCaseNote.Text="Checked "..tostring(result.checked).."/"..tostring(result.total)..
+                                refreshCaseNote.Text=(result.total==0
+                                        and type(loc.API.GetVerifiedCaseSessionToken)~="function"
+                                        and "No case loaded. Server sync unavailable; use Restore previous case (ID + Receipt)."
+                                        or ("Checked "..tostring(result.checked).."/"..tostring(result.total)..
                                     " | Closed: "..tostring(result.closed)..
                                     (result.unavailable>0 and (" | Unavailable: "..tostring(result.unavailable)) or "")..
                                     (result.failed>0 and (" | Retry needed: "..tostring(result.failed)) or "")..
-                                    (result.total>result.attempted and " | More cases: refresh again" or "")
+                                    (result.total>result.attempted and " | More cases: refresh again" or "")))
                             end
                             task.defer(syncFeedbackCanvas)
                             task.defer(syncPanelCanvas)
@@ -15283,11 +15287,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 -- These headings are status groups, NOT claims about the user's
                 -- account. Content updates only after a receipt-authenticated lookup.
                 local _, setFeedbackReview, countReview, renderReviewCases, openReviewCards = infoSection("Review",
-                    "No verified Reviewing feedback case in this session.",false,feedbackScroll,1,true)
+                    "No Reviewing case loaded in this session. Server history has not been checked.",false,feedbackScroll,1,true)
                 local _, setFeedbackApproved, countApproved, renderApprovedCases = infoSection("Approved",
-                    "No verified Approved feedback case in this session.",false,feedbackScroll,2,true)
+                    "No Approved case loaded. This does not confirm no cases exist on Server.",false,feedbackScroll,2,true)
                 local _, setFeedbackDenied, countDenied, renderDeniedCases = infoSection("Denied",
-                    "No verified Denied feedback case in this session.",false,feedbackScroll,3,true)
+                    "No Denied case loaded. Automatic rejoin sync is not connected yet.",false,feedbackScroll,3,true)
                 -- A feedback case marked violation is a CLOSED FEEDBACK CASE.
                 -- This does NOT reveal or create a Roblox account's private Violation tab.
                 local _, setFeedbackFlagged, countFlagged, renderFlaggedCases = infoSection("Flagged (Policy)",
@@ -15308,11 +15312,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         end)
                     end
                     setFeedbackReview(#buckets.reviewing == 0 and
-                        "No Feedback waiting for moderator review in this session." or "")
+                        "No Reviewing case loaded here; this is NOT a server-wide case list." or "")
                     setFeedbackApproved(#buckets.approved == 0 and
-                        "No completed Approved feedback case in this session." or "")
+                        "No Approved case loaded here; this does not mean the server has none." or "")
                     setFeedbackDenied(#buckets.denied == 0 and
-                        "No completed Denied feedback case in this session." or "")
+                        "No Denied case loaded here; rejoin auto-sync is not connected." or "")
                     setFeedbackFlagged(#buckets.violation == 0 and
                         "No closed Feedback with a policy violation status in this session. This is not an account ban." or "")
                     renderReviewCases(buckets.reviewing)
