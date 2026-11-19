@@ -117,3 +117,20 @@ test('no automatic account-wide lookup, unverified identity does not authorize c
   assert.match(arcsen,/privateReceipts\[savedCredential\.id\]=nil/);
   assert.doesNotMatch(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/admin\/bans"/);
 });
+
+test('Arcsen server-linked Case Delivery is active-only, verified-token-only and STAGING-only',()=>{
+  assert.match(arcsen,/ServerCaseDeliveryPreview/);
+  assert.match(arcsen,/RequestServerCases/);
+  assert.match(arcsen,/GetVerifiedCaseSessionToken/);
+  assert.match(arcsen,/if not token then/);
+  assert.match(arcsen,/not feedbackExpanded or not panelExpanded/);
+  assert.match(arcsen,/pcall\(pollVerifiedServerCases\)/);
+  assert.match(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/poll"/);
+  assert.match(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/link"/);
+  assert.match(arcsen,/\["Authorization"\]="Bearer "\.\.token/);
+  assert.match(arcsen,/LinkVerifiedOwnerCase/);
+  assert.match(arcsen,/linkReceipt\.Text=""/);
+  assert.match(arcsen,/serverVerified~=true/);
+  assert.match(arcsen,/deliveryResult\.RichText=false/);
+  assert.doesNotMatch(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/poll"\s*\+.*UserId/);
+});
