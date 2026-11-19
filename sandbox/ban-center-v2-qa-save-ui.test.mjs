@@ -49,3 +49,17 @@ test('Ban in-game and Restricted Mode are distinct from Temporary/Permanent',()=
  assert.match(js,/selection:selection\.select\.value/);
  assert.match(js,/duration==='temporary'&&!entry\.expiresAt/);
 });
+
+
+test('v1/v2 migration Preview is read-only and shares the original private Admin session',()=>{
+ assert.match(js,/id='banPreviewBanV2'/);
+ assert.match(js,/Preview Ban v1 → v2/);
+ assert.match(js,/compatEndpoint='https:\/\/arcscriptcenter-ban-v2-qa/);
+ assert.match(js,/readOnly!==true/);
+ assert.match(js,/result\.document\?\.schema!==2/);
+ assert.match(js,/Original schema:/);
+ assert.match(js,/No GitHub changes were made/);
+ assert.match(js,/migrationResults\.replaceChildren\(\)/);
+ assert.match(js,/qaRequest\('GET',undefined,compatEndpoint\)/);
+ assert.doesNotMatch(js,/localStorage|sessionStorage|document\.cookie/);
+});
