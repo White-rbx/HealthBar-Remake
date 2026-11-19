@@ -2,8 +2,9 @@
 -- Adds opt-in STAGING-only local case-receipt restoration after rejoin.
 -- No Production or original Arcsen is modified. No account-bound identity is inferred.
 local ver = {
-	sion = " UIs 7.3.52 STAGING BanMode ",
+	sion = " UIs 7.3.53 STAGING Preview ",
 	logs = [[
+(:19/11/2026: QA Preview) Opt-in Remember Cases on this device for private STAGING Feedback receipts; double confirmation, validate each receipt after rejoin, manual restore available, original Arcsen unchanged.
 (:18/11/2026: Feedback & Appeal Beta) STAGING v7.3.51: remove the optional include-UserId toggle from new Feedback. Tell the sender in a non-interactive label that their LocalPlayer UserId is included for Admin case linking; the Worker still marks this as an unverified claim, not proof of identity or permission for bans. Fail submit clearly if Roblox UserId is unavailable; never silently send anonymous. Existing old unlinked cases remain unlinked. No Cloudflare Pages/Worker/Production changes.
 (:18/11/2026: A&F) STAGING: Beta label, clearer anonymous Feedback attribution, and future VERIFIED Violation display for permanent/temporary ban with expiry (no Client identity proof, no backend changes).
 (:18/11/2026: A&F) STAGING: preserve receipt-verified feedback cases marked status=violation in a separate Feedback > Flagged (Policy) section, clearly distinguished from account-bound Violation notice. Show Case Closed and include flagged in Total/New/refresh. Optional opt-in Roblox UserId claim on new Feedback submissions (default OFF; unverified; not account authentication). Existing cases cannot gain a UserId retroactively. No Worker/D1/Production changes.
