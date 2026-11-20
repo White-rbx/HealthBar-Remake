@@ -10,14 +10,19 @@ const legacyAdminUrl='https://arcscriptcenter-api-staging.kogpasan14.workers.dev
 
 export async function qaAdminAuthenticated(request,env) {
  const key=request.headers.get('X-Admin-Key');
- if(typeof key!=='string'||key.length<32||key.length>4096||!env.AUTH_API?.fetch)return false;
- const result=await env.AUTH_API.fetch(new Request(legacyAdminUrl,{headers:{
-  'X-Admin-Key':key,'Origin':legacyAdminOrigin,'Accept':'application/json',
- }}));
- if(result.status===401||result.status===403)return false;
- if(!result.ok)throw new BanError(503,'admin_unavailable','Admin authentication is unavailable.');
- const proof=await result.json();
- return proof.ok===true&&proof.adminOnly===true&&Number.isSafeInteger(proof.summary?.total);
+ if(typeof key!=='string'||key.length<32||key.length>4096)return false;
+ try{
+  const result=await env.AUTH_API.fetch(new Request(legacyAdminUrl,{headers:{
+   'X-Admin-Key':key,'Origin':legacyAdminOrigin,'Accept':'application/json',
+  }}));
+  if(result.status===401)return false;
+  if(!result.ok)throw Error('Rejected auth service');
+  const proof=await result.json();
+  if(proof.ok===true&&proof.adminOnly===true&&Number.isSafeInteger(proof.summary?.total))return true;
+ }catch{
+  // Avoid reporting infrastructure and response errors as a bad Admin Key.
+ }
+ throw new BanError(503,'admin_unavailable','Admin authentication is unavailable.');
 }
 
 async function rateLimit(env,scope,subject) {

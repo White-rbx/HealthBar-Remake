@@ -198,6 +198,10 @@ test('QA reuses original Admin proof and Pages only replaces the Ban addon',asyn
  }}};
  assert.equal(await qaAdminAuthenticated(request,auth),true);
  assert.equal(await qaAdminAuthenticated(new Request('https://qa.invalid'),auth),false);
+ await assert.rejects(qaAdminAuthenticated(request,{}),{status:503,code:'admin_unavailable'});
+ await assert.rejects(qaAdminAuthenticated(request,{AUTH_API:{fetch:async()=>Response.json({ok:true})}}),
+  {status:503,code:'admin_unavailable'});
+ assert.equal(await qaAdminAuthenticated(request,{AUTH_API:{fetch:async()=>Response.json({ok:false},{status:401})}}),false);
  const base=files('sandbox/pages-native-ban-center-mode-preview-20261119.js');
  const old=JSON.parse(base.match(/^const BAN_MODE_SCRIPT = (.*);$/m)[1]);
  const addon=files('sandbox/ban-v2-dashboard.js');
@@ -224,4 +228,36 @@ test('native QA entry is opt-in and the Loader restores features only after an a
  assert.match(arcsen,/trustedBanClient.appeal\(target, description\)/);
  assert.match(arcsen,/#notices == 0 then[\s\S]+?hideViolationNotice\(\)/);
  assert.match(arcsen,/status=="not_appealed"\) or[\s\S]+?status=="denied" and details.canAppealAgain==true/);
+});
+
+test('Legacy metadata can be edited without changing effective mode; new or explicitly typed rows cannot become Legacy',async()=>{
+ const f=await fixture();
+ const start=await f.admin();
+ const old=start.body.document.entries[0];
+ const edited={...old,reason:'Revised synthetic legacy reason'};
+ const saved=await f.put(edited,start.body.sha);
+ assert.equal(saved.code,200);
+ const reloaded=await f.admin();
+ assert.deepEqual(reloaded.body.document.entries,[edited]);
+ const policy=await f.game('policy',edited.userId);
+ assert.equal(policy.body.state,'ban_ingame');
+ assert.equal(policy.body.ban.legacy,true);
+ assert.equal((await f.put({...entry(0),selection:'unassigned'})).code,400);
+ assert.equal((await f.put({...edited,selection:'restricted_mode'})).code,200);
+ assert.equal((await f.put(edited)).code,400);
+});
+
+test('Edits retain expired state and Remove is verified by a fresh list and game check',async()=>{
+ const f=await fixture();
+ const original=entry(0,'restricted_mode','temporary');
+ const created=await f.put(original);
+ f.clock(now+3600);
+ const revised={...original,description:'Updated expired fixture'};
+ const updated=await f.put(revised,created.body.sha);
+ assert.equal(updated.code,200);
+ assert.equal((await f.game('policy',original.userId)).body.state,'clear');
+ const result=await f.admin({action:'remove',expectedSha:updated.body.sha,userId:original.userId,confirmed:true});
+ assert.equal(result.body.saved,true);
+ assert.ok(!(await f.admin()).body.document.entries.some(row=>row.userId===original.userId));
+ assert.equal((await f.game('policy',original.userId)).body.state,'clear');
 });

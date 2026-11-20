@@ -23,13 +23,13 @@ test('first-party Ban Selection addon includes QA Save/Load, same Unlock, and no
  assert.equal(r.status,200);
  assert.match(r.headers.get('content-type')||'',/javascript/);
  const js=await r.text();
- for(const s of ["Save '+label+' Ban","Load '+label+' Bans",'banV2Selection','banV2Duration',
+ for(const s of ["Save '+label+' Ban","Load '+label+' Bans",'banV2Selection','banV2Duration','banV2Confirmation','Confirm Edit','Confirm Remove',
   "byId('banAdminKey').value.trim()",'/api/v1/admin/bans/v2/manage',
   'expectedSha:sha','confirmed:true','preventDefault','stopImmediatePropagation',
   'arcscriptcenter-ban-v2-qa.kogpasan14.workers.dev']){
   assert.ok(js.includes(s),s);
  }
- assert.doesNotMatch(js,/localStorage|sessionStorage|document\.cookie/);
+ assert.doesNotMatch(js,/localStorage|sessionStorage|document\.cookie|\bconfirm\s*\(/);
 });
 test('original logo still renders in the preview',async()=>{
  const r=await req(PREVIEW+'/acs-logo.png');

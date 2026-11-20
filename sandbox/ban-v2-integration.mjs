@@ -68,14 +68,12 @@ function openDocument(record) {
   fail(503,'source_invalid','Ban list format is invalid. Saving and policy checks are unavailable.');
  }
 }
-function parseChange(body,now) {
+function parseChange(body) {
  const upsert=body?.action==='upsert';
  const fields=upsert?['action','expectedSha','entry','confirmed']:['action','expectedSha','userId','confirmed'];
  if(!exact(body,fields)||typeof body.expectedSha!=='string'||!SHA.test(body.expectedSha)||body.confirmed!==true)invalid();
  if(upsert){
-  if(!validateBanEntryV2(body.entry,{allowUnassigned:false}))invalid();
-  const expires=timeICT(body.entry.expiresAt);
-  if(expires!==null&&expires<=now)fail(400,'expired_entry','End time must be in the future.');
+  if(!validateBanEntryV2(body.entry))invalid();
   return {action:'upsert',entry:body.entry};
  }
  if(body.action!=='remove'||!validId(body.userId))invalid();
@@ -129,7 +127,7 @@ export function createBanV2Integration({store,adminAuthenticated,adminOrigins=[]
   if(!await adminAuthenticated(request,env))fail(401,'admin_required','Unauthorized.');
   if(!await rateLimit(env,'admin',request.method))fail(429,'rate','Too many requests.');
   const body=request.method==='POST'?await readJson(request):null;
-  const change=request.method==='POST'?parseChange(body,now):null;
+  const change=request.method==='POST'?parseChange(body):null;
   const record=await store.read(env),segment=openDocument(record);
   const reply=(sha,document,extra={})=>json({ok:true,sha,sourceSchema:document.schema,
    document:migrateBanDocument(document),source:store.label,...extra},200,origin);
@@ -137,8 +135,14 @@ export function createBanV2Integration({store,adminAuthenticated,adminOrigins=[]
   const target=change.action==='upsert'?change.entry.userId:change.userId;
   if(!allowTarget(target,env))fail(403,'target_not_allowed','This environment accepts authorized test IDs only.');
   if(body.expectedSha!==record.sha)conflict();
+  if(change.action==='upsert'){
+   const expires=timeICT(change.entry.expiresAt);
+   const existing=segment.document.entries.find(entry=>entry.userId===target);
+   if(expires!==null&&expires<=now&&existing?.expiresAt!==change.entry.expiresAt)
+    fail(400,'expired_entry','A new or changed end time must be in the future.');
+  }
   let next;
-  try{next=applyBanChange(segment.document,change);}catch(error){
+  try{next=applyBanChange(segment.document,change,{preserveLegacy:true});}catch(error){
    if(change.action==='remove')fail(404,'not_found','Ban record does not exist.');
    fail(400,'invalid_change',error.message);
   }

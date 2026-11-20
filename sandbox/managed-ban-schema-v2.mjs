@@ -93,15 +93,17 @@ export function selectActiveBan(entries,userId,nowUnix){
   return (start===null||nowUnix>=start)&&(expires===null||nowUnix<expires);
  })||null;
 }
-export function applyBanChange(document,change){
+export function applyBanChange(document,change,{preserveLegacy=false}={}){
  const current=migrateBanDocument(document);
  if(!change||typeof change!=='object'||Array.isArray(change))bad('Invalid request');
  const action=change.action,entries=current.entries.map(e=>({...e}));
  if(action==='upsert'){
-  if(!validateBanEntryV2(change.entry,{allowUnassigned:false}))
-   bad('Invalid v2 Ban entry: explicit Selection and Duration required');
+  if(!validateBanEntryV2(change.entry,{allowUnassigned:preserveLegacy}))
+   bad('Invalid v2 Ban entry: Selection and Duration required');
   if(Object.keys(change).some(k=>!['action','entry'].includes(k)))bad('Unsupported action fields');
   const i=entries.findIndex(e=>e.userId===change.entry.userId);
+  if(change.entry.selection===BAN_V2_LEGACY_SELECTION&&entries[i]?.selection!==BAN_V2_LEGACY_SELECTION)
+   bad('Legacy selection can only be kept on an existing Legacy ban');
   if(i<0)entries.push({...change.entry});
   else entries[i]={...change.entry};
  }else if(action==='remove'){
