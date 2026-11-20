@@ -806,7 +806,7 @@ local function syncPolicyWarning(status)
         local client = bootEnv.__ASC_BAN_V2_CLIENT
         if blocked and not reference and client and client.publicLookup and client.hasPrivateCaseChannel() then
             local ok, verifiedReference = pcall(client.restrictionReference, status)
-            if ok then reference = verifiedReference end
+            if ok and client.secondsRemaining(status) > 0 then reference = verifiedReference end
         end
         if requestedWarning ~= signature then return end
         requestedWarning = nil

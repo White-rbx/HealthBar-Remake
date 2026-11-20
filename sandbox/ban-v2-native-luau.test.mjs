@@ -687,6 +687,7 @@ test('Luau VM: universal policy and remembered private case work on executor HTT
  luau(String.raw`
 local invite, token = "ASCVE_" .. string.rep("a",64), "ASCVS_" .. string.rep("b",64)
 local saved, encoded, decoded, failHistory, claimedAccount = nil, nil, {}, nil, 451
+local displayedReference = "••••AB"
 local options = {
     getgenv = function() return {} end,
     readfile = function() assert(saved); return "local session" end,
@@ -718,7 +719,7 @@ local options = {
             if route=="history" and failHistory=="api" then status=503;decoded[route]={ok=false}
             elseif route=="history" then
                 assert(next(encoded)==nil)
-                decoded[route]={ok=true,identityVerified=true,notices={{id="fixture-case",reference="••••AB"}}}
+                decoded[route]={ok=true,identityVerified=true,notices={{id="fixture-case",reference=displayedReference}}}
             elseif route=="reference" then
                 decoded[route]={ok=true,subject="451",state="restricted_mode",reference="••••AB",revision=string.rep("a",24)}
             elseif route=="revoke" then decoded[route]={ok=true} end
@@ -745,6 +746,9 @@ assert(saved and saved.subject=="451")
 local restored=run("client",options,"public_qa")
 assert(restored.hasPrivateCaseChannel())
 assert(runAsync(restored.history)[1].reference=="••••AB")
+displayedReference = "BANNTOKEN2_NOT_A_DISPLAY_REFERENCE"
+assert(runAsync(restored.history)[1].reference==nil)
+displayedReference = "••••AB"
 assert(runAsync(function()return restored.restrictionReference(public)end)=="••••AB")
 failHistory="api"
 assert(runAsync(restored.history)==nil and restored.hasPrivateCaseChannel())

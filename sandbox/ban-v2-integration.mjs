@@ -262,7 +262,7 @@ export function openVerifiedHistory(env,subject,now,referenceOptions) {
  })(new Request('https://internal.invalid/api/v1/violation/history'));
 }
 
-export async function submitVerifiedAppeal(env,{userId,noticeId,description},now,{tokenHash}={}) {
+export async function submitVerifiedAppeal(env,{userId,noticeId,description},now,{tokenHash,verifiedCaseTokenHash}={}) {
  if(typeof noticeId!=='string'||!/^[-A-Za-z0-9_]{1,70}$/.test(noticeId)||
     typeof description!=='string'||Array.from(description.trim()).length<50||
     Array.from(description).length>5000||/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(description))invalid();
@@ -280,8 +280,14 @@ export async function submitVerifiedAppeal(env,{userId,noticeId,description},now
     ${tokenHash?`AND EXISTS (SELECT 1 FROM asc_violation_case_sessions s
       WHERE s.credential_hash=? AND s.state='session' AND s.expires_unix>?
         AND s.notice_id=asc_verified_violation_subjects.notice_id
-        AND s.subject_user_id=asc_verified_violation_subjects.subject_user_id)`:''}`)
-   .bind(id,hash,userId,description.trim(),now,now,noticeId,userId,...(tokenHash?[tokenHash,now]:[])),
+        AND s.subject_user_id=asc_verified_violation_subjects.subject_user_id)`:''}
+    ${verifiedCaseTokenHash?`AND EXISTS (SELECT 1 FROM asc_banned_tokens_v2 t
+      LEFT JOIN asc_banned_token_references r USING(notice_id,subject_user_id)
+      WHERE t.token_hash=? AND t.expires_unix>? AND t.ban_revision IS r.ban_revision
+        AND t.notice_id=asc_verified_violation_subjects.notice_id
+        AND t.subject_user_id=asc_verified_violation_subjects.subject_user_id)`:''}`)
+   .bind(id,hash,userId,description.trim(),now,now,noticeId,userId,
+    ...(tokenHash?[tokenHash,now]:[]),...(verifiedCaseTokenHash?[verifiedCaseTokenHash,now]:[])),
   DB.prepare(`INSERT INTO asc_ban_v2_verified_appeals(case_id,notice_id,created_unix)
    SELECT id,?,? FROM asc_feedback_cases WHERE id=?`).bind(noticeId,now,id),
   DB.prepare('SELECT case_id FROM asc_ban_v2_verified_appeals WHERE case_id=?').bind(id),

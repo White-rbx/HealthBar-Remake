@@ -17633,7 +17633,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             reasonLabel.Text = "Reason: "..details.reason .. expiresText
                             messageLabel.Text = details.moderatorMessage
                             violationID.Text = details.reference and ("Reference: "..details.reference)
-                                or ("ID: "..details.id)
+                                or "Reference unavailable"
                         else
                             noticeTitle.Text = isBanned and "<b>Your behavior broke the rules</b>"
                                 or "<b>No violation notice available</b>"

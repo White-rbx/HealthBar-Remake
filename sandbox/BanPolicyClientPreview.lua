@@ -198,13 +198,18 @@ function client.disconnectCase()
     return true
 end
 
+local function maskedReference(value)
+    return type(value) == "string" and value:match("^••••[0-9A-F][0-9A-F]$") or nil
+end
+
 function client.restrictionReference(status)
     if not publicLookup or not status or not status.notice or not status.notice.revision then return nil end
     local reply = privateCall("reference", {})
     local data = reply and reply.status == 200 and reply.data
     if data and data.ok == true and data.subject == account and data.state == status.state
-        and data.revision == status.notice.revision and type(data.reference) == "string"
-        and data.reference:match("^••••[0-9A-F][0-9A-F]$") then return data.reference end
+        and data.revision == status.notice.revision then
+        return maskedReference(data.reference)
+    end
 end
 
 function client.history()
@@ -216,6 +221,9 @@ function client.history()
         data = invoke(transport, "violation")
     end
     if data and data.ok == true and data.identityVerified == true and type(data.notices) == "table" then
+        for _, notice in ipairs(data.notices) do
+            if type(notice) == "table" then notice.reference = maskedReference(notice.reference) end
+        end
         return data.notices
     end
 end

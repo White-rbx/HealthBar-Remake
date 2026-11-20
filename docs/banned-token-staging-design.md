@@ -1,6 +1,6 @@
 # BANNEDTOKEN STAGING
 
-The default Loader uses the [universal HTTPS case session](banned-token-universal-qa.md).
+The default Loader uses the [universal Base32 HTTPS case session](banned-token-universal-qa.md).
 The owned-experience bridge below remains a separate QA entrypoint.
 
 The server generates `BANNTOKEN_XXXXXXXXXXXX-XXXXXXXXXXX#XXXXXX`.

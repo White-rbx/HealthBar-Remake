@@ -1,7 +1,7 @@
 import {BanError,createPublicBanStatus,openDocument,policyFor,readJson,submitVerifiedAppeal} from './ban-v2-integration.mjs';
 import {QA_BAN_IDS} from './ban-v2-integration-worker.mjs';
 import {d1BanQaStore} from './ban-v2-integration-stores.mjs';
-import {ensureBannedReference,restrictionBannedReference} from './banned-token-staging.mjs';
+import {verifyOrIssueCaseToken} from './banned-token-base32.mjs';
 import {createVerifiedHistoryHandler} from './stage16-80-verified-violation-history.mjs';
 
 const origin='https://arcscriptcenter-banned-token-universal-qa.kogpasan14.workers.dev';
@@ -98,28 +98,27 @@ export function createUniversalViolationWorker({publicOrigin=origin,clock=nowSec
    if(op==='appeal'){
     if(Object.keys(body).length!==2||typeof body.description!=='string'||typeof body.noticeId!=='string')return error(400,'invalid_request');
     if(body.noticeId!==grant.noticeId)return error(403,'case_forbidden');
-    return await submitVerifiedAppeal({DB:db},{userId:grant.subject,noticeId:grant.noticeId,description:body.description},now,{tokenHash});
-   }
-   if(Object.keys(body).length)return error(400,'invalid_request');
+   }else if(Object.keys(body).length)return error(400,'invalid_request');
    if(op==='revoke'){
     await db.prepare("DELETE FROM asc_violation_case_sessions WHERE credential_hash=? AND state='session'").bind(tokenHash).run();
     return response(200,{ok:true});
    }
+   const verified=await verifyOrIssueCaseToken(db,grant,env.BANNED_TOKEN_SECRET,now);
+   if(!verified)return error(403,'case_forbidden');
+   if(op==='appeal'){
+    return await submitVerifiedAppeal({DB:db},{userId:grant.subject,noticeId:grant.noticeId,description:body.description},clock(),{tokenHash,verifiedCaseTokenHash:verified.tokenHash});
+   }
    if(op==='reference'){
     const record=await d1BanQaStore.read({DB:db},grant.subject);
     const policy=policyFor(openDocument(record).document,grant.subject,now);
-    const reference=policy.ban && await restrictionBannedReference(db,{userId:grant.subject,revision:record.notice_revision,noticeId:grant.noticeId});
+    const reference=policy.ban && verified.revision!==null && verified.revision===record.notice_revision && verified.reference;
     return response(200,{ok:true,subject:grant.subject,state:policy.state,
      ...(reference?{reference,revision:(await digest(record.notice_revision)).slice(0,24)}:{})});
    }
    return await createVerifiedHistoryHandler({db,clock:()=>now*1000,
     resolveVerifiedPrincipal:async()=>({sub:grant.subject,noticeId:grant.noticeId,expiresAt:grant.expiresAt,method:'case_enrollment',verified:true}),
-    decorateNotices:async(notices,subject)=>{
-     if(typeof env.BANNED_TOKEN_SECRET!=='string'||env.BANNED_TOKEN_SECRET.length<32)return;
-     for(const notice of notices){
-      const reference=await ensureBannedReference(db,{userId:subject,username:grant.username,caseId:notice.id,secret:env.BANNED_TOKEN_SECRET});
-      if(reference)notice.reference=reference;
-     }
+    decorateNotices:notices=>{
+     for(const notice of notices)notice.reference=verified.reference;
     },
    })(new Request('https://internal.invalid/history'));
   }catch(e){
