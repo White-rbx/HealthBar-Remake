@@ -253,6 +253,8 @@ Team.Size = UDim2.new(0, 200, 0, 50)
 Team.Parent = Logo
 
 local Canvas = Instance.new("CanvasGroup")
+-- CanvasGroup defaults to an opaque grey background; keep the loading UI transparent.
+Canvas.BackgroundTransparency = 1
 Canvas.Visible = false
 Canvas.GroupTransparency = 1
 Canvas.Position = UDim2.new(0.1,0,0.5,0)
