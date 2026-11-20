@@ -14183,7 +14183,7 @@ task.spawn(function()
     local retry
     local revealAppealDraft = function() end
     local banPolicyClient = env and env.__ASC_BAN_V2_CLIENT
-    local trustedBanClient = banPolicyClient and not banPolicyClient.publicLookup and banPolicyClient
+    local trustedBanClient = banPolicyClient and type(banPolicyClient.hasPrivateCaseChannel) == "function" and banPolicyClient
     local syncVerifiedViolations = function() end
     -- Stage 16.35: Feedback and Appeal only. Never reuse the production
     -- Cloud/Policy URL or send administrative tokens from the client.
@@ -17038,7 +17038,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     violationID.TextXAlignment = Enum.TextXAlignment.Left
                     violationID.ClipsDescendants = false
                     violationID.Draggable = false
-                    violationID.Interactable = true
+                    violationID.Interactable = false
                     violationID.LayoutOrder = 0
                     violationID.LineHeight = 1
                     violationID.MaxVisibleGraphemes = -1
@@ -17457,7 +17457,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end
                     submitButton.MouseButton1Click:Connect(function()
                         local description=appealInput.Text or ""
-                        if trustedBanClient then
+                        if trustedBanClient and (verifiedAppealId or trustedBanClient.hasPrivateCaseChannel()) then
                             if not verifiedAppealEnabled or not verifiedAppealId or appealState.busy then return end
                             local valid, why = caseValidate("appeal", "Violation appeal", description)
                             if not valid then appealDone(nil,why,false);return end
@@ -17572,7 +17572,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             end
                             reasonLabel.Text = "Reason: "..details.reason .. expiresText
                             messageLabel.Text = details.moderatorMessage
-                            violationID.Text = "ID: "..details.id
+                            violationID.Text = details.reference and ("Reference: "..details.reference)
+                                or ("ID: "..details.id)
                         else
                             noticeTitle.Text = isBanned and "<b>Your behavior broke the rules</b>"
                                 or "<b>No violation notice available</b>"
@@ -17710,6 +17711,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     violationCategory.Inside.Visible=false
                     violationCategoryExpanded=false
                     violationCategory.Button.Text="Open"
+                    if violationNotice.Root.Visible then violationNotice.SetNotice(nil,false) end
                     violationNotice.Root.Visible=false
                     violationNotice.SetVerifiedAppeal(nil,false)
                     violationNotice.SetAppealExpanded(false)
@@ -17745,6 +17747,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         moderatorMessage=details.moderatorMessage:sub(1,800),
                         banType=banType,
                         expiresAt=expiresAt,
+                        reference=type(details.reference)=="string"
+                            and details.reference:match("^••••[0-9A-F][0-9A-F]$") or nil,
                     },true)
                     violationNotice.Root.Parent=config.row.Inside
                     violationNotice.Root.LayoutOrder=config.order
@@ -17811,7 +17815,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     local busy, nextCheck = false, 0
                     syncVerifiedViolations = function()
                         local state = env.__ASC_BAN_V2_STATE
-                        if trustedBanClient.secondsRemaining(state) <= 0 or state.state == "ban_ingame" then
+                        if not trustedBanClient.hasPrivateCaseChannel()
+                            or trustedBanClient.secondsRemaining(state) <= 0 or state.state == "ban_ingame" then
                             historyRequest += 1
                             lastNoticeKey = nil
                             hideViolationNotice()
@@ -17835,7 +17840,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             if type(details) ~= "table" then hideViolationNotice();return end
                             local lastEvent = details.history and details.history[1]
                             local key = table.concat({tostring(details.id),tostring(details.appealStatus),
-                                tostring(details.canAppealAgain),tostring(lastEvent and lastEvent.createdAt)},":")
+                                tostring(details.canAppealAgain),tostring(lastEvent and lastEvent.createdAt),tostring(details.reference)},":")
                             if key == lastNoticeKey then return end
                             lastNoticeKey = renderAuthenticatedViolation(details,true) and key or nil
                         end)
@@ -17967,7 +17972,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
             local title = (banPolicyClient or loc.BanQAPolicyExpected) and "Restriction status: " or "Signed UI Policy: "
             local proof = " | check pending"
             if gate.policyValid then
-                proof = trustedBanClient and " | account verified"
+                proof = gate.identityVerified and " | account verified"
                     or (banPolicyClient and " | public lookup" or " | verified signature")
             end
             statusLabel.Text = title .. tostring(status) .. proof ..

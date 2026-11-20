@@ -7,6 +7,9 @@ on:
     paths:
       - 'sandbox/feedback-*'
       - 'sandbox/ban-v2-*'
+      - 'sandbox/banned-token-*.mjs'
+      - 'migrations/banned_token_ISOLATED_QA_ONLY.sql'
+      - 'docs/banned-token-staging-design.md'
       - 'sandbox/Ban*Preview.lua'
       - 'sandbox/ArcScriptCenterBanBridge.server.lua'
       - 'sandbox/RestrictedMode-Topbar-STAGING.lua'

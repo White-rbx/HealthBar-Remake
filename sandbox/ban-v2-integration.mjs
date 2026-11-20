@@ -3,6 +3,7 @@ import {
  selectActiveBan, timeICT, validateBanEntryV2,
 } from './managed-ban-schema-v2.mjs';
 import {createVerifiedHistoryHandler} from './stage16-80-verified-violation-history.mjs';
+import {ensureBannedReference,restrictionBannedReference} from './banned-token-staging.mjs';
 
 export const ADMIN_BANS = '/api/v1/admin/bans/v2/manage';
 export const GAME_BANS = '/api/v1/roblox/bans/v2/';
@@ -146,7 +147,7 @@ export async function verifyGameServer(request,env) {
 }
 
 export function createBanV2Integration({store,adminAuthenticated,adminOrigins=[],authorizeServer=verifyGameServer,
- allowTarget=()=>true,verifyHistory,submitAppeal,rateLimit,clock=()=>Math.floor(Date.now()/1000)}={}) {
+ allowTarget=()=>true,verifyHistory,submitAppeal,rateLimit,bannedTokens=false,clock=()=>Math.floor(Date.now()/1000)}={}) {
  if(typeof store?.read!=='function'||typeof store?.write!=='function'||
     typeof adminAuthenticated!=='function'||typeof rateLimit!=='function')throw new TypeError('Ban storage, authentication and rate limiting are required');
  const origins=new Set(adminOrigins);
@@ -198,19 +199,36 @@ export function createBanV2Integration({store,adminAuthenticated,adminOrigins=[]
   const fields=['universeId','userId'];
   if(operation==='authorize')fields.push('feature');
   if(operation==='appeal')fields.push('noticeId','description');
+  if(bannedTokens && (operation==='policy'||operation==='violation') && body && Object.hasOwn(body,'username')){
+   fields.push('username');
+   if(typeof body.username!=='string'||!/^[A-Za-z0-9_]{3,20}$/.test(body.username))invalid();
+  }
   if(!exact(body,fields)||body.universeId!==universe||!validId(body.userId))invalid();
   if(!allowTarget(body.userId,env))fail(403,'target_not_allowed','This environment accepts authorized test IDs only.');
   if(!await rateLimit(env,operation,body.userId))fail(429,'rate','Too many requests.');
-  const current=openDocument(await store.read(env));
+  const secret=bannedTokens && typeof env.BANNED_TOKEN_SECRET==='string'
+   && env.BANNED_TOKEN_SECRET.length>=32 ? env.BANNED_TOKEN_SECRET : null;
+  const record=await store.read(env,secret && operation==='policy' ? body.userId : undefined);
+  const current=openDocument(record);
   const policy=policyFor(current.document,body.userId,now);
-  if(operation==='policy')return json({ok:true,identityVerified:true,subject:body.userId,...policy});
+  if(operation==='policy'){
+   if(secret && policy.ban){
+    // An optional display reference never blocks the policy on storage failure.
+    const reference=await restrictionBannedReference(env.DB,{
+     userId:body.userId,revision:record.notice_revision,
+    }).catch(()=>undefined);
+    if(reference)policy.ban.reference=reference;
+   }
+   return json({ok:true,identityVerified:true,subject:body.userId,...policy});
+  }
   if(operation==='authorize'&&!FEATURES.has(body.feature))invalid();
   const feature=operation==='authorize'?body.feature:operation;
-  if(policy.state==='ban_ingame'||(policy.state==='restricted_mode'&&!LIMITED.has(feature)))
+  if((policy.state==='ban_ingame'&&!(bannedTokens&&['violation','appeal'].includes(feature)))||
+   (policy.state==='restricted_mode'&&!LIMITED.has(feature)))
    fail(403,'ban_restricted','This feature is unavailable under the current ban.');
   if(operation==='authorize')return json({ok:true,allowed:true});
   if(operation==='violation' && typeof verifyHistory==='function')
-   return verifyHistory(env,body.userId,now);
+   return verifyHistory(env,body.userId,now,secret ? {secret,username:body.username} : undefined);
   if(operation==='appeal' && typeof submitAppeal==='function')
    return submitAppeal(env,body,now);
   fail(503,'feature_unavailable','Verified Violation and Appeal service is unavailable.');
@@ -230,9 +248,17 @@ export function createBanV2Integration({store,adminAuthenticated,adminOrigins=[]
  };
 }
 
-export function openVerifiedHistory(env,subject,now) {
+export function openVerifiedHistory(env,subject,now,referenceOptions) {
  return createVerifiedHistoryHandler({db:env.DB,clock:()=>now*1000,
   resolveVerifiedPrincipal:async()=>({verified:true,method:'trusted_game_server',sub:subject,expiresAt:now+30}),
+  decorateNotices:referenceOptions && (async (notices, verifiedSubject)=>{
+   for(const notice of notices){
+    const reference=await ensureBannedReference(env.DB,{
+     userId:verifiedSubject,caseId:notice.id,...referenceOptions,
+    }).catch(()=>undefined);
+    if(reference)notice.reference=reference;
+   }
+  }),
  })(new Request('https://internal.invalid/api/v1/violation/history'));
 }
 

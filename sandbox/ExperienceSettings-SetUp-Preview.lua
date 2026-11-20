@@ -606,6 +606,7 @@ local function renderBanBlock(item)
         .. (item.Description and ("Description: " .. escapeText(item.Description) .. "\n") or "")
         .. (item.StartAt and ("From: " .. formatTime(item.StartAt) .. "\n") or "")
         .. "Until: <b>" .. (item.ExpiresAt and formatTime(item.ExpiresAt) or "Permanent") .. "</b>"
+        .. (item.Reference and ("\nReference: " .. item.Reference) or "")
         .. "\nFor an appeal, use the existing ArcScriptCenter appeal channel."
 end
 
@@ -625,6 +626,8 @@ if qaEnv.__ASC_BAN_V2_PREVIEW then
             Selection = item.selection, SelectionAssigned = item.legacy ~= true,
             Duration = item.duration, Reason = item.reason, Description = item.description,
             StartAt = item.startAt, ExpiresAt = item.expiresAt,
+            Reference = status.identityVerified == true and type(item.reference) == "string"
+                and item.reference:match("^••••[0-9A-F][0-9A-F]$") or nil,
         } or nil
         if status and status.notice then
             banData = { Selection = status.state, SelectionAssigned = true,

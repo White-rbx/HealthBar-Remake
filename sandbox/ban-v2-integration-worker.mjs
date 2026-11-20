@@ -33,7 +33,7 @@ async function rateLimit(env,scope,subject) {
  return r.success;
 }
 
-export function mountBanV2(legacy,{staging=false,adminAuthenticated=qaAdminAuthenticated}={}) {
+export function mountBanV2(legacy,{staging=false,adminAuthenticated=qaAdminAuthenticated,bannedTokens=false}={}) {
  const scopedHandler=createBanV2Integration({
   store:staging?createStagingGitHubBanStore():d1BanQaStore,
   adminAuthenticated,
@@ -41,7 +41,7 @@ export function mountBanV2(legacy,{staging=false,adminAuthenticated=qaAdminAuthe
   allowTarget:(id,env)=>staging
    ? env.BAN_MANAGEMENT_WRITE==='staging-github' && env.BAN_STAGING_ALLOWED_TEST_IDS?.split(',').includes(id)
    : QA_BAN_IDS.includes(id) || env.BAN_QA_ALLOWED_TEST_IDS?.split(',').includes(id),
-  verifyHistory:openVerifiedHistory,submitAppeal:submitVerifiedAppeal,rateLimit,
+  verifyHistory:openVerifiedHistory,submitAppeal:submitVerifiedAppeal,rateLimit,bannedTokens:!staging&&bannedTokens,
  });
  return {
   ...legacy,

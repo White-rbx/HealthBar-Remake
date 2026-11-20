@@ -24,7 +24,7 @@ const files = {
  entry, client, server, topbar,
  boot: section(main, 'local policyMode =', '-- ASC BAN V2 BOOTSTRAP END') + '\nreturn policyMode',
  waiting: section(rejoiner, 'local function canContinue()', '-- Continue (ONE TIME)') + '\nreturn canContinue',
- warning: section(main, '-- ASC POLICY WARNING BEGIN', '-- ASC POLICY WARNING END') + '\nreturn syncPolicyWarning',
+ warning: section(main, '-- ASC POLICY WARNING BEGIN', '-- ASC POLICY WARNING END') + '\nsetupWarningReady = true; return syncPolicyWarning',
  renderer: main.split('local sourceUI = [=====[')[1].split(']=====]')[0],
  warningQueue: section(main, 'local function showNext()', '-- Server warnings are already-verified') + '\nreturn api',
  gateCheck: section(arcsen, '    local function check()', '    local controller = {') + '\nreturn check',
@@ -463,7 +463,7 @@ local function launch(state)
     response.subject, response.identityVerified, response.ban = tostring(userId), false, nil
     response.notice = state ~= "clear" and { duration = "permanent", reason = "Footsteps" } or nil
     local client = run("client", additions, published)
-    assert(client.publicLookup and client.history == nil and client.appeal == nil)
+    assert(client.publicLookup)
     local result
     runtime.task.spawn(function() result = client.policy() end)
     advance(now)
@@ -680,5 +680,76 @@ local second=holder:FindFirstChild("PopUp")
 assert(second:FindFirstChild("Title").Text=="[CLIENT] Ban in-game")
 assert(holder.BackgroundTransparency==0.2)
 assert(holder:FindFirstChildOfClass("UIListLayout").VerticalAlignment == enums.VerticalAlignment.Center)
+`);
+});
+
+test('Luau VM: public policy and private case transport remain separate',()=>{
+ luau(String.raw`
+local call, allowed, bridge = nil, false, nil
+local env={}
+local ui = run("client", {
+    getgenv = function() return env end,
+    game = { GetService = function(_, name)
+        if name == "Players" then return { LocalPlayer = { UserId = 451 } } end
+        if name == "ReplicatedStorage" then
+            return { FindFirstChild = function() return bridge end }
+        end
+        return {
+            JSONEncode = function(_, value) assert(value.userId == "451" and next(value, "userId") == nil);return "lookup" end,
+            JSONDecode = function() return { ok=true, identityVerified=false, subject="451", checkedAt=100, nextCheckAt=130,
+                state="restricted_mode", notice={duration="permanent",reason="Fixture"} } end,
+        }
+    end },
+    request = function(request)
+        assert(not request.Headers.Authorization)
+        return { StatusCode = 200, Body = "public" }
+    end,
+    Instance = { new = function()
+        local event=signal()
+        return {Event=event,Fire=function()event:Fire()end,Destroy=function()end}
+    end },
+}, "public_qa")
+local publicCase
+runtime.task.spawn(function() publicCase=ui.policy() end)
+advance(now)
+assert(publicCase.state=="restricted_mode" and not publicCase.identityVerified and not ui.hasPrivateCaseChannel())
+assert(ui.history()==nil and ui.appeal("other","text")==nil)
+bridge = {
+    IsA=function()return true end,
+    GetAttribute=function(_,name)return name=="BannedTokenQA" end,
+    InvokeServer=function(_,operation,...)
+        call={operation,...}
+        return allowed and {ok=true,identityVerified=true,notices={{id="server-owned",reference="••••AF"}}}
+            or {ok=false,code="not_authorized"}
+    end,
+}
+assert(ui.hasPrivateCaseChannel())
+local history
+runtime.task.spawn(function() history=ui.history() end)
+advance(now)
+assert(history==nil and call[1]=="violation" and call[2]==nil)
+allowed=true
+runtime.task.spawn(function() history=ui.history() end)
+advance(now)
+assert(history[1].reference=="••••AF")
+`);
+});
+
+test('Luau VM: WarningUI displays only validated references from authenticated policy',()=>{
+ luau(String.raw`
+local warning
+local env={WarningUI={dismissClient=function()end,showClient=function(payload) warning=payload;return true end}}
+local publish=run("warning", {bootEnv=env})
+local function publishCase(verified,reference)
+    publish({state="restricted_mode",identityVerified=verified,
+        notice={reason="Fixture",duration="permanent",reference=reference}})
+    advance(now)
+end
+publishCase(false,"••••AB")
+assert(not warning.description:find("Reference"))
+publishCase(true,"BANNTOKEN_001122334455-00112233445#AABBCC")
+assert(not warning.description:find("BANNTOKEN"))
+publishCase(true,"••••AB")
+assert(warning.description:find("Reference: ••••AB",1,true))
 `);
 });

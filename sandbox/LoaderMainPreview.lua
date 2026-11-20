@@ -777,11 +777,11 @@ end
 
 local warningKey = "ArcScriptCenterBanPolicy"
 local requestedWarning, deliveredWarning = nil, nil
--- SetUp must finish before a policy WarningUI is displayed.
+-- Restricted warnings wait for SetUp; a full ban keeps SetUp open.
 local setupWarningReady = false
 local pendingPolicyWarning = nil
 local function syncPolicyWarning(status)
-    if not setupWarningReady then
+    if not setupWarningReady and (not status or status.state ~= "ban_ingame") then
         pendingPolicyWarning = status
         return
     end
@@ -789,8 +789,10 @@ local function syncPolicyWarning(status)
     if not status then return end
     local item = status.notice or status.ban
     local blocked = status.state ~= "clear" and item ~= nil
+    local reference = status.identityVerified == true and item and type(item.reference) == "string"
+        and item.reference:match("^••••[0-9A-F][0-9A-F]$") or nil
     local signature = blocked and table.concat({
-        status.state, item.duration, tostring(item.expiresAt or ""), item.reason, tostring(item.revision or ""),
+        status.state, item.duration, tostring(item.expiresAt or ""), item.reason, tostring(item.revision or ""), reference or "",
     }, "\31") or "clear"
     if requestedWarning == signature then return end
     if deliveredWarning == signature then
@@ -813,6 +815,7 @@ local function syncPolicyWarning(status)
                     compact = restricted,
                     title = restricted and "Restricted Mode" or "Ban in-game",
                     description = "Reason: " .. item.reason .. "\nDuration: " .. duration
+                        .. (reference and "\nReference: " .. reference or "")
                         .. (restricted and "\nSettings and Feedback & Appeal are available."
                             or "\nExperienceSettings is unavailable for this account."),
                     primaryLabel = "Close",

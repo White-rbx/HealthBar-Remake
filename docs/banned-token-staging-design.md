@@ -1,19 +1,54 @@
-# BANNEDTOKEN — STAGING design (not deployed)
+# BANNEDTOKEN STAGING
 
-Format: `BANNTOKEN_XXXXXXXXXXXX-XXXXXXXXXXX#XXXXXX` (the user's specified spelling is retained).
-- Segment 1: 12-character server-HMAC pseudonym of Roblox UserId.
-- Segment 2: 11-character server-HMAC pseudonym of UserId and username.
-- Segment 3: six randomly generated uppercase hexadecimal characters.
-- Client display: only `••••XX`, showing the last two HEX characters. No Copy button.
-- Full token and HMAC secret are server-only; do not include them in Luau, responses, browser pages, telemetry, or logs.
-- Segment 1 and segment 2 are **not** two-factor authentication. Public Roblox account attributes do not prove ownership.
-- The masked reference is **not** authorization or proof of identity. It only helps users identify a restriction notice.
-- A server-side trusted account/case binding must authorize Violation/Appeal independently. The currently deployed public policy lookup and unverified LocalPlayer.UserId are insufficient.
-- Server must track case status, expiry, revocation, history, and appeal eligibility. Recheck writes atomically.
-- A username change must not orphan a case: canonical case ownership is keyed to a trusted stable Roblox UserId, not the username segment.
-- The six-HEX suffix can collide; regenerate on collision if enforcing uniqueness in a scoped table. Do not rely on the suffix as a secret.
-- Keep USERCASETOKEN separate for Feedback. Never infer Violation ownership from USERCASETOKEN.
-- UI should receive a server-generated masked reference only; avoid client-side masking of the full token.
-- No new endpoint or database migration is included. Integration requires independent verified-principal and case-issuance design review.
+The server generates `BANNTOKEN_XXXXXXXXXXXX-XXXXXXXXXXX#XXXXXX`.
 
-Implementation primitives: `sandbox/banned-token-staging.mjs`. This is **not** connected to the Cloudflare Worker, Arcsen UI, or D1 yet.
+- The first segment is a 12-character server HMAC of the Roblox UserId.
+- The second is an 11-character server HMAC of the UserId and normalized username.
+- The third is a six-character random HEX value. The UI sees only `••••XX`.
+- D1 stores the token hash and two-character display suffix, keyed by the
+  verified notice and stable subject. It stores neither the raw token nor the
+  first two segments. A rename preserves the existing reference.
+- The token and its reference grant no permissions. The public ban endpoint
+  never returns a reference, case data or a case grant. A reference can appear
+  in an in-game warning only if trusted moderation has linked the verified
+  notice to the exact currently active restriction revision.
+- The existing verified-history route creates a reference only for notices
+  already bound to the authenticated subject. A claimed ID or username, a
+  case receipt, a six-character HEX value and `USERCASETOKEN` grant no
+  Violation access. Feedback keeps its existing independent case-token path.
+
+## Scope and Mobile QA
+
+The dedicated worker source is `sandbox/banned-token-qa-worker.mjs`.
+Apply `migrations/banned_token_ISOLATED_QA_ONLY.sql` only to a separate
+synthetic QA D1 after the verified history and Ban v2 migrations. Configure
+independent Worker secrets `BAN_GAME_SERVER_SECRET` and
+`BANNED_TOKEN_SECRET`, the owned QA universe `BAN_GAME_UNIVERSE_ID`,
+test account allowlist, isolated `BAN_QA_DB` and `BAN_V2_RATE`.
+Use existing verified ownership records for linked notices. Trusted
+moderation can call the server-side `linkBannedReference` helper to bind a
+notice to its exact saved ban revision.
+
+For native QA, install `sandbox/ArcScriptCenterBanBridge.server.lua` in an
+owner-controlled test place and enable its `BannedTokenQA` Script attribute.
+Give only the Roblox server the matching bridge secret. The Roblox server
+gets the authenticated caller from `OnServerInvoke` and supplies the
+account identity and username. The universal preview still fetches public
+ban policy separately, and automatically discovers a configured private
+case channel when present. To test the trusted policy mask in the same
+isolated QA dataset, run the preview with `"roblox_server"`. Neither path
+asks the player to sign in or enter a Case ID during startup.
+
+On Roblox Mobile, check that the linked owner sees the masked reference
+and verified Violation automatically, while an unbound account sees no
+Violation. Check Restricted Mode, fully banned SetUp and WarningUI, and
+Clear. Open the existing Appeal form, submit the verified case and verify
+that Approved removes the submit control. Check that an unavailable
+private channel leaves a public restriction visible and private data
+hidden. A full Ban-in-game remains on SetUp. The dedicated Worker allows
+the verified owner to submit an eligible appeal, while SetUp keeps the
+existing appeal instructions and does not open Arcsen.
+
+For rollback, remove the optional bridge from the QA place or turn off
+`BannedTokenQA`. The original ban policy and Feedback deployments do not
+inherit the synthetic worker's database or secrets.

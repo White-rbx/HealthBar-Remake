@@ -4,6 +4,13 @@ local player = game:GetService("Players").LocalPlayer
 if not player then return nil end
 
 local bridge, transport, outsideQA
+local function caseBridge()
+    local storage = game:GetService("ReplicatedStorage")
+    local found = storage:FindFirstChild("ArcScriptCenterBanBridgeSTAGING")
+    if found and found:IsA("RemoteFunction") and found:GetAttribute("BannedTokenQA") == true then
+        return found
+    end
+end
 if publicLookup then
     local env = getgenv()
     local candidates = table.pack(request, http_request, type(syn) == "table" and syn.request,
@@ -47,7 +54,7 @@ end
 local lastChecked = 0
 local lastPolicy
 local policyInFlight = false
-local function invoke(operation, ...)
+local function invoke(call, operation, ...)
     local arguments, signal = table.pack(...), Instance.new("BindableEvent")
     local finished, result = false, nil
     local function finish(value)
@@ -57,7 +64,7 @@ local function invoke(operation, ...)
     end
     task.delay(8, finish, nil)
     task.spawn(function()
-        local ok, data = pcall(transport, operation, table.unpack(arguments, 1, arguments.n))
+        local ok, data = pcall(call, operation, table.unpack(arguments, 1, arguments.n))
         finish(ok and type(data) == "table" and data or nil)
     end)
     if not finished then signal.Event:Wait() end
@@ -79,7 +86,7 @@ function client.policy()
     if policyInFlight then return nil end
     policyInFlight = true
     local startedAt = os.clock()
-    local data = invoke("policy")
+    local data = invoke(transport, "policy")
     policyInFlight = false
     lastPolicy = nil
     outsideQA = publicLookup and data and data.outsideQA == true
@@ -94,7 +101,7 @@ function client.policy()
     elseif publicLookup then
         local notice = data.notice
         if data.ban ~= nil or type(notice) ~= "table" or type(notice.reason) ~= "string"
-            or #notice.reason == 0 or #notice.reason > 120
+            or #notice.reason == 0 or #notice.reason > 120 or notice.reference ~= nil
             or (notice.revision ~= nil and (type(notice.revision) ~= "string"
                 or #notice.revision ~= 24 or not notice.revision:match("^[0-9a-f]+$")))
             or not (notice.duration == "permanent" and notice.expiresAt == nil
@@ -119,16 +126,31 @@ function client.policy()
     lastChecked, lastPolicy = data.checkedAt, data
     return data
 end
-if not publicLookup then
-    function client.history()
-        local data = invoke("violation")
-        if data and data.ok == true and data.identityVerified == true and type(data.notices) == "table" then
-            return data.notices
-        end
-        return nil
+-- Public policy never hands out a case grant. The optional trusted QA
+-- bridge is discovered without waiting during public startup.
+function client.hasPrivateCaseChannel()
+    return not publicLookup or caseBridge() ~= nil
+end
+
+local function privateInvoke(operation, ...)
+    if not publicLookup then return invoke(transport, operation, ...) end
+    local remote = caseBridge()
+    if remote then
+        return invoke(function(...)
+            return remote:InvokeServer(...)
+        end, operation, ...)
     end
-    function client.appeal(noticeId, description)
-        return invoke("appeal", noticeId, description)
+end
+
+function client.history()
+    local data = privateInvoke("violation")
+    if data and data.ok == true and data.identityVerified == true and type(data.notices) == "table" then
+        return data.notices
     end
+    return nil
+end
+
+function client.appeal(noticeId, description)
+    return privateInvoke("appeal", noticeId, description)
 end
 return client

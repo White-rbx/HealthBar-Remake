@@ -5,14 +5,17 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local stagingGitHub = script:GetAttribute("UseStagingGitHub") == true
+local tokenQA = not stagingGitHub and script:GetAttribute("BannedTokenQA") == true
 local api = stagingGitHub
     and "https://arcscriptcenter-api-staging.kogpasan14.workers.dev/api/v1/roblox/bans/v2/"
-    or "https://arcscriptcenter-ban-v2-qa.kogpasan14.workers.dev/api/v1/roblox/bans/v2/"
+    or (tokenQA and "https://arcscriptcenter-banned-token-qa.kogpasan14.workers.dev/api/v1/roblox/bans/v2/"
+        or "https://arcscriptcenter-ban-v2-qa.kogpasan14.workers.dev/api/v1/roblox/bans/v2/")
 local unavailable = { ok = false, code = "server_unavailable" }
 
 local remote = Instance.new("RemoteFunction")
 remote.Name = "ArcScriptCenterBanBridgeSTAGING"
 remote:SetAttribute("IsolatedQA", not stagingGitHub)
+remote:SetAttribute("BannedTokenQA", tokenQA)
 local requests = {}
 Players.PlayerRemoving:Connect(function(player) requests[player] = nil end)
 
@@ -20,6 +23,8 @@ local function send(player, operation, noticeId, description)
     local data = { userId = tostring(player.UserId), universeId = tostring(game.GameId) }
     if operation == "appeal" then
         data.noticeId, data.description = noticeId, description
+    elseif tokenQA and (operation == "policy" or operation == "violation") then
+        data.username = player.Name
     end
     local ok, reply = pcall(function()
         return HttpService:RequestAsync({

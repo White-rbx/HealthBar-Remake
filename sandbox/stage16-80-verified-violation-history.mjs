@@ -100,7 +100,7 @@ async function loadSubjectNotices(db, subject) {
  * Request userId/claimedUserId/identityVerified arguments are NEVER used.
  * A case receipt proves case possession, not identity; it is not accepted.
  */
-export function createVerifiedHistoryHandler({ db, resolveVerifiedPrincipal, clock = () => Date.now() } = {}) {
+export function createVerifiedHistoryHandler({ db, resolveVerifiedPrincipal, decorateNotices, clock = () => Date.now() } = {}) {
   if (!db?.prepare || typeof resolveVerifiedPrincipal !== 'function') {
     throw new TypeError('Trusted DB binding and verified principal resolver required');
   }
@@ -116,6 +116,7 @@ export function createVerifiedHistoryHandler({ db, resolveVerifiedPrincipal, clo
     if (!subject) return resultJson({ ok: false, identityVerified: false, error: 'Authentication required' }, 401);
     try {
       const notices = await loadSubjectNotices(db, subject);
+      if (decorateNotices) await decorateNotices(notices, subject);
       return resultJson({
         ok: true,
         identityVerified: true,

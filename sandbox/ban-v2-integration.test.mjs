@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs';
 import {ADMIN_BANS,GAME_BANS,createBanV2Integration,gitBlobSha,openVerifiedHistory,submitVerifiedAppeal} from './ban-v2-integration.mjs';
 import {createStagingGitHubBanStore,d1BanQaStore} from './ban-v2-integration-stores.mjs';
 import {QA_BAN_IDS,STAGING_BAN_PREVIEW,qaAdminAuthenticated} from './ban-v2-integration-worker.mjs';
+import {issueBannedToken,linkBannedReference} from './banned-token-staging.mjs';
 import {buildBanV2PagesWorker} from './ban-v2-pages-builder.mjs';
 
 const files=p=>readFileSync(p,'utf8');
@@ -24,7 +25,7 @@ const entry=(i,selection='ban_ingame',duration='permanent',overrides={})=>({
 function setupSqlite(){
  const db=new DatabaseSync(':memory:');
  for(const file of ['feedback_release_additive_REVIEW_ONLY_20261117.sql','2026-11-17_stage1680_verified_violation_history_DRAFT.sql',
-  'ban_v2_full_integration_STAGING_REVIEW.sql','ban_v2_full_integration_QA_ONLY.sql'])
+  'ban_v2_full_integration_STAGING_REVIEW.sql','ban_v2_full_integration_QA_ONLY.sql','banned_token_ISOLATED_QA_ONLY.sql'])
   db.exec(files('migrations/'+file));
  const DB={
   prepare(sql){const bind=(...args)=>{
@@ -41,14 +42,16 @@ function setupSqlite(){
  return {db,DB};
 }
 
-async function fixture() {
+async function fixture({bannedTokens=false}={}) {
  const {db,DB}=setupSqlite(), source=seedFor([legacy]);
  db.prepare('INSERT INTO asc_ban_v2_qa_source(id,sha,source) VALUES(1,?,?)').run(await gitBlobSha(source),source);
  let clock=now, offline=false;
- const env={DB,BAN_GAME_SERVER_SECRET:serverKey,BAN_GAME_UNIVERSE_ID:universe};
+ const env={DB,BAN_GAME_SERVER_SECRET:serverKey,BAN_GAME_UNIVERSE_ID:universe,
+  ...(bannedTokens?{BANNED_TOKEN_SECRET:"fixture-signing-key-exclusive-to-unit-testing".repeat(2)}:{}),
+ };
  const handler=createBanV2Integration({
-  clock:()=>clock,
-  store:{...d1BanQaStore,read:env=>{if(offline)throw Error('offline');return d1BanQaStore.read(env);}},
+  clock:()=>clock,bannedTokens,
+  store:{...d1BanQaStore,read:(env,id)=>{if(offline)throw Error('offline');return d1BanQaStore.read(env,id);}},
   adminAuthenticated:async request=>request.headers.get('X-Admin-Key')===key,
   adminOrigins:[STAGING_BAN_PREVIEW],rateLimit:async()=>true,
   allowTarget:id=>QA_BAN_IDS.includes(id),verifyHistory:openVerifiedHistory,submitAppeal:submitVerifiedAppeal,
@@ -261,4 +264,77 @@ test('Edits retain expired state and Remove is verified by a fresh list and game
  assert.equal(result.body.saved,true);
  assert.ok(!(await f.admin()).body.document.entries.some(row=>row.userId===original.userId));
  assert.equal((await f.game('policy',original.userId)).body.state,'clear');
+});
+
+test('BANNEDTOKEN format, username case normalization and mask use server-only primitives',async()=>{
+ const input={userId:QA_BAN_IDS[0],username:'Roblox_QA',caseId:'test-case',secret:'unit-test-key-for-server-token-issuance'.repeat(2)};
+ const first=await issueBannedToken(input);
+ const same=await issueBannedToken({...input,username:'ROBLOX_qa'});
+ const renamed=await issueBannedToken({...input,username:'NewUsername'});
+ const other=await issueBannedToken({...input,userId:QA_BAN_IDS[1]});
+ assert.match(first.token,/^BANNTOKEN_[0-9A-F]{12}-[0-9A-F]{11}#[0-9A-F]{6}$/);
+ assert.match(first.tokenHash,/^[0-9a-f]{64}$/);
+ assert.equal(first.clientReference,'••••'+first.token.slice(-2));
+ assert.equal(first.token.split('#')[0],same.token.split('#')[0]);
+ assert.equal(first.token.split('-')[0],renamed.token.split('-')[0]);
+ assert.notEqual(first.token.split('#')[0],renamed.token.split('#')[0]);
+ assert.notEqual(first.token.split('-')[0],other.token.split('-')[0]);
+});
+
+test('BANNEDTOKEN stays case-bound through private history, restricted and full bans, and approval',async()=>{
+ const f=await fixture({bannedTokens:true});
+ const owner=QA_BAN_IDS[0],other=QA_BAN_IDS[1],caseId='qa-token-case',username='Roblox_QA';
+ const db=f.db, secret=f.env.BANNED_TOKEN_SECRET;
+ assert.equal((await f.game('policy',owner,{username})).body.state,'clear');
+ assert.deepEqual((await f.game('violation',owner,{username})).body.notices,[]);
+ assert.equal((await f.put(entry(0,'restricted_mode'))).code,200);
+ assert.equal((await f.game('policy',owner,{username})).body.ban.reference,undefined);
+ db.prepare(`INSERT INTO asc_violation_notices(id,lookup_hash,claimed_user_id,reason,moderator_message,created_unix,updated_unix)
+   VALUES(?, 'qa-hash',?,'QA notice','Private moderator message',?,?)`).run(caseId,owner,now,now);
+ assert.deepEqual((await f.game('violation',owner,{username})).body.notices,[]);
+ db.prepare(`INSERT INTO asc_verified_violation_subjects(notice_id,subject_user_id,identity_method,linked_unix,updated_unix)
+   VALUES(?,?,'trusted_game_server',?,?)`).run(caseId,owner,now,now);
+ const claims={userId:owner,username,universeId:universe};
+ for(const Authorization of ['Bearer USERCASETOKEN_01_example','Bearer ABC123','Bearer '+'z'.repeat(48)]){
+  const forged=await f.request(GAME_BANS+'violation',claims,{Authorization});
+  assert.equal(forged.code,401);
+  assert.equal(forged.body.notices,undefined);
+ }
+ assert.deepEqual((await f.game('violation',other,{username})).body.notices,[]);
+ const [a,b]=await Promise.all([f.game('violation',owner,{username}),f.game('violation',owner,{username})]);
+ const reference=a.body.notices[0].reference;
+ assert.match(reference,/^••••[A-F0-9]{2}$/);
+ assert.equal(b.body.notices[0].reference,reference);
+ const rows=db.prepare('SELECT * FROM asc_banned_token_references').all();
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].reference_suffix,reference.slice(-2));
+ assert.doesNotMatch(JSON.stringify(a.body),/BANNTOKEN_|tokenHash|token_hash|Roblox_QA/);
+ assert.match(rows[0].token_hash,/^[0-9a-f]{64}$/);
+ assert.equal((await f.game('violation',owner,{username:'Renamed_QA'})).body.notices[0].reference,reference);
+ const revision=db.prepare('SELECT request_id FROM asc_ban_v2_audit WHERE target_user_id=?').get(owner).request_id;
+ assert.equal(await linkBannedReference(f.env.DB,{userId:other,caseId,username,secret,revision}),false);
+ assert.equal(await linkBannedReference(f.env.DB,{userId:owner,caseId,username,secret,revision}),true);
+ assert.equal((await f.game('policy',owner)).body.ban.reference,reference);
+ assert.equal((await f.put(entry(0,'ban_ingame'))).code,200);
+ assert.equal((await f.game('policy',owner)).body.ban.reference,undefined);
+ const newRevision=db.prepare('SELECT request_id FROM asc_ban_v2_audit WHERE target_user_id=? ORDER BY rowid DESC').get(owner).request_id;
+ assert.equal(await linkBannedReference(f.env.DB,{userId:owner,caseId,username,secret,revision:newRevision}),true);
+ const banned=await f.game('policy',owner);
+ assert.equal(banned.body.state,'ban_ingame');
+ assert.equal(banned.body.ban.reference,reference);
+ assert.equal((await f.game('violation',owner,{username})).body.notices[0].reference,reference);
+ assert.equal((await f.game('authorize',owner,{feature:'editor'})).code,403);
+ assert.equal((await f.game('appeal',other,{noticeId:caseId,description:desc})).code,409);
+ const won=await f.game('appeal',owner,{noticeId:caseId,description:desc});
+ assert.equal(won.code,201);
+ db.prepare("UPDATE asc_feedback_cases SET status='approved',updated_unix=? WHERE id=?").run(now+1,won.body.id);
+ const approved=(await f.game('violation',owner,{username})).body.notices[0];
+ assert.equal(approved.appealStatus,'approved');
+ assert.equal(approved.canAppealAgain,false);
+ assert.equal((await f.game('appeal',owner,{noticeId:caseId,description:desc})).code,409);
+ db.prepare('DELETE FROM asc_ban_v2_verified_appeals WHERE case_id=?').run(won.body.id);
+ db.prepare('DELETE FROM asc_verified_violation_subjects WHERE notice_id=?').run(caseId);
+ assert.deepEqual((await f.game('violation',owner,{username})).body.notices,[]);
+ assert.equal((await f.game('policy',owner)).body.ban.reference,undefined);
+ assert.equal(db.prepare('SELECT count(*) AS n FROM asc_banned_token_references').get().n,0);
 });
