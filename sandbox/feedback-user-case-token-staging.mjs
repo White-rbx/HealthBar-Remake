@@ -153,7 +153,8 @@ export function createUserCaseTokenHandler({checkRateLimit,clock=()=>Math.floor(
     if(!hash||!await liveToken(db,hash))return respond({ok:false,error:'Token not found'},404);
     const sql='SELECT c.id,c.kind,c.status,c.topic,c.public_note,c.updated_unix,c.revision '
       +'FROM asc_user_case_links l JOIN asc_feedback_cases c ON c.id=l.case_id '
-      +"WHERE l.token_hash=? AND c.kind='feedback' AND c.removed=0 "
+      +'JOIN asc_user_case_tokens t ON t.token_hash=l.token_hash '
+      +"WHERE l.token_hash=? AND t.revoked_unix IS NULL AND c.kind='feedback' AND c.removed=0 "
       +'ORDER BY c.updated_unix DESC,c.id ASC LIMIT 30';
     const result=await db.prepare(sql).bind(hash).all();
     return respond({ok:true,tokenAccepted:true,identityVerified:false,
