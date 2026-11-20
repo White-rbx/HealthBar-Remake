@@ -2,8 +2,9 @@
 -- STAGING Case Delivery: periodic active-client polling; no local receipt persistence.
 -- No Production or original Arcsen is modified. No account-bound identity is inferred.
 local ver = {
-	sion = " UIs 7.3.58 STAGING Preview ",
+	sion = " UIs 7.3.59 STAGING Preview ",
 	logs = [[
+(:20/11/2026: QA Preview v7.3.59) Opt-in User Case Token with Remember Token OFF/ON; a non-semantic JSON filename under Arcsen Cache stores the bearer token only when ON, never Receipts/HWID. Rejoin uses the saved token to read only linked Feedback, if review-only API is deployed. Copy, import and double-confirm Revoke. No production changes.
 (:20/11/2026: QA Preview v7.3.58) Server-delivered Feedback cases render in Review/Approved/Denied/Flagged cards, read-only without a private Receipt; de-duplicate with session Receipt cases and never treat an unverified UserId as proof. Verified device session and deployed API are still required.
 (:20/11/2026: QA Preview v7.3.57) Remove redundant Check Server Cases and Link this case to my verified account UI. Use only Refresh and Check Server's case; keep automatic verified-session delivery as a backend gate, no client-claimed UserId disclosure. One-case Receipt restoration remains.
 (:19/11/2026: STAGING v7.3.56) Rejoin case missing: honest UI diagnosis when verified Case Delivery endpoint/session is not installed. Avoid presenting 0 locally linked cases as no server records; guide user to private Case ID + Receipt recovery. No Server/Production changes.
@@ -14181,6 +14182,178 @@ task.spawn(function()
     local CASE_STAGING_BASE = "https://arcscriptcenter-api-staging.kogpasan14.workers.dev"
     local privateReceipts = {} -- Session only, not getgenv(), Global Memory, logs or disk.
     local serverLinkedCases = {} -- Verified server response only; no credentials and no persistent cache.
+    local tokenLinkedCases = {} -- Separate from verified OAuth/Receipt cases.
+    local userCaseToken = nil
+    local rememberTokenEnabled = false
+    local caseTokenConsent = false -- Explicit opt-in for creation after Feedback succeeds.
+    -- Opaque file basename, not a security mechanism; other local code can read the
+    -- plaintext bearer secret. Keep it OUT of logs, UserId and any analytics.
+    local TOKEN_FILE = "ExperienceSettings/Arcsen/Cache/7f4b1c693ad082e5.json"
+    local function validUserCaseToken(value)
+        return type(value)=="string" and #value==69
+            and value:sub(1,17)=="USERCASETOKEN_01_"
+            and value:sub(18,60):match("^[A-Za-z0-9_%-]+$")~=nil
+            and value:sub(61,61)=="-"
+            and value:sub(62,69):match("^[0-9a-f]+$")~=nil
+    end
+    local function savedTokenExists()
+        if type(isfile)~="function" then return false end
+        local ok,exists=pcall(isfile,TOKEN_FILE)
+        return ok and exists==true
+    end
+    local function removeRememberedToken()
+        if not savedTokenExists() then return true end
+        if type(delfile)~="function" then
+            return false,"Cannot delete the saved token file in this runtime."
+        end
+        local ok=pcall(delfile,TOKEN_FILE)
+        if not ok or savedTokenExists() then
+            return false,"Could not remove the saved token. Keep it private."
+        end
+        return true
+    end
+    local function storeRememberedToken()
+        if not validUserCaseToken(userCaseToken) then
+            return false,"No valid User Case Token in this session."
+        end
+        if type(writefile)~="function" or type(makefolder)~="function" then
+            return false,"File storage unavailable; copy the token privately instead."
+        end
+        for _,folder in ipairs({"ExperienceSettings","ExperienceSettings/Arcsen","ExperienceSettings/Arcsen/Cache"}) do
+            local exists=false
+            if type(isfolder)=="function" then
+                local ok,result=pcall(isfolder,folder)
+                exists=ok and result==true
+            end
+            if not exists then
+                local ok=pcall(makefolder,folder)
+                if not ok and type(isfolder)=="function" then
+                    local check,nowExists=pcall(isfolder,folder)
+                    if not check or not nowExists then
+                        return false,"Cannot create the local token folder."
+                    end
+                elseif not ok then
+                    return false,"Cannot create the local token folder."
+                end
+            end
+        end
+        local ok,encoded=pcall(s.HttpService.JSONEncode,s.HttpService,{v=1,t=userCaseToken})
+        if not ok or type(encoded)~="string" then return false,"Could not encode token JSON." end
+        local wrote=pcall(writefile,TOKEN_FILE,encoded)
+        if not wrote then return false,"Could not save token JSON." end
+        return true
+    end
+    local function loadRememberedToken()
+        if not savedTokenExists() or type(readfile)~="function" then return false end
+        local ok,bytes=pcall(readfile,TOKEN_FILE)
+        if not ok or type(bytes)~="string" or #bytes>256 then return false end
+        local parsed,data=pcall(s.HttpService.JSONDecode,s.HttpService,bytes)
+        if not parsed or type(data)~="table" or data.v~=1
+            or not validUserCaseToken(data.t) then return false end
+        userCaseToken=data.t
+        rememberTokenEnabled=true
+        return true
+    end
+    loadRememberedToken()
+    local updateTokenPanel = function() end
+    local function tokenPost(action,payload)
+        local endpoints={
+            create="/api/v1/client/user-case-token/create",
+            attach="/api/v1/client/user-case-token/attach",
+            list="/api/v1/client/user-case-token/list",
+            revoke="/api/v1/client/user-case-token/revoke"
+        }
+        local path=endpoints[action]
+        if not path then return nil,"Invalid Token action." end
+        local requestFn=arcGetSuncRequest()
+        if type(requestFn)~="function" then return nil,"HTTP request capability unavailable." end
+        local ok,body=pcall(s.HttpService.JSONEncode,s.HttpService,payload)
+        if not ok or type(body)~="string" or #body>4096 then return nil,"Invalid Token payload." end
+        local sent,response=pcall(requestFn,{
+            Url=CASE_STAGING_BASE..path,Method="POST",Body=body,Timeout=15,
+            Headers={["Content-Type"]="application/json",["Accept"]="application/json"}
+        })
+        if not sent or type(response)~="table" then return nil,"Token network error." end
+        local code=tonumber(response.StatusCode or response.Status or 0) or 0
+        local raw=response.Body or response.body
+        if type(raw)~="string" or #raw>65536 then return nil,"Invalid Token server reply." end
+        local parsed,data=pcall(s.HttpService.JSONDecode,s.HttpService,raw)
+        if not parsed or type(data)~="table" then return nil,"Invalid Token server JSON." end
+        if code<200 or code>=300 or data.ok~=true then
+            return nil,"HTTP "..tostring(code)..": "..tostring(data.error or "Case Token service unavailable.")
+        end
+        return data
+    end
+    local function acceptTokenCases(data)
+        if type(data)~="table" or data.tokenAccepted~=true
+            or data.identityVerified~=false or data.delivery~="user-case-token"
+            or type(data.cases)~="table" then return false end
+        local nextCases={}
+        for i=1,math.min(#data.cases,30) do
+            local item=data.cases[i]
+            if type(item)=="table" and item.kind=="feedback"
+                and type(item.id)=="string" and #item.id==36
+                and item.id:match("^[0-9a-fA-F%-]+$")
+                and ({reviewing=true,approved=true,denied=true,violation=true})[item.status]
+                and type(item.topic)=="string" and type(item.publicNote)=="string" then
+                local prior=tokenLinkedCases[item.id]
+                nextCases[item.id]={
+                    id=item.id,kind="feedback",status=item.status,
+                    topic=item.topic:sub(1,50),publicNote=item.publicNote:sub(1,800),
+                    updatedAt=tonumber(item.updatedAt) or 0,revision=tonumber(item.revision) or 0,
+                    serverLinked=true,tokenLinked=true,verified=true,
+                    unread=(prior and prior.unread==true)
+                        or (prior~=nil and (prior.status~=item.status or prior.publicNote~=item.publicNote)),
+                    lastCheckedAt=os.time()
+                }
+            end
+        end
+        tokenLinkedCases=nextCases
+        task.defer(updateCaseCounters)
+        return true
+    end
+    local function refreshTokenCases()
+        if not validUserCaseToken(userCaseToken) then return false,"No valid User Case Token." end
+        local data,err=tokenPost("list",{token=userCaseToken})
+        if not data then
+            tokenLinkedCases={}
+            task.defer(updateCaseCounters)
+            return false,err
+        end
+        if not acceptTokenCases(data) then return false,"Rejected malformed token-case response." end
+        return true
+    end
+    local function registerFeedbackWithToken(item)
+        if not caseTokenConsent or not item or item.kind~="feedback"
+            or type(item.receipt)~="string" then return end
+        local data,err
+        if validUserCaseToken(userCaseToken) then
+            data,err=tokenPost("attach",{token=userCaseToken,id=item.id,receipt=item.receipt})
+        else
+            data,err=tokenPost("create",{id=item.id,receipt=item.receipt,consent=true})
+            if data and validUserCaseToken(data.token) then
+                userCaseToken=data.token
+            elseif data then
+                data=nil
+                err="Token creation response was invalid."
+            end
+        end
+        if not data then
+            updateTokenPanel("Feedback submitted, but Token was NOT linked: "..tostring(err or "Service unavailable")..". Keep Case ID + Receipt.")
+            return
+        end
+        local persisted=true
+        if rememberTokenEnabled then
+            local saved,saveErr=storeRememberedToken()
+            persisted=saved
+            if not saved then updateTokenPanel("Token linked, but local save failed: "..tostring(saveErr)) end
+        end
+        local listed,listErr=refreshTokenCases()
+        if persisted then
+            updateTokenPanel(listed and "Token linked. Copy your token and keep it private."
+                or "Token linked; case list unavailable: "..tostring(listErr))
+        end
+    end
     local updateCaseCounters = function() end -- Assigned after Feedback subcategory UI is created.
     loc.API.ArcScriptCenterCaseSession = {LastCaseId=nil, Count=0, Transport="STAGING only"}
 
