@@ -98,3 +98,30 @@ backup/restore attempts as part of this UI-only review.
 ## 2026-11-20 — No extra verify/link buttons
 
 Removed the separate Check Server Cases button and the Link this case to my verified account form from `sandbox/Arcsen-Preview.lua`. The UI now uses only `Refresh and Check Server's case` to attempt a server poll, and retains the existing private `ID + Receipt` restoration flow for an individually owned case. The backend's review-only `/api/v1/client/cases/link` contract remains in GitHub but is NOT exposed through the Preview UI or deployed. **Do not** bypass account authorization by trusting a client-supplied Roblox UserId: any client can claim another number. A future frictionless client can avoid asking for verification on every refresh only after a trusted server session has already been established. No Worker/D1 migrations or Production changes were made.
+
+## 2026-11-20 — Verified delivery now reaches native Feedback case cards (Preview only)
+
+The Preview sandbox/Arcsen-Preview.lua now converts a successful, trusted
+POST /api/v1/client/cases/poll response into read-only Feedback case cards
+under Review, Approved, Denied, and Flagged (Policy). Previously, the response
+was shown as text in Server Case Delivery and was NOT placed in these groups.
+The cards display public status/topic/note only; without a private Receipt,
+View Status / Review History is disabled. A case with both a private session
+Receipt and a trusted server link displays only once (Receipt-backed first).
+Missing or expired verified device tokens remove server-linked cards.
+No on-device Receipt persistence or account-verification button was added.
+
+THIS IS NOT YET AUTOMATIC REJOIN RESTORE. At review time the live STAGING Worker
+does not have the /api/v1/client/cases/poll route, and the native Preview
+does not have a trusted GetVerifiedCaseSessionToken provider. Thus the new
+cards cannot yet receive live Server data. Source checks are not native QA.
+
+Username + UserId can be matched against Roblox public directory data
+for consistency, but this does NOT prove account ownership. Without a
+pre-existing trusted session, the only supported private old-case recovery
+remains the private ID + Receipt. Do not disclose moderator notes, case IDs,
+or private history from an unverified claimed UserId or Username.
+
+Production, live STAGING Worker, both live D1 databases, and Dashboard are
+unchanged. PR remains Draft. Server issuer/route and real native Rejoin QA
+are separate pending release gates.
