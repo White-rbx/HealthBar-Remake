@@ -40,13 +40,15 @@ local function lockButton(button)
             interactable = button.Interactable,
             active = button.Active,
             autoColor = button.AutoButtonColor,
-            color = button.BackgroundColor3
+            color = button.BackgroundColor3,
+            imageColor = button:IsA("ImageButton") and button.ImageColor3 or nil
         }
     end
     button.Interactable = false
     button.Active = false
     button.AutoButtonColor = false
     button.BackgroundColor3 = disabledColor
+    if button:IsA("ImageButton") then button.ImageColor3 = disabledColor end
 end
 
 local function watch(container)
@@ -83,6 +85,9 @@ function controller.stop()
                 button.Active = state.active
                 button.AutoButtonColor = state.autoColor
                 button.BackgroundColor3 = state.color
+                if button:IsA("ImageButton") and state.imageColor then
+                    button.ImageColor3 = state.imageColor
+                end
             end)
         end
     end
