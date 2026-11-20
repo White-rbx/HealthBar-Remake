@@ -14859,7 +14859,8 @@ task.spawn(function()
                                 tostring(case.topic or ""),tostring(case.publicNote or ""),
                                 tostring(case.updatedAt or ""),tostring(case.unread == true),
                                 tostring(case.lastCheckedAt or ""),
-                                tostring(case.serverLinked == true)
+                                tostring(case.serverLinked == true),
+                                tostring(case.tokenLinked == true)
                             },"\0")
                         end
                         local signature = table.concat(signatures,"\1")
@@ -14929,7 +14930,9 @@ task.spawn(function()
                             view.Name = record.serverLinked and "ServerLinkedCaseReadOnly" or "OpenVerifiedCase"
                             view.Position = UDim2.fromOffset(8,153)
                             view.Size = UDim2.new(1,-16,0,26)
-                            view.Text = record.serverLinked and "Server-confirmed (read-only)" or "View status / review history"
+                            view.Text = record.tokenLinked and "Token-linked case (read-only)"
+                                or record.serverLinked and "Server-confirmed (read-only)"
+                                or "View status / review history"
                             view.TextSize = 11
                             view.TextColor3 = Color3.new(1,1,1)
                             view.BackgroundColor3 = Color3.fromRGB(51,88,120)
@@ -15482,6 +15485,13 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 task.spawn(function()
                     while gate.active and serverCasesFrame.Parent do
                         pcall(pollVerifiedServerCases,false)
+                        if validUserCaseToken(userCaseToken) then
+                            local ok,err=refreshTokenCases()
+                            if not ok then
+                                updateTokenPanel("Saved Token could not sync: "..tostring(err)
+                                    ..". Your Feedback cases may still exist.")
+                            end
+                        end
                         task.wait(45)
                     end
                 end)
@@ -15540,6 +15550,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     refreshCaseNote.Text="Checking session cases and requesting Server Case Delivery..."
                     task.spawn(function()
                         pcall(pollVerifiedServerCases,true)
+                        if validUserCaseToken(userCaseToken) then
+                            local linked,linkErr=refreshTokenCases()
+                            updateTokenPanel(linked and "Token-linked Feedback refreshed."
+                                or "Token case refresh failed: "..tostring(linkErr))
+                        end
                         local ok,result,errorMessage=pcall(refreshKnownFeedbackCases)
                         if refreshCaseButton.Parent then
                             refreshCaseButton.Interactable=true
@@ -15553,6 +15568,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                     or Color3.fromRGB(169,222,192)
                                 refreshCaseNote.Text=(result.total==0
                                         and type(loc.API.GetVerifiedCaseSessionToken)~="function"
+                                        and next(tokenLinkedCases)==nil
                                         and "No case loaded. Server sync unavailable; use Restore previous case (ID + Receipt)."
                                         or ("Checked "..tostring(result.checked).."/"..tostring(result.total)..
                                     " | Closed: "..tostring(result.closed)..
@@ -15591,6 +15607,15 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         if item.serverLinked == true and item.verified == true
                             and item.kind == "feedback" and buckets[item.status]
                             and not (own and own.verified == true and type(own.receipt) == "string") then
+                            table.insert(buckets[item.status],item)
+                        end
+                    end
+                    for id,item in pairs(tokenLinkedCases) do
+                        local own=privateReceipts[id]
+                        if item.tokenLinked == true and item.verified == true
+                            and item.kind == "feedback" and buckets[item.status]
+                            and not (own and own.verified == true and type(own.receipt) == "string")
+                            and serverLinkedCases[id]==nil then
                             table.insert(buckets[item.status],item)
                         end
                     end
@@ -15640,6 +15665,19 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             end
                         end
                     end
+                    for id,item in pairs(tokenLinkedCases) do
+                        local own=privateReceipts[id]
+                        if item.tokenLinked and item.verified and item.kind=="feedback"
+                            and not (own and own.verified and type(own.receipt)=="string")
+                            and serverLinkedCases[id]==nil then
+                            known=true
+                            local status=caseTrim(item.status)
+                            if counts[status]~=nil then
+                                counts[status]+=1
+                                if item.unread then unread[status]+=1 end
+                            end
+                        end
+                    end
                     countReview(known and counts.reviewing or nil,known and unread.reviewing or nil)
                     countApproved(known and counts.approved or nil,known and unread.approved or nil)
                     countDenied(known and counts.denied or nil,known and unread.denied or nil)
@@ -15656,6 +15694,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         end
                     end
                     for _,item in pairs(serverLinkedCases) do
+                        if item.kind=="feedback" and item.status==key then
+                            item.unread=false
+                        end
+                    end
+                    for _,item in pairs(tokenLinkedCases) do
                         if item.kind=="feedback" and item.status==key then
                             item.unread=false
                         end
@@ -15824,6 +15867,13 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                             " Roblox UserId included for Admin search (unverified)."..
                                             " Case ID: "..item.id.." | Keep the receipt private."
                                         task.defer(showSubmittedFeedback)
+                                        -- Submission success is independent of Token issuance.
+                                        -- Opt-in Token creation/attachment is a separate call.
+                                        if caseTokenConsent then
+                                            task.spawn(function()
+                                                registerFeedbackWithToken(item)
+                                            end)
+                                        end
                                     else
                                         notice.Text=err or "Submission not completed."
                                         if type(err)=="string" and err:find("Tap Submit again",1,true) then
