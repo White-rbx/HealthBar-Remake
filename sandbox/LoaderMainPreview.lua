@@ -777,7 +777,14 @@ end
 
 local warningKey = "ArcScriptCenterBanPolicy"
 local requestedWarning, deliveredWarning = nil, nil
+-- SetUp must finish before a policy WarningUI is displayed.
+local setupWarningReady = false
+local pendingPolicyWarning = nil
 local function syncPolicyWarning(status)
+    if not setupWarningReady then
+        pendingPolicyWarning = status
+        return
+    end
     -- Unknown never means clear. The policy UI handles connectivity separately.
     if not status then return end
     local item = status.notice or status.ban
@@ -1093,6 +1100,15 @@ do
         end
         task.wait(0.05)
     until false
+end
+
+-- SetUp has finished fading and its ScreenGui is gone.
+-- Deliver only the latest queued policy warning, before Loader Rejoiner.
+setupWarningReady = true
+if pendingPolicyWarning then
+    local latest = pendingPolicyWarning
+    pendingPolicyWarning = nil
+    syncPolicyWarning(latest)
 end
 
 -- =========================================================
