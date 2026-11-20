@@ -14178,6 +14178,8 @@ task.spawn(function()
     local statusLabel
     local retry
     local revealAppealDraft = function() end
+    local trustedBanClient = env and env.__ASC_BAN_V2_CLIENT
+    local syncVerifiedViolations = function() end
     -- Stage 16.35: Feedback and Appeal only. Never reuse the production
     -- Cloud/Policy URL or send administrative tokens from the client.
     local CASE_STAGING_BASE = "https://arcscriptcenter-api-staging.kogpasan14.workers.dev"
@@ -17410,6 +17412,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                     -- Declare before callbacks so Luau captures the local, not a nil global.
                     local appealState={busy=false}
+                    local verifiedAppealId
+                    local verifiedAppealEnabled = false
                     appealInput:GetPropertyChangedSignal("Text"):Connect(function()
                         local n=utf8.len(appealInput.Text) or #appealInput.Text
                         characterCounter.Text = "Character "..n.."/5000"
@@ -17428,9 +17432,13 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         submitButton.Text="Submit"
                         submissionNote.Visible=true
                         if item then
-                            setAppealCase(item.id)
-                            submissionNote.Text="Appeal sent to STAGING. Case ID: "..item.id..
-                                " | reviewing | UserId claim is not identity verification. Keep receipt private."
+                            if trustedBanClient and trustedBanClient.isolatedQA then
+                                submissionNote.Text="Appeal sent to isolated QA. Check its status in Violation."
+                            else
+                                setAppealCase(item.id)
+                                submissionNote.Text="Appeal sent to STAGING. Case ID: "..item.id..
+                                    " | reviewing. Keep the receipt private."
+                            end
                         else
                             submissionNote.Text=err or "Submission not completed."
                             if type(err)=="string" and err:find("Tap Submit again",1,true) then
@@ -17444,6 +17452,40 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end
                     submitButton.MouseButton1Click:Connect(function()
                         local description=appealInput.Text or ""
+                        if trustedBanClient then
+                            if not verifiedAppealEnabled or not verifiedAppealId or appealState.busy then return end
+                            local valid, why = caseValidate("appeal", "Violation appeal", description)
+                            if not valid then appealDone(nil,why,false);return end
+                            if appealState.confirm ~= description or os.clock() > (appealState.confirmUntil or 0) then
+                                appealState.confirm, appealState.confirmUntil = description, os.clock() + 15
+                                appealDone(nil,"Tap Submit again within 15 seconds to send your verified Appeal.",false)
+                                return
+                            end
+                            appealState.confirm, appealState.busy = nil, true
+                            local target = verifiedAppealId
+                            submitButton.Active, submitButton.Interactable = false, false
+                            appealInput.TextEditable = false
+                            submitButton.Text = "Sending verified Appeal..."
+                            task.spawn(function()
+                                local response = trustedBanClient.appeal(target, description)
+                                local item, why
+                                if response and response.ok == true then
+                                    if trustedBanClient.isolatedQA then
+                                        item = {id=response.id}
+                                    else
+                                        item, why = caseRecord("appeal",response)
+                                    end
+                                else
+                                    why = response and response.code == "appeal_ineligible"
+                                        and "This case cannot be appealed again." or "Could not confirm submission. Refresh to check its status."
+                                end
+                                appealState.busy = false
+                                submitButton.Interactable = not item and verifiedAppealEnabled
+                                appealDone(item,why,not item)
+                                syncVerifiedViolations()
+                            end)
+                            return
+                        end
                         -- The notice ID is a local preview unless verified through a separate API.
                         -- Do not pass arbitrary preview data as evidence or an authenticated ID.
                         local appealTopic="Violation appeal"
@@ -17491,6 +17533,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     }
                     function controller.SetExpanded(show)
                         controllerSetExpanded(show)
+                    end
+                    function controller.SetVerifiedAppeal(id, enabled)
+                        if verifiedAppealId ~= id or not enabled then appealState.confirm = nil end
+                        verifiedAppealId, verifiedAppealEnabled = id, enabled == true
+                        submitButton.Interactable = verifiedAppealEnabled and not appealState.busy
                     end
                     function controller.SetAppealExpanded(show)
                         controllerSetAppealExpanded(show)
@@ -17659,6 +17706,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     violationCategoryExpanded=false
                     violationCategory.Button.Text="Open"
                     violationNotice.Root.Visible=false
+                    violationNotice.SetVerifiedAppeal(nil,false)
                     violationNotice.SetAppealExpanded(false)
                     violationNotice.SetExpanded(false)
                     task.defer(violationLayoutSync)
@@ -17709,6 +17757,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     violationNotice.OpenAppeal.Active=canAppeal
                     violationNotice.Submit.Active=canAppeal
                     violationNotice.Submit.Visible=canAppeal
+                    violationNotice.SetVerifiedAppeal(details.id,canAppeal)
                     for _,section in ipairs({violationReviewRow,violationApprovedRow,violationDeniedRow}) do
                         local selected=section==config.row
                         section.Inside.Visible=selected
@@ -17750,7 +17799,37 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 openAppealDraft=function(_)
                     hideViolationNotice()
                 end
-                -- No invocation: no verified account-bound history yet.
+                -- History is requested only through the owner-authorized Roblox server.
+                local historyRequest = 0
+                local lastNoticeKey
+                if trustedBanClient then
+                    syncVerifiedViolations = function()
+                        historyRequest += 1
+                        local generation = historyRequest
+                        local state = env.__ASC_BAN_V2_STATE
+                        if not state or state.state == "ban_ingame" then
+                            lastNoticeKey = nil
+                            hideViolationNotice()
+                            return
+                        end
+                        task.spawn(function()
+                            local notices = trustedBanClient.history()
+                            if generation ~= historyRequest or not gate.active then return end
+                            if not notices or #notices == 0 then
+                                lastNoticeKey = nil
+                                hideViolationNotice()
+                                return
+                            end
+                            local details = notices[1]
+                            if type(details) ~= "table" then hideViolationNotice();return end
+                            local lastEvent = details.history and details.history[1]
+                            local key = table.concat({tostring(details.id),tostring(details.appealStatus),
+                                tostring(details.canAppealAgain),tostring(lastEvent and lastEvent.createdAt)},":")
+                            if key == lastNoticeKey then return end
+                            lastNoticeKey = renderAuthenticatedViolation(details,true) and key or nil
+                        end)
+                    end
+                end
 
             end,
             function(_,event)
@@ -17852,15 +17931,19 @@ More information in discord you can find the link at About or on the ScriptBlox/
         gate.wasModeRestricted = modeRestricted
         -- No authenticated violation attached to this advisory policy.
         -- Keep the notice hidden even if the signed UI hint says "banned".
-        if type(loc.API.UpdateArcScriptCenterViolationBanState) == "function" then
+        if trustedBanClient then
+            syncVerifiedViolations()
+        elseif type(loc.API.UpdateArcScriptCenterViolationBanState) == "function" then
             loc.API.UpdateArcScriptCenterViolationBanState(false)
         end
         gate.status = status
         gate.lastError = reason
         gate.lastChecked = os.time()
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "Signed UI Policy: " .. tostring(status) ..
-                (gate.policyValid and " | verified signature" or " | verification pending") ..
+            local title = trustedBanClient and "Roblox Server Policy: " or "Signed UI Policy: "
+            local proof = gate.policyValid and (trustedBanClient and " | server verified" or " | verified signature")
+                or " | verification pending"
+            statusLabel.Text = title .. tostring(status) .. proof ..
                 "\n" .. tostring(reason or "Client identity is unverified; policy is a UI hint only."):sub(1,125)
         end
     end
@@ -17895,6 +17978,16 @@ More information in discord you can find the link at About or on the ScriptBlox/
     local function check()
         if not run or gate.busy then return false end
         gate.busy = true
+        if trustedBanClient then
+            local status = env.__ASC_BAN_V2_STATE
+            gate.policyValid = status ~= nil
+            gate.identityVerified = status ~= nil
+            local allowed = status and status.state == "clear" and not env.__ES_RESTRICTED_MODE
+            apply(allowed and "not_banned" or (status and "banned" or "unknown"),
+                status and "Checked by the Roblox game server." or "Trusted Roblox server status unavailable.")
+            gate.busy = false
+            return status ~= nil
+        end
         local uid = player and tostring(player.UserId) or ""
         if not uid:match("^[1-9]%d*$") then
             gate.policyValid = false

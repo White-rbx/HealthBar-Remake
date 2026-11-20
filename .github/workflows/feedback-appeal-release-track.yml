@@ -6,6 +6,10 @@ on:
     branches: [stage16-87-trust-boundary-sandbox]
     paths:
       - 'sandbox/feedback-*'
+      - 'sandbox/ban-v2-*'
+      - 'sandbox/Ban*Preview.lua'
+      - 'sandbox/ArcScriptCenterBanBridge.server.lua'
+      - 'migrations/ban_v2_full_integration_*'
       - 'sandbox/LoaderMainPreview.lua'
       - 'sandbox/ExperienceSettings-SetUp-Preview.lua'
       - 'sandbox/Arcsen-Preview.lua'
@@ -66,6 +70,8 @@ jobs:
         run: node --test sandbox/arcscriptcenter-ban-selection-duration.test.mjs
       - name: Ban Schema v2 migration and safe GitHub Lua patch tests
         run: node --test sandbox/managed-ban-schema-v2.test.mjs
+      - name: Banned Check Center v2 — SQL, permissions, appeal, SHA and Pages
+        run: node --test sandbox/ban-v2-integration.test.mjs
       - name: Original STAGING API Worker Ban v1 and v2 guarded compatibility patch
         run: node --test sandbox/ban-v2-main-worker-compat-patcher.test.mjs
       - name: Ban v2 isolated QA Admin API authentication and Save tests

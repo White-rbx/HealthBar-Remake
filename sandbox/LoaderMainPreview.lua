@@ -27,6 +27,18 @@ if bootEnv.__ES_BOOTSTRAP_BUSY then
     return
 end
 bootEnv.__ES_BOOTSTRAP_BUSY = true
+-- ASC BAN V2 BOOTSTRAP BEGIN
+bootEnv.__ASC_BAN_POLICY_ERROR = nil
+bootEnv.__ASC_BAN_V2_STATE = nil
+bootEnv.__ASC_BAN_V2_CLIENT = nil
+if bootEnv.__ASC_BAN_V2_PREVIEW then
+    local okClient, client = pcall(function()
+        local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/BanPolicyClientPreview.lua"
+        return assert(loadstring(game:HttpGet(url)))()
+    end)
+    if okClient then bootEnv.__ASC_BAN_V2_CLIENT = client end
+end
+-- ASC BAN V2 BOOTSTRAP END
 
 -- =========================================
 -- RESET
@@ -83,6 +95,7 @@ repeat
 until
 	getgenv().__ES_READY
     or getgenv().__ES_BANNED == true
+    or bootEnv.__ASC_BAN_POLICY_ERROR == true
 	or getgenv()[string.char(95, 120, 55, 95, 113)]
 	or tick() - start >= timeout
 
@@ -104,6 +117,12 @@ end
 -- =========================================
 -- BAN CHECK
 -- =========================================
+
+if bootEnv.__ASC_BAN_POLICY_ERROR == true then
+    warn("[ES] Ban policy unavailable. Loader blocked pending a verified response.")
+    bootEnv.__ES_BOOTSTRAP_BUSY = nil
+    return
+end
 
 if getgenv().__ES_BANNED == true or getgenv()[string.char(95, 120, 55, 95, 113)] then
 
@@ -1512,9 +1531,16 @@ if sata then sata:Destroy() end
 -- Ban in-game never reaches here. Restricted Mode deliberately loads MAIN
 -- while skipping the Editor/Search/RecommendedScript modules.
 local isRestrictedMode = bootEnv.__ES_RESTRICTED_MODE == true
+local toolBase = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/"
+local loadedTools = {}
+local function loadTool(name)
+    if loadedTools[name] then return end
+    assert(loadstring(game:HttpGet(toolBase .. name)))()
+    loadedTools[name] = true
+end
 if not isRestrictedMode then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/RecommendedScript.lua"))()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Editor.lua"))()
+    loadTool("RecommendedScript.lua")
+    loadTool("Editor.lua")
 end
 
 -- Apply the Restricted UI lock BEFORE Arcsen can create chat controls.
@@ -1543,8 +1569,67 @@ loadstring(game:HttpGet(arcsenUrl))()
 print("[ Arcsen ] Successful loaded.")
 
 if not isRestrictedMode then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Search.lua"))()
+    loadTool("Search.lua")
     print("[ Search ] Successful loaded.")
+end
+
+if bootEnv.__ASC_BAN_V2_CLIENT then
+    local client = bootEnv.__ASC_BAN_V2_CLIENT
+    local display = asrt:FindFirstAncestorOfClass("ScreenGui") or asrt.Parent.Parent
+    local displayProperty = display:IsA("ScreenGui") and "Enabled" or "Visible"
+    local hiddenForPolicy, priorDisplay = false, true
+    local function showBlocked(message)
+        if not hiddenForPolicy then priorDisplay = display[displayProperty] end
+        display[displayProperty], hiddenForPolicy = false, true
+        warn(message)
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "ExperienceSettings", Text = message, Duration = 8,
+            })
+        end)
+    end
+    -- The Loader keeps the original Restricted gate until the server confirms clear.
+    -- Tightening a fully loaded session blocks the GUI pending a fresh bootstrap.
+    local needsRejoin = false
+    task.spawn(function()
+        while asrt.Parent and bootEnv.__ASC_BAN_V2_CLIENT == client do
+            local before = bootEnv.__ASC_BAN_V2_STATE
+            task.wait(before and math.clamp(before.receivedAt + before.nextCheckAt - before.checkedAt - os.clock(), 2, 30) or 5)
+            if not asrt.Parent or bootEnv.__ASC_BAN_V2_CLIENT ~= client then break end
+            local status = client.policy()
+            bootEnv.__ASC_BAN_V2_STATE = status
+            if not status then
+                if not hiddenForPolicy then showBlocked("Ban status unavailable. Waiting for the server.") end
+            elseif status.state == "ban_ingame" or (status.state == "restricted_mode" and not isRestrictedMode) then
+                if not needsRejoin then showBlocked("Your access changed. Rejoin to load the correct restriction screen.") end
+                needsRejoin = true
+            elseif not needsRejoin then
+                if status.state == "clear" and isRestrictedMode then
+                    bootEnv.__ES_RESTRICTED_MODE = false
+                    bootEnv.__ES_BAN_SELECTION, bootEnv.__ES_BAN_DURATION = nil, nil
+                    bootEnv.__ES_BAN_SELECTION_ASSIGNED = false
+                    local okRestore = pcall(function()
+                        loadTool("RecommendedScript.lua")
+                        loadTool("Editor.lua")
+                        loadTool("Search.lua")
+                    end)
+                    if okRestore then
+                        isRestrictedMode = false
+                        local controller = bootEnv.ESRestrictedTopbarController
+                        if controller then controller.stop() end
+                    else
+                        needsRejoin = true
+                        showBlocked("Status checked. Rejoin to restore all ExperienceSettings tools.")
+                    end
+                end
+                if not needsRejoin and hiddenForPolicy then
+                    display[displayProperty], hiddenForPolicy = priorDisplay, false
+                end
+            end
+            local gate = bootEnv.ArcScriptPolicyGate
+            if gate and gate.refresh then gate.refresh() end
+        end
+    end)
 end
 
 -- Anniversary (The event has ended.)

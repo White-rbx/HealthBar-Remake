@@ -24,7 +24,7 @@ function exactKeys(value,allowed){
   Object.keys(value).every(k=>allowed.includes(k))&&
   allowed.every(k=>Object.hasOwn(value,k));
 }
-function timeICT(t){
+export function timeICT(t){
  if(t==='')return null;
  if(typeof t!=='string')return null;
  const m=/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/.exec(t);

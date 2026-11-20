@@ -31,7 +31,7 @@ test('new Ban Selection JS is served as first-party no-store JavaScript',async()
  assert.match(r.headers.get('content-type')||'',/javascript/i);
  assert.equal(r.headers.get('X-Content-Type-Options'),'nosniff');
  const js=await r.text();
- for(const word of ['Ban Selection','Ban Duration','ban_ingame','restricted_mode','Temporary','Permanent','Selection not set','preventDefault','stopImmediatePropagation'])
+ for(const word of ['Ban Selection','Ban Duration','ban_ingame','restricted_mode','Temporary','Permanent','Choose Ban Selection','preventDefault','stopImmediatePropagation'])
   assert.ok(js.includes(word),word);
  assert.doesNotMatch(js,/gh[pousr]_[A-Za-z0-9]{25,}|sk-[A-Za-z0-9]{24,}/);
 });

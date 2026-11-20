@@ -505,6 +505,25 @@ if not banData then
         banData = _0x15(_0x13)
     end
 end
+-- ASC BAN V2 SETUP BEGIN
+local qaEnv = getgenv()
+if qaEnv.__ASC_BAN_V2_PREVIEW then
+    local client = qaEnv.__ASC_BAN_V2_CLIENT
+    local status = client and client.policy()
+    qaEnv.__ASC_BAN_V2_STATE = status
+    qaEnv.__ASC_BAN_POLICY_ERROR = status == nil
+    if status and status.ban then
+        local item = status.ban
+        banData = {
+            Selection = item.selection, SelectionAssigned = item.legacy ~= true,
+            Duration = item.duration, Reason = item.reason, Description = item.description,
+            StartAt = item.startAt, ExpiresAt = item.expiresAt,
+        }
+    elseif status then
+        banData = nil
+    end
+end
+-- ASC BAN V2 SETUP END
 local isBannedUser = banData ~= nil
 local anim = {
 	0,85215834651365,113081160999318,110302272078310,74005522254669,74901110508812,
@@ -587,6 +606,20 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 -- =========================
 
 getgenv().__ES_READY = false
+-- ASC BAN V2 UNAVAILABLE BEGIN
+if qaEnv.__ASC_BAN_POLICY_ERROR == true then
+    qaEnv.ES = nil
+    if twarn then
+        twarn.Text = "Could not verify your restriction status with the server. Rejoin the approved test experience to retry."
+        CanBar.Visible = false
+    end
+    if btnBar then
+        btnBar.Visible = true
+        btnBar.Text = "Close"
+    end
+    return
+end
+-- ASC BAN V2 UNAVAILABLE END
 -- These are client-side presentation signals, NOT server authorization.
 getgenv().__ES_BAN_SELECTION = banData and banData.Selection or nil
 getgenv().__ES_BAN_DURATION = banData and banData.Duration or nil
@@ -613,6 +646,7 @@ if banData and getgenv().__ES_BANNED then
                 .. "Duration: <b>" .. escapeText(banData.Duration) .. "</b>\n"
                 .. "Reason: <mark color='rgb(255,85,85)' transparency='0.5'>" .. escapeText(banData.Reason) .. "</mark>\n"
                 .. "Description: <font size='10'>" .. escapeText(banData.Description) .. "</font>\n"
+                .. (banData.StartAt and ("From: " .. os.date("!%Y-%m-%d %H:%M", banData.StartAt + 7 * 3600) .. " ICT\n") or "")
                 .. "Until: <b>" .. escapeText(expiresText) .. "</b>"
             twarn.TextYAlignment = Enum.TextYAlignment.Top
             twarn.AutomaticSize = Enum.AutomaticSize.Y

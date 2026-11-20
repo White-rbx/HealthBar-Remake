@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const PREVIEW='https://stage16-54-verified-unlock.arcscriptcenter-dashboard-staging.pages.dev';
+const ARCHIVE='https://1a395835.arcscriptcenter-dashboard-staging.pages.dev';
 const QA_API='https://arcscriptcenter-ban-v2-qa.kogpasan14.workers.dev/api/v1/admin/bans/v2/qa';
 async function req(url,opts={}){
  const ctl=new AbortController(),timeout=setTimeout(()=>ctl.abort(),12000);
@@ -22,8 +23,9 @@ test('first-party Ban Selection addon includes QA Save/Load, same Unlock, and no
  assert.equal(r.status,200);
  assert.match(r.headers.get('content-type')||'',/javascript/);
  const js=await r.text();
- for(const s of ['Save to QA Sandbox','Load QA Bans','banQaOnlyPanel','banQaRecords',
-  'sessionKey=keyField.value.trim()','QA ONLY','preventDefault','stopImmediatePropagation',
+ for(const s of ["Save '+label+' Ban","Load '+label+' Bans",'banV2Selection','banV2Duration',
+  "byId('banAdminKey').value.trim()",'/api/v1/admin/bans/v2/manage',
+  'expectedSha:sha','confirmed:true','preventDefault','stopImmediatePropagation',
   'arcscriptcenter-ban-v2-qa.kogpasan14.workers.dev']){
   assert.ok(js.includes(s),s);
  }
@@ -53,8 +55,8 @@ test('QA API CORS only allows existing approved origin',async()=>{
 });
 
 
-test('read-only Ban v1 to v2 Compatibility Preview button is served on live Pages',async()=>{
- const r=await req(PREVIEW+'/__asc1650/ban-mode.js');
+test('immutable rollback Preview still serves read-only v1 to v2 Compatibility',async()=>{
+ const r=await req(ARCHIVE+'/__asc1650/ban-mode.js');
  assert.equal(r.status,200);
  const js=await r.text();
  for(const word of ['Preview Ban v1 → v2','banPreviewBanV2','banV2CompatibilityResults',
@@ -68,4 +70,17 @@ test('read-only source compatibility HTTP route denies unauthenticated requests'
  const r=await req(url,{headers:{Origin:PREVIEW}});
  assert.equal(r.status,401,await r.text());
  assert.equal(r.headers.get('Cache-Control'),'no-store');
+});
+
+test('current Pages origin is allowed and the new writer still requires actual Admin authentication',async()=>{
+ const route='https://arcscriptcenter-ban-v2-qa.kogpasan14.workers.dev/api/v1/admin/bans/v2/manage';
+ const preflight=await req(route,{method:'OPTIONS',headers:{Origin:PREVIEW,'Access-Control-Request-Method':'POST'}});
+ assert.equal(preflight.status,204);
+ assert.equal(preflight.headers.get('Access-Control-Allow-Origin'),PREVIEW);
+ const wrong=await req(route,{headers:{Origin:PREVIEW,'X-Admin-Key':'synthetic-invalid-admin-key-for-ci-000000000000'}});
+ assert.equal(wrong.status,401);
+ const originalFeedback='https://arcscriptcenter-api-staging.kogpasan14.workers.dev/api/v1/admin/feedback/summary';
+ const unchanged=await req(originalFeedback,{headers:{Origin:PREVIEW,'X-Admin-Key':'synthetic-invalid-admin-key-for-ci-000000000000'}});
+ assert.equal(unchanged.status,401);
+ assert.equal(unchanged.headers.get('Access-Control-Allow-Origin'),PREVIEW);
 });

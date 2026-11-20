@@ -26,24 +26,20 @@ test('preview contains the real Loader.lua body, not the previous fake GUI fixtu
     assert.ok(!main.includes(mock), 'mock must be removed: '+mock);
 });
 
-test('real Loader source was reused faithfully with only preview-target substitutions', () => {
+test('preview extends the real Loader and keeps the reviewed bootstrap and main UI', () => {
   const prefix=main.slice(main.indexOf('-- Well 4.12 | v0.5.36'));
-  const scanFromStage=stage.replace(
-    'table.insert(queue, "'+previewUrl+'Loader-UI-BanMode-STAGING.lua")',
-    'table.insert(queue, "'+previewUrl+'LoaderMainPreview.lua")'
-  );
-  const protectedArcsen=scanFromStage.replace(
-    /local arcsenUrl = isRestrictedMode\s*\n\s*and "https:\/\/raw\.githubusercontent\.com\/White-rbx\/HealthBar-Remake\/refs\/heads\/feedback-appeal-release-track\/sandbox\/Arcsen-BanMode-STAGING\.lua"\s*\n\s*or "https:\/\/raw\.githubusercontent\.com\/White-rbx\/HealthBar-Remake\/refs\/heads\/loadstring\/Arcsen\.lua"/,
-    '-- This PREVIEW always uses the STAGING Arcsen source, including for unbanned QA\n'+
-    '-- accounts, to avoid accidentally invoking the normal live Arcsen in a test.\n'+
-    'local arcsenUrl = "'+previewUrl+'Arcsen-BanMode-STAGING.lua"'
-  );
-  const isolated=protectedArcsen
-    .replace(previewUrl+'ExperienceSettings-SetUp-BanMode-STAGING.lua',
-      previewUrl+'ExperienceSettings-SetUp-Preview.lua')
-    .replace(previewUrl+'Arcsen-BanMode-STAGING.lua',
-      previewUrl+'Arcsen-Preview.lua');
-  assert.equal(prefix, isolated, 'unexpected drift from reviewed real Loader/BanMode source');
+  const original=stage.slice(stage.indexOf('-- Well 4.12 | v0.5.36'));
+  // Preserve the existing native segments around the explicitly added QA policy gates.
+  for(const [start,end] of [
+    ['-- ===== ERROR SYSTEM =====','local function catch(err)'],
+    ['-- Function_Two.lua','local asrt ='],
+  ]){
+    const a=original.indexOf(start),b=original.indexOf(end,a);
+    assert.ok(a>=0 && b>a);
+    assert.ok(prefix.includes(original.slice(a,b||undefined)));
+  }
+  assert.match(prefix,/__ASC_BAN_POLICY_ERROR == true/);
+  assert.match(prefix,/local client = bootEnv.__ASC_BAN_V2_CLIENT/);
 });
 
 test('SetUp, UI Loader, topbar guard and Arcsen are all connected to staging',()=>{
@@ -63,8 +59,8 @@ test('SetUp, UI Loader, topbar guard and Arcsen are all connected to staging',()
 test('in-game ban blocks real loader; restricted skips editor/search and preserves Arcsen',()=>{
   assert.match(main,/getgenv\(\).__ES_BANNED == true or getgenv\(\)\[string\.char/);
   assert.match(main,/local isRestrictedMode = bootEnv.__ES_RESTRICTED_MODE == true/);
-  assert.match(main,/if not isRestrictedMode then\s*\n\s*loadstring\(game:HttpGet\("https:.*RecommendedScript\.lua/);
-  assert.match(main,/if not isRestrictedMode then\s*\n\s*loadstring\(game:HttpGet\("https:.*Search\.lua/);
+  assert.match(main,/if not isRestrictedMode then\s*\n\s*loadTool\("RecommendedScript\.lua/);
+  assert.match(main,/if not isRestrictedMode then\s*\n\s*loadTool\("Search\.lua/);
   assert.equal(count(/loadstring\(game:HttpGet\(arcsenUrl\)\)\(\)/g,main),1);
   assert.match(setup,/getgenv\(\).__ES_BANNED = banData ~= nil and banData.Selection ~= "restricted_mode"/);
   assert.match(setup,/__ES_BAN_DURATION = banData and banData.Duration or nil/);
@@ -79,7 +75,10 @@ test('reviewed preview never writes managed bans or live server policy',()=>{
 });
 
 test('SetUp Preview is a full isolated copy of the BanMode SetUp and preserves both choices',()=>{
-  assert.ok(setup.includes(setupStage),'review source copied without removing SetUp');
+  const oldDateParser=setupStage.slice(setupStage.indexOf('local function _banTime(value)'),setupStage.indexOf('-- ARCSCRIPT_BANS_BEGIN'));
+  assert.ok(setup.includes(oldDateParser),'legacy parser and selection handling kept');
+  assert.match(setup,/client and client.policy\(\)/);
+  assert.match(setup,/Could not verify your restriction status with the server/);
   assert.match(setup,/__ES_BAN_SELECTION/);
   assert.match(setup,/__ES_BAN_DURATION/);
   assert.match(setup,/__ES_RESTRICTED_MODE/);
