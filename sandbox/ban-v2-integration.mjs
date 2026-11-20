@@ -6,6 +6,7 @@ import {createVerifiedHistoryHandler} from './stage16-80-verified-violation-hist
 
 export const ADMIN_BANS = '/api/v1/admin/bans/v2/manage';
 export const GAME_BANS = '/api/v1/roblox/bans/v2/';
+export const PUBLIC_BAN_STATUS = '/api/v1/client/bans/v2/status';
 const GAME_ROUTES = new Set(['policy','authorize','violation','appeal']);
 const FEATURES = new Set(['editor','search','recommendations','arcsen_chat','feedback','violation','appeal']);
 const LIMITED = new Set(['feedback','violation','appeal']);
@@ -40,10 +41,10 @@ function json(data,status=200,origin) {
  if(origin)headers['Access-Control-Allow-Origin']=origin;
  return Response.json(data,{status,headers});
 }
-async function readJson(request) {
+async function readJson(request,maxBytes=24000) {
  if(!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(request.headers.get('Content-Type')??''))
   fail(415,'content_type','Expected application/json.');
- if(!request.body || Number(request.headers.get('Content-Length'))>24000)
+ if(!request.body || Number(request.headers.get('Content-Length'))>maxBytes)
   fail(413,'body_size','Request is too large.');
  const reader=request.body.getReader();
  const chunks=[];
@@ -53,7 +54,7 @@ async function readJson(request) {
    const {done,value}=await reader.read();
    if(done)break;
    count+=value.length;
-   if(count>24000){await reader.cancel();fail(413,'body_size','Request is too large.');}
+   if(count>maxBytes){await reader.cancel();fail(413,'body_size','Request is too large.');}
    chunks.push(value);
   }
  }finally{reader.releaseLock();}
@@ -92,6 +93,32 @@ export function policyFor(document,userId,now) {
   selection:effectiveBanSelection(active),legacy:active.selection==='unassigned',duration:active.duration,
   reason:active.reason,description:active.description,startAt:timeICT(active.startAt),expiresAt:expires,
  }};
+}
+
+// The ID in this lookup is a claim for UI presentation. Its result cannot
+// authorize an operation, retrieve a notice, or be exchanged for a session.
+export function createPublicBanStatus({store,allowTarget,rateLimit,clock=()=>Math.floor(Date.now()/1000)}) {
+ return async (request,env)=>{
+  try{
+   const url=new URL(request.url);
+   if(url.pathname!==PUBLIC_BAN_STATUS||url.search)fail(404,'route','Not found.');
+   if(request.method!=='POST')fail(405,'method','Method not allowed.');
+   if(['Origin','Cookie','Authorization','X-Admin-Key'].some(name=>request.headers.has(name)))
+    fail(403,'client_lookup_only','Use a credential-free Roblox client request.');
+   const body=await readJson(request,128);
+   if(!exact(body,['userId'])||!validId(body.userId))invalid();
+   if(!await rateLimit(request,env))fail(429,'rate','Too many requests.');
+   if(!allowTarget(body.userId,env))fail(403,'target_not_allowed','This QA preview is for authorized test accounts.');
+   const {document}=openDocument(await store.read(env));
+   const now=clock();
+   const {state}=policyFor(document,body.userId,now);
+   // A fixed refresh window avoids disclosing private start or expiry times.
+   return json({ok:true,identityVerified:false,subject:body.userId,state,checkedAt:now,nextCheckAt:now+30},200);
+  }catch(error){
+   const status=error instanceof BanError?error.status:503;
+   return json({ok:false,code:status===503?'unavailable':error.code},status);
+  }
+ };
 }
 
 export async function verifyGameServer(request,env) {

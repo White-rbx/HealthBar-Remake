@@ -14178,7 +14178,8 @@ task.spawn(function()
     local statusLabel
     local retry
     local revealAppealDraft = function() end
-    local trustedBanClient = env and env.__ASC_BAN_V2_CLIENT
+    local banPolicyClient = env and env.__ASC_BAN_V2_CLIENT
+    local trustedBanClient = banPolicyClient and not banPolicyClient.publicLookup and banPolicyClient
     local syncVerifiedViolations = function() end
     -- Stage 16.35: Feedback and Appeal only. Never reuse the production
     -- Cloud/Policy URL or send administrative tokens from the client.
@@ -14705,7 +14706,7 @@ task.spawn(function()
         retry.BackgroundColor3 = Color3.fromRGB(65,85,115)
         retry.TextColor3 = Color3.new(1,1,1)
         retry.TextSize = 13
-        retry.Text = trustedBanClient and "Refresh Roblox Server Policy" or "Retry Signed UI Policy Check"
+        retry.Text = banPolicyClient and "Refresh restriction status" or "Retry Signed UI Policy Check"
         retry.Parent = group
         Corner(0,5,retry)
 
@@ -17956,9 +17957,12 @@ More information in discord you can find the link at About or on the ScriptBlox/
         gate.lastError = reason
         gate.lastChecked = os.time()
         if statusLabel and statusLabel.Parent then
-            local title = trustedBanClient and "Roblox Server Policy: " or "Signed UI Policy: "
-            local proof = gate.policyValid and (trustedBanClient and " | server verified" or " | verified signature")
-                or " | verification pending"
+            local title = banPolicyClient and "Restriction status: " or "Signed UI Policy: "
+            local proof = " | check pending"
+            if gate.policyValid then
+                proof = trustedBanClient and " | account verified"
+                    or (banPolicyClient and " | public lookup" or " | verified signature")
+            end
             statusLabel.Text = title .. tostring(status) .. proof ..
                 "\n" .. tostring(reason or "Client identity is unverified; policy is a UI hint only."):sub(1,125)
         end
@@ -17994,14 +17998,16 @@ More information in discord you can find the link at About or on the ScriptBlox/
     local function check()
         if not run or gate.busy then return false end
         gate.busy = true
-        if trustedBanClient then
+        if banPolicyClient then
             local status = env.__ASC_BAN_V2_STATE
-            if trustedBanClient.secondsRemaining(status) <= 0 then status = nil end
+            if banPolicyClient.secondsRemaining(status) <= 0 then status = nil end
             gate.policyValid = status ~= nil
-            gate.identityVerified = status ~= nil
+            gate.identityVerified = trustedBanClient and status and status.identityVerified == true or false
             local allowed = status and status.state == "clear" and not env.__ES_RESTRICTED_MODE
+            local proof = gate.identityVerified and "Checked by the Roblox game server."
+                or "Public status check for this UI."
             apply(allowed and "not_banned" or (status and "banned" or "unknown"),
-                status and "Checked by the Roblox game server." or "Trusted Roblox server status unavailable.")
+                status and proof or "Restriction status unavailable.")
             gate.busy = false
             return status ~= nil
         end
@@ -18077,14 +18083,14 @@ More information in discord you can find the link at About or on the ScriptBlox/
     if env then env.ArcScriptPolicyGate = controller end
     if retry then
         retry.Activated:Connect(function()
-            if trustedBanClient then
+            if banPolicyClient then
                 if env.__ASC_REQUEST_BAN_REFRESH then env.__ASC_REQUEST_BAN_REFRESH() end
             else
                 controller.refresh()
             end
         end)
     end
-    apply("checking", trustedBanClient and "Awaiting Roblox server policy" or "Awaiting Signed UI Policy")
+    apply("checking", banPolicyClient and "Checking restriction status" or "Awaiting Signed UI Policy")
     while run and gpt and gpt.Parent do
         check()
         task.wait(45)  -- Signed policy expires after 60s. Never use stale grants.

@@ -24,6 +24,8 @@ request with `identity_unavailable`. Keep `UseStagingGitHub` off for this pass.
    separate credentials.
 3. Use the existing supported ExperienceSettings QA client to run
    [BannedCenterLoaderPreview.lua](../sandbox/BannedCenterLoaderPreview.lua).
+   Call this entrypoint with `"roblox_server"` to select bridge mode. The
+   default [Universal QA](banned-check-center-universal-qa.md) uses public lookup.
    Record the tested Git SHA and use the same snapshot of the Preview scripts
    for the entire run. This entrypoint and existing Loader and Arcsen use
    `getgenv`, `game:HttpGet`, and CoreGui. For a normal Studio LocalScript,

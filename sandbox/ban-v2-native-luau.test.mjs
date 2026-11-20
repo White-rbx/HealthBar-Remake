@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const read = name => readFileSync(new URL(name, import.meta.url), 'utf8');
+const entry = read('BannedCenterLoaderPreview.lua');
 const client = read('BanPolicyClientPreview.lua');
 const server = read('ArcScriptCenterBanBridge.server.lua');
 const topbar = read('RestrictedMode-Topbar-STAGING.lua');
@@ -19,7 +20,7 @@ const section = (source, start, end) => {
  return source.slice(first, last);
 };
 const files = {
- client, server, topbar,
+ entry, client, server, topbar,
  setup: section(setup, 'local function renderBanBlock(item)', '-- Restricted Mode is NOT SetUp-only.') +
   '\nreturn banData',
  startup: section(main, 'local function canStartMain()', 'if not canStartMain() then') + '\nreturn canStartMain',
@@ -61,10 +62,10 @@ local function advance(to)
     now = to
 end
 
-local function run(name, additions)
+local function run(name, additions, ...)
     local env = table.clone(runtime)
     for key, value in pairs(additions or {}) do env[key] = value end
-    return setfenv(assert(loadstring(sources[name], name)), setmetatable(env, { __index = getfenv() }))()
+    return setfenv(assert(loadstring(sources[name], name)), setmetatable(env, { __index = getfenv() }))(...)
 end
 local function policy(state, checkedAt, nextCheckAt, duration, expires)
     return {
@@ -402,5 +403,97 @@ assert(canStart() and checks == 2 and env.__ES_RESTRICTED_MODE and not env.__ES_
 assert(canStart() and checks == 2)
 latest = policy("ban_ingame", 140, 170)
 assert(not canStart() and checks == 3 and env.__ES_BANNED and not env.__ASC_BAN_POLICY_ERROR)
+`);
+});
+
+test('Luau VM: default QA entry needs no Roblox server or login and rechecks on each launch', () => {
+ luau(String.raw`
+local userId, lookups = 9777206932, 0
+local state = "restricted_mode"
+local response, received
+local additions = {
+    getgenv = function() return {} end,
+    game = { GetService = function(_, name)
+        if name == "Players" then return { LocalPlayer = { UserId = userId } } end
+        assert(name == "HttpService", "the public policy must not access ReplicatedStorage")
+        return {
+            JSONEncode = function(_, value)
+                assert(value.userId == tostring(userId) and next(value, "userId") == nil)
+                return "mock body"
+            end,
+            JSONDecode = function(_, raw) assert(raw == "mock policy");return response end,
+        }
+    end },
+    request = function(req)
+        assert(req.Url:match("arcscriptcenter%-ban%-policy%-qa.+/status$"))
+        assert(req.Method == "POST" and req.Body == "mock body")
+        assert(req.Headers.Authorization == nil and req.Headers.Cookie == nil)
+        lookups += 1
+        return { StatusCode = 200, Body = "mock policy" }
+    end,
+    Instance = { new = function()
+        local event = signal()
+        return { Event = event, Fire = function() event:Fire() end, Destroy = function() end }
+    end },
+}
+local published
+local internal = {}
+run("entry", {
+    getgenv = function() return internal end,
+    game = { HttpGet = function(_, url)
+        assert(url:match("/LoaderMainPreview%.lua$"))
+        return 'local mode = ...; capture(mode)'
+    end },
+    loadstring = function(source) return setfenv(assert(loadstring(source)), { capture = function(mode)
+        assert(internal.__ASC_BAN_V2_PREVIEW == true)
+        published = mode
+    end }) end,
+})
+assert(published == "public_qa" and internal.__ASC_BAN_V2_PREVIEW == nil)
+local function launch(state)
+    response = policy(state, 100 + math.floor(now), 130 + math.floor(now))
+    response.subject, response.identityVerified, response.ban = tostring(userId), false, nil
+    local client = run("client", additions, published)
+    assert(client.publicLookup and client.history == nil and client.appeal == nil)
+    local result
+    runtime.task.spawn(function() result = client.policy() end)
+    advance(now)
+    assert(result and result.identityVerified == false and result.state == state)
+    local env = {
+        __ASC_BAN_V2_PREVIEW = true, __ASC_BAN_V2_CLIENT = client, __ASC_BAN_V2_STATE = result,
+    }
+    local canStart = run("startup", { bootEnv = env })
+    assert(canStart() == (state ~= "ban_ingame"))
+    assert(env.__ES_RESTRICTED_MODE == (state == "restricted_mode"))
+    assert(env.__ES_BAN_SELECTION == (state ~= "clear" and state or nil))
+    local setupEnv = {
+        __ASC_BAN_V2_PREVIEW = true,
+        __ASC_BAN_V2_CLIENT = {
+            publicLookup = true,
+            policy = function() return result end,
+            secondsRemaining = function() return 10 end,
+        },
+    }
+    local setupUi = { Folder = { Parent = true }, twarn = { Text = "Setup" }, Canvas = {}, btnBar = {}, CanBar = {},
+        getgenv = function() return setupEnv end, qaEnv = setupEnv,
+        UDim2 = { new = function() return {} end },
+        Enum = { AutomaticSize = { Y = true }, ScrollingDirection = { Y = true }, TextYAlignment = { Top = 1 } },
+        Instance = { new = function() return {} end },
+    }
+    runtime.task.spawn(function() run("setup", setupUi) end)
+    advance(now)
+    assert(setupEnv.__ES_BANNED == (state == "ban_ingame"))
+    if state == "ban_ingame" then
+        assert(setupUi.twarn.Text:find("Ban in%-game") and not setupUi.twarn.Text:find("Reason"))
+        setupUi.Folder.Parent = nil
+        advance(now + 0.25)
+    end
+end
+launch(state)
+advance(4)
+launch("clear")
+advance(7)
+launch("ban_ingame")
+assert(lookups == 3)
 `);
 });

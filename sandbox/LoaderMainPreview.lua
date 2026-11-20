@@ -2,7 +2,7 @@
 -- Directly derived from White-rbx/HealthBar-Remake branch loadstring/Loader.lua
 -- Upstream blob 9d6af20cf93610adf9be2e49bf61edabe8903f38; reviewed BanMode integration from sandbox/Loader-Main-BanMode-STAGING.lua
 -- This runs the REAL Loader/SetUp/Arcsen flow, not a fabricated PlayerGui preview.
--- QA only: account-bound checks in the Ban Center entrypoint require the Roblox server bridge.
+-- QA only: Universal entrypoint uses public display policy and can optionally use a trusted bridge.
 -- All staging module paths remain sandbox-scoped.
 -- ============================================================================
 -- Well 4.12 | v0.5.36: Strict SetUp -> Loader -> Main serialization
@@ -21,6 +21,7 @@
 -- =========================================
 -- SERIAL STARTUP (prevent duplicate SetUp/Loader windows)
 -- =========================================
+local policyMode = ...
 local bootEnv = getgenv()
 if bootEnv.__ES_BOOTSTRAP_BUSY then
     warn("[ES][Bootstrap] Initialization already in progress; duplicate execution ignored.")
@@ -35,7 +36,7 @@ bootEnv.__ASC_REQUEST_BAN_REFRESH = nil
 if bootEnv.__ASC_BAN_V2_PREVIEW then
     local okClient, client = pcall(function()
         local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/BanPolicyClientPreview.lua"
-        return assert(loadstring(game:HttpGet(url)))()
+        return assert(loadstring(game:HttpGet(url)))(policyMode)
     end)
     if okClient then bootEnv.__ASC_BAN_V2_CLIENT = client end
 end
@@ -373,7 +374,7 @@ local function canStartMain()
     bootEnv.__ASC_BAN_POLICY_ERROR = status == nil
     bootEnv.__ES_BANNED = status ~= nil and status.state == "ban_ingame"
     bootEnv.__ES_RESTRICTED_MODE = status ~= nil and status.state == "restricted_mode"
-    bootEnv.__ES_BAN_SELECTION = item and item.selection
+    bootEnv.__ES_BAN_SELECTION = status and status.state ~= "clear" and status.state or nil
     bootEnv.__ES_BAN_DURATION = item and item.duration
     bootEnv.__ES_BAN_SELECTION_ASSIGNED = item ~= nil and item.legacy ~= true
     if status and not bootEnv.__ES_BANNED then return true end

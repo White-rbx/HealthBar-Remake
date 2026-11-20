@@ -588,6 +588,10 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 
 getgenv().__ES_READY = false
 local function renderBanBlock(item)
+    if item.PublicLookup then
+        twarn.Text = "<b>Ban in-game</b>\nExperienceSettings is unavailable for this account."
+        return
+    end
     local function escapeText(value)
         return tostring(value or ""):gsub("&", "&amp;")
             :gsub("<", "&lt;"):gsub(">", "&gt;")
@@ -623,6 +627,9 @@ if qaEnv.__ASC_BAN_V2_PREVIEW then
             Duration = item.duration, Reason = item.reason, Description = item.description,
             StartAt = item.startAt, ExpiresAt = item.expiresAt,
         } or nil
+        if status and client.publicLookup and status.state ~= "clear" then
+            banData = { Selection = status.state, PublicLookup = true }
+        end
         if status and not qaEnv.__ES_BANNED then break end
 
         if not details then
@@ -647,11 +654,15 @@ if qaEnv.__ASC_BAN_V2_PREVIEW then
         end
         if banData then
             renderBanBlock(banData)
+        elseif not client then
+            twarn.Text = "The restriction status service is unavailable in this runtime. Close and run the preview again."
+        elseif client.isOutsideQA and client.isOutsideQA() then
+            twarn.Text = "This account is outside the authorized QA test scope."
         else
-            twarn.Text = client and "Could not verify your restriction status with the server. Retrying automatically."
-                or "Roblox server bridge unavailable. Rejoin the approved test experience to retry."
+            twarn.Text = "Could not verify your restriction status with the server. Retrying automatically."
         end
         if not client then return end
+        if client.isOutsideQA and client.isOutsideQA() then return end
 
         local retryAt = os.clock() + (status and math.max(2, client.secondsRemaining(status)) or 5)
         repeat task.wait(0.25) until not Folder.Parent or os.clock() >= retryAt
@@ -701,8 +712,7 @@ if banData and getgenv().__ES_RESTRICTED_MODE and twarn then
         (os.date("!%Y-%m-%d %H:%M", banData.ExpiresAt + 7 * 3600) .. " ICT")
         or "Permanent"
     twarn.Text = "<b>Restricted Mode</b>\n"
-        .. "Duration: " .. banData.Duration .. "\n"
-        .. "Until: " .. untilText .. "\n"
+        .. (banData.PublicLookup and "" or ("Duration: " .. banData.Duration .. "\nUntil: " .. untilText .. "\n"))
         .. "Opening the restricted Loader. Settings and Feedback &amp; Appeal remain available."
 end
 

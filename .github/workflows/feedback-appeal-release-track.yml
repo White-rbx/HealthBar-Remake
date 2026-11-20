@@ -82,6 +82,8 @@ jobs:
           make -s -C "$luau_dir" config=release -j"$(nproc)" luau luau-compile
           "$luau_dir/luau-compile" --null sandbox/{BannedCenterLoaderPreview,BanPolicyClientPreview,ArcScriptCenterBanBridge.server,RestrictedMode-Topbar-STAGING,ExperienceSettings-SetUp-Preview,LoaderMainPreview,Arcsen-Preview}.lua
           LUAU_BIN="$luau_dir/luau" node --test sandbox/ban-v2-native-luau.test.mjs
+      - name: Universal Ban status, scoped lookup and live QA isolation
+        run: node --test sandbox/ban-v2-public-qa.test.mjs sandbox/ban-v2-public-qa-live.test.mjs
       - name: Original STAGING API Worker Ban v1 and v2 guarded compatibility patch
         run: node --test sandbox/ban-v2-main-worker-compat-patcher.test.mjs
       - name: Ban v2 isolated QA Admin API authentication and Save tests
