@@ -10,6 +10,8 @@ on:
       - 'sandbox/ExperienceSettings-SetUp-Preview.lua'
       - 'sandbox/Arcsen-Preview.lua'
       - 'sandbox/feedback-case-delivery-staging.*'
+      - 'sandbox/feedback-user-case-token-staging.*'
+      - 'migrations/feedback_user_case_token_STAGING_REVIEW_ONLY_20261120.sql'
       - 'migrations/feedback_case_owner_links_STAGING_REVIEW_ONLY_20261119.sql'
       - 'sandbox/loader-main-preview.test.mjs'
       - 'sandbox/arcsen-v7.3.43-feedback-optional-userid.patch'
@@ -99,6 +101,8 @@ jobs:
         run: node --test sandbox/stage16-83-pairing.test.mjs
       - name: Case Delivery — verified active client, no Account/Analytics leak
         run: node --test sandbox/feedback-case-delivery-staging.test.mjs
+      - name: User Case Token — consent, token-only rejoin, revoke and case isolation
+        run: node --test sandbox/feedback-user-case-token-staging.test.mjs
       - name: Real LoaderMainPreview with isolated SetUp/Arcsen and New Chat/HereChat QA
         run: node --test sandbox/loader-main-preview.test.mjs
       - name: Validate Ban Mode routed through SetUp, Main Loader, UI Loader and Arcsen
