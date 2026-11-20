@@ -15140,6 +15140,200 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     openPreviousFeedbackCase()
                 end)
 
+                -- User Case Token: opt-in bearer key, NOT Roblox identity or OAuth.
+                -- Filename is non-semantic, not encrypted or invisible to local code.
+                -- No device identifier, Receipt, or HWID goes into the JSON.
+                local tokenPanel=Instance.new("Frame")
+                tokenPanel.Name="UserCaseTokenSettings"
+                tokenPanel.LayoutOrder=-5
+                tokenPanel.Size=UDim2.new(1,-12,0,0)
+                tokenPanel.AutomaticSize=Enum.AutomaticSize.Y
+                tokenPanel.BackgroundColor3=Color3.fromRGB(31,42,58)
+                tokenPanel.BackgroundTransparency=0.1
+                tokenPanel.BorderSizePixel=0
+                tokenPanel.Parent=feedbackScroll
+                Corner(0,5,tokenPanel)
+                local tokenLayout=Instance.new("UIListLayout")
+                tokenLayout.SortOrder=Enum.SortOrder.LayoutOrder
+                tokenLayout.Padding=UDim.new(0,5)
+                tokenLayout.Parent=tokenPanel
+                local tokenPadding=Instance.new("UIPadding")
+                tokenPadding.PaddingLeft=UDim.new(0,5)
+                tokenPadding.PaddingRight=UDim.new(0,5)
+                tokenPadding.PaddingTop=UDim.new(0,5)
+                tokenPadding.PaddingBottom=UDim.new(0,5)
+                tokenPadding.Parent=tokenPanel
+                local function tokenLabel(name,value,order,height)
+                    local label=Instance.new("TextLabel")
+                    label.Name=name
+                    label.LayoutOrder=order
+                    label.Size=UDim2.new(1,0,0,height)
+                    label.BackgroundTransparency=1
+                    label.Text=value
+                    label.TextSize=11
+                    label.TextColor3=Color3.fromRGB(203,221,240)
+                    label.TextWrapped=true
+                    label.TextXAlignment=Enum.TextXAlignment.Left
+                    label.Parent=tokenPanel
+                    return label
+                end
+                local function tokenAction(name,caption,order)
+                    local button=Instance.new("TextButton")
+                    button.Name=name
+                    button.LayoutOrder=order
+                    button.Size=UDim2.new(1,0,0,28)
+                    button.BorderSizePixel=0
+                    button.BackgroundColor3=Color3.fromRGB(42,86,112)
+                    button.Text=caption
+                    button.TextColor3=Color3.fromRGB(244,248,255)
+                    button.TextSize=12
+                    button.Parent=tokenPanel
+                    Corner(0,5,button)
+                    return button
+                end
+                tokenLabel("UserCaseTokenTitle",
+                    "User Case Token — STAGING Preview (revocable, not account verification)",0,34)
+                local tokenConsentButton=tokenAction("ConsentUserCaseToken","Create/Attach after Feedback [OFF]",1)
+                local rememberTokenButton=tokenAction("RememberUserCaseToken","Remember Token [OFF]",2)
+                local inputToken=Instance.new("TextBox")
+                inputToken.Name="PasteOwnedUserCaseToken"
+                inputToken.LayoutOrder=3
+                inputToken.Size=UDim2.new(1,0,0,31)
+                inputToken.ClearTextOnFocus=false
+                inputToken.Text=""
+                inputToken.PlaceholderText="Paste your own USERCASETOKEN to restore"
+                inputToken.BackgroundColor3=Color3.fromRGB(24,35,48)
+                inputToken.TextColor3=Color3.new(1,1,1)
+                inputToken.TextSize=11
+                inputToken.TextXAlignment=Enum.TextXAlignment.Left
+                inputToken.Parent=tokenPanel
+                Corner(0,5,inputToken)
+                local useTokenButton=tokenAction("UseOwnedUserCaseToken","Use Token and Check Cases",4)
+                local copyTokenButton=tokenAction("CopyOwnedUserCaseToken","Copy Token (keep private)",5)
+                local revokeTokenButton=tokenAction("RevokeOwnedUserCaseToken","Revoke Token (confirm twice)",6)
+                revokeTokenButton.BackgroundColor3=Color3.fromRGB(112,50,55)
+                local tokenNotice=tokenLabel("UserCaseTokenNotice",
+                    "Token is not yet issued. Enable Create/Attach BEFORE submitting Feedback. "
+                    .."If Remember is ON, a plaintext JSON is stored on this device; local scripts can read it. "
+                    .."Keep the Token and every Case Receipt private.",7,82)
+                updateTokenPanel=function(message)
+                    if not tokenPanel.Parent then return end
+                    tokenConsentButton.Text="Create/Attach after Feedback ["
+                        ..(caseTokenConsent and "ON" or "OFF").."]"
+                    rememberTokenButton.Text="Remember Token ["
+                        ..(rememberTokenEnabled and "ON" or "OFF").."]"
+                    copyTokenButton.Interactable=validUserCaseToken(userCaseToken)
+                    revokeTokenButton.Interactable=validUserCaseToken(userCaseToken)
+                    if type(message)=="string" then tokenNotice.Text=message end
+                    task.defer(syncFeedbackCanvas)
+                end
+                tokenConsentButton.MouseButton1Click:Connect(function()
+                    caseTokenConsent=not caseTokenConsent
+                    updateTokenPanel(caseTokenConsent
+                        and "Opted in. After a successful Feedback submission, the server will create or attach a Token. "
+                            .."Treat it like a password; whoever has it can read its linked public Feedback cases."
+                        or "Token creation disabled. Feedback can still be submitted normally.")
+                end)
+                rememberTokenButton.MouseButton1Click:Connect(function()
+                    if rememberTokenEnabled then
+                        local ok,err=removeRememberedToken()
+                        if not ok then updateTokenPanel(err);return end
+                        rememberTokenEnabled=false
+                        updateTokenPanel("Remember OFF. Local Token JSON removed; current session Token stays in memory.")
+                    else
+                        rememberTokenEnabled=true
+                        if validUserCaseToken(userCaseToken) then
+                            local ok,err=storeRememberedToken()
+                            if not ok then
+                                rememberTokenEnabled=false
+                                updateTokenPanel(err)
+                                return
+                            end
+                            updateTokenPanel("Remember ON. Token saved locally in a non-semantic JSON filename; it is NOT encrypted.")
+                        else
+                            updateTokenPanel("Remember ON for this session; no JSON will be written until a Token is issued or imported.")
+                        end
+                    end
+                    updateTokenPanel()
+                end)
+                useTokenButton.MouseButton1Click:Connect(function()
+                    local candidate=caseTrim(inputToken.Text)
+                    inputToken.Text=""
+                    if not validUserCaseToken(candidate) then
+                        updateTokenPanel("Invalid User Case Token format. Nothing saved.")
+                        return
+                    end
+                    useTokenButton.Interactable=false
+                    updateTokenPanel("Checking pasted Token with STAGING before accepting it...")
+                    task.spawn(function()
+                        local priorToken,priorCases=userCaseToken,tokenLinkedCases
+                        userCaseToken=candidate
+                        local ok,err=refreshTokenCases()
+                        if not ok then
+                            userCaseToken,tokenLinkedCases=priorToken,priorCases
+                            updateTokenPanel("Token not accepted: "..tostring(err)..". Old session Token retained.")
+                        else
+                            if rememberTokenEnabled then
+                                local saved,saveErr=storeRememberedToken()
+                                updateTokenPanel(saved
+                                    and "Token accepted and remembered in local JSON. Linked cases loaded."
+                                    or "Token accepted, but JSON was not saved: "..tostring(saveErr))
+                            else
+                                updateTokenPanel("Token accepted for this session only. Enable Remember to keep it after Rejoin.")
+                            end
+                        end
+                        useTokenButton.Interactable=true
+                        task.defer(updateCaseCounters)
+                    end)
+                end)
+                copyTokenButton.MouseButton1Click:Connect(function()
+                    if not validUserCaseToken(userCaseToken) then
+                        updateTokenPanel("No Token to copy.");return
+                    end
+                    if type(setclipboard)~="function" then
+                        updateTokenPanel("Clipboard is unavailable. The token cannot be copied here; do not share Case Receipts.")
+                        return
+                    end
+                    local ok=pcall(setclipboard,userCaseToken)
+                    updateTokenPanel(ok and "Token copied privately. Store it somewhere safe."
+                        or "Copy failed. Token was not changed.")
+                end)
+                local confirmRevokeUntil=0
+                revokeTokenButton.MouseButton1Click:Connect(function()
+                    if not validUserCaseToken(userCaseToken) then return end
+                    if os.clock()>confirmRevokeUntil then
+                        confirmRevokeUntil=os.clock()+15
+                        updateTokenPanel("Tap Revoke again within 15 seconds to permanently invalidate this Token. "
+                            .."Existing Feedback cases are NOT deleted.")
+                        return
+                    end
+                    confirmRevokeUntil=0
+                    revokeTokenButton.Interactable=false
+                    local target=userCaseToken
+                    task.spawn(function()
+                        local data,err=tokenPost("revoke",{token=target,confirm=true})
+                        if data and data.revoked==true and userCaseToken==target then
+                            userCaseToken=nil
+                            tokenLinkedCases={}
+                            local cleared,clearErr=removeRememberedToken()
+                            if cleared then rememberTokenEnabled=false end
+                            task.defer(updateCaseCounters)
+                            updateTokenPanel(cleared
+                                and "Token revoked and local JSON deleted. Feedback cases remain on Server."
+                                or "Token revoked but local file removal failed: "..tostring(clearErr))
+                        else
+                            updateTokenPanel("Revoke not confirmed by Server: "..tostring(err or "Unknown response"))
+                        end
+                        revokeTokenButton.Interactable=validUserCaseToken(userCaseToken)
+                    end)
+                end)
+                updateTokenPanel(rememberTokenEnabled
+                    and "Saved Token loaded from local JSON. Checking its linked cases when STAGING Token API is available."
+                    or "Remember OFF. Token is never saved locally unless you opt in. "
+                       .."The token endpoint is not deployed yet.")
+                -- A remembered token is read automatically on every Script Rejoin;
+                -- the actual server listing is validated separately below.
+
                 -- SERVER CASE DELIVERY (STAGING Preview ONLY).
                 -- No UserId parameter, no Admin key, no receipt persistence here.
                 -- The eventual verified OAuth-device flow must install a
