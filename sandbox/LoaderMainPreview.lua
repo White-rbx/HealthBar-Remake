@@ -1646,8 +1646,17 @@ local function loadTool(name)
 end
 if not isRestrictedMode then
     loadTool("RecommendedScript.lua")
-    loadTool("Editor.lua")
 end
+
+-- Editor creates Menu.Notification, shared by Arcsen.
+-- Keep the original initialization order in restricted mode as well.
+-- The restricted UI gate below disables Editor's button, not its initialization.
+loadTool("Editor.lua")
+local notification = asrt and asrt:FindFirstAncestor("ExperienceSettings")
+local notificationMenu = notification and notification:FindFirstChild("Menu")
+assert(notificationMenu and notificationMenu:FindFirstChild("Notification"),
+    "[ES] Editor did not initialize Menu.Notification before Arcsen")
+print("[ES][QA] Editor initialized; shared Notification ready.")
 
 -- Apply the Restricted UI lock BEFORE Arcsen can create chat controls.
 -- Server-side account authorization is a separate required release gate.
