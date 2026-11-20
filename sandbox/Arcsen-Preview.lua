@@ -14185,6 +14185,7 @@ task.spawn(function()
     local banPolicyClient = env and env.__ASC_BAN_V2_CLIENT
     local trustedBanClient = banPolicyClient and type(banPolicyClient.hasPrivateCaseChannel) == "function" and banPolicyClient
     local syncVerifiedViolations = function() end
+    local refreshPrivateCaseControls = function() end
     -- Stage 16.35: Feedback and Appeal only. Never reuse the production
     -- Cloud/Policy URL or send administrative tokens from the client.
     local CASE_STAGING_BASE = "https://arcscriptcenter-api-staging.kogpasan14.workers.dev"
@@ -14713,6 +14714,65 @@ task.spawn(function()
         retry.Text = banPolicyClient and "Refresh restriction status" or "Retry Signed UI Policy Check"
         retry.Parent = group
         Corner(0,5,retry)
+
+        if banPolicyClient and banPolicyClient.publicLookup then
+            local function caseControl(class, text, order)
+                local control = Instance.new(class)
+                control.Name = "PrivateCase" .. tostring(order)
+                control.Size = UDim2.new(1,-8,0,36)
+                control.LayoutOrder = order
+                control.BackgroundColor3 = Color3.fromRGB(45,68,94)
+                control.TextColor3 = Color3.fromRGB(255,255,255)
+                control.TextWrapped = true
+                control.TextSize = 13
+                control.Text = text
+                control.Parent = group
+                Corner(0,5,control)
+                return control
+            end
+            local code = caseControl("TextBox", "", 23)
+            code.PlaceholderText = "One-time code from ArcScriptCenter"
+            local remember = false
+            local rememberButton = caseControl("TextButton", "Remember private case [OFF]", 24)
+            local action = caseControl("TextButton", "Link private case", 25)
+            local result = caseControl("TextLabel", "", 26)
+            result.BackgroundTransparency = 1
+            local busy = false
+            local function refreshControls()
+                local linked = banPolicyClient.hasPrivateCaseChannel()
+                code.Visible, rememberButton.Visible = not linked, not linked
+                action.Text = linked and "Disconnect private case" or "Link private case"
+            end
+            refreshControls()
+            rememberButton.Activated:Connect(function()
+                remember = not remember
+                rememberButton.Text = remember and "Remember private case [ON]" or "Remember private case [OFF]"
+                result.Text = remember and "Saves this case session to this executor's local files." or ""
+            end)
+            action.Activated:Connect(function()
+                if busy then return end
+                busy, action.Interactable = true, false
+                local linked = banPolicyClient.hasPrivateCaseChannel()
+                local value = code.Text:match("^%s*(.-)%s*$")
+                code.Text = ""
+                task.spawn(function()
+                    if linked then
+                        result.Text = banPolicyClient.disconnectCase() and "Private case disconnected."
+                            or "Could not revoke the session. Try again."
+                    else
+                        local ok, why = banPolicyClient.enrollCase(value, remember)
+                        result.Text = ok and (why == "not_saved" and "Linked for this run. This runtime cannot remember it."
+                            or "Private case linked.")
+                            or (why == "different_account" and "This code belongs to a different Roblox account."
+                                or "Could not link this private case. Check the one-time code or try again.")
+                    end
+                    busy, action.Interactable = false, true
+                    refreshControls()
+                    syncVerifiedViolations()
+                end)
+            end)
+            refreshPrivateCaseControls = refreshControls
+        end
 
         -- Feedback & Appeal: developer-designed UI; explicit opt-in submission
         -- only to the fixed STAGING Worker. Production and admin routes untouched.
@@ -17808,7 +17868,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 openAppealDraft=function(_)
                     hideViolationNotice()
                 end
-                -- History is requested only through the owner-authorized Roblox server.
+                -- Private history is scoped by the Worker to a verified case session.
                 local historyRequest = 0
                 local lastNoticeKey
                 if trustedBanClient then
@@ -17828,6 +17888,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         task.spawn(function()
                             local notices = trustedBanClient.history()
                             busy = false
+                            refreshPrivateCaseControls()
                             if generation ~= historyRequest or not gate.active then return end
                             local current = env.__ASC_BAN_V2_STATE
                             if trustedBanClient.secondsRemaining(current) <= 0 or current.state == "ban_ingame" then return end

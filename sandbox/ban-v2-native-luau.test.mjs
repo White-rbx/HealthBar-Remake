@@ -683,55 +683,79 @@ assert(holder:FindFirstChildOfClass("UIListLayout").VerticalAlignment == enums.V
 `);
 });
 
-test('Luau VM: public policy and private case transport remain separate',()=>{
+test('Luau VM: universal policy and remembered private case work on executor HTTP without Roblox bridge',()=>{
  luau(String.raw`
-local call, allowed, bridge = nil, false, nil
-local env={}
-local ui = run("client", {
-    getgenv = function() return env end,
+local invite, token = "ASCVE_" .. string.rep("a",64), "ASCVS_" .. string.rep("b",64)
+local saved, encoded, decoded, failHistory, claimedAccount = nil, nil, {}, nil, 451
+local options = {
+    getgenv = function() return {} end,
+    readfile = function() assert(saved); return "local session" end,
+    writefile = function(_,body) assert(body=="request"); saved=encoded end,
+    delfile = function() saved=nil end,
     game = { GetService = function(_, name)
-        if name == "Players" then return { LocalPlayer = { UserId = 451 } } end
-        if name == "ReplicatedStorage" then
-            return { FindFirstChild = function() return bridge end }
-        end
+        if name == "Players" then return {LocalPlayer={UserId=claimedAccount}} end
+        assert(name=="HttpService", "universal path must not access Roblox server services")
         return {
-            JSONEncode = function(_, value) assert(value.userId == "451" and next(value, "userId") == nil);return "lookup" end,
-            JSONDecode = function() return { ok=true, identityVerified=false, subject="451", checkedAt=100, nextCheckAt=130,
-                state="restricted_mode", notice={duration="permanent",reason="Fixture"} } end,
+            JSONEncode=function(_,v) encoded=v;return "request" end,
+            JSONDecode=function(_,s) return s=="local session" and saved or decoded[s] end,
         }
     end },
-    request = function(request)
-        assert(not request.Headers.Authorization)
-        return { StatusCode = 200, Body = "public" }
+    http_request = function(req)
+        assert(req.Method=="POST" and req.Timeout==8)
+        local route=req.Url:match("/([^/]+)$")
+        local status=200
+        if route=="status" then
+            assert(req.Headers.Authorization==nil and encoded.userId==tostring(claimedAccount))
+            decoded[route]={ok=true,identityVerified=false,subject=tostring(claimedAccount),checkedAt=100,nextCheckAt=130,
+                state="restricted_mode",notice={duration="permanent",reason="QA",revision=string.rep("a",24)}}
+        elseif route=="enroll" then
+            assert(req.Headers.Authorization=="Bearer "..invite and next(encoded)==nil)
+            status=201
+            decoded[route]={ok=true,session=token,subject="451",expiresAt=10000}
+        else
+            assert(req.Headers.Authorization=="Bearer "..token)
+            if route=="history" and failHistory=="timeout" then runtime.task.wait(9) end
+            if route=="history" and failHistory=="api" then status=503;decoded[route]={ok=false}
+            elseif route=="history" then
+                assert(next(encoded)==nil)
+                decoded[route]={ok=true,identityVerified=true,notices={{id="fixture-case",reference="••••AB"}}}
+            elseif route=="reference" then
+                decoded[route]={ok=true,subject="451",state="restricted_mode",reference="••••AB",revision=string.rep("a",24)}
+            elseif route=="revoke" then decoded[route]={ok=true} end
+        end
+        return { StatusCode=status, Body=route }
     end,
-    Instance = { new = function()
-        local event=signal()
-        return {Event=event,Fire=function()event:Fire()end,Destroy=function()end}
+    Instance = { new=function()
+        local e=signal()
+        return {Event=e,Fire=function()e:Fire()end,Destroy=function()end}
     end },
-}, "public_qa")
-local publicCase
-runtime.task.spawn(function() publicCase=ui.policy() end)
-advance(now)
-assert(publicCase.state=="restricted_mode" and not publicCase.identityVerified and not ui.hasPrivateCaseChannel())
-assert(ui.history()==nil and ui.appeal("other","text")==nil)
-bridge = {
-    IsA=function()return true end,
-    GetAttribute=function(_,name)return name=="BannedTokenQA" end,
-    InvokeServer=function(_,operation,...)
-        call={operation,...}
-        return allowed and {ok=true,identityVerified=true,notices={{id="server-owned",reference="••••AF"}}}
-            or {ok=false,code="not_authorized"}
-    end,
 }
-assert(ui.hasPrivateCaseChannel())
-local history
-runtime.task.spawn(function() history=ui.history() end)
-advance(now)
-assert(history==nil and call[1]=="violation" and call[2]==nil)
-allowed=true
-runtime.task.spawn(function() history=ui.history() end)
-advance(now)
-assert(history[1].reference=="••••AF")
+local function runAsync(fn)
+    local value
+    runtime.task.spawn(function() value=fn() end)
+    advance(now)
+    return value
+end
+local ui=run("client", options, "public_qa")
+assert(not ui.hasPrivateCaseChannel() and ui.history()==nil)
+local public=runAsync(ui.policy)
+assert(public.state=="restricted_mode" and public.identityVerified==false)
+assert(runAsync(function() return ui.enrollCase(invite,true) end))
+assert(saved and saved.subject=="451")
+local restored=run("client",options,"public_qa")
+assert(restored.hasPrivateCaseChannel())
+assert(runAsync(restored.history)[1].reference=="••••AB")
+assert(runAsync(function()return restored.restrictionReference(public)end)=="••••AB")
+failHistory="api"
+assert(runAsync(restored.history)==nil and restored.hasPrivateCaseChannel())
+failHistory="timeout"
+local checked=false
+runtime.task.spawn(function() assert(restored.history()==nil);checked=true end)
+advance(now+8)
+assert(checked and restored.hasPrivateCaseChannel() and public.state=="restricted_mode")
+claimedAccount=452
+assert(not run("client",options,"public_qa").hasPrivateCaseChannel())
+assert(runAsync(restored.disconnectCase) and saved==nil and not restored.hasPrivateCaseChannel())
 `);
 });
 

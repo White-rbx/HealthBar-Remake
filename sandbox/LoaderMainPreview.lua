@@ -21,7 +21,8 @@
 -- =========================================
 -- SERIAL STARTUP (prevent duplicate SetUp/Loader windows)
 -- =========================================
-local policyMode = (...) == "roblox_server" and "roblox_server" or "public_qa"
+local policyMode = (...) == "roblox_server" and "roblox_server"
+    or ((...) == "universal_case_qa" and "universal_case_qa" or "public_qa")
 local bootEnv = getgenv()
 if bootEnv.__ES_BOOTSTRAP_BUSY then
     warn("[ES][Bootstrap] Initialization already in progress; duplicate execution ignored.")
@@ -801,6 +802,12 @@ local function syncPolicyWarning(status)
     end
     requestedWarning = signature
     task.defer(function()
+        if requestedWarning ~= signature then return end
+        local client = bootEnv.__ASC_BAN_V2_CLIENT
+        if blocked and not reference and client and client.publicLookup and client.hasPrivateCaseChannel() then
+            local ok, verifiedReference = pcall(client.restrictionReference, status)
+            if ok then reference = verifiedReference end
+        end
         if requestedWarning ~= signature then return end
         requestedWarning = nil
         local ok, queued = pcall(function()

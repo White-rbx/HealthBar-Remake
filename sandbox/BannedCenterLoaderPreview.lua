@@ -1,6 +1,7 @@
 -- Universal Banned Check Center QA entrypoint. Use "roblox_server" only for
 -- the separate, account-verified smoke in an owner-controlled test experience.
-local mode = (...) == "roblox_server" and "roblox_server" or "public_qa"
+local mode = (...) == "roblox_server" and "roblox_server"
+    or ((...) == "universal_case_qa" and "universal_case_qa" or "public_qa")
 local env = getgenv()
 if env.__ES_BOOTSTRAP_BUSY then return end
 env.__ASC_BAN_V2_PREVIEW = true

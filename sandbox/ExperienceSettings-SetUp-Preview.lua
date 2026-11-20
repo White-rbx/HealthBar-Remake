@@ -607,6 +607,7 @@ local function renderBanBlock(item)
         .. (item.StartAt and ("From: " .. formatTime(item.StartAt) .. "\n") or "")
         .. "Until: <b>" .. (item.ExpiresAt and formatTime(item.ExpiresAt) or "Permanent") .. "</b>"
         .. (item.Reference and ("\nReference: " .. item.Reference) or "")
+        .. (item.PublicLookup and "\nPrivate references appear in WarningUI after case access is verified." or "")
         .. "\nFor an appeal, use the existing ArcScriptCenter appeal channel."
 end
 
@@ -631,7 +632,8 @@ if qaEnv.__ASC_BAN_V2_PREVIEW then
         } or nil
         if status and status.notice then
             banData = { Selection = status.state, SelectionAssigned = true,
-                Duration = status.notice.duration, Reason = status.notice.reason, ExpiresAt = status.notice.expiresAt }
+                Duration = status.notice.duration, Reason = status.notice.reason, ExpiresAt = status.notice.expiresAt,
+                PublicLookup = true }
         end
         if qaEnv.__ASC_SYNC_POLICY_WARNING then pcall(qaEnv.__ASC_SYNC_POLICY_WARNING, status) end
         if status and not qaEnv.__ES_BANNED then break end

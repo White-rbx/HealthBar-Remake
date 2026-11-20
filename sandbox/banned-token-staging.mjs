@@ -67,14 +67,14 @@ export async function ensureBannedReference(db, {userId, username, caseId, secre
 
 // An explicit case-to-restriction link, provisioned by server-side moderation,
 // prevents a historic notice's reference from appearing on an unrelated ban.
-export async function restrictionBannedReference(db, {userId, revision}) {
+export async function restrictionBannedReference(db, {userId, revision, noticeId=null}) {
   if (typeof revision !== 'string' || revision === '') return undefined;
   const row = await db.prepare(`
     SELECT r.reference_suffix AS suffix
     FROM asc_banned_token_references AS r
     JOIN asc_verified_violation_subjects AS l USING (notice_id, subject_user_id)
-    WHERE r.subject_user_id=?1 AND r.ban_revision=?2
-  `).bind(userId, revision).first();
+    WHERE r.subject_user_id=?1 AND r.ban_revision=?2 AND (?3 IS NULL OR r.notice_id=?3)
+  `).bind(userId, revision, noticeId).first();
   return row ? '••••' + row.suffix : undefined;
 }
 

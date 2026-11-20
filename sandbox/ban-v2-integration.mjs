@@ -42,7 +42,7 @@ function json(data,status=200,origin) {
  if(origin)headers['Access-Control-Allow-Origin']=origin;
  return Response.json(data,{status,headers});
 }
-async function readJson(request,maxBytes=24000) {
+export async function readJson(request,maxBytes=24000) {
  if(!/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(request.headers.get('Content-Type')??''))
   fail(415,'content_type','Expected application/json.');
  if(!request.body || Number(request.headers.get('Content-Length'))>maxBytes)
@@ -64,7 +64,7 @@ async function readJson(request,maxBytes=24000) {
  for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
  try{return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));}catch{invalid();}
 }
-function openDocument(record) {
+export function openDocument(record) {
  if(!record || !SHA.test(record.sha)||typeof record.source!=='string')unavailable();
  try{return parseBanLua(record.source);}catch{
   fail(503,'source_invalid','Ban list format is invalid. Saving and policy checks are unavailable.');
@@ -262,7 +262,7 @@ export function openVerifiedHistory(env,subject,now,referenceOptions) {
  })(new Request('https://internal.invalid/api/v1/violation/history'));
 }
 
-export async function submitVerifiedAppeal(env,{userId,noticeId,description},now) {
+export async function submitVerifiedAppeal(env,{userId,noticeId,description},now,{tokenHash}={}) {
  if(typeof noticeId!=='string'||!/^[-A-Za-z0-9_]{1,70}$/.test(noticeId)||
     typeof description!=='string'||Array.from(description.trim()).length<50||
     Array.from(description).length>5000||/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(description))invalid();
@@ -276,11 +276,16 @@ export async function submitVerifiedAppeal(env,{userId,noticeId,description},now
    SELECT ?,?,'appeal',?,'Violation appeal',?,?,?
    FROM asc_verified_violation_subjects
    WHERE notice_id=? AND subject_user_id=? AND (appeal_status='not_appealed'
-    OR (appeal_status='denied' AND may_reappeal=1))`).bind(id,hash,userId,description.trim(),now,now,noticeId,userId),
+    OR (appeal_status='denied' AND may_reappeal=1))
+    ${tokenHash?`AND EXISTS (SELECT 1 FROM asc_violation_case_sessions s
+      WHERE s.credential_hash=? AND s.state='session' AND s.expires_unix>?
+        AND s.notice_id=asc_verified_violation_subjects.notice_id
+        AND s.subject_user_id=asc_verified_violation_subjects.subject_user_id)`:''}`)
+   .bind(id,hash,userId,description.trim(),now,now,noticeId,userId,...(tokenHash?[tokenHash,now]:[])),
   DB.prepare(`INSERT INTO asc_ban_v2_verified_appeals(case_id,notice_id,created_unix)
    SELECT id,?,? FROM asc_feedback_cases WHERE id=?`).bind(noticeId,now,id),
   DB.prepare('SELECT case_id FROM asc_ban_v2_verified_appeals WHERE case_id=?').bind(id),
  ]);
  if(created.results?.[0]?.case_id!==id)fail(409,'appeal_ineligible','Appeal is unavailable for this notice.');
- return json({ok:true,id,receipt,kind:'appeal',status:'reviewing'},201);
+ return json({ok:true,id,...(tokenHash?{}:{receipt}),kind:'appeal',status:'reviewing'},201);
 }

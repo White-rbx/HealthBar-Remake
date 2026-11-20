@@ -8,7 +8,7 @@ on:
       - 'sandbox/feedback-*'
       - 'sandbox/ban-v2-*'
       - 'sandbox/banned-token-*.mjs'
-      - 'migrations/banned_token_ISOLATED_QA_ONLY.sql'
+      - 'migrations/banned_token*_ISOLATED_QA_ONLY.sql'
       - 'docs/banned-token-staging-design.md'
       - 'sandbox/Ban*Preview.lua'
       - 'sandbox/ArcScriptCenterBanBridge.server.lua'
@@ -77,6 +77,8 @@ jobs:
         run: node --test sandbox/managed-ban-schema-v2.test.mjs
       - name: Banned Check Center v2 — SQL, permissions, appeal, SHA and Pages
         run: node --test sandbox/ban-v2-integration.test.mjs
+      - name: Universal case sessions without a Roblox server bridge
+        run: node --test sandbox/banned-token-universal-qa.test.mjs
       - name: Compile and run Roblox policy code in the Luau VM with mocked Roblox services
         run: |
           luau_dir="$RUNNER_TEMP/asc-luau"

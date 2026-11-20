@@ -1,16 +1,11 @@
--- Public QA checks drive UI only. Verified case operations remain on the Roblox server bridge.
-local publicLookup = (...) == "public_qa"
+-- Universal QA uses executor HTTP for public status and scoped private case sessions.
+local mode = ...
+local publicLookup = mode == "public_qa" or mode == "universal_case_qa"
 local player = game:GetService("Players").LocalPlayer
 if not player then return nil end
 
-local bridge, transport, outsideQA
-local function caseBridge()
-    local storage = game:GetService("ReplicatedStorage")
-    local found = storage:FindFirstChild("ArcScriptCenterBanBridgeSTAGING")
-    if found and found:IsA("RemoteFunction") and found:GetAttribute("BannedTokenQA") == true then
-        return found
-    end
-end
+local bridge, transport, post, outsideQA
+local caseOrigin = "https://arcscriptcenter-banned-token-universal-qa.kogpasan14.workers.dev"
 if publicLookup then
     local env = getgenv()
     local candidates = table.pack(request, http_request, type(syn) == "table" and syn.request,
@@ -24,24 +19,26 @@ if publicLookup then
     end
     if not requestFn then return nil end
     local service = game:GetService("HttpService")
-    transport = function()
+    post = function(url, body, credential, maxBytes)
+        local headers = { ["Content-Type"] = "application/json", ["Accept"] = "application/json" }
+        if credential then headers.Authorization = "Bearer " .. credential end
         local reply = requestFn({
-            Url = "https://arcscriptcenter-ban-policy-qa.kogpasan14.workers.dev/api/v1/client/bans/v2/status",
-            Method = "POST",
-            Headers = { ["Content-Type"] = "application/json", ["Accept"] = "application/json" },
-            Body = service:JSONEncode({ userId = tostring(player.UserId) }),
-            Timeout = 8,
+            Url = url, Method = "POST", Headers = headers, Body = service:JSONEncode(body), Timeout = 8,
         })
         if type(reply) ~= "table" then return nil end
         local raw = reply.Body or reply.body
-        if type(raw) ~= "string" or #raw > 1024 then return nil end
+        if type(raw) ~= "string" or #raw > maxBytes then return nil end
         local data = service:JSONDecode(raw)
-        local code = tonumber(reply.StatusCode or reply.Status)
-        if code == 200 then return data end
-        if code == 403 and type(data) == "table" and data.code == "target_not_allowed" then
-            return { outsideQA = true }
-        end
-        return nil
+        if type(data) ~= "table" then return nil end
+        return { status = tonumber(reply.StatusCode or reply.Status), data = data }
+    end
+    local publicOrigin = mode == "universal_case_qa" and caseOrigin
+        or "https://arcscriptcenter-ban-policy-qa.kogpasan14.workers.dev"
+    transport = function()
+        local reply = post(publicOrigin .. "/api/v1/client/bans/v2/status", { userId = tostring(player.UserId) }, nil, 1024)
+        if not reply then return nil end
+        if reply.status == 200 then return reply.data end
+        if reply.status == 403 and reply.data.code == "target_not_allowed" then return { outsideQA = true } end
     end
 else
     bridge = game:GetService("ReplicatedStorage"):WaitForChild("ArcScriptCenterBanBridgeSTAGING", 5)
@@ -126,31 +123,106 @@ function client.policy()
     lastChecked, lastPolicy = data.checkedAt, data
     return data
 end
--- Public policy never hands out a case grant. The optional trusted QA
--- bridge is discovered without waiting during public startup.
-function client.hasPrivateCaseChannel()
-    return not publicLookup or caseBridge() ~= nil
+local session
+local account = tostring(player.UserId)
+local sessionFile = "ExperienceSettings/ArcScriptCenterCaseSession_" .. account .. ".json"
+local function credential(value, prefix)
+    return type(value) == "string" and #value == 70 and value:sub(1, 6) == prefix
+        and value:sub(7):match("^[0-9a-f]+$") ~= nil
 end
 
-local function privateInvoke(operation, ...)
-    if not publicLookup then return invoke(transport, operation, ...) end
-    local remote = caseBridge()
-    if remote then
-        return invoke(function(...)
-            return remote:InvokeServer(...)
-        end, operation, ...)
+if publicLookup and type(readfile) == "function" then
+    local ok, record = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(readfile(sessionFile))
+    end)
+    if ok and type(record) == "table" and record.subject == account and credential(record.session, "ASCVS_")
+        and type(record.expiresAt) == "number" and record.expiresAt > os.time() then
+        session = record.session
     end
+end
+
+local function clearSession()
+    session = nil
+    if type(delfile) == "function" then pcall(delfile, sessionFile) end
+end
+local function callCase(operation, body, token)
+    return invoke(function(route)
+        return post(caseOrigin .. "/api/v1/client/violation/" .. route, body, token, 300000)
+    end, operation)
+end
+
+function client.hasPrivateCaseChannel()
+    return not publicLookup or session ~= nil
+end
+
+function client.enrollCase(code, remember)
+    if not publicLookup or session or not credential(code, "ASCVE_") then return false, "invalid_code" end
+    local reply = callCase("enroll", {}, code)
+    if not reply then return false, "unavailable" end
+    local data = reply.data
+    if reply.status ~= 201 or data.ok ~= true or not credential(data.session, "ASCVS_")
+        or type(data.expiresAt) ~= "number" then return false, data.code end
+    if data.subject ~= account then
+        callCase("revoke", {}, data.session)
+        return false, "different_account"
+    end
+    session = data.session
+    if remember then
+        local saved = type(writefile) == "function" and type(delfile) == "function" and pcall(function()
+            if type(isfolder) == "function" and type(makefolder) == "function" and not isfolder("ExperienceSettings") then
+                makefolder("ExperienceSettings")
+            end
+            writefile(sessionFile, game:GetService("HttpService"):JSONEncode({
+                subject = account, session = session, expiresAt = data.expiresAt,
+            }))
+        end)
+        if not saved then return true, "not_saved" end
+    end
+    return true
+end
+
+local function privateCall(operation, body)
+    local token = session
+    if not token then return nil end
+    local reply = callCase(operation, body, token)
+    if session ~= token or not reply then return nil end
+    if reply.status == 401 then clearSession() end
+    return reply
+end
+
+function client.disconnectCase()
+    if not session then return true end
+    local reply = privateCall("revoke", {})
+    if not reply or (reply.status ~= 200 and reply.status ~= 401) then return false end
+    clearSession()
+    return true
+end
+
+function client.restrictionReference(status)
+    if not publicLookup or not status or not status.notice or not status.notice.revision then return nil end
+    local reply = privateCall("reference", {})
+    local data = reply and reply.status == 200 and reply.data
+    if data and data.ok == true and data.subject == account and data.state == status.state
+        and data.revision == status.notice.revision and type(data.reference) == "string"
+        and data.reference:match("^••••[0-9A-F][0-9A-F]$") then return data.reference end
 end
 
 function client.history()
-    local data = privateInvoke("violation")
+    local data
+    if publicLookup then
+        local reply = privateCall("history", {})
+        data = reply and reply.status == 200 and reply.data
+    else
+        data = invoke(transport, "violation")
+    end
     if data and data.ok == true and data.identityVerified == true and type(data.notices) == "table" then
         return data.notices
     end
-    return nil
 end
 
 function client.appeal(noticeId, description)
-    return privateInvoke("appeal", noticeId, description)
+    if not publicLookup then return invoke(transport, "appeal", noticeId, description) end
+    local reply = privateCall("appeal", {noticeId = noticeId, description = description})
+    return reply and reply.data
 end
 return client

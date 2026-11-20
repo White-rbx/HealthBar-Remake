@@ -1,5 +1,8 @@
 # BANNEDTOKEN STAGING
 
+The default Loader uses the [universal HTTPS case session](banned-token-universal-qa.md).
+The owned-experience bridge below remains a separate QA entrypoint.
+
 The server generates `BANNTOKEN_XXXXXXXXXXXX-XXXXXXXXXXX#XXXXXX`.
 
 - The first segment is a 12-character server HMAC of the Roblox UserId.
@@ -33,11 +36,9 @@ For native QA, install `sandbox/ArcScriptCenterBanBridge.server.lua` in an
 owner-controlled test place and enable its `BannedTokenQA` Script attribute.
 Give only the Roblox server the matching bridge secret. The Roblox server
 gets the authenticated caller from `OnServerInvoke` and supplies the
-account identity and username. The universal preview still fetches public
-ban policy separately, and automatically discovers a configured private
-case channel when present. To test the trusted policy mask in the same
-isolated QA dataset, run the preview with `"roblox_server"`. Neither path
-asks the player to sign in or enter a Case ID during startup.
+account identity and username. To test the bridge and trusted policy mask in the same isolated QA dataset,
+run the preview with `"roblox_server"`. This optional mode asks the player
+for no sign-in or Case ID during startup.
 
 On Roblox Mobile, check that the linked owner sees the masked reference
 and verified Violation automatically, while an unbound account sees no

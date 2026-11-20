@@ -6,7 +6,7 @@
  */
 const STATES = new Set(['not_appealed', 'reviewing', 'denied', 'approved']);
 const SUBJECT_RE = /^[1-9][0-9]{0,19}$/;
-const AUTH_SOURCE = new Set(['roblox_oidc', 'trusted_game_server']);
+const AUTH_SOURCE = new Set(['roblox_oidc', 'trusted_game_server', 'case_enrollment']);
 const MAX_NOTICES = 50;
 const MAX_HISTORY_PER_NOTICE = 20;
 
@@ -50,15 +50,19 @@ function resultJson(body, status = 200) {
 function verifiedSubject(principal, nowUnix) {
   if (!principal || typeof principal !== 'object' || principal.verified !== true) return null;
   if (!AUTH_SOURCE.has(principal.method)) return null;
+  if (principal.method==='case_enrollment' &&
+      (typeof principal.noticeId!=='string'||!/^[-\w]{1,70}$/.test(principal.noticeId))) return null;
   if (typeof principal.sub !== 'string' || !SUBJECT_RE.test(principal.sub)) return null;
   if (!Number.isSafeInteger(principal.expiresAt) || principal.expiresAt <= nowUnix) return null;
   return principal.sub;
 }
 
-async function loadSubjectNotices(db, subject) {
+async function loadSubjectNotices(db, subject, scope) {
+  const args=scope?[subject,scope]:[subject];
+  const condition=scope?'WHERE l.subject_user_id = ?1 AND l.notice_id = ?2':'WHERE l.subject_user_id = ?1';
   const [a, b] = await Promise.all([
-    db.prepare(NOTICE_SQL).bind(subject).all(),
-    db.prepare(HISTORY_SQL).bind(subject).all(),
+    db.prepare(NOTICE_SQL.replace('WHERE l.subject_user_id = ?1',condition)).bind(...args).all(),
+    db.prepare(HISTORY_SQL.replace('WHERE l.subject_user_id = ?1',condition)).bind(...args).all(),
   ]);
   const noticeRows = a?.results ?? [];
   const historyRows = b?.results ?? [];
@@ -115,7 +119,7 @@ export function createVerifiedHistoryHandler({ db, resolveVerifiedPrincipal, dec
     const subject = verifiedSubject(principal, Math.floor(clock() / 1000));
     if (!subject) return resultJson({ ok: false, identityVerified: false, error: 'Authentication required' }, 401);
     try {
-      const notices = await loadSubjectNotices(db, subject);
+      const notices = await loadSubjectNotices(db, subject, principal.method==='case_enrollment'?principal.noticeId:undefined);
       if (decorateNotices) await decorateNotices(notices, subject);
       return resultJson({
         ok: true,
