@@ -11,6 +11,7 @@ on:
       - 'sandbox/Arcsen-Preview.lua'
       - 'sandbox/feedback-case-delivery-staging.*'
       - 'sandbox/feedback-user-case-token-staging.*'
+      - 'sandbox/feedback-user-case-token-native.test.mjs'
       - 'migrations/feedback_user_case_token_STAGING_REVIEW_ONLY_20261120.sql'
       - 'migrations/feedback_case_owner_links_STAGING_REVIEW_ONLY_20261119.sql'
       - 'sandbox/loader-main-preview.test.mjs'
@@ -103,6 +104,8 @@ jobs:
         run: node --test sandbox/feedback-case-delivery-staging.test.mjs
       - name: User Case Token — consent, token-only rejoin, revoke and case isolation
         run: node --test sandbox/feedback-user-case-token-staging.test.mjs
+      - name: Native Remember Token — JSON, Rejoin, opt-in and Revoke controls
+        run: node --test sandbox/feedback-user-case-token-native.test.mjs
       - name: Real LoaderMainPreview with isolated SetUp/Arcsen and New Chat/HereChat QA
         run: node --test sandbox/loader-main-preview.test.mjs
       - name: Validate Ban Mode routed through SetUp, Main Loader, UI Loader and Arcsen
