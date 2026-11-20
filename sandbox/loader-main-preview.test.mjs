@@ -153,6 +153,23 @@ test('Arcsen server-linked Case Delivery is active-only, verified-token-only and
   assert.doesNotMatch(arcsen,/CASE_STAGING_BASE\.\."\/api\/v1\/client\/cases\/poll"\s*\+.*UserId/);
 });
 
+test('server-delivered cases render as read-only cards with no receipt or account-claim shortcut',()=>{
+  assert.match(arcsen,/local serverLinkedCases = \{\} -- Verified server response only/);
+  assert.match(arcsen,/if not token then\s*\n\s*-- Clear previously authorized cards/);
+  assert.match(arcsen,/if code==401 then\s*\n\s*-- Never keep presenting previously authorized cases after expiry/);
+  assert.match(arcsen,/nextLinked\[item.id\]=\{/);
+  assert.match(arcsen,/serverLinkedCases=nextLinked/);
+  assert.match(arcsen,/Server-linked Feedback delivered:/);
+  assert.match(arcsen,/for id,item in pairs\(serverLinkedCases\) do/);
+  assert.match(arcsen,/not \(own and own.verified == true and type\(own.receipt\) == "string"\)/);
+  assert.match(arcsen,/ServerLinkedCaseReadOnly/);
+  assert.match(arcsen,/view.Interactable = record.serverLinked ~= true/);
+  assert.match(arcsen,/if record.serverLinked ~= true then\s*\n\s*view.MouseButton1Click:Connect/);
+  assert.match(arcsen,/local privateReceipts = \{\} -- Session only/);
+  // Private Receipt-authenticated operations remain distinct from server-listed read-only cases.
+  assert.match(arcsen,/casePost\("\/api\/v1\/feedback\/status",\{id=id,receipt=receipt\}\)/);
+});
+
 test('New Chat draft has no stale selected tab and only becomes a chat on Send',()=>{
   assert.match(arcsen,/new\.MouseButton1Click:Connect\(function\(\)/);
   assert.match(arcsen,/-- Clear the old selected tab.s scale even if it is still present/);
