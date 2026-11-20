@@ -2,8 +2,9 @@
 -- STAGING Case Delivery: periodic active-client polling; no local receipt persistence.
 -- No Production or original Arcsen is modified. No account-bound identity is inferred.
 local ver = {
-	sion = " UIs 7.3.57 STAGING Preview ",
+	sion = " UIs 7.3.58 STAGING Preview ",
 	logs = [[
+(:20/11/2026: QA Preview v7.3.58) Server-delivered Feedback cases render in Review/Approved/Denied/Flagged cards, read-only without a private Receipt; de-duplicate with session Receipt cases and never treat an unverified UserId as proof. Verified device session and deployed API are still required.
 (:20/11/2026: QA Preview v7.3.57) Remove redundant Check Server Cases and Link this case to my verified account UI. Use only Refresh and Check Server's case; keep automatic verified-session delivery as a backend gate, no client-claimed UserId disclosure. One-case Receipt restoration remains.
 (:19/11/2026: STAGING v7.3.56) Rejoin case missing: honest UI diagnosis when verified Case Delivery endpoint/session is not installed. Avoid presenting 0 locally linked cases as no server records; guide user to private Case ID + Receipt recovery. No Server/Production changes.
 (:19/11/2026: Arcsen Preview 7.3.55) New Chat clears the prior selected tab, previews the typed UTF-8 input as a temporary tab title, then lets AI rename the sent chat. HereChat Chat Safety and explicit Age Group (Unchecked - <9) warnings keep only one latest notice, replacing previous warnings after rejoin; no age is inferred from UserId or denied chat permission.
@@ -14179,6 +14180,7 @@ task.spawn(function()
     -- Cloud/Policy URL or send administrative tokens from the client.
     local CASE_STAGING_BASE = "https://arcscriptcenter-api-staging.kogpasan14.workers.dev"
     local privateReceipts = {} -- Session only, not getgenv(), Global Memory, logs or disk.
+    local serverLinkedCases = {} -- Verified server response only; no credentials and no persistent cache.
     local updateCaseCounters = function() end -- Assigned after Feedback subcategory UI is created.
     loc.API.ArcScriptCenterCaseSession = {LastCaseId=nil, Count=0, Transport="STAGING only"}
 
@@ -14683,7 +14685,8 @@ task.spawn(function()
                                 tostring(case.id or ""),tostring(case.status or ""),
                                 tostring(case.topic or ""),tostring(case.publicNote or ""),
                                 tostring(case.updatedAt or ""),tostring(case.unread == true),
-                                tostring(case.lastCheckedAt or "")
+                                tostring(case.lastCheckedAt or ""),
+                                tostring(case.serverLinked == true)
                             },"\0")
                         end
                         local signature = table.concat(signatures,"\1")
@@ -14750,19 +14753,22 @@ task.spawn(function()
                                 or "Not yet refreshed"
                             cardText("LastConfirmed",checkedLabel,128,18,10,Color3.fromRGB(171,190,209))
                             local view = Instance.new("TextButton")
-                            view.Name = "OpenVerifiedCase"
+                            view.Name = record.serverLinked and "ServerLinkedCaseReadOnly" or "OpenVerifiedCase"
                             view.Position = UDim2.fromOffset(8,153)
                             view.Size = UDim2.new(1,-16,0,26)
-                            view.Text = "View status / review history"
+                            view.Text = record.serverLinked and "Server-confirmed (read-only)" or "View status / review history"
                             view.TextSize = 11
                             view.TextColor3 = Color3.new(1,1,1)
                             view.BackgroundColor3 = Color3.fromRGB(51,88,120)
                             view.BorderSizePixel = 0
+                            view.Interactable = record.serverLinked ~= true
                             view.Parent = card
                             Corner(0,4,view)
-                            view.MouseButton1Click:Connect(function()
-                                openKnownFeedbackCase(id)
-                            end)
+                            if record.serverLinked ~= true then
+                                view.MouseButton1Click:Connect(function()
+                                    openKnownFeedbackCase(id)
+                                end)
+                            end
                         end
                         task.defer(syncFeedbackCanvas)
                         task.defer(syncPanelCanvas)
@@ -15059,18 +15065,39 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 or type(data.cases)~="table" then
                                 deliveryResult.Text="Untrusted server response rejected."
                             else
-                                local lines={"Verified server-linked Feedback: "..tostring(math.min(#data.cases,30))}
-                                for i=1,math.min(#data.cases,12) do
+                                -- A verified session + trusted Worker response may list linked
+                                -- Feedback without exposing its Receipt or edit permissions.
+                                -- Keep this separate from session receipt-authenticated records.
+                                local nextLinked={}
+                                local received=0
+                                for i=1,math.min(#data.cases,30) do
                                     local item=data.cases[i]
                                     if type(item)=="table" and item.kind=="feedback"
-                                        and type(item.id)=="string"
-                                        and type(item.status)=="string" then
-                                        local topic=tostring(item.topic or ""):sub(1,50)
-                                        lines[#lines+1]=item.status.." | "..topic.." | "..item.id:sub(1,8)
+                                        and type(item.id)=="string" and #item.id==36
+                                        and item.id:match("^[0-9a-fA-F%-]+$")
+                                        and ({reviewing=true,approved=true,denied=true,violation=true})[item.status]
+                                        and type(item.topic)=="string"
+                                        and type(item.publicNote)=="string" then
+                                        local previous=serverLinkedCases[item.id]
+                                        local changed=previous and (previous.status~=item.status
+                                            or previous.publicNote~=item.publicNote)
+                                        nextLinked[item.id]={
+                                            id=item.id, kind="feedback", status=item.status,
+                                            topic=item.topic:sub(1,50),
+                                            publicNote=item.publicNote:sub(1,800),
+                                            updatedAt=tonumber(item.updatedAt) or 0,
+                                            revision=tonumber(item.revision) or 0,
+                                            verified=true,serverLinked=true,
+                                            unread=(previous and previous.unread==true) or changed==true,
+                                            lastCheckedAt=os.time()
+                                        }
+                                        received+=1
                                     end
                                 end
-                                if #data.cases>12 then lines[#lines+1]="Additional linked cases are not shown in this preview." end
-                                deliveryResult.Text=table.concat(lines,"\n")
+                                serverLinkedCases=nextLinked
+                                task.defer(updateCaseCounters)
+                                deliveryResult.Text="Server-linked Feedback delivered: "..tostring(received)
+                                    .." (read-only; no Receipt needed for this verified view)."
                             end
                         end
                         task.defer(syncFeedbackCanvas)
@@ -15186,6 +15213,14 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             table.insert(buckets[item.status],item)
                         end
                     end
+                    for id,item in pairs(serverLinkedCases) do
+                        local own=privateReceipts[id]
+                        if item.serverLinked == true and item.verified == true
+                            and item.kind == "feedback" and buckets[item.status]
+                            and not (own and own.verified == true and type(own.receipt) == "string") then
+                            table.insert(buckets[item.status],item)
+                        end
+                    end
                     for _,bucket in pairs(buckets) do
                         table.sort(bucket,function(a,b)
                             local at,bt=tonumber(a.updatedAt) or 0,tonumber(b.updatedAt) or 0
@@ -15220,6 +15255,18 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             end
                         end
                     end
+                    for id,item in pairs(serverLinkedCases) do
+                        local own=privateReceipts[id]
+                        if item.serverLinked and item.verified and item.kind=="feedback"
+                            and not (own and own.verified and type(own.receipt)=="string") then
+                            known=true
+                            local status=caseTrim(item.status)
+                            if counts[status]~=nil then
+                                counts[status]+=1
+                                if item.unread then unread[status]+=1 end
+                            end
+                        end
+                    end
                     countReview(known and counts.reviewing or nil,known and unread.reviewing or nil)
                     countApproved(known and counts.approved or nil,known and unread.approved or nil)
                     countDenied(known and counts.denied or nil,known and unread.denied or nil)
@@ -15231,6 +15278,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     local key=groupName=="Review" and "reviewing"
                         or groupName=="Flagged (Policy)" and "violation" or string.lower(groupName)
                     for _,item in pairs(privateReceipts) do
+                        if item.kind=="feedback" and item.status==key then
+                            item.unread=false
+                        end
+                    end
+                    for _,item in pairs(serverLinkedCases) do
                         if item.kind=="feedback" and item.status==key then
                             item.unread=false
                         end
