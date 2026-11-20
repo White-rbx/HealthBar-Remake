@@ -15027,6 +15027,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     if not force and os.clock()-lastDeliveryRequest<30 then return end
                     local token=serverCaseToken()
                     if not token then
+                        -- Clear previously authorized cards if the device session disappears.
+                        serverLinkedCases={}
+                        task.defer(updateCaseCounters)
                         deliveryResult.Text="Automatic server sync is not ready. No verification button is needed in this UI. Your previous cases may still exist; you can restore a specific case with its ID + private Receipt."
                         return
                     end
@@ -15053,6 +15056,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         local code=ok and type(response)=="table"
                             and tonumber(response.StatusCode or response.Status) or 0
                         if code==401 then
+                            -- Never keep presenting previously authorized cases after expiry.
+                            serverLinkedCases={}
+                            task.defer(updateCaseCounters)
                             deliveryResult.Text="Verified session required or expired."
                         elseif code==404 then
                             deliveryResult.Text="STAGING Case Delivery API not deployed. Cannot automatically load cases after Rejoin. Use Restore previous case with ID + Receipt."
