@@ -53,15 +53,21 @@ test('SetUp, UI Loader, topbar guard and Arcsen are all connected to staging',()
   assert.match(main, /if bootEnv.__ES_BAN_SELECTION ~= "restricted_mode" or bootEnv.__ES_BANNED == true then/);
   assert.match(main, /if not okGate or gateResult ~= true then/);
   assert.ok(main.indexOf('RestrictedMode-Topbar-STAGING.lua') <
-    main.indexOf('assert(loadstring(game:HttpGet(arcsenUrl)))("ban_qa")'), 'lock before Arcsen');
+    main.indexOf('print("[ES][QA] Starting Arcsen-Preview.lua")'), 'lock before Arcsen');
 });
 
-test('in-game ban blocks real loader; restricted skips editor/search and preserves Arcsen',()=>{
+test('in-game ban blocks real loader; restricted retains Editor dependency but skips search',()=>{
   assert.match(main,/getgenv\(\).__ES_BANNED == true or getgenv\(\)\[string\.char/);
   assert.match(main,/local isRestrictedMode = bootEnv.__ES_RESTRICTED_MODE == true/);
   assert.match(main,/if not isRestrictedMode then\s*\n\s*loadTool\("RecommendedScript\.lua/);
+  assert.match(main,/loadTool\("Editor\.lua"\)\s*\nlocal notification/);
+  assert.ok(main.indexOf('loadTool("Editor.lua")') <
+    main.indexOf('RestrictedMode-Topbar-STAGING.lua'), 'Editor initializes before gate');
+  assert.ok(main.indexOf('loadTool("Editor.lua")') <
+    main.indexOf('print("[ES][QA] Starting Arcsen-Preview.lua")'), 'Editor initializes before Arcsen');
+  assert.match(main,/notificationMenu:FindFirstChild\("Notification"\)/);
   assert.match(main,/if not isRestrictedMode then\s*\n\s*loadTool\("Search\.lua/);
-  assert.equal(count(/assert\(loadstring\(game:HttpGet\(arcsenUrl\)\)\)\("ban_qa"\)/g,main),1);
+  assert.equal(count(/return compiled\("ban_qa"\)/g,main),1);
   assert.match(setup,/getgenv\(\).__ES_BANNED = banData ~= nil and banData.Selection ~= "restricted_mode"/);
   assert.match(setup,/__ES_BAN_DURATION = banData and banData.Duration or nil/);
   assert.match(setup,/local duration = expiresAt and "temporary" or "permanent"/);
