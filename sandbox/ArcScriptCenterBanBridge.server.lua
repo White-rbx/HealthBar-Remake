@@ -13,8 +13,8 @@ local unavailable = { ok = false, code = "server_unavailable" }
 local remote = Instance.new("RemoteFunction")
 remote.Name = "ArcScriptCenterBanBridgeSTAGING"
 remote:SetAttribute("IsolatedQA", not stagingGitHub)
-local lastCall = {}
-Players.PlayerRemoving:Connect(function(player) lastCall[player] = nil end)
+local requests = {}
+Players.PlayerRemoving:Connect(function(player) requests[player] = nil end)
 
 local function send(player, operation, noticeId, description)
     local data = { userId = tostring(player.UserId), universeId = tostring(game.GameId) }
@@ -51,12 +51,17 @@ remote.OnServerInvoke = function(player, operation, noticeId, description)
         return { ok = false, code = "invalid_request" }
     end
     local now = os.clock()
-    local calls = lastCall[player]
-    if not calls then calls = {}; lastCall[player] = calls end
-    if calls[operation] and now - calls[operation] < 2 then
+    local calls = requests[player]
+    if not calls then calls = {}; requests[player] = calls end
+    local pending = calls[operation]
+    if pending and (pending.busy or now - pending.startedAt < 2) then
         return { ok = false, code = "rate" }
     end
-    calls[operation] = now
-    return send(player, operation, noticeId, description)
+    pending = { busy = true, startedAt = now }
+    calls[operation] = pending
+    local ok, result = pcall(send, player, operation, noticeId, description)
+    pending.busy = false
+    if not ok or player.Parent ~= Players then return unavailable end
+    return result
 end
 remote.Parent = ReplicatedStorage

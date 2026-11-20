@@ -224,7 +224,8 @@ test('native QA entry is opt-in and the Loader restores features only after an a
  assert.match(setup,/qaEnv.__ASC_BAN_POLICY_ERROR = status == nil/);
  assert.match(loader,/if bootEnv.__ASC_BAN_POLICY_ERROR == true then[\s\S]+?return/);
  assert.match(loader,/if status.state == "clear" and isRestrictedMode then[\s\S]+?controller.stop\(\)/);
- assert.match(loader,/if not status then[\s\S]+?showBlocked\("Ban status unavailable/);
+ assert.match(loader,/if not status then\s+suspendExpired\(\)/);
+ assert.match(loader,/local function suspendExpired\(\)[\s\S]+?showBlocked\("Ban status unavailable/);
  assert.match(arcsen,/trustedBanClient.appeal\(target, description\)/);
  assert.match(arcsen,/#notices == 0 then[\s\S]+?hideViolationNotice\(\)/);
  assert.match(arcsen,/status=="not_appealed"\) or[\s\S]+?status=="denied" and details.canAppealAgain==true/);

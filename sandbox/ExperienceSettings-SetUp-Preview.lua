@@ -505,26 +505,7 @@ if not banData then
         banData = _0x15(_0x13)
     end
 end
--- ASC BAN V2 SETUP BEGIN
 local qaEnv = getgenv()
-if qaEnv.__ASC_BAN_V2_PREVIEW then
-    local client = qaEnv.__ASC_BAN_V2_CLIENT
-    local status = client and client.policy()
-    qaEnv.__ASC_BAN_V2_STATE = status
-    qaEnv.__ASC_BAN_POLICY_ERROR = status == nil
-    if status and status.ban then
-        local item = status.ban
-        banData = {
-            Selection = item.selection, SelectionAssigned = item.legacy ~= true,
-            Duration = item.duration, Reason = item.reason, Description = item.description,
-            StartAt = item.startAt, ExpiresAt = item.expiresAt,
-        }
-    elseif status then
-        banData = nil
-    end
-end
--- ASC BAN V2 SETUP END
-local isBannedUser = banData ~= nil
 local anim = {
 	0,85215834651365,113081160999318,110302272078310,74005522254669,74901110508812,
 	100677834962357,119529343123060,102721895347323,112327619673337,73610060099140,
@@ -572,7 +553,7 @@ TweenService:Create(Image, TweenInfo.new(0.5), {
 Canvas.Visible = true
 
 TweenService:Create(Canvas, TweenInfo.new(0.5), {
-	GroupTransparency = 1
+	GroupTransparency = 0
 }):Play()
 
 TweenService:Create(twarn, TweenInfo.new(0.5), {
@@ -606,20 +587,92 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 -- =========================
 
 getgenv().__ES_READY = false
--- ASC BAN V2 UNAVAILABLE BEGIN
-if qaEnv.__ASC_BAN_POLICY_ERROR == true then
-    qaEnv.ES = nil
-    if twarn then
-        twarn.Text = "Could not verify your restriction status with the server. Rejoin the approved test experience to retry."
-        CanBar.Visible = false
+local function renderBanBlock(item)
+    local function escapeText(value)
+        return tostring(value or ""):gsub("&", "&amp;")
+            :gsub("<", "&lt;"):gsub(">", "&gt;")
+            :gsub('"', "&quot;"):gsub("'", "&#39;")
     end
-    if btnBar then
-        btnBar.Visible = true
-        btnBar.Text = "Close"
+    local function formatTime(value)
+        return os.date("!%Y-%m-%d %H:%M", value + 7 * 3600) .. " ICT (UTC+7)"
     end
-    return
+    local selection = item.SelectionAssigned and "Ban in-game" or "Ban in-game (Legacy)"
+    twarn.Text = "<b>You have been banned from ExperienceSettings.</b>\n"
+        .. "Selection: <b>" .. selection .. "</b>\n"
+        .. "Duration: <b>" .. escapeText(item.Duration) .. "</b>\n"
+        .. "Reason: <mark color='rgb(255,85,85)' transparency='0.5'>" .. escapeText(item.Reason) .. "</mark>\n"
+        .. "Description: " .. escapeText(item.Description) .. "\n"
+        .. (item.StartAt and ("From: " .. formatTime(item.StartAt) .. "\n") or "")
+        .. "Until: <b>" .. (item.ExpiresAt and formatTime(item.ExpiresAt) or "Permanent") .. "</b>"
 end
--- ASC BAN V2 UNAVAILABLE END
+
+-- ASC BAN V2 SETUP BEGIN
+if qaEnv.__ASC_BAN_V2_PREVIEW then
+    local client = qaEnv.__ASC_BAN_V2_CLIENT
+    local originalText = twarn.Text
+    local details
+    while Folder.Parent do
+        local status = client and client.policy()
+        if not Folder.Parent then break end
+        qaEnv.__ASC_BAN_V2_STATE = status
+        qaEnv.__ASC_BAN_POLICY_ERROR = status == nil
+        qaEnv.__ES_BANNED = status ~= nil and status.state == "ban_ingame"
+        local item = status and status.ban
+        banData = item and {
+            Selection = item.selection, SelectionAssigned = item.legacy ~= true,
+            Duration = item.duration, Reason = item.reason, Description = item.description,
+            StartAt = item.startAt, ExpiresAt = item.expiresAt,
+        } or nil
+        if status and not qaEnv.__ES_BANNED then break end
+
+        if not details then
+            details = Instance.new("ScrollingFrame")
+            details.BackgroundTransparency = 1
+            details.BorderSizePixel = 0
+            details.Size = UDim2.new(1, 0, 0.75, 0)
+            details.CanvasSize = UDim2.new()
+            details.AutomaticCanvasSize = Enum.AutomaticSize.Y
+            details.ScrollingDirection = Enum.ScrollingDirection.Y
+            details.ScrollBarThickness = 4
+            details.Parent = Canvas
+            twarn.Parent = details
+            twarn.TextYAlignment = Enum.TextYAlignment.Top
+            twarn.AutomaticSize = Enum.AutomaticSize.Y
+            twarn.Size = UDim2.new(1, -8, 0, 0)
+            CanBar.Visible = false
+            btnBar.Position = UDim2.new(0.3, 0, 0.78, 0)
+            btnBar.Size = UDim2.new(0.4, 0, 0, 46)
+            btnBar.Visible = true
+            btnBar.Text = "Close"
+        end
+        if banData then
+            renderBanBlock(banData)
+        else
+            twarn.Text = client and "Could not verify your restriction status with the server. Retrying automatically."
+                or "Roblox server bridge unavailable. Rejoin the approved test experience to retry."
+        end
+        if not client then return end
+
+        local retryAt = os.clock() + (status and math.max(2, client.secondsRemaining(status)) or 5)
+        repeat task.wait(0.25) until not Folder.Parent or os.clock() >= retryAt
+    end
+    if not Folder.Parent then
+        qaEnv.__ASC_BAN_POLICY_ERROR = true
+        return
+    end
+    if details then
+        twarn.Parent = Canvas
+        twarn.TextYAlignment = Enum.TextYAlignment.Center
+        twarn.AutomaticSize = Enum.AutomaticSize.None
+        twarn.Size = UDim2.new(1, 0, 0, 90)
+        twarn.Text = originalText
+        details:Destroy()
+        CanBar.Visible = true
+        btnBar.Visible = false
+    end
+end
+-- ASC BAN V2 SETUP END
+
 -- These are client-side presentation signals, NOT server authorization.
 getgenv().__ES_BAN_SELECTION = banData and banData.Selection or nil
 getgenv().__ES_BAN_DURATION = banData and banData.Duration or nil
@@ -628,41 +681,17 @@ getgenv().__ES_RESTRICTED_MODE = banData ~= nil and banData.Selection == "restri
 getgenv().__ES_BANNED = banData ~= nil and banData.Selection ~= "restricted_mode"
 
 if banData and getgenv().__ES_BANNED then
-	getgenv().ES = nil
-
-	task.defer(function()
-		if twarn then
-            local function escapeText(value)
-                return tostring(value or ""):gsub("&", "&amp;")
-                    :gsub("<", "&lt;"):gsub(">", "&gt;")
-                    :gsub('"', "&quot;"):gsub("'", "&#39;")
-            end
-            local expiresText = banData.ExpiresAt and
-                (os.date("!%Y-%m-%d %H:%M", banData.ExpiresAt + 7 * 3600) .. " ICT (UTC+7)") or
-                "Permanent"
-            local selectionText = banData.SelectionAssigned and "Ban in-game" or "Ban in-game (Legacy)"
-            twarn.Text = "<b>You have been banned from ExperienceSettings.</b>\n"
-                .. "Selection: <b>" .. selectionText .. "</b>\n"
-                .. "Duration: <b>" .. escapeText(banData.Duration) .. "</b>\n"
-                .. "Reason: <mark color='rgb(255,85,85)' transparency='0.5'>" .. escapeText(banData.Reason) .. "</mark>\n"
-                .. "Description: <font size='10'>" .. escapeText(banData.Description) .. "</font>\n"
-                .. (banData.StartAt and ("From: " .. os.date("!%Y-%m-%d %H:%M", banData.StartAt + 7 * 3600) .. " ICT\n") or "")
-                .. "Until: <b>" .. escapeText(expiresText) .. "</b>"
-            twarn.TextYAlignment = Enum.TextYAlignment.Top
-            twarn.AutomaticSize = Enum.AutomaticSize.Y
-            twarn.Size = UDim2.new(1, 0, 0, 100)
-            CanBar.Visible = false
-		end
-
-		if btnBar then
-            btnBar.Position = UDim2.new(0.3, 0, 0.78, 0)
-            btnBar.Size = UDim2.new(0.4, 0, 0, 46)
-			btnBar.Visible = true
-			btnBar.Text = "I <font color='rgb(0,255,0)'>agree</font> and close the UI."
-		end
-	end)
-
-	return
+    getgenv().ES = nil
+    renderBanBlock(banData)
+    twarn.TextYAlignment = Enum.TextYAlignment.Top
+    twarn.AutomaticSize = Enum.AutomaticSize.Y
+    twarn.Size = UDim2.new(1, 0, 0, 100)
+    CanBar.Visible = false
+    btnBar.Position = UDim2.new(0.3, 0, 0.78, 0)
+    btnBar.Size = UDim2.new(0.4, 0, 0, 46)
+    btnBar.Visible = true
+    btnBar.Text = "I <font color='rgb(0,255,0)'>agree</font> and close the UI."
+    return
 end
 
 -- Restricted Mode is NOT SetUp-only. Close SetUp normally, then let the

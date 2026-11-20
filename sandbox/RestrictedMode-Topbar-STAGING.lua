@@ -34,7 +34,7 @@ local stopped = false
 local disabledColor = Color3.fromRGB(89, 89, 89)
 
 local function lockButton(button)
-    if stopped or not button:IsA("GuiButton") or allowed[button.Name] then return end
+    if stopped or not button:IsA("GuiButton") or (button.Parent == holder and allowed[button.Name]) then return end
     if not saved[button] then
         saved[button] = {
             interactable = button.Interactable,

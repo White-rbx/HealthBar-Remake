@@ -9,6 +9,7 @@ on:
       - 'sandbox/ban-v2-*'
       - 'sandbox/Ban*Preview.lua'
       - 'sandbox/ArcScriptCenterBanBridge.server.lua'
+      - 'sandbox/RestrictedMode-Topbar-STAGING.lua'
       - 'migrations/ban_v2_full_integration_*'
       - 'sandbox/LoaderMainPreview.lua'
       - 'sandbox/ExperienceSettings-SetUp-Preview.lua'
@@ -72,6 +73,15 @@ jobs:
         run: node --test sandbox/managed-ban-schema-v2.test.mjs
       - name: Banned Check Center v2 — SQL, permissions, appeal, SHA and Pages
         run: node --test sandbox/ban-v2-integration.test.mjs
+      - name: Compile and run Roblox policy code in the Luau VM with mocked Roblox services
+        run: |
+          luau_dir="$RUNNER_TEMP/asc-luau"
+          git init "$luau_dir"
+          git -C "$luau_dir" fetch --depth 1 https://github.com/luau-lang/luau.git c87565b8b0db5d5d5bfd2b8b00ad6573e5d06d9f
+          git -C "$luau_dir" checkout --detach FETCH_HEAD
+          make -s -C "$luau_dir" config=release -j"$(nproc)" luau luau-compile
+          "$luau_dir/luau-compile" --null sandbox/{BannedCenterLoaderPreview,BanPolicyClientPreview,ArcScriptCenterBanBridge.server,RestrictedMode-Topbar-STAGING,ExperienceSettings-SetUp-Preview,LoaderMainPreview,Arcsen-Preview}.lua
+          LUAU_BIN="$luau_dir/luau" node --test sandbox/ban-v2-native-luau.test.mjs
       - name: Original STAGING API Worker Ban v1 and v2 guarded compatibility patch
         run: node --test sandbox/ban-v2-main-worker-compat-patcher.test.mjs
       - name: Ban v2 isolated QA Admin API authentication and Save tests

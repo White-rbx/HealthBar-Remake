@@ -62,3 +62,17 @@ test('read-only Compatibility Preview rejects hostile origin',async()=>{
  const r=await call('GET','/api/v1/admin/bans/v2/compatibility',{origin:'https://evil.example'});
  assert.equal(r.status,403,await r.text());
 });
+
+test('live QA game policy grants nothing without a trusted Roblox server credential',async()=>{
+ const result=await fetch(HOST+'/api/v1/roblox/bans/v2/policy',{
+  method:'POST',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000),
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({userId:'910000000001',universeId:'999999999999'}),
+ });
+ const data=await result.json();
+ assert.ok(result.status===401||result.status===503,JSON.stringify(data));
+ assert.equal(data.ok,false);
+ assert.equal(data.code,result.status===401?'server_required':'identity_unavailable');
+ assert.equal(data.state,undefined);
+ assert.equal(result.headers.get('Access-Control-Allow-Origin'),null);
+});

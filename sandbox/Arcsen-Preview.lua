@@ -14705,7 +14705,7 @@ task.spawn(function()
         retry.BackgroundColor3 = Color3.fromRGB(65,85,115)
         retry.TextColor3 = Color3.new(1,1,1)
         retry.TextSize = 13
-        retry.Text = "Retry Signed UI Policy Check"
+        retry.Text = trustedBanClient and "Refresh Roblox Server Policy" or "Retry Signed UI Policy Check"
         retry.Parent = group
         Corner(0,5,retry)
 
@@ -17803,18 +17803,24 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 local historyRequest = 0
                 local lastNoticeKey
                 if trustedBanClient then
+                    local busy, nextCheck = false, 0
                     syncVerifiedViolations = function()
-                        historyRequest += 1
-                        local generation = historyRequest
                         local state = env.__ASC_BAN_V2_STATE
-                        if not state or state.state == "ban_ingame" then
+                        if trustedBanClient.secondsRemaining(state) <= 0 or state.state == "ban_ingame" then
+                            historyRequest += 1
                             lastNoticeKey = nil
                             hideViolationNotice()
                             return
                         end
+                        if busy or os.clock() < nextCheck then return end
+                        busy, nextCheck = true, os.clock() + 2
+                        local generation = historyRequest
                         task.spawn(function()
                             local notices = trustedBanClient.history()
+                            busy = false
                             if generation ~= historyRequest or not gate.active then return end
+                            local current = env.__ASC_BAN_V2_STATE
+                            if trustedBanClient.secondsRemaining(current) <= 0 or current.state == "ban_ingame" then return end
                             if not notices or #notices == 0 then
                                 lastNoticeKey = nil
                                 hideViolationNotice()
@@ -17895,6 +17901,12 @@ More information in discord you can find the link at About or on the ScriptBlox/
         local restricted = status ~= "not_banned" or modeRestricted
         loc.API.PolicyReadOnly = restricted
         if restricted then
+            if modeRestricted then
+                if not saved.restrictedColors then saved.restrictedColors = { new.BackgroundColor3, c_b_send.BackgroundColor3 } end
+                local disabledColor = Color3.fromRGB(89,89,89)
+                new.BackgroundColor3 = disabledColor
+                c_b_send.BackgroundColor3 = disabledColor
+            end
             new.Active = false
             new.Interactable = false
             c_b_send.Active = false
@@ -17917,6 +17929,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 showSettings()
             end
         else
+            if saved.restrictedColors then
+                new.BackgroundColor3, c_b_send.BackgroundColor3 = table.unpack(saved.restrictedColors)
+                saved.restrictedColors = nil
+            end
             new.Active = true
             new.Interactable = true
             c_b_send.Active = true
@@ -17980,6 +17996,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
         gate.busy = true
         if trustedBanClient then
             local status = env.__ASC_BAN_V2_STATE
+            if trustedBanClient.secondsRemaining(status) <= 0 then status = nil end
             gate.policyValid = status ~= nil
             gate.identityVerified = status ~= nil
             local allowed = status and status.state == "clear" and not env.__ES_RESTRICTED_MODE
@@ -18058,8 +18075,16 @@ More information in discord you can find the link at About or on the ScriptBlox/
     }
     loc.API.ArcScriptPolicyGate = controller
     if env then env.ArcScriptPolicyGate = controller end
-    if retry then retry.MouseButton1Click:Connect(controller.refresh) end
-    apply("checking", "Awaiting Signed UI Policy")
+    if retry then
+        retry.Activated:Connect(function()
+            if trustedBanClient then
+                if env.__ASC_REQUEST_BAN_REFRESH then env.__ASC_REQUEST_BAN_REFRESH() end
+            else
+                controller.refresh()
+            end
+        end)
+    end
+    apply("checking", trustedBanClient and "Awaiting Roblox server policy" or "Awaiting Signed UI Policy")
     while run and gpt and gpt.Parent do
         check()
         task.wait(45)  -- Signed policy expires after 60s. Never use stale grants.
