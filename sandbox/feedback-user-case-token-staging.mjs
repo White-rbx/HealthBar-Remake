@@ -1,5 +1,5 @@
 /**
- * ArcScriptCenter — User Case Token (STAGING REVIEW ONLY, NOT DEPLOYED).
+ * ArcScriptCenter — User Case Token (STAGING).
  * An opt-in, revocable bearer capability for previously submitted Feedback.
  * This is NOT Roblox identity verification, a device fingerprint, or an OIDC session.
  * Possession of the token authorizes only the public-facing Feedback case list.
@@ -7,7 +7,7 @@
  *
  * POST /api/v1/client/user-case-token/create {id,receipt,consent:true}
  * POST /api/v1/client/user-case-token/attach {token,id,receipt}
- * POST /api/v1/client/user-case-token/list   {token}
+ * POST /api/v1/client/user-case-token/list   {token,after?}
  * POST /api/v1/client/user-case-token/revoke {token,confirm:true}
  *
  * Every route MUST be mounted behind a genuine independent rate limiter.
@@ -73,7 +73,8 @@ async function hashedToken(token){
  if((await sha(core)).slice(0,8)!==token.slice(-8))return null;
  return sha(token);
 }
-const validCase=(id,receipt)=>typeof id==='string'&&UUID_RE.test(id)
+const validId=id=>typeof id==='string'&&UUID_RE.test(id);
+const validCase=(id,receipt)=>validId(id)
  &&typeof receipt==='string'&&RECEIPT_RE.test(receipt);
 const safeCase=row=>({
  id:row.id,kind:'feedback',status:row.status==='spam_mail'?'reviewing'
@@ -90,6 +91,16 @@ async function liveToken(db,hash){
  return db.prepare('SELECT token_hash FROM asc_user_case_tokens WHERE token_hash=? AND revoked_unix IS NULL LIMIT 1')
   .bind(hash).first();
 }
+const tokenNotFound=()=>respond({ok:false,code:'token_not_found',error:'Token not found'},404);
+const LINK_SQL=`INSERT INTO asc_user_case_links(case_id,token_hash,linked_unix)
+ SELECT c.id,t.token_hash,? FROM asc_feedback_cases c CROSS JOIN asc_user_case_tokens t
+ WHERE c.id=? AND c.receipt_hash=? AND c.kind='feedback' AND c.removed=0
+   AND t.token_hash=? AND t.revoked_unix IS NULL
+ ON CONFLICT(case_id) DO UPDATE SET token_hash=excluded.token_hash,linked_unix=excluded.linked_unix
+ WHERE asc_user_case_links.token_hash=excluded.token_hash OR EXISTS (
+   SELECT 1 FROM asc_user_case_tokens old
+   WHERE old.token_hash=asc_user_case_links.token_hash AND old.revoked_unix IS NOT NULL
+ )`;
 function changed(result){return Number(result?.meta?.changes)===1;}
 /**
  * checkRateLimit MUST be a real, fail-closed server-side network limiter.
@@ -109,7 +120,7 @@ export function createUserCaseTokenHandler({checkRateLimit,clock=()=>Math.floor(
    if(await checkRateLimit({action,request,env})!==true)
     return respond({ok:false,error:'Too many requests'},429);
   }catch{return respond({ok:false,error:'Rate limiter unavailable'},503);}
-  const body=await readJSON(request);
+  const body=await readJSON(request).catch(()=>null);
   if(!body)return respond({ok:false,error:'Invalid request'},400);
   if(typeof env?.DB?.prepare!=='function')return respond({ok:false,error:'Database unavailable'},503);
   const db=env.DB,now=clock();
@@ -122,67 +133,61 @@ export function createUserCaseTokenHandler({checkRateLimit,clock=()=>Math.floor(
     if(!await validReceiptCase(db,body.id,body.receipt))
      return respond({ok:false,error:'Case not found'},404);
     const token=await issueToken(),hash=await sha(token);
-    // Case can be associated with a token only via private Receipt.
-    // Existing active associations must not be silently reassigned.
-    const existing=await db.prepare('SELECT token_hash FROM asc_user_case_links WHERE case_id=? LIMIT 1')
-      .bind(body.id).first();
-    if(existing){
-     const old=await liveToken(db,existing.token_hash);
-     if(old)return respond({ok:false,error:'Case already linked to an active User Case Token'},409);
-    }
-    await db.prepare('INSERT INTO asc_user_case_tokens(token_hash,created_unix,revoked_unix) VALUES(?,?,NULL)')
-      .bind(hash,now).run();
-    // This conditional UPDATE/INSERT must be evaluated against actual D1.
-    if(existing){
-     await db.prepare('UPDATE asc_user_case_links SET token_hash=?,linked_unix=? WHERE case_id=? AND token_hash=?')
-      .bind(hash,now,body.id,existing.token_hash).run();
-    }else{
-     await db.prepare('INSERT OR IGNORE INTO asc_user_case_links(case_id,token_hash,linked_unix) VALUES(?,?,?)')
-      .bind(body.id,hash,now).run();
-    }
-    const linked=await db.prepare('SELECT token_hash FROM asc_user_case_links WHERE case_id=? LIMIT 1')
-      .bind(body.id).first();
-    if(linked?.token_hash!==hash)
-     return respond({ok:false,error:'Concurrent case linking; retry using private Receipt'},409);
+    const [,linked]=await db.batch([
+     db.prepare('INSERT INTO asc_user_case_tokens(token_hash,created_unix,revoked_unix) VALUES(?,?,NULL)')
+       .bind(hash,now),
+     db.prepare(LINK_SQL).bind(now,body.id,await sha(body.receipt),hash),
+     db.prepare('DELETE FROM asc_user_case_tokens WHERE token_hash=? AND NOT EXISTS '
+       +'(SELECT 1 FROM asc_user_case_links WHERE token_hash=?)').bind(hash,hash),
+    ]);
+    if(!changed(linked))
+     return respond({ok:false,error:'Case already linked or no longer available'},409);
     return respond({ok:true,token,tokenVersion:1,revocable:true,
       expiresAt:null,linkedCaseId:body.id,showOnlyOnce:true,identityVerified:false},201);
    }
    if(action==='list'){
-    if(!exact(body,['token']))return respond({ok:false,error:'Invalid request'},400);
+    if(!exact(body,['token'])&&!(exact(body,['token','after'])&&validId(body.after)))
+     return respond({ok:false,error:'Invalid request'},400);
     const hash=await hashedToken(body.token);
-    if(!hash||!await liveToken(db,hash))return respond({ok:false,error:'Token not found'},404);
-    const sql='SELECT c.id,c.kind,c.status,c.topic,c.public_note,c.updated_unix,c.revision '
-      +'FROM asc_user_case_links l JOIN asc_feedback_cases c ON c.id=l.case_id '
-      +'JOIN asc_user_case_tokens t ON t.token_hash=l.token_hash '
-      +"WHERE l.token_hash=? AND t.revoked_unix IS NULL AND c.kind='feedback' AND c.removed=0 "
-      +'ORDER BY c.updated_unix DESC,c.id ASC LIMIT 30';
-    const result=await db.prepare(sql).bind(hash).all();
-    return respond({ok:true,tokenAccepted:true,identityVerified:false,
-      delivery:'user-case-token',cases:(result.results||[]).map(safeCase)});
+    if(!hash)return tokenNotFound();
+    // Start at the live token so an empty successful page is distinct from
+    // a revoked token, even if revocation races the list request.
+    const sql=`SELECT c.id,c.kind,c.status,c.topic,c.public_note,c.updated_unix,c.revision
+      FROM asc_user_case_tokens t LEFT JOIN (
+        SELECT c.id,c.kind,c.status,c.topic,c.public_note,c.updated_unix,c.revision,l.token_hash
+        FROM asc_user_case_links l JOIN asc_feedback_cases c ON c.id=l.case_id
+        WHERE l.token_hash=? AND l.case_id>? AND c.kind='feedback' AND c.removed=0
+        ORDER BY l.case_id LIMIT 31
+      ) c ON c.token_hash=t.token_hash
+      WHERE t.token_hash=? AND t.revoked_unix IS NULL ORDER BY c.id`;
+    const {results=[]}=await db.prepare(sql).bind(hash,body.after??'',hash).all();
+    if(results.length===0)return tokenNotFound();
+    const cases=results.filter(row=>row.id!==null).slice(0,30).map(safeCase);
+    return respond({ok:true,tokenAccepted:true,identityVerified:false,delivery:'user-case-token',
+      cases,nextCursor:results.length>30?cases.at(-1).id:null});
    }
    if(action==='attach'){
     if(!exact(body,['token','id','receipt'])||!validCase(body.id,body.receipt))
      return respond({ok:false,error:'Invalid request'},400);
     const hash=await hashedToken(body.token);
-    if(!hash||!await liveToken(db,hash))return respond({ok:false,error:'Token not found'},404);
-    if(!await validReceiptCase(db,body.id,body.receipt))
-     return respond({ok:false,error:'Case not found'},404);
-    await db.prepare('INSERT OR IGNORE INTO asc_user_case_links(case_id,token_hash,linked_unix) VALUES(?,?,?)')
-      .bind(body.id,hash,now).run();
-    const found=await db.prepare('SELECT token_hash FROM asc_user_case_links WHERE case_id=? LIMIT 1')
-      .bind(body.id).first();
-    if(found?.token_hash!==hash)
+    if(!hash)return tokenNotFound();
+    const linked=await db.prepare(LINK_SQL).bind(now,body.id,await sha(body.receipt),hash).run();
+    if(!changed(linked)){
+     if(!await liveToken(db,hash))return tokenNotFound();
+     if(!await validReceiptCase(db,body.id,body.receipt))
+      return respond({ok:false,error:'Case not found'},404);
      return respond({ok:false,error:'Case already linked to a different token'},409);
+    }
     return respond({ok:true,linked:true});
    }
    if(!exact(body,['token','confirm'])||body.confirm!==true)
     return respond({ok:false,error:'Explicit revoke confirmation required'},400);
    const hash=await hashedToken(body.token);
-   if(!hash)return respond({ok:false,error:'Token not found'},404);
+   if(!hash)return tokenNotFound();
    const revoked=await db.prepare(
     'UPDATE asc_user_case_tokens SET revoked_unix=? WHERE token_hash=? AND revoked_unix IS NULL'
    ).bind(now,hash).run();
-   if(!changed(revoked))return respond({ok:false,error:'Token not found'},404);
+   if(!changed(revoked))return tokenNotFound();
    // Keep case links for audit; revoked token cannot list or attach any case.
    return respond({ok:true,revoked:true,irreversible:true});
   }catch{

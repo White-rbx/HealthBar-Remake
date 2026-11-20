@@ -219,7 +219,7 @@ test('Rejoin without a verified case delivery backend never claims account has n
   assert.match(arcsen,/Automatic case sync is not deployed yet/);
   assert.match(arcsen,/Automatic server sync is not ready/);
   assert.match(arcsen,/STAGING Case Delivery API not deployed/);
-  assert.match(arcsen,/No case loaded\. Server sync unavailable; use Restore previous case/);
+  assert.match(arcsen,/No case loaded\. Use Restore previous case/);
   assert.match(arcsen,/No Denied case loaded here; rejoin auto-sync is not connected/);
   assert.match(arcsen,/Restore previous case \(ID \+ Receipt\)/);
   assert.match(arcsen,/\/api\/v1\/feedback\/status/);

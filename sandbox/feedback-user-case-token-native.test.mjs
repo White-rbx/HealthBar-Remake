@@ -36,16 +36,16 @@ test('Remember ON creates file only with a validated token; OFF requires actual 
  assert.match(ui,/rememberTokenEnabled=false/);
  assert.match(ui,/caseTokenConsent=not caseTokenConsent/);
  assert.match(ui,/if not validUserCaseToken\(candidate\) then/);
- assert.match(ui,/local ok,err=refreshTokenCases\(\)/);
- assert.match(ui,/if not ok then\s*\n\s*userCaseToken,tokenLinkedCases=priorToken,priorCases/);
+ assert.match(ui,/local cases,err=readTokenCases\(candidate,\{\}\)/);
+ assert.match(ui,/userCaseToken,tokenLinkedCases=candidate,cases/);
  assert.match(ui,/pcall\(setclipboard,userCaseToken\)/);
  assert.match(ui,/tokenPost\("revoke",\{token=target,confirm=true\}\)/);
  assert.match(ui,/confirmRevokeUntil=os\.clock\(\)\+15/);
  assert.doesNotMatch(ui,/gethwid|HWID=|deviceId=|GetClientId/);
 });
 test('case token creation follows a successful, explicitly opted-in feedback',()=>{
- const token=section('local function registerFeedbackWithToken(item)','    loc.API.ArcScriptCenterCaseSession');
- assert.match(token,/if not caseTokenConsent or not item or item.kind~="feedback"/);
+ const token=section('local function registerFeedbackWithToken(item,explicit)','    loc.API.ArcScriptCenterCaseSession');
+ assert.match(token,/if \(not explicit and not caseTokenConsent\) or not item or item.kind~="feedback"/);
  assert.match(token,/tokenPost\("create",\{id=item.id,receipt=item.receipt,consent=true\}\)/);
  assert.match(token,/tokenPost\("attach",\{token=userCaseToken,id=item.id,receipt=item.receipt\}\)/);
  assert.match(token,/if rememberTokenEnabled then/);
@@ -53,9 +53,9 @@ test('case token creation follows a successful, explicitly opted-in feedback',()
 });
 test('Rejoin and Refresh use only token-authorized read-only Feedback',()=>{
  assert.match(source,/loadRememberedToken\(\)/);
- assert.match(source,/while gate.active and serverCasesFrame.Parent do\s*\n\s*pcall\(pollVerifiedServerCases,false\)\s*\n\s*if validUserCaseToken\(userCaseToken\) then\s*\n\s*local ok,err=refreshTokenCases\(\)/);
- assert.match(source,/pcall\(pollVerifiedServerCases,true\)\s*\n\s*if validUserCaseToken\(userCaseToken\) then/);
- assert.match(source,/local function acceptTokenCases\(data\)/);
+ assert.match(source,/while gate.active and serverCasesFrame.Parent do\s*\n\s*if validUserCaseToken\(userCaseToken\) and \(firstCheck or feedbackExpanded and panelExpanded\) then\s*\n\s*local ok,err=refreshTokenCases\(\)/);
+ assert.match(source,/local tokenChecked=false\s*\n\s*if validUserCaseToken\(userCaseToken\) then/);
+ assert.match(source,/local function acceptTokenCases\(data,nextCases,priorCases\)/);
  assert.match(source,/data\.tokenAccepted~=true/);
  assert.match(source,/data\.identityVerified~=false/);
  assert.match(source,/data\.delivery~="user-case-token"/);
@@ -66,4 +66,17 @@ test('Rejoin and Refresh use only token-authorized read-only Feedback',()=>{
  assert.match(source,/serverLinkedCases\[id\]==nil/);
  assert.match(source,/type\(own\.receipt\)=="string"/);
  assert.doesNotMatch(source,/SERVER CASE DELIVERY[^\n]*claimedUserId/);
+});
+
+test('a restored Feedback links after explicit confirmation; read errors retain the last snapshot',()=>{
+ const lookup=section('linkRestored.MouseButton1Click:Connect(function()', 'openKnownFeedbackCase = function(id)');
+ assert.match(lookup,/latestRecord.kind~="feedback"/);
+ assert.match(lookup,/credentialsToken\(\)~=latestToken/);
+ assert.match(lookup,/ConfirmUntil/);
+ assert.match(lookup,/registerFeedbackWithToken\(item,true\)/);
+ const refresh=section('local function readTokenCases(', 'local function registerFeedbackWithToken(');
+ assert.match(refresh,/after=cursor\s+until after==nil/);
+ assert.match(refresh,/if userCaseToken~=target then return nil/);
+ assert.match(refresh,/elseif invalid then\s+userCaseToken=nil/);
+ assert.match(refresh,/else\s+return false,err\s+end/);
 });

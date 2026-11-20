@@ -2,8 +2,9 @@
 -- STAGING Case Delivery: periodic active-client polling; no local receipt persistence.
 -- No Production or original Arcsen is modified. No account-bound identity is inferred.
 local ver = {
-	sion = " UIs 7.3.59 STAGING Preview ",
+	sion = " UIs 7.3.60 STAGING Preview ",
 	logs = [[
+(:20/11/2026: QA Preview v7.3.60) Restore older Feedback into a Case Token using its private Receipt. Rejoin fetches all pages; transient failures keep the last successful list.
 (:20/11/2026: QA Preview v7.3.59) Opt-in User Case Token with Remember Token OFF/ON; a non-semantic JSON filename under Arcsen Cache stores the bearer token only when ON, never Receipts/HWID. Rejoin uses the saved token to read only linked Feedback, if review-only API is deployed. Copy, import and double-confirm Revoke. No production changes.
 (:20/11/2026: QA Preview v7.3.58) Server-delivered Feedback cases render in Review/Approved/Denied/Flagged cards, read-only without a private Receipt; de-duplicate with session Receipt cases and never treat an unverified UserId as proof. Verified device session and deployed API are still required.
 (:20/11/2026: QA Preview v7.3.57) Remove redundant Check Server Cases and Link this case to my verified account UI. Use only Refresh and Check Server's case; keep automatic verified-session delivery as a backend gate, no client-claimed UserId disclosure. One-case Receipt restoration remains.
@@ -14185,6 +14186,8 @@ task.spawn(function()
     local tokenLinkedCases = {} -- Separate from verified OAuth/Receipt cases.
     local updateCaseCounters = function() end -- Assigned after Feedback subcategory UI is created.
     local userCaseToken = nil
+    local tokenWriteBusy = false
+    local tokenRefreshBusy = false
     local rememberTokenEnabled = false
     local caseTokenConsent = false -- Explicit opt-in for creation after Feedback succeeds.
     -- Opaque file basename, not a security mechanism; other local code can read the
@@ -14281,23 +14284,24 @@ task.spawn(function()
         local parsed,data=pcall(s.HttpService.JSONDecode,s.HttpService,raw)
         if not parsed or type(data)~="table" then return nil,"Invalid Token server JSON." end
         if code<200 or code>=300 or data.ok~=true then
-            return nil,"HTTP "..tostring(code)..": "..tostring(data.error or "Case Token service unavailable.")
+            return nil,"HTTP "..tostring(code)..": "..tostring(data.error or "Case Token service unavailable."),
+                code==404 and data.code=="token_not_found"
         end
         return data
     end
-    local function acceptTokenCases(data)
+    local function acceptTokenCases(data,nextCases,priorCases)
         if type(data)~="table" or data.tokenAccepted~=true
             or data.identityVerified~=false or data.delivery~="user-case-token"
             or type(data.cases)~="table" then return false end
-        local nextCases={}
-        for i=1,math.min(#data.cases,30) do
+        if #data.cases>30 then return false end
+        for i=1,#data.cases do
             local item=data.cases[i]
             if type(item)=="table" and item.kind=="feedback"
                 and type(item.id)=="string" and #item.id==36
                 and item.id:match("^[0-9a-fA-F%-]+$")
                 and ({reviewing=true,approved=true,denied=true,violation=true})[item.status]
                 and type(item.topic)=="string" and type(item.publicNote)=="string" then
-                local prior=tokenLinkedCases[item.id]
+                local prior=priorCases[item.id]
                 nextCases[item.id]={
                     id=item.id,kind="feedback",status=item.status,
                     topic=item.topic:sub(1,50),publicNote=item.publicNote:sub(1,800),
@@ -14309,24 +14313,55 @@ task.spawn(function()
                 }
             end
         end
-        tokenLinkedCases=nextCases
-        task.defer(updateCaseCounters)
         return true
+    end
+    local function readTokenCases(token,priorCases)
+        local nextCases={}
+        local after
+        repeat
+            local data,err,invalid=tokenPost("list",{token=token,after=after})
+            if not data then return nil,err,invalid end
+            if not acceptTokenCases(data,nextCases,priorCases) then
+                return nil,"Rejected malformed token-case response."
+            end
+            local cursor=data.nextCursor
+            if cursor~=nil and (type(cursor)~="string" or not nextCases[cursor]
+                or (after and cursor<=after)) then
+                return nil,"Rejected invalid case-list cursor."
+            end
+            after=cursor
+        until after==nil
+        return nextCases
     end
     local function refreshTokenCases()
-        if not validUserCaseToken(userCaseToken) then return false,"No valid User Case Token." end
-        local data,err=tokenPost("list",{token=userCaseToken})
-        if not data then
+        local target=userCaseToken
+        if not validUserCaseToken(target) then return false,"No valid User Case Token." end
+        if tokenRefreshBusy then return nil,"Case refresh already running." end
+        tokenRefreshBusy=true
+        local cases,err,invalid=readTokenCases(target,tokenLinkedCases)
+        tokenRefreshBusy=false
+        if userCaseToken~=target then return nil,"Token changed during refresh." end
+        if cases then
+            tokenLinkedCases=cases
+        elseif invalid then
+            userCaseToken=nil
             tokenLinkedCases={}
-            task.defer(updateCaseCounters)
+            local cleared,clearErr=removeRememberedToken()
+            if cleared then rememberTokenEnabled=false else err=err.." "..tostring(clearErr) end
+        else
             return false,err
         end
-        if not acceptTokenCases(data) then return false,"Rejected malformed token-case response." end
-        return true
+        task.defer(updateCaseCounters)
+        return cases~=nil,err
     end
-    local function registerFeedbackWithToken(item)
-        if not caseTokenConsent or not item or item.kind~="feedback"
-            or type(item.receipt)~="string" then return end
+    local function registerFeedbackWithToken(item,explicit)
+        if (not explicit and not caseTokenConsent) or not item or item.kind~="feedback"
+            or type(item.receipt)~="string" then return false end
+        if tokenWriteBusy then
+            updateTokenPanel("Another Token action is running. Use Check Existing Case to link this case after it finishes.")
+            return false,"Another Token action is running."
+        end
+        tokenWriteBusy=true
         local data,err
         if validUserCaseToken(userCaseToken) then
             data,err=tokenPost("attach",{token=userCaseToken,id=item.id,receipt=item.receipt})
@@ -14340,8 +14375,9 @@ task.spawn(function()
             end
         end
         if not data then
-            updateTokenPanel("Feedback submitted, but Token was NOT linked: "..tostring(err or "Service unavailable")..". Keep Case ID + Receipt.")
-            return
+            tokenWriteBusy=false
+            updateTokenPanel("Case could not be linked: "..tostring(err or "Service unavailable")..". Keep Case ID + Receipt.")
+            return false,err
         end
         local persisted=true
         if rememberTokenEnabled then
@@ -14350,10 +14386,12 @@ task.spawn(function()
             if not saved then updateTokenPanel("Token linked, but local save failed: "..tostring(saveErr)) end
         end
         local listed,listErr=refreshTokenCases()
+        tokenWriteBusy=false
         if persisted then
             updateTokenPanel(listed and "Token linked. Copy your token and keep it private."
-                or "Token linked; case list unavailable: "..tostring(listErr))
+                or "Token linked. Use Refresh to check case status: "..tostring(listErr))
         end
+        return true
     end
     loc.API.ArcScriptCenterCaseSession = {LastCaseId=nil, Count=0, Transport="STAGING only"}
 
@@ -15260,22 +15298,22 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     updateTokenPanel()
                 end)
                 useTokenButton.MouseButton1Click:Connect(function()
+                    if tokenWriteBusy then return end
                     local candidate=caseTrim(inputToken.Text)
                     inputToken.Text=""
                     if not validUserCaseToken(candidate) then
                         updateTokenPanel("Invalid User Case Token format. Nothing saved.")
                         return
                     end
+                    tokenWriteBusy=true
                     useTokenButton.Interactable=false
                     updateTokenPanel("Checking pasted Token with STAGING before accepting it...")
                     task.spawn(function()
-                        local priorToken,priorCases=userCaseToken,tokenLinkedCases
-                        userCaseToken=candidate
-                        local ok,err=refreshTokenCases()
-                        if not ok then
-                            userCaseToken,tokenLinkedCases=priorToken,priorCases
-                            updateTokenPanel("Token not accepted: "..tostring(err)..". Old session Token retained.")
+                        local cases,err=readTokenCases(candidate,{})
+                        if not cases then
+                            updateTokenPanel("Token not accepted: "..tostring(err)..". Current session Token retained.")
                         else
+                            userCaseToken,tokenLinkedCases=candidate,cases
                             if rememberTokenEnabled then
                                 local saved,saveErr=storeRememberedToken()
                                 updateTokenPanel(saved
@@ -15285,6 +15323,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 updateTokenPanel("Token accepted for this session only. Enable Remember to keep it after Rejoin.")
                             end
                         end
+                        tokenWriteBusy=false
                         useTokenButton.Interactable=true
                         task.defer(updateCaseCounters)
                     end)
@@ -15302,20 +15341,25 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         or "Copy failed. Token was not changed.")
                 end)
                 local confirmRevokeUntil=0
+                local confirmRevokeToken=nil
                 revokeTokenButton.MouseButton1Click:Connect(function()
-                    if not validUserCaseToken(userCaseToken) then return end
-                    if os.clock()>confirmRevokeUntil then
+                    if tokenWriteBusy or not validUserCaseToken(userCaseToken) then return end
+                    if os.clock()>confirmRevokeUntil or confirmRevokeToken~=userCaseToken then
+                        confirmRevokeToken=userCaseToken
                         confirmRevokeUntil=os.clock()+15
                         updateTokenPanel("Tap Revoke again within 15 seconds to permanently invalidate this Token. "
                             .."Existing Feedback cases are NOT deleted.")
                         return
                     end
                     confirmRevokeUntil=0
+                    confirmRevokeToken=nil
+                    tokenWriteBusy=true
                     revokeTokenButton.Interactable=false
                     local target=userCaseToken
                     task.spawn(function()
-                        local data,err=tokenPost("revoke",{token=target,confirm=true})
-                        if data and data.revoked==true and userCaseToken==target then
+                        local data,err,invalid=tokenPost("revoke",{token=target,confirm=true})
+                        tokenWriteBusy=false
+                        if ((data and data.revoked==true) or invalid) and userCaseToken==target then
                             userCaseToken=nil
                             tokenLinkedCases={}
                             local cleared,clearErr=removeRememberedToken()
@@ -15331,9 +15375,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end)
                 end)
                 updateTokenPanel(rememberTokenEnabled
-                    and "Saved Token loaded from local JSON. Checking its linked cases when STAGING Token API is available."
-                    or "Remember OFF. Token is never saved locally unless you opt in. "
-                       .."The token endpoint is not deployed yet.")
+                    and "Saved Token loaded. Checking linked Feedback cases..."
+                    or "Remember OFF. Turn it on to restore linked Feedback after rejoining.")
                 -- A remembered token is read automatically on every Script Rejoin;
                 -- the actual server listing is validated separately below.
 
@@ -15483,15 +15526,24 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 -- only a verified case-session token causes a network request.
                 -- This does NOT update or count Active Users / analytics.
                 task.spawn(function()
+                    local firstCheck=true
                     while gate.active and serverCasesFrame.Parent do
-                        pcall(pollVerifiedServerCases,false)
-                        if validUserCaseToken(userCaseToken) then
+                        if validUserCaseToken(userCaseToken) and (firstCheck or feedbackExpanded and panelExpanded) then
                             local ok,err=refreshTokenCases()
-                            if not ok then
+                            if ok then
+                                updateTokenPanel("Token-linked Feedback cases loaded.")
+                            elseif ok==false then
                                 updateTokenPanel("Saved Token could not sync: "..tostring(err)
                                     ..". Your Feedback cases may still exist.")
                             end
                         end
+                        firstCheck=false
+                        task.wait(45)
+                    end
+                end)
+                task.spawn(function()
+                    while gate.active and serverCasesFrame.Parent do
+                        pcall(pollVerifiedServerCases,false)
                         task.wait(45)
                     end
                 end)
@@ -15528,7 +15580,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 refreshCaseNote.TextWrapped=true
                 refreshCaseNote.TextXAlignment=Enum.TextXAlignment.Left
                 refreshCaseNote.TextYAlignment=Enum.TextYAlignment.Top
-                refreshCaseNote.Text="Server rejoin sync is not deployed. Session cases can still be checked with ID + Receipt."
+                refreshCaseNote.Text="Refresh checks linked Feedback and cases restored with ID + Receipt."
                 refreshCaseNote.Parent=refreshCasePanel
                 local lastManualCaseRefresh=-math.huge
                 refreshCaseButton.MouseButton1Click:Connect(function()
@@ -15547,14 +15599,18 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     lastManualCaseRefresh=now
                     refreshCaseButton.Text="Refreshing case status..."
                     refreshCaseButton.Interactable=false
-                    refreshCaseNote.Text="Checking session cases and requesting Server Case Delivery..."
+                    refreshCaseNote.Text="Checking linked Feedback and cases restored in this session..."
                     task.spawn(function()
-                        pcall(pollVerifiedServerCases,true)
+                        local tokenChecked=false
                         if validUserCaseToken(userCaseToken) then
                             local linked,linkErr=refreshTokenCases()
-                            updateTokenPanel(linked and "Token-linked Feedback refreshed."
-                                or "Token case refresh failed: "..tostring(linkErr))
+                            tokenChecked=linked==true
+                            if linked~=nil then
+                                updateTokenPanel(linked and "Token-linked Feedback refreshed."
+                                    or "Token case refresh failed: "..tostring(linkErr))
+                            end
                         end
+                        pcall(pollVerifiedServerCases,true)
                         local ok,result,errorMessage=pcall(refreshKnownFeedbackCases)
                         if refreshCaseButton.Parent then
                             refreshCaseButton.Interactable=true
@@ -15566,12 +15622,16 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 refreshCaseNote.TextColor3=result.failed>0
                                     and Color3.fromRGB(255,195,150)
                                     or Color3.fromRGB(169,222,192)
+                                local tokenCount=0
+                                for _ in pairs(tokenLinkedCases) do tokenCount+=1 end
                                 refreshCaseNote.Text=(result.total==0
                                         and type(loc.API.GetVerifiedCaseSessionToken)~="function"
-                                        and next(tokenLinkedCases)==nil
-                                        and "No case loaded. Server sync unavailable; use Restore previous case (ID + Receipt)."
+                                        and tokenCount==0
+                                        and (tokenChecked and "No Feedback is linked to this Token."
+                                            or "No case loaded. Use Restore previous case (ID + Receipt).")
                                         or ("Checked "..tostring(result.checked).."/"..tostring(result.total)..
                                     " | Closed: "..tostring(result.closed)..
+                                    (tokenCount>0 and (" | Token-linked: "..tostring(tokenCount)) or "")..
                                     (result.unavailable>0 and (" | Unavailable: "..tostring(result.unavailable)) or "")..
                                     (result.failed>0 and (" | Retry needed: "..tostring(result.failed)) or "")..
                                     (result.total>result.attempted and " | More cases: refresh again" or "")))
@@ -15589,7 +15649,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 local _, setFeedbackApproved, countApproved, renderApprovedCases = infoSection("Approved",
                     "No Approved case loaded. This does not confirm no cases exist on Server.",false,feedbackScroll,2,true)
                 local _, setFeedbackDenied, countDenied, renderDeniedCases = infoSection("Denied",
-                    "No Denied case loaded. Automatic rejoin sync is not connected yet.",false,feedbackScroll,3,true)
+                    "No Denied case loaded.",false,feedbackScroll,3,true)
                 -- A feedback case marked violation is a CLOSED FEEDBACK CASE.
                 -- This does NOT reveal or create a Roblox account's private Violation tab.
                 local _, setFeedbackFlagged, countFlagged, renderFlaggedCases = infoSection("Flagged (Policy)",
@@ -15972,6 +16032,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
 
                         local checkButton=caseButton(row.Inside,"CheckStatus","Check Status (STAGING)",0,77,28)
                         local useLast=caseButton(row.Inside,"UseLastSessionCase","Use Latest Session Case",0,110,28)
+                        local linkRestored=caseButton(row.Inside,"LinkRestoredFeedback","Link Feedback to User Case Token",0,475,28)
+                        linkRestored.Visible=false
                         local status=Instance.new("TextLabel")
                         status.Name="CaseStatus"
                         status.Position=UDim2.fromOffset(5,144)
@@ -16216,7 +16278,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                         end
                         local function setManaging(visible)
                             manage.Visible=visible==true
-                            row.Inside.Size=UDim2.new(1,0,0,manage.Visible and 881 or 472)
+                            linkRestored.Position=UDim2.fromOffset(5,manage.Visible and 886 or 475)
+                            row.Inside.Size=UDim2.new(1,0,0,manage.Visible and 921 or 512)
                             task.defer(syncPanelCanvas)
                         end
                         local function resetConfirmation()
@@ -16227,6 +16290,8 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             requestEpoch+=1
                             latestRecord=nil
                             latestToken=nil
+                            linkRestored.Visible=false
+                            linkRestored:SetAttribute("ConfirmUntil",nil)
                             resetConfirmation()
                             setManaging(false)
                             renderReviewHistory(nil)
@@ -16242,6 +16307,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             latestRecord=record
                             updateCaseCounters()
                             latestToken=credentialsToken()
+                            linkRestored.Visible=record.kind=="feedback"
+                            linkRestored.Text="Link Feedback to User Case Token"
+                            linkRestored:SetAttribute("ConfirmUntil",nil)
                             local revision=tonumber(record.revision) or 0
                             local kind=tostring(record.kind or "unknown")
                             -- STAGING supplies canManage from the database's REAL status.
@@ -16337,6 +16405,29 @@ More information in discord you can find the link at About or on the ScriptBlox/
                             end)
                         end
                         checkButton.MouseButton1Click:Connect(requestStatusLookup)
+                        linkRestored.MouseButton1Click:Connect(function()
+                            if busy or tokenWriteBusy or not latestRecord or latestRecord.kind~="feedback"
+                                or credentialsToken()~=latestToken then return end
+                            if os.clock()>(linkRestored:GetAttribute("ConfirmUntil") or 0) then
+                                linkRestored:SetAttribute("ConfirmUntil",os.clock()+15)
+                                linkRestored.Text="Confirm: Link Feedback"
+                                status.Text="Tap again within 15 seconds to link this Feedback to a reusable, read-only token."
+                                return
+                            end
+                            linkRestored:SetAttribute("ConfirmUntil",nil)
+                            linkRestored.Text="Linking Feedback..."
+                            busy=true
+                            local item=privateReceipts[latestRecord.id]
+                            local epoch=requestEpoch
+                            task.spawn(function()
+                                local linked,err=registerFeedbackWithToken(item,true)
+                                busy=false
+                                if epoch~=requestEpoch or not row.Frame.Parent then return end
+                                linkRestored.Text="Link Feedback to User Case Token"
+                                status.Text=linked and "Feedback linked. Use Remember Token to restore it after Rejoin."
+                                    or ("Link failed: "..tostring(err or "Case token service unavailable."))
+                            end)
+                        end)
                         openKnownFeedbackCase = function(id)
                             if busy or not row.Frame.Parent then return end
                             local item=privateReceipts[id]

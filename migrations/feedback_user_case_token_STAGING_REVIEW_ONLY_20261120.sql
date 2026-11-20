@@ -1,4 +1,4 @@
--- ArcScriptCenter — User Case Token, STAGING REVIEW ONLY, NOT APPLIED.
+-- ArcScriptCenter — User Case Token, additive STAGING DDL. Production requires separate review.
 -- User-consented, revocable bearer capability. Does not assert Roblox identity.
 -- Do not derive token ownership from claimed_user_id, Username, HWID or IP.
 -- Token plaintext is given to the client ONCE; D1 stores only SHA-256 hashes.
