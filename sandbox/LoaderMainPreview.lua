@@ -316,7 +316,7 @@ local s = {
  Workspace = game:GetService("Workspace"),
  TeleportService = game:GetService("TeleportService"),
  Lighting = game:GetService("Lighting"),
- Camera = Workspace.CurrentCamera,
+ Camera = game:GetService("Workspace").CurrentCamera,
 
 -- Storage
  ReplicatedStorage = game:GetService("ReplicatedStorage"),

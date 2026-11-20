@@ -25,6 +25,7 @@ const files = {
  boot: section(main, 'local policyMode =', '-- ASC BAN V2 BOOTSTRAP END') + '\nreturn policyMode',
  waiting: section(rejoiner, 'local function canContinue()', '-- Continue (ONE TIME)') + '\nreturn canContinue',
  warning: section(main, '-- ASC POLICY WARNING BEGIN', '-- ASC POLICY WARNING END') + '\nreturn syncPolicyWarning',
+ renderer: main.split('local sourceUI = [=====[')[1].split(']=====]')[0],
  warningQueue: section(main, 'local function showNext()', '-- Server warnings are already-verified') + '\nreturn api',
  gateCheck: section(arcsen, '    local function check()', '    local controller = {') + '\nreturn check',
  setup: section(setup, 'local function renderBanBlock(item)', '-- Restricted Mode is NOT SetUp-only.') +
@@ -628,5 +629,56 @@ assert(#called == 2 and called[2].title == "[CLIENT] New policy" and called[2].c
 api.dismissClient("ban")
 advance(now)
 assert(#lifecycle == 2 and state.active == nil)
+`);
+});
+
+test('Luau VM: full WarningUI renders with no global Workspace alias and replaces its popup', () => {
+ luau(String.raw`
+local env, instances, deferred = {}, {}, {}
+local function make(class)
+    local obj = { class = class, BackgroundTransparency = 0, Rotation = 0, MouseButton1Click = { Connect = function(self, fn) self.fn = fn end } }
+    function obj:FindFirstChildOfClass(kind)
+        for _, child in ipairs(instances) do if child.Parent == self and child.class == kind then return child end end
+    end
+    function obj:FindFirstChild(name)
+        for _, child in ipairs(instances) do if child.Parent == self and child.Name == name then return child end end
+    end
+    function obj:Destroy() self.Parent = nil end
+    table.insert(instances, obj)
+    return obj
+end
+local root=make("CoreGui")
+local tween={Create=function(_,target,_,props)
+    return { Play=function() for k,v in pairs(props) do target[k]=v end end }
+end}
+local function enum()
+    return setmetatable({}, {__index=function(t,k) local v=enum();rawset(t,k,v);return v end})
+end
+local enums=enum()
+local ctor={new=function(...)return table.pack(...) end,fromRGB=function(...)return table.pack(...) end}
+local globals=setmetatable({
+    game={GetService=function(_,name)return name=="CoreGui" and root or (name=="TweenService" and tween or {}) end},
+    Instance={new=make},Enum=enums,getgenv=function()return env end,
+    task={spawn=function()end,delay=function(_,fn)table.insert(deferred,fn) end,defer=function(fn)fn() end},
+}, {__index=getfenv()})
+for _, typeName in ipairs({"UDim","UDim2","Vector2","Color3","ColorSequenceKeypoint","ColorSequence","NumberSequenceKeypoint","NumberSequence","TweenInfo"}) do
+    globals[typeName]=ctor
+end
+local ui=run("renderer",globals)
+assert(ui.showClient({title="Restricted Mode",description="Reason: Footsteps",clientKey="ban",compact=true}))
+local folder=root:FindFirstChild("WarningUI-ByArcScript")
+local holder=folder:FindFirstChild("main"):FindFirstChild("Holder")
+local first=holder:FindFirstChild("PopUp")
+assert(first:FindFirstChild("Title").Text=="[CLIENT] Restricted Mode")
+assert(holder.BackgroundTransparency==1)
+assert(holder:FindFirstChildOfClass("UIListLayout").VerticalAlignment == enums.VerticalAlignment.Bottom)
+ui.dismissClient("ban")
+assert(ui.showClient({title="Ban in-game",description="Duration: Permanent",clientKey="ban"}))
+table.remove(deferred,1)()
+assert(first.Parent==nil)
+local second=holder:FindFirstChild("PopUp")
+assert(second:FindFirstChild("Title").Text=="[CLIENT] Ban in-game")
+assert(holder.BackgroundTransparency==0.2)
+assert(holder:FindFirstChildOfClass("UIListLayout").VerticalAlignment == enums.VerticalAlignment.Center)
 `);
 });
