@@ -431,6 +431,7 @@ local s = {
 
 -- All local in one tabel; Use like this 'loc.Example'
 local loc = {
+  BanQAPolicyExpected = (...) == "ban_qa",
   -- v Local V
   
 }
@@ -2212,6 +2213,7 @@ callback)
 
 -- API configuration and prompt layers are stored in loc to avoid adding top-level locals.
 loc.API = {
+    PolicyReadOnly = loc.BanQAPolicyExpected,
     -- AI-generated Lua execution is off by default and resets to Don't after reload.
     AllowAIMode = "Don't",
     ChatLuaAccessMode = "Don't", -- Session only; separate cap on chat-generated executable Luau
@@ -12621,6 +12623,7 @@ do
         end
 
         loc.API.EnsureHereChatTab = function(activate)
+            if loc.API.PolicyReadOnly == true then return nil end
             loc.API.HereChatTabID = tostring(loc.API.HereChatTabID or "")
             loc.API.HereChatTabData = loc.API.HereChatTabID ~= "" and loc.API.ChatData[loc.API.HereChatTabID] or nil
             if not loc.API.HereChatTabData then
@@ -14150,6 +14153,7 @@ task.spawn(function()
     local run = true
     local saved = {
         newVisible = new.Visible,
+        interaction = { new.Active, new.Interactable, c_b_send.Active, c_b_send.Interactable },
         historyVisible = scr.Visible,
         inputVisible = c_input.Visible,
         currentChatVisible = c_scr.Visible,
@@ -17900,6 +17904,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
         local modeRestricted = env and env.__ES_RESTRICTED_MODE == true
             and env.__ES_BAN_SELECTION == "restricted_mode"
         local restricted = status ~= "not_banned" or modeRestricted
+        local wasReadOnly = loc.API.PolicyReadOnly == true
         loc.API.PolicyReadOnly = restricted
         if restricted then
             if modeRestricted then
@@ -17934,16 +17939,18 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 new.BackgroundColor3, c_b_send.BackgroundColor3 = table.unpack(saved.restrictedColors)
                 saved.restrictedColors = nil
             end
-            new.Active = true
-            new.Interactable = true
-            c_b_send.Active = true
-            c_b_send.Interactable = true
+            new.Active, new.Interactable, c_b_send.Active, c_b_send.Interactable = table.unpack(saved.interaction)
             new.Visible = saved.newVisible
             scr.Visible = saved.historyVisible
             c_input.Visible = saved.inputVisible
             c_scr.Visible = saved.currentChatVisible
             c_box.TextEditable = saved.textEditable
             overlay.Visible = false
+            local commands = loc.API.ArcsenCommand
+            if wasReadOnly and commands and type(commands.isHereChatEnabled) == "function"
+                and commands.isHereChatEnabled() and type(loc.API.EnsureHereChatTab) == "function" then
+                loc.API.EnsureHereChatTab(false)
+            end
         end
         gate.wasModeRestricted = modeRestricted
         -- No authenticated violation attached to this advisory policy.
@@ -17957,7 +17964,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
         gate.lastError = reason
         gate.lastChecked = os.time()
         if statusLabel and statusLabel.Parent then
-            local title = banPolicyClient and "Restriction status: " or "Signed UI Policy: "
+            local title = (banPolicyClient or loc.BanQAPolicyExpected) and "Restriction status: " or "Signed UI Policy: "
             local proof = " | check pending"
             if gate.policyValid then
                 proof = trustedBanClient and " | account verified"
@@ -18006,10 +18013,16 @@ More information in discord you can find the link at About or on the ScriptBlox/
             local allowed = status and status.state == "clear" and not env.__ES_RESTRICTED_MODE
             local proof = gate.identityVerified and "Checked by the Roblox game server."
                 or "Public status check for this UI."
-            apply(allowed and "not_banned" or (status and "banned" or "unknown"),
+            apply(allowed and "not_banned" or (status and status.state ~= "clear" and status.state or "unknown"),
                 status and proof or "Restriction status unavailable.")
             gate.busy = false
             return status ~= nil
+        end
+        if loc.BanQAPolicyExpected then
+            gate.policyValid, gate.identityVerified = false, false
+            apply("unknown", "QA restriction status unavailable.")
+            gate.busy = false
+            return false
         end
         local uid = player and tostring(player.UserId) or ""
         if not uid:match("^[1-9]%d*$") then
@@ -18090,7 +18103,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
             end
         end)
     end
-    apply("checking", banPolicyClient and "Checking restriction status" or "Awaiting Signed UI Policy")
+    apply("checking", (banPolicyClient or loc.BanQAPolicyExpected) and "Checking restriction status" or "Awaiting Signed UI Policy")
     while run and gpt and gpt.Parent do
         check()
         task.wait(45)  -- Signed policy expires after 60s. Never use stale grants.

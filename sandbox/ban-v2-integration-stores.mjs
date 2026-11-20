@@ -73,8 +73,15 @@ export function createStagingGitHubBanStore(fetcher=fetch) {
 
 export const d1BanQaStore={
  label:'isolated-qa',
- async read(env) {
-  const row=await env.DB.prepare('SELECT sha, source FROM asc_ban_v2_qa_source WHERE id=1').first();
+ async read(env,userId) {
+  const query=userId===undefined
+   ? env.DB.prepare('SELECT sha, source FROM asc_ban_v2_qa_source WHERE id=1')
+   : env.DB.prepare(`SELECT s.sha, s.source, (
+      SELECT a.request_id FROM asc_ban_v2_audit AS a
+      WHERE a.target_user_id=?1 AND a.outcome='saved'
+      ORDER BY a.created_unix DESC, a.rowid DESC LIMIT 1
+     ) AS notice_revision FROM asc_ban_v2_qa_source AS s WHERE s.id=1`).bind(userId);
+  const row=await query.first();
   if(!row||await gitBlobSha(row.source)!==row.sha)unavailable();
   return row;
  },

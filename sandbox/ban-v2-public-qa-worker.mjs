@@ -5,7 +5,10 @@ import {d1BanQaStore} from './ban-v2-integration-stores.mjs';
 import {QA_BAN_IDS} from './ban-v2-integration-worker.mjs';
 
 const status=createPublicBanStatus({
- store:{read:env=>d1BanQaStore.read({DB:env.BAN_QA_DB})},
+ store:{read:(env,id)=>d1BanQaStore.read({DB:env.BAN_QA_DB},id)},
+ // Release only exact labels approved for this QA endpoint. Free-form
+ // moderator reasons (and all descriptions) stay in the authenticated case.
+ publicReason:(reason,env)=>env.BAN_PUBLIC_QA_NOTICE_LABELS?.split(',').includes(reason)?reason:null,
  allowTarget:(id,env)=>QA_BAN_IDS.includes(id) || env.BAN_PUBLIC_QA_TEST_IDS?.split(',').includes(id),
  async rateLimit(request,env){
   if(typeof env.BAN_PUBLIC_QA_RATE?.limit!=='function')

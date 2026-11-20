@@ -97,7 +97,7 @@ export function policyFor(document,userId,now) {
 
 // The ID in this lookup is a claim for UI presentation. Its result cannot
 // authorize an operation, retrieve a notice, or be exchanged for a session.
-export function createPublicBanStatus({store,allowTarget,rateLimit,clock=()=>Math.floor(Date.now()/1000)}) {
+export function createPublicBanStatus({store,allowTarget,rateLimit,publicReason=()=>null,clock=()=>Math.floor(Date.now()/1000)}) {
  return async (request,env)=>{
   try{
    const url=new URL(request.url);
@@ -109,11 +109,20 @@ export function createPublicBanStatus({store,allowTarget,rateLimit,clock=()=>Mat
    if(!exact(body,['userId'])||!validId(body.userId))invalid();
    if(!await rateLimit(request,env))fail(429,'rate','Too many requests.');
    if(!allowTarget(body.userId,env))fail(403,'target_not_allowed','This QA preview is for authorized test accounts.');
-   const {document}=openDocument(await store.read(env));
+   const record=await store.read(env,body.userId);
+   const {document}=openDocument(record);
    const now=clock();
-   const {state}=policyFor(document,body.userId,now);
-   // A fixed refresh window avoids disclosing private start or expiry times.
-   return json({ok:true,identityVerified:false,subject:body.userId,state,checkedAt:now,nextCheckAt:now+30},200);
+   const {state,ban}=policyFor(document,body.userId,now);
+   const status={ok:true,identityVerified:false,subject:body.userId,state,checkedAt:now,nextCheckAt:Math.min(now+30,ban?.expiresAt??Infinity)};
+   if(ban){
+    status.notice={duration:ban.duration,reason:publicReason(ban.reason,env)??'See your verified case for the reason.'};
+    if(ban.expiresAt!==null)status.notice.expiresAt=ban.expiresAt;
+    if(typeof record.notice_revision==='string'){
+     const version=await crypto.subtle.digest('SHA-256',enc.encode(record.notice_revision));
+     status.notice.revision=hex(new Uint8Array(version)).slice(0,24);
+    }
+   }
+   return json(status,200);
   }catch(error){
    const status=error instanceof BanError?error.status:503;
    return json({ok:false,code:status===503?'unavailable':error.code},status);

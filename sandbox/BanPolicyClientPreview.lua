@@ -89,8 +89,18 @@ function client.policy()
         or type(data.nextCheckAt) ~= "number" or data.nextCheckAt % 1 ~= 0 or data.nextCheckAt <= data.checkedAt
         or data.nextCheckAt > data.checkedAt + 30 then return nil end
     if not (data.state == "clear" or data.state == "ban_ingame" or data.state == "restricted_mode") then return nil end
-    if publicLookup or data.state == "clear" then
-        if data.ban ~= nil then return nil end
+    if data.state == "clear" then
+        if data.ban ~= nil or data.notice ~= nil then return nil end
+    elseif publicLookup then
+        local notice = data.notice
+        if data.ban ~= nil or type(notice) ~= "table" or type(notice.reason) ~= "string"
+            or #notice.reason == 0 or #notice.reason > 120
+            or (notice.revision ~= nil and (type(notice.revision) ~= "string"
+                or #notice.revision ~= 24 or not notice.revision:match("^[0-9a-f]+$")))
+            or not (notice.duration == "permanent" and notice.expiresAt == nil
+                or notice.duration == "temporary" and type(notice.expiresAt) == "number"
+                    and notice.expiresAt % 1 == 0 and notice.expiresAt > data.checkedAt)
+            then return nil end
     else
         local item = data.ban
         if type(item) ~= "table" or item.selection ~= data.state

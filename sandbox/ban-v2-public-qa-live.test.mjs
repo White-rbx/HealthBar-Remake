@@ -17,12 +17,17 @@ test('live public lookup returns only the UI policy for an isolated synthetic ac
  const subject='9007199254740901';
  const {status,data}=await lookup(subject);
  assert.equal(status,200);
- assert.deepEqual(Object.keys(data).sort(),['checkedAt','identityVerified','nextCheckAt','ok','state','subject']);
+ assert.deepEqual(Object.keys(data).sort(),['checkedAt','identityVerified','nextCheckAt','ok','state','subject',
+  ...(data.state==='clear'?[]:['notice'])].sort());
+ if(data.notice){
+  assert.ok(Object.keys(data.notice).every(key=>['duration','expiresAt','reason','revision'].includes(key)));
+  assert.ok(['temporary','permanent'].includes(data.notice.duration));
+ }
  assert.equal(data.subject,subject);
  assert.equal(data.identityVerified,false);
  assert.equal(data.ok,true);
  assert.ok(['clear','ban_ingame','restricted_mode'].includes(data.state));
- assert.equal(data.nextCheckAt-data.checkedAt,30);
+ assert.ok(data.nextCheckAt-data.checkedAt>0&&data.nextCheckAt-data.checkedAt<=30);
 });
 
 test('live public lookup rejects out-of-scope accounts and exposes no case or admin route',async()=>{

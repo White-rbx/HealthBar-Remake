@@ -1048,7 +1048,8 @@ end
 
 local function canContinue()
     return loc.canLoad() and
-        (manualLoadRequested or Data.Loader.AlwaysLoad == true)
+        ((_boot.__ASC_BAN_V2_PREVIEW == true and _boot.__ES_RESTRICTED_MODE == true)
+            or manualLoadRequested or Data.Loader.AlwaysLoad == true)
 end
 
 ------------------------------------------------------------
@@ -7492,7 +7493,7 @@ print[[------------------------------------------------------------
 ]]
 
 -- Strict gate: the calling bootstrap must await this script's return value.
--- OFF + no manual click => wait, even if Always Load was ON earlier.
+-- Clear sessions honor the saved load preference. Restricted QA continues automatically.
 while not canContinue() do
     if not gui or not gui.Parent then
         return false -- Cancelled; bootstrap must NOT load Main.

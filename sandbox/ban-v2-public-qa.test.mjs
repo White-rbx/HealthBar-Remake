@@ -36,31 +36,44 @@ test('public policy looks up the approved account on each fresh request, with no
  const handler=createPublicBanStatus({
   store:{read:async()=>record},allowTarget:v=>approved.has(v),rateLimit:async()=>true,clock:()=>clock,
  });
- const expected=(subject,state)=>({ok:true,identityVerified:false,subject,state,checkedAt:clock,nextCheckAt:clock+30});
- assert.deepEqual(await body(await handler(request()),200),expected(id,'restricted_mode'));
+ const expected=(subject,state,notice)=>({ok:true,identityVerified:false,subject,state,checkedAt:clock,nextCheckAt:clock+30,
+  ...(notice?{notice}:{}),
+ });
+ const verifiedReason='See your verified case for the reason.';
+ const permanent={duration:'permanent',reason:verifiedReason};
+ const temporary={duration:'temporary',reason:verifiedReason,expiresAt:now+240};
+ assert.deepEqual(await body(await handler(request()),200),expected(id,'restricted_mode',permanent));
  assert.deepEqual(await body(await handler(request({userId:synthetic})),200),expected(synthetic,'clear'));
  record=await snapshot([fixture(id,'ban_ingame','temporary','2026-11-20 19:04')]);
- assert.deepEqual(await body(await handler(request()),200),expected(id,'ban_ingame'));
+ assert.deepEqual(await body(await handler(request()),200),expected(id,'ban_ingame',temporary));
  clock+=240;
  assert.deepEqual(await body(await handler(request()),200),expected(id,'clear'));
  record=await snapshot([fixture()]);
- assert.deepEqual(await body(await handler(request()),200),expected(id,'restricted_mode'));
+ assert.deepEqual(await body(await handler(request()),200),expected(id,'restricted_mode',permanent));
  record=await snapshot([]);
  assert.deepEqual(await body(await handler(request()),200),expected(id,'clear'));
 });
 
 test('standalone Worker limits requests, scopes QA, and has no privileged path',async()=>{
- const valid=await snapshot([fixture()]);
+ const valid={...await snapshot([{...fixture(),reason:'Footsteps'}]),notice_revision:'synthetic-audit-revision'};
  let rate=true, row=valid, reads=0;
  const env={
-  BAN_PUBLIC_QA_TEST_IDS:id,
+  BAN_PUBLIC_QA_TEST_IDS:id,BAN_PUBLIC_QA_NOTICE_LABELS:'Footsteps',
   BAN_QA_DB:{prepare(sql){
-   assert.match(sql,/^SELECT sha, source FROM asc_ban_v2_qa_source WHERE id=1$/);
-   return {async first(){reads++;return row;}};
+   assert.match(sql,/target_user_id=\?1/);
+   return {bind(subject){
+    assert.equal(subject,id);
+    return {async first(){reads++;return row;}};
+   }};
   }},
   BAN_PUBLIC_QA_RATE:{async limit({key}){assert.equal(key,'unknown');return {success:rate};}},
  };
- await body(await worker.fetch(request(),env),200);
+ const reply=await body(await worker.fetch(request(),env),200);
+ assert.deepEqual(Object.keys(reply.notice).sort(),['duration','reason','revision']);
+ assert.equal(reply.notice.reason,'Footsteps');
+ assert.equal(reply.notice.duration,'permanent');
+ assert.match(reply.notice.revision,/^[0-9a-f]{24}$/);
+ assert.doesNotMatch(JSON.stringify(reply),/Private details|PrivateFixture|synthetic-audit-revision/);
  for(const path of ['/api/v1/roblox/bans/v2/authorize','/api/v1/roblox/bans/v2/violation',
   '/api/v1/roblox/bans/v2/appeal','/api/v1/admin/bans/v2/manage',PUBLIC_BAN_STATUS+'?userId=1']){
   assert.equal((await body(await worker.fetch(request({userId:id},{path}),env),404)).code,'route');
@@ -78,4 +91,17 @@ test('standalone Worker limits requests, scopes QA, and has no privileged path',
  rate=true;
  row={...valid,sha:'a'.repeat(40)};
  assert.deepEqual(await body(await worker.fetch(request(),env),503),{ok:false,code:'unavailable'});
+});
+
+test('changing unrelated rows keeps the public notice token while a new case changes it',async()=>{
+ const fixtureRow=fixture(id,'restricted_mode','permanent');
+ let record={...await snapshot([fixtureRow]),notice_revision:'first saved revision'};
+ const handler=createPublicBanStatus({
+  store:{read:async()=>record},allowTarget:v=>v===id,rateLimit:async()=>true,clock:()=>now,
+ });
+ const first=(await body(await handler(request()),200)).notice.revision;
+ record={...await snapshot([fixtureRow,fixture(synthetic,'ban_ingame')]),notice_revision:'first saved revision'};
+ assert.equal((await body(await handler(request()),200)).notice.revision,first);
+ record={...record,notice_revision:'second saved revision'};
+ assert.notEqual((await body(await handler(request()),200)).notice.revision,first);
 });

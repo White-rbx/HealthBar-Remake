@@ -201,7 +201,7 @@ Folder.Parent = game:GetService("CoreGui")
 
 local Screen = Instance.new("ScreenGui")
 Screen.Name = "Display"
-Screen.DisplayOrder = 2147483647
+Screen.DisplayOrder = 2147483646
 Screen.ScreenInsets = Enum.ScreenInsets.None
 Screen.Parent = Folder
 
@@ -588,10 +588,6 @@ TweenService:Create(Load, TweenInfo.new(0.5), {
 
 getgenv().__ES_READY = false
 local function renderBanBlock(item)
-    if item.PublicLookup then
-        twarn.Text = "<b>Ban in-game</b>\nExperienceSettings is unavailable for this account."
-        return
-    end
     local function escapeText(value)
         return tostring(value or ""):gsub("&", "&amp;")
             :gsub("<", "&lt;"):gsub(">", "&gt;")
@@ -605,9 +601,10 @@ local function renderBanBlock(item)
         .. "Selection: <b>" .. selection .. "</b>\n"
         .. "Duration: <b>" .. escapeText(item.Duration) .. "</b>\n"
         .. "Reason: <mark color='rgb(255,85,85)' transparency='0.5'>" .. escapeText(item.Reason) .. "</mark>\n"
-        .. "Description: " .. escapeText(item.Description) .. "\n"
+        .. (item.Description and ("Description: " .. escapeText(item.Description) .. "\n") or "")
         .. (item.StartAt and ("From: " .. formatTime(item.StartAt) .. "\n") or "")
         .. "Until: <b>" .. (item.ExpiresAt and formatTime(item.ExpiresAt) or "Permanent") .. "</b>"
+        .. "\nFor an appeal, use the existing ArcScriptCenter appeal channel."
 end
 
 -- ASC BAN V2 SETUP BEGIN
@@ -627,9 +624,11 @@ if qaEnv.__ASC_BAN_V2_PREVIEW then
             Duration = item.duration, Reason = item.reason, Description = item.description,
             StartAt = item.startAt, ExpiresAt = item.expiresAt,
         } or nil
-        if status and client.publicLookup and status.state ~= "clear" then
-            banData = { Selection = status.state, PublicLookup = true }
+        if status and status.notice then
+            banData = { Selection = status.state, SelectionAssigned = true,
+                Duration = status.notice.duration, Reason = status.notice.reason, ExpiresAt = status.notice.expiresAt }
         end
+        if qaEnv.__ASC_SYNC_POLICY_WARNING then pcall(qaEnv.__ASC_SYNC_POLICY_WARNING, status) end
         if status and not qaEnv.__ES_BANNED then break end
 
         if not details then
@@ -712,7 +711,7 @@ if banData and getgenv().__ES_RESTRICTED_MODE and twarn then
         (os.date("!%Y-%m-%d %H:%M", banData.ExpiresAt + 7 * 3600) .. " ICT")
         or "Permanent"
     twarn.Text = "<b>Restricted Mode</b>\n"
-        .. (banData.PublicLookup and "" or ("Duration: " .. banData.Duration .. "\nUntil: " .. untilText .. "\n"))
+        .. "Duration: " .. banData.Duration .. "\nUntil: " .. untilText .. "\n"
         .. "Opening the restricted Loader. Settings and Feedback &amp; Appeal remain available."
 end
 

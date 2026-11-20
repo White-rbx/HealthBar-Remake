@@ -12,6 +12,7 @@ const server = read('ArcScriptCenterBanBridge.server.lua');
 const topbar = read('RestrictedMode-Topbar-STAGING.lua');
 const setup = read('ExperienceSettings-SetUp-Preview.lua');
 const main = read('LoaderMainPreview.lua');
+const rejoiner = read('Loader-UI-BanMode-STAGING.lua');
 const arcsen = read('Arcsen-Preview.lua');
 const section = (source, start, end) => {
  const first = source.indexOf(start);
@@ -21,6 +22,11 @@ const section = (source, start, end) => {
 };
 const files = {
  entry, client, server, topbar,
+ boot: section(main, 'local policyMode =', '-- ASC BAN V2 BOOTSTRAP END') + '\nreturn policyMode',
+ waiting: section(rejoiner, 'local function canContinue()', '-- Continue (ONE TIME)') + '\nreturn canContinue',
+ warning: section(main, '-- ASC POLICY WARNING BEGIN', '-- ASC POLICY WARNING END') + '\nreturn syncPolicyWarning',
+ warningQueue: section(main, 'local function showNext()', '-- Server warnings are already-verified') + '\nreturn api',
+ gateCheck: section(arcsen, '    local function check()', '    local controller = {') + '\nreturn check',
  setup: section(setup, 'local function renderBanBlock(item)', '-- Restricted Mode is NOT SetUp-only.') +
   '\nreturn banData',
  startup: section(main, 'local function canStartMain()', 'if not canStartMain() then') + '\nreturn canStartMain',
@@ -41,6 +47,7 @@ local function post(delay, thread, ...)
 end
 runtime.task = {
     spawn = function(fn, ...) post(0, coroutine.create(fn), ...) end,
+    defer = function(fn, ...) post(0, coroutine.create(fn), ...) end,
     delay = function(delay, fn, ...) post(delay, coroutine.create(fn), ...) end,
     wait = function(delay)
         post(delay or 0.01, coroutine.running())
@@ -372,7 +379,7 @@ local new, send, history, input, chat, box = button("New", {}), button("Send", {
 local opened, loc = false, { API = {} }
 local apply = run("arcsen", {
     env = env, loc = loc, gate = {}, new = new, c_b_send = send, scr = history, c_input = input, c_scr = chat,
-    c_box = box, overlay = {}, saved = { newVisible = true, textEditable = true },
+    c_box = box, overlay = {}, saved = { newVisible = true, textEditable = true, interaction = { true, true, true, true } },
     Color3 = color, showSettings = function() opened = true end,
 })
 apply("banned")
@@ -453,6 +460,7 @@ assert(published == "public_qa" and internal.__ASC_BAN_V2_PREVIEW == nil)
 local function launch(state)
     response = policy(state, 100 + math.floor(now), 130 + math.floor(now))
     response.subject, response.identityVerified, response.ban = tostring(userId), false, nil
+    response.notice = state ~= "clear" and { duration = "permanent", reason = "Footsteps" } or nil
     local client = run("client", additions, published)
     assert(client.publicLookup and client.history == nil and client.appeal == nil)
     local result
@@ -484,7 +492,7 @@ local function launch(state)
     advance(now)
     assert(setupEnv.__ES_BANNED == (state == "ban_ingame"))
     if state == "ban_ingame" then
-        assert(setupUi.twarn.Text:find("Ban in%-game") and not setupUi.twarn.Text:find("Reason"))
+        assert(setupUi.twarn.Text:find("Ban in%-game") and setupUi.twarn.Text:find("Footsteps"))
         setupUi.Folder.Parent = nil
         advance(now + 0.25)
     end
@@ -495,5 +503,130 @@ launch("clear")
 advance(7)
 launch("ban_ingame")
 assert(lookups == 3)
+`);
+});
+
+test('Luau VM: direct Loader boot uses public QA, restricted continues, and Arcsen fails closed', () => {
+ luau(String.raw`
+local env = {}
+local mode = run("boot", {
+    getgenv = function() return env end,
+    game = { HttpGet = function(_, url)
+        assert(url:match("/BanPolicyClientPreview%.lua$"))
+        return 'return {mode=...}'
+    end },
+})
+assert(mode == "public_qa" and env.__ASC_BAN_V2_CLIENT.mode == mode and env.__ASC_BAN_V2_PREVIEW)
+local setup = { __ASC_BAN_V2_PREVIEW = true, __ES_RESTRICTED_MODE = true }
+local waiting = run("waiting", {
+    _boot = setup, loc = { canLoad = function() return true end },
+    Data = { Loader = { AlwaysLoad = false } }, manualLoadRequested = false,
+})
+assert(waiting())
+setup.__ES_RESTRICTED_MODE = false
+assert(not waiting())
+local gate, applied = {}, nil
+local check = run("gateCheck", {
+    gate = gate, run = true, loc = { BanQAPolicyExpected = true },
+    apply = function(state) applied = state end,
+    post = function() error("QA must not fall back to the Signed UI Policy") end,
+})
+assert(not check() and not gate.policyValid and applied == "unknown")
+local restricted = { state = "restricted_mode", identityVerified = false }
+check = run("gateCheck", {
+    gate = gate, run = true, loc = { BanQAPolicyExpected = true }, env = { __ASC_BAN_V2_STATE = restricted },
+    banPolicyClient = { secondsRemaining = function() return 29 end },
+    apply = function(state) applied = state end,
+})
+assert(check() and applied == "restricted_mode" and gate.policyValid and not gate.identityVerified)
+`);
+});
+
+test('Luau VM: Client WarningUI displays the four combinations, suppresses polling repeats and can retry errors', () => {
+ luau(String.raw`
+local warnings, dismissed = {}, 0
+local env = {}
+local fail = false
+env.WarningUI = {
+    dismissClient = function(key)
+        assert(key == "ArcScriptCenterBanPolicy")
+        dismissed += 1
+    end,
+    showClient = function(payload)
+        if fail then error("synthetic renderer failure") end
+        table.insert(warnings, payload)
+        return true
+    end,
+}
+local publish = run("warning", { bootEnv = env })
+publish({state="clear"})
+advance(0)
+assert(#warnings == 0)
+local function submit(state, duration, expires, revision)
+    publish({ state = state, notice = { reason = "Footsteps", duration = duration, expiresAt = expires, revision = revision } })
+end
+for _, mode in ipairs({"restricted_mode", "ban_ingame"}) do
+    submit(mode, "permanent")
+    advance(now)
+    local latest = warnings[#warnings]
+    assert(latest.description:find("Footsteps") and latest.description:find("Permanent"))
+    assert(latest.compact == (mode == "restricted_mode"))
+    submit(mode, "temporary", 1795189200)
+    advance(now)
+    assert(warnings[#warnings].description:find("Temporary") and warnings[#warnings].description:find("ICT"))
+end
+assert(#warnings == 4)
+submit("ban_ingame", "temporary", 1795189200)
+publish(nil)
+advance(now)
+assert(#warnings == 4)
+fail = true
+submit("ban_ingame", "temporary", 1795189200, "new case")
+advance(now)
+assert(#warnings == 4)
+fail = false
+submit("ban_ingame", "temporary", 1795189200, "new case")
+advance(now)
+assert(#warnings == 5)
+local before = dismissed
+publish({state="clear"})
+advance(now)
+assert(dismissed == before + 1 and #warnings == 5)
+submit("ban_ingame", "temporary", 1795189200, "new case")
+advance(now)
+assert(#warnings == 6)
+`);
+});
+
+test('Luau VM: existing WarningUI replaces only its matching Client warning', () => {
+ luau(String.raw`
+local called, lifecycle = {}, {}
+local state = { queue = {} }
+local api = run("warningQueue", {
+    api = {}, state = state,
+    makeButtonCallback = function() return nil end,
+    pop = function(title, _, _, _, _, onClose, _, _, compact)
+        table.insert(called, { title = title, compact = compact })
+        local closed = false
+        local close = function()
+            if closed then return end
+            closed = true
+            table.insert(lifecycle, title)
+            onClose()
+        end
+        return { close = close }
+    end,
+})
+assert(api.showClient({title="Independent",description="An existing unrelated warning."}))
+assert(api.showClient({title="Old policy",description="First",clientKey="ban",compact=true}))
+api.dismissClient("ban")
+assert(#called == 1 and #lifecycle == 0)
+assert(api.showClient({title="New policy",description="Second",clientKey="ban",compact=true}))
+state.active.close()
+advance(now)
+assert(#called == 2 and called[2].title == "[CLIENT] New policy" and called[2].compact)
+api.dismissClient("ban")
+advance(now)
+assert(#lifecycle == 2 and state.active == nil)
 `);
 });
