@@ -1666,12 +1666,38 @@ if isRestrictedMode then
     end
 end
 
+-- Trace the exact handoff without changing restricted-mode permissions.
+-- The Roblox TopBarApp old/new paths are separate from ExperienceSettings.Menu.TopBar.
+-- Do not wait on either Roblox layout to lock ExperienceSettings controls.
+local qaArcsenStarted = false
+local qaArcsenFinished = false
+task.spawn(function()
+    task.wait(12)
+    if qaArcsenStarted and not qaArcsenFinished then
+        warn("[ES][QA][Arcsen] Still initializing after 12s; inspect pending WaitForChild dependencies (Notification / AIOpenSource).")
+    end
+end)
+
 -- Arcsen stays available for Settings > ArcScriptCenter > Feedback & Appeal.
 -- STAGING-only patched UI is read-only while Restricted Mode is active.
 -- This PREVIEW always uses the STAGING Arcsen source, including for unbanned QA
 -- accounts, to avoid accidentally invoking the normal live Arcsen in a test.
 local arcsenUrl = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/Arcsen-Preview.lua"
-assert(loadstring(game:HttpGet(arcsenUrl)))("ban_qa")
+print("[ES][QA] Starting Arcsen-Preview.lua")
+qaArcsenStarted = true
+local qaArcsenOk, qaArcsenErr = xpcall(function()
+    local source = game:HttpGet(arcsenUrl)
+    local compiled, compileError = loadstring(source)
+    assert(compiled, tostring(compileError))
+    return compiled("ban_qa")
+end, function(err)
+    return tostring(err) .. "\\n" .. debug.traceback()
+end)
+qaArcsenFinished = true
+if not qaArcsenOk then
+    warn("[ES][QA] Arcsen-Preview failed: " .. tostring(qaArcsenErr))
+    error(qaArcsenErr, 0)
+end
 print("[ Arcsen ] Successful loaded.")
 
 if not isRestrictedMode then
