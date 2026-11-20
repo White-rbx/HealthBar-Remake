@@ -14183,6 +14183,7 @@ task.spawn(function()
     local privateReceipts = {} -- Session only, not getgenv(), Global Memory, logs or disk.
     local serverLinkedCases = {} -- Verified server response only; no credentials and no persistent cache.
     local tokenLinkedCases = {} -- Separate from verified OAuth/Receipt cases.
+    local updateCaseCounters = function() end -- Assigned after Feedback subcategory UI is created.
     local userCaseToken = nil
     local rememberTokenEnabled = false
     local caseTokenConsent = false -- Explicit opt-in for creation after Feedback succeeds.
@@ -14354,7 +14355,6 @@ task.spawn(function()
                 or "Token linked; case list unavailable: "..tostring(listErr))
         end
     end
-    local updateCaseCounters = function() end -- Assigned after Feedback subcategory UI is created.
     loc.API.ArcScriptCenterCaseSession = {LastCaseId=nil, Count=0, Transport="STAGING only"}
 
     local function caseLength(value)
