@@ -1,0 +1,103 @@
+name: ArcScriptCenter — STAGING one-shot HTTP Feedback smoke
+# Manual-only: real STAGING acceptance completed; no automatic synthetic submissions on PR changes.
+# Synthetic case only; no production requests, admin credentials or real Roblox identity.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-staging-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify STAGING Feedback HTTP and receipt cleanup (no credentials)
+        env:
+          STAGING_API: https://arcscriptcenter-api-staging.kogpasan14.workers.dev
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, sys, urllib.request, urllib.error
+          base = os.environ['STAGING_API'].rstrip('/')
+          topic = 'ASC-SMOKE-' + os.environ['GITHUB_RUN_ID']
+          description = (
+              'Automated synthetic STAGING HTTP smoke test from GitHub Actions. '
+              'No personal information, real user feedback, or Roblox identity is involved. '
+              'This test case is removed by its private receipt.'
+          )
+          def post(path, data):
+              req = urllib.request.Request(
+                  base + path,
+                  data=json.dumps(data).encode('utf-8'),
+                  headers={'Content-Type': 'application/json',
+                           'User-Agent': 'ASC-Staging-Synthetic-Smoke/1.0'},
+                  method='POST')
+              try:
+                  with urllib.request.urlopen(req, timeout=25) as res:
+                      return res.status, json.loads(res.read(100000))
+              except urllib.error.HTTPError as exc:
+                  # Only print a fixed, non-sensitive diagnostic category.
+                  try:
+                      payload = json.loads(exc.read(4096))
+                  except (ValueError, OSError):
+                      payload = {}
+                  reason = payload.get('stagingQA') if isinstance(payload, dict) else None
+                  allowed = {'dependency', 'edge-host', 'edge-worker-or-method',
+                             'edge-tls-metadata', 'edge-ip-metadata',
+                             'rate-unavailable', 'trusted-edge-unavailable',
+                             'clock-unavailable', 'rate-limited',
+                             'edge-method', 'edge-cf-worker', 'edge-cf-worker-and-x-real-ip',
+                             'edge-x-real-ip'}
+                  if reason in allowed:
+                      print('STAGING RATE DIAG:', reason)
+                  return exc.code, {}
+          case_id = None
+          receipt = None
+          failed = False
+          try:
+              code, _ = post('/api/v1/feedback/submit',
+                             {'kind': 'feedback', 'topic': 'x', 'description': 'short'})
+              print('Malformed payload HTTP:', code)
+              if code != 400:
+                  raise AssertionError('Malformed payload must be HTTP 400')
+              code, reply = post('/api/v1/feedback/submit',
+                                 {'kind': 'feedback', 'topic': topic,
+                                  'description': description})
+              print('Real external HTTP submit:', code)
+              if code != 201 or reply.get('ok') is not True:
+                  raise AssertionError('STAGING valid synthetic submission failed')
+              case_id, receipt = reply.get('id'), reply.get('receipt')
+              if (not isinstance(case_id, str) or len(case_id) != 36 or
+                  not isinstance(receipt, str) or len(receipt) != 64):
+                  raise AssertionError('STAGING receipt payload invalid')
+              code, result = post('/api/v1/feedback/status',
+                                  {'id': case_id, 'receipt': receipt})
+              print('Receipt-authenticated status HTTP:', code)
+              if code != 200 or result.get('ok') is not True:
+                  raise AssertionError('Receipt-scoped status failed')
+              print('PASS: STAGING public network -> rate guard -> D1 -> receipt status')
+          except Exception as exc:
+              print('QA FAILED:', type(exc).__name__, str(exc))
+              failed = True
+          finally:
+              if case_id is not None and receipt is not None:
+                  try:
+                      code, result = post('/api/v1/feedback/manage',
+                                          {'id': case_id, 'receipt': receipt,
+                                           'operation': 'remove'})
+                      print('Receipt-authorized synthetic case remove HTTP:', code)
+                      if code != 200 or result.get('removed') is not True:
+                          failed = True
+                      else:
+                          code, _ = post('/api/v1/feedback/status',
+                                         {'id': case_id, 'receipt': receipt})
+                          print('Removed case status HTTP:', code)
+                          if code != 404:
+                              failed = True
+                  except Exception:
+                      print('ERROR: synthetic case cleanup failed')
+                      failed = True
+          if failed:
+              sys.exit(1)
+          print('PASS: synthetic case removed via original receipt workflow')
+          PY

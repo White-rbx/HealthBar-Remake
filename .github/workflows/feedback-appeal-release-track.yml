@@ -1,0 +1,148 @@
+name: Feedback and Appeal — Consolidated Release Track QA
+# One automatic run per PR update, not duplicate push + pull_request runs.
+# Banned Check Center Selection UI regression check: source validation updated 19 Nov 2026.
+on:
+  pull_request:
+    branches: [stage16-87-trust-boundary-sandbox]
+    paths:
+      - 'sandbox/feedback-*'
+      - 'sandbox/ban-v2-*'
+      - 'sandbox/banned-token-*.mjs'
+      - 'migrations/banned_token*_ISOLATED_QA_ONLY.sql'
+      - 'docs/banned-token-staging-design.md'
+      - 'sandbox/Ban*Preview.lua'
+      - 'sandbox/ArcScriptCenterBanBridge.server.lua'
+      - 'sandbox/RestrictedMode-Topbar-STAGING.lua'
+      - 'migrations/ban_v2_full_integration_*'
+      - 'sandbox/LoaderMainPreview.lua'
+      - 'sandbox/Loader-UI-BanMode-STAGING.lua'
+      - 'sandbox/ExperienceSettings-SetUp-Preview.lua'
+      - 'sandbox/Arcsen-Preview.lua'
+      - 'sandbox/feedback-case-delivery-staging.*'
+      - 'sandbox/feedback-user-case-token-staging.*'
+      - 'sandbox/feedback-user-case-token-native.test.mjs'
+      - 'migrations/feedback_user_case_token_STAGING_REVIEW_ONLY_20261120.sql'
+      - 'migrations/feedback_case_owner_links_STAGING_REVIEW_ONLY_20261119.sql'
+      - 'sandbox/loader-main-preview.test.mjs'
+      - 'sandbox/arcsen-v7.3.43-feedback-optional-userid.patch'
+      - 'sandbox/production-feedback-appeal-form.*'
+      - 'sandbox/stage16-76-arcsen-bridge.*'
+      - 'docs/feedback-appeal-release-track.md'
+      - 'docs/feedback-dashboard-staging-integration.md'
+      - '.github/workflows/feedback-appeal-release-track.yml'
+  workflow_dispatch:
+
+# A new commit cancels superseded checks for this same PR.
+concurrency:
+  group: feedback-release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  browser-feedback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: All-in-one Feedback review candidate builder and legacy route checks
+        run: node --test sandbox/feedback-release-candidate-builder.test.mjs
+      - name: All-in-one Feedback release QA — D1 limiter and additive schema
+        run: node --test sandbox/feedback-release-rate-guard.test.mjs
+      - name: STAGING-only rate candidate source-pin and fail-closed checks
+        run: node --test sandbox/feedback-staging-rate-rollout.test.mjs
+      - name: STAGING synthetic HTTP 503 diagnostic source and privacy checks
+        run: node --test sandbox/feedback-staging-qa-diagnostic.test.mjs
+      - name: Production code review and no-deploy regression
+        run: node --test sandbox/feedback-production-code-audit.test.mjs
+      - name: Feedback and Appeal release policy and English UI checks
+        run: node --test sandbox/feedback-release-contract.test.mjs
+      - name: Optional unverified UserId Worker patch and Admin metadata tests
+        run: node --test sandbox/feedback-unverified-claim-worker-patch.test.mjs
+      - name: Verify immutable STAGING Pages source (public assets only)
+        run: node --test sandbox/feedback-pages-preview-integrity.test.mjs
+      - name: Original Dashboard Feedback and Appeal UserId display regression
+        run: node --test sandbox/feedback-native-userid-patcher.test.mjs
+      - name: Main Dashboard read-only Admin Inbox integration checks
+        run: node --test sandbox/feedback-dashboard-staging-adapter.test.mjs
+      - name: Roblox public username directory and private Admin Ban/Case lookup checks
+        run: node --test sandbox/feedback-admin-directory.test.mjs
+      - name: Arcsen v7.3.51 auto UserId and unverified identity static checks
+        run: node --test sandbox/feedback-client-auto-userid-qa.test.mjs
+      - name: Ban Selection and Duration separation test
+        run: node --test sandbox/arcscriptcenter-ban-selection-duration.test.mjs
+      - name: Ban Schema v2 migration and safe GitHub Lua patch tests
+        run: node --test sandbox/managed-ban-schema-v2.test.mjs
+      - name: Banned Check Center v2 — SQL, permissions, appeal, SHA and Pages
+        run: node --test sandbox/ban-v2-integration.test.mjs
+      - name: Universal case sessions without a Roblox server bridge
+        run: node --test sandbox/banned-token-universal-qa.test.mjs
+      - name: Compile and run Roblox policy code in the Luau VM with mocked Roblox services
+        run: |
+          luau_dir="$RUNNER_TEMP/asc-luau"
+          git init "$luau_dir"
+          git -C "$luau_dir" fetch --depth 1 https://github.com/luau-lang/luau.git c87565b8b0db5d5d5bfd2b8b00ad6573e5d06d9f
+          git -C "$luau_dir" checkout --detach FETCH_HEAD
+          make -s -C "$luau_dir" config=release -j"$(nproc)" luau luau-compile
+          "$luau_dir/luau-compile" --null sandbox/{BannedCenterLoaderPreview,BanPolicyClientPreview,ArcScriptCenterBanBridge.server,RestrictedMode-Topbar-STAGING,Loader-UI-BanMode-STAGING,ExperienceSettings-SetUp-Preview,LoaderMainPreview,Arcsen-Preview}.lua
+          LUAU_BIN="$luau_dir/luau" node --test sandbox/ban-v2-native-luau.test.mjs
+      - name: Universal Ban status, scoped lookup and live QA isolation
+        run: node --test sandbox/ban-v2-public-qa.test.mjs sandbox/ban-v2-public-qa-live.test.mjs
+      - name: Original STAGING API Worker Ban v1 and v2 guarded compatibility patch
+        run: node --test sandbox/ban-v2-main-worker-compat-patcher.test.mjs
+      - name: Ban v2 isolated QA Admin API authentication and Save tests
+        run: node --test sandbox/ban-v2-qa-gateway.test.mjs
+      - name: Backward-compatible schema1 and schema2 source-of-truth Ban preview
+        run: node --test sandbox/ban-v2-source-compat.test.mjs
+      - name: Live deployed Ban v2 QA HTTP denial and CORS smoke
+        run: node --test sandbox/ban-v2-qa-live-http-smoke.test.mjs
+      - name: 'Ban Selection and Duration — four combinations, legacy and expiry'
+        run: node --test sandbox/arcscriptcenter-ban-selection-duration-classification.test.mjs
+      - name: Unknown Feedback Trash 30-day retention / Admin authorization (SQLite)
+        run: node --test sandbox/feedback-unknown-case-trash.test.mjs
+      - name: Standalone STAGING-only 30-day Trash Cron safety
+        run: node --test sandbox/feedback-unknown-trash-cron-staging.test.mjs
+      - name: Standalone Admin Trash Gateway / existing auth service boundary
+        run: node --test sandbox/feedback-unknown-trash-admin-gateway-staging.test.mjs
+      - name: Live isolated QA Admin Trash HTTP denial and CORS smoke
+        run: node --test sandbox/feedback-unknown-trash-admin-qa-http-smoke.test.mjs
+      - name: Live STAGING Admin Trash HTTP denial and CORS smoke
+        env:
+          ASC_TRASH_SMOKE_HOST: https://arcscriptcenter-trash-admin-staging.kogpasan14.workers.dev
+        run: node --test sandbox/feedback-unknown-trash-admin-qa-http-smoke.test.mjs
+      - name: Memory-only Admin Key native Trash Dashboard callback bridge
+        run: node --test sandbox/feedback-unknown-trash-dashboard-bridge.test.mjs
+      - name: Live native Pages User's Case Preview and Admin CORS smoke
+        run: node --test sandbox/feedback-users-case-preview-real-http.test.mjs
+      - name: Existing production browser form end-to-end synthetic tests
+        run: node --test sandbox/production-candidate-browser-form.test.mjs
+      - name: Existing route isolation and security gate regressions
+        run: node --test sandbox/production-candidate-route-contract.test.mjs sandbox/production-candidate-security-gates.test.mjs
+      - name: Existing Stage16.87 trust-boundary regression
+        run: node --test sandbox/stage16-87-restricted-gateway.test.mjs
+      - name: Existing Stage16.83 pairing regression
+        run: node --test sandbox/stage16-83-pairing.test.mjs
+      - name: Case Delivery — verified active client, no Account/Analytics leak
+        run: node --test sandbox/feedback-case-delivery-staging.test.mjs
+      - name: User Case Token — consent, token-only rejoin, revoke and case isolation
+        run: node --test sandbox/feedback-user-case-token-staging.test.mjs
+      - name: Native Remember Token — JSON, Rejoin, opt-in and Revoke controls
+        run: node --test sandbox/feedback-user-case-token-native.test.mjs
+      - name: Real LoaderMainPreview with isolated SetUp/Arcsen and New Chat/HereChat QA
+        run: node --test sandbox/loader-main-preview.test.mjs
+      - name: Validate Ban Mode routed through SetUp, Main Loader, UI Loader and Arcsen
+        run: node --test sandbox/ban-mode-staging-loader-integration.test.mjs
+      - name: Native Ban Center Selection and Duration UI safety
+        run: node --test sandbox/ban-center-selection-preview.test.mjs
+      - name: Native Ban Center QA Save/Load security and Admin session reuse
+        run: node --test sandbox/ban-center-v2-qa-save-ui.test.mjs
+      - name: Live Ban Center QA Save Preview HTTP security smoke
+        run: node --test sandbox/ban-v2-qa-preview-live-http.test.mjs
+      - name: Live STAGING Banned Check Center Selection Preview HTTP smoke
+        run: node --test sandbox/ban-center-mode-live-preview-http.test.mjs
+      - name: Inspect public Ban Check Center markup on native STAGING Preview
+        run: node --test sandbox/ban-check-center-public-dom-inspect.test.mjs
+      - name: Existing English UI design contract
+        run: node --test sandbox/stage16-86-english-ui.test.mjs sandbox/stage16-86-browser-demo/static-safety.test.mjs
