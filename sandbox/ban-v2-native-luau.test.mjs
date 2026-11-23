@@ -22,6 +22,7 @@ const section = (source, start, end) => {
 };
 const files = {
  entry, client, server, topbar,
+ accountUi: read('ESLogin.lua'), accountClient: read('ASCAccountClientPreview.lua'),
  boot: section(main, 'local policyMode =', '-- ASC BAN V2 BOOTSTRAP END') + '\nreturn policyMode',
  waiting: section(rejoiner, 'local function canContinue()', '-- Continue (ONE TIME)') + '\nreturn canContinue',
  warning: section(main, '-- ASC POLICY WARNING BEGIN', '-- ASC POLICY WARNING END') + '\nsetupWarningReady = true; return syncPolicyWarning',
@@ -779,5 +780,108 @@ publishCase(true,"BANNTOKEN_001122334455-00112233445#AABBCC")
 assert(not warning.description:find("BANNTOKEN"))
 publishCase(true,"••••AB")
 assert(warning.description:find("Reference: ••••AB",1,true))
+`);
+});
+
+test('Luau VM: ESLogin keeps its layout and automatically completes website pairing', () => {
+ luau(String.raw`
+local objects = {}
+local function instance(class)
+    local item = {ClassName=class,Activated=signal()}
+    function item:Destroy() self.Parent=nil end
+    function item:FindFirstChild(name)
+        for _,child in ipairs(objects) do if child.Parent==self and child.Name==name then return child end end
+    end
+    function item:FindFirstChildOfClass(name)
+        for _,child in ipairs(objects) do if child.Parent==self and child.ClassName==name then return child end end
+    end
+    function item:Clone()
+        local copy=instance(self.ClassName)
+        for key,value in pairs(self) do if key~='Activated' then copy[key]=value end end
+        return copy
+    end
+    table.insert(objects,item)
+    return item
+end
+local tuple=function(...) return {...} end
+local root=instance('PlayerGui')
+local copied,polls,done
+local client={website='https://synthetic.test',begin=function() return {code='ABCDEF123456',expiresAt=10} end,
+ poll=function(pair,remember) assert(pair.code=='ABCDEF123456' and remember); polls=(polls or 0)+1; if polls>1 then return {state='ready'} end return {state='pending'} end}
+local enum=setmetatable({},{__index=function() return setmetatable({},{__index=function(_,k) return k end}) end})
+runtime.task.spawn(function() done=run('accountUi',{
+ game={GetService=function(_,name) assert(name=='TweenService'); return {} end},
+ Instance={new=instance},Enum=enum,UDim={new=tuple},UDim2={new=tuple},Vector2={new=tuple},
+ Color3={new=tuple,fromRGB=tuple},ColorSequence={new=tuple},ColorSequenceKeypoint={new=tuple},
+ NumberSequence={new=tuple},NumberSequenceKeypoint={new=tuple},typeof=function(v) return type(v)=='table' and 'Color3' or type(v) end,
+ setclipboard=function(url) copied=url end,
+},client,root,'session_expired') end)
+advance(0)
+local screen=assert(root:FindFirstChild('ESLoginGui'))
+local main=screen:FindFirstChild('Main')
+assert(main.Position[1]==0.3 and main.Size[1]==0.4 and main.BackgroundColor3[3]==52)
+assert(main:FindFirstChild('Holder'):FindFirstChild('Logo').Image=='rbxassetid://120500539322715')
+local inside=main:FindFirstChild('Inside')
+assert(inside:FindFirstChild('PassInput').Text=='Session expired. Sign in again.')
+assert(inside:FindFirstChild('PassInput').TextEditable==false)
+local buttons=inside:FindFirstChild('Buttons')
+buttons:FindFirstChild('Remember').Activated:Fire()
+buttons:FindFirstChild('Login').Activated:Fire()
+advance(0)
+assert(inside:FindFirstChild('UserInput').Text=='ABCDEF123456')
+assert(copied==client.website)
+advance(7)
+assert(polls==2 and done and root:FindFirstChild('ESLoginGui')==nil)
+`);
+});
+
+test('Luau VM: Executor account policy, opt-in JSON persistence, and logout', () => {
+ luau(String.raw`
+local values,stored={},nil
+local session=string.rep('a',64)
+local status='restricted_mode'
+local fail=false
+local auth={
+ getgenv=function() return {} end,
+ game={GetService=function(_,name) assert(name=='HttpService'); return {
+    JSONEncode=function(_,body) table.insert(values,body); return tostring(#values) end,
+    JSONDecode=function(_,id) return assert(values[tonumber(id)]) end,
+ } end},
+ Instance={new=function(name) assert(name=='BindableEvent');local event=signal();return {Event=event,Fire=function() event:Fire() end,Destroy=function() end} end},
+ request=function(r)
+    local op=r.Url:match('/accounts/(.+)$')
+    assert(r.Method=='POST' and r.Headers.Origin==nil and r.Headers.Cookie==nil)
+    local v={ok=true}
+    if op=='pair/start' then
+        assert(r.Headers.Authorization==nil); v.secret=session; v.expiresAt=100
+    elseif op=='pair/poll' then
+        assert(values[tonumber(r.Body)].remember==true); v.session=session; v.state='ready'; v.expiresAt=100
+    else
+        assert(r.Headers.Authorization=='Bearer '..session)
+        if fail then error('Synthetic timeout') end
+        if op~='logout' then v.account={id='account-qa',nickname='Synthetic',status=status} end
+    end
+    table.insert(values,v)
+    return {StatusCode=200,Body=tostring(#values)}
+ end,
+ writefile=function(path,body) assert(path=='ArcScriptCenter/Account.json'); stored=body end,
+ readfile=function(path) assert(path=='ArcScriptCenter/Account.json');return stored end,
+ delfile=function() stored=nil end,
+}
+local progress=0
+runtime.task.spawn(function()
+    local c=run('accountClient',auth)
+    assert(not c.hasSession() and c.refresh()==nil)
+    assert(c.poll(assert(c.begin()),true).saved and stored)
+    local restored=run('accountClient',auth)
+    assert(restored.hasSession() and restored.policy().state=='restricted_mode')
+    status='banned'; assert(restored.policy().state=='ban_ingame')
+    status='normal'; assert(restored.policy().state=='clear')
+    fail=true; assert(restored.policy()==nil and restored.hasSession()); fail=false
+    assert(restored.logout() and not stored and not restored.hasSession())
+    progress=1
+end)
+advance(10)
+assert(progress==1)
 `);
 });

@@ -29,15 +29,18 @@ test('preview contains the real Loader.lua body, not the previous fake GUI fixtu
 test('preview extends the real Loader and keeps the reviewed bootstrap and main UI', () => {
   const prefix=main.slice(main.indexOf('-- Well 4.12 | v0.5.36'));
   const original=stage.slice(stage.indexOf('-- Well 4.12 | v0.5.36'));
-  // Preserve the existing native segments around the explicitly added QA policy gates.
+  // Preserve the native segments, allowing indentation inside the account-mode guard.
+  const unindent = source => source.replace(/^[ \t]+/gm, '');
   for(const [start,end] of [
     ['-- ===== ERROR SYSTEM =====','local function catch(err)'],
-    ['-- Function_Two.lua','local asrt ='],
+    ['-- Function_Two.lua','-- BouncyAndHiglightImagsButton'],
+    ['-- BouncyAndHiglightImagsButton','local asrt ='],
   ]){
     const a=original.indexOf(start),b=original.indexOf(end,a);
     assert.ok(a>=0 && b>a);
-    assert.ok(prefix.includes(original.slice(a,b||undefined)));
+    assert.ok(unindent(prefix).includes(unindent(original.slice(a,b).trimEnd())), start);
   }
+  assert.match(prefix,/if policyMode == "account_qa" then\s+local accountTools = "[^"]+FunctionTwoAccountPreview\.lua"\s+assert\(loadstring\(game:HttpGet\(accountTools\)\)\)\(\)\s+else/);
   assert.match(prefix,/__ASC_BAN_POLICY_ERROR == true/);
   assert.match(prefix,/local client = bootEnv.__ASC_BAN_V2_CLIENT/);
 });

@@ -23,6 +23,7 @@
 -- =========================================
 local policyMode = (...) == "roblox_server" and "roblox_server"
     or ((...) == "universal_case_qa" and "universal_case_qa" or "public_qa")
+if (...) == "account_qa" then policyMode = "account_qa" end
 local bootEnv = getgenv()
 if bootEnv.__ES_BOOTSTRAP_BUSY then
     warn("[ES][Bootstrap] Initialization already in progress; duplicate execution ignored.")
@@ -35,11 +36,31 @@ bootEnv.__ASC_BAN_V2_STATE = nil
 bootEnv.__ASC_BAN_V2_CLIENT = nil
 bootEnv.__ASC_REQUEST_BAN_REFRESH = nil
 bootEnv.__ASC_BAN_V2_PREVIEW = true
+bootEnv.__ASC_ACCOUNT_QA = nil
+bootEnv.__ASC_ACCOUNT_SIGN_OUT = nil
+local accountLoginSource
 local okClient, client = pcall(function()
+    if policyMode == "account_qa" then
+        local base = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/"
+        local account = assert(loadstring(game:HttpGet(base.."ASCAccountClientPreview.lua")))()
+        accountLoginSource = base.."ESLogin.lua"
+        local profile, reason = account.refresh()
+        if not profile then
+            local login = assert(loadstring(game:HttpGet(accountLoginSource)))
+            if not login(account, nil, reason) then return nil end
+        end
+        bootEnv.__ASC_ACCOUNT_QA = account
+        return account
+    end
     local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/BanPolicyClientPreview.lua"
     return assert(loadstring(game:HttpGet(url)))(policyMode)
 end)
 if okClient then bootEnv.__ASC_BAN_V2_CLIENT = client end
+if policyMode == "account_qa" and (not okClient or not client) then
+    bootEnv.__ES_BOOTSTRAP_BUSY = nil
+    warn("[ES] Account sign-in was cancelled or the account service is unavailable.")
+    return
+end
 -- ASC BAN V2 BOOTSTRAP END
 
 -- =========================================
@@ -1186,7 +1207,7 @@ bootEnv.__ES_BOOTSTRAP_BUSY = nil
 -- Global announcements keep their existing post-SetUp startup.
 -- Policy notices can already have initialized the same WarningUI.
 task.spawn(function()
-    if getgenv().__ES_BANNED or not getgenv().__ES_READY then return end
+    if policyMode == "account_qa" or getgenv().__ES_BANNED or not getgenv().__ES_READY then return end
     local ok, err = pcall(function()
         local sourceConnector = [=====[
 -- ArcScriptCenter Phase 2 - Production Bootstrap + WarningUI Connector v0.5.41.1
@@ -1611,8 +1632,13 @@ task.spawn(function()
     end
 end)
 
--- Function_Two.lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Function_Two.lua"))()
+if policyMode == "account_qa" then
+    local accountTools = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/FunctionTwoAccountPreview.lua"
+    assert(loadstring(game:HttpGet(accountTools)))()
+else
+    -- Function_Two.lua
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/Function_Two.lua"))()
+end
 
 -- BouncyAndHiglightImagsButton
 loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/loadstring/BouncyAndHighlightImageButton.lua"))()
@@ -1662,6 +1688,36 @@ end
 
 -- Ban in-game never reaches here. Restricted Mode deliberately loads MAIN
 -- while skipping the Editor/Search/RecommendedScript modules.
+if policyMode == "account_qa" then
+    local account = bootEnv.__ASC_ACCOUNT_QA
+    bootEnv.__ASC_ACCOUNT_SIGN_OUT = function()
+        if bootEnv.__ASC_ACCOUNT_QA ~= account or (account.hasSession() and not account.logout()) then return false end
+        bootEnv.__ASC_ACCOUNT_QA, bootEnv.__ASC_BAN_V2_CLIENT = nil, nil
+        local gate = bootEnv.ArcScriptPolicyGate
+        if gate and gate.stop then gate.stop() end
+        display[displayProperty] = false
+        task.defer(function()
+            local login = assert(loadstring(game:HttpGet(accountLoginSource)))
+            if login(account, nil, nil) then
+                -- A new Roblox run starts with fresh UI closures and profile.
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "ArcScriptCenter", Text = "Rejoin and run Account QA to open ExperienceSettings. If Remember was off, pair again.",
+                })
+            end
+        end)
+        return true
+    end
+    task.spawn(function()
+        while asrt.Parent and bootEnv.__ASC_ACCOUNT_QA == account do
+            if not account.heartbeat() and not account.hasSession() then
+                bootEnv.__ASC_ACCOUNT_SIGN_OUT()
+                break
+            end
+            task.wait(30)
+        end
+    end)
+end
+
 local isRestrictedMode = bootEnv.__ES_RESTRICTED_MODE == true
 local toolBase = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/ExperienceSettings-(loadstring)/"
 local loadedTools = {}

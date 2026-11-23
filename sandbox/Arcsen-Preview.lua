@@ -13686,11 +13686,99 @@ end
 -- Arcsen is strictly read-only for these settings to prevent duplicate sessions.
 loc.API.PresenceAnalytics = nil
 
+-- The account Preview uses the same settings renderer and displays the
+-- authenticated owner's profile. User nicknames are not shared in Roblox.
+if type(getgenv) == "function" and getgenv().__ASC_ACCOUNT_QA then
+    addset("ArcScriptCenter Account", "ArcScriptCenterAccount", 120, 205, 255, function(frame)
+        local env = getgenv()
+        local account = env.__ASC_ACCOUNT_QA
+        if not account then return end
+        ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
+        local banner = Instance.new("ImageLabel")
+        banner.Name = "AccountBanner"
+        banner.Size = UDim2.new(1,-8,0,64)
+        banner.ScaleType = Enum.ScaleType.Crop
+        banner.Parent = frame
+        local avatar = Instance.new("ImageLabel")
+        avatar.Name = "AccountProfileImage"
+        avatar.Size = UDim2.fromOffset(52,52)
+        avatar.BackgroundTransparency = 1
+        avatar.Parent = frame
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1,-8,0,44)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = Color3.new(1,1,1)
+        label.TextWrapped = true
+        label.RichText = false
+        label.Parent = frame
+        local function thumbnail(id)
+            return type(id) == "string" and id:match("^[1-9]%d*$") and ("rbxthumb://type=Asset&id="..id.."&w=150&h=150") or ""
+        end
+        local function refreshProfile(profile)
+            if not profile then label.Text = "Account service unavailable."; return end
+            label.Text = profile.nickname.."  (@"..profile.username..")"
+            avatar.Image = thumbnail(profile.image)
+            if avatar.Image == "" then avatar.Image = "rbxassetid://120500539322715" end
+            banner.Image = thumbnail(profile.banner)
+            local r,g,b = profile.bannerColor:match("^#(%x%x)(%x%x)(%x%x)$")
+            if r then banner.BackgroundColor3 = Color3.fromRGB(tonumber(r,16),tonumber(g,16),tonumber(b,16)) end
+        end
+        local function action(text, callback)
+            local button = Instance.new("TextButton")
+            button.Size = UDim2.new(1,-8,0,32)
+            button.Text = text
+            button.TextColor3 = Color3.new(1,1,1)
+            button.BackgroundColor3 = Color3.fromRGB(30,85,120)
+            button.Parent = frame
+            Corner(0,5,button)
+            button.Activated:Connect(function()
+                if not button.Interactable then return end
+                button.Interactable = false
+                task.spawn(function()
+                    local ok = pcall(callback)
+                    if not ok and label.Parent then label.Text = "Could not complete the request." end
+                    if button.Parent then button.Interactable = true end
+                end)
+            end)
+        end
+        action("Refresh profile", function() refreshProfile(account.refresh()) end)
+        action("Account Security, Active Sessions & Profile", function()
+            if type(setclipboard) == "function" then setclipboard(account.website); label.Text = "Account website copied."
+            else label.Text = account.website end
+        end)
+        action("Violation & Appeal", function()
+            local history = account.history()
+            if not history or #history == 0 then label.Text = "No verified violation is available."
+            else
+                label.Text = "Open ArcScriptCenter → Feedback & Appeal → Violation."
+                local policy = env.ArcScriptPolicyGate
+                if policy and policy.refresh then policy.refresh() end
+            end
+        end)
+        action("Logout", function()
+            if not env.__ASC_ACCOUNT_SIGN_OUT or not env.__ASC_ACCOUNT_SIGN_OUT() then
+                label.Text = "Could not revoke the session. Try again."
+            end
+        end)
+        refreshProfile(account.profile())
+    end)
+end
+
 -- Lightweight diagnostics within existing Arcsen Settings; no separate ScreenGui.
 loc.API.ArcScriptCenterCloudSettings = addset(
     "ArcScriptCenter", "ArcScriptCenter", 120, 205, 255,
     function(frame)
         ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
+        if type(getgenv) == "function" and getgenv().__ASC_ACCOUNT_QA then
+            local presence = Instance.new("TextLabel")
+            presence.Size = UDim2.new(1,-8,0,48)
+            presence.BackgroundTransparency = 1
+            presence.TextColor3 = Color3.fromRGB(210,225,240)
+            presence.TextWrapped = true
+            presence.Text = "Signed-in sessions are counted as active. Account presence is private."
+            presence.Parent = frame
+            return
+        end
         local status = Instance.new("TextLabel")
         status.Name = "CloudConnectionStatus"
         status.Size = UDim2.new(1, -8, 0, 114)
@@ -14562,6 +14650,11 @@ task.spawn(function()
         topic,description=caseTrim(topic),caseTrim(description)
         local valid,errorText=caseValidate(kind,topic,description)
         if not valid then return nil,errorText,false end
+        if banPolicyClient and banPolicyClient.accountMode and kind == "feedback" then
+            local result = banPolicyClient.feedback(topic.."\n"..description)
+            if not result then return nil,"Could not submit account feedback.",false end
+            return {id=result.id,kind="feedback",status="reviewing",topic=topic},nil,false
+        end
         local payload={kind=kind,topic=topic,description=description}
         if kind == "feedback" then
             -- The user's Roblox account identifier is attached to new Feedback.
@@ -14715,7 +14808,7 @@ task.spawn(function()
         retry.Parent = group
         Corner(0,5,retry)
 
-        if banPolicyClient and banPolicyClient.publicLookup then
+        if banPolicyClient and banPolicyClient.publicLookup and not banPolicyClient.accountMode then
             local function caseControl(class, text, order)
                 local control = Instance.new(class)
                 control.Name = "PrivateCase" .. tostring(order)
@@ -15834,7 +15927,30 @@ More information in discord you can find the link at About or on the ScriptBlox/
                 end
                 task.defer(updateCaseCounters)
 
+                local function showAccountFeedback()
+                    if not (banPolicyClient and banPolicyClient.accountMode) then return end
+                    local records=banPolicyClient.caseHistory()
+                    if not records then
+                        setFeedbackReview("Could not load account case history.")
+                        return
+                    end
+                    local buckets={reviewing={},approved={},denied={}}
+                    for _,record in ipairs(records) do
+                        local bucket=buckets[record.status]
+                        if record.kind=="feedback" and bucket then
+                            local topic=string.match(tostring(record.reason or ""),"[^\n]+") or "Feedback"
+                            local note=tostring(record.moderatorMessage or "")
+                            table.insert(bucket,topic..(note~="" and " — "..note or ""))
+                        end
+                    end
+                    setFeedbackReview(#buckets.reviewing>0 and table.concat(buckets.reviewing,"\n") or "No Feedback under review.")
+                    setFeedbackApproved(#buckets.approved>0 and table.concat(buckets.approved,"\n") or "No approved Feedback.")
+                    setFeedbackDenied(#buckets.denied>0 and table.concat(buckets.denied,"\n") or "No denied Feedback.")
+                    task.defer(syncFeedbackCanvas)
+                end
+
                 local function showSubmittedFeedback()
+                    if banPolicyClient and banPolicyClient.accountMode then showAccountFeedback(); return end
                     openReviewCards(true) -- Immediately show the new case in Review.
                     task.defer(syncFeedbackCanvas)
                 end
@@ -15971,7 +16087,9 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                 shareInfo.Position=UDim2.fromOffset(5,200)
                                 shareInfo.BackgroundColor3=Color3.fromRGB(62,74,91)
                                 shareInfo.BorderSizePixel=0
-                                shareInfo.Text="Your Roblox UserId is included for Admin review (unverified)."
+                                shareInfo.Text=banPolicyClient and banPolicyClient.accountMode
+                                    and "Feedback is linked to your ArcScriptCenter account."
+                                    or "Your Roblox UserId is included for Admin review (unverified)."
                                 shareInfo.TextColor3=Color3.fromRGB(231,238,247)
                                 shareInfo.Font=Enum.Font.Gotham
                                 shareInfo.TextSize=10
@@ -15988,7 +16106,10 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                     draftInput.TextEditable=true
                                     if titleInput then titleInput.TextEditable=true end
                                     send.Text="Submit Feedback to STAGING"
-                                    if item then
+                                    if item and banPolicyClient and banPolicyClient.accountMode then
+                                        notice.Text="Submitted to your ArcScriptCenter account for review."
+                                        task.defer(showAccountFeedback)
+                                    elseif item then
                                         setCase(item.id)
                                         notice.Text="Submitted to STAGING. Your case is waiting for moderator review."..
                                             " Roblox UserId included for Admin search (unverified)."..
@@ -16016,7 +16137,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                                     local player=game:GetService("Players").LocalPlayer
                                     local idClaim=player and player.UserId>0
                                         and tostring(player.UserId) or nil
-                                    if not idClaim then
+                                    if not idClaim and not (banPolicyClient and banPolicyClient.accountMode) then
                                         notice.Text="Roblox UserId unavailable. Rejoin and retry."
                                         return
                                     end
@@ -16061,6 +16182,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     end
                 end
                 makeDraftSection("Feedback",feedbackScroll)
+                if banPolicyClient and banPolicyClient.accountMode then task.defer(showAccountFeedback) end
 
                 -- Stage 16.77: Browser Bridge removed from this native Arcsen panel.
                 -- No web link, Turnstile token, Receipt or credential is sent by this UI.
