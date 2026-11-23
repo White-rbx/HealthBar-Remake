@@ -38,3 +38,13 @@ This passes `account_qa` into the staging Loader, which loads `ASCAccountClientP
 
 The isolated Cloudflare Worker `arcscriptcenter-ban-policy-qa` has its **Ban Policy QA public-status** allowlist variable `BAN_PUBLIC_QA_TEST_IDS` changed from `9777206932` to `8728964745`. This does not grant a private Account Session, unlock Account QA, migrate any cases, or change Production. If the UserId is not in another isolated QA Worker's own configured scope, that separate QA mode still rejects the ID. Check the executor console for `[ES][QA]` and `[ES][AccountQA]` diagnostic messages when the UI does not appear.
 
+## Account QA public provisioning endpoint — 2026-11-24
+
+Cloudflare Worker `arcscriptcenter-account-qa` has been created as a **credential-free, non-authenticating staging holding service**, deploying source `sandbox/asc-account/provisioning-worker.mjs` at `https://arcscriptcenter-account-qa.kogpasan14.workers.dev/`. The Workers.dev subdomain is enabled and Cloudflare's deployment API shows one deployed version receiving 100% of traffic. Direct external HTTP verification from the assistant's environment was unavailable; check on a real browser before declaring the URL end-to-end tested.
+
+The holding page clearly states that registration, password authentication, TOTP, pairing, and API sessions **are not operational**. All `/api/v1/accounts/*` operations return HTTP 503 `account_qa_provisioning`; `GET /health` also reports HTTP 503 and `loginEnabled:false`. No account database or existing Workers are bound or modified, and no user credentials are accepted. The full `sandbox/asc-account/worker.mjs` remains ready for separate secure rollout.
+
+To activate **real** Account QA safely, first obtain isolated D1 capacity or separately approve an existing QA database only after independent backup/recovery review. Then apply `migrations/asc_unified_account_ISOLATED_QA_ONLY.sql` and configure `ACCOUNT_DB`, `ACCOUNT_RATE`, `ASC_ACCOUNT_MODE=isolated-qa`, approved registration hostname / Turnstile site key plus secret, and `ACCOUNT_TOTP_KEY`. Bundle all worker modules and test password hashing capacity before replacing the provisioning Worker. Never enable the credential-collecting registration interface without all required protections and database configuration.
+
+Roblox `sandbox/ESLogin.lua` displays a specific `account_qa_provisioning` notice rather than an ambiguous network error when it receives the holding service's 503 response. The client distinguishes a first-time no-session launch from an expired session. Check GitHub Actions and mobile after each change.
+
