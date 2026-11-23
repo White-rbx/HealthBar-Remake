@@ -68,6 +68,26 @@ function fixture(){
  return {sqlite,db,env,post,signup,login,pair,advance:n=>now+=n,now:()=>now,throttle:()=>{throttled=true}};
 }
 
+test('missing any required Account QA binding never exposes a credential form or accepts login',async()=>{
+ const f=fixture();
+ const handler=createAccountWorker({origin});
+ for(const binding of ['ACCOUNT_DB','ACCOUNT_RATE','ACCOUNT_TOTP_KEY','ACCOUNT_TURNSTILE_SITE_KEY','ACCOUNT_TURNSTILE_SECRET']){
+  const incomplete={...f.env};
+  delete incomplete[binding];
+  const page=await handler.fetch(new Request(origin+'/'),incomplete);
+  assert.equal(page.status,200,binding+' provisioning page');
+  const html=await page.text();
+  assert.match(html,/Registration and login are not available yet/);
+  assert.doesNotMatch(html,/<form|<input|name="password"/i);
+  const login=await handler.fetch(new Request(origin+'/api/v1/accounts/login',{
+   method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},
+   body:JSON.stringify({username:user,password}),
+  }),incomplete);
+  assert.equal(login.status,503,binding+' denies credentials');
+  assert.deepEqual(await login.json(),{ok:false,code:'account_qa_provisioning'});
+ }
+});
+
 test('registration requires server-verified Turnstile, applies rate limits, and conceals duplicates',async()=>{
  const f=fixture();
  assert.equal((await f.signup(user,'invalid')).status,400);
