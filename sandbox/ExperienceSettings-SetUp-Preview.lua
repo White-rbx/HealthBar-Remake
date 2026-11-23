@@ -663,7 +663,7 @@ if qaEnv.__ASC_BAN_V2_PREVIEW then
         elseif not client then
             twarn.Text = "The restriction status service is unavailable in this runtime. Close and run the preview again."
         elseif client.isOutsideQA and client.isOutsideQA() then
-            twarn.Text = "This account is outside the authorized QA test scope."
+            twarn.Text = "This Roblox account is outside the Ban Policy QA test allowlist.\nThis is a test-access restriction, NOT an ArcScriptCenter account ban.\nFor Account Login QA, use sandbox/ASCAccountLoaderPreview.lua after its isolated QA Worker is deployed."
         else
             twarn.Text = "Could not verify your restriction status with the server. Retrying automatically."
         end
