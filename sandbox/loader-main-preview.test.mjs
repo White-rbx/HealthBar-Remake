@@ -13,6 +13,15 @@ const arcsenStage = readFileSync('sandbox/Arcsen-BanMode-STAGING.lua','utf8');
 const previewUrl = 'https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/';
 const count = (re,s) => [...s.matchAll(re)].length;
 
+test('Account QA explicitly invokes ESLogin and legacy QA tells testers the correct entrypoint', () => {
+  assert.match(main, /if \(\.\.\.\) == "account_qa" then policyMode = "account_qa" end/);
+  assert.match(main, /ASCAccountClientPreview\.lua/);
+  assert.match(main, /accountLoginSource = base\.\."ESLogin\.lua"/);
+  assert.match(main, /if not login\(account, nil, reason\) then return nil end/);
+  assert.match(main, /Ban Policy preview does not show ESLogin/);
+  assert.match(main, /Account Client or ESLogin failed to initialize/);
+});
+
 test('Ban Policy QA denial is never presented as an ArcScriptCenter account ban', () => {
   assert.match(setup, /outside the Ban Policy QA test allowlist/);
   assert.match(setup, /NOT an ArcScriptCenter account ban/);
