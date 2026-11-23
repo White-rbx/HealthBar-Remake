@@ -56,3 +56,11 @@ In the opt-in Account QA Loader, the `ESLogin.lua` source is fetched and compile
 
 Pairing checks stop on cancellation, and `ASCAccountClientPreview.lua` rejects a pairing response if the login GUI is closed. Any in-flight session created just as X is pressed is invalidated locally and receives a best-effort remote logout request; remembered JSON is erased even if the logout request fails. This only applies to `account_qa` STAGING, not Production or legacy `public_qa`. The Account QA backend is still in provisioning mode (HTTP 503), so a visible login UI does not mean authentication is operational.
 
+## Registration security readiness — 2026-11-24
+
+- Isolated QA Turnstile widget: `ArcScriptCenter Account - Isolated QA`, public site key `0x4AAAAAAGPm1_22VjlcNcjp`, restricted to `arcscriptcenter-account-qa.kogpasan14.workers.dev`. Its Siteverify secret is stored as the Cloudflare Worker secret `ACCOUNT_TURNSTILE_SECRET` and must **never** be committed, embedded in ESLogin, or returned to clients. This setup affects QA only.
+- The Account QA Worker is **still** running the credential-free provisioning module. Ten D1 databases exist, matching the Free plan's published cap, and the dedicated account DB has not been created or bound. Do not change the Worker to the real login module or invite users to register until dedicated QA storage and all required secrets/bindings are configured.
+- The real Account Worker now fail-closes if any of `ACCOUNT_DB`, `ACCOUNT_RATE`, `ACCOUNT_TOTP_KEY`, `ACCOUNT_TURNSTILE_SECRET`, or `ACCOUNT_TURNSTILE_SITE_KEY` is missing/invalid. It serves only the non-credential-collecting provisioning page with a `503 account_qa_provisioning` API. Automated tests cover these guards.
+- Once capacity is available, configure the QA Worker with `ASC_ACCOUNT_MODE=isolated-qa`, `ACCOUNT_TURNSTILE_SITE_KEY=0x4AAAAAAGPm1_22VjlcNcjp`, the existing Turnstile secret, a **fresh server-generated, never-exported** 256-bit TOTP encryption key in `ACCOUNT_TOTP_KEY`, and the dedicated D1 and rate-limit bindings. The TOTP key is **not** configured yet; do not claim 2SV is operational.
+- Full mobile testing remains pending: registration → website 2SV → pairing → Loader, then revoked session, account restrictions and owner-only Case access. No Production or historical Case changes have been made in this phase.
+
