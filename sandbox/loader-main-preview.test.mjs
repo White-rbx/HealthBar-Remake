@@ -13,6 +13,13 @@ const arcsenStage = readFileSync('sandbox/Arcsen-BanMode-STAGING.lua','utf8');
 const previewUrl = 'https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/';
 const count = (re,s) => [...s.matchAll(re)].length;
 
+test('Ban Policy QA denial is never presented as an ArcScriptCenter account ban', () => {
+  assert.match(setup, /outside the Ban Policy QA test allowlist/);
+  assert.match(setup, /NOT an ArcScriptCenter account ban/);
+  assert.match(setup, /sandbox\/ASCAccountLoaderPreview\.lua/);
+  assert.match(setup, /if client\.isOutsideQA and client\.isOutsideQA\(\) then return end/);
+});
+
 test('preview contains the real Loader.lua body, not the previous fake GUI fixture', () => {
   assert.ok(main.split('\n').length >= 1600, 'full original Loader retained');
   assert.match(main, /Well 4\.12 \| v0\.5\.36: Strict SetUp -> Loader -> Main serialization/);
