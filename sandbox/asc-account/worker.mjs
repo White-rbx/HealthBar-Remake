@@ -2,6 +2,7 @@ import {readJson,BanError} from '../ban-v2-integration.mjs';
 import {accountProfile,validImage} from './moderation.mjs';
 import {displayTotp,loginPassword,matchingTotpStep,newTotpSecret,passwordHash,passwordMatches,randomHex,readTotp,sealTotp,sha,strongPassword} from './security.mjs';
 import {website} from './website.mjs';
+import provisioning from './provisioning-worker.mjs';
 
 const defaultOrigin='https://arcscriptcenter-account-qa.kogpasan14.workers.dev';
 const prefix='/api/v1/accounts/';
@@ -86,6 +87,18 @@ function siteKey(env){
  return /^[A-Za-z0-9_-]{8,100}$/.test(env.ACCOUNT_TURNSTILE_SITE_KEY||'')?env.ACCOUNT_TURNSTILE_SITE_KEY:'';
 }
 
+// Never expose the credential-collecting website unless its isolated storage,
+// rate limiter, anti-bot verification and TOTP encryption key are all present.
+function accountQAReady(env){
+ return typeof env.ACCOUNT_DB?.prepare==='function'
+  && typeof env.ACCOUNT_DB?.batch==='function'
+  && typeof env.ACCOUNT_RATE?.limit==='function'
+  && /^[0-9a-f]{64}$/.test(env.ACCOUNT_TOTP_KEY||'')
+  && typeof env.ACCOUNT_TURNSTILE_SECRET==='string'
+  && env.ACCOUNT_TURNSTILE_SECRET.length>0
+  && siteKey(env)!=='';
+}
+
 const webOps=new Set(['register','login','factor','pair/approve','security/sessions','security/revoke','security/setup','security/enable',
  'security/disable','security/password','profile','moderation']);
 const loaderOps=new Set(['pair/start','pair/poll','session','heartbeat','history','appeal','feedback','logout']);
@@ -95,6 +108,7 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
  return {async fetch(request,env){
   const url=new URL(request.url);
   if(url.origin!==origin||url.search||env.ASC_ACCOUNT_MODE!=='isolated-qa')return fail(404,'not_found');
+  if(!accountQAReady(env))return provisioning.fetch(request);
   if(request.method==='GET'&&url.pathname==='/'){
    const nonce=randomHex(16);
    return new Response(website(siteKey(env),nonce),{headers:{...securityHeaders,'Content-Type':'text/html; charset=utf-8',
