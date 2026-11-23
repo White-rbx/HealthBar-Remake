@@ -74,7 +74,7 @@ async function siteverify(request,body,env,origin,fetcher){
  if(typeof env.ACCOUNT_TURNSTILE_SECRET!=='string'||!env.ACCOUNT_TURNSTILE_SITE_KEY)return null;
  if(typeof body.turnstile!=='string'||body.turnstile.length<1||body.turnstile.length>2048)return false;
  const reply=await fetcher('https://challenges.cloudflare.com/turnstile/v0/siteverify',{
-  method:'POST',headers:{'Content-Type':'application/json'},redirect:'error',signal:AbortSignal.timeout(5000),
+  method:'POST',headers:{'Content-Type':'application/json'},redirect:'manual',signal:AbortSignal.timeout(5000),
   body:JSON.stringify({secret:env.ACCOUNT_TURNSTILE_SECRET,response:body.turnstile}),
  });
  if(!reply.ok)return null;

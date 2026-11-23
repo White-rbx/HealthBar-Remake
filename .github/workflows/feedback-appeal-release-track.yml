@@ -87,6 +87,11 @@ jobs:
         run: node --test sandbox/banned-token-universal-qa.test.mjs
       - name: ArcScriptCenter unified account, web sessions, and moderation
         run: node --test sandbox/asc-account/worker.test.mjs
+      - name: ArcScriptCenter account Worker HTTP and D1 in workerd
+        run: |
+          export ASC_ACCOUNT_WORKERD_PREFIX="$RUNNER_TEMP/asc-account-workerd"
+          npm install --prefix "$ASC_ACCOUNT_WORKERD_PREFIX" --no-audit --no-fund miniflare@4.20260730.0
+          node --test sandbox/asc-account/workerd.test.mjs
       - name: Compile and run Roblox policy code in the Luau VM with mocked Roblox services
         run: |
           luau_dir="$RUNNER_TEMP/asc-luau"

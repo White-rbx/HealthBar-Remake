@@ -25,7 +25,7 @@ export async function validImage(value,fetcher=fetch){
  if(typeof value!=='string'||!(/^[1-9][0-9]{0,15}$/).test(value))return false;
  const url=new URL('https://thumbnails.roblox.com/v1/assets');
  url.search=new URLSearchParams({assetIds:value,size:'150x150',format:'Png',isCircular:'false'});
- const response=await fetcher(url,{redirect:'error',signal:AbortSignal.timeout(5000)});
+ const response=await fetcher(url,{redirect:'manual',signal:AbortSignal.timeout(5000)});
  if(!response.ok)return false;
  const data=(await response.json()).data;
  return Array.isArray(data)&&data.find(row=>String(row.targetId)===value&&row.state==='Completed'&&
