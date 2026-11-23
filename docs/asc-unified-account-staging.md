@@ -25,3 +25,16 @@ Read-only review of the connected Cloudflare account confirms that the isolated 
 The Roblox message `This account is outside the authorized QA test scope.` originates from `sandbox/ExperienceSettings-SetUp-Preview.lua` when the legacy Ban Policy QA client receives `403 target_not_allowed`; it is **not an ArcScriptCenter Account ban**. The account preview entrypoint is `sandbox/ASCAccountLoaderPreview.lua` (mode `account_qa`), but its backend must be deployed before end-to-end mobile sign-in can succeed. Keep the Ban Policy allowlist enforced, and use synthetic authorized test accounts after isolated Account QA is available.
 
 Next unblock sequence: obtain genuinely isolated D1 capacity (plan/capacity increase, or explicitly approved archival of an inspected obsolete QA database only after backup); apply the additive Account QA migration; configure the dedicated Worker and secrets; verify registration, website pairing, 2SV, session, normal/restricted/banned Loader paths, and owner-scoped cases on Roblox Mobile. No bypasses or production mutations.
+
+## QA mobile login entrypoint and Tester — 2026-11-24
+
+The account Login UI is **not** loaded by the default `sandbox/LoaderMainPreview.lua` (which defaults to `public_qa`). `sandbox/ESLogin.lua` is not a standalone entrypoint either: it returns `false` if no account client table was injected. To exercise the Account Login UI, use the explicit opt-in entrypoint:
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/ASCAccountLoaderPreview.lua"))()
+```
+
+This passes `account_qa` into the staging Loader, which loads `ASCAccountClientPreview.lua`, validates an existing account session and calls `ESLogin.lua` if there is no valid session. The GUI may display even while Account QA backend is offline, but registration, pairing and successful login **cannot** complete until the dedicated Account Worker and D1 are provisioned and deployed. Do not weaken the server-side authentication or enable account access from a claimed Roblox UserId.
+
+The isolated Cloudflare Worker `arcscriptcenter-ban-policy-qa` has its **Ban Policy QA public-status** allowlist variable `BAN_PUBLIC_QA_TEST_IDS` changed from `9777206932` to `8728964745`. This does not grant a private Account Session, unlock Account QA, migrate any cases, or change Production. If the UserId is not in another isolated QA Worker's own configured scope, that separate QA mode still rejects the ID. Check the executor console for `[ES][QA]` and `[ES][AccountQA]` diagnostic messages when the UI does not appear.
+
