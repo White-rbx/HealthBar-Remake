@@ -35,6 +35,10 @@ test('ESLogin is compiled in the first Loader bootstrap stage and X cancels the 
   assert.match(accountLogin,/cancelled = true\s+ESLoginGui:Destroy\(\)/);
   assert.match(accountLogin,/if busy or cancelled or not ESLoginGui\.Parent then return end/);
   assert.match(accountLogin,/return ready and not cancelled/);
+  assert.match(accountLogin,/pcall\(client\.poll, pair, remembered, function\(\)/);
+  assert.match(accountClient,/function client\.poll\(pair, remember, stillOpen\)/);
+  assert.match(accountClient,/if cancelled\(\) then return cancelIssuedSession\(\) end/);
+  assert.match(accountClient,/erase\(\) -- mandatory local invalidation even when the network is unavailable/);
   assert.doesNotMatch(main,/if not login\(account, nil, reason\) then\s+bootEnv\.__ASC_ACCOUNT_QA = account/);
 });
 
