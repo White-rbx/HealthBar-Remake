@@ -78,6 +78,7 @@ local function applyProfile(reply)
 end
 
 function client.refresh()
+    if not session then return nil, "no_session" end
     local data, reason = send("session", {}, true)
     return applyProfile(data), reason
 end
