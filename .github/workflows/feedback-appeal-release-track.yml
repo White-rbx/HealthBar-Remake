@@ -87,6 +87,8 @@ jobs:
         run: node --test sandbox/banned-token-universal-qa.test.mjs
       - name: ArcScriptCenter unified account, web sessions, and moderation
         run: node --test sandbox/asc-account/worker.test.mjs
+      - name: Account QA provisioning endpoint fails closed before D1 deployment
+        run: node --test sandbox/asc-account/provisioning-worker.test.mjs
       - name: ArcScriptCenter account Worker HTTP and D1 in workerd
         run: |
           export ASC_ACCOUNT_WORKERD_PREFIX="$RUNNER_TEMP/asc-account-workerd"
