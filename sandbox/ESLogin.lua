@@ -443,6 +443,8 @@ Linl.Activated:Connect(navigate)
 local ready, busy = false, false
 local messages = {
     session_expired = "Session expired. Sign in again.",
+    no_session = "Sign in on the ArcScriptCenter website to link this account.",
+    account_qa_provisioning = "Account QA backend is being prepared. Registration and pairing are not available yet.",
     unavailable = "Account service unavailable. Try Login again.",
     rate_limited = "Too many requests. Wait and try again.",
     verification_required = "Complete verification on the account website.",
