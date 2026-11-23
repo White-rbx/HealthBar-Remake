@@ -91,14 +91,27 @@ end
 function client.begin()
     return send("pair/start", {})
 end
-function client.poll(pair, remember)
+function client.poll(pair, remember, stillOpen)
+    local function cancelled()
+        return type(stillOpen) == "function" and not stillOpen()
+    end
+    if cancelled() then return nil, "cancelled" end
     if type(pair) ~= "table" or not credential(pair.secret) then return nil, "unavailable" end
     local data, reason = send("pair/poll", {secret=pair.secret,remember=remember == true})
+    if cancelled() and (not data or data.state ~= "ready") then return nil, "cancelled" end
     if not data or data.state == "pending" then return data, reason end
     if data.state ~= "ready" or not credential(data.session) then return nil, "unavailable" end
     session = data.session
+    local function cancelIssuedSession()
+        -- A session created while closing the GUI must never be remembered locally.
+        pcall(client.logout) -- best-effort remote revocation
+        erase() -- mandatory local invalidation even when the network is unavailable
+        return nil, "cancelled"
+    end
+    if cancelled() then return cancelIssuedSession() end
     local account, errorCode = client.refresh()
-    if not account then return nil, errorCode end
+    if cancelled() then return cancelIssuedSession() end
+    if not account then erase(); return nil, errorCode end
     local saved = false
     if remember and type(writefile) == "function" and type(delfile) == "function" then
         saved = pcall(function()
@@ -106,6 +119,7 @@ function client.poll(pair, remember)
             writefile(file, service:JSONEncode({accountId=account.id,session=session,expiresAt=data.expiresAt}))
         end)
     end
+    if cancelled() then return cancelIssuedSession() end
     return {state="ready",saved=saved}
 end
 
