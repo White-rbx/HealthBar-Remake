@@ -21,6 +21,23 @@ test('Account QA explains provisioning and first sign-in without pretending auth
   assert.match(accountClient,/if not session then return nil, "no_session" end/);
 });
 
+test('ESLogin is compiled in the first Loader bootstrap stage and X cancels the sign-in gate', () => {
+  const prefix = main.slice(0,main.indexOf('-- ASC BAN V2 BOOTSTRAP END'));
+  assert.match(prefix,/accountLoginSource = base\.\."ESLogin\.lua"/);
+  assert.match(prefix,/local login = assert\(loadstring\(game:HttpGet\(accountLoginSource\)\)\)/);
+  assert.ok(prefix.indexOf('local login = assert(loadstring(game:HttpGet(accountLoginSource)))')
+    < prefix.indexOf('local profile, reason = account.refresh()'), 'ESLogin compiles before session refresh');
+  assert.ok(prefix.indexOf('if not login(account, nil, reason) then return nil end')
+    < main.indexOf('-- ASC BAN V2 BOOTSTRAP END'), 'failed or cancelled login cannot reach SetUp');
+  assert.match(accountLogin,/CloseLogin\.Name = "Close"/);
+  assert.match(accountLogin,/CloseLogin\.Text = "X"/);
+  assert.match(accountLogin,/CloseLogin\.Activated:Connect\(function\(\)/);
+  assert.match(accountLogin,/cancelled = true\s+ESLoginGui:Destroy\(\)/);
+  assert.match(accountLogin,/if busy or cancelled or not ESLoginGui\.Parent then return end/);
+  assert.match(accountLogin,/return ready and not cancelled/);
+  assert.doesNotMatch(main,/if not login\(account, nil, reason\) then\s+bootEnv\.__ASC_ACCOUNT_QA = account/);
+});
+
 test('Account QA explicitly invokes ESLogin and legacy QA tells testers the correct entrypoint', () => {
   assert.match(main, /if \(\.\.\.\) == "account_qa" then policyMode = "account_qa" end/);
   assert.match(main, /ASCAccountClientPreview\.lua/);
