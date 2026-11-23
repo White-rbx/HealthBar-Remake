@@ -48,3 +48,11 @@ To activate **real** Account QA safely, first obtain isolated D1 capacity or sep
 
 Roblox `sandbox/ESLogin.lua` displays a specific `account_qa_provisioning` notice rather than an ambiguous network error when it receives the holding service's 503 response. The client distinguishes a first-time no-session launch from an expired session. Check GitHub Actions and mobile after each change.
 
+## ESLogin early bootstrap and Close X — 2026-11-24
+
+In the opt-in Account QA Loader, the `ESLogin.lua` source is fetched and compiled by `loadstring()` in the **first Loader bootstrap block**, before the account-session refresh and before SetUp, Loader UI, or Arcsen begin. A previously valid, server-verified Account Session still skips the login dialog; otherwise the `ESLoginGui` is displayed before progressing.
+
+`ESLoginGui.Main.Close` is a red **X** button in the upper-right corner of the original login panel. It lives outside the Holder's `UIListLayout` so the original logo, title, dimensions and animations remain unchanged. Activating X destroys only `ESLoginGui`, marks the login cancelled, and causes the bootstrapping Loader to return **without** running SetUp or loading ExperienceSettings. X is not a Logout or ban bypass.
+
+Pairing checks stop on cancellation, and `ASCAccountClientPreview.lua` rejects a pairing response if the login GUI is closed. Any in-flight session created just as X is pressed is invalidated locally and receives a best-effort remote logout request; remembered JSON is erased even if the logout request fails. This only applies to `account_qa` STAGING, not Production or legacy `public_qa`. The Account QA backend is still in provisioning mode (HTTP 503), so a visible login UI does not mean authentication is operational.
+
