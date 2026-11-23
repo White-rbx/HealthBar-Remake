@@ -17,7 +17,7 @@ test('Workers runtime: creates accounts through Siteverify, validates assets, an
   modules:true,scriptPath:join(root,'sandbox/asc-account/worker.mjs'),modulesRoot:root,
   compatibilityDate:'2026-08-06',compatibilityFlags:['nodejs_compat'],
   d1Databases:{ACCOUNT_DB:'asc-unified-account-local-workerd'},
-  bindings:{ASC_ACCOUNT_MODE:'isolated-qa',ACCOUNT_TURNSTILE_SITE_KEY:'synthetic_site',ACCOUNT_TURNSTILE_SECRET:'synthetic_secret'},
+  bindings:{ASC_ACCOUNT_MODE:'isolated-qa',ACCOUNT_TURNSTILE_SITE_KEY:'synthetic_site',ACCOUNT_TURNSTILE_SECRET:'synthetic_secret',ACCOUNT_TOTP_KEY:'ab'.repeat(32)},
   ratelimits:{ACCOUNT_RATE:{namespace_id:'32109',simple:{limit:40,period:60}}},
   outboundService:async request=>{
    const url = new URL(request.url);
