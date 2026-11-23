@@ -414,6 +414,31 @@ Topic.TextXAlignment = Enum.TextXAlignment.Left
 Topic.Parent = Holder
 
 ListLayout(Holder, 0,5, "HCenter","VCenter","SLayout","FillH")
+
+-- Close only this sign-in GUI. The Loader will stop on a cancelled login.
+-- Keep the X outside Holder's UIListLayout so the original header layout stays intact.
+local cancelled = false
+local CloseLogin = Instance.new("TextButton")
+CloseLogin.Name = "Close"
+CloseLogin.AnchorPoint = Vector2.new(1, 0)
+CloseLogin.Position = UDim2.new(1, -5, 0, 4)
+CloseLogin.Size = UDim2.new(0, 26, 0, 24)
+CloseLogin.BackgroundColor3 = Color3.fromRGB(135, 35, 48)
+CloseLogin.BackgroundTransparency = 0.12
+CloseLogin.BorderSizePixel = 0
+CloseLogin.Text = "X"
+CloseLogin.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseLogin.TextScaled = true
+CloseLogin.Font = Enum.Font.GothamBold
+CloseLogin.ZIndex = 10
+CloseLogin.Parent = Main
+Corner(0, 6, CloseLogin)
+CloseLogin.Activated:Connect(function()
+    if cancelled then return end
+    cancelled = true
+    ESLoginGui:Destroy()
+end)
+
 -- StarterGui.ESLoginGui.Main.Holder.Logo
 local Logo = Instance.new("ImageLabel")
 Logo.Name = "Logo"
@@ -451,19 +476,28 @@ local messages = {
 }
 PassInput.Text = messages[initialStatus] or "Sign in on the account website."
 Login.Activated:Connect(function()
-    if busy then return end
+    if busy or cancelled or not ESLoginGui.Parent then return end
     busy,Login.Interactable = true,false
     PassInput.Text = "Preparing sign in..."
     task.spawn(function()
         local ok, pair, why = pcall(client.begin)
+        if cancelled or not ESLoginGui.Parent then return end
         if ok and pair and type(pair.code) == "string" and type(pair.expiresAt) == "number" then
             UserInput.Text = pair.code
             navigate()
             Password.Text = "Sign in, verify, then link this code"
-            while ESLoginGui.Parent and os.time() < pair.expiresAt do
+            while ESLoginGui.Parent and not cancelled and os.time() < pair.expiresAt do
                 task.wait(3)
-                if not ESLoginGui.Parent then break end
+                if cancelled or not ESLoginGui.Parent then break end
                 local checked, response, failure = pcall(client.poll,pair,remembered)
+                if cancelled or not ESLoginGui.Parent then
+                    -- An in-flight pairing may have completed just before X was pressed.
+                    -- Revoke the resulting session rather than letting a cancelled login persist.
+                    if checked and response and response.state == "ready" and type(client.logout) == "function" then
+                        pcall(client.logout)
+                    end
+                    return
+                end
                 if checked and response and response.state == "ready" then
                     ready = true
                     PassInput.Text = "Signed in"
@@ -483,9 +517,9 @@ Login.Activated:Connect(function()
         busy,Login.Interactable = false,true
     end)
 end)
-while ESLoginGui.Parent and not ready do task.wait(0.2) end
+while ESLoginGui.Parent and not ready and not cancelled do task.wait(0.2) end
 if ESLoginGui.Parent then
     if ready then task.wait(0.35) end
     ESLoginGui:Destroy()
 end
-return ready
+return ready and not cancelled
