@@ -6,12 +6,20 @@ const p = 'sandbox/LoaderMainPreview.lua';
 const main = readFileSync(p,'utf8');
 const stage = readFileSync('sandbox/Loader-Main-BanMode-STAGING.lua','utf8');
 const setup = readFileSync('sandbox/ExperienceSettings-SetUp-Preview.lua','utf8');
+const accountLogin = readFileSync('sandbox/ESLogin.lua','utf8');
+const accountClient = readFileSync('sandbox/ASCAccountClientPreview.lua','utf8');
 const setupStage = readFileSync('sandbox/ExperienceSettings-SetUp-BanMode-STAGING.lua','utf8');
 const arcsen = readFileSync('sandbox/Arcsen-Preview.lua','utf8');
 const arcsenStage = readFileSync('sandbox/Arcsen-BanMode-STAGING.lua','utf8');
 
 const previewUrl = 'https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/';
 const count = (re,s) => [...s.matchAll(re)].length;
+
+test('Account QA explains provisioning and first sign-in without pretending authentication works', () => {
+  assert.match(accountLogin,/account_qa_provisioning = "Account QA backend is being prepared/);
+  assert.match(accountLogin,/no_session = "Sign in on the ArcScriptCenter website/);
+  assert.match(accountClient,/if not session then return nil, "no_session" end/);
+});
 
 test('Account QA explicitly invokes ESLogin and legacy QA tells testers the correct entrypoint', () => {
   assert.match(main, /if \(\.\.\.\) == "account_qa" then policyMode = "account_qa" end/);
