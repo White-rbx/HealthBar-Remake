@@ -24,6 +24,9 @@
 local policyMode = (...) == "roblox_server" and "roblox_server"
     or ((...) == "universal_case_qa" and "universal_case_qa" or "public_qa")
 if (...) == "account_qa" then policyMode = "account_qa" end
+if policyMode == "public_qa" then
+    warn("[ES][QA] Ban Policy preview does not show ESLogin. To test Account Login use sandbox/ASCAccountLoaderPreview.lua (account_qa).")
+end
 local bootEnv = getgenv()
 if bootEnv.__ES_BOOTSTRAP_BUSY then
     warn("[ES][Bootstrap] Initialization already in progress; duplicate execution ignored.")
@@ -58,7 +61,11 @@ end)
 if okClient then bootEnv.__ASC_BAN_V2_CLIENT = client end
 if policyMode == "account_qa" and (not okClient or not client) then
     bootEnv.__ES_BOOTSTRAP_BUSY = nil
-    warn("[ES] Account sign-in was cancelled or the account service is unavailable.")
+    if not okClient then
+        warn("[ES][AccountQA] Account Client or ESLogin failed to initialize: " .. tostring(client))
+    else
+        warn("[ES][AccountQA] Sign-in GUI was closed or authentication did not finish; Loader remains blocked.")
+    end
     return
 end
 -- ASC BAN V2 BOOTSTRAP END
