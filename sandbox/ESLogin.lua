@@ -489,7 +489,9 @@ Login.Activated:Connect(function()
             while ESLoginGui.Parent and not cancelled and os.time() < pair.expiresAt do
                 task.wait(3)
                 if cancelled or not ESLoginGui.Parent then break end
-                local checked, response, failure = pcall(client.poll,pair,remembered)
+                local checked, response, failure = pcall(client.poll, pair, remembered, function()
+                    return not cancelled and ESLoginGui.Parent ~= nil
+                end)
                 if cancelled or not ESLoginGui.Parent then
                     -- An in-flight pairing may have completed just before X was pressed.
                     -- Revoke the resulting session rather than letting a cancelled login persist.
