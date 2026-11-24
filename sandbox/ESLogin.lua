@@ -331,6 +331,8 @@ Username.Name = "Username"
 Username.Size = UDim2.new(1, 0, 0, 22)
 Username.BackgroundTransparency = 1
 Username.Text = "Username"
+Username.TextScaled = false
+Username.TextSize = 18
 Username.TextColor3 = Color3.fromRGB(255, 255, 255)
 Username.TextXAlignment = Enum.TextXAlignment.Left
 Username.Parent = Inside
@@ -342,6 +344,7 @@ UserInput.Position = UDim2.new(0, 0, 0, 22)
 UserInput.Size = UDim2.new(1, 0, 0, 28)
 UserInput.BackgroundTransparency = 0.5
 UserInput.BackgroundColor3 = Color3.fromRGB(0, 20, 255)
+UserInput.Text = ""
 UserInput.PlaceholderText = "Sign in on arcscriptcenter-login"
 UserInput.TextEditable = false
 UserInput.ClearTextOnFocus = false
@@ -357,7 +360,8 @@ Password.Position = UDim2.new(0, 0, 0, 50)
 Password.Size = UDim2.new(1, 0, 0, 22)
 Password.BackgroundTransparency = 1
 Password.Text = "Password"
-Password.TextScaled = true
+Password.TextScaled = false
+Password.TextSize = 18
 Password.TextColor3 = Color3.fromRGB(255, 255, 255)
 Password.TextXAlignment = Enum.TextXAlignment.Left
 Password.Parent = Inside
@@ -369,6 +373,7 @@ PassInput.Position = UDim2.new(0, 0, 0, 72)
 PassInput.Size = UDim2.new(1, 0, 0, 28)
 PassInput.BackgroundTransparency = 0.5
 PassInput.BackgroundColor3 = Color3.fromRGB(0, 20, 255)
+PassInput.Text = ""
 PassInput.PlaceholderText = "Enter on the secure website"
 PassInput.TextEditable = false
 PassInput.ClearTextOnFocus = false
@@ -397,6 +402,7 @@ PairingInput.Position = UDim2.new(0, 0, 0, 126)
 PairingInput.Size = UDim2.new(1, 0, 0, 28)
 PairingInput.BackgroundColor3 = Color3.fromRGB(0, 20, 255)
 PairingInput.BackgroundTransparency = 0.5
+PairingInput.Text = ""
 PairingInput.PlaceholderText = "Tap Login to get a code"
 PairingInput.TextEditable = false
 PairingInput.ClearTextOnFocus = false
@@ -509,7 +515,7 @@ remember.Text = "Remember on this device [OFF]"
 remember.LayoutOrder = 2
 remember.Parent = Buttons
 local polling = false
-local canRemember = type(client.canRemember) ~= "function" or client.canRemember()
+local canRemember = not client.testerPreview and (type(client.canRemember) ~= "function" or client.canRemember())
 if not canRemember then
     remember.Text = "Remember unavailable on this client"
     remember.Interactable = false
@@ -532,7 +538,11 @@ local messages = {
     verification_required = "Complete verification on the account website.",
 }
 local function status(message)
-    SignInStatus.Text = tostring(message or "")
+    if client.testerPreview then
+        SignInStatus.Text = "TESTER PREVIEW · " .. tostring(message or "")
+    else
+        SignInStatus.Text = tostring(message or "")
+    end
 end
 local function navigate()
     local copied = false
