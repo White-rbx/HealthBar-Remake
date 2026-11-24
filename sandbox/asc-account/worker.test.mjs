@@ -31,7 +31,7 @@ function fixture(){
  }};
  let now=1795440001;
  let throttled=false;
- const env={ASC_ACCOUNT_MODE:'isolated-qa',ACCOUNT_DB:db,ACCOUNT_TOTP_KEY:key,ACCOUNT_TURNSTILE_SITE_KEY:'synthetic_public_key',
+ const env={ASC_ACCOUNT_MODE:'isolated-qa',ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',ACCOUNT_DB:db,ACCOUNT_TOTP_KEY:key,ACCOUNT_TURNSTILE_SITE_KEY:'synthetic_public_key',
   ACCOUNT_TURNSTILE_SECRET:'test-only',ACCOUNT_RATE:{limit:async()=>({success:!throttled})}};
  const handler=createAccountWorker({origin,clock:()=>now,fetcher:async(input,options)=>{
   if(String(input).startsWith('https://challenges.cloudflare.com/')){
@@ -71,7 +71,7 @@ function fixture(){
 test('missing any required Account QA binding never exposes a credential form or accepts login',async()=>{
  const f=fixture();
  const handler=createAccountWorker({origin});
- for(const binding of ['ACCOUNT_DB','ACCOUNT_RATE','ACCOUNT_TOTP_KEY','ACCOUNT_TURNSTILE_SITE_KEY','ACCOUNT_TURNSTILE_SECRET']){
+ for(const binding of ['ASC_ACCOUNT_LAUNCH_STATE','ACCOUNT_DB','ACCOUNT_RATE','ACCOUNT_TOTP_KEY','ACCOUNT_TURNSTILE_SITE_KEY','ACCOUNT_TURNSTILE_SECRET']){
   const incomplete={...f.env};
   delete incomplete[binding];
   const page=await handler.fetch(new Request(origin+'/'),incomplete);
