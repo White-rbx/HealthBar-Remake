@@ -170,6 +170,58 @@ test('synthetic P-256 passkey registers, signs in and rejects replayed assertion
  const replay=await f.service.handle('passkey/login/verify',{response:assertion},f.req(loginFlow),f.env);
  assert.equal(replay.status,410);
 
+ // A stolen browser session alone must not register an extra credential.
+ f.sqlite.prepare(`INSERT INTO asc_account_sessions(id,account_id,digest,scope,created_at,expires_at)
+  VALUES(?,?,?,?,?,?)`).run('qa-web-session',account.id,'f'.repeat(64),'web',1795440001,1795449000);
+ const unauthorized=await f.service.handle('passkey/backup/options',{},f.req(),f.env);
+ assert.equal(unauthorized.status,401);
+ const webCookie='__Host-ascqa=synthetic-session';
+ const requestWithCookies=flow=>f.req(flow,{Cookie:webCookie+
+  (flow?'; __Host-ascqa-passkey-flow='+flow:'')});
+ const backupStart=await f.service.handle('passkey/backup/options',{},requestWithCookies(),f.env);
+ assert.equal(backupStart.status,200,await backupStart.clone().text());
+ const backupFlow=flowFrom(backupStart);
+ const backupOptions=(await backupStart.json()).options;
+ assert.equal(backupOptions.rpId,rpID);
+ assert.equal(backupOptions.userVerification,'required');
+ const proofAuth=authData(hash,0x05,2);
+ const proofClient=encoder.encode(JSON.stringify({
+  type:'webauthn.get',challenge:backupOptions.challenge,origin,crossOrigin:false,
+ }));
+ const proofClientHash=new Uint8Array(await crypto.subtle.digest('SHA-256',proofClient));
+ const rawProof=new Uint8Array(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key.privateKey,
+  concat(proofAuth,proofClientHash)));
+ const proofR=derInteger(rawProof.slice(0,32)),proofS=derInteger(rawProof.slice(32));
+ const proofSig=concat(Buffer.from([0x30,proofR.length+proofS.length]),proofR,proofS);
+ const proof={id:b64(credId),rawId:b64(credId),type:'public-key',
+  response:{clientDataJSON:b64(proofClient),authenticatorData:b64(proofAuth),
+   signature:b64(proofSig),userHandle:b64(encoder.encode(account.id))},clientExtensionResults:{}};
+ const authorized=await f.service.handle('passkey/backup/verify-current',
+  {response:proof},requestWithCookies(backupFlow),f.env);
+ assert.equal(authorized.status,200,await authorized.clone().text());
+ const addOptions=(await authorized.json()).options;
+ assert.equal(addOptions.rp.id,rpID);
+ assert.equal(addOptions.excludeCredentials.length,1);
+ const backupId=Buffer.from(Array.from({length:32},(_,i)=>i+150));
+ const backupLen=Buffer.alloc(2);backupLen.writeUInt16BE(backupId.length);
+ const backupAuth=authData(hash,0x45,0,concat(Buffer.alloc(16),backupLen,backupId,cose));
+ const backupAtt=cbor(new Map([['fmt','none'],['attStmt',new Map()],['authData',backupAuth]]));
+ const backupClient=encoder.encode(JSON.stringify({
+  type:'webauthn.create',challenge:addOptions.challenge,origin,crossOrigin:false,
+ }));
+ const backupCredential={id:b64(backupId),rawId:b64(backupId),type:'public-key',
+  response:{clientDataJSON:b64(backupClient),attestationObject:b64(backupAtt),transports:['internal']},
+  clientExtensionResults:{}};
+ const addedBackup=await f.service.handle('passkey/backup/verify',{response:backupCredential},
+  requestWithCookies(backupFlow),f.env);
+ assert.equal(addedBackup.status,200,await addedBackup.clone().text());
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_passkeys').get().n,2);
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_passkeys WHERE credential_id=?')
+  .get(b64(credId)).n,1,'original Passkey is retained');
+ const backupReplay=await f.service.handle('passkey/backup/verify',{response:backupCredential},
+  requestWithCookies(backupFlow),f.env);
+ assert.equal(backupReplay.status,410);
+ 
  // Recovery requires the *actual* stored offline code, plus Turnstile and a
  // newly user-verified WebAuthn credential. This synthetic flow uses no users.
  f.sqlite.prepare(`INSERT INTO asc_account_sessions(id,account_id,digest,scope,created_at,expires_at)
