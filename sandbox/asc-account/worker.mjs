@@ -103,7 +103,8 @@ function accountQAReady(env){
   && siteKey(env)!=='';
 }
 
-const webOps=new Set(['passkey/register/options','passkey/register/verify',
+const webOps=new Set(['passkey/backup/options','passkey/backup/verify-current','passkey/backup/verify',
+ 'passkey/register/options','passkey/register/verify',
  'passkey/recovery/options','passkey/recovery/verify','passkey/login/options','passkey/login/verify',
  'register','login','factor','pair/approve','security/sessions','security/revoke','security/setup','security/enable',
  'security/disable','security/password','profile','moderation']);
@@ -149,6 +150,11 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
     const {createPasskeyCeremonies}=await import('./passkey.mjs');
     const service=createPasskeyCeremonies({
      origin,clock,rate,issueSession,
+     loadWebSession:async(request,db,now)=>{
+      const raw=browserToken(request);
+      if(!credentialPattern.test(raw))return null;
+      return loadSession(db,await sha(raw),'web',now);
+     },
      siteverify:(r,b,e,o,_unused,action)=>siteverify(r,b,e,o,fetcher,action),
     });
     return service.handle(op,body,request,env);
