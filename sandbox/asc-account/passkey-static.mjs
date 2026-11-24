@@ -12,7 +12,9 @@ export function servePasskeyPage(path,siteKey){
   return new Response(client,{headers:{...headers,'Content-Type':'application/javascript; charset=utf-8'}});
  if(path==='/passkey-style.css')
   return new Response(css,{headers:{...headers,'Content-Type':'text/css; charset=utf-8'}});
- if(path==='/')
+ // Each route serves the same locked-down shell; /myaccount contents appear only
+ // after the browser's POST /session succeeds with an HttpOnly session cookie.
+ if(path==='/'||path==='/login'||path==='/signin'||path==='/myaccount')
   return new Response(passkeyPage(siteKey),{headers:{...headers,
    'Content-Type':'text/html; charset=utf-8',
    'Content-Security-Policy':"default-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; connect-src 'self'; frame-src https://challenges.cloudflare.com; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
