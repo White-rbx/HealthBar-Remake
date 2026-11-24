@@ -97,6 +97,15 @@ jobs:
           npm install --prefix sandbox/asc-account --ignore-scripts --no-audit --no-fund
           npm run test:passkey --prefix sandbox/asc-account
           npm run build:passkey --prefix sandbox/asc-account
+      - name: Retain isolated QA Passkey Worker bundle (not deployed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: asc-passkey-qa-bundle
+          path: |
+            sandbox/asc-account/dist/account-passkey-worker.mjs
+            sandbox/asc-account/package-lock.json
+          retention-days: 7
+          if-no-files-found: error
       - name: ArcScriptCenter account Worker HTTP and D1 in workerd
         run: |
           export ASC_ACCOUNT_WORKERD_PREFIX="$RUNNER_TEMP/asc-account-workerd"
