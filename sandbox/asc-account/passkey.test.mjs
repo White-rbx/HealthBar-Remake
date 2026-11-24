@@ -48,6 +48,11 @@ function fixture(){
   origin,clock:()=>now,rate:async()=>true,
   siteverify:async(req,body)=>body.turnstile==='synthetic_qa_token',
   issueSession:async()=> 'a'.repeat(64),
+  loadWebSession:async req=>{
+   if(!req.headers.get('Cookie')?.includes('__Host-ascqa=synthetic-session'))return null;
+   const row=sqlite.prepare("SELECT * FROM asc_accounts LIMIT 1").get();
+   return row?{...row,session_id:'qa-web-session'}:null;
+  },
  });
  const req=(flow,headers={})=>new Request(origin+'/api/v1/accounts/passkey/register/verify',{
   method:'POST',headers:{Origin:origin,...(flow?{Cookie:'__Host-ascqa-passkey-flow='+flow}:{}),...headers},
