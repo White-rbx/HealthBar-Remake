@@ -8,6 +8,8 @@ const stage = readFileSync('sandbox/Loader-Main-BanMode-STAGING.lua','utf8');
 const setup = readFileSync('sandbox/ExperienceSettings-SetUp-Preview.lua','utf8');
 const accountLogin = readFileSync('sandbox/ESLogin.lua','utf8');
 const accountClient = readFileSync('sandbox/ASCAccountClientPreview.lua','utf8');
+const testerUi = readFileSync('sandbox/ESLoginTesterPreview.lua','utf8');
+const testerEntry = readFileSync('sandbox/ASCAccountTesterPreview.lua','utf8');
 const setupStage = readFileSync('sandbox/ExperienceSettings-SetUp-BanMode-STAGING.lua','utf8');
 const arcsen = readFileSync('sandbox/Arcsen-Preview.lua','utf8');
 const arcsenStage = readFileSync('sandbox/Arcsen-BanMode-STAGING.lua','utf8');
@@ -48,6 +50,26 @@ test('Account QA explicitly invokes ESLogin and legacy QA tells testers the corr
   assert.match(main, /if not login\(account, nil, reason\) or not account\.profile\(\) then return nil end/);
   assert.match(main, /Ban Policy preview does not show ESLogin/);
   assert.match(main, /Account Client or ESLogin failed to initialize/);
+});
+
+test('Tester ID 8728964745 enables ESLogin UI preview only, not a verified Account session', () => {
+  const testerRoute=main.slice(0,main.indexOf('-- SERIAL STARTUP'));
+  assert.match(testerRoute,/if \(\.\.\.\) == "account_qa_tester" then/);
+  assert.match(testerRoute,/ESLoginTesterPreview\.lua/);
+  assert.match(testerEntry,/LoaderMainPreview\.lua/);
+  assert.match(testerEntry,/\("account_qa_tester"\)/);
+  assert.match(testerUi,/localPlayer\.UserId ~= 8728964745/);
+  assert.match(testerUi,/if not localPlayer or/);
+  assert.match(testerUi,/ESLogin\.lua/);
+  assert.match(testerUi,/tester_preview_only/);
+  assert.match(testerUi,/function testerClient\.canRemember\(\) return false end/);
+  assert.match(testerUi,/function testerClient\.hasSession\(\) return false end/);
+  assert.match(testerUi,/function testerClient\.profile\(\) return nil end/);
+  assert.match(testerUi,/function testerClient\.begin\(\) return nil, "tester_preview_only" end/);
+  assert.match(testerUi,/return false\s*$/);
+  assert.doesNotMatch(testerUi,/ASCAccountClientPreview\.lua|Authorization|writefile\(|session =|poll\(pair/);
+  assert.match(accountLogin,/tester_preview_only = "Tester UI only/);
+  assert.doesNotMatch(testerRoute,/__ASC_ACCOUNT_QA\s*=\s*account|__ES_READY\s*=\s*true/);
 });
 
 test('Ban Policy QA denial is never presented as an ArcScriptCenter account ban', () => {
