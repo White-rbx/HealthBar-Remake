@@ -39,3 +39,18 @@ Only an operator with a separately obtained, privately stored, least-privilege C
 The uploader uses ONLY the beta Workers Version POST endpoint with specific-version inheritance and confirms the previous QA deployment is unchanged. It never calls the Deployment API, never enables ASC_ACCOUNT_AUTH_MODE or ASC_ACCOUNT_LAUNCH_STATE, and cannot alter Production resources.
 
 The four local mock-based uploader tests passed, and CI now includes these checks. The CI-tested build is an upload-ready artifact, NOT evidence that a new Cloudflare version has already been uploaded. The current connector cannot transfer the full compiled Worker module to Cloudflare's API without violating the separate no-traffic condition. Remote upload remains pending.
+
+## Locked CI upload attempt — 2026-11-24, GitHub Actions run 45376200157
+
+The first dedicated locked-version workflow ran to completion on commit `18cd9902d3c0e86f1ffb9829e024e8b30cd0051e`:
+
+- `npm install` / bundle compilation completed successfully; immutable module digest verified.
+- `qa-undeployed-version-upload.test.mjs`: **4 tests PASS**, 0 failed.
+- Offline helper dry run printed `PASS: pinned QA module digest. Offline-only dry run; NO upload.`
+- The upload step did **not** call Cloudflare: GitHub Actions logged `No CLOUDFLARE_API_TOKEN secret: upload skipped. No traffic changed.`
+- The overall Actions run was marked success because an absent token is a deliberate, safe no-upload path. **Do not misinterpret this green status as a successful Version API upload.**
+- Read-only Cloudflare verification after the run still found the existing Account QA deployment pinned to version `6b9420db-381c-4d53-8692-a82b76399b52` at 100%, no `ASC_ACCOUNT_AUTH_MODE` or `ASC_ACCOUNT_LAUNCH_STATE` settings. No account launch.
+
+To perform the reviewed, **undeployed-only** upload in the future, the repository owner must independently provision a restricted GitHub Actions secret named `CLOUDFLARE_API_TOKEN` with suitable permissions, preferably with GitHub Environment approval and least privilege. Never paste the token into chat, issues, scripts, logs or the repository. Then explicitly use **Run workflow** on `.github/workflows/asc-account-qa-locked-version.yml` against `feedback-appeal-release-track`. The helper re-checks the immutable pinned bundle hash, account Worker, exact six bindings and locked deployment before uploading. A missing/mismatched parameter fails safely without changing traffic.
+
+**Do not set either login-launch variable, deploy the candidate, merge PR #16, or touch Production.** Runtime Passkey ceremonies and Android client acceptance are still pending. No Cloudflare Worker Version was uploaded in the first CI attempt.
