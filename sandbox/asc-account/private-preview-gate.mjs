@@ -57,6 +57,12 @@ export function verifyPrivatePreviewPlan(plan,baseline){
   &&plan.previewD1.id!==PIN.qaDb,'Preview must use a separate synthetic-only D1');
  req(plan?.previewD1?.schemaVerified===true && plan?.previewD1?.syntheticOnly===true,
   'Preview D1 schema and synthetic-only scope not verified');
+ req(plan?.turnstile?.hostname===url.hostname && plan.turnstile?.testOnly===true
+  && plan.turnstile?.actions?.includes('asc_register')
+  && plan.turnstile?.actions?.includes('asc_recover'),
+  'preview Turnstile host, test-only keys and verification actions are not ready');
+ req(plan?.previewRateLimiter?.isolated===true && plan?.syntheticSecretsOnly===true,
+  'preview rate limiter and secret isolation not verified');
  req(plan?.defaultLaunchState==='locked'&&plan?.initialAuthMode===null,
   'Preview must start with login/registration disabled');
  req(plan?.usesRealUsers===false&&plan?.usesProductionBindings===false,
