@@ -64,3 +64,17 @@ Pairing checks stop on cancellation, and `ASCAccountClientPreview.lua` rejects a
 - Once capacity is available, configure the QA Worker with `ASC_ACCOUNT_MODE=isolated-qa`, `ACCOUNT_TURNSTILE_SITE_KEY=0x4AAAAAAGPm1_22VjlcNcjp`, the existing Turnstile secret, a **fresh server-generated, never-exported** 256-bit TOTP encryption key in `ACCOUNT_TOTP_KEY`, and the dedicated D1 and rate-limit bindings. The TOTP key is **not** configured yet; do not claim 2SV is operational.
 - Full mobile testing remains pending: registration → website 2SV → pairing → Loader, then revoked session, account restrictions and owner-only Case access. No Production or historical Case changes have been made in this phase.
 
+## Account QA staging rollout — 2026-11-24 after 07:00 ICT
+
+The 07:00 ICT daily D1 Read/Write reset did not reset the **maximum database count**. Attempting to create `asc-account-isolated-qa-20261124` returned error 7406, `databases per account (10)`, without changing existing databases.
+
+The old `asc-stage1684-identity-sandbox-20261117` QA database was reviewed as a dedicated option. All four existing user tables had zero rows, and none of the 12 account Workers had a D1 binding to its ID. Cloudflare D1's full SQL export completed successfully. A separate **schema-only** SQL copy of the four empty user tables and five indexes was restored in an isolated local SQLite database and passed integrity and foreign-key checks. That local copy is not a substitute for storing the full Cloudflare SQL export permanently; its signed download URL expires.
+
+Applied only `migrations/asc_unified_account_ISOLATED_QA_ONLY.sql` additively to that QA database. Six new account tables were created: `asc_accounts`, `asc_account_sessions`, `asc_account_recovery`, `asc_account_pairings`, `asc_account_cases`, and `asc_account_verified_links`. All original user tables remained intact. Read-only checks confirmed all six account tables have zero rows before enabling real registration.
+
+The `arcscriptcenter-account-qa` Worker now binds this QA D1 as `ACCOUNT_DB`, has isolated `ACCOUNT_RATE` (40 requests/60 seconds per named rate key), and retains the QA Turnstile secret, site key and `ASC_ACCOUNT_MODE=isolated-qa`. The six source modules of the actual Account Worker have been uploaded, deployed at 100% traffic with `nodejs_compat` and compatibility date `2026-08-06`. The Account Worker was refactored to use its own `request.mjs` for JSON/body validation, without loading the legacy Ban v2 modules.
+
+**Registration is still intentionally disabled.** The required 256-bit `ACCOUNT_TOTP_KEY` Worker secret is not present. The Worker checks every required binding before it serves the credential-collecting form, otherwise returning the safe Provisioning page and HTTP 503 for Account API. This avoids inadvertently exposing an incomplete auth service. Provision `ACCOUNT_TOTP_KEY` securely through Cloudflare's Variables and Secrets settings using an independently generated 32-byte random key represented as exactly 64 lowercase hexadecimal characters. **Never commit, chat, log, or store the secret in Roblox**.
+
+Before accepting any accounts: verify the live page and 503 fail-closed path from an external client; run isolated synthetic registration/login, 2SV, pairing, client session, revoke and moderation smoke tests with the D1 binding; measure actual Worker scrypt CPU limits; then test mobile portrait/landscape. Public Ban Policy Tester `8728964745` is unrelated to account identity, and no legacy cases were modified. Production was not changed.
+
