@@ -98,3 +98,15 @@ A separate `ASC_ACCOUNT_LAUNCH_STATE=isolated-test-enabled` setting remains **ab
 
 Do not automatically interpret a Turnstile widget, PBKDF2 test success, or Cloudflare upload as proof that human Registration, Login, 2SV, pairing, revocation and mobile Executor flows work. Perform a **limited test session** before inviting additional QA users. Tester Roblox UserId `8728964745` remains only a separate Ban Policy QA allowlist entry, not an ArcScriptCenter Account identity proof.
 
+## Limited Account QA activation — 2026-11-24
+
+The owner installed `ACCOUNT_TOTP_KEY` through Cloudflare Secrets. Read-only connector verification confirms both `ACCOUNT_TOTP_KEY` and `ACCOUNT_TURNSTILE_SECRET` exist; no secret value was retrieved. The Account QA database still had zero registered accounts before activation.
+
+The password KDF was changed **before any accounts existed** from Node.js `scrypt` to Worker WebCrypto `PBKDF2-HMAC-SHA256` (600,000 rounds, 128-bit random salt per account, 256-bit derived key) to avoid reliance on CPU-heavy Node scrypt under Workers Free's 10ms CPU budget. GitHub offline and Miniflare workerd tests passed with the new KDF. **Real Free-plan CPU behavior must be measured separately.**
+
+The QA-only `arcscriptcenter-account-qa` Worker was uploaded with the new six-module bundle, and `ASC_ACCOUNT_LAUNCH_STATE=isolated-test-enabled` was set explicitly on the staging Worker after verifying all required bindings and the isolated QA D1. This enables the full Account website and API on the QA hostname, **not** the Production service. The QA hostname is nevertheless publicly reachable by people who know its URL; do not use reused personal passwords or solicit public users.
+
+The STAGING `GET /health` endpoint reports explicit activation status and the HTML serves noindex headers. A GitHub Actions live smoke test now supports both disabled and enabled QA states. When enabled, it submits no authentic credentials, checks public login errors without creating accounts, and submits a synthetic nonexistent-user password to verify that the real password KDF can complete within the deployed Worker limits.
+
+If the live QA test fails, remove `ASC_ACCOUNT_LAUNCH_STATE` from the Worker settings to fail close, or set its value to `locked`. Do not disable the underlying session, TOTP, rate-limit, Turnstile, or D1 protections to make tests pass. Never touch Production, historical Cases or the main branch.
+
