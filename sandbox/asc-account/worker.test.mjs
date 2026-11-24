@@ -95,7 +95,7 @@ test('registration requires server-verified Turnstile, applies rate limits, and 
  assert.equal((await f.signup()).status,200);
  assert.deepEqual((await f.signup(user.toLowerCase())).data,{ok:true});
  assert.equal(f.sqlite.prepare('SELECT count(*) AS n FROM asc_accounts').get().n,1);
- assert.match(f.sqlite.prepare('SELECT password_hash FROM asc_accounts').get().password_hash,/^scrypt-32768-8-3:/);
+ assert.match(f.sqlite.prepare('SELECT password_hash FROM asc_accounts').get().password_hash,/^pbkdf2-sha256-600000:[0-9a-f]{32}:[0-9a-f]{64}$/);
  assert.equal((await f.login(user,'incorrect')).status,401);
  assert.deepEqual((await f.login('nosuchuser')).data,(await f.login(user,'incorrect')).data);
  f.throttle();assert.equal((await f.login()).status,429);
