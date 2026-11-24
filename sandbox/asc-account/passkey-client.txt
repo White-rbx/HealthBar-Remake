@@ -13,6 +13,8 @@
   rate_limited:'Too many attempts. Try again later.',
   session_expired:'Session expired. Sign in again.',
   pairing_unavailable:'The pairing code is invalid or expired.',
+  recovery_failed:'That account or recovery code could not be verified.',
+  verification_unavailable:'Verification is temporarily unavailable.',
   account_qa_provisioning:'This Account QA service is not ready yet.',
  };
  async function post(route,data={}){
@@ -72,13 +74,21 @@
  function show(which){
   byId('sign-in').hidden=which!=='login';
   byId('registration').hidden=which!=='register';
+  byId('recovery').hidden=which!=='recover';
   byId('account').hidden=which!=='account';
   byId('tab-login').hidden=which==='account';
   byId('tab-register').hidden=which==='account';
+  byId('tab-recovery').hidden=which==='account';
  }
  function account(info){
   byId('identity').textContent=info.nickname+' (@'+info.username+')';
   show('account');
+ }
+ function displayRecoveryCodes(codes){
+  const valid=Array.isArray(codes)&&codes.length===8&&codes.every(x=>/^[0-9a-f]{32}$/.test(x));
+  if(!valid)throw new Error('Recovery codes were not issued correctly. Do not sign out.');
+  byId('recovery-code-list').textContent=codes.join('\n');
+  byId('recovery-codes').hidden=false;
  }
  async function action(fn){
   if(busy)return;
@@ -89,6 +99,7 @@
  }
  byId('tab-login').onclick=()=>{status('');show('login')};
  byId('tab-register').onclick=()=>{status('');show('register')};
+ byId('tab-recovery').onclick=()=>{status('');show('recover')};
  byId('passkey-login').onclick=()=>action(async()=>{
   checkPasskey();
   const {options}=await post('passkey/login/options');
@@ -114,7 +125,29 @@
    form.reset();
    globalThis.turnstile?.reset();
    account(created.account);
-   status('Passkey registered for isolated QA.');
+   displayRecoveryCodes(created.recoveryCodes);
+   status('Passkey registered. Save your recovery codes before leaving this page.');
+  });
+ };
+ byId('recovery-form').onsubmit=e=>{
+  e.preventDefault();
+  action(async()=>{
+   checkPasskey();
+   const form=byId('recovery-form'),data=new FormData(form);
+   const {options}=await post('passkey/recovery/options',{
+    username:(data.get('username')||'').toString().trim(),
+    code:(data.get('code')||'').toString().trim().toLowerCase(),
+    presence:data.get('presence')==='on',
+    turnstile:(data.get('cf-turnstile-response')||'').toString(),
+   });
+   const credential=await navigator.credentials.create({publicKey:registrationOptions(options)});
+   if(!credential)throw new Error('Recovery was cancelled.');
+   const restored=await post('passkey/recovery/verify',{response:credentialJSON(credential)});
+   form.reset();
+   globalThis.turnstile?.reset();
+   account(restored.account);
+   displayRecoveryCodes(restored.recoveryCodes);
+   status('Account recovered. Previous passkeys and sessions were revoked. Save the new recovery codes.');
   });
  };
  byId('pair-form').onsubmit=e=>{
@@ -131,6 +164,8 @@
  };
  byId('sign-out').onclick=()=>action(async()=>{
   await post('logout');
+  byId('recovery-code-list').textContent='';
+  byId('recovery-codes').hidden=true;
   status('Signed out.');
   show('login');
  });
