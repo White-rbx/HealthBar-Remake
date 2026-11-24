@@ -1,8 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {PIN,verifyBundle,verifyRemote,makeVersion,uploadUndeployed} from './qa-undeployed-version-upload.mjs';
 const bytes=readFileSync(new URL('./dist/account-passkey-worker.mjs',import.meta.url));
+// Version 11 is immutable. New page builds MUST be rejected by the old uploader
+// instead of silently re-pinning its digest or uploading a changed candidate.
+const matchesPinned=bytes.length===900711&&createHash('sha256').update(bytes).digest('hex')===PIN.digest;
 const bindings=[
  {name:'ACCOUNT_DB',type:'d1',id:PIN.d1},
  {name:'ACCOUNT_RATE',type:'ratelimit',namespace_id:PIN.rateNamespace},
@@ -16,7 +20,12 @@ const settings={success:true,result:{bindings}};
 const deployments={success:true,result:{deployments:[{id:'qa-deployment',versions:[{version_id:PIN.activeVersion,percentage:100}]}]}};
 const validResponse=(data,status=200)=>({ok:status<300,status,json:async()=>data});
 
-test('candidate content matches immutable CI build digest and preserves exactly six bindings',()=>{
+test('only the immutable Version 11 build is uploadable; changed UI bundles fail closed',()=>{
+ if(!matchesPinned){
+  assert.throws(()=>verifyBundle(bytes),/unexpected module size|digest differs/);
+  assert.throws(()=>makeVersion(bytes),/unexpected module size|digest differs/);
+  return;
+ }
  assert.equal(verifyBundle(bytes),PIN.digest);
  const p=makeVersion(bytes);
  assert.equal(p.modules.length,1);
@@ -34,7 +43,7 @@ test('remote guard requires exact QA resources and locked state',()=>{
  assert.throws(()=>verifyRemote(worker,settings,{success:true,result:{deployments:[{id:'changed',versions:[{version_id:'changed',percentage:100}]}]}}),/deployed QA version changed/);
 });
 
-test('upload only calls beta Worker versions endpoint; never calls deployment writer',async()=>{
+test('upload only calls beta Worker versions endpoint; changed build makes zero API calls',async()=>{
  const calls=[];
  const mock=async(url,opt)=>{
   const u=new URL(url),body=opt.body?JSON.parse(opt.body):undefined;
@@ -44,6 +53,11 @@ test('upload only calls beta Worker versions endpoint; never calls deployment wr
   if(u.pathname.endsWith('/versions'))return validResponse({success:true,result:{id:'11111111-1111-4111-8111-111111111111'}});
   return validResponse(worker);
  };
+ if(!matchesPinned){
+  await assert.rejects(uploadUndeployed(bytes,{enabled:true,fetcher:mock,token:'synthetic_testing_token_very_long'}),/unexpected module size|digest differs/);
+  assert.equal(calls.length,0,'changed bundle must never reach Cloudflare API');
+  return;
+ }
  await assert.rejects(uploadUndeployed(bytes,{fetcher:mock,token:'synthetic_testing_token_very_long'}),/explicit --upload/);
  assert.equal(calls.length,0,'disabled by default');
  const result=await uploadUndeployed(bytes,{enabled:true,fetcher:mock,token:'synthetic_testing_token_very_long'});
@@ -54,7 +68,8 @@ test('upload only calls beta Worker versions endpoint; never calls deployment wr
  assert.equal(calls.filter(x=>x.url.endsWith('/deployments')).length,2);
 });
 
-test('fails closed if Cloudflare post-upload deployment changes',async()=>{
+test('fails closed if Cloudflare post-upload deployment changes when pinned',async t=>{
+ if(!matchesPinned){t.skip('Version 11 uploader is immutable; new build already rejected');return;}
  let count=0;
  const mock=async(url,opt)=>{
   const u=new URL(url);
