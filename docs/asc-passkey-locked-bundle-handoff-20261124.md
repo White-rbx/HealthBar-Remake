@@ -1,6 +1,20 @@
 # ArcScriptCenter Account — locked Passkey QA bundle handoff (2026-11-24)
 
-## Scope and current state
+## Upload verified on 2026-11-24
+
+The pinned bundle was uploaded to **the existing STAGING Account QA Worker only** as Version **11** (`2b34f5cb-0d89-42f0-8fa9-07b96d487d59`). The connected Cloudflare session called the Workers Version API with `deploy=false` and inherited the exact six bindings from the pinned, deployed Version 10. No new API token or GitHub secret was required.
+
+After the upload:
+
+- A separate Version API read returned a 900,711-byte module. Its SHA-256 was `d58ea8031e31c8561af8b6721491483c4f403ce28402f63e6f18c4cfeaa18776`, which matches the artifact below.
+- Deployment `4400fc76-f4aa-4e24-98d4-fdca11bcff56` still directs 100% of traffic to Version 10 (`6b9420db-381c-4d53-8692-a82b76399b52`). Version 11 is absent from the deployment, with 0% traffic. Preview URLs are disabled and the candidate exposes no version URL.
+- Compatibility settings, Account QA D1, rate limiter, Turnstile and TOTP bindings were verified after upload. Neither launch flag was added. No D1 migrations or credential writes ran against Cloudflare.
+- Live `/health` still returned HTTP 503 `provisioning`, with registration and login disabled. The website had no credential form and the Passkey API returned the provisioning response.
+- GitHub Actions [45376385691](https://github.com/White-rbx/HealthBar-Remake/actions/runs/45376385691) and [45376385648](https://github.com/White-rbx/HealthBar-Remake/actions/runs/45376385648) passed. A local run against the pinned bundle also passed 20 automated checks using synthetic data. Chromium with virtual WebAuthn devices and local workerd passed registration, sign-in, backup Passkey on a second virtual device, ESLogin pairing, recovery code rotation and revocation of the prior Loader session. The browser used simulated Turnstile and an isolated local D1 store.
+
+The next gate is an explicitly approved, access-controlled, synthetic-only edge test on isolated Account QA resources. Keep this Worker locked and keep Version 11 outside the active deployment until that gate is ready. Roblox Mobile acceptance remains pending.
+
+## Original build and pre-upload state
 **STAGING ONLY — no login activation, no Production changes.** The source reviewed for this build is commit `2ac41e90aafc236edbb79a40cf0b8e352f319636` on `feedback-appeal-release-track`, PR #16 (Draft). The build output is the artifact **asc-passkey-qa-bundle** from GitHub Actions run [45373096741](https://github.com/White-rbx/HealthBar-Remake/actions/runs/45373096741), artifact ID `14909836687` (7-day retention, expires 2026-12-01). Separate Stage 16.80 offline workflow [45373096842](https://github.com/White-rbx/HealthBar-Remake/actions/runs/45373096842) also passed.
 
 Independent local inspection of the downloaded CI artifact verified:
@@ -38,7 +52,7 @@ Only an operator with a separately obtained, privately stored, least-privilege C
 
 The uploader uses ONLY the beta Workers Version POST endpoint with specific-version inheritance and confirms the previous QA deployment is unchanged. It never calls the Deployment API, never enables ASC_ACCOUNT_AUTH_MODE or ASC_ACCOUNT_LAUNCH_STATE, and cannot alter Production resources.
 
-The four local mock-based uploader tests passed, and CI now includes these checks. The CI-tested build is an upload-ready artifact, NOT evidence that a new Cloudflare version has already been uploaded. The current connector cannot transfer the full compiled Worker module to Cloudflare's API without violating the separate no-traffic condition. Remote upload remains pending.
+The four local mock-based uploader tests passed, and CI now includes these checks. The CI-tested build is an upload-ready artifact, NOT evidence that a new Cloudflare version has already been uploaded. At this point the CI handoff had no confirmed cloud upload. See the later Version 11 verification above.
 
 ## Locked CI upload attempt — 2026-11-24, GitHub Actions run 45376200157
 
@@ -51,6 +65,4 @@ The first dedicated locked-version workflow ran to completion on commit `18cd990
 - The overall Actions run was marked success because an absent token is a deliberate, safe no-upload path. **Do not misinterpret this green status as a successful Version API upload.**
 - Read-only Cloudflare verification after the run still found the existing Account QA deployment pinned to version `6b9420db-381c-4d53-8692-a82b76399b52` at 100%, no `ASC_ACCOUNT_AUTH_MODE` or `ASC_ACCOUNT_LAUNCH_STATE` settings. No account launch.
 
-To perform the reviewed, **undeployed-only** upload in the future, the repository owner must independently provision a restricted GitHub Actions secret named `CLOUDFLARE_API_TOKEN` with suitable permissions, preferably with GitHub Environment approval and least privilege. Never paste the token into chat, issues, scripts, logs or the repository. Then explicitly use **Run workflow** on `.github/workflows/asc-account-qa-locked-version.yml` against `feedback-appeal-release-track`. The helper re-checks the immutable pinned bundle hash, account Worker, exact six bindings and locked deployment before uploading. A missing/mismatched parameter fails safely without changing traffic.
-
-**Do not set either login-launch variable, deploy the candidate, merge PR #16, or touch Production.** Runtime Passkey ceremonies and Android client acceptance are still pending. No Cloudflare Worker Version was uploaded in the first CI attempt.
+This earlier workflow is kept as a record of the skipped CI upload. Version 11 was subsequently uploaded through the connected Cloudflare session, as verified above. Version 11 requires no further upload or GitHub token secret.
