@@ -88,6 +88,25 @@ test('missing any required Account QA binding never exposes a credential form or
  }
 });
 
+test('Account QA health and noindex headers are available only after explicit launch',async()=>{
+ const f=fixture();
+ const handler=createAccountWorker({origin});
+ const disabled={...f.env,ASC_ACCOUNT_LAUNCH_STATE:'locked'};
+ const locked=await handler.fetch(new Request(origin+'/health'),disabled);
+ assert.equal(locked.status,503);
+ assert.equal((await locked.json()).loginEnabled,false);
+ const health=await handler.fetch(new Request(origin+'/health'),f.env);
+ assert.equal(health.status,200);
+ assert.deepEqual(await health.json(),{
+  ok:true,service:'ArcScriptCenter Account QA',status:'isolated-test-enabled',
+  environment:'qa',registrationEnabled:true,loginEnabled:true,
+ });
+ const home=await handler.fetch(new Request(origin+'/'),f.env);
+ assert.equal(home.status,200);
+ assert.match(home.headers.get('x-robots-tag')||'',/noindex/);
+ assert.match(await home.text(),/id="login-form"/);
+});
+
 test('registration requires server-verified Turnstile, applies rate limits, and conceals duplicates',async()=>{
  const f=fixture();
  assert.equal((await f.signup(user,'invalid')).status,400);
