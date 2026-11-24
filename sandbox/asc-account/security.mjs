@@ -1,4 +1,4 @@
-import {timingSafeEqual} from 'node:crypto';
+import {scrypt as nativeScrypt, timingSafeEqual} from 'node:crypto';
 
 const encode=new TextEncoder();
 const bytes=hex=>Uint8Array.from(hex.match(/../g)||[],part=>parseInt(part,16));
@@ -7,30 +7,16 @@ export const randomHex=length=>hex(crypto.getRandomValues(new Uint8Array(length)
 export const sha=async value=>hex(new Uint8Array(await crypto.subtle.digest('SHA-256',encode.encode(value))));
 export const strongPassword=value=>typeof value==='string'&&[...value].length>=15&&encode.encode(value).length<=128;
 export const loginPassword=value=>typeof value==='string'&&value.length>0&&encode.encode(value).length<=128;
-
-// Worker-native Web Crypto is used instead of Node's CPU-heavy scrypt.
-// OWASP PBKDF2-HMAC-SHA256 work factor: 600,000 iterations. Database was
-// verified to have zero real accounts before switching the stored hash scheme.
-const PBKDF2_ROUNDS=600000;
-const PBKDF2_PREFIX='pbkdf2-sha256-'+PBKDF2_ROUNDS;
-async function derivePassword(pass,salt){
- const material=await crypto.subtle.importKey('raw',encode.encode(pass),'PBKDF2',false,['deriveBits']);
- const bits=await crypto.subtle.deriveBits({
-  name:'PBKDF2',salt:bytes(salt),iterations:PBKDF2_ROUNDS,hash:'SHA-256',
- },material,256);
- return hex(new Uint8Array(bits));
-}
 export async function passwordHash(pass,salt=randomHex(16)){
- if(typeof pass!=='string'||!loginPassword(pass)||!/^[0-9a-f]{32}$/.test(salt))
-  throw new Error('Invalid password-hash input');
- return PBKDF2_PREFIX+':'+salt+':'+await derivePassword(pass,salt);
+ const key=await new Promise((resolve,reject)=>nativeScrypt(pass,bytes(salt),32,{N:32768,r:8,p:3,maxmem:48*1024*1024},
+  (error,result)=>error?reject(error):resolve(result)));
+ return 'scrypt-32768-8-3:'+salt+':'+hex(key);
 }
-const dummy=PBKDF2_PREFIX+':'+'0'.repeat(32)+':'+'0'.repeat(64);
+const dummy='scrypt-32768-8-3:'+'0'.repeat(32)+':'+'0'.repeat(64);
 export async function passwordMatches(pass,stored){
- if(!loginPassword(pass))return false;
- const valid=/^pbkdf2-sha256-600000:[0-9a-f]{32}:[0-9a-f]{64}$/.test(stored||'');
+ const valid=/^scrypt-32768-8-3:[0-9a-f]{32}:[0-9a-f]{64}$/.test(stored||'');
  const [,salt,digest]=(valid?stored:dummy).split(':');
- const candidate=await derivePassword(pass,salt);
+ const candidate=(await passwordHash(pass,salt)).split(':')[2];
  return timingSafeEqual(bytes(candidate),bytes(digest))&&valid;
 }
 
