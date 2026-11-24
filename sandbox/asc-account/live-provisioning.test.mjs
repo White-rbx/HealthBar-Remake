@@ -50,4 +50,12 @@ test('live STAGING Account QA status agrees with its page and non-authenticated 
  });
  assert.equal(invalid.status,400);
  assert.deepEqual(await invalid.json(),{ok:false,code:'invalid_input'});
+ // Exercise the real password KDF with a synthetic account name (no account
+ // exists, no account is created, no real password or Turnstile code is used).
+ const missing=await request('/api/v1/accounts/login',{
+  method:'POST',headers:{'Content-Type':'application/json',Origin:base},
+  body:JSON.stringify({username:'qa_missing_probe_2026',password:'SYNTHETIC-UNUSED-PASSWORD-ONLY'}),
+ });
+ assert.equal(missing.status,401,'Cloudflare native password KDF should not exceed Worker runtime limits');
+ assert.deepEqual(await missing.json(),{ok:false,code:'login_failed'});
 });
