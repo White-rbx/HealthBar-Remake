@@ -14,7 +14,9 @@ test('Workers runtime: creates accounts through Siteverify, validates assets, an
  const require = createRequire(join(runtime, 'package.json'));
  const {Miniflare, Response: MockResponse} = require('miniflare');
  const worker = new Miniflare({
-  modules:true,scriptPath:join(root,'sandbox/asc-account/worker.mjs'),modulesRoot:root,
+  modules:true,scriptPath:(existsSync(join(root,'sandbox/asc-account/dist/account-passkey-worker.mjs'))
+   ?join(root,'sandbox/asc-account/dist/account-passkey-worker.mjs')
+   :join(root,'sandbox/asc-account/worker.mjs')),modulesRoot:root,
   compatibilityDate:'2026-08-06',compatibilityFlags:['nodejs_compat'],
   d1Databases:{ACCOUNT_DB:'asc-unified-account-local-workerd'},
   bindings:{ASC_ACCOUNT_MODE:'isolated-qa',ASC_ACCOUNT_AUTH_MODE:'legacy-password-qa',ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',ACCOUNT_TURNSTILE_SITE_KEY:'synthetic_site',ACCOUNT_TURNSTILE_SECRET:'synthetic_secret',ACCOUNT_TOTP_KEY:'ab'.repeat(32)},
