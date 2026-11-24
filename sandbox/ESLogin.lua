@@ -302,14 +302,16 @@ end
 local Main = Instance.new("Frame")
 Main.Name = "Main"
 Main.ClipsDescendants = true
-Main.Position = UDim2.new(0.3, 0, 0.2, 0)
-Main.Size = UDim2.new(0.4, 0, 0.5, 0)
+Main.AnchorPoint = Vector2.new(0.5, 0.5)
+Main.Position = UDim2.new(0.5, 0, 0.5, 0)
+Main.Size = UDim2.new(0.84, 0, 0.7, 0)
 Main.BackgroundColor3 = Color3.fromRGB(0, 11, 52)
 Main.BorderSizePixel = 5
 Main.BorderMode = Enum.BorderMode.Inset
 Main.Parent = ESLoginGui
 local minimum = Instance.new("UISizeConstraint")
-minimum.MinSize = Vector2.new(200,214)
+minimum.MinSize = Vector2.new(260,320)
+minimum.MaxSize = Vector2.new(480,480)
 minimum.Parent = Main
 Corner(0,8,Main)
 loc.MStr = Stroke(Main, ASMBorder, 255,255,255, LJMRound, 5, 0)
@@ -328,7 +330,7 @@ local Username = Instance.new("TextLabel")
 Username.Name = "Username"
 Username.Size = UDim2.new(1, 0, 0, 22)
 Username.BackgroundTransparency = 1
-Username.Text = "Pairing code"
+Username.Text = "Username"
 Username.TextColor3 = Color3.fromRGB(255, 255, 255)
 Username.TextXAlignment = Enum.TextXAlignment.Left
 Username.Parent = Inside
@@ -340,7 +342,7 @@ UserInput.Position = UDim2.new(0, 0, 0, 22)
 UserInput.Size = UDim2.new(1, 0, 0, 28)
 UserInput.BackgroundTransparency = 0.5
 UserInput.BackgroundColor3 = Color3.fromRGB(0, 20, 255)
-UserInput.PlaceholderText = "Tap Login to get a code"
+UserInput.PlaceholderText = "Sign in on arcscriptcenter-login"
 UserInput.TextEditable = false
 UserInput.ClearTextOnFocus = false
 UserInput.TextScaled = true
@@ -354,7 +356,7 @@ Password.Name = "Password"
 Password.Position = UDim2.new(0, 0, 0, 50)
 Password.Size = UDim2.new(1, 0, 0, 22)
 Password.BackgroundTransparency = 1
-Password.Text = "Sign-in status"
+Password.Text = "Password"
 Password.TextScaled = true
 Password.TextColor3 = Color3.fromRGB(255, 255, 255)
 Password.TextXAlignment = Enum.TextXAlignment.Left
@@ -367,7 +369,7 @@ PassInput.Position = UDim2.new(0, 0, 0, 72)
 PassInput.Size = UDim2.new(1, 0, 0, 28)
 PassInput.BackgroundTransparency = 0.5
 PassInput.BackgroundColor3 = Color3.fromRGB(0, 20, 255)
-PassInput.PlaceholderText = ""
+PassInput.PlaceholderText = "Enter on the secure website"
 PassInput.TextEditable = false
 PassInput.ClearTextOnFocus = false
 PassInput.TextWrapped = true
@@ -375,6 +377,43 @@ PassInput.TextScaled = true
 PassInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 PassInput.Parent = Inside
 Corner(0,8,PassInput)
+
+-- Original Username/Password layout restored; do not collect secrets in Roblox.
+-- Pairing is handled on the secure website, in separate read-only controls.
+local PairingLabel = Instance.new("TextLabel")
+PairingLabel.Name = "PairingLabel"
+PairingLabel.Text = "Pairing code (browser sign-in)"
+PairingLabel.Size = UDim2.new(1, 0, 0, 19)
+PairingLabel.Position = UDim2.new(0, 0, 0, 105)
+PairingLabel.BackgroundTransparency = 1
+PairingLabel.TextXAlignment = Enum.TextXAlignment.Left
+PairingLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+PairingLabel.TextScaled = true
+PairingLabel.Parent = Inside
+
+local PairingInput = Instance.new("TextBox")
+PairingInput.Name = "PairingInput"
+PairingInput.Position = UDim2.new(0, 0, 0, 126)
+PairingInput.Size = UDim2.new(1, 0, 0, 28)
+PairingInput.BackgroundColor3 = Color3.fromRGB(0, 20, 255)
+PairingInput.BackgroundTransparency = 0.5
+PairingInput.PlaceholderText = "Tap Login to get a code"
+PairingInput.TextEditable = false
+PairingInput.ClearTextOnFocus = false
+PairingInput.TextScaled = true
+PairingInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+PairingInput.Parent = Inside
+Corner(0, 8, PairingInput)
+
+local SignInStatus = Instance.new("TextLabel")
+SignInStatus.Name = "SignInStatus"
+SignInStatus.Position = UDim2.new(0, 0, 0, 158)
+SignInStatus.Size = UDim2.new(1, 0, 0, 46)
+SignInStatus.BackgroundTransparency = 1
+SignInStatus.TextWrapped = true
+SignInStatus.TextScaled = true
+SignInStatus.TextColor3 = Color3.fromRGB(170, 210, 255)
+SignInStatus.Parent = Inside
 
 -- StarterGui.ESLoginGui.Main.Inside.Buttons
 local Buttons = Instance.new("Frame")
@@ -404,7 +443,7 @@ Linl.Size = UDim2.new(1, 0, 0, 18)
 Linl.BackgroundTransparency = 1
 Linl.BackgroundColor3 = Color3.fromRGB(0, 234, 255)
 Linl.RichText = true
-Linl.Text = "<i>Open Passkey Login / Register</i>"
+Linl.Text = "<i>arcscriptcenter-login · Open Sign In</i>"
 Linl.TextColor3 = Color3.fromRGB(0, 151, 255)
 Linl.TextScaled = true
 Linl.TextWrapped = true
@@ -491,8 +530,7 @@ local messages = {
     verification_required = "Complete verification on the account website.",
 }
 local function status(message)
-    Password.Text = "Sign-in status"
-    PassInput.Text = message
+    SignInStatus.Text = tostring(message or "")
 end
 local function navigate()
     local copied = false
@@ -510,8 +548,7 @@ Linl.Activated:Connect(function()
     local navigation = navigate()
     if navigation then status(navigation)
     else
-        Password.Text = "Open this address in your browser"
-        PassInput.Text = client.website
+        status("Open in your browser: " .. tostring(client.website))
     end
 end)
 local function canContinue()
@@ -535,8 +572,7 @@ Login.Activated:Connect(function()
         navigation = navigate()
         if navigation then status(navigation)
         else
-            Password.Text = "Open this address in your browser"
-            PassInput.Text = client.website
+            status("Open in your browser: " .. tostring(client.website))
         end
     end
     task.spawn(function()
@@ -550,11 +586,10 @@ Login.Activated:Connect(function()
             local ok, pair, why = pcall(client.begin)
             if not canContinue() then return end
             if ok and pair then
-                UserInput.Text = pair.code
+                PairingInput.Text = pair.code
                 if navigation then status("Sign in with your passkey, then approve this code.")
                 else
-                    Password.Text = "Approve the code on this website"
-                    PassInput.Text = client.website
+                    status("Approve code at: " .. tostring(client.website))
                 end
                 finalMessage = "Pairing expired. Tap Login for a new code."
                 while canContinue() and os.time() < pair.expiresAt do
@@ -591,12 +626,11 @@ Login.Activated:Connect(function()
         end
         if not canContinue() then return end
         if not navigation and not hasSavedSession and finalMessage == messages.account_qa_provisioning then
-            Password.Text = "STAGING sign-in is locked"
-            PassInput.Text = client.website
+            status("STAGING sign-in is locked. Website: " .. tostring(client.website))
         else
             status(finalMessage)
         end
-        UserInput.Text = ""
+        PairingInput.Text = ""
         busy,Login.Interactable = false,true
     end)
 end)
