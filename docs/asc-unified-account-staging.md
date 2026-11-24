@@ -140,3 +140,11 @@ New QA files:
 
 The STAGING HTML uses only origin-bound browser Credential APIs. ESLogin and its X button are unchanged, and pairing still uses the server-verified Account Session and a one-time ESLogin code. **Production and the default Loader are out of scope.**
 
+## Passkey QA schema applied and test bundle — 2026-11-24
+
+Cloudflare D1 `asc-stage1684-identity-sandbox-20261117` was checked again and had 0 Account QA user rows before the additive Passkey migration. Applied the dedicated `migrations/asc_passkey_ISOLATED_QA_ONLY.sql` **only to this QA database**. Cloudflare confirmed both new tables `asc_account_passkeys` and `asc_account_passkey_flows` exist; **no pre-existing schema objects were removed**, and the account count remains 0.
+
+The synthetic `passkey.test.mjs` suite uses real ES256/P-256 WebAuthn signed assertions with the maintained SimpleWebAuthn verifier. It checks successful registration and login, exact RP ID, UV requirement, browser challenge cookie, rejection of invalid origin, used/expired challenges and replay. Both the original Account Worker and the bundled Passkey Worker are exercised under Miniflare/workerd in CI, including password route denial in Passkey mode and isolated D1 schema. Generated bundle and npm lockfile are retained for 7 days as a GitHub Actions artifact `asc-passkey-qa-bundle` on the consolidated workflow. This artifact is **not auto-deployed**.
+
+The actual Cloudflare Worker remains on the prior **locked** account release; it does not yet serve the new Passkey UI. Do not enable `ASC_ACCOUNT_AUTH_MODE=passkey` and `ASC_ACCOUNT_LAUNCH_STATE=isolated-test-enabled` until a reviewed bundle is deployed, authenticated mobile tests succeed, and there is an acceptable second-passkey and recovery design. Never substitute client-declared Roblox user IDs for trusted identity proof.
+
