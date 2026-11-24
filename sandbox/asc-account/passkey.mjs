@@ -55,6 +55,7 @@ export function createPasskeyCeremonies({
  siteverify,
  issueSession,
  rate,
+ loadWebSession,
 }={}){
  if(typeof siteverify!=='function'||typeof issueSession!=='function'||typeof rate!=='function')
   throw new Error('Passkey QA requires its trusted account gateway');
@@ -66,6 +67,13 @@ export function createPasskeyCeremonies({
   await db.prepare('INSERT INTO asc_account_passkey_flows(flow_hash,challenge,purpose,username,proposed_account_id,created_at,expires_at) VALUES(?,?,?,?,?,?,?)')
    .bind(hash,challenge,purpose,username,accountId,now,now+ttl).run();
   return value;
+ }
+ async function getBackupCookie(request){
+  const value=readFlowCookie(request);
+  return value&&/^[0-9a-f]{64}$/.test(value)?await sha(value):null;
+ }
+ async function webAccount(db,request,now){
+  return typeof loadWebSession==='function'?loadWebSession(request,db,now):null;
  }
  async function consume(db,request,now,purpose){
   const token=readFlowCookie(request);
