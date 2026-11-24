@@ -1,4 +1,4 @@
-local v_ver = [[ExperienceSettingsLogin 0.0 Draft]]
+local v_ver = [[ExperienceSettingsLogin 0.1 Draft]]
 --[[ UI_functions version: 2.3 ( Reduced Locals for more less risk to due Out Of Local ) ]]
 
 ------------------------------------------------------------------------------------------
@@ -460,7 +460,8 @@ Holder.Parent = Main
 local Topic = Instance.new("TextLabel")
 Topic.Name = "Topic"
 Topic.LayoutOrder = 1
-Topic.Size = UDim2.new(1, -75, 0, 32)
+Topic.Size = UDim2.new(0, 0, 0, 32)
+Topic.AutomaticSize = Enum.AutomaticSize.X
 Topic.BackgroundTransparency = 1
 Topic.Text = "Welcome"
 Topic.TextColor3 = Color3.fromRGB(255, 255, 255)
