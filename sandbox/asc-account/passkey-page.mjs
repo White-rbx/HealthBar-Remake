@@ -1,0 +1,38 @@
+// Separate, opt-in passwordless QA UI. Never includes an input for passwords.
+export function passkeyPage(siteKey){
+ if(!/^[A-Za-z0-9_-]{8,100}$/.test(siteKey))throw new Error('Missing QA Turnstile public key');
+ return [
+  '<!doctype html><html lang="en"><meta charset="utf-8">',
+  '<meta name="viewport" content="width=device-width,initial-scale=1">',
+  '<title>ArcScriptCenter Account · Passkey QA</title>',
+  '<link rel="stylesheet" href="/passkey-style.css">',
+  '<main><header><h1>ArcScriptCenter Account</h1><div class="subtitle">STAGING · Passkey test</div></header>',
+  '<p class="warning">Passkey beta. Registration is for isolated QA only. There is no account recovery yet. Do not use an important username or a shared device.</p>',
+  '<nav aria-label="Account actions"><button id="tab-login" class="secondary">Sign in</button>',
+  '<button id="tab-register" class="secondary">Register</button></nav>',
+  '<p id="status" role="status" aria-live="polite"></p>',
+  '<section id="sign-in"><h2>Sign in with a passkey</h2>',
+  '<p class="subtitle">Use your device unlock or passkey manager. No ArcScriptCenter password is requested.</p>',
+  '<button id="passkey-login">Sign in with a passkey</button></section>',
+  '<section id="registration" hidden><h2>Register a passkey account</h2>',
+  '<form id="register-form"><label>Username',
+  '<input name="username" type="text" pattern="[A-Za-z0-9_]{3,24}" minlength="3" maxlength="24" autocomplete="username" required></label>',
+  '<label class="choice"><input name="presence" type="checkbox" required>',
+  '<span>I understand this is a QA service with no account recovery yet.</span></label>',
+  '<div class="cf-turnstile" data-sitekey="'+siteKey+'" data-action="asc_register"></div>',
+  '<button type="submit">Register with a passkey</button></form></section>',
+  '<section id="account" hidden><h2>Signed in</h2><p id="identity"></p>',
+  '<p class="small">When you run ESLogin in Roblox, use its one-time pairing code below. Confirm only codes you requested.</p>',
+  '<form id="pair-form"><label>ESLogin pairing code',
+  '<input type="text" name="code" pattern="[A-Fa-f0-9]{12}" minlength="12" maxlength="12" required autocomplete="off"></label>',
+  '<label class="choice"><input type="checkbox" name="confirm" required>',
+  '<span>I requested this pairing on my own Roblox device.</span></label>',
+  '<button type="submit">Approve pairing</button></form>',
+  '<button id="sign-out" class="secondary">Sign out</button>',
+  '<p class="warning">Keep your passkey available. If you lose it, this QA version cannot recover the account.</p></section>',
+  '<footer>Isolated QA only. Do not use this login for Production or disclose a pairing code.</footer>',
+  '</main><script src="/passkey-client.js" defer></script>',
+  '<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>',
+  '</html>',
+ ].join('\n');
+}
