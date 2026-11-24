@@ -66,7 +66,7 @@ test('passkey QA schema is additive and does not change existing case/pairing ta
  for(const name of ['asc_accounts','asc_account_sessions','asc_account_cases',
  'asc_account_pairings','asc_account_verified_links','asc_account_passkeys','asc_account_passkey_flows'])
   assert.ok(all.includes(name),name);
- assert.deepEqual(f.sqlite.prepare('PRAGMA integrity_check').all(),[{integrity_check:'ok'}]);
+ assert.equal(f.sqlite.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
 });
 
 test('passkey challenge binds to the browser, uses strict origin and cannot be replayed',async()=>{
