@@ -14,3 +14,12 @@ label{display:block;margin:12px 0}.choice{display:flex;gap:10px;align-items:flex
 .small{font-size:.83rem;color:#bdcbee}button.secondary{background:#243859;color:#c3d5f2}
 #recovery-code-list{background:#070c18;border:1px solid #7182a8;border-radius:8px;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;line-height:1.8;font-size:.93rem}
 footer{margin-top:20px;color:#95a6c8;font-size:.85rem}
+
+/* arcscriptcenter-login staging shell: responsive three-page navigation. */
+.action-link{display:inline-flex;align-items:center;justify-content:center;margin:6px 0;padding:12px 18px;
+ background:#9ad3ff;color:#0b1831;text-decoration:none;border-radius:9px;font-weight:700}
+input[type=password]{display:block;width:100%;background:#090e1e;border:1px solid #7485a8;color:#fff;border-radius:8px;padding:12px;margin-top:7px}
+.legacy-preview{border:1px dashed #536583;border-radius:10px;padding:0 14px;margin:12px 0}
+.legacy-preview input:disabled{cursor:not-allowed;opacity:.65}
+nav button{flex:1 1 auto;min-width:90px}
+@media(max-width:420px){main{padding:14px}section{padding:16px}nav{gap:7px}nav button{padding:10px}}
