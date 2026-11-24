@@ -826,6 +826,11 @@ assert(main:FindFirstChild('Holder'):FindFirstChild('Logo').Image=='rbxassetid:/
 local inside=main:FindFirstChild('Inside')
 assert(inside:FindFirstChild('Username').Text=='Username')
 assert(inside:FindFirstChild('Password').Text=='Password')
+assert(inside:FindFirstChild('Username').TextSize==18)
+assert(inside:FindFirstChild('Password').TextSize==18)
+assert(inside:FindFirstChild('UserInput').Text=='')
+assert(inside:FindFirstChild('PassInput').Text=='')
+assert(inside:FindFirstChild('PairingInput').Text=='')
 assert(inside:FindFirstChild('UserInput').TextEditable==false)
 assert(inside:FindFirstChild('SignInStatus').Text=='Session expired. Sign in again.')
 assert(inside:FindFirstChild('PassInput').TextEditable==false)
@@ -887,6 +892,26 @@ assert(manualInside:FindFirstChild('SignInStatus').Text:find(client.website,1,tr
 manual:FindFirstChild('Close').Activated:Fire()
 advance(13)
 assert(manualResult==false and root:FindFirstChild('ESLoginGui')==nil)
+
+-- A tester-only UI cannot activate Remember even if a misleading client
+-- method were to report persistence capability.
+local testerResult
+local testerClient={website=client.website,testerPreview=true,
+ canRemember=function() return true end,
+ begin=function() return nil,'tester_preview_only' end}
+runtime.task.spawn(function()
+ testerResult=run('accountUi',guiEnv,testerClient,root,'tester_preview_only')
+end)
+advance(13)
+local tester=assert(root:FindFirstChild('ESLoginGui')):FindFirstChild('Main')
+local testerInside=tester:FindFirstChild('Inside')
+assert(testerInside:FindFirstChild('SignInStatus').Text:find('TESTER PREVIEW',1,true))
+local testerRemember=testerInside:FindFirstChild('Buttons'):FindFirstChild('Remember')
+assert(testerRemember.Interactable==false)
+assert(testerRemember.Text=='Remember unavailable on this client')
+tester:FindFirstChild('Close').Activated:Fire()
+advance(14)
+assert(testerResult==false and root:FindFirstChild('ESLoginGui')==nil)
 `);
 });
 
