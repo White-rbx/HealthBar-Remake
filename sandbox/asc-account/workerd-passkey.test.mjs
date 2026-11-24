@@ -61,6 +61,8 @@ test('Cloudflare workerd bundled Passkey QA has strict pages, challenge flow and
   assert.match(html,/id="add-backup-passkey"/);
   assert.match(html,/id="recovery-form"/);
   assert.match(html,/id="recovery-codes"/);
+  assert.match(html,/if you lose all passkeys and recovery codes/i);
+  assert.doesNotMatch(html,/there is no account recovery yet/i);
   assert.doesNotMatch(html,/type=["']password["']|autocomplete=["']current-password["']/i);
 
   const script=await fetcher('/passkey-client.js');

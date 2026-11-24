@@ -160,3 +160,9 @@ This section updates the earlier note that isolated Passkey QA lacked recovery. 
 
 **Remaining before user-facing activation**: verify complete recovery and second-passkey ceremonies on the live Cloudflare Free runtime under controlled QA, test actual Android passkey registration with a supported device, review concurrent recovery race/transaction behavior, and define a clear user-warning for the case in which **both all Passkeys and all offline recovery codes are lost**. Possession of an offline recovery code allows account restoration: users must keep the code secret and stored separately from the device. Never infer Roblox ownership from an unverified client UserId. Preserve the ESLogin original appearance and its functional X, and do not touch Production.
 
+
+## Passkey shared-rate bucket and recovery warning hardening — 2026-11-24
+
+- Corrected the internal Passkey ceremony rate key so it uses Cloudflare's edge-supplied `CF-Connecting-IP` like the existing top-level Worker limiter, instead of the constant `:ip` bucket shared by all callers. The per-account/username rate limits and existing trusted-gateway origin checks are unchanged. Added a synthetic two-client regression to detect shared-bucket regressions. When the edge IP is unavailable, the key safely falls back to `unknown`.
+- Corrected the Passkey QA page and consent copy: recovery **is** implemented in the offline candidate, but requires a stored one-time recovery code or previously registered backup passkey. Losing both all Passkeys and all recovery codes is unrecoverable in this QA design. Added a bundled Workerd HTML regression.
+- These are **GitHub branch candidate changes only**. The live Account QA Worker remains locked without `ASC_ACCOUNT_LAUNCH_STATE`; do not enable Passkey sign-ups or deploy to Production based solely on source/CI tests. Native Android and actual Cloudflare Free runtime acceptance remain required.

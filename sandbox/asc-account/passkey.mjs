@@ -86,7 +86,10 @@ export function createPasskeyCeremonies({
    if(request.headers.get('Origin')!==origin)return reject(403,'forbidden');
    if(request.headers.has('Sec-Fetch-Site')&&request.headers.get('Sec-Fetch-Site')!=='same-origin')
     return reject(403,'forbidden');
-   if(!await rate(env,'passkey:'+op+':ip'))return reject(429,'rate_limited');
+   // Use the same trusted edge IP as the outer Worker gateway; a shared
+   // per-operation bucket would let one QA client throttle all other testers.
+   const edgeIp=request.headers.get('CF-Connecting-IP')||'unknown';
+   if(!await rate(env,'passkey:'+op+':ip:'+edgeIp))return reject(429,'rate_limited');
    if(op==='passkey/register/options'){
     if(!usernameRE.test(body.username||'')||body.presence!==true)return reject(400,'invalid_input');
     if(!await rate(env,'passkey:register:name:'+await sha(body.username.toLowerCase())))

@@ -67,6 +67,27 @@ function flowFrom(response){
  return result[1];
 }
 
+test('Passkey rate limit separates edge client IPs rather than sharing a global bucket',async()=>{
+ const keys=[];
+ const service=createPasskeyCeremonies({
+  origin,
+  rate:async(_env,key)=>{keys.push(key);return true},
+  siteverify:async()=>false,
+  issueSession:async()=>null,
+ });
+ for(const ip of ['203.0.113.10','198.51.100.20']){
+  const req=new Request(origin+'/api/v1/accounts/passkey/recovery/options',{
+   method:'POST',headers:{Origin:origin,'CF-Connecting-IP':ip},body:'{}',
+  });
+  const reply=await service.handle('passkey/recovery/options',{},req,{});
+  assert.equal(reply.status,400);
+ }
+ assert.deepEqual(keys,[
+  'passkey:passkey/recovery/options:ip:203.0.113.10',
+  'passkey:passkey/recovery/options:ip:198.51.100.20',
+ ]);
+});
+
 test('passkey QA schema is additive and does not change existing case/pairing tables',()=>{
  const f=fixture();
  const all=f.sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x=>x.name);
