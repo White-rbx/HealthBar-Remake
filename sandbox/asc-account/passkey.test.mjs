@@ -260,6 +260,19 @@ test('synthetic P-256 passkey registers, signs in and rejects replayed assertion
  const recoveryFlow=flowFrom(recoveryStart);
  const recoveryOptions=(await recoveryStart.json()).options;
  assert.equal(recoveryOptions.rp.id,rpID);
+ // Model two still-pending recovery challenges, one using the same offline
+ // code and one using a different code, BEFORE the first recovery succeeds.
+ const duplicateStart=await f.service.handle('passkey/recovery/options',{
+  username:'NewPasskeyUser',code:initialCodes[0],presence:true,turnstile:'synthetic_qa_token',
+ },f.req(),f.env);
+ const alternateStart=await f.service.handle('passkey/recovery/options',{
+  username:'NewPasskeyUser',code:initialCodes[1],presence:true,turnstile:'synthetic_qa_token',
+ },f.req(),f.env);
+ assert.equal(duplicateStart.status,200);
+ assert.equal(alternateStart.status,200);
+ const duplicateFlow=flowFrom(duplicateStart),alternateFlow=flowFrom(alternateStart);
+ const duplicateOptions=(await duplicateStart.json()).options;
+ const alternateOptions=(await alternateStart.json()).options;
  const nextCredId=Buffer.from(Array.from({length:32},(_,i)=>i+70));
  const nextLength=Buffer.alloc(2);nextLength.writeUInt16BE(nextCredId.length);
  const nextAuth=authData(hash,0x45,0,concat(Buffer.alloc(16),nextLength,nextCredId,cose));
@@ -288,6 +301,41 @@ test('synthetic P-256 passkey registers, signs in and rejects replayed assertion
  assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_cases WHERE id=?')
   .get('qa-case-preserve').n,1);
  assert.equal(f.sqlite.prepare('SELECT epoch FROM asc_accounts WHERE id=?').get(account.id).epoch,1);
+ // Each competing browser supplies a valid synthetic signed WebAuthn
+ // registration for ITS challenge. Neither may restore using an old code.
+ function competingCredential(opts,idOffset){
+  const id=Buffer.from(Array.from({length:32},(_,i)=>i+idOffset));
+  const size=Buffer.alloc(2);size.writeUInt16BE(id.length);
+  const data=authData(hash,0x45,0,concat(Buffer.alloc(16),size,id,cose));
+  const att=cbor(new Map([['fmt','none'],['attStmt',new Map()],['authData',data]]));
+  const client=encoder.encode(JSON.stringify({
+   type:'webauthn.create',challenge:opts.challenge,origin,crossOrigin:false,
+  }));
+  return {id:b64(id),rawId:b64(id),type:'public-key',authenticatorAttachment:'platform',
+   response:{clientDataJSON:b64(client),attestationObject:b64(att),transports:['internal']},
+   clientExtensionResults:{}};
+ }
+ for(const [flow,opts,offset] of [
+  [duplicateFlow,duplicateOptions,110],
+  [alternateFlow,alternateOptions,190],
+ ]){
+  const refused=await f.service.handle('passkey/recovery/verify',{
+   response:competingCredential(opts,offset),
+  },f.req(flow),f.env);
+  assert.equal(refused.status,409,'stale competing recovery must fail after code rotation');
+  const repeat=await f.service.handle('passkey/recovery/verify',{
+   response:competingCredential(opts,offset),
+  },f.req(flow),f.env);
+  assert.equal(repeat.status,410,'rejected recovery challenge remains one-use');
+ }
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_passkeys').get().n,1,
+  'competing recovery must not replace newly restored Passkey');
+ assert.equal(f.sqlite.prepare('SELECT credential_id FROM asc_account_passkeys').get().credential_id,
+  b64(nextCredId),'competing recovery must preserve new credential');
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_passkey_recovery_codes').get().n,8,
+  'competing recovery cannot destroy freshly rotated recovery codes');
+ assert.equal(f.sqlite.prepare('SELECT epoch FROM asc_accounts WHERE id=?').get(account.id).epoch,1,
+  'failed recovery must not advance account epoch');
  const oldCode=await f.service.handle('passkey/recovery/options',{
   username:'NewPasskeyUser',code:initialCodes[1],presence:true,turnstile:'synthetic_qa_token',
  },f.req(),f.env);
