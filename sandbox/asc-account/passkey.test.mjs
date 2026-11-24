@@ -119,8 +119,8 @@ test('synthetic P-256 passkey registers, signs in and rejects replayed assertion
   clientExtensionResults:{},
  };
  const finish=await f.service.handle('passkey/register/verify',{response:registration},f.req(flow),f.env);
- assert.equal(finish.status,200,await finish.text().catch(()=>'')); // inspect status before JSON
- const account=(await finish.clone().json()).account;
+ assert.equal(finish.status,200,await finish.clone().text());
+ const account=(await finish.json()).account;
  assert.equal(account.username,'newpasskeyuser');
  assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_accounts').get().n,1);
  assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_passkeys').get().n,1);
