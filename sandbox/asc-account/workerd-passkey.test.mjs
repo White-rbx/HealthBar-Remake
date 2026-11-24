@@ -117,3 +117,71 @@ test('Cloudflare workerd bundled Passkey QA has strict pages, challenge flow and
   assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM asc_accounts').first()).n,0);
  }finally{await worker.dispose()}
 });
+
+test('isolated preview uses its fixed WebAuthn origin and validates both Turnstile purposes',
+ {skip:!runtime && 'ASC_ACCOUNT_WORKERD_PREFIX required'},async()=>{
+ const require=createRequire(join(runtime,'package.json'));
+ const {Miniflare,Response:MockResponse}=require('miniflare');
+ const preview='https://arcscriptcenter-account-preview.qa.invalid';
+ const module=readFileSync(join(root,'sandbox/asc-account/dist/account-passkey-worker.mjs'),'utf8');
+ const verificationCalls=[];
+ const worker=new Miniflare({
+  modules:[
+   {type:'ESModule',path:'entry.mjs',contents:
+    'import {createAccountWorker} from "./candidate.mjs"; export default createAccountWorker({origin:'+JSON.stringify(preview)+'});'},
+   {type:'ESModule',path:'candidate.mjs',contents:module},
+  ],
+  compatibilityDate:'2026-08-06',compatibilityFlags:['nodejs_compat'],
+  d1Databases:{ACCOUNT_DB:'asc-eslogin-preview-origin-local'},
+  bindings:{
+   ASC_ACCOUNT_MODE:'isolated-qa',ASC_ACCOUNT_AUTH_MODE:'passkey',
+   ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',ACCOUNT_TOTP_KEY:'cd'.repeat(32),
+   ACCOUNT_TURNSTILE_SECRET:'fixture-only',ACCOUNT_TURNSTILE_SITE_KEY:'fixture_site',
+  },
+  ratelimits:{ACCOUNT_RATE:{namespace_id:'32111',simple:{limit:40,period:60}}},
+  outboundService:async request=>{
+   assert.equal(request.url,'https://challenges.cloudflare.com/turnstile/v0/siteverify');
+   const {secret,response}=await request.json();
+   assert.equal(secret,'fixture-only');
+   verificationCalls.push(response);
+   return MockResponse.json({success:true,hostname:response==='canonical_host'
+    ?new URL(origin).hostname:new URL(preview).hostname,
+   action:response==='recover_action'?'asc_recover':'asc_register'});
+  },
+ });
+ try {
+  const db=await worker.getD1Database('ACCOUNT_DB');
+  for(const file of ['asc_unified_account','asc_passkey','asc_passkey_recovery','asc_passkey_backup']){
+   const ddl=readFileSync(join(root,'migrations',file+'_ISOLATED_QA_ONLY.sql'),'utf8');
+   const statements=ddl.replace(/^--.*$/gm,'').split(';').map(x=>x.trim()).filter(Boolean);
+   await db.batch(statements.map(sql=>db.prepare(sql)));
+  }
+  const post=(op,body,caller=preview)=>worker.dispatchFetch(preview+'/api/v1/accounts/'+op,{
+   method:'POST',headers:{Origin:caller,'Content-Type':'application/json',
+    'X-Forwarded-Host':new URL(origin).hostname},body:JSON.stringify(body),
+  });
+  assert.equal((await worker.dispatchFetch(origin+'/')).status,404);
+  assert.equal((await post('passkey/login/options',{},origin)).status,404);
+  const page=await worker.dispatchFetch(preview+'/');
+  assert.equal(page.status,200);
+  assert.match(await page.text(),/Sign in with a passkey/);
+  const login=await post('passkey/login/options',{});
+  assert.equal(login.status,200);
+  assert.equal((await login.json()).options.rpId,new URL(preview).hostname);
+  assert.match(login.headers.get('Set-Cookie'),/Path=\/; Secure; HttpOnly; SameSite=Strict/);
+  const registration={username:'Preview_Only',presence:true};
+  for(const token of ['canonical_host','recover_action']){
+   const bad=await post('passkey/register/options',{...registration,turnstile:token});
+   assert.equal(bad.status,400);
+   assert.equal((await bad.json()).code,'verification_required');
+  }
+  const reg=await post('passkey/register/options',{...registration,turnstile:'register_action'});
+  assert.equal(reg.status,200);
+  assert.equal((await reg.json()).options.rp.id,new URL(preview).hostname);
+  const recovery=await post('passkey/recovery/options',{...registration,code:'f'.repeat(32),turnstile:'register_action'});
+  assert.equal(recovery.status,400);
+  assert.equal((await recovery.json()).code,'verification_required');
+  assert.deepEqual(verificationCalls,['canonical_host','recover_action','register_action','register_action']);
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM asc_accounts').first()).n,0);
+ }finally{await worker.dispose()}
+});

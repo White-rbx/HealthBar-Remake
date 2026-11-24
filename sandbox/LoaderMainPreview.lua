@@ -52,7 +52,7 @@ local okClient, client = pcall(function()
         local account = assert(loadstring(game:HttpGet(base.."ASCAccountClientPreview.lua")))()
         local profile, reason = account.refresh()
         if not profile then
-            if not login(account, nil, reason) then return nil end
+            if not login(account, nil, reason) or not account.profile() then return nil end
         end
         bootEnv.__ASC_ACCOUNT_QA = account
         return account

@@ -809,13 +809,14 @@ local copied,polls,done
 local client={website='https://synthetic.test',begin=function() return {code='ABCDEF123456',expiresAt=10} end,
  poll=function(pair,remember) assert(pair.code=='ABCDEF123456' and remember); polls=(polls or 0)+1; if polls>1 then return {state='ready'} end return {state='pending'} end}
 local enum=setmetatable({},{__index=function() return setmetatable({},{__index=function(_,k) return k end}) end})
-runtime.task.spawn(function() done=run('accountUi',{
+local guiEnv={
  game={GetService=function(_,name) assert(name=='TweenService'); return {} end},
  Instance={new=instance},Enum=enum,UDim={new=tuple},UDim2={new=tuple},Vector2={new=tuple},
  Color3={new=tuple,fromRGB=tuple},ColorSequence={new=tuple},ColorSequenceKeypoint={new=tuple},
  NumberSequence={new=tuple},NumberSequenceKeypoint={new=tuple},typeof=function(v) return type(v)=='table' and 'Color3' or type(v) end,
  setclipboard=function(url) copied=url end,
-},client,root,'session_expired') end)
+}
+runtime.task.spawn(function() done=run('accountUi',guiEnv,client,root,'session_expired') end)
 advance(0)
 local screen=assert(root:FindFirstChild('ESLoginGui'))
 local main=screen:FindFirstChild('Main')
@@ -832,6 +833,56 @@ assert(inside:FindFirstChild('UserInput').Text=='ABCDEF123456')
 assert(copied==client.website)
 advance(7)
 assert(polls==2 and done and root:FindFirstChild('ESLoginGui')==nil)
+
+local opened,lockedResult
+local lockedClient={website=client.website,
+    openWebsite=function(url) opened=url; return true end,
+    begin=function() assert(opened==client.website); return nil,'account_qa_provisioning' end}
+runtime.task.spawn(function() lockedResult=run('accountUi',guiEnv,lockedClient,root,'no_session') end)
+advance(7)
+local locked=assert(root:FindFirstChild('ESLoginGui')):FindFirstChild('Main')
+local lockedInside=locked:FindFirstChild('Inside')
+lockedInside:FindFirstChild('Buttons'):FindFirstChild('Login').Activated:Fire()
+advance(7)
+assert(opened==client.website and lockedInside:FindFirstChild('UserInput').Text=='')
+assert(lockedInside:FindFirstChild('PassInput').Text:find('STAGING sign-in is locked',1,true))
+locked:FindFirstChild('Close').Activated:Fire()
+advance(8)
+assert(lockedResult==false and root:FindFirstChild('ESLoginGui')==nil)
+
+local resumed
+local savedClient={website=client.website,hasSession=function() return true end,
+    refresh=function() return {id='saved-qa-profile'} end,
+    begin=function() error('saved session must not start another pair') end}
+runtime.task.spawn(function() resumed=run('accountUi',guiEnv,savedClient,root,'unavailable') end)
+advance(8)
+root:FindFirstChild('ESLoginGui'):FindFirstChild('Main'):FindFirstChild('Inside')
+    :FindFirstChild('Buttons'):FindFirstChild('Login').Activated:Fire()
+advance(9)
+assert(resumed==true and root:FindFirstChild('ESLoginGui')==nil)
+
+local manualEnv=table.clone(guiEnv)
+manualEnv.setclipboard=nil
+manualEnv.game={GetService=function(_,name)
+    if name=='TweenService' then return {} end
+    if name=='CoreGui' then error('CoreGui access denied') end
+    assert(name=='Players')
+    return {LocalPlayer={WaitForChild=function(_,child) assert(child=='PlayerGui');return root end}}
+end}
+local manualResult
+local manualClient={website=client.website,begin=function()
+    task.wait(2)
+    return {code='ABCDEF123456',expiresAt=20}
+end}
+runtime.task.spawn(function() manualResult=run('accountUi',manualEnv,manualClient,nil,'no_session') end)
+advance(9)
+local manual=assert(root:FindFirstChild('ESLoginGui')):FindFirstChild('Main')
+local manualInside=manual:FindFirstChild('Inside')
+manualInside:FindFirstChild('Buttons'):FindFirstChild('Login').Activated:Fire()
+assert(manualInside:FindFirstChild('PassInput').Text==client.website)
+manual:FindFirstChild('Close').Activated:Fire()
+advance(13)
+assert(manualResult==false and root:FindFirstChild('ESLoginGui')==nil)
 `);
 });
 
@@ -840,7 +891,9 @@ test('Luau VM: Executor account policy, opt-in JSON persistence, and logout', ()
 local values,stored={},nil
 local session=string.rep('a',64)
 local status='restricted_mode'
-local fail=false
+local fail,cancelWhilePolling=false,false
+local rememberedValue=true
+local revoked=0
 local auth={
  getgenv=function() return {} end,
  game={GetService=function(_,name) assert(name=='HttpService'); return {
@@ -850,16 +903,19 @@ local auth={
  Instance={new=function(name) assert(name=='BindableEvent');local event=signal();return {Event=event,Fire=function() event:Fire() end,Destroy=function() end} end},
  request=function(r)
     local op=r.Url:match('/accounts/(.+)$')
+    assert(r.Url:find('https://arcscriptcenter-account-qa.kogpasan14.workers.dev/',1,true)==1)
     assert(r.Method=='POST' and r.Headers.Origin==nil and r.Headers.Cookie==nil)
     local v={ok=true}
     if op=='pair/start' then
-        assert(r.Headers.Authorization==nil); v.secret=session; v.expiresAt=100
+        assert(r.Headers.Authorization==nil); v.code='ABCDEF123456'; v.secret=session; v.expiresAt=100
     elseif op=='pair/poll' then
-        assert(values[tonumber(r.Body)].remember==true); v.session=session; v.state='ready'; v.expiresAt=100
+        assert(values[tonumber(r.Body)].remember==rememberedValue)
+        if cancelWhilePolling then runtime.task.wait(2) end
+        v.session=session; v.state='ready'; v.expiresAt=100
     else
         assert(r.Headers.Authorization=='Bearer '..session)
         if fail then error('Synthetic timeout') end
-        if op~='logout' then v.account={id='account-qa',nickname='Synthetic',status=status} end
+        if op~='logout' then v.account={id='account-qa',nickname='Synthetic',status=status} else revoked+=1 end
     end
     table.insert(values,v)
     return {StatusCode=200,Body=tostring(#values)}
@@ -873,15 +929,75 @@ runtime.task.spawn(function()
     local c=run('accountClient',auth)
     assert(not c.hasSession() and c.refresh()==nil)
     assert(c.poll(assert(c.begin()),true).saved and stored)
+    assert(values[tonumber(stored)].origin==c.website)
     local restored=run('accountClient',auth)
     assert(restored.hasSession() and restored.policy().state=='restricted_mode')
     status='banned'; assert(restored.policy().state=='ban_ingame')
     status='normal'; assert(restored.policy().state=='clear')
     fail=true; assert(restored.policy()==nil and restored.hasSession()); fail=false
     assert(restored.logout() and not stored and not restored.hasSession())
+    assert(revoked==1)
+    rememberedValue=false
+    c.website='https://forged.test'
+    assert(c.poll(assert(c.begin()),false).state=='ready' and stored==nil)
+    assert(c.logout())
+    rememberedValue=true
+    cancelWhilePolling=true
+    local open=true
+    local pair=assert(c.begin())
+    runtime.task.delay(1,function() open=false end)
+    local result,reason=c.poll(pair,true,function() return open end)
+    assert(result==nil and reason=='cancelled' and stored==nil and not c.hasSession())
+    assert(revoked==3)
     progress=1
 end)
 advance(10)
 assert(progress==1)
+`);
+});
+
+test('Luau VM: Account QA bootstrap shows ESLogin, stops on X, and skips it only for a verified session',()=>{
+ luau(String.raw`
+local global={}
+local launches=0
+local mode
+local account={}
+function account.refresh()
+    if mode=='saved' then return {id='verified'} end
+    return nil,'no_session'
+end
+function account.profile()
+    return mode=='paired' and {id='verified'} or nil
+end
+local env={
+    getgenv=function() return global end,
+    game={HttpGet=function(_,url)
+        if url:match('/ESLogin%.lua$') then return 'login-source' end
+        if url:match('/ASCAccountClientPreview%.lua$') then return 'account-source' end
+        error('Unexpected URL')
+    end},
+    loadstring=function(source)
+        if source=='account-source' then return function() return account end end
+        assert(source=='login-source')
+        return function(client,parent,reason)
+            assert(client==account and parent==nil and reason=='no_session')
+            launches+=1
+            return mode~='closed'
+        end
+    end,
+}
+mode='closed'
+assert(run('boot',env,'account_qa')==nil and launches==1)
+assert(global.__ES_BOOTSTRAP_BUSY==nil and global.__ASC_ACCOUNT_QA==nil)
+mode='unverified'
+assert(run('boot',env,'account_qa')==nil and launches==2)
+assert(global.__ASC_BAN_V2_CLIENT==nil and global.__ES_BOOTSTRAP_BUSY==nil)
+mode='paired'
+assert(run('boot',env,'account_qa')=='account_qa' and launches==3)
+assert(global.__ASC_ACCOUNT_QA==account and global.__ASC_BAN_V2_CLIENT==account)
+table.clear(global)
+mode='saved'
+assert(run('boot',env,'account_qa')=='account_qa' and launches==3)
+assert(global.__ASC_ACCOUNT_QA==account and global.__ASC_BAN_V2_CLIENT==account)
 `);
 });

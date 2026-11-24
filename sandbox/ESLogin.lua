@@ -279,12 +279,24 @@ end
 -- StarterGui.ESLoginGui
 local ESLoginGui = Instance.new("ScreenGui")
 ESLoginGui.Name = "ESLoginGui"
-local guiParent = parent or game:GetService("CoreGui")
-local existing = guiParent:FindFirstChild("ESLoginGui")
-if existing then existing:Destroy() end
 ESLoginGui.ResetOnSpawn = false
 ESLoginGui.DisplayOrder = 2147483647
-ESLoginGui.Parent = guiParent
+local function mount(guiParent)
+    local existing = guiParent:FindFirstChild("ESLoginGui")
+    if existing then existing:Destroy() end
+    ESLoginGui.Parent = guiParent
+end
+if parent then
+    mount(parent)
+else
+    local mounted = pcall(function() mount(game:GetService("CoreGui")) end)
+    if not mounted then
+        local player = game:GetService("Players").LocalPlayer
+        local playerGui = player and player:WaitForChild("PlayerGui", 5)
+        if not playerGui then ESLoginGui:Destroy(); return false end
+        mount(playerGui)
+    end
+end
 
 -- StarterGui.ESLoginGui.Main
 local Main = Instance.new("Frame")
@@ -331,6 +343,7 @@ UserInput.BackgroundColor3 = Color3.fromRGB(0, 20, 255)
 UserInput.PlaceholderText = "Tap Login to get a code"
 UserInput.TextEditable = false
 UserInput.ClearTextOnFocus = false
+UserInput.TextScaled = true
 UserInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 UserInput.Parent = Inside
 Corner(0,8,UserInput)
@@ -342,6 +355,7 @@ Password.Position = UDim2.new(0, 0, 0, 50)
 Password.Size = UDim2.new(1, 0, 0, 22)
 Password.BackgroundTransparency = 1
 Password.Text = "Sign-in status"
+Password.TextScaled = true
 Password.TextColor3 = Color3.fromRGB(255, 255, 255)
 Password.TextXAlignment = Enum.TextXAlignment.Left
 Password.Parent = Inside
@@ -356,6 +370,8 @@ PassInput.BackgroundColor3 = Color3.fromRGB(0, 20, 255)
 PassInput.PlaceholderText = ""
 PassInput.TextEditable = false
 PassInput.ClearTextOnFocus = false
+PassInput.TextWrapped = true
+PassInput.TextScaled = true
 PassInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 PassInput.Parent = Inside
 Corner(0,8,PassInput)
@@ -388,7 +404,7 @@ Linl.Size = UDim2.new(1, 0, 0, 18)
 Linl.BackgroundTransparency = 1
 Linl.BackgroundColor3 = Color3.fromRGB(0, 234, 255)
 Linl.RichText = true
-Linl.Text = "<i>No account? Register on ArcScriptCenter!</i>"
+Linl.Text = "<i>Open Passkey Login / Register</i>"
 Linl.TextColor3 = Color3.fromRGB(0, 151, 255)
 Linl.TextScaled = true
 Linl.TextWrapped = true
@@ -452,76 +468,137 @@ remember.Name = "Remember"
 remember.Text = "Remember on this device [OFF]"
 remember.LayoutOrder = 2
 remember.Parent = Buttons
+local polling = false
+local canRemember = type(client.canRemember) ~= "function" or client.canRemember()
+if not canRemember then
+    remember.Text = "Remember unavailable on this client"
+    remember.Interactable = false
+end
 remember.Activated:Connect(function()
+    if polling or not canRemember then return end
     remembered = not remembered
     remember.Text = remembered and "Remember on this device [ON]" or "Remember on this device [OFF]"
 end)
-local function navigate()
-    local copied = type(setclipboard) == "function" and pcall(setclipboard, client.website)
-    if copied then
-        PassInput.Text = "Website copied. Open it in your browser."
-    else
-        PassInput.Text = client.website
-    end
-end
-Linl.Activated:Connect(navigate)
+
 local ready, busy = false, false
 local messages = {
     session_expired = "Session expired. Sign in again.",
-    no_session = "Sign in on the ArcScriptCenter website to link this account.",
-    account_qa_provisioning = "Account QA backend is being prepared. Registration and pairing are not available yet.",
+    no_session = "Tap Login, then use your passkey in the browser.",
+    account_qa_provisioning = "STAGING sign-in is locked. The website shows the current status.",
     unavailable = "Account service unavailable. Try Login again.",
+    transport_unavailable = "This client cannot reach Account QA.",
     rate_limited = "Too many requests. Wait and try again.",
     verification_required = "Complete verification on the account website.",
 }
-PassInput.Text = messages[initialStatus] or "Sign in on the account website."
+local function status(message)
+    Password.Text = "Sign-in status"
+    PassInput.Text = message
+end
+local function navigate()
+    local copied = false
+    if type(client.openWebsite) == "function" then
+        local ok, opened = pcall(client.openWebsite, client.website)
+        if ok and opened == true then return "Passkey page opened in your browser." end
+    end
+    if type(setclipboard) == "function" then
+        local ok, result = pcall(setclipboard, client.website)
+        copied = ok and result ~= false
+    end
+    return copied and "Website copied. Open it in your browser." or nil
+end
+Linl.Activated:Connect(function()
+    local navigation = navigate()
+    if navigation then status(navigation)
+    else
+        Password.Text = "Open this address in your browser"
+        PassInput.Text = client.website
+    end
+end)
+local function canContinue()
+    return not cancelled and ESLoginGui.Parent ~= nil
+end
+local function complete()
+    if not canContinue() then return end
+    ready = true
+    ESLoginGui:Destroy()
+end
+status(messages[initialStatus] or messages.no_session)
 Login.Activated:Connect(function()
-    if busy or cancelled or not ESLoginGui.Parent then return end
+    if busy or not canContinue() then return end
     busy,Login.Interactable = true,false
-    PassInput.Text = "Preparing sign in..."
-    task.spawn(function()
-        local ok, pair, why = pcall(client.begin)
-        if cancelled or not ESLoginGui.Parent then return end
-        if ok and pair and type(pair.code) == "string" and type(pair.expiresAt) == "number" then
-            UserInput.Text = pair.code
-            navigate()
-            Password.Text = "Sign in, verify, then link this code"
-            while ESLoginGui.Parent and not cancelled and os.time() < pair.expiresAt do
-                task.wait(3)
-                if cancelled or not ESLoginGui.Parent then break end
-                local checked, response, failure = pcall(client.poll, pair, remembered, function()
-                    return not cancelled and ESLoginGui.Parent ~= nil
-                end)
-                if cancelled or not ESLoginGui.Parent then
-                    -- An in-flight pairing may have completed just before X was pressed.
-                    -- Revoke the resulting session rather than letting a cancelled login persist.
-                    if checked and response and response.state == "ready" and type(client.logout) == "function" then
-                        pcall(client.logout)
-                    end
-                    return
-                end
-                if checked and response and response.state == "ready" then
-                    ready = true
-                    PassInput.Text = "Signed in"
-                    return
-                end
-                if not checked or failure then
-                    PassInput.Text = messages[failure] or messages.unavailable
-                    if failure == "session_expired" then break end
-                end
-            end
-            PassInput.Text = "Pairing expired. Tap Login for a new code."
-            UserInput.Text = ""
-            Password.Text = "Sign-in status"
+    local navigation
+    local hasSavedSession = type(client.hasSession) == "function" and client.hasSession()
+    if hasSavedSession then
+        status("Checking your saved session...")
+    else
+        -- Browser handoff is available even when the pairing endpoint is locked.
+        navigation = navigate()
+        if navigation then status(navigation)
         else
-            PassInput.Text = messages[why] or messages.unavailable
+            Password.Text = "Open this address in your browser"
+            PassInput.Text = client.website
         end
+    end
+    task.spawn(function()
+        local finalMessage
+        if hasSavedSession then
+            local ok, profile, reason = pcall(client.refresh)
+            if not canContinue() then return end
+            if ok and profile then complete(); return end
+            finalMessage = messages[reason] or messages.unavailable
+        else
+            local ok, pair, why = pcall(client.begin)
+            if not canContinue() then return end
+            if ok and pair then
+                UserInput.Text = pair.code
+                if navigation then status("Sign in with your passkey, then approve this code.")
+                else
+                    Password.Text = "Approve the code on this website"
+                    PassInput.Text = client.website
+                end
+                finalMessage = "Pairing expired. Tap Login for a new code."
+                while canContinue() and os.time() < pair.expiresAt do
+                    task.wait(3)
+                    if not canContinue() or os.time() >= pair.expiresAt then break end
+                    polling = true
+                    local checked, response, failure = pcall(client.poll, pair, remembered, canContinue)
+                    polling = false
+                    if not canContinue() then return end
+                    if checked and response and response.state == "ready" then
+                        if remembered and response.saved == false then
+                            task.defer(function()
+                                pcall(function()
+                                    game:GetService("StarterGui"):SetCore("SendNotification", {
+                                        Title = "ArcScriptCenter",
+                                        Text = "Signed in for this session. Remember could not save on this client.",
+                                    })
+                                end)
+                            end)
+                        end
+                        complete()
+                        return
+                    end
+                    if failure == "session_expired" then break end
+                    if failure == "account_qa_provisioning" or failure == "transport_unavailable" then
+                        finalMessage = messages[failure]
+                        break
+                    end
+                    if not checked or failure then status(messages[failure] or messages.unavailable) end
+                end
+            else
+                finalMessage = messages[why] or messages.unavailable
+            end
+        end
+        if not canContinue() then return end
+        if not navigation and not hasSavedSession and finalMessage == messages.account_qa_provisioning then
+            Password.Text = "STAGING sign-in is locked"
+            PassInput.Text = client.website
+        else
+            status(finalMessage)
+        end
+        UserInput.Text = ""
         busy,Login.Interactable = false,true
     end)
 end)
 while ESLoginGui.Parent and not ready and not cancelled do task.wait(0.2) end
-if ESLoginGui.Parent then
-    if ready then task.wait(0.35) end
-    ESLoginGui:Destroy()
-end
 return ready and not cancelled

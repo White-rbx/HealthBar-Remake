@@ -8,22 +8,24 @@ for i = 1, candidates.n do
     if type(candidates[i]) == "function" then requestFn = candidates[i]; break end
 end
 
+local accountOrigin = "https://arcscriptcenter-account-qa.kogpasan14.workers.dev"
 local client = {
-    website = "https://arcscriptcenter-account-qa.kogpasan14.workers.dev",
+    website = accountOrigin,
     publicLookup = false, isolatedQA = true, accountMode = true,
 }
 local folder, file = "ArcScriptCenter", "ArcScriptCenter/Account.json"
-local session, current, currentPolicy
+local session, current, currentPolicy, expectedAccountId
 local function credential(value)
     return type(value) == "string" and #value == 64 and value:match("^[0-9a-f]+$") ~= nil
 end
 local function erase()
-    session, current, currentPolicy = nil, nil, nil
+    session, current, currentPolicy, expectedAccountId = nil, nil, nil, nil
     if type(delfile) == "function" then pcall(delfile, file) end
 end
 
 local function send(route, body, authenticated)
-    if not requestFn or (authenticated and not session) then return nil, authenticated and "session_expired" or "unavailable" end
+    if not requestFn then return nil, "transport_unavailable" end
+    if authenticated and not session then return nil, "session_expired" end
     local expected = session
     local completed, response, why = false, nil, nil
     local signal = Instance.new("BindableEvent")
@@ -37,7 +39,7 @@ local function send(route, body, authenticated)
         local success, data, code = pcall(function()
             local headers = { ["Content-Type"] = "application/json" }
             if authenticated then headers.Authorization = "Bearer " .. expected end
-            local reply = requestFn({ Url = client.website .. "/api/v1/accounts/" .. route,
+            local reply = requestFn({ Url = accountOrigin .. "/api/v1/accounts/" .. route,
                 Method = "POST", Headers = headers, Body = service:JSONEncode(body), Timeout = 8 })
             if type(reply) ~= "table" then return nil, "unavailable" end
             local raw = reply.Body or reply.body
@@ -61,8 +63,10 @@ end
 if type(readfile) == "function" then
     local ok, saved = pcall(function() return service:JSONDecode(readfile(file)) end)
     if ok and type(saved) == "table" and credential(saved.session)
+        and (saved.origin == nil or saved.origin == accountOrigin)
+        and type(saved.accountId) == "string" and saved.accountId ~= ""
         and type(saved.expiresAt) == "number" and saved.expiresAt > os.time() then
-        session = saved.session
+        session, expectedAccountId = saved.session, saved.accountId
     end
 end
 
@@ -72,15 +76,19 @@ local function applyProfile(reply)
         or not (account.status == "normal" or account.status == "restricted_mode" or account.status == "banned") then
         return nil
     end
-    if current and current.id ~= account.id then return nil end
-    current = account
+    if expectedAccountId and expectedAccountId ~= account.id then
+        erase()
+        return nil
+    end
+    current, expectedAccountId = account, account.id
     return current
 end
 
 function client.refresh()
     if not session then return nil, "no_session" end
     local data, reason = send("session", {}, true)
-    return applyProfile(data), reason
+    local account = applyProfile(data)
+    return account, reason or (not account and "session_expired" or nil)
 end
 function client.profile()
     return current
@@ -88,8 +96,16 @@ end
 function client.hasSession()
     return session ~= nil
 end
+function client.canRemember()
+    return type(readfile) == "function" and type(writefile) == "function" and type(delfile) == "function"
+end
 function client.begin()
-    return send("pair/start", {})
+    local pair, reason = send("pair/start", {})
+    if not pair then return nil, reason end
+    if type(pair.code) ~= "string" or #pair.code ~= 12 or not pair.code:match("^[0-9A-F]+$")
+        or not credential(pair.secret) or type(pair.expiresAt) ~= "number"
+        or pair.expiresAt <= os.time() then return nil, "unavailable" end
+    return pair
 end
 function client.poll(pair, remember, stillOpen)
     local function cancelled()
@@ -101,7 +117,7 @@ function client.poll(pair, remember, stillOpen)
     if cancelled() and (not data or data.state ~= "ready") then return nil, "cancelled" end
     if not data or data.state == "pending" then return data, reason end
     if data.state ~= "ready" or not credential(data.session) then return nil, "unavailable" end
-    session = data.session
+    session, current, currentPolicy, expectedAccountId = data.session, nil, nil, nil
     local function cancelIssuedSession()
         -- A session created while closing the GUI must never be remembered locally.
         pcall(client.logout) -- best-effort remote revocation
@@ -111,12 +127,16 @@ function client.poll(pair, remember, stillOpen)
     if cancelled() then return cancelIssuedSession() end
     local account, errorCode = client.refresh()
     if cancelled() then return cancelIssuedSession() end
-    if not account then erase(); return nil, errorCode end
+    if not account or type(data.expiresAt) ~= "number" or data.expiresAt <= os.time() then
+        pcall(client.logout)
+        erase()
+        return nil, errorCode or "session_expired"
+    end
     local saved = false
-    if remember and type(writefile) == "function" and type(delfile) == "function" then
+    if remember and client.canRemember() then
         saved = pcall(function()
             if type(isfolder) == "function" and type(makefolder) == "function" and not isfolder(folder) then makefolder(folder) end
-            writefile(file, service:JSONEncode({accountId=account.id,session=session,expiresAt=data.expiresAt}))
+            writefile(file, service:JSONEncode({origin=accountOrigin,accountId=account.id,session=session,expiresAt=data.expiresAt}))
         end)
     end
     if cancelled() then return cancelIssuedSession() end
