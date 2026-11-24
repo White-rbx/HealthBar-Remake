@@ -29,6 +29,7 @@ function fixture(){
  sqlite.exec(readFileSync(new URL('../../migrations/asc_unified_account_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8'));
  sqlite.exec(readFileSync(new URL('../../migrations/asc_passkey_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8'));
  sqlite.exec(readFileSync(new URL('../../migrations/asc_passkey_recovery_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8'));
+ sqlite.exec(readFileSync(new URL('../../migrations/asc_passkey_backup_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8'));
  const db={
   prepare(sql){return {bind(...args){return{
    first:async()=>sqlite.prepare(sql).get(...args)||null,
