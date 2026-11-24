@@ -71,16 +71,31 @@
   return {id:cred.id,rawId:encode(cred.rawId),type:cred.type,response,
    clientExtensionResults:cred.getClientExtensionResults(),authenticatorAttachment:cred.authenticatorAttachment};
  }
- function show(which){
+ // Three explicit UI pages: /login (welcome), /signin (Passkey), /myaccount (session-verified).
+ // Register and Recovery are subviews of Sign In, not new top-level pages.
+ let authenticated=false;
+ const paths={home:'/login',login:'/signin',register:'/signin#register',
+  recover:'/signin#recover',account:'/myaccount'};
+ function show(which,replace=false){
+  if(which==='account'&&!authenticated)which='login';
+  byId('landing').hidden=which!=='home';
   byId('sign-in').hidden=which!=='login';
   byId('registration').hidden=which!=='register';
   byId('recovery').hidden=which!=='recover';
   byId('account').hidden=which!=='account';
-  byId('tab-login').hidden=which==='account';
-  byId('tab-register').hidden=which==='account';
-  byId('tab-recovery').hidden=which==='account';
+  byId('tab-account').hidden=!authenticated;
+  byId('tab-register').hidden=which==='account'||which==='home';
+  byId('tab-recovery').hidden=which==='account'||which==='home';
+  const route=paths[which]||'/login';
+  if(window.location.pathname+window.location.hash!==route){
+   (replace?window.history.replaceState:window.history.pushState).call(
+    window.history,{page:which},'',route);
+  }
  }
  function account(info){
+  if(!info||typeof info.username!=='string'||typeof info.nickname!=='string')
+   throw new Error('Account session was not verified.');
+  authenticated=true;
   byId('identity').textContent=info.nickname+' (@'+info.username+')';
   show('account');
  }
@@ -97,7 +112,16 @@
   try{await fn()}catch(error){status(error.message||'Request failed')}
   finally{for(const b of document.querySelectorAll('button'))b.disabled=false;busy=false}
  }
+ byId('tab-home').onclick=()=>{status('');show('home')};
  byId('tab-login').onclick=()=>{status('');show('login')};
+ byId('tab-account').onclick=()=>{status('');if(authenticated)show('account')};
+ window.addEventListener('popstate',()=>{
+  const page=window.location.pathname,hash=window.location.hash;
+  if(page==='/myaccount')show(authenticated?'account':'login',true);
+  else if(page==='/signin')show(hash==='#register'?'register':
+   hash==='#recover'?'recover':'login',true);
+  else show('home',true);
+ });
  byId('tab-register').onclick=()=>{status('');show('register')};
  byId('tab-recovery').onclick=()=>{status('');show('recover')};
  byId('passkey-login').onclick=()=>action(async()=>{
@@ -178,7 +202,17 @@
   byId('recovery-code-list').textContent='';
   byId('recovery-codes').hidden=true;
   status('Signed out.');
-  show('login');
+  authenticated=false;
+  show('home');
  });
- post('session').then(({account:profile})=>account(profile)).catch(()=>show('login'));
+ // MyAccount displays only account data from a successful, scoped server session.
+ // A direct /myaccount link without a session redirects to /signin (no client trust).
+ post('session').then(({account:profile})=>account(profile)).catch(()=>{
+  const pathname=window.location.pathname,hash=window.location.hash;
+  if(pathname==='/signin')
+   show(hash==='#register'?'register':hash==='#recover'?'recover':'login',true);
+  else if(pathname==='/myaccount'){
+   show('login',true);status('Sign in before opening MyAccount.');
+  }else show('home',true);
+ });
 })();
