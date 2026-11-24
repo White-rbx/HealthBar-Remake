@@ -120,3 +120,23 @@ To fail close and preserve secure password hashing, `ASC_ACCOUNT_LAUNCH_STATE` w
 
 **Do not activate this password-based system on Workers Free without evidence that the selected secure KDF completes inside the actual 10 ms Worker CPU budget.** Do not silently reduce PBKDF2 to 100k or remove slow password hashing. Next safe architecture choices to review: a paid Worker plan that can execute the reviewed scrypt cost (requires operator billing approval), or a separately designed and verified passwordless/passkey/OIDC provider authentication flow that does not rely on heavy password KDF inside the Free Worker. Either option requires end-to-end synthetic registration/login/2SV/pairing tests before Roblox Mobile enrollment and a careful rollout.
 
+## Cloudflare Workers Free Passkey prototype — 2026-11-24
+
+The user clarified the activity statistics: **1–9 Live Active Users** is a concurrent/heartbeat metric, not total daily unique use. On 24 November 2026 the Dashboard separately displayed roughly **27 opt-in daily unique users** and **790 opt-in yearly unique users**; those analytics are self-reported/unverified and must not be treated as Roblox-authenticated identities or guaranteed billing forecasts.
+
+A free-plan-friendly **passwordless Passkey/WebAuthn prototype** has been added on `feedback-appeal-release-track`, but the deployed `arcscriptcenter-account-qa` Worker **remains locked**. Do **not** claim it is usable on Roblox Mobile or Production until end-to-end verified. The new path uses the maintained `@simplewebauthn/server@14.1.0` verifier with Worker-native asymmetric cryptography, not custom COSE/CBOR verification or a reduced-strength password hash.
+
+New QA files:
+- `migrations/asc_passkey_ISOLATED_QA_ONLY.sql`: additive credential and one-time WebAuthn challenge tables; preserve historical Case tables and all legacy records
+- `sandbox/asc-account/passkey.mjs`: server-side registration and authentication ceremonies; exact HTTPS Origin and RP ID; user verification **required**; ES256/P-256 credential; 5-minute browser-bound, one-use challenge; server-side credential lookup and signature/counter verification; Turnstile required for registration
+- `sandbox/asc-account/passkey-page.mjs`, `passkey-client.js`, `passkey-style.css`: mobile-oriented QA page without password inputs, pairing code confirmation and Session cookie
+- `sandbox/asc-account/passkey-static.mjs`: secure same-origin asset delivery and noindex CSP
+- `sandbox/asc-account/package.json`: pinned SimpleWebAuthn and esbuild dependencies for a bundled Worker
+- `sandbox/asc-account/passkey.test.mjs` and `workerd-passkey.test.mjs`: synthetic WebAuthn, challenge replay, origin rejection, D1 and Worker runtime checks
+
+**Isolation controls:** The existing Account Worker defaults to Provisioning while `ASC_ACCOUNT_LAUNCH_STATE` is absent. Passkey UI and endpoints require **both** `ASC_ACCOUNT_LAUNCH_STATE=isolated-test-enabled` and `ASC_ACCOUNT_AUTH_MODE=passkey`, plus the existing D1, Rate Limiter, Turnstile and TOTP secrets. Password routes are disabled in passkey mode. The legacy password implementation can be exercised only by the explicit QA-only `legacy-password-qa` mode and must not be activated on Workers Free. Do not add either launch variable before the passkey bundle and isolated D1 schema are tested.
+
+**Unresolved before real sign-ups:** The prototype has **no lost-passkey recovery method**, second-device registration, ownership proof for Roblox identities, or real Android cross-device QA coverage. Losing the only credential means losing access to the QA account. A prior password-based TOTP 2SV screen does not apply to passwordless Passkeys; Passkeys require local user verification. Account moderation is not enabled through password-based reauthentication in passkey mode. Do not expose old password-security controls as working in the passkey website.
+
+The STAGING HTML uses only origin-bound browser Credential APIs. ESLogin and its X button are unchanged, and pairing still uses the server-verified Account Session and a one-time ESLogin code. **Production and the default Loader are out of scope.**
+
