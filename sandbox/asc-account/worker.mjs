@@ -90,7 +90,10 @@ function siteKey(env){
 // Never expose the credential-collecting website unless its isolated storage,
 // rate limiter, anti-bot verification and TOTP encryption key are all present.
 function accountQAReady(env){
- return typeof env.ACCOUNT_DB?.prepare==='function'
+ // A secret provisioned later must never turn on public credential collection by itself.
+ // QA launch requires an explicit operator-controlled rollout setting.
+ return env.ASC_ACCOUNT_LAUNCH_STATE==='isolated-test-enabled'
+  && typeof env.ACCOUNT_DB?.prepare==='function'
   && typeof env.ACCOUNT_DB?.batch==='function'
   && typeof env.ACCOUNT_RATE?.limit==='function'
   && /^[0-9a-f]{64}$/.test(env.ACCOUNT_TOTP_KEY||'')
