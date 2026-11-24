@@ -26,3 +26,16 @@ As of the read-only Cloudflare check on 2026-11-24, the account QA script `arcsc
 - No password KDF iteration reduction, no personal password collection, no raw recovery-code logs, no direct exposure of Cloudflare Worker secret values.
 - `ESLogin.lua`, its Close X, and the default ExperienceSettings Loader remain unchanged. PR #16 remains Draft; Production is excluded.
 - In an unexpected deployment or service regression, return to the previously verified QA Worker deployment/version and keep the launch flags absent. Do not touch Production or an unrelated Worker.
+
+
+## Additional 0%-traffic upload guard (2026-11-24)
+
+The pinned candidate uploader is now in sandbox/asc-account/qa-undeployed-version-upload.mjs and covered by qa-undeployed-version-upload.test.mjs. The consolidated QA workflow builds the Passkey bundle and runs the exact SHA-256 match plus synthetic API isolation assertions.
+
+The upload helper is intentionally NOT invoked by CI or by a routine push. The default CLI action verifies only the local bundle digest and performs NO remote API operation. It uses a pinned QA Worker ID, isolated Account D1 ID, exact six bindings, and the current 100% deployed QA Worker version. Any mismatch aborts before the upload.
+
+Only an operator with a separately obtained, privately stored, least-privilege Cloudflare API token may deliberately invoke the uploader with both --upload and the environment guard ASC_ALLOW_ACCOUNT_QA_VERSION_UPLOAD=YES_QA_UNDEPLOYED_ONLY. Never put Cloudflare tokens in chat, the repository, Roblox, test fixtures, or logs.
+
+The uploader uses ONLY the beta Workers Version POST endpoint with specific-version inheritance and confirms the previous QA deployment is unchanged. It never calls the Deployment API, never enables ASC_ACCOUNT_AUTH_MODE or ASC_ACCOUNT_LAUNCH_STATE, and cannot alter Production resources.
+
+The four local mock-based uploader tests passed, and CI now includes these checks. The CI-tested build is an upload-ready artifact, NOT evidence that a new Cloudflare version has already been uploaded. The current connector cannot transfer the full compiled Worker module to Cloudflare's API without violating the separate no-traffic condition. Remote upload remains pending.
