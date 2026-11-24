@@ -102,6 +102,7 @@ jobs:
           export ASC_ACCOUNT_WORKERD_PREFIX="$RUNNER_TEMP/asc-account-workerd"
           npm install --prefix "$ASC_ACCOUNT_WORKERD_PREFIX" --no-audit --no-fund miniflare@4.20260730.0
           node --test sandbox/asc-account/workerd.test.mjs
+          node --test sandbox/asc-account/workerd-passkey.test.mjs
       - name: Compile and run Roblox policy code in the Luau VM with mocked Roblox services
         run: |
           luau_dir="$RUNNER_TEMP/asc-luau"
