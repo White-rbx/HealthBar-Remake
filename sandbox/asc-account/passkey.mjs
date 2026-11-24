@@ -108,6 +108,94 @@ export function createPasskeyCeremonies({
     const flow=await startFlow(db,'register',username,proposed,options.challenge,now);
     return approve({options},{setFlow:flow});
    }
+   if(op==='passkey/backup/options'){
+    const account=await webAccount(db,request,now);
+    if(!account)return reject(401,'session_expired');
+    if(account.status==='banned')return reject(403,'account_banned');
+    if(!await rate(env,'passkey:backup:account:'+account.id))return reject(429,'rate_limited');
+    const rows=await db.prepare('SELECT credential_id,transports_json FROM asc_account_passkeys WHERE account_id=? ORDER BY created_at').bind(account.id).all();
+    const keys=rows.results||[];
+    if(!keys.length)return reject(409,'passkey_required');
+    if(keys.length>=5)return reject(409,'passkey_limit');
+    const options=await generateAuthenticationOptions({
+     rpID,userVerification:'required',timeout:60000,
+     allowCredentials:keys.map(k=>({id:k.credential_id,transports:JSON.parse(k.transports_json)})),
+    });
+    const flow=randomHex(32),digest=await sha(flow);
+    await db.prepare('DELETE FROM asc_account_passkey_backup_flows WHERE expires_at<=?').bind(now).run();
+    await db.prepare('INSERT INTO asc_account_passkey_backup_flows (flow_hash,account_id,session_id,challenge,step,created_at,expires_at) VALUES(?,?,?,?,?,?,?)')
+     .bind(digest,account.id,account.session_id,options.challenge,'reauth',now,now+ttl).run();
+    return approve({options},{setFlow:flow});
+   }
+   if(op==='passkey/backup/verify-current'){
+    const account=await webAccount(db,request,now),digest=await getBackupCookie(request);
+    if(!account||!digest)return reject(401,'session_expired');
+    const flow=await db.prepare("SELECT * FROM asc_account_passkey_backup_flows WHERE flow_hash=? AND account_id=? AND session_id=? AND step='reauth' AND expires_at>?")
+     .bind(digest,account.id,account.session_id,now).first();
+    if(!flow)return reject(410,'challenge_expired',{clearFlow:true});
+    if(!validResponse(body.response))return reject(400,'invalid_input',{clearFlow:true});
+    const key=await db.prepare('SELECT * FROM asc_account_passkeys WHERE credential_id=? AND account_id=?')
+     .bind(body.response.id,account.id).first();
+    if(!key)return reject(401,'passkey_verification_failed',{clearFlow:true});
+    const handle=body.response.response?.userHandle;
+    if(handle!=null&&
+      (typeof handle!=='string'||Buffer.from(handle,'base64url').toString('utf8')!==account.id))
+     return reject(401,'passkey_verification_failed',{clearFlow:true});
+    let verified;
+    try{
+     verified=await verifyAuthenticationResponse({
+      response:body.response,expectedChallenge:flow.challenge,
+      expectedOrigin:origin,expectedRPID:rpID,requireUserVerification:true,
+      credential:{
+       id:key.credential_id,publicKey:new Uint8Array(Buffer.from(key.public_key_b64url,'base64url')),
+       counter:key.counter,transports:JSON.parse(key.transports_json),
+      },
+     });
+    }catch{return reject(401,'passkey_verification_failed',{clearFlow:true})}
+    if(!verified.verified)return reject(401,'passkey_verification_failed',{clearFlow:true});
+    const updated=await db.prepare('UPDATE asc_account_passkeys SET counter=?,last_used_at=? WHERE credential_id=? AND account_id=? AND counter=? RETURNING credential_id')
+     .bind(verified.authenticationInfo.newCounter,now,key.credential_id,account.id,key.counter).first();
+    if(!updated)return reject(409,'retry',{clearFlow:true});
+    const keys=await db.prepare('SELECT credential_id,transports_json FROM asc_account_passkeys WHERE account_id=?').bind(account.id).all();
+    const options=await generateRegistrationOptions({
+     rpName:'ArcScriptCenter Account QA',rpID,userID:textEncoder.encode(account.id),
+     userName:account.username,userDisplayName:account.nickname,
+     supportedAlgorithmIDs:[-7],attestationType:'none',timeout:60000,
+     authenticatorSelection:{residentKey:'required',requireResidentKey:true,userVerification:'required'},
+     excludeCredentials:(keys.results||[]).map(k=>({id:k.credential_id,transports:JSON.parse(k.transports_json)})),
+    });
+    const next=await db.prepare("UPDATE asc_account_passkey_backup_flows SET step='enroll',challenge=?,expires_at=? WHERE flow_hash=? AND account_id=? AND session_id=? AND step='reauth' AND expires_at>? RETURNING flow_hash")
+     .bind(options.challenge,now+ttl,digest,account.id,account.session_id,now).first();
+    return next?approve({options}):reject(410,'challenge_expired',{clearFlow:true});
+   }
+   if(op==='passkey/backup/verify'){
+    const account=await webAccount(db,request,now),digest=await getBackupCookie(request);
+    if(!account||!digest)return reject(401,'session_expired');
+    const flow=await db.prepare("DELETE FROM asc_account_passkey_backup_flows WHERE flow_hash=? AND account_id=? AND session_id=? AND step='enroll' AND expires_at>? RETURNING *")
+     .bind(digest,account.id,account.session_id,now).first();
+    if(!flow)return reject(410,'challenge_expired',{clearFlow:true});
+    if(!validResponse(body.response))return reject(400,'invalid_input',{clearFlow:true});
+    let result;
+    try{
+     result=await verifyRegistrationResponse({
+      response:body.response,expectedChallenge:flow.challenge,
+      expectedOrigin:origin,expectedRPID:rpID,requireUserVerification:true,
+     });
+    }catch{return reject(400,'passkey_verification_failed',{clearFlow:true})}
+    const credential=result.registrationInfo?.credential;
+    if(!result.verified||!credential||!credentialRE.test(credential.id))
+     return reject(400,'passkey_verification_failed',{clearFlow:true});
+    const publicKey=Buffer.from(credential.publicKey).toString('base64url');
+    if(!publicKey||publicKey.length>2048)return reject(400,'passkey_verification_failed',{clearFlow:true});
+    const count=await db.prepare('SELECT COUNT(*) AS n FROM asc_account_passkeys WHERE account_id=?')
+     .bind(account.id).first();
+    if(count.n>=5)return reject(409,'passkey_limit',{clearFlow:true});
+    const row=await db.prepare('INSERT INTO asc_account_passkeys (credential_id,account_id,public_key_b64url,counter,transports_json,created_at) VALUES(?,?,?,?,?,?) RETURNING credential_id')
+     .bind(credential.id,account.id,publicKey,credential.counter,
+      limitedTransports(body.response.response.transports),now).first();
+    return row?approve({added:true},{clearFlow:true}):
+     reject(409,'retry',{clearFlow:true});
+   }
    if(op==='passkey/recovery/options'){
     if(!usernameRE.test(body.username||'')||typeof body.code!=='string'||
        !recoveryCodeRE.test(body.code.toLowerCase())||body.presence!==true)
