@@ -150,6 +150,17 @@
    status('Account recovered. Previous passkeys and sessions were revoked. Save the new recovery codes.');
   });
  };
+ byId('add-backup-passkey').onclick=()=>action(async()=>{
+  checkPasskey();
+  const {options}=await post('passkey/backup/options');
+  const current=await navigator.credentials.get({publicKey:authenticationOptions(options)});
+  if(!current)throw new Error('Reauthentication with your current passkey was cancelled.');
+  const enrolment=await post('passkey/backup/verify-current',{response:credentialJSON(current)});
+  const backup=await navigator.credentials.create({publicKey:registrationOptions(enrolment.options)});
+  if(!backup)throw new Error('Backup passkey creation was cancelled.');
+  await post('passkey/backup/verify',{response:credentialJSON(backup)});
+  status('Backup passkey added. Your original passkey is still valid. Keep both safe.');
+ });
  byId('pair-form').onsubmit=e=>{
   e.preventDefault();
   action(async()=>{
