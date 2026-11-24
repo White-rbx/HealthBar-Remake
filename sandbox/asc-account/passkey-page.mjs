@@ -33,6 +33,8 @@ export function passkeyPage(siteKey){
   '<div class="cf-turnstile" data-sitekey="'+siteKey+'" data-action="asc_recover"></div>',
   '<button type="submit">Recover with a new passkey</button></form></section>',
   '<section id="account" hidden><h2>Signed in</h2><p id="identity"></p>',
+  '<p class="small">You can register a backup passkey on a second trusted device. For safety, first reauthenticate with your current passkey.</p>',
+  '<button id="add-backup-passkey" class="secondary">Add a backup passkey</button>',
   '<div id="recovery-codes" hidden role="region" aria-label="Recovery codes">',
   '<p class="warning">Save these eight recovery codes offline now. They appear once, and each can be used only once. Never share them.</p>',
   '<pre id="recovery-code-list"></pre></div>',
