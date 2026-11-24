@@ -11,6 +11,6 @@
   },
   "scripts": {
     "build:passkey": "esbuild ./worker.mjs --bundle --platform=browser --target=es2022 --format=esm --loader:.txt=text --external:node:crypto --external:node:buffer --outfile=./dist/account-passkey-worker.mjs",
-    "test:passkey": "node --test ./passkey.test.mjs"
+    "test:passkey": "node --test ./passkey.test.mjs ./login-pages.test.mjs"
   }
 }
