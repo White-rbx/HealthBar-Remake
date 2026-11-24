@@ -12,4 +12,5 @@ label{display:block;margin:12px 0}.choice{display:flex;gap:10px;align-items:flex
 #status{color:#a6d5ff;min-height:1.5rem;white-space:pre-wrap}
 .subtitle{color:#a7b7db}.warning{background:#312723;border-left:3px solid #c6a56c;padding:12px;border-radius:8px}
 .small{font-size:.83rem;color:#bdcbee}button.secondary{background:#243859;color:#c3d5f2}
+#recovery-code-list{background:#070c18;border:1px solid #7182a8;border-radius:8px;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;line-height:1.8;font-size:.93rem}
 footer{margin-top:20px;color:#95a6c8;font-size:.85rem}
