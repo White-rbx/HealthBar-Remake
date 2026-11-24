@@ -110,3 +110,13 @@ The STAGING `GET /health` endpoint reports explicit activation status and the HT
 
 If the live QA test fails, remove `ASC_ACCOUNT_LAUNCH_STATE` from the Worker settings to fail close, or set its value to `locked`. Do not disable the underlying session, TOTP, rate-limit, Turnstile, or D1 protections to make tests pass. Never touch Production, historical Cases or the main branch.
 
+## LIVE QA KDF rollback and status — 2026-11-24
+
+**This section supersedes the earlier PBKDF2 readiness and activation notes.** The enabled Cloudflare staging Worker was tested through GitHub Actions [Consolidated Release Track QA run 45358695178]. The public QA landing page and health checks succeeded; however, a *synthetic nonexistent-account login* returned HTTP **503** rather than HTTP **401**. No account was created and no real user password or TOTP code was transmitted. The Worker currently maps unexpected exceptions to `503 service_unavailable`, so the response alone does not identify the exception class.
+
+Cloudflare's production Worker runtime has a documented 100,000-iteration ceiling for WebCrypto PBKDF2 (workerd issue 1346), conflicting with OWASP's 600,000-round PBKDF2-HMAC-SHA256 guidance. This is a strong likely explanation for the observed 503; do not claim the root exception has been captured without logs. Local Miniflare/workerd accepting PBKDF2 600,000 was **not** proof that Cloudflare's deployed runtime supported it.
+
+To fail close and preserve secure password hashing, `ASC_ACCOUNT_LAUNCH_STATE` was **removed** from the Cloudflare Account QA Worker settings immediately after the failed live smoke test. Secrets, rate-limit, QA D1 and `ASC_ACCOUNT_MODE` remain unchanged. `sandbox/asc-account/security.mjs` and hash-format tests were reverted to the original stronger `scrypt(N=32768,r=8,p=3)` design for an appropriate runtime. That six-module Worker bundle was redeployed to QA while **locked**. Existing Account QA D1 has not enrolled any real users in this attempt.
+
+**Do not activate this password-based system on Workers Free without evidence that the selected secure KDF completes inside the actual 10 ms Worker CPU budget.** Do not silently reduce PBKDF2 to 100k or remove slow password hashing. Next safe architecture choices to review: a paid Worker plan that can execute the reviewed scrypt cost (requires operator billing approval), or a separately designed and verified passwordless/passkey/OIDC provider authentication flow that does not rely on heavy password KDF inside the Free Worker. Either option requires end-to-end synthetic registration/login/2SV/pairing tests before Roblox Mobile enrollment and a careful rollout.
+
