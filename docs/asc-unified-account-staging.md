@@ -88,3 +88,13 @@ A new GitHub Actions test (`sandbox/asc-account/live-provisioning.test.mjs`) iss
 
 Activation checklist (not yet executed): (1) finish synthetic account security/runtime and external fail-closed tests, (2) add `ACCOUNT_TOTP_KEY` privately to the **staging-only** Worker, (3) confirm the full real Worker remains bound only to the isolated QA D1, (4) configure `ASC_ACCOUNT_LAUNCH_STATE=isolated-test-enabled` only when ready for limited QA enrollment, (5) test actual server-verified Turnstile registration, website login, TOTP, pairing, session revocation, and Roblox Mobile Loader, (6) keep Production unchanged. Public Ban Policy Tester UserId `8728964745` is not an ArcScriptCenter Account ID.
 
+## Password KDF readiness and explicit QA activation — 2026-11-24
+
+Cloudflare now lists `ACCOUNT_TOTP_KEY` (encrypted Worker Secret) alongside `ACCOUNT_TURNSTILE_SECRET`; their values were **not** retrieved. The account QA D1 `asc-stage1684-identity-sandbox-20261117` had **zero** registered accounts when the KDF was revised. All work remains staging-only.
+
+Cloudflare Workers Free has a 10 ms CPU-time budget per invocation. Native Node.js `scrypt(N=32768,r=8,p=3)` may exceed this. The Account QA password functions now use Worker-native Web Crypto `PBKDF2-HMAC-SHA256` with 600,000 iterations, a new independent 128-bit random salt for each password, and 256-bit output. Hash format: `pbkdf2-sha256-600000:<32 hex salt>:<64 hex digest>`. This follows the OWASP PBKDF2 guidance. Do not reduce the work factor or switch to unsalted SHA-256 to evade CPU limits. Benchmark real staging CPU/runtime before accepting any users.
+
+A separate `ASC_ACCOUNT_LAUNCH_STATE=isolated-test-enabled` setting remains **absent** until the owner requests isolated enrollment after QA checks pass. The real Account Worker continues serving only the fail-closed Provisioning page (non-authenticating) while locked. When active, `GET /health` reports explicit QA readiness; a `X-Robots-Tag: noindex` header discourages search indexing. Live GitHub Actions smoke is mode-aware: checks locked state or enabled state without sending credentials or creating accounts.
+
+Do not automatically interpret a Turnstile widget, PBKDF2 test success, or Cloudflare upload as proof that human Registration, Login, 2SV, pairing, revocation and mobile Executor flows work. Perform a **limited test session** before inviting additional QA users. Tester Roblox UserId `8728964745` remains only a separate Ban Policy QA allowlist entry, not an ArcScriptCenter Account identity proof.
+
