@@ -63,7 +63,21 @@ test('Cloudflare workerd bundled Passkey QA has strict pages, challenge flow and
   assert.match(html,/id="recovery-codes"/);
   assert.match(html,/if you lose all passkeys and recovery codes/i);
   assert.doesNotMatch(html,/there is no account recovery yet/i);
-  assert.doesNotMatch(html,/type=["']password["']|autocomplete=["']current-password["']/i);
+  assert.match(html,/arcscriptcenter-login/);
+  assert.match(html,/id="landing"/);
+  assert.match(html,/id="tab-account"/);
+  assert.match(html,/id="open-signin"/);
+  assert.match(html,/<h2>Sign In page<\/h2>/);
+  assert.match(html,/<h2>MyAccount<\/h2>/);
+  // Password layout is visible but strictly disabled; only Passkey sends credentials.
+  assert.match(html,/type="password"[^>]*disabled/i);
+  assert.doesNotMatch(html,/name="password"|autocomplete="current-password"/i);
+  for(const path of ['/login','/signin','/myaccount']){
+   const page=await fetcher(path);
+   assert.equal(page.status,200,path);
+   assert.match(await page.text(),/arcscriptcenter-login/);
+  }
+  assert.equal((await fetcher('/not-a-qa-page')).status,404);
 
   const script=await fetcher('/passkey-client.js');
   assert.equal(script.status,200);
