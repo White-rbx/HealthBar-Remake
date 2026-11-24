@@ -121,7 +121,13 @@ test('synthetic P-256 passkey registers, signs in and rejects replayed assertion
  };
  const finish=await f.service.handle('passkey/register/verify',{response:registration},f.req(flow),f.env);
  assert.equal(finish.status,200,await finish.clone().text());
- const account=(await finish.json()).account;
+ const registrationResult=await finish.json();
+ const account=registrationResult.account;
+ const initialCodes=registrationResult.recoveryCodes;
+ assert.equal(initialCodes.length,8);
+ assert.equal(new Set(initialCodes).size,8);
+ assert.ok(initialCodes.every(x=>/^[0-9a-f]{32}$/.test(x)));
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_passkey_recovery_codes').get().n,8);
  assert.equal(account.username,'newpasskeyuser');
  assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_accounts').get().n,1);
  assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_passkeys').get().n,1);
@@ -157,4 +163,58 @@ test('synthetic P-256 passkey registers, signs in and rejects replayed assertion
  assert.equal(f.sqlite.prepare('SELECT counter FROM asc_account_passkeys').get().counter,1);
  const replay=await f.service.handle('passkey/login/verify',{response:assertion},f.req(loginFlow),f.env);
  assert.equal(replay.status,410);
+
+ // Recovery requires the *actual* stored offline code, plus Turnstile and a
+ // newly user-verified WebAuthn credential. This synthetic flow uses no users.
+ f.sqlite.prepare(`INSERT INTO asc_account_sessions(id,account_id,digest,scope,created_at,expires_at)
+ VALUES(?,?,?,?,?,?)`).run('old-loader',account.id,'e'.repeat(64),'loader',1795440001,1795449000);
+ f.sqlite.prepare(`INSERT INTO asc_account_cases(id,account_id,kind,reason,created_at)
+ VALUES(?,?,?,?,?)`).run('qa-case-preserve',account.id,'feedback','Preserved case',1795440001);
+ const wrong=await f.service.handle('passkey/recovery/options',{
+  username:'NewPasskeyUser',code:'0'.repeat(32),presence:true,turnstile:'synthetic_qa_token',
+ },f.req(),f.env);
+ assert.equal(wrong.status,401);
+ const recoveryStart=await f.service.handle('passkey/recovery/options',{
+  username:'NewPasskeyUser',code:initialCodes[0],presence:true,turnstile:'synthetic_qa_token',
+ },f.req(),f.env);
+ assert.equal(recoveryStart.status,200,await recoveryStart.clone().text());
+ const recoveryFlow=flowFrom(recoveryStart);
+ const recoveryOptions=(await recoveryStart.json()).options;
+ assert.equal(recoveryOptions.rp.id,rpID);
+ const nextCredId=Buffer.from(Array.from({length:32},(_,i)=>i+70));
+ const nextLength=Buffer.alloc(2);nextLength.writeUInt16BE(nextCredId.length);
+ const nextAuth=authData(hash,0x45,0,concat(Buffer.alloc(16),nextLength,nextCredId,cose));
+ const nextAttestation=cbor(new Map([['fmt','none'],['attStmt',new Map()],['authData',nextAuth]]));
+ const nextClient=encoder.encode(JSON.stringify({
+  type:'webauthn.create',challenge:recoveryOptions.challenge,origin,crossOrigin:false,
+ }));
+ const recoveryCredential={
+  id:b64(nextCredId),rawId:b64(nextCredId),type:'public-key',authenticatorAttachment:'platform',
+  response:{clientDataJSON:b64(nextClient),attestationObject:b64(nextAttestation),transports:['internal']},
+  clientExtensionResults:{},
+ };
+ const restored=await f.service.handle('passkey/recovery/verify',{
+  response:recoveryCredential,
+ },f.req(recoveryFlow),f.env);
+ assert.equal(restored.status,200,await restored.clone().text());
+ const restoredData=await restored.json();
+ assert.equal(restoredData.account.id,account.id);
+ assert.equal(restoredData.recoveryCodes.length,8);
+ assert.ok(restoredData.recoveryCodes.every(x=>!initialCodes.includes(x)));
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_passkeys').get().n,1);
+ assert.equal(f.sqlite.prepare('SELECT credential_id FROM asc_account_passkeys').get().credential_id,b64(nextCredId));
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_passkey_recovery_codes').get().n,8);
+ assert.equal(f.sqlite.prepare('SELECT revoked_at FROM asc_account_sessions WHERE id=?')
+  .get('old-loader').revoked_at,1795440001);
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_cases WHERE id=?')
+  .get('qa-case-preserve').n,1);
+ assert.equal(f.sqlite.prepare('SELECT epoch FROM asc_accounts WHERE id=?').get(account.id).epoch,1);
+ const oldCode=await f.service.handle('passkey/recovery/options',{
+  username:'NewPasskeyUser',code:initialCodes[1],presence:true,turnstile:'synthetic_qa_token',
+ },f.req(),f.env);
+ assert.equal(oldCode.status,401,'all previous recovery codes are invalidated');
+ const recoveryReplay=await f.service.handle('passkey/recovery/verify',{
+  response:recoveryCredential,
+ },f.req(recoveryFlow),f.env);
+ assert.equal(recoveryReplay.status,410,'recovered challenge cannot be replayed');
 });
