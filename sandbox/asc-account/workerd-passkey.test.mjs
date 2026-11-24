@@ -32,8 +32,9 @@ test('Cloudflare workerd bundled Passkey QA has strict pages, challenge flow and
    if(request.url==='https://challenges.cloudflare.com/turnstile/v0/siteverify'){
     const input=await request.json();
     assert.equal(input.secret,'synthetic-secret');
-    return MockResponse.json({success:input.response==='synthetic-valid',
-     action:'asc_register',hostname:new URL(origin).hostname});
+    return MockResponse.json({success:['synthetic-valid','synthetic-recover'].includes(input.response),
+     action:input.response==='synthetic-recover'?'asc_recover':'asc_register',
+     hostname:new URL(origin).hostname});
    }
    throw Error('Unexpected external request in Passkey QA test');
   },
@@ -57,11 +58,17 @@ test('Cloudflare workerd bundled Passkey QA has strict pages, challenge flow and
   const html=await page.text();
   assert.match(html,/passkey-login/);
   assert.match(html,/cf-turnstile/);
+  assert.match(html,/id="add-backup-passkey"/);
+  assert.match(html,/id="recovery-form"/);
+  assert.match(html,/id="recovery-codes"/);
   assert.doesNotMatch(html,/type=["']password["']|autocomplete=["']current-password["']/i);
 
   const script=await fetcher('/passkey-client.js');
   assert.equal(script.status,200);
-  assert.match(await script.text(),/navigator\.credentials\.get/);
+  const scriptContent=await script.text();
+  assert.match(scriptContent,/navigator\.credentials\.get/);
+  assert.match(scriptContent,/passkey\/backup\/verify-current/);
+  assert.match(scriptContent,/passkey\/recovery\/verify/);
   const css=await fetcher('/passkey-style.css');
   assert.equal(css.status,200);
   assert.match(await css.text(),/color-scheme:dark/);
@@ -73,6 +80,18 @@ test('Cloudflare workerd bundled Passkey QA has strict pages, challenge flow and
   assert.equal(legacy.status,403);
   assert.equal((await legacy.json()).code,'password_flow_disabled');
 
+  const backupUnauth=await fetcher('/api/v1/accounts/passkey/backup/options',{
+   method:'POST',headers,body:'{}',
+  });
+  assert.equal(backupUnauth.status,401);
+  assert.equal((await backupUnauth.json()).code,'session_expired');
+  const badRecovery=await fetcher('/api/v1/accounts/passkey/recovery/options',{
+   method:'POST',headers,body:JSON.stringify({
+    username:'nosuchuser',code:'0'.repeat(32),presence:true,turnstile:'synthetic-recover',
+   }),
+  });
+  assert.equal(badRecovery.status,401);
+  assert.equal((await badRecovery.json()).code,'recovery_failed');
   const begin=await fetcher('/api/v1/accounts/passkey/login/options',{
    method:'POST',headers,body:'{}',
   });
