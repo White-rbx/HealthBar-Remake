@@ -13,6 +13,7 @@ on:
       - 'migrations/asc_unified_account_ISOLATED_QA_ONLY.sql'
       - 'migrations/asc_passkey_ISOLATED_QA_ONLY.sql'
       - 'migrations/asc_passkey_recovery_ISOLATED_QA_ONLY.sql'
+      - 'migrations/asc_passkey_backup_ISOLATED_QA_ONLY.sql'
       - 'docs/asc-unified-account-staging.md'
       - 'sandbox/ban-v2-*'
       - 'sandbox/banned-token-*.mjs'
