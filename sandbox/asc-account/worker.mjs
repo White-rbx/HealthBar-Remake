@@ -21,7 +21,7 @@ const asset=v=>v===null||typeof v==='string'&&/^[1-9][0-9]{0,15}$/.test(v);
 const token=()=>randomHex(32);
 const securityHeaders={
  'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY',
- 'Referrer-Policy':'no-referrer',
+ 'Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive',
 };
 const json=(status,body,headers={})=>Response.json(body,{status,headers:{...securityHeaders,...headers}});
 const fail=(status,code)=>json(status,{ok:false,code});
@@ -112,6 +112,9 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
   const url=new URL(request.url);
   if(url.origin!==origin||url.search||env.ASC_ACCOUNT_MODE!=='isolated-qa')return fail(404,'not_found');
   if(!accountQAReady(env))return provisioning.fetch(request);
+  if(request.method==='GET'&&url.pathname==='/health')
+   return ok({service:'ArcScriptCenter Account QA',status:'isolated-test-enabled',
+    environment:'qa',registrationEnabled:true,loginEnabled:true});
   if(request.method==='GET'&&url.pathname==='/'){
    const nonce=randomHex(16);
    return new Response(website(siteKey(env),nonce),{headers:{...securityHeaders,'Content-Type':'text/html; charset=utf-8',
