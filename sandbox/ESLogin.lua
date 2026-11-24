@@ -525,6 +525,7 @@ local messages = {
     session_expired = "Session expired. Sign in again.",
     no_session = "Tap Login, then use your passkey in the browser.",
     account_qa_provisioning = "STAGING sign-in is locked. The website shows the current status.",
+    tester_preview_only = "Tester UI only. Login is locked; no account or password will be sent.",
     unavailable = "Account service unavailable. Try Login again.",
     transport_unavailable = "This client cannot reach Account QA.",
     rate_limited = "Too many requests. Wait and try again.",
