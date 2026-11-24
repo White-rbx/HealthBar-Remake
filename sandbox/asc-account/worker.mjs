@@ -93,6 +93,7 @@ function accountQAReady(env){
  // A secret provisioned later must never turn on public credential collection by itself.
  // QA launch requires an explicit operator-controlled rollout setting.
  return env.ASC_ACCOUNT_LAUNCH_STATE==='isolated-test-enabled'
+  && (env.ASC_ACCOUNT_AUTH_MODE==='passkey'||env.ASC_ACCOUNT_AUTH_MODE==='legacy-password-qa')
   && typeof env.ACCOUNT_DB?.prepare==='function'
   && typeof env.ACCOUNT_DB?.batch==='function'
   && typeof env.ACCOUNT_RATE?.limit==='function'
@@ -102,7 +103,8 @@ function accountQAReady(env){
   && siteKey(env)!=='';
 }
 
-const webOps=new Set(['register','login','factor','pair/approve','security/sessions','security/revoke','security/setup','security/enable',
+const webOps=new Set(['passkey/register/options','passkey/register/verify','passkey/login/options','passkey/login/verify',
+ 'register','login','factor','pair/approve','security/sessions','security/revoke','security/setup','security/enable',
  'security/disable','security/password','profile','moderation']);
 const loaderOps=new Set(['pair/start','pair/poll','session','heartbeat','history','appeal','feedback','logout']);
 const commonOps=new Set(['session','history','appeal','feedback','logout']);
@@ -112,9 +114,16 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
   const url=new URL(request.url);
   if(url.origin!==origin||url.search||env.ASC_ACCOUNT_MODE!=='isolated-qa')return fail(404,'not_found');
   if(!accountQAReady(env))return provisioning.fetch(request);
+  const passkeyMode=env.ASC_ACCOUNT_AUTH_MODE==='passkey';
   if(request.method==='GET'&&url.pathname==='/health')
    return ok({service:'ArcScriptCenter Account QA',status:'isolated-test-enabled',
-    environment:'qa',registrationEnabled:true,loginEnabled:true});
+    environment:'qa',authMode:passkeyMode?'passkey':'legacy-password-qa',
+    registrationEnabled:true,loginEnabled:true});
+  if(passkeyMode&&request.method==='GET'){
+   const {servePasskeyPage}=await import('./passkey-static.mjs');
+   const page=servePasskeyPage(url.pathname,siteKey(env));
+   if(page)return page;
+  }
   if(request.method==='GET'&&url.pathname==='/'){
    const nonce=randomHex(16);
    return new Response(website(siteKey(env),nonce),{headers:{...securityHeaders,'Content-Type':'text/html; charset=utf-8',
@@ -131,6 +140,18 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
    const db=env.ACCOUNT_DB,now=clock(),ip=request.headers.get('CF-Connecting-IP')||'unknown';
    if(!await rate(env,op+':ip:'+ip))return fail(429,'rate_limited');
    const body=await parseBody(request);
+   if(passkeyMode&&['register','login','factor','security/password','security/setup',
+      'security/enable','security/disable','security/revoke','moderation'].includes(op))
+    return fail(403,'password_flow_disabled');
+   if(op.startsWith('passkey/')){
+    if(!passkeyMode||!web)return fail(404,'not_found');
+    const {createPasskeyCeremonies}=await import('./passkey.mjs');
+    const service=createPasskeyCeremonies({
+     origin,clock,rate,issueSession,
+     siteverify:(r,b,e,o)=>siteverify(r,b,e,o,fetcher),
+    });
+    return service.handle(op,body,request,env);
+   }
    if(op==='register'||op==='login'){
     const {username,password}=body;
     if(typeof username!=='string'||!loginName.test(username)||!loginPassword(password))return fail(400,'invalid_input');
