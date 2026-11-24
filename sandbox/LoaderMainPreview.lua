@@ -18,6 +18,14 @@
   anyway you can see there's banned users. I'm not telling you how to- nah :3
 ]]
 
+-- An explicit UI-only Tester entrypoint. This returns BEFORE the main Loader,
+-- Ban Policy, Account session, and SetUp bootstrap. Never treat a local UserId
+-- check as proof of an authenticated ArcScriptCenter account.
+if (...) == "account_qa_tester" then
+    local source = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/ESLoginTesterPreview.lua"
+    return assert(loadstring(game:HttpGet(source)))()
+end
+
 -- =========================================
 -- SERIAL STARTUP (prevent duplicate SetUp/Loader windows)
 -- =========================================
