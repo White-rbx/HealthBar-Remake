@@ -78,3 +78,13 @@ The `arcscriptcenter-account-qa` Worker now binds this QA D1 as `ACCOUNT_DB`, ha
 
 Before accepting any accounts: verify the live page and 503 fail-closed path from an external client; run isolated synthetic registration/login, 2SV, pairing, client session, revoke and moderation smoke tests with the D1 binding; measure actual Worker scrypt CPU limits; then test mobile portrait/landscape. Public Ban Policy Tester `8728964745` is unrelated to account identity, and no legacy cases were modified. Production was not changed.
 
+## Locked rollout switch and external HTTP verification — 2026-11-24
+
+The actual Account QA Worker has been redeployed from GitHub with an additional explicit operator-controlled guard. Even if an encrypted `ACCOUNT_TOTP_KEY` is attached, the credential-collecting Registration/Login UI stays **disabled** unless `ASC_ACCOUNT_LAUNCH_STATE` is explicitly set to `isolated-test-enabled`. This is separate from `ASC_ACCOUNT_MODE=isolated-qa`, D1, rate-limit and Turnstile bindings.
+
+`ACCOUNT_TOTP_KEY` has **not** been set by this rollout. Cloudflare lists `ACCOUNT_TURNSTILE_SECRET` as the only stored secret as of the check. The key must be generated securely, saved as a Cloudflare Worker **Secret** (not plain-text variable), and must never be pasted into ChatGPT, Roblox Luau, GitHub, issue comments, logs, or public pages. Its required form is 64 lowercase hexadecimal characters representing 32 random bytes. Do not use a human-memorable password or reuse an existing encryption key.
+
+A new GitHub Actions test (`sandbox/asc-account/live-provisioning.test.mjs`) issues requests to the deployed STAGING hostname without any real accounts or credentials. While the rollout switch is absent it checks the safe provisioning HTML, HTTP 503 for `POST /api/v1/accounts/pair/start`, and the `/health` status. This test should be replaced with authenticated synthetic smoke checks **before** the rollout switch is enabled.
+
+Activation checklist (not yet executed): (1) finish synthetic account security/runtime and external fail-closed tests, (2) add `ACCOUNT_TOTP_KEY` privately to the **staging-only** Worker, (3) confirm the full real Worker remains bound only to the isolated QA D1, (4) configure `ASC_ACCOUNT_LAUNCH_STATE=isolated-test-enabled` only when ready for limited QA enrollment, (5) test actual server-verified Turnstile registration, website login, TOTP, pairing, session revocation, and Roblox Mobile Loader, (6) keep Production unchanged. Public Ban Policy Tester UserId `8728964745` is not an ArcScriptCenter Account ID.
+
