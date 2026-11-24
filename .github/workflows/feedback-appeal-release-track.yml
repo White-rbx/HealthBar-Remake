@@ -11,6 +11,7 @@ on:
       - 'sandbox/ESLogin.lua'
       - 'sandbox/FunctionTwoAccountPreview.lua'
       - 'migrations/asc_unified_account_ISOLATED_QA_ONLY.sql'
+      - 'migrations/asc_passkey_ISOLATED_QA_ONLY.sql'
       - 'docs/asc-unified-account-staging.md'
       - 'sandbox/ban-v2-*'
       - 'sandbox/banned-token-*.mjs'
@@ -91,6 +92,11 @@ jobs:
         run: node --test sandbox/asc-account/provisioning-worker.test.mjs
       - name: Live isolated Account QA provisioning smoke (no user credentials)
         run: node --test sandbox/asc-account/live-provisioning.test.mjs
+      - name: Passkey isolated QA cryptographic ceremonies and bundle build
+        run: |
+          npm install --prefix sandbox/asc-account --ignore-scripts --no-audit --no-fund
+          npm run test:passkey --prefix sandbox/asc-account
+          npm run build:passkey --prefix sandbox/asc-account
       - name: ArcScriptCenter account Worker HTTP and D1 in workerd
         run: |
           export ASC_ACCOUNT_WORKERD_PREFIX="$RUNNER_TEMP/asc-account-workerd"
