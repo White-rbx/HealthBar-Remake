@@ -18,6 +18,8 @@ const plan=()=>({accountScope:'isolated-account-qa',transport:'Cloudflare Worker
  originWiring:'fixed-explicit-createAccountWorker-origin',
  access:{protected:true,destination:'preview_worker',workerId:PIN.workerId,reviewed:true},
  previewD1:{type:'d1',id:'11111111-2222-3333-4444-555555555555',schemaVerified:true,syntheticOnly:true},
+ turnstile:{hostname:'private-arcscriptcenter-account-qa.kogpasan14.workers.dev',testOnly:true,actions:['asc_register','asc_recover']},
+ previewRateLimiter:{isolated:true},syntheticSecretsOnly:true,
  defaultLaunchState:'locked',initialAuthMode:null,
  usesRealUsers:false,usesProductionBindings:false,createsPublicRegistration:false,
  editsDeployedTraffic:false});
@@ -58,6 +60,13 @@ test('blocks dynamic host trust, wrong origin and HTTP preview',()=>{
  let p=plan();p.originWiring='trust-request-host';bad(()=>verifyPrivatePreviewPlan(p,baseline()),/origin\/RP ID/);
  p=plan();p.origin=PIN.canonicalOrigin;bad(()=>verifyPrivatePreviewPlan(p,baseline()),/separate QA preview/);
  p=plan();p.origin=p.origin.replace('https:','http:');bad(()=>verifyPrivatePreviewPlan(p,baseline()),/HTTPS/);
+});
+test('blocks missing preview-specific Turnstile hostname/actions and secret isolation',()=>{
+ let p=plan();p.turnstile.hostname='arcscriptcenter-account-qa.kogpasan14.workers.dev';
+ bad(()=>verifyPrivatePreviewPlan(p,baseline()),/Turnstile/);
+ p=plan();p.turnstile.actions=['asc_register'];bad(()=>verifyPrivatePreviewPlan(p,baseline()),/Turnstile/);
+ p=plan();p.previewRateLimiter.isolated=false;bad(()=>verifyPrivatePreviewPlan(p,baseline()),/limiter/);
+ p=plan();p.syntheticSecretsOnly=false;bad(()=>verifyPrivatePreviewPlan(p,baseline()),/secret/);
 });
 test('blocks any premature enrollment, login activation, Production or traffic modification',()=>{
  for(const [key,value] of [['defaultLaunchState','isolated-test-enabled'],['initialAuthMode','passkey'],
