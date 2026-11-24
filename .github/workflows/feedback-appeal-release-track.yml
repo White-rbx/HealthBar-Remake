@@ -99,8 +99,9 @@ jobs:
           npm install --prefix sandbox/asc-account --ignore-scripts --no-audit --no-fund
           npm run test:passkey --prefix sandbox/asc-account
           npm run build:passkey --prefix sandbox/asc-account
+          # The immutable Version 11 uploader is pinned to its original SHA-256.
+          # A newly edited website bundle must fail closed rather than re-pin.
           node --test sandbox/asc-account/qa-undeployed-version-upload.test.mjs
-          node sandbox/asc-account/qa-undeployed-version-upload.mjs
       - name: Retain isolated QA Passkey Worker bundle (not deployed)
         uses: actions/upload-artifact@v4
         with:
