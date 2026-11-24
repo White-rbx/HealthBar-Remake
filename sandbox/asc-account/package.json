@@ -10,7 +10,7 @@
     "esbuild": "0.27.0"
   },
   "scripts": {
-    "build:passkey": "esbuild ./worker.mjs --bundle --platform=browser --target=es2022 --format=esm --external:node:crypto --external:node:buffer --outfile=./dist/account-passkey-worker.mjs",
+    "build:passkey": "esbuild ./worker.mjs --bundle --platform=browser --target=es2022 --format=esm --loader:.txt=text --external:node:crypto --external:node:buffer --outfile=./dist/account-passkey-worker.mjs",
     "test:passkey": "node --test ./passkey.test.mjs"
   }
 }
