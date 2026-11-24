@@ -1,4 +1,4 @@
-import {readJson,BanError} from '../ban-v2-integration.mjs';
+import {readJson,BanError} from './request.mjs';
 import {accountProfile,validImage} from './moderation.mjs';
 import {displayTotp,loginPassword,matchingTotpStep,newTotpSecret,passwordHash,passwordMatches,randomHex,readTotp,sealTotp,sha,strongPassword} from './security.mjs';
 import {website} from './website.mjs';
