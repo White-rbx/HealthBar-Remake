@@ -230,7 +230,10 @@ export function createPasskeyCeremonies({
      return reject(400,'passkey_verification_failed',{clearFlow:true});
     const publicKey=Buffer.from(credential.publicKey).toString('base64url');
     if(!publicKey||publicKey.length>2048)return reject(400,'passkey_verification_failed',{clearFlow:true});
-    const [used,added]=await db.batch([
+    // A successful recovery replaces old credentials, revokes sessions, and rotates
+    // every remaining recovery code. No old credential can sign in afterward.
+    const codes=recoveryCodes(),digests=await Promise.all(codes.map(sha));
+    const [used,added,oldKeys,oldCodes,...reset]=await db.batch([
      db.prepare(`DELETE FROM asc_account_passkey_recovery_codes
       WHERE account_id=? AND code_digest=? RETURNING code_digest`)
       .bind(flow.account_id,flow.recovery_digest),
@@ -239,6 +242,18 @@ export function createPasskeyCeremonies({
       SELECT ?1,?2,?3,?4,?5,?6 WHERE changes()=1 RETURNING credential_id`)
       .bind(credential.id,flow.account_id,publicKey,credential.counter,
        limitedTransports(body.response.response.transports),now),
+     db.prepare(`DELETE FROM asc_account_passkeys
+      WHERE account_id=?1 AND credential_id<>?2
+      AND EXISTS(SELECT 1 FROM asc_account_passkeys WHERE account_id=?1 AND credential_id=?2)`)
+      .bind(flow.account_id,credential.id),
+     db.prepare(`DELETE FROM asc_account_passkey_recovery_codes
+      WHERE account_id=?1 AND EXISTS(SELECT 1 FROM asc_account_passkeys
+       WHERE credential_id=?2 AND account_id=?1)`).bind(flow.account_id,credential.id),
+     ...digests.map(digest=>db.prepare(`
+      INSERT INTO asc_account_passkey_recovery_codes(account_id,code_digest,created_at)
+      SELECT ?1,?2,?3 WHERE EXISTS(SELECT 1 FROM asc_account_passkeys
+       WHERE credential_id=?4 AND account_id=?1) RETURNING code_digest
+     `).bind(flow.account_id,digest,now,credential.id)),
      db.prepare(`UPDATE asc_account_sessions SET revoked_at=?1
       WHERE account_id=?2 AND EXISTS(SELECT 1 FROM asc_account_passkeys
        WHERE credential_id=?3 AND account_id=?2)`)
@@ -248,14 +263,15 @@ export function createPasskeyCeremonies({
        WHERE credential_id=?2 AND account_id=?1)`)
       .bind(flow.account_id,credential.id),
     ]);
-    if(!used.results?.length||!added.results?.length)
+    if(!used.results?.length||!added.results?.length||
+       reset.slice(0,digests.length).some(x=>!x.results?.length))
      return reject(409,'recovery_failed',{clearFlow:true});
     const account=await db.prepare('SELECT * FROM asc_accounts WHERE id=?')
      .bind(flow.account_id).first();
     const session=account&&await issueSession(db,account,'web',now,28800);
     if(!session)return reject(503,'session_unavailable',{clearFlow:true});
-    return approve({account:{id:account.id,username:account.username,nickname:account.nickname}},
-     {issuedSession:session,clearFlow:true});
+    return approve({account:{id:account.id,username:account.username,nickname:account.nickname},
+     recoveryCodes:codes},{issuedSession:session,clearFlow:true});
    }
    return reject(404,'not_found');
   },
