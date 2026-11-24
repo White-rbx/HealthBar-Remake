@@ -23,6 +23,7 @@ const section = (source, start, end) => {
 const files = {
  entry, client, server, topbar,
  accountUi: read('ESLogin.lua'), accountClient: read('ASCAccountClientPreview.lua'),
+ testerUi: read('ESLoginTesterPreview.lua'), testerEntry: read('ASCAccountTesterPreview.lua'),
  boot: section(main, 'local policyMode =', '-- ASC BAN V2 BOOTSTRAP END') + '\nreturn policyMode',
  waiting: section(rejoiner, 'local function canContinue()', '-- Continue (ONE TIME)') + '\nreturn canContinue',
  warning: section(main, '-- ASC POLICY WARNING BEGIN', '-- ASC POLICY WARNING END') + '\nsetupWarningReady = true; return syncPolicyWarning',
@@ -1002,5 +1003,63 @@ table.clear(global)
 mode='saved'
 assert(run('boot',env,'account_qa')=='account_qa' and launches==3)
 assert(global.__ASC_ACCOUNT_QA==account and global.__ASC_BAN_V2_CLIENT==account)
+`);
+});
+
+test('Luau VM: tester identity gates a UI-only ESLogin and never authenticates or continues Loader',()=>{
+ luau(String.raw`
+local player={UserId=0}
+local loads=0
+local uiOpened=0
+local env={
+ game={
+  GetService=function(_,name)
+   assert(name=='Players')
+   return {LocalPlayer=player}
+  end,
+  HttpGet=function(_,url)
+   loads+=1
+   assert(url:match('/ESLogin%.lua$'))
+   return 'tester-ui-source'
+  end,
+ },
+ loadstring=function(source)
+  assert(source=='tester-ui-source')
+  return function(client,parent,reason)
+   uiOpened+=1
+   assert(parent==nil and reason=='tester_preview_only')
+   assert(client.testerPreview==true and client.accountMode==false)
+   assert(client.website:match('/signin$'))
+   assert(client.canRemember()==false and client.hasSession()==false)
+   assert(client.refresh()==nil and client.profile()==nil)
+   local pair,why=client.begin()
+   assert(pair==nil and why=='tester_preview_only')
+   local ok=pcall(client.poll)
+   assert(ok==false,'no pairing is permitted')
+   return true -- even a fake successful UI return must not unlock Loader.
+  end
+ end,
+}
+assert(run('testerUi',env)==false)
+assert(loads==0 and uiOpened==0,'non-testers cannot load ESLogin')
+player.UserId=8728964745
+assert(run('testerUi',env)==false)
+assert(loads==1 and uiOpened==1,'tester sees one mock GUI and no account auth')
+local entryLoads=0
+local entryEnv={
+ game={HttpGet=function(_,url)
+  entryLoads+=1
+  assert(url:match('/LoaderMainPreview%.lua$'))
+  return 'main-source'
+ end},
+ loadstring=function(source)
+  assert(source=='main-source')
+  return function(mode)
+   assert(mode=='account_qa_tester')
+   return false
+  end
+ end,
+}
+assert(run('testerEntry',entryEnv)==false and entryLoads==1)
 `);
 });
