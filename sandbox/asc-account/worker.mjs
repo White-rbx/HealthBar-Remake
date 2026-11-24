@@ -71,7 +71,7 @@ async function rate(env,key){
  return (await limiter.limit({key})).success===true;
 }
 
-async function siteverify(request,body,env,origin,fetcher){
+async function siteverify(request,body,env,origin,fetcher,action='asc_register'){
  if(typeof env.ACCOUNT_TURNSTILE_SECRET!=='string'||!env.ACCOUNT_TURNSTILE_SITE_KEY)return null;
  if(typeof body.turnstile!=='string'||body.turnstile.length<1||body.turnstile.length>2048)return false;
  const reply=await fetcher('https://challenges.cloudflare.com/turnstile/v0/siteverify',{
@@ -80,7 +80,7 @@ async function siteverify(request,body,env,origin,fetcher){
  });
  if(!reply.ok)return null;
  const verified=await reply.json();
- return verified.success===true&&verified.hostname===new URL(origin).hostname&&verified.action==='asc_register';
+ return verified.success===true&&verified.hostname===new URL(origin).hostname&&verified.action===action;
 }
 
 function siteKey(env){
@@ -103,7 +103,8 @@ function accountQAReady(env){
   && siteKey(env)!=='';
 }
 
-const webOps=new Set(['passkey/register/options','passkey/register/verify','passkey/login/options','passkey/login/verify',
+const webOps=new Set(['passkey/register/options','passkey/register/verify',
+ 'passkey/recovery/options','passkey/recovery/verify','passkey/login/options','passkey/login/verify',
  'register','login','factor','pair/approve','security/sessions','security/revoke','security/setup','security/enable',
  'security/disable','security/password','profile','moderation']);
 const loaderOps=new Set(['pair/start','pair/poll','session','heartbeat','history','appeal','feedback','logout']);
@@ -148,7 +149,7 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
     const {createPasskeyCeremonies}=await import('./passkey.mjs');
     const service=createPasskeyCeremonies({
      origin,clock,rate,issueSession,
-     siteverify:(r,b,e,o)=>siteverify(r,b,e,o,fetcher),
+     siteverify:(r,b,e,o,_unused,action)=>siteverify(r,b,e,o,fetcher,action),
     });
     return service.handle(op,body,request,env);
    }
