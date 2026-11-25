@@ -20,7 +20,9 @@ const count = (re,s) => [...s.matchAll(re)].length;
 test('Account QA explains provisioning and first sign-in without pretending authentication works', () => {
   assert.match(accountLogin,/account_qa_provisioning = "STAGING sign-in is locked/);
   assert.match(accountLogin,/no_session = "Tap Login, then use your passkey in the browser/);
-  assert.match(accountClient,/if not session then return nil, "no_session" end/);
+  assert.match(accountClient,/if not session then\s+current, currentPolicy = nil, nil\s+return nil, "no_session"/);
+  assert.match(accountClient,/if not account then current, currentPolicy = nil, nil end/);
+  assert.match(accountClient,/function client.logout\(\)[\s\S]*?local result, reason = send\("logout",\{\},true\)\s+erase\(\)/);
 });
 
 test('ESLogin is compiled in the first Loader bootstrap stage and X cancels the sign-in gate', () => {
