@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PIN,verifyNoTrafficBaseline,verifyPrivatePreviewPlan,verifyPreviewAccessDestination} from './private-preview-gate.mjs';
+import {PIN,verifyNoTrafficBaseline,verifyPrivatePreviewPlan,verifyPreviewAccessDestination,verifyLockedPreviewControlPlane} from './private-preview-gate.mjs';
 const baseline=()=>({
  worker:{id:PIN.workerId,name:PIN.worker},
  bindings:[{name:'ACCOUNT_DB',type:'d1',id:PIN.qaDb},
@@ -91,4 +91,39 @@ test('read-only Access inventory cannot pretend a Preview is protected',()=>{
    {type:'preview_worker',worker_id:PIN.workerId},{type:'public',uri:'example.test'}]}]),/only the exact/);
  bad(()=>verifyPreviewAccessDestination([{...preview,destinations:[{type:'preview_worker',
    worker_id:PIN.workerId,overrides:[{behavior:'public',path_pattern:'/login'}]}]}]),/public path overrides/);
+});
+
+const lockedSnapshot=()=>({
+ accessApp:{id:PIN.accessApp,type:'self_hosted',
+  destinations:[{type:'preview_worker',worker_id:PIN.workerId}]},
+ accessPolicies:[{decision:'deny',include:[{everyone:{}}],exclude:[]}],
+ subdomain:{enabled:true,previews_enabled:false},
+ preview:{id:PIN.lockedPreview,name:'eslogin',
+  urls:[],deployed_on:'2026-11-25T08:44:10.819514Z'},
+ previewDeployments:[{id:PIN.lockedDeployment}],
+ qaDeployments:[{versions:[{version_id:PIN.deployed,percentage:100}]}],
+});
+
+test('locked Preview control plane enforces DENY ALL with Version URLs disabled',()=>{
+ assert.deepEqual(verifyLockedPreviewControlPlane(lockedSnapshot()),{
+  lockedPreviewCreated:true,accessDenyAll:true,
+  versionUrlsDisabled:true,livePreviewUrl:false,readyForAuthentication:false,
+ });
+});
+
+test('locked Preview control plane fails closed on public URL, Access changes or active traffic',()=>{
+ const badCase=(modify,pattern)=>{
+  const snapshot=lockedSnapshot();
+  modify(snapshot);
+  bad(()=>verifyLockedPreviewControlPlane(snapshot),pattern);
+ };
+ badCase(x=>{x.subdomain.previews_enabled=true},/Version URLs/);
+ badCase(x=>{x.preview.urls=['https://eslogin-arcscriptcenter-account-qa.kogpasan14.workers.dev']},/URL status/);
+ badCase(x=>{x.accessPolicies[0].decision='allow'},/DENY Everyone/);
+ badCase(x=>{x.accessPolicies[0].exclude=[{email:{email:'x@example.test'}}]},/DENY Everyone/);
+ badCase(x=>{x.accessApp.destinations=[{type:'worker',worker_id:PIN.workerId}]},/preview_worker/);
+ badCase(x=>{x.accessApp.destinations=[{type:'preview_worker',worker_id:PIN.workerId,
+  overrides:[{behavior:'public',path_pattern:'/'}]}]},/preview_worker/);
+ badCase(x=>{x.previewDeployments.push({id:'unexpected'})},/unexpected locked Preview/);
+ badCase(x=>{x.qaDeployments[0].versions[0].percentage=99},/active Account QA deployment/);
 });
