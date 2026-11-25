@@ -120,3 +120,41 @@ test('activated Passkey Worker canonicalizes Access landing query but rejects qu
  assert.equal(health.status,200);
  assert.equal((await health.json()).loginEnabled,true);
 });
+
+test('Passkey deep link after Access strips query from HTML routes only',async()=>{
+ const denied=()=>assert.fail('Navigation must not read D1 or call the limiter');
+ const env={
+  ASC_ACCOUNT_MODE:'isolated-qa',
+  ASC_ACCOUNT_AUTH_MODE:'passkey',
+  ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',
+  ACCOUNT_DB:{prepare:denied,batch:denied},
+  ACCOUNT_RATE:{limit:denied},
+  ACCOUNT_TOTP_KEY:'ab'.repeat(32),
+  ACCOUNT_TURNSTILE_SECRET:'synthetic_qa_secret',
+  ACCOUNT_TURNSTILE_SITE_KEY:'synthetic_qa_site_key',
+ };
+ for(const path of ['/','/login','/signin','/myaccount']){
+  const response=await entry.fetch(new Request(
+   ISOLATED_ESLOGIN_ORIGIN+path+'?cf_access_return=sensitive_test_value'),env);
+  assert.equal(response.status,303,path);
+  assert.equal(response.headers.get('location'),ISOLATED_ESLOGIN_ORIGIN+path,path);
+  assert.equal(response.headers.get('set-cookie'),null,path);
+  assert.equal(response.headers.get('referrer-policy'),'no-referrer',path);
+  assert.match(response.headers.get('cache-control'),/no-store/,path);
+ }
+ for(const route of [
+  '/health?cf_access_return=sensitive_test_value',
+  '/passkey-client.js?cf_access_return=sensitive_test_value',
+  '/api/v1/accounts/passkey/register/options?bypass=true',
+  '/api/v1/accounts/passkey/login/options?bypass=true',
+  '/api/v1/accounts/pair/start?bypass=true',
+ ]){
+  const response=await entry.fetch(new Request(ISOLATED_ESLOGIN_ORIGIN+route,
+   {method:route.startsWith('/api/')?'POST':'GET'}),env);
+  assert.equal(response.status,404,route);
+  assert.equal((await response.json()).code,'not_found',route);
+ }
+ const external=await entry.fetch(new Request(
+  'https://example.invalid/signin?cf_access_return=sensitive_test_value'),env);
+ assert.equal(external.status,404);
+});
