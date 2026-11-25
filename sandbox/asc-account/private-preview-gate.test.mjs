@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PIN,verifyNoTrafficBaseline,verifyPrivatePreviewPlan} from './private-preview-gate.mjs';
+import {PIN,verifyNoTrafficBaseline,verifyPrivatePreviewPlan,verifyPreviewAccessDestination} from './private-preview-gate.mjs';
 const baseline=()=>({
  worker:{id:PIN.workerId,name:PIN.worker},
  bindings:[{name:'ACCOUNT_DB',type:'d1',id:PIN.qaDb},
@@ -74,4 +74,21 @@ test('blocks any premature enrollment, login activation, Production or traffic m
   ['editsDeployedTraffic',true]]){
   const p=plan();p[key]=value;bad(()=>verifyPrivatePreviewPlan(p,baseline()),/disabled|Production|registration|traffic/);
  }
+});
+
+test('read-only Access inventory cannot pretend a Preview is protected',()=>{
+ const preview={id:'synthetic-access-app',type:'self_hosted',destinations:[
+  {type:'preview_worker',worker_id:PIN.workerId}]};
+ assert.deepEqual(verifyPreviewAccessDestination([preview]),{
+  destinationVerified:true,applicationId:'synthetic-access-app',
+  policiesVerified:false,unauthorizedProbeVerified:false,readyForLogin:false,
+ });
+ bad(()=>verifyPreviewAccessDestination([]),/preview_worker/);
+ bad(()=>verifyPreviewAccessDestination([{...preview,destinations:[{type:'worker',worker_id:PIN.workerId}]}]),/preview_worker/);
+ bad(()=>verifyPreviewAccessDestination([{...preview,destinations:[{type:'preview_worker',worker_id:'wrong-worker'}]}]),/preview_worker/);
+ bad(()=>verifyPreviewAccessDestination([preview,preview]),/exactly one/);
+ bad(()=>verifyPreviewAccessDestination([{...preview,destinations:[
+   {type:'preview_worker',worker_id:PIN.workerId},{type:'public',uri:'example.test'}]}]),/only the exact/);
+ bad(()=>verifyPreviewAccessDestination([{...preview,destinations:[{type:'preview_worker',
+   worker_id:PIN.workerId,overrides:[{behavior:'public',path_pattern:'/login'}]}]}]),/public path overrides/);
 });
