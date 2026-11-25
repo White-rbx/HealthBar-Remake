@@ -114,7 +114,15 @@ const commonOps=new Set(['session','history','appeal','feedback','logout']);
 export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=fetch}={}){
  return {async fetch(request,env){
   const url=new URL(request.url);
-  if(url.origin!==origin||url.search||env.ASC_ACCOUNT_MODE!=='isolated-qa')return fail(404,'not_found');
+  if(url.origin!==origin||env.ASC_ACCOUNT_MODE!=='isolated-qa')return fail(404,'not_found');
+  // Access may return a verified browser to the landing with opaque query
+  // parameters. Never reflect, retain or pass them into the account runtime.
+  // Only GET / may canonicalize; API routes and other paths remain blocked.
+  if(url.search){
+   if(request.method==='GET'&&url.pathname==='/')
+    return new Response(null,{status:303,headers:{...securityHeaders,Location:origin+'/'}});
+   return fail(404,'not_found');
+  }
   if(!accountQAReady(env))return provisioning.fetch(request);
   const passkeyMode=env.ASC_ACCOUNT_AUTH_MODE==='passkey';
   if(request.method==='GET'&&url.pathname==='/health')
