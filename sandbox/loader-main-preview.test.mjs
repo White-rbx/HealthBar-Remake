@@ -22,7 +22,7 @@ test('Account QA explains provisioning and first sign-in without pretending auth
   assert.match(accountLogin,/no_session = "Tap Login, then use your passkey in the browser/);
   assert.match(accountClient,/if not session then\s+current, currentPolicy = nil, nil\s+return nil, "no_session"/);
   assert.match(accountClient,/if not account then current, currentPolicy = nil, nil end/);
-  assert.match(accountClient,/function client.logout\(\)[\s\S]*?local result, reason = send\("logout",\{\},true\)\s+erase\(\)/);
+  assert.match(accountClient,/function client.logout\(\)[\s\S]*?local result, reason = send\("logout",\{\},true\)\s+local cleared = erase\(\)/);
 });
 
 test('ESLogin is compiled in the first Loader bootstrap stage and X cancels the sign-in gate', () => {
@@ -41,7 +41,7 @@ test('ESLogin is compiled in the first Loader bootstrap stage and X cancels the 
   assert.match(accountLogin,/pcall\(client\.poll, pair, remembered, canContinue\)/);
   assert.match(accountClient,/function client\.poll\(pair, remember, stillOpen\)/);
   assert.match(accountClient,/if cancelled\(\) then return cancelIssuedSession\(\) end/);
-  assert.match(accountClient,/erase\(\) -- mandatory local invalidation even when the network is unavailable/);
+  assert.match(accountClient,/local cleared = erase\(\)/);
   assert.doesNotMatch(main,/if not login\(account, nil, reason\) then\s+bootEnv\.__ASC_ACCOUNT_QA = account/);
 });
 

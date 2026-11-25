@@ -968,13 +968,14 @@ local values,stored={},nil
 local session=string.rep('a',64)
 local status='restricted_mode'
 local fail,cancelWhilePolling=false,false
+local slowSession,remoteExpired,deleteFails,writeFails=false,false,false,false
 local rememberedValue=true
 local revoked=0
 local auth={
  getgenv=function() return {} end,
  game={GetService=function(_,name) assert(name=='HttpService'); return {
     JSONEncode=function(_,body) table.insert(values,body); return tostring(#values) end,
-    JSONDecode=function(_,id) return assert(values[tonumber(id)]) end,
+    JSONDecode=function(_,id) if id=='{}' then return {} end return assert(values[tonumber(id)]) end,
  } end},
  Instance={new=function(name) assert(name=='BindableEvent');local event=signal();return {Event=event,Fire=function() event:Fire() end,Destroy=function() end} end},
  request=function(r)
@@ -990,15 +991,24 @@ local auth={
         v.session=session; v.state='ready'; v.expiresAt=100
     else
         assert(r.Headers.Authorization=='Bearer '..session)
-        if fail then error('Synthetic timeout') end
+        if fail then error('Synthetic network error') end
+        if op=='session' and slowSession then runtime.task.wait(10) end
+        if op=='session' and remoteExpired then
+            table.insert(values,{ok=false,code='session_expired'})
+            return {StatusCode=401,Body=tostring(#values)}
+        end
         if op~='logout' then v.account={id='account-qa',nickname='Synthetic',status=status} else revoked+=1 end
     end
     table.insert(values,v)
     return {StatusCode=200,Body=tostring(#values)}
  end,
- writefile=function(path,body) assert(path=='ArcScriptCenter/Account.json'); stored=body end,
+ writefile=function(path,body)
+    assert(path=='ArcScriptCenter/Account.json')
+    if writeFails then return false end
+    stored=body
+ end,
  readfile=function(path) assert(path=='ArcScriptCenter/Account.json');return stored end,
- delfile=function() stored=nil end,
+ delfile=function() if deleteFails then error('deletion unavailable') end stored=nil end,
 }
 local progress=0
 runtime.task.spawn(function()
@@ -1045,9 +1055,34 @@ runtime.task.spawn(function()
         'offline logout must erase the saved credential and current identity')
     fail=false
     assert(revoked==3, 'offline logout cannot falsely claim remote revocation')
+    assert(c.poll(assert(c.begin()),true).saved and stored)
+    deleteFails,fail=true,true
+    local remote,localCleared=c.logout()
+    assert(not remote and localCleared and stored=='{}')
+    assert(not run('accountClient',auth).hasSession(), 'fallback clear must prevent automatic rejoin')
+    fail=false
+    assert(c.poll(assert(c.begin()),true).saved)
+    slowSession=true
+    local profile,reason=c.refresh()
+    assert(profile==nil and reason=='unavailable' and c.profile()==nil and c.hasSession())
+    runtime.task.wait(3)
+    assert(c.profile()==nil, 'late success after timeout must not restore a verified profile')
+    slowSession=false
+    assert(c.refresh())
+    remoteExpired=true
+    profile,reason=c.refresh()
+    assert(profile==nil and reason=='session_expired' and not c.hasSession() and stored=='{}')
+    remoteExpired=false
+    assert(c.poll(assert(c.begin()),true).saved)
+    values[tonumber(stored)].expiresAt=0
+    assert(not run('accountClient',auth).hasSession() and stored=='{}', 'expired Remember file cannot rejoin')
+    writeFails=true
+    assert(c.poll(assert(c.begin()),true).saved==false, 'filesystem returning false must not report Remember saved')
+    remote,localCleared=c.logout()
+    assert(remote and not localCleared and not c.hasSession())
     progress=1
 end)
-advance(10)
+advance(30)
 assert(progress==1)
 `);
 });

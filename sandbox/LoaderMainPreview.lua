@@ -1711,8 +1711,11 @@ if policyMode == "account_qa" then
         if bootEnv.__ASC_ACCOUNT_QA ~= account then return false end
         local remotelyRevoked = not account.hasSession()
         if not remotelyRevoked then
-            local ok, confirmed = pcall(account.logout)
+            local ok, confirmed, localCleared = pcall(account.logout)
             remotelyRevoked = ok and confirmed == true
+            if localCleared == false then
+                warn("[ES][AccountQA] This client could not clear its saved session file. Remove ArcScriptCenter/Account.json before rejoining.")
+            end
             -- Never leave a still-present local credential behind on a failed call.
             if account.hasSession() then
                 warn("[ES][AccountQA] Sign Out could not invalidate the local credential.")

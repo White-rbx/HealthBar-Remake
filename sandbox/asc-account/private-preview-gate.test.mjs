@@ -14,11 +14,11 @@ const baseline=()=>({
 });
 const plan=()=>({accountScope:'isolated-account-qa',transport:'Cloudflare Worker Preview',
  sharedVersionUrl:false,
- origin:'https://private-arcscriptcenter-account-qa.kogpasan14.workers.dev',
+ origin:PIN.previewOrigin,
  originWiring:'fixed-explicit-createAccountWorker-origin',
  access:{protected:true,destination:'preview_worker',workerId:PIN.workerId,reviewed:true},
  previewD1:{type:'d1',id:'11111111-2222-3333-4444-555555555555',schemaVerified:true,syntheticOnly:true},
- turnstile:{hostname:'private-arcscriptcenter-account-qa.kogpasan14.workers.dev',testOnly:true,actions:['asc_register','asc_recover']},
+ turnstile:{hostname:new URL(PIN.previewOrigin).hostname,testOnly:true,actions:['asc_register','asc_recover']},
  previewRateLimiter:{isolated:true},syntheticSecretsOnly:true,
  defaultLaunchState:'locked',initialAuthMode:null,
  usesRealUsers:false,usesProductionBindings:false,createsPublicRegistration:false,
@@ -60,6 +60,13 @@ test('blocks dynamic host trust, wrong origin and HTTP preview',()=>{
  let p=plan();p.originWiring='trust-request-host';bad(()=>verifyPrivatePreviewPlan(p,baseline()),/origin\/RP ID/);
  p=plan();p.origin=PIN.canonicalOrigin;bad(()=>verifyPrivatePreviewPlan(p,baseline()),/separate QA preview/);
  p=plan();p.origin=p.origin.replace('https:','http:');bad(()=>verifyPrivatePreviewPlan(p,baseline()),/HTTPS/);
+ for(const hostname of ['eslogin-arcscriptcenter-account-qa.other-account.workers.dev',
+  '2b34f5cb-arcscriptcenter-account-qa.kogpasan14.workers.dev',
+  'eslogin-arcscriptcenter-account-qa.kogpasan14.workers.dev:8443']){
+  p=plan();p.origin='https://'+hostname;
+  p.turnstile.hostname=new URL(p.origin).hostname;
+  bad(()=>verifyPrivatePreviewPlan(p,baseline()),/pinned eslogin Preview/);
+ }
 });
 test('blocks missing preview-specific Turnstile hostname/actions and secret isolation',()=>{
  let p=plan();p.turnstile.hostname='arcscriptcenter-account-qa.kogpasan14.workers.dev';
@@ -94,14 +101,14 @@ test('read-only Access inventory cannot pretend a Preview is protected',()=>{
 });
 
 const lockedSnapshot=()=>({
- accessApp:{id:PIN.accessApp,type:'self_hosted',
+ accessApp:{id:PIN.accessApp,type:'self_hosted',options_preflight_bypass:false,
   destinations:[{type:'preview_worker',worker_id:PIN.workerId}]},
  accessPolicies:[{decision:'deny',include:[{everyone:{}}],exclude:[]}],
  subdomain:{enabled:true,previews_enabled:false},
  preview:{id:PIN.lockedPreview,name:'eslogin',
   urls:[],deployed_on:'2026-11-25T08:44:10.819514Z'},
- previewDeployments:[{id:PIN.lockedDeployment}],
- qaDeployments:[{versions:[{version_id:PIN.deployed,percentage:100}]}],
+ previewDeployments:[{id:PIN.lockedDeployment,urls:[]}],
+ qaDeployments:[{id:PIN.qaDeployment,versions:[{version_id:PIN.deployed,percentage:100}]}],
 });
 
 test('locked Preview control plane enforces DENY ALL with Version URLs disabled',()=>{
@@ -121,9 +128,14 @@ test('locked Preview control plane fails closed on public URL, Access changes or
  badCase(x=>{x.preview.urls=['https://eslogin-arcscriptcenter-account-qa.kogpasan14.workers.dev']},/URL status/);
  badCase(x=>{x.accessPolicies[0].decision='allow'},/DENY Everyone/);
  badCase(x=>{x.accessPolicies[0].exclude=[{email:{email:'x@example.test'}}]},/DENY Everyone/);
+ badCase(x=>{x.accessPolicies[0].require=[{email:{email:'x@example.test'}}]},/DENY Everyone/);
+ badCase(x=>{x.accessApp.options_preflight_bypass=true},/OPTIONS bypass/);
+ badCase(x=>{delete x.accessApp.options_preflight_bypass},/OPTIONS bypass/);
  badCase(x=>{x.accessApp.destinations=[{type:'worker',worker_id:PIN.workerId}]},/preview_worker/);
  badCase(x=>{x.accessApp.destinations=[{type:'preview_worker',worker_id:PIN.workerId,
   overrides:[{behavior:'public',path_pattern:'/'}]}]},/preview_worker/);
  badCase(x=>{x.previewDeployments.push({id:'unexpected'})},/unexpected locked Preview/);
+ badCase(x=>{x.previewDeployments[0].urls=[PIN.previewOrigin]},/deployment URL/);
+ badCase(x=>{x.qaDeployments[0].id='unexpected'},/active Account QA deployment/);
  badCase(x=>{x.qaDeployments[0].versions[0].percentage=99},/active Account QA deployment/);
 });

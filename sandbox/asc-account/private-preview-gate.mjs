@@ -11,6 +11,8 @@ export const PIN=Object.freeze({
  accessApp:'75bf5130-77b0-4add-b59f-0fca6825fe5e',
  lockedPreview:'c7bbd14fd43a4e9a87a308fcab659699',
  lockedDeployment:'fc8f71e9-cf0f-498b-97b3-181ba01f3576',
+ qaDeployment:'4400fc76-f4aa-4e24-98d4-fdca11bcff56',
+ previewOrigin:'https://eslogin-arcscriptcenter-account-qa.kogpasan14.workers.dev',
 });
 const req=(ok,message)=>{if(!ok)throw Error('PRIVATE QA PREVIEW BLOCKED: '+message)};
 const uuid=x=>typeof x==='string'&&/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(x);
@@ -47,8 +49,7 @@ export function verifyPrivatePreviewPlan(plan,baseline){
  try{url=new URL(origin)}catch{throw Error('PRIVATE QA PREVIEW BLOCKED: invalid preview origin')}
  req(url.protocol==='https:' && url.origin===origin && url.username==='' && url.password==='',
   'preview origin must be exact HTTPS origin');
- req(url.hostname.endsWith('.workers.dev') && url.hostname.includes('arcscriptcenter-account-qa'),
-  'preview origin does not look scoped to the QA Worker');
+ req(origin===PIN.previewOrigin,'origin must match the pinned eslogin Preview hostname exactly');
  // Both WebAuthn expectedOrigin and RP ID are derived from the fixed origin.
  // Never trust an arbitrary request Host/Origin as the expected WebAuthn origin.
  req(plan?.originWiring==='fixed-explicit-createAccountWorker-origin',
@@ -95,6 +96,7 @@ export function verifyPreviewAccessDestination(applications){
   'Access application must target only the exact Account QA Preview Worker');
  req(!application.destinations[0].overrides?.length,
   'Access preview destination must not have public path overrides');
+ req(application.options_preflight_bypass!==true,'Access must not bypass OPTIONS requests');
  return {
   destinationVerified:true,applicationId:application.id,
   policiesVerified:false,unauthorizedProbeVerified:false,readyForLogin:false,
@@ -116,11 +118,14 @@ export function verifyLockedPreviewControlPlane(state){
   &&accessApp.destinations[0]?.worker_id===PIN.workerId
   &&!accessApp.destinations[0]?.overrides?.length,
   'Access must guard only the exact Account QA preview_worker');
+ req(accessApp.options_preflight_bypass===false,
+  'locked Access must explicitly disable OPTIONS bypass');
  req(Array.isArray(accessPolicies)&&accessPolicies.length===1
   &&accessPolicies[0]?.decision==='deny'
   &&Array.isArray(accessPolicies[0]?.include)
-  &&accessPolicies[0].include.some(x=>x?.everyone!=null)
-  &&(!accessPolicies[0].exclude||accessPolicies[0].exclude.length===0),
+  &&accessPolicies[0].include.length===1&&accessPolicies[0].include[0]?.everyone!=null
+  &&(!accessPolicies[0].exclude||accessPolicies[0].exclude.length===0)
+  &&(!accessPolicies[0].require||accessPolicies[0].require.length===0),
   'Access must retain a DENY Everyone policy with no exceptions');
  req(subdomain?.enabled===true&&subdomain?.previews_enabled===false,
   'Version URLs must stay disabled while Version 11 shares Account QA bindings');
@@ -129,9 +134,11 @@ export function verifyLockedPreviewControlPlane(state){
   &&typeof preview.deployed_on==='string'&&preview.deployed_on.length>0,
   'locked Preview identity or URL status changed');
  req(Array.isArray(previewDeployments)&&previewDeployments.length===1
-  &&previewDeployments[0]?.id===PIN.lockedDeployment,
-  'unexpected locked Preview deployment');
- req(Array.isArray(qaDeployments)&&qaDeployments[0]?.versions?.length===1
+  &&previewDeployments[0]?.id===PIN.lockedDeployment
+  &&Array.isArray(previewDeployments[0].urls)&&previewDeployments[0].urls.length===0,
+  'unexpected locked Preview deployment or deployment URL');
+ req(Array.isArray(qaDeployments)&&qaDeployments[0]?.id===PIN.qaDeployment
+  &&qaDeployments[0]?.versions?.length===1
   &&qaDeployments[0].versions[0].version_id===PIN.deployed
   &&qaDeployments[0].versions[0].percentage===100,
   'active Account QA deployment changed');

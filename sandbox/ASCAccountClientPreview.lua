@@ -15,12 +15,29 @@ local client = {
 }
 local folder, file = "ArcScriptCenter", "ArcScriptCenter/Account.json"
 local session, current, currentPolicy, expectedAccountId
+local possiblyRemembered = false
 local function credential(value)
     return type(value) == "string" and #value == 64 and value:match("^[0-9a-f]+$") ~= nil
 end
 local function erase()
     session, current, currentPolicy, expectedAccountId = nil, nil, nil, nil
-    if type(delfile) == "function" then pcall(delfile, file) end
+    if not possiblyRemembered then return true end
+    if type(delfile) == "function" then
+        local ok, removed = pcall(delfile, file)
+        if ok and removed ~= false then
+            possiblyRemembered = false
+            return true
+        end
+    end
+    -- Some clients can overwrite storage even if deletion is unavailable.
+    if type(writefile) == "function" then
+        local ok, written = pcall(writefile, file, "{}")
+        if ok and written ~= false then
+            possiblyRemembered = false
+            return true
+        end
+    end
+    return false
 end
 
 local function send(route, body, authenticated)
@@ -56,7 +73,7 @@ local function send(route, body, authenticated)
     if not completed then signal.Event:Wait() end
     signal:Destroy()
     if authenticated and session ~= expected then return nil, "session_expired" end
-    if authenticated and why == "session_expired" then erase() end
+    if authenticated and why == "session_expired" and route ~= "logout" then erase() end
     return response, why
 end
 
@@ -65,8 +82,13 @@ if type(readfile) == "function" then
     if ok and type(saved) == "table" and credential(saved.session)
         and (saved.origin == nil or saved.origin == accountOrigin)
         and type(saved.accountId) == "string" and saved.accountId ~= ""
-        and type(saved.expiresAt) == "number" and saved.expiresAt > os.time() then
-        session, expectedAccountId = saved.session, saved.accountId
+        and type(saved.expiresAt) == "number" then
+        possiblyRemembered = true
+        if saved.expiresAt > os.time() then
+            session, expectedAccountId = saved.session, saved.accountId
+        else
+            erase()
+        end
     end
 end
 
@@ -126,24 +148,24 @@ function client.poll(pair, remember, stillOpen)
     session, current, currentPolicy, expectedAccountId = data.session, nil, nil, nil
     local function cancelIssuedSession()
         -- A session created while closing the GUI must never be remembered locally.
-        pcall(client.logout) -- best-effort remote revocation
-        erase() -- mandatory local invalidation even when the network is unavailable
+        client.logout() -- attempt remote revocation and always invalidate locally
         return nil, "cancelled"
     end
     if cancelled() then return cancelIssuedSession() end
     local account, errorCode = client.refresh()
     if cancelled() then return cancelIssuedSession() end
     if not account or type(data.expiresAt) ~= "number" or data.expiresAt <= os.time() then
-        pcall(client.logout)
-        erase()
+        client.logout()
         return nil, errorCode or "session_expired"
     end
     local saved = false
     if remember and client.canRemember() then
-        saved = pcall(function()
+        local ok, written = pcall(function()
             if type(isfolder) == "function" and type(makefolder) == "function" and not isfolder(folder) then makefolder(folder) end
-            writefile(file, service:JSONEncode({origin=accountOrigin,accountId=account.id,session=session,expiresAt=data.expiresAt}))
+            possiblyRemembered = true
+            return writefile(file, service:JSONEncode({origin=accountOrigin,accountId=account.id,session=session,expiresAt=data.expiresAt}))
         end)
+        saved = ok and written ~= false
     end
     if cancelled() then return cancelIssuedSession() end
     return {state="ready",saved=saved}
@@ -195,7 +217,7 @@ function client.logout()
     -- remote revocation cannot be confirmed due to loss of connectivity.
     -- false means the server-side token may remain valid until expiry.
     local result, reason = send("logout",{},true)
-    erase()
-    return result ~= nil or reason == "session_expired"
+    local cleared = erase()
+    return result ~= nil or reason == "session_expired", cleared
 end
 return client
