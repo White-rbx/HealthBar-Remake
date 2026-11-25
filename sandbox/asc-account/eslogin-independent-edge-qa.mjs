@@ -1,5 +1,6 @@
 // Isolated Cloudflare Worker for testing Access at an independent HTTPS hostname.
-// NO D1, NO account secrets, NO sessions, NO Passkey registration, NO pairing.
+// A dedicated empty QA D1 and isolated limiter are bound, but intentionally UNUSED.
+// NO account secrets, NO sessions, NO Passkey registration, NO pairing.
 // This is not a deployment of the Account QA Version 11 candidate.
 import provisioning from './provisioning-worker.mjs';
 
