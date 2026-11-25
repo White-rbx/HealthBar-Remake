@@ -32,5 +32,13 @@ test('health endpoint reports non-operational QA, unrelated paths do not serve a
   assert.equal(state.loginEnabled,false);
   assert.equal(state.registrationEnabled,false);
   assert.equal((await call('GET','/unknown')).status,404);
-  assert.equal((await call('GET','/?access_token=secret')).status,404);
+  const clean=await call('GET','/?access_token=secret');
+  assert.equal(clean.status,303);
+  assert.equal(clean.headers.get('location'),origin+'/');
+  assert.equal(clean.headers.get('cache-control'),'no-store, max-age=0');
+  assert.equal(clean.headers.get('referrer-policy'),'no-referrer');
+  assert.equal(clean.headers.get('set-cookie'),null);
+  assert.equal((await call('POST','/?access_token=secret')).status,404);
+  assert.equal((await call('GET','/login?access_token=secret')).status,404);
+  assert.equal((await call('GET','/api/v1/accounts/session?access_token=secret')).status,404);
 });
