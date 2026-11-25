@@ -43,7 +43,7 @@ Cloudflare account lists **10 D1 databases**. Querying `sqlite_master` and aggre
 | `asc-stage1658-prodlike-20261115` | 33 | 12 | None found |
 | `asc-prod-backup-restore-20261117` | 22 | 2,626 | None found |
 
-This inventory omits SQLite internal tables. Historical Preview deployments, CI workflows or manual QA may still refer to an unbound database; **no binding** does not prove **safe to delete**. The restore database contains real snapshot data and **must not be deleted** as a way to make room.
+This inventory omits SQLite internal tables and the Cloudflare-managed `_cf_KV` table: an explicit read-only `COUNT(*)` against `_cf_KV` returned `SQLITE_AUTH` (access denied). Therefore the 0-row statement applies **only to the seven accessible application tables**, not every byte or internal table in the D1. Historical Preview deployments, CI workflows or manual QA may still refer to an unbound database; **no binding** does not prove **safe to delete**. The restore database contains real snapshot data and **must not be deleted** as a way to make room.
 
 `asc-feedback-release-qa-20261117` is the best *candidate for owner review*, not a deletion decision. The project report `docs/feedback-isolated-worker-runtime-qa-pass-20261117.md` states it once held seven synthetic rate-window rows, all removed after its integration smoke, and recorded `quick_check=ok`. Today's read-only query confirms 0 rows in all 7 tables. Verify no active QA workflows, scheduled jobs, unpublished branches, or human restoration requirements remain **before** requesting explicit permission to retire it.
 
