@@ -8,6 +8,9 @@ export const PIN=Object.freeze({
  candidate:'2b34f5cb-0d89-42f0-8fa9-07b96d487d59',
  source:'2ac41e90aafc236edbb79a40cf0b8e352f319636',
  canonicalOrigin:'https://arcscriptcenter-account-qa.kogpasan14.workers.dev',
+ accessApp:'75bf5130-77b0-4add-b59f-0fca6825fe5e',
+ lockedPreview:'c7bbd14fd43a4e9a87a308fcab659699',
+ lockedDeployment:'fc8f71e9-cf0f-498b-97b3-181ba01f3576',
 });
 const req=(ok,message)=>{if(!ok)throw Error('PRIVATE QA PREVIEW BLOCKED: '+message)};
 const uuid=x=>typeof x==='string'&&/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(x);
@@ -96,4 +99,42 @@ export function verifyPreviewAccessDestination(applications){
   destinationVerified:true,applicationId:application.id,
   policiesVerified:false,unauthorizedProbeVerified:false,readyForLogin:false,
  };
+}
+
+/**
+ * Verify a fresh READ-ONLY Cloudflare control-plane snapshot of the LOCKED
+ * Preview (no account session, no Preview URL) from the actual API responses.
+ * The Preview is not an authenticated test environment; this check never
+ * approves enabling Version URLs or real Passkey enrollment.
+ */
+export function verifyLockedPreviewControlPlane(state){
+ const {accessApp,accessPolicies,subdomain,preview,previewDeployments,qaDeployments}=state||{};
+ req(accessApp?.id===PIN.accessApp && accessApp?.type==='self_hosted',
+  'expected locked QA Access application missing');
+ req(Array.isArray(accessApp.destinations)&&accessApp.destinations.length===1
+  &&accessApp.destinations[0]?.type==='preview_worker'
+  &&accessApp.destinations[0]?.worker_id===PIN.workerId
+  &&!accessApp.destinations[0]?.overrides?.length,
+  'Access must guard only the exact Account QA preview_worker');
+ req(Array.isArray(accessPolicies)&&accessPolicies.length===1
+  &&accessPolicies[0]?.decision==='deny'
+  &&Array.isArray(accessPolicies[0]?.include)
+  &&accessPolicies[0].include.some(x=>x?.everyone!=null)
+  &&(!accessPolicies[0].exclude||accessPolicies[0].exclude.length===0),
+  'Access must retain a DENY Everyone policy with no exceptions');
+ req(subdomain?.enabled===true&&subdomain?.previews_enabled===false,
+  'Version URLs must stay disabled while Version 11 shares Account QA bindings');
+ req(preview?.id===PIN.lockedPreview&&preview?.name==='eslogin'
+  &&Array.isArray(preview.urls)&&preview.urls.length===0
+  &&typeof preview.deployed_on==='string'&&preview.deployed_on.length>0,
+  'locked Preview identity or URL status changed');
+ req(Array.isArray(previewDeployments)&&previewDeployments.length===1
+  &&previewDeployments[0]?.id===PIN.lockedDeployment,
+  'unexpected locked Preview deployment');
+ req(Array.isArray(qaDeployments)&&qaDeployments[0]?.versions?.length===1
+  &&qaDeployments[0].versions[0].version_id===PIN.deployed
+  &&qaDeployments[0].versions[0].percentage===100,
+  'active Account QA deployment changed');
+ return {lockedPreviewCreated:true,accessDenyAll:true,
+  versionUrlsDisabled:true,livePreviewUrl:false,readyForAuthentication:false};
 }
