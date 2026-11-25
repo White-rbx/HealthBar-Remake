@@ -27,7 +27,7 @@ The owner authorized retiring `asc-feedback-release-qa-20261117` **only if no ap
 | Account & Passkey application tables | **11** |
 | App record counts | **0 in all 11 tables** |
 | Foreign key violations | **0** |
-| Assigned Worker binding | **NONE** (not yet configured) |
+| Assigned QA Worker bindings | `ACCOUNT_DB` → isolated D1 `04715765-050f-4e26-b4f6-6101bba9dc97`; `ACCOUNT_RATE` → namespace `20261125`, 40 requests / 60 seconds |
 
 The 11 new tables are `asc_accounts`, `asc_account_sessions`, `asc_account_recovery`, `asc_account_pairings`, `asc_account_cases`, `asc_account_verified_links`, `asc_account_passkeys`, `asc_account_passkey_flows`, `asc_account_passkey_backup_flows`, `asc_account_passkey_recovery_codes`, and `asc_account_passkey_recovery_flows`. No synthetic or real account was created and no credentials were stored.
 
@@ -47,3 +47,20 @@ The GitHub `verifyPrivatePreviewPlan` gate now requires exactly `PIN.previewDb` 
 Before connecting the new synthetic D1 to an authenticated Worker, review (1) isolated Worker and fixed exact HTTPS WebAuthn Origin/RP ID; (2) Access policy restricted to synthetic testers and a fresh anonymous-edge denial test; (3) separate QA-only Turnstile keys with matching site hostname and `asc_register` / `asc_recover` action checks; (4) isolated rate limiting and synthetic-only secrets; (5) staging Pairing + Session + rejoin/logout + Android acceptance. Never enable Version URLs on the original QA Worker as a workaround, reuse the old Account QA D1, or merge PR #16 without explicit review.
 
 **Current status: isolated D1 capacity and schema PASSED; live authenticated ESLogin integration NOT YET COMPLETE.**
+
+## Follow-up: Isolated QA Worker bindings (November 25, 2026)
+
+The separately routed `arcscriptcenter-eslogin-edge-qa` Worker was configured with **only** these two bindings, then read back using the Cloudflare API:
+
+- `ACCOUNT_DB`: D1 ID `04715765-050f-4e26-b4f6-6101bba9dc97` — the new empty, synthetic-only account database, **not** the original Account QA D1.
+- `ACCOUNT_RATE`: independent rate-limit namespace `20261125`, limit **40 per 60 seconds**. Cloudflare inventory confirmed this namespace is distinct from those on existing Workers.
+
+Readback confirmed that the separate Worker still has Access app `ea0346cb-02fb-44dc-a5dd-5ada7c60977f` targeting **only** its Worker ID, `DENY Everyone` policy with no exceptions, `options_preflight_bypass=false`, and `previews_enabled=false`. The Worker still runs the static provisioning-only entrypoint; its code does **not** use either binding to issue a credential, initialize a session or access data.
+
+The original Account QA Worker remains Version 10 at 100% traffic; its Passkey Version 11 is **not activated**. All 11 tables in the new D1 still contain **0 rows**.
+
+**Turnstile and secret provision:** an attempt to automate a fresh restricted-domain QA Turnstile widget and store QA-only secret bindings was blocked by tool-level security checks. Read-only verification confirmed the new QA widget was **not created** and no new secret bindings were applied. Do not reuse the original QA or Production Turnstile sitekey/secret. Create a separate managed Turnstile widget for `arcscriptcenter-eslogin-edge-qa.kogpasan14.workers.dev`, store its secret privately as `ACCOUNT_TURNSTILE_SECRET` and a separately generated 256-bit `ACCOUNT_TOTP_KEY` as a Worker secret, and use the new widget's public sitekey as `ACCOUNT_TURNSTILE_SITE_KEY` **before** any authenticated staging launch. Verify both `asc_register` and `asc_recover` Siteverify action checks.
+
+**Remaining blockers:** restricted synthetic-user Cloudflare Access policy (not Deny Everyone), reviewed exact HTTPS WebAuthn Origin/RP ID for the new Worker, QA-only Turnstile and private secrets, and live Android/Roblox Mobile integration. Never enable real login as a shortcut. Preserve the locked Worker's static Provisioning behavior until the full authentication rollout is explicitly reviewed.
+
+Automated security guards are now in `sandbox/asc-account/eslogin-locked-resources-gate.mjs` and `sandbox/asc-account/eslogin-locked-resources-gate.test.mjs` and are integrated into the PR CI and Private Preview Preflight workflows. These offline tests validate synthetic control-plane snapshots; independently read back Cloudflare configuration before asserting the live state.
