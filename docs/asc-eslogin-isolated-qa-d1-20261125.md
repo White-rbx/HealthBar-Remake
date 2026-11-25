@@ -64,3 +64,17 @@ The original Account QA Worker remains Version 10 at 100% traffic; its Passkey V
 **Remaining blockers:** restricted synthetic-user Cloudflare Access policy (not Deny Everyone), reviewed exact HTTPS WebAuthn Origin/RP ID for the new Worker, QA-only Turnstile and private secrets, and live Android/Roblox Mobile integration. Never enable real login as a shortcut. Preserve the locked Worker's static Provisioning behavior until the full authentication rollout is explicitly reviewed.
 
 Automated security guards are now in `sandbox/asc-account/eslogin-locked-resources-gate.mjs` and `sandbox/asc-account/eslogin-locked-resources-gate.test.mjs` and are integrated into the PR CI and Private Preview Preflight workflows. These offline tests validate synthetic control-plane snapshots; independently read back Cloudflare configuration before asserting the live state.
+
+## Undeployed Passkey candidate prepared
+
+`sandbox/asc-account/eslogin-isolated-account-candidate.mjs` now provides a **named factory only** to construct the maintained account/Passkey Worker with exact HTTPS Origin `https://arcscriptcenter-eslogin-edge-qa.kogpasan14.workers.dev`. It deliberately exports **no default Worker**, has no deployment action, does not change the live provisioning entrypoint, and never derives the expected WebAuthn Origin/RP ID from an inbound request.
+
+The companion `sandbox/asc-account/eslogin-isolated-account-candidate.test.mjs` tests:
+- explicit, exact independent HTTPS Origin;
+- no account writes or rate limit calls when QA launch flags are missing;
+- fail-closed 503 when a synthetic launch flag is present but Turnstile/Secret bindings are still absent;
+- 404 for requests on the wrong host or protocol.
+
+Both this candidate test and the exact D1/rate-limit/Access assertions are now in the consolidated GitHub PR CI and offline Private Preview Preflight.
+
+**Next required owner-controlled configuration remains QA-specific Turnstile and secrets.** The connected tool's security checks blocked automatic creation/storage; no widget was created. No workaround to that tool boundary was used. The dedicated QA Worker remains denied by Access at the edge and no live account ceremonies are enabled.
