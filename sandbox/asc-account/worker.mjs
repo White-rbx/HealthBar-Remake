@@ -115,12 +115,17 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
  return {async fetch(request,env){
   const url=new URL(request.url);
   if(url.origin!==origin||env.ASC_ACCOUNT_MODE!=='isolated-qa')return fail(404,'not_found');
-  // Access may return a verified browser to the landing with opaque query
-  // parameters. Never reflect, retain or pass them into the account runtime.
-  // Only GET / may canonicalize; API routes and other paths remain blocked.
+  // Cloudflare Access may return a verified browser to a page with opaque
+  // query parameters. Strip those parameters by redirecting only HTML page
+  // navigation to its canonical path; never reflect them or accept them on APIs.
+  // In particular, direct /signin and /login links must work after Access.
   if(url.search){
-   if(request.method==='GET'&&url.pathname==='/')
-    return new Response(null,{status:303,headers:{...securityHeaders,Location:origin+'/'}});
+   if(request.method==='GET'&&
+      (url.pathname==='/'||url.pathname==='/login'||
+       url.pathname==='/signin'||url.pathname==='/myaccount'))
+    return new Response(null,{status:303,headers:{
+     ...securityHeaders,Location:origin+url.pathname,
+    }});
    return fail(404,'not_found');
   }
   if(!accountQAReady(env))return provisioning.fetch(request);
