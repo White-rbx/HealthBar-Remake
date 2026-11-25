@@ -18,13 +18,15 @@ export const REQUIRED_ACCOUNT_TABLES=Object.freeze([
  'asc_account_recovery','asc_account_sessions','asc_account_verified_links','asc_accounts',
 ]);
 const ensure=(test,message)=>{if(!test)throw Error('ESLOGIN_LOCKED_EDGE_BLOCKED: '+message);};
-export function verifyLockedEdgeResources(s){
+export function verifyLockedEdgeResources(s,{withQaSecrets=false}={}){
  const {worker,bindings,access,policies,subdomain,qaDeployment,qaSubdomain,
   database,databaseRows,foreignKeyViolations}=s||{};
  ensure(worker?.name===LOCKED_EDGE.worker&&worker?.id===LOCKED_EDGE.workerId,
   'wrong independent Worker identity');
- ensure(Array.isArray(bindings)&&bindings.length===2,
-  'only isolated D1 and isolated Rate Limiter are permitted in this phase');
+ const secretNames=withQaSecrets?['ACCOUNT_TOTP_KEY','ACCOUNT_TURNSTILE_SECRET','ACCOUNT_TURNSTILE_SITE_KEY']:[];
+ ensure(Array.isArray(bindings)&&bindings.length===2+secretNames.length&&
+  secretNames.every(name=>bindings.some(b=>b.name===name&&b.type==='secret_text')),
+  'unexpected binding names or types for the selected locked phase');
  const db=bindings.find(b=>b.name==='ACCOUNT_DB');
  const limit=bindings.find(b=>b.name==='ACCOUNT_RATE');
  ensure(db?.type==='d1'&&db.id===LOCKED_EDGE.db&&db.id!==LOCKED_EDGE.oldQaDb,
@@ -43,7 +45,7 @@ export function verifyLockedEdgeResources(s){
   'locked Access app must protect the exact new Worker including OPTIONS');
  ensure(Array.isArray(policies)&&policies.length===1
   &&policies[0].decision==='deny'
-  &&policies[0].include?.some(x=>x.everyone!=null)
+  &&policies[0].include?.length===1&&policies[0].include[0].everyone!=null
   &&!policies[0].exclude?.length&&!policies[0].require?.length,
   'Access must remain DENY Everyone without exceptions');
  ensure(subdomain?.enabled===true&&subdomain?.previews_enabled===false

@@ -76,3 +76,15 @@ test('blocks nonempty account DB, changed Version 10 traffic or enabled Version 
   assert.throws(()=>verifyLockedEdgeResources(s),/ESLOGIN_LOCKED_EDGE_BLOCKED/);
  }
 });
+
+test('provisioned locked phase permits only all three QA secret bindings, without activation',()=>{
+ const state=fixture();
+ for(const name of ['ACCOUNT_TOTP_KEY','ACCOUNT_TURNSTILE_SECRET','ACCOUNT_TURNSTILE_SITE_KEY']){
+  state.bindings.push({name,type:'secret_text'});
+ }
+ const options={withQaSecrets:true};
+ assert.equal(verifyLockedEdgeResources(state,options).loginEnabled,false);
+ assert.throws(()=>verifyLockedEdgeResources(state));
+ state.bindings.at(-1).type='plain_text';
+ assert.throws(()=>verifyLockedEdgeResources(state,options));
+});

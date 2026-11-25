@@ -969,6 +969,7 @@ local session=string.rep('a',64)
 local status='restricted_mode'
 local fail,cancelWhilePolling=false,false
 local slowSession,remoteExpired,deleteFails,writeFails=false,false,false,false
+local accessRedirect=false
 local rememberedValue=true
 local revoked=0
 local auth={
@@ -980,10 +981,11 @@ local auth={
  Instance={new=function(name) assert(name=='BindableEvent');local event=signal();return {Event=event,Fire=function() event:Fire() end,Destroy=function() end} end},
  request=function(r)
     local op=r.Url:match('/accounts/(.+)$')
-    assert(r.Url:find('https://arcscriptcenter-account-qa.kogpasan14.workers.dev/',1,true)==1)
+    assert(r.Url:find('https://arcscriptcenter-eslogin-edge-qa.kogpasan14.workers.dev/',1,true)==1)
     assert(r.Method=='POST' and r.Headers.Origin==nil and r.Headers.Cookie==nil)
     local v={ok=true}
     if op=='pair/start' then
+        if accessRedirect then return {StatusCode=302,Body=''} end
         assert(r.Headers.Authorization==nil); v.code='ABCDEF123456'; v.secret=session; v.expiresAt=100
     elseif op=='pair/poll' then
         assert(values[tonumber(r.Body)].remember==rememberedValue)
@@ -1016,6 +1018,16 @@ runtime.task.spawn(function()
     assert(not c.hasSession() and c.refresh()==nil)
     assert(c.poll(assert(c.begin()),true).saved and stored)
     assert(values[tonumber(stored)].origin==c.website)
+    local remembered=values[tonumber(stored)]
+    for _,origin in {'https://arcscriptcenter-account-qa.kogpasan14.workers.dev',false} do
+        remembered.origin=origin or nil
+        assert(not run('accountClient',auth).hasSession(),'Remember must match the issuing QA origin')
+    end
+    remembered.origin=c.website
+    accessRedirect=true
+    local denied,why=c.begin()
+    assert(not denied and why=='access_required')
+    accessRedirect=false
     local restored=run('accountClient',auth)
     assert(restored.hasSession() and restored.policy().state=='restricted_mode')
     status='banned'; assert(restored.policy().state=='ban_ingame')

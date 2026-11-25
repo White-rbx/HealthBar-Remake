@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ISOLATED_ESLOGIN_ORIGIN,createIsolatedESLoginCandidate}
+import entry, {ISOLATED_ESLOGIN_ORIGIN,createIsolatedESLoginCandidate}
  from './eslogin-isolated-account-candidate.mjs';
 
 test('future ESLogin candidate uses the explicitly pinned HTTPS WebAuthn origin',()=>{
@@ -61,5 +61,21 @@ test('rejects spoofed Host and an unrelated origin before any auth routing',asyn
    ASC_ACCOUNT_MODE:'isolated-qa'});
   assert.equal(response.status,404,target);
   assert.equal((await response.json()).code,'not_found');
+ }
+});
+
+test('deployed entry serves provisioning with actual locked bindings or legacy password settings', async()=>{
+ const unexpected=()=>assert.fail('locked entry used a resource');
+ const env={ACCOUNT_DB:{prepare:unexpected,batch:unexpected},ACCOUNT_RATE:{limit:unexpected}};
+ for(const settings of [{}, {ASC_ACCOUNT_MODE:'isolated-qa',
+  ASC_ACCOUNT_AUTH_MODE:'legacy-password-qa',ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',
+  ACCOUNT_TOTP_KEY:'ab'.repeat(32),ACCOUNT_TURNSTILE_SECRET:'synthetic',
+  ACCOUNT_TURNSTILE_SITE_KEY:'synthetic_site'}]){
+  for(const path of ['/health','/api/v1/accounts/passkey/register/options','/api/v1/accounts/pair/start']){
+   const response=await entry.fetch(new Request(ISOLATED_ESLOGIN_ORIGIN+path,
+    {method:path==='/health'?'GET':'POST'}),{...env,...settings});
+   assert.equal(response.status,503,path);
+   assert.equal(response.headers.get('set-cookie'),null);
+  }
  }
 });

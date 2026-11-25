@@ -78,3 +78,24 @@ The companion `sandbox/asc-account/eslogin-isolated-account-candidate.test.mjs` 
 Both this candidate test and the exact D1/rate-limit/Access assertions are now in the consolidated GitHub PR CI and offline Private Preview Preflight.
 
 **Next required owner-controlled configuration remains QA-specific Turnstile and secrets.** The connected tool's security checks blocked automatic creation/storage; no widget was created. No workaround to that tool boundary was used. The dedicated QA Worker remains denied by Access at the edge and no live account ceremonies are enabled.
+
+## Current independent ESLogin deployment and acceptance
+
+The locked Passkey implementation is deployed to `arcscriptcenter-eslogin-edge-qa` as version 5, `75849a74-a686-4643-89bb-5e2b9c3498ea`, deployment `6a192147-4669-47a3-b077-374ef933138d`. The SHA-256 of the built module and the module read back from Cloudflare is `22aa7c8c7cce579c5190dd6650b3c8eb30cb0db72be03814670b20a56180e6f6`. The rollback target on this Worker is version `3c866847-ff7f-48e5-9e09-2e568f36ad0b`, the provisioning entry with the same five bindings.
+
+| Check | Evidence |
+| --- | --- |
+| Access | One self-hosted app targeting only the independent Worker, DENY Everyone, zero exceptions, OPTIONS bypass disabled. Anonymous GET and POST returned 302 to the tenant's Access login. No tester has been added. |
+| Turnstile | Dedicated managed widget, no pre-clearance, exact independent hostname. The Worker has all three QA secret bindings. Siteverify hostname and action checks for registration and recovery run in local fixtures. Real challenge redemption needs an authorized tester. |
+| Worker | Exactly the dedicated D1, 40/60s limiter and three secret bindings. No launch flags. The deployed entry permits only an explicit Passkey launch, and otherwise returns provisioning. |
+| Storage | The 11 synthetic account tables remain empty after deployment. Foreign-key check returned zero violations. |
+| Original Account QA | V10 at 100%, V11 undeployed, Version URLs disabled. |
+| Loader | The opt-in account client now pins both the pairing website and HTTP API to the independent origin. Remember credentials from the old origin or a file with no issuer require fresh pairing. |
+| Offline QA | Luau VM covers X, timeout, cancellation, restricted policy, Remember/rejoin and offline logout. The isolated bundle ran in workerd with local D1 and both Siteverify action fixtures. Chromium exercised the real website JavaScript with two virtual authenticators, registration, sign-in using the backup, recovery, pairing, restricted session, expiry, logout and revocation. |
+| Live acceptance | **BLOCKED**. No admitted Edge tester, live Turnstile redemption, live pairing or real Android/Roblox run. |
+
+For a later tester window, owner approval must name each synthetic identity and authorize the Access policy change. Scope the Allow rule to those exact identities on the existing independent app, with default deny, no path bypass, no wildcard domain and no Everyone allow. Recheck both the anonymous challenge and positive tester admission before enabling authentication. The browser and the Roblox HTTP client are independent Access clients. Verify an approved short-lived per-tester Access session for the Loader transport before starting pairing. Never distribute a common Access credential or copy the website's authentication cookie into a Roblox script.
+
+On Android, use the approved synthetic identity on the protected website, enroll a device passkey and backup, approve the one-time code from ESLogin, and verify Loader continuation. Rejoin with Remember on and off, check the restricted account, close a pending login with X, sign out, then verify the server rejects the previous session. Record only outcome, build and device. Do not capture pairing codes, recovery codes, authentication cookies or session files.
+
+**Decision: NO-GO for STAGING closeout until the protected Edge and device flow succeeds.**

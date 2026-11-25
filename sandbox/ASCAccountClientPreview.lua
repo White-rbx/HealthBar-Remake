@@ -8,7 +8,7 @@ for i = 1, candidates.n do
     if type(candidates[i]) == "function" then requestFn = candidates[i]; break end
 end
 
-local accountOrigin = "https://arcscriptcenter-account-qa.kogpasan14.workers.dev"
+local accountOrigin = "https://arcscriptcenter-eslogin-edge-qa.kogpasan14.workers.dev"
 local client = {
     website = accountOrigin,
     publicLookup = false, isolatedQA = true, accountMode = true,
@@ -59,10 +59,11 @@ local function send(route, body, authenticated)
             local reply = requestFn({ Url = accountOrigin .. "/api/v1/accounts/" .. route,
                 Method = "POST", Headers = headers, Body = service:JSONEncode(body), Timeout = 8 })
             if type(reply) ~= "table" then return nil, "unavailable" end
+            local status = tonumber(reply.StatusCode or reply.Status)
+            if status and status >= 300 and status < 400 then return nil, "access_required" end
             local raw = reply.Body or reply.body
             if type(raw) ~= "string" or #raw > 300000 then return nil, "unavailable" end
             local value = service:JSONDecode(raw)
-            local status = tonumber(reply.StatusCode or reply.Status)
             if type(value) ~= "table" or not status then return nil, "unavailable" end
             if status >= 200 and status < 300 and value.ok == true then return value end
             return nil, type(value.code) == "string" and value.code or "unavailable"
@@ -80,7 +81,7 @@ end
 if type(readfile) == "function" then
     local ok, saved = pcall(function() return service:JSONDecode(readfile(file)) end)
     if ok and type(saved) == "table" and credential(saved.session)
-        and (saved.origin == nil or saved.origin == accountOrigin)
+        and saved.origin == accountOrigin
         and type(saved.accountId) == "string" and saved.accountId ~= ""
         and type(saved.expiresAt) == "number" then
         possiblyRemembered = true

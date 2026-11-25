@@ -109,6 +109,7 @@ jobs:
           npm install --prefix sandbox/asc-account --ignore-scripts --no-audit --no-fund
           npm run test:passkey --prefix sandbox/asc-account
           npm run build:passkey --prefix sandbox/asc-account
+          npm run build:eslogin --prefix sandbox/asc-account
           # The immutable Version 11 uploader is pinned to its original SHA-256.
           # A newly edited website bundle must fail closed rather than re-pin.
           node --test sandbox/asc-account/qa-undeployed-version-upload.test.mjs
@@ -124,9 +125,11 @@ jobs:
       - name: ArcScriptCenter account Worker HTTP and D1 in workerd
         run: |
           export ASC_ACCOUNT_WORKERD_PREFIX="$RUNNER_TEMP/asc-account-workerd"
-          npm install --prefix "$ASC_ACCOUNT_WORKERD_PREFIX" --no-audit --no-fund miniflare@4.20260730.0
+          npm install --prefix "$ASC_ACCOUNT_WORKERD_PREFIX" --no-audit --no-fund miniflare@4.20260730.0 playwright-core@1.56.1
           node --test sandbox/asc-account/workerd.test.mjs
           node --test sandbox/asc-account/workerd-passkey.test.mjs
+          export ASC_CHROMIUM_BIN="$(command -v google-chrome)"
+          node --test sandbox/asc-account/eslogin-browser.test.mjs
       - name: Compile and run Roblox policy code in the Luau VM with mocked Roblox services
         run: |
           luau_dir="$RUNNER_TEMP/asc-luau"
