@@ -1,6 +1,8 @@
 // STAGING ONLY: a locked Cloudflare Worker Preview entrypoint, NOT a login rollout.
-// The real preview hostname is deliberately not set in this repository.
-// Do not create a Preview until Access, isolated D1, and Origin have been reviewed.
+// Cloudflare has a locked "eslogin" Preview with a separate fixed-origin main module,
+// zero uploaded bindings and a deny-all Access application. Its URL remains disabled.
+// Authenticated WebAuthn QA still requires a different isolated D1, reviewed Access
+// allow policies, a separately pinned Origin/RP ID and test-only Turnstile.
 import provisioning from './provisioning-worker.mjs';
 
 const suffix='-arcscriptcenter-account-qa.kogpasan14.workers.dev';
@@ -34,7 +36,6 @@ export function createLockedPrivatePreview({origin}={}){
  };
 }
 
-// No default export by design: there is no approved deployed Preview hostname yet.
-// When a protected Preview is approved, a separate reviewed entry file can call
-// createLockedPrivatePreview({origin:'https://<exact-preview-host>'}) and export it.
-// This source file cannot deploy a login or load any private account data.
+// No default export by design. The locked Preview uses a separate main module
+// which pins the exact expected origin. This module alone never enables account
+// authentication, and no Preview URL is presently permitted to accept traffic.
