@@ -92,3 +92,31 @@ test('Access return query on locked landing redirects to clean page without enab
   '/api/v1/accounts/passkey/register/options?bypass=1',{method:'POST',body:'{}'}),{});
  assert.equal(api.status,404);
 });
+
+test('activated Passkey Worker canonicalizes Access landing query but rejects queried account API',async()=>{
+ const unexpected=()=>assert.fail('redirect must not access QA resources');
+ const env={
+  ASC_ACCOUNT_MODE:'isolated-qa',
+  ASC_ACCOUNT_AUTH_MODE:'passkey',
+  ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',
+  ACCOUNT_DB:{prepare:unexpected,batch:unexpected},
+  ACCOUNT_RATE:{limit:unexpected},
+  ACCOUNT_TOTP_KEY:'ab'.repeat(32),
+  ACCOUNT_TURNSTILE_SECRET:'synthetic_qa_secret',
+  ACCOUNT_TURNSTILE_SITE_KEY:'synthetic_qa_site_key',
+ };
+ const r=await entry.fetch(new Request(ISOLATED_ESLOGIN_ORIGIN+'/?cf_access_callback=opaque'),env);
+ assert.equal(r.status,303);
+ assert.equal(r.headers.get('location'),ISOLATED_ESLOGIN_ORIGIN+'/');
+ assert.equal(r.headers.get('set-cookie'),null);
+ assert.equal(r.headers.get('referrer-policy'),'no-referrer');
+ const queried=await entry.fetch(new Request(ISOLATED_ESLOGIN_ORIGIN+
+  '/api/v1/accounts/passkey/login/options?cf_access_callback=opaque',{
+   method:'POST',headers:{Origin:ISOLATED_ESLOGIN_ORIGIN},body:'{}'
+  }),env);
+ assert.equal(queried.status,404);
+ assert.equal((await queried.json()).code,'not_found');
+ const health=await entry.fetch(new Request(ISOLATED_ESLOGIN_ORIGIN+'/health'),env);
+ assert.equal(health.status,200);
+ assert.equal((await health.json()).loginEnabled,true);
+});
