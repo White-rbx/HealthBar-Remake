@@ -4,6 +4,7 @@ export const PIN=Object.freeze({
  worker:'arcscriptcenter-account-qa',
  workerId:'bf038ed7c6fd47c8b227a9a29fcb2d1d',
  qaDb:'93d7dc3d-c196-40ee-a342-4144f0b85d50',
+ previewDb:'04715765-050f-4e26-b4f6-6101bba9dc97',
  deployed:'6b9420db-381c-4d53-8692-a82b76399b52',
  candidate:'2b34f5cb-0d89-42f0-8fa9-07b96d487d59',
  source:'2ac41e90aafc236edbb79a40cf0b8e352f319636',
@@ -58,7 +59,8 @@ export function verifyPrivatePreviewPlan(plan,baseline){
   && plan.access.workerId===PIN.workerId && plan.access.reviewed===true,
   'private Access policy for the Preview has not been verified');
  req(plan?.previewD1?.type==='d1' && uuid(plan.previewD1.id)
-  &&plan.previewD1.id!==PIN.qaDb,'Preview must use a separate synthetic-only D1');
+  &&plan.previewD1.id===PIN.previewDb && plan.previewD1.id!==PIN.qaDb,
+  'Preview must use the pinned isolated synthetic-only D1');
  req(plan?.previewD1?.schemaVerified===true && plan?.previewD1?.syntheticOnly===true,
   'Preview D1 schema and synthetic-only scope not verified');
  req(plan?.turnstile?.hostname===url.hostname && plan.turnstile?.testOnly===true
