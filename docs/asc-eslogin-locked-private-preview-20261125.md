@@ -1,37 +1,48 @@
-# ArcScriptCenter ESLogin — Locked Private Preview preparation (2026-11-25)
+# ESLogin — Account QA locked Preview control-plane update (2026-11-25)
 
-**STAGING ONLY. No live authentication, no Worker Preview creation, no D1 write, no Production deploy, and no PR merge.**
+**STAGING ONLY. No live authentication, no public Preview URL, no D1 write, no Production deployment and no PR merge.** This record supersedes the earlier preparation-only statement from the same day.
 
-## Live read-only inventory
+## Cloudflare resources created with owner consent
 
-- `arcscriptcenter-account-qa` deployed Worker Version 10 remains at **100% traffic**. Its existing Version 11 Passkey candidate remains uploaded but **not deployed (0%)**.
-- The Account QA D1 binding remains pinned to `93d7dc3d-c196-40ee-a342-4144f0b85d50`.
-- Connected Cloudflare account lists **10 D1 databases**. None has been approved for replacement/repurposing as a new isolated Preview database.
-- Access application listing contains **no app with a `preview_worker` destination for the Account QA Worker**. App name/hostname alone must not count as protection.
-- PR #16 remains **Draft**. The legitimate account service is still fail-closed in Provisioning state.
+Read-only GET verification after creation confirmed:
 
-## Implemented GitHub-only candidate and offline tests
+| Resource | ID / state |
+| --- | --- |
+| Account QA Worker | `arcscriptcenter-account-qa`, ID `bf038ed7c6fd47c8b227a9a29fcb2d1d` |
+| Deployed Worker | Version 10, `6b9420db-381c-4d53-8692-a82b76399b52`, still **100% traffic** |
+| Undeployed Passkey candidate | Version 11, `2b34f5cb-0d89-42f0-8fa9-07b96d487d59`, **0% traffic** |
+| Access application | `ESLogin Account QA - Private Preview (LOCKED)`, ID `75bf5130-77b0-4add-b59f-0fca6825fe5e` |
+| Access destination | Exactly one `preview_worker` entry for the Account QA Worker ID; **not** `worker`, `all_workers` or a public hostname |
+| Access policy | `LOCKED QA - deny all`, ID `df26ef29-38c2-4921-95d3-a79071f962a5`; decision `deny`, Include Everyone, no Exclude/Require, no public path overrides |
+| Worker Preview | Name `eslogin`, ID `c7bbd14fd43a4e9a87a308fcab659699`, created using `ignore_base_config=true` |
+| Locked Preview deployment | ID `fc8f71e9-cf0f-498b-97b3-181ba01f3576`, source modules `main.mjs`, `private-preview-locked-entry.mjs`, `provisioning-worker.mjs` |
+| Preview upload bindings | Submitted explicitly as `bindings: []`; no D1, KV, rate limiter, Account secrets or auth launch flags included |
+| Worker Preview URLs | `previews_enabled=false`; Preview API returns `urls: []`, so **not publicly reachable** |
+| D1 inventory | 10 databases, unchanged. No database was created, deleted, repurposed, migrated or written. |
+| Source control | `feedback-appeal-release-track`, PR #16 remains Draft, not merged. |
 
-- `sandbox/asc-account/private-preview-locked-entry.mjs` exports `validatePrivatePreviewOrigin` and `createLockedPrivatePreview`. It requires a **fixed, exact, HTTPS Preview hostname** under `-arcscriptcenter-account-qa.kogpasan14.workers.dev` and rejects canonical QA host, spoofed host, credentials, arbitrary port, path/query, and wrong Worker names.
-- This intentionally **does not export a default deployed Worker**: the real Preview URL has not been provisioned or pinned. The factory ignores authentication settings and does not read D1 or rate-limiter bindings. It serves the existing static Account QA Provisioning response only, including 503 for all account APIs.
-- `sandbox/asc-account/private-preview-locked-entry.test.mjs` tests those properties against purely synthetic requests, including hostile account launch flags.
-- `sandbox/asc-account/private-preview-gate.mjs` now exports `verifyPreviewAccessDestination(applications)` for Cloudflare Access read-only inventory checks. It requires exactly one self-hosted app for this exact Worker's `preview_worker` destination, no extra destinations and no public path overrides. A successful match **does not** establish that policies are safe or that anonymous edge requests are denied. The result leaves `policiesVerified`, `unauthorizedProbeVerified`, and `readyForLogin` as **false**.
-- `private-preview-gate.test.mjs` checks missing/wrong Worker destinations, duplicate apps, extra destinations, and public overrides.
-- Both new test sets are in `.github/workflows/asc-account-private-preview-preflight.yml` and the consolidated PR QA workflow. Tests have **no Cloudflare token** and do not mutate remote services.
+The locked deployment imports the reviewed Provisioning Worker and calls `createLockedPrivatePreview` with the fixed HTTPS origin `https://eslogin-arcscriptcenter-account-qa.kogpasan14.workers.dev`. This is a **reserved expected origin**, not an active working link. The handler returns 503 for account APIs and disables registration/login. All origin checks are exact, and the deployment cannot read D1 because it has no declared D1 binding.
 
-## Remaining Cloudflare gates (BLOCKED, no automated bypass)
-
-1. Obtain explicitly approved isolated **synthetic-only** D1 capacity for the Preview. Do not attach an existing QA, backup/restore, staging, or Production database as a shortcut.
-2. Create and independently verify an Access app with a **`preview_worker` destination for only the Account QA Worker** and a narrow, reviewed allow policy. Verify that an unauthenticated Preview HTTP request is denied **at the edge**, rather than relying on fixture flags.
-3. Set the exact Preview hostname and fixed WebAuthn expected Origin/RP ID, with test-only Turnstile credentials for the Preview host and both `asc_register`/`asc_recover` actions. Do not derive expected Origin from inbound Host/Origin.
-4. Create the **locked** Worker Preview using isolated bindings and verify account endpoints remain 503 and D1 account rows stay zero. Only then request a separate review before enabling synthetic Passkey ceremonies and ESLogin pairing.
-5. Test Android browser Passkey flows, pairing, cancellation, Remember/rejoin and Restricted Mode only after the protected synthetic backend succeeds. Keep default Roblox Loader and Production unaffected.
-
-Cloudflare primary references:
+**Do not turn on `previews_enabled` as a quick workaround.** On this existing QA Worker that setting also exposes Worker Version URLs. Version 11 uses its uploaded QA resources rather than a separate Preview D1, so exposing its Version URL would undermine the staged isolation boundary. Cloudflare references:
+- https://developers.cloudflare.com/workers/versions-and-deployments/version-urls/
+- https://developers.cloudflare.com/workers/versions-and-deployments/preview-urls/
 - https://developers.cloudflare.com/workers/previews/resources/
 - https://developers.cloudflare.com/workers/configuration/cloudflare-access/
-- https://developers.cloudflare.com/workers/versions-and-deployments/version-urls/
+- https://developers.cloudflare.com/d1/platform/limits/
 
-## Scope of tests
+## Verification status and remaining gates
 
-Passing offline tests proves **code-level gates and synthetic response behavior only**. It cannot demonstrate real Access protection, independent D1, real WebAuthn on the edge, or Roblox Mobile acceptance. Do not mark ESLogin production-ready on this basis.
+1. **Control plane:** PASS for Access destination and Deny Everyone policy on readback; Preview exists and a locked deployment was uploaded; the main Account QA deployment remains Version 10 100%.
+2. **Runtime edge denial:** NOT TESTED. Because no Preview URL is enabled, an anonymous HTTP request cannot yet establish Access enforcement at the edge. Access configuration readback is not a substitute.
+3. **Authenticated Preview:** BLOCKED. Must obtain a truly separate synthetic-only D1 (10 Free-plan databases is the documented maximum and 10 are currently listed); preserve all existing D1 databases until the owner explicitly approves a safe solution. Authenticated state must have separate rate limiting, QA-only secrets, correct pinned WebAuthn Origin/RP ID, test Turnstile hostname/action, verified Access policies and negative anonymous tests.
+4. **Mobile ESLogin acceptance:** BLOCKED until the protected authenticated Preview is ready. Do not register an actual personal account, issue real Passkeys, initiate pairing or claim that login works on the live Edge.
+5. **Production:** Out of scope. Do not merge PR #16 or alter the Account QA deployed Version 10 in this phase.
+
+## GitHub tests
+
+- `sandbox/asc-account/private-preview-locked-entry.test.mjs` simulates fixed-origin, Provisioning and disabled account APIs.
+- `sandbox/asc-account/private-preview-gate.test.mjs` simulates the observed locked control-plane snapshot, including failure if Access policy changes, `previews_enabled` becomes true, a Preview URL appears, or Version 10 loses 100% traffic.
+- `sandbox/asc-account/private-preview-gate.mjs` exports `verifyLockedPreviewControlPlane`, `verifyPreviewAccessDestination`, `verifyNoTrafficBaseline` and `verifyPrivatePreviewPlan`. All are read-only assertions against supplied snapshots; no Cloudflare tokens, background deployments or D1 writes.
+- CI runs the offline tests; a green test **does not** establish live edge Access denial or Passkey authentication.
+
+**Decision:** Locked Preview control-plane preparation complete; **NO-GO for activating Preview URLs, real authentication, Passkey enrollment or production** until the independent-resource and edge-protection gates are satisfied.
