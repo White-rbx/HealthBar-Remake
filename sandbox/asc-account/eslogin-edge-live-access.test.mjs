@@ -16,7 +16,8 @@ async function expectAccessDenial(path,init={}){
  assert.ok([302,303,307,308,401,403].includes(status),
   'Unauthenticated request reached app or unexpected edge response: HTTP '+status);
  if(status>=300&&status<400){
-  assert.match(redirected||'',/cloudflareaccess\\.com|\\/cdn-cgi\\/access\\//i,
+  assert.ok((redirected||'').includes('cloudflareaccess.com')||
+   (redirected||'').includes('/cdn-cgi/access/'),
    'Redirect did not resemble a Cloudflare Access challenge');
  }
  assert.notEqual(status,200,'Access must block public landing');
