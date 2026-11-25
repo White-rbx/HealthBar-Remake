@@ -85,9 +85,15 @@ local function applyProfile(reply)
 end
 
 function client.refresh()
-    if not session then return nil, "no_session" end
+    if not session then
+        current, currentPolicy = nil, nil
+        return nil, "no_session"
+    end
     local data, reason = send("session", {}, true)
     local account = applyProfile(data)
+    -- A transient request failure must not leave an old verified identity
+    -- visible to owner-scoped UI. Preserve the token for a later retry.
+    if not account then current, currentPolicy = nil, nil end
     return account, reason or (not account and "session_expired" or nil)
 end
 function client.profile()
@@ -145,7 +151,9 @@ end
 
 function client.heartbeat()
     local reply = send("heartbeat", {}, true)
-    return applyProfile(reply)
+    local account = applyProfile(reply)
+    if not account then current, currentPolicy = nil, nil end
+    return account
 end
 function client.policy()
     local started = os.clock()
@@ -183,8 +191,11 @@ function client.feedback(description)
     return send("feedback",{description=description},true)
 end
 function client.logout()
+    -- Sign Out must always forget locally saved credentials, even when
+    -- remote revocation cannot be confirmed due to loss of connectivity.
+    -- false means the server-side token may remain valid until expiry.
     local result, reason = send("logout",{},true)
-    if result or reason=="session_expired" then erase(); return true end
-    return false
+    erase()
+    return result ~= nil or reason == "session_expired"
 end
 return client
