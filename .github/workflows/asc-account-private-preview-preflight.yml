@@ -12,6 +12,8 @@ on:
       - 'sandbox/asc-account/eslogin-independent-edge-qa.test.mjs'
       - 'sandbox/asc-account/eslogin-locked-resources-gate.mjs'
       - 'sandbox/asc-account/eslogin-locked-resources-gate.test.mjs'
+      - 'sandbox/asc-account/eslogin-isolated-account-candidate.mjs'
+      - 'sandbox/asc-account/eslogin-isolated-account-candidate.test.mjs'
       - 'sandbox/asc-account/provisioning-worker.mjs'
       - '.github/workflows/asc-account-private-preview-preflight.yml'
   workflow_dispatch:
@@ -28,7 +30,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify private QA preview fail-closed gate
-        run: node --test sandbox/asc-account/private-preview-gate.test.mjs sandbox/asc-account/private-preview-locked-entry.test.mjs sandbox/asc-account/eslogin-independent-edge-qa.test.mjs sandbox/asc-account/eslogin-locked-resources-gate.test.mjs
+        run: node --test sandbox/asc-account/private-preview-gate.test.mjs sandbox/asc-account/private-preview-locked-entry.test.mjs sandbox/asc-account/eslogin-independent-edge-qa.test.mjs sandbox/asc-account/eslogin-locked-resources-gate.test.mjs sandbox/asc-account/eslogin-isolated-account-candidate.test.mjs
       - name: State explicitly that no live preview has been created
         run: |
           echo "PASS means offline gate assertions only. No Cloudflare or D1 API calls made." >> "$GITHUB_STEP_SUMMARY"
