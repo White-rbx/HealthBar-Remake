@@ -963,7 +963,19 @@ runtime.task.spawn(function()
     assert(restored.hasSession() and restored.policy().state=='restricted_mode')
     status='banned'; assert(restored.policy().state=='ban_ingame')
     status='normal'; assert(restored.policy().state=='clear')
-    fail=true; assert(restored.policy()==nil and restored.hasSession()); fail=false
+    assert(restored.hasPrivateCaseChannel())
+    fail=true
+    assert(restored.policy()==nil and restored.hasSession())
+    assert(restored.profile()==nil and not restored.hasPrivateCaseChannel(),
+        'failed revalidation must not retain previously verified identity')
+    fail=false
+    assert(restored.refresh() and restored.hasPrivateCaseChannel(),
+        'transient outage may be retried with the same unexpired token')
+    fail=true
+    assert(restored.heartbeat()==nil and not restored.hasPrivateCaseChannel(),
+        'failed heartbeat must fail closed for owner-scoped UI')
+    fail=false
+    assert(restored.refresh() and restored.hasPrivateCaseChannel())
     assert(restored.logout() and not stored and not restored.hasSession())
     assert(revoked==1)
     rememberedValue=false
@@ -978,6 +990,14 @@ runtime.task.spawn(function()
     local result,reason=c.poll(pair,true,function() return open end)
     assert(result==nil and reason=='cancelled' and stored==nil and not c.hasSession())
     assert(revoked==3)
+    cancelWhilePolling=false
+    assert(c.poll(assert(c.begin()),true).saved and stored)
+    fail=true
+    assert(c.logout()==false, 'offline logout must report unconfirmed server revocation')
+    assert(stored==nil and not c.hasSession() and c.profile()==nil,
+        'offline logout must erase the saved credential and current identity')
+    fail=false
+    assert(revoked==3, 'offline logout cannot falsely claim remote revocation')
     progress=1
 end)
 advance(10)
