@@ -1708,11 +1708,32 @@ end
 if policyMode == "account_qa" then
     local account = bootEnv.__ASC_ACCOUNT_QA
     bootEnv.__ASC_ACCOUNT_SIGN_OUT = function()
-        if bootEnv.__ASC_ACCOUNT_QA ~= account or (account.hasSession() and not account.logout()) then return false end
+        if bootEnv.__ASC_ACCOUNT_QA ~= account then return false end
+        local remotelyRevoked = not account.hasSession()
+        if not remotelyRevoked then
+            local ok, confirmed = pcall(account.logout)
+            remotelyRevoked = ok and confirmed == true
+            -- Never leave a still-present local credential behind on a failed call.
+            if account.hasSession() then
+                warn("[ES][AccountQA] Sign Out could not invalidate the local credential.")
+                return false
+            end
+        end
+        -- A network outage can prevent server revocation; the local Loader must
+        -- still close and return to Login after the credential was erased.
         bootEnv.__ASC_ACCOUNT_QA, bootEnv.__ASC_BAN_V2_CLIENT = nil, nil
         local gate = bootEnv.ArcScriptPolicyGate
         if gate and gate.stop then gate.stop() end
         display[displayProperty] = false
+        if not remotelyRevoked then
+            warn("[ES][AccountQA] Signed out locally; server revocation is unconfirmed. The old server session may remain valid until expiry.")
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "ArcScriptCenter",
+                    Text = "Signed out on this device. Server revocation could not be confirmed; review active sessions on the account website.",
+                })
+            end)
+        end
         task.defer(function()
             local login = assert(loadstring(game:HttpGet(accountLoginSource)))
             if login(account, nil, nil) then
