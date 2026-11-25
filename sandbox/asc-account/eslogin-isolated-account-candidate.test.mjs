@@ -79,3 +79,16 @@ test('deployed entry serves provisioning with actual locked bindings or legacy p
   }
  }
 });
+
+test('Access return query on locked landing redirects to clean page without enabling auth',async()=>{
+ const redirect=await entry.fetch(new Request(ISOLATED_ESLOGIN_ORIGIN+'/?code=opaque_query_secret'),{});
+ assert.equal(redirect.status,303);
+ assert.equal(redirect.headers.get('location'),ISOLATED_ESLOGIN_ORIGIN+'/');
+ assert.equal(redirect.headers.get('set-cookie'),null);
+ const landing=await entry.fetch(new Request(ISOLATED_ESLOGIN_ORIGIN+'/'),{});
+ assert.equal(landing.status,200);
+ assert.match(await landing.text(),/Registration and login are not available yet/i);
+ const api=await entry.fetch(new Request(ISOLATED_ESLOGIN_ORIGIN+
+  '/api/v1/accounts/passkey/register/options?bypass=1',{method:'POST',body:'{}'}),{});
+ assert.equal(api.status,404);
+});
