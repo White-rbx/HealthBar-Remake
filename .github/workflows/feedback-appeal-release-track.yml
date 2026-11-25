@@ -92,8 +92,10 @@ jobs:
         run: node --test sandbox/asc-account/worker.test.mjs
       - name: Locked Account QA Preview origin and Access destination offline tests
         run: node --test sandbox/asc-account/private-preview-gate.test.mjs sandbox/asc-account/private-preview-locked-entry.test.mjs
-      - name: Separate ESLogin HTTPS edge Worker stays provisioning-only with no D1
+      - name: Separate ESLogin HTTPS edge Worker remains provisioning-only
         run: node --test sandbox/asc-account/eslogin-independent-edge-qa.test.mjs
+      - name: Isolated ESLogin QA D1 and rate-limit control-plane gates (offline)
+        run: node --test sandbox/asc-account/eslogin-locked-resources-gate.test.mjs
       - name: Account QA provisioning endpoint fails closed before D1 deployment
         run: node --test sandbox/asc-account/provisioning-worker.test.mjs
       - name: Live isolated Account QA provisioning smoke (no user credentials)
