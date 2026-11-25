@@ -96,6 +96,8 @@ jobs:
         run: node --test sandbox/asc-account/eslogin-independent-edge-qa.test.mjs
       - name: Isolated ESLogin QA D1 and rate-limit control-plane gates (offline)
         run: node --test sandbox/asc-account/eslogin-locked-resources-gate.test.mjs
+      - name: Undeployed pinned-origin ESLogin Passkey candidate fails closed
+        run: node --test sandbox/asc-account/eslogin-isolated-account-candidate.test.mjs
       - name: Account QA provisioning endpoint fails closed before D1 deployment
         run: node --test sandbox/asc-account/provisioning-worker.test.mjs
       - name: Live isolated Account QA provisioning smoke (no user credentials)
