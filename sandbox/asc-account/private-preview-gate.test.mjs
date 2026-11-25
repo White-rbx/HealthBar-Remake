@@ -17,7 +17,7 @@ const plan=()=>({accountScope:'isolated-account-qa',transport:'Cloudflare Worker
  origin:PIN.previewOrigin,
  originWiring:'fixed-explicit-createAccountWorker-origin',
  access:{protected:true,destination:'preview_worker',workerId:PIN.workerId,reviewed:true},
- previewD1:{type:'d1',id:'11111111-2222-3333-4444-555555555555',schemaVerified:true,syntheticOnly:true},
+ previewD1:{type:'d1',id:PIN.previewDb,schemaVerified:true,syntheticOnly:true},
  turnstile:{hostname:new URL(PIN.previewOrigin).hostname,testOnly:true,actions:['asc_register','asc_recover']},
  previewRateLimiter:{isolated:true},syntheticSecretsOnly:true,
  defaultLaunchState:'locked',initialAuthMode:null,
@@ -52,7 +52,8 @@ test('blocks unprotected preview access or wrong resource target',()=>{
  p=plan();p.access.reviewed=false;bad(()=>verifyPrivatePreviewPlan(p,baseline()),/Access policy/);
 });
 test('blocks same database and unverified synthetic schema',()=>{
- let p=plan();p.previewD1.id=PIN.qaDb;bad(()=>verifyPrivatePreviewPlan(p,baseline()),/separate synthetic-only D1/);
+ let p=plan();p.previewD1.id=PIN.qaDb;bad(()=>verifyPrivatePreviewPlan(p,baseline()),/pinned isolated synthetic-only D1/);
+ p=plan();p.previewD1.id='11111111-2222-3333-4444-555555555555';bad(()=>verifyPrivatePreviewPlan(p,baseline()),/pinned isolated synthetic-only D1/);
  p=plan();p.previewD1.schemaVerified=false;bad(()=>verifyPrivatePreviewPlan(p,baseline()),/schema/);
  p=plan();p.previewD1.syntheticOnly=false;bad(()=>verifyPrivatePreviewPlan(p,baseline()),/synthetic-only/);
 });
