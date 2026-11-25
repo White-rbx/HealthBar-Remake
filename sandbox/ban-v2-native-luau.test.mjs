@@ -34,6 +34,8 @@ const files = {
   '\nreturn banData',
  startup: section(main, 'local function canStartMain()', 'if not canStartMain() then') + '\nreturn canStartMain',
  main: section(main, '-- ASC BAN V2 MAIN REFRESH BEGIN', '-- ASC BAN V2 MAIN REFRESH END'),
+ signOut: section(main, '-- Ban in-game never reaches here. Restricted Mode deliberately loads MAIN',
+    'local isRestrictedMode =') + '\nreturn bootEnv.__ASC_ACCOUNT_SIGN_OUT',
  arcsen: section(arcsen, '    local function apply(status, reason)', '    -- Use a fixed production origin') +
   '\nreturn apply',
 };
@@ -912,6 +914,51 @@ assert(testerRemember.Text=='Remember unavailable on this client')
 tester:FindFirstChild('Close').Activated:Fire()
 advance(14)
 assert(testerResult==false and root:FindFirstChild('ESLoginGui')==nil)
+`);
+});
+
+test('Luau VM: ESLogin sign-out hides the old Loader even if remote revocation fails',()=>{
+ luau(String.raw`
+local warned, notices, reopened, stopped, logoutCalls=0,0,0,0,0
+local account={logged=true}
+function account.hasSession() return account.logged end
+function account.logout()
+ logoutCalls+=1
+ account.logged=false
+ return false -- network outage: credential erased locally, remote revocation unconfirmed
+end
+function account.heartbeat() error('heartbeat should not run after shutdown') end
+local state={__ASC_ACCOUNT_QA=account,__ASC_BAN_V2_CLIENT=account,
+ ArcScriptPolicyGate={stop=function() stopped+=1 end}}
+local screen={Visible=true}
+local env={
+ policyMode='account_qa',bootEnv=state,display=screen,displayProperty='Visible',
+ accountLoginSource='qa-login-source',asrt={Parent=nil},
+ warn=function(message) assert(message:find('revocation',1,true)); warned+=1 end,
+ game={
+  HttpGet=function(_,url) assert(url=='qa-login-source');return 'qa-script' end,
+  GetService=function(_,name)
+   assert(name=='StarterGui')
+   return {SetCore=function(_,name,data)
+    assert(name=='SendNotification')
+    assert(data.Text:find('Server revocation could not be confirmed',1,true))
+    notices+=1
+   end}
+  end,
+ },
+ loadstring=function(src)
+  assert(src=='qa-script')
+  return function(client) assert(client==account);reopened+=1;return false end
+ end,
+}
+local signOut=run('signOut',env)
+assert(type(signOut)=='function' and signOut()==true)
+assert(logoutCalls==1 and not account.hasSession())
+assert(state.__ASC_ACCOUNT_QA==nil and state.__ASC_BAN_V2_CLIENT==nil)
+assert(screen.Visible==false and stopped==1 and warned==1 and notices==1)
+advance(0)
+assert(reopened==1,'sign-out must offer ESLogin again')
+assert(signOut()==false,'repeat sign-out must not reopen the Loader')
 `);
 });
 
