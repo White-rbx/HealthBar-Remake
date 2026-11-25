@@ -31,7 +31,7 @@ The code returns a static Provisioning page or HTTP 503 on all account APIs. It 
 - `sandbox/asc-account/eslogin-independent-edge-qa.test.mjs` verifies fail-closed provisioning behavior, denied cross-origin requests, and that even synthetic authentication flags have no effect.
 - `sandbox/asc-account/eslogin-edge-live-access.test.mjs` sends **unauthenticated GET /** and **POST /api/v1/accounts/passkey/login/options** via the public HTTPS hostname, with redirects disabled and no cookies, secrets, identity claims or user data.
 - An HTTP 200 landing or 503 from the Provisioning handler is treated as a failed Access boundary. Expected anonymous outcomes are Access challenge/denial statuses 302/303/307/308/401/403.
-- The consolidated PR workflow runs both; verify the actual GitHub Actions result and log details before asserting Edge-denial proof. This test does **not** validate Access on the separate, non-routable `eslogin` Preview.
+- **LIVE PASS:** GitHub Actions run [45607077123](https://github.com/White-rbx/HealthBar-Remake/actions/runs/45607077123) completed successfully. Both the anonymous GET and POST returned **HTTP 302** with redirect host `arcscriptcenter-dashboard-pages.cloudflareaccess.com` (Cloudflare Access), rather than reaching the 200 landing or the 503 Provisioning API. No credentials or cookies were supplied. This verifies the isolated Worker edge Access challenge only; it does **not** validate Access on the separate, non-routable `eslogin` Preview.
 
 ## D1 inventory, read-only (no user records read)
 
