@@ -71,3 +71,29 @@ export function verifyPrivatePreviewPlan(plan,baseline){
   'public registration or traffic change requested');
  return {readyForLockedPreviewSetup:true,readyForLiveEnrollment:false};
 }
+
+
+/**
+ * Read-only Access app inventory check. This validates the destination shape,
+ * NOT its authentication policies or proof that an anonymous Preview request
+ * is actually denied. Never infer protection merely from an app name.
+ */
+export function verifyPreviewAccessDestination(applications){
+ req(Array.isArray(applications),'Access application listing unavailable');
+ const candidates=applications.filter(app=>app?.type==='self_hosted'
+  &&Array.isArray(app.destinations)
+  &&app.destinations.some(dest=>dest?.type==='preview_worker'&&dest.worker_id===PIN.workerId));
+ req(candidates.length===1,'exactly one Account QA preview_worker Access destination required');
+ const application=candidates[0];
+ req(typeof application.id==='string'&&application.id!=='','Access application ID missing');
+ req(application.destinations.length===1&&
+  application.destinations[0].type==='preview_worker'&&
+  application.destinations[0].worker_id===PIN.workerId,
+  'Access application must target only the exact Account QA Preview Worker');
+ req(!application.destinations[0].overrides?.length,
+  'Access preview destination must not have public path overrides');
+ return {
+  destinationVerified:true,applicationId:application.id,
+  policiesVerified:false,unauthorizedProbeVerified:false,readyForLogin:false,
+ };
+}
