@@ -26,7 +26,17 @@ const css=`:root{color-scheme:dark;font:16px system-ui,sans-serif;background:#09
 export default {
   async fetch(request){
     const url=new URL(request.url);
-    if(url.search)return json(404,{ok:false,code:'not_found'});
+    // Cloudflare Access may return from identity verification with a query
+    // on the original landing URL. Never consume, forward or reflect its value.
+    // Redirect ONLY a GET / query to the clean canonical landing URL.
+    // All account/API routes with queries remain blocked.
+    if(url.search){
+      if(request.method==='GET'&&url.pathname==='/')
+        return new Response(null,{status:303,headers:{...security,
+          Location:url.origin+'/',
+        }});
+      return json(404,{ok:false,code:'not_found'});
+    }
     if(request.method==='GET'&&url.pathname==='/')
       return reply(200,html,'text/html; charset=utf-8');
     if(request.method==='GET'&&url.pathname==='/style.css')
