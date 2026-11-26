@@ -40,6 +40,29 @@ local function erase()
     return false
 end
 
+-- Cloudflare Access is a different authentication layer from ESLogin Passkeys.
+-- Roblox HTTP does NOT inherit the browser's Access session; never copy its
+-- cookie or a service credential into Luau to make pairing appear to work.
+-- A redirect (or followed Access HTML) must be reported as Access-required,
+-- not parsed as an Account API JSON response or treated as a verified session.
+local function accessChallenge(reply, status, raw)
+    if status and status >= 300 and status < 400 then return true end
+    local headers = reply.Headers or reply.headers
+    if type(headers) == "table" then
+        for name, value in pairs(headers) do
+            if type(name) == "string" and type(value) == "string"
+                and name:lower() == "location"
+                and value:lower():find(".cloudflareaccess.com", 1, true) then
+                return true
+            end
+        end
+    end
+    if type(raw) ~= "string" or not raw:match("^%s*<") then return false end
+    local prefix = raw:sub(1, 16000):lower()
+    return prefix:find("cloudflare access", 1, true) ~= nil
+        or prefix:find(".cloudflareaccess.com", 1, true) ~= nil
+end
+
 local function send(route, body, authenticated)
     if not requestFn then return nil, "transport_unavailable" end
     if authenticated and not session then return nil, "session_expired" end
@@ -60,9 +83,11 @@ local function send(route, body, authenticated)
                 Method = "POST", Headers = headers, Body = service:JSONEncode(body), Timeout = 8 })
             if type(reply) ~= "table" then return nil, "unavailable" end
             local status = tonumber(reply.StatusCode or reply.Status)
-            if status and status >= 300 and status < 400 then return nil, "access_required" end
             local raw = reply.Body or reply.body
+            if accessChallenge(reply, status, raw) then return nil, "access_required" end
             if type(raw) ~= "string" or #raw > 300000 then return nil, "unavailable" end
+            -- Never treat HTML/Access login pages as the Account JSON API.
+            if raw:match("^%s*<") then return nil, "unavailable" end
             local value = service:JSONDecode(raw)
             if type(value) ~= "table" or not status then return nil, "unavailable" end
             if status >= 200 and status < 300 and value.ok == true then return value end
