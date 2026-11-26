@@ -23,6 +23,9 @@ const section = (source, start, end) => {
 const files = {
  entry, client, server, topbar,
  accountUi: read('ESLogin.lua'), accountClient: read('ASCAccountClientPreview.lua'),
+ accountAccessChallenge: section(read('ASCAccountClientPreview.lua'),
+   'local function accessChallenge(reply, status, raw)',
+   'local function send(route, body, authenticated)') + '\nreturn accessChallenge',
  testerUi: read('ESLoginTesterPreview.lua'), testerEntry: read('ASCAccountTesterPreview.lua'),
  boot: section(main, 'local policyMode =', '-- ASC BAN V2 BOOTSTRAP END') + '\nreturn policyMode',
  waiting: section(rejoiner, 'local function canContinue()', '-- Continue (ONE TIME)') + '\nreturn canContinue',
@@ -1200,5 +1203,19 @@ local entryEnv={
  end,
 }
 assert(run('testerEntry',entryEnv)==false and entryLoads==1)
+`);
+});
+
+test('Luau VM: Roblox HTTP Access responses are fail-closed without browser cookies',()=>{
+ luau(String.raw`
+local accessChallenge = run('accountAccessChallenge', {})
+assert(accessChallenge({Headers={}}, 302, '') == true, '302 must stop at Access')
+assert(accessChallenge({Headers={Location='https://qa.cloudflareaccess.com/cdn-cgi/access/login/'}}, 200, '') == true, 'followed Access redirect must be rejected')
+assert(accessChallenge({Headers={}}, 200, '<!doctype html><title>Cloudflare Access - Sign in</title>') == true, 'Access HTML must not be treated as account JSON')
+assert(accessChallenge({headers={}}, 403, '<html>please sign in to qa.cloudflareaccess.com</html>') == true, 'Access denial HTML must be rejected')
+assert(accessChallenge({Headers={}}, 200, '{"ok":true,"account":{"id":"fake"}}') == false, 'Normal JSON is not Access HTML')
+assert(accessChallenge({Headers={}}, 401, '{"ok":false,"code":"session_expired"}') == false, 'Normal API session errors are distinct from Access')
+assert(accessChallenge({Headers={}}, 503, '<html>Temporary outage</html>') == false, 'Unrelated HTML is not falsely authenticated as Access')
+assert(accessChallenge({Headers={}}, 303, nil) == true, 'Redirect cannot become an account session')
 `);
 });
