@@ -89,3 +89,48 @@ test('the first page is a landing page when there is no authenticated session',a
  assert.equal(result.element('landing').hidden,false);
  assert.equal(result.element('account').hidden,true);
 });
+
+test('duplicate backup credential has a clear message and never submits a duplicate',async()=>{
+ const dom=new Map();
+ const get=id=>{
+  if(!dom.has(id))dom.set(id,{id,hidden:false,textContent:'',disabled:false,onclick:null});
+  return dom.get(id);
+ };
+ const history={pushState(){},replaceState(){}};
+ const window={location:{pathname:'/myaccount',hash:''},history,addEventListener(){},
+  isSecureContext:true,PublicKeyCredential:function(){}};
+ const PublicKeyCredential=function(){};
+ PublicKeyCredential.parseCreationOptionsFromJSON=options=>options;
+ PublicKeyCredential.parseRequestOptionsFromJSON=options=>options;
+ const navigator={credentials:{
+  get:async()=>({toJSON:()=>({id:'synthetic-current-credential'})}),
+  create:async()=>{
+   const error=new Error('The user attempted to register an authenticator that contains one of the credentials already registered with the relying party.');
+   error.name='InvalidStateError';
+   throw error;
+  },
+ }};
+ const requests=[];
+ const fetch=async url=>{
+  const route=String(url).replace('/api/v1/accounts/','');
+  requests.push(route);
+  if(route==='session')return {ok:true,json:async()=>({
+   ok:true,account:{username:'synthetic_qa',nickname:'Synthetic QA'}})};
+  if(route==='passkey/backup/options')return {ok:true,json:async()=>({
+   ok:true,options:{challenge:'synthetic-options'}})};
+  if(route==='passkey/backup/verify-current')return {ok:true,json:async()=>({
+   ok:true,options:{challenge:'synthetic-backup-options'}})};
+  assert.fail('Unexpected API call after duplicate credential: '+route);
+ };
+ vm.runInNewContext(readFileSync(source,'utf8'),{
+  window,document:{getElementById:get,querySelectorAll:()=>[]},fetch,
+  navigator,PublicKeyCredential,AbortSignal,URL,console,
+ },{timeout:1000});
+ await new Promise(resolve=>setImmediate(resolve));
+ await get('add-backup-passkey').onclick();
+ assert.match(get('status').textContent,/already has a passkey for your account/);
+ assert.match(get('status').textContent,/existing passkey is unchanged/);
+ assert.equal(get('account').hidden,false);
+ assert.equal(get('add-backup-passkey').disabled,false);
+ assert.deepEqual(requests,['session','passkey/backup/options','passkey/backup/verify-current']);
+});
