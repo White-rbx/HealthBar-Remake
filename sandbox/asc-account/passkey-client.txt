@@ -44,6 +44,15 @@
   if(!window.isSecureContext||typeof window.PublicKeyCredential!=='function'||!navigator.credentials)
    throw new Error('This browser does not support passkeys on this secure page.');
  };
+ // Only for backup registration. Keep the server's WebAuthn excludeCredentials
+ // check intact; the error is expected if the same authenticator is selected.
+ function backupCreationError(error){
+  const message=String(error?.message||'');
+  if(error?.name==='InvalidStateError'||
+     /authenticator that contains one of the credentials already registered/i.test(message))
+   return new Error('This passkey manager already has a passkey for your account. Use another trusted authenticator to add a backup. Your existing passkey is unchanged.');
+  return error;
+ }
  function registrationOptions(json){
   if(typeof PublicKeyCredential.parseCreationOptionsFromJSON==='function')
    return PublicKeyCredential.parseCreationOptionsFromJSON(json);
@@ -180,7 +189,12 @@
   const current=await navigator.credentials.get({publicKey:authenticationOptions(options)});
   if(!current)throw new Error('Reauthentication with your current passkey was cancelled.');
   const enrolment=await post('passkey/backup/verify-current',{response:credentialJSON(current)});
-  const backup=await navigator.credentials.create({publicKey:registrationOptions(enrolment.options)});
+  let backup;
+  try{
+   backup=await navigator.credentials.create({publicKey:registrationOptions(enrolment.options)});
+  }catch(error){
+   throw backupCreationError(error);
+  }
   if(!backup)throw new Error('Backup passkey creation was cancelled.');
   await post('passkey/backup/verify',{response:credentialJSON(backup)});
   status('Backup passkey added. Your original passkey is still valid. Keep both safe.');
