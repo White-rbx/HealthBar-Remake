@@ -301,3 +301,18 @@ test('Rejoin without a verified case delivery backend never claims account has n
   assert.match(arcsen,/\/api\/v1\/feedback\/status/);
   assert.doesNotMatch(arcsen,/No completed Denied feedback case in this session/);
 });
+
+test('Stage 7 Roblox pairing cannot bypass Cloudflare Access or impersonate Chrome',()=>{
+  assert.match(accountClient,/function accessChallenge\(reply, status, raw\)/);
+  assert.match(accountClient,/status >= 300 and status < 400/);
+  assert.match(accountClient,/\.cloudflareaccess\.com/);
+  assert.match(accountClient,/prefix:find\("cloudflare access"/);
+  assert.match(accountClient,/if accessChallenge\(reply, status, raw\) then return nil, "access_required" end/);
+  assert.match(accountClient,/if raw:match\("\^%s\*<"\) then return nil, "unavailable" end/);
+  assert.match(accountLogin,/Roblox HTTP pairing is blocked by Cloudflare Access/);
+  assert.match(accountLogin,/failure == "access_required" then[\s\S]*?finalMessage = messages\[failure\][\s\S]*?break/);
+  assert.match(main,/if not login\(account, nil, reason\) or not account\.profile\(\) then return nil end/);
+  for(const src of [accountClient, accountLogin]){
+    assert.doesNotMatch(src,/CF_Authorization\s*=|CF-Access-Client-Secret|cf-access-token|cloudflare_access_cookie/i);
+  }
+});
