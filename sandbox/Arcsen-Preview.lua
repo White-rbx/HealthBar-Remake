@@ -13715,7 +13715,12 @@ if type(getgenv) == "function" and getgenv().__ASC_ACCOUNT_QA then
             return type(id) == "string" and id:match("^[1-9]%d*$") and ("rbxthumb://type=Asset&id="..id.."&w=150&h=150") or ""
         end
         local function refreshProfile(profile)
-            if not profile then label.Text = "Account service unavailable."; return end
+            if not profile then
+                label.Text = "Account service unavailable."
+                avatar.Image, banner.Image = "", ""
+                banner.BackgroundColor3 = Color3.fromRGB(16,39,87)
+                return
+            end
             label.Text = profile.nickname.."\nArcID "..profile.id
             avatar.Image = thumbnail(profile.image)
             if avatar.Image == "" then avatar.Image = "rbxassetid://120500539322715" end
@@ -13752,7 +13757,25 @@ if type(getgenv) == "function" and getgenv().__ASC_ACCOUNT_QA then
                 label.Text = "Could not revoke the session. Try again."
             end
         end)
-        refreshProfile(account.profile())
+        local cachedProfile = account.profile()
+        refreshProfile(cachedProfile)
+        -- Re-render the already verified cached profile after heartbeat or
+        -- manual refresh; do not add any new network requests.
+        task.spawn(function()
+            while frame.Parent do
+                task.wait(1)
+                if not frame.Parent then break end
+                if env.__ASC_ACCOUNT_QA ~= account then
+                    refreshProfile(nil)
+                    break
+                end
+                local latest = account.profile()
+                if latest ~= cachedProfile then
+                    cachedProfile = latest
+                    refreshProfile(latest)
+                end
+            end
+        end)
     end)
 end
 
