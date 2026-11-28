@@ -94,7 +94,7 @@ jobs:
         run: node --test sandbox/asc-account/private-preview-gate.test.mjs sandbox/asc-account/private-preview-locked-entry.test.mjs
       - name: Separate ESLogin HTTPS edge Worker remains provisioning-only
         run: node --test sandbox/asc-account/eslogin-independent-edge-qa.test.mjs
-      - name: Stage 7 pairing-only gateway candidate is undeployed and fails closed
+      - name: Stage 7 scoped Loader gateway candidate is undeployed and fails closed
         run: node --test sandbox/asc-account/isolated-pairing-gateway-candidate.test.mjs
       - name: Isolated ESLogin QA D1 and rate-limit control-plane gates (offline)
         run: node --test sandbox/asc-account/eslogin-locked-resources-gate.test.mjs
