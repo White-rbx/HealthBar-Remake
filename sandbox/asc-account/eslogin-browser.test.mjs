@@ -29,7 +29,7 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
   d1Databases:{ACCOUNT_DB:'browser-fixture'},
   ratelimits:{ACCOUNT_RATE:{namespace_id:'20261125',simple:{limit:40,period:60}}},
   bindings:{ASC_ACCOUNT_MODE:'isolated-qa',ASC_ACCOUNT_AUTH_MODE:'passkey',
-   ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',ACCOUNT_TOTP_KEY:'ab'.repeat(32),
+   ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',ASC_ACCOUNT_ACHIEVEMENTS:'isolated-qa-enabled',ACCOUNT_TOTP_KEY:'ab'.repeat(32),
    ACCOUNT_TURNSTILE_SECRET:'fixture',ACCOUNT_TURNSTILE_SITE_KEY:'fixture_site'},
   outboundService:async request=>{
    if(new URL(request.url).origin==='https://thumbnails.roblox.com'){
@@ -43,7 +43,7 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
  });
  t.after(()=>worker.dispose());
  const db=await worker.getD1Database('ACCOUNT_DB');
- for(const name of ['asc_unified_account','asc_passkey','asc_passkey_recovery','asc_passkey_backup','asc_passkey_account_actions']){
+ for(const name of ['asc_unified_account','asc_passkey','asc_passkey_recovery','asc_passkey_backup','asc_passkey_account_actions','asc_achievements']){
   const sql=readFileSync(join(root,'migrations',name+'_ISOLATED_QA_ONLY.sql'),'utf8');
   await db.batch(sql.replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean).map(s=>db.prepare(s)));
  }
@@ -149,6 +149,19 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
  await page.locator('#feedback-description').fill('Synthetic account feedback long enough for the approved submission form.');
  await page.locator('#send-feedback').click();
  await status('Feedback submitted for review');
+ await page.locator('#account-achievements summary').click();
+ await page.locator('#load-achievements').click();
+ await status('Achievements refreshed');
+ assert.match(await page.locator('#achievement-list').textContent(),/Feedback · First sent/);
+ assert.doesNotMatch(await page.locator('#achievement-list').textContent(),/Bug Hunter/);
+ const anonymousAwards=await worker.dispatchFetch(origin+api+'achievements',{
+  method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:'{}',
+ });
+ assert.equal(anonymousAwards.status,401);
+ const loaderAwards=await worker.dispatchFetch(origin+api+'achievements',{
+  method:'POST',headers:{'Content-Type':'application/json'},body:'{}',
+ });
+ assert.equal(loaderAwards.status,404);
  await page.locator('#feedback-history').getByRole('button',{name:'Edit'}).click();
  await page.locator('#feedback-topic').fill('Updated synthetic feedback');
  await page.locator('#send-feedback').click();

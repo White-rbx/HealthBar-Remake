@@ -18,6 +18,8 @@ test('arcscriptcenter-login provides Login, Sign In and MyAccount shell without 
   'id="add-backup-passkey"','id="pair-form"']){
   assert.ok(html.includes(x),x);
  }
+ assert.doesNotMatch(html,/id="account-achievements"/);
+ assert.match(passkeyPage('synthetic_turnstile_public_key',{achievementsEnabled:true}),/id="account-achievements"/);
  assert.match(html,/<input type="password"[^>]*disabled>/);
  assert.match(html,/<input type="text"[^>]*disabled>/);
  assert.doesNotMatch(html,/name="password"|autocomplete="current-password"/);

@@ -1,0 +1,5 @@
+# Private MyAccount Achievements (isolated STAGING candidate)
+Feature flag: ASC_ACCOUNT_ACHIEVEMENTS=isolated-qa-enabled. Default off. Requires isolated Passkey mode and the additive asc_achievements_ISOLATED_QA_ONLY.sql migration.
+The POST /api/v1/accounts/achievements operation accepts an empty JSON object only, uses the verified same-origin web session, and checks active scope, ownership, expiry and revocation inside an atomic D1 batch. Native Feedback awards are evaluated from stored case/detail records. The original five-operation public pairing gateway is unchanged. No public leaderboard, profile-sharing change, client counters, usage tracking or new telemetry is enabled.
+The MyAccount section is rendered only when the flag is enabled. It loads on explicit refresh and clears on account change/sign-out. No alerts, streak reminders or automatic engagement prompts.
+Deployment gate: CI, isolated schema verification, protected Worker bundle review, Access unchanged, and real staging smoke test. Do not merge PR #16 or touch Production.

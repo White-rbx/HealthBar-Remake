@@ -1,5 +1,6 @@
 import {readJson,BanError} from './request.mjs';
 import {accountProfile,validImage} from './moderation.mjs';
+import {refreshOwnAchievements} from './achievements-storage-candidate.mjs';
 import {feedbackInput,manageAccountFeedback,mayModerate,submitAccountFeedback} from './account-actions.mjs';
 import {displayTotp,loginPassword,matchingTotpStep,newTotpSecret,passwordHash,passwordMatches,randomHex,readTotp,sealTotp,sha,strongPassword} from './security.mjs';
 import {website} from './website.mjs';
@@ -109,7 +110,7 @@ const webOps=new Set(['passkey/backup/options','passkey/backup/verify-current','
  'passkey/register/options','passkey/register/verify',
  'passkey/recovery/options','passkey/recovery/verify','passkey/login/options','passkey/login/verify',
  'register','login','factor','pair/approve','security/sessions','security/revoke','security/setup','security/enable',
- 'security/disable','security/password','profile','profile/preview','moderation']);
+ 'security/disable','security/password','profile','profile/preview','moderation','achievements']);
 const loaderOps=new Set(['pair/start','pair/poll','session','heartbeat','history','appeal','feedback','logout']);
 const commonOps=new Set(['session','history','appeal','feedback','logout']);
 
@@ -132,13 +133,14 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
   }
   if(!accountQAReady(env))return provisioning.fetch(request);
   const passkeyMode=env.ASC_ACCOUNT_AUTH_MODE==='passkey';
+  const achievementsEnabled=passkeyMode&&env.ASC_ACCOUNT_ACHIEVEMENTS==='isolated-qa-enabled';
   if(request.method==='GET'&&url.pathname==='/health')
    return ok({service:'ArcScriptCenter Account QA',status:'isolated-test-enabled',
     environment:'qa',authMode:passkeyMode?'passkey':'legacy-password-qa',
     registrationEnabled:true,loginEnabled:true});
   if(passkeyMode&&request.method==='GET'){
    const {servePasskeyPage}=await import('./passkey-static.mjs');
-   const page=servePasskeyPage(url.pathname,siteKey(env));
+   const page=servePasskeyPage(url.pathname,siteKey(env),{achievementsEnabled});
    if(page)return page;
   }
   if(request.method==='GET'&&url.pathname==='/'){
@@ -151,6 +153,7 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
   const op=url.pathname.slice(prefix.length);
   const web=request.headers.get('Origin')===origin;
   if(!(web?(webOps.has(op)||commonOps.has(op)):loaderOps.has(op)))return fail(404,'not_found');
+  if(op==='achievements'&&!achievementsEnabled)return fail(404,'not_found');
   if(!web&&(request.headers.has('Origin')||request.headers.has('Cookie')))return fail(403,'forbidden');
   if(web&&request.headers.has('Sec-Fetch-Site')&&request.headers.get('Sec-Fetch-Site')!=='same-origin')return fail(403,'forbidden');
   try{
@@ -250,6 +253,12 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
    const account=await loadSession(db,await sha(raw),scope,now);
    if(!account)return fail(401,'session_expired');
    if(!await rate(env,op+':account:'+account.id))return fail(429,'rate_limited');
+   if(op==='achievements'){
+    if(!web||!achievementsEnabled)return fail(404,'not_found');
+    if(Object.keys(body).length!==0)return fail(400,'invalid_input');
+    const earned=await refreshOwnAchievements(db,account,now);
+    return earned===null?fail(401,'session_expired'):ok({achievements:earned});
+   }
    if(op==='session')return ok({account:accountProfile(account),expiresAt:account.expires_at,
     ...(passkeyMode&&web?{canModerate:mayModerate(account,env)}:{})});
    if(op==='logout'){

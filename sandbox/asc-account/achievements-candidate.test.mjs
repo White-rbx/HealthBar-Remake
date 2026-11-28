@@ -27,7 +27,7 @@ test('reject missing, negative, fractional and inconsistent counters',()=>{
 
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
-import {awardVerifiedFeedback,readAccountAchievements} from './achievements-storage-candidate.mjs';
+import {awardVerifiedFeedback,readAccountAchievements,refreshOwnAchievements} from './achievements-storage-candidate.mjs';
 test('isolated achievement storage is additive, account-scoped, idempotent and counts verified native feedback only',async()=>{
  const sqlite=new DatabaseSync(':memory:');
  sqlite.exec('PRAGMA foreign_keys=ON');
@@ -36,7 +36,7 @@ test('isolated achievement storage is additive, account-scoped, idempotent and c
  }
  const db={prepare(sql){return {bind(...args){return {
   all:async()=>({results:sqlite.prepare(sql).all(...args)}),
-  run:()=>sqlite.prepare(sql).run(...args)
+  run:()=>{const p=sqlite.prepare(sql);return p.columns().length?{results:p.all(...args)}:{meta:p.run(...args)};}
  };}};},async batch(ops){
   sqlite.exec('BEGIN');
   try{const out=ops.map(x=>x.run());sqlite.exec('COMMIT');return out;}catch(e){sqlite.exec('ROLLBACK');throw e;}
@@ -67,5 +67,14 @@ test('isolated achievement storage is additive, account-scoped, idempotent and c
  assert.deepEqual(await readAccountAchievements(db,'a'),earned);
  assert.throws(()=>sqlite.prepare('INSERT INTO asc_account_achievements VALUES(?,?,?)').run('a','unknown',1));
  assert.throws(()=>sqlite.prepare('INSERT INTO asc_account_achievements VALUES(?,?,?)').run('missing','streak_user',1));
+ // Owner route rechecks the verified web session atomically with awards.
+ sqlite.prepare("INSERT INTO asc_account_sessions(id,account_id,digest,scope,created_at,expires_at) VALUES(?,?,?,'web',?,?)").run('s','b','digest-b',1,100);
+ const own={id:'b',session_id:'s',scope:'web'};
+ assert.deepEqual((await refreshOwnAchievements(db,own,60)).map(x=>x.id),['feedback_first_sent']);
+ assert.equal(await refreshOwnAchievements(db,{...own,id:'a'},60),null);
+ assert.equal(await refreshOwnAchievements(db,own,100),null);
+ await assert.rejects(refreshOwnAchievements(db,{...own,scope:'loader'},60),TypeError);
+ sqlite.prepare("UPDATE asc_account_sessions SET revoked_at=61 WHERE id='s'").run();
+ assert.equal(await refreshOwnAchievements(db,own,62),null);
  sqlite.close();
 });

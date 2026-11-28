@@ -89,7 +89,7 @@
  // Three explicit UI pages: /login (welcome), /signin (Passkey), /myaccount (session-verified).
  // Register and Recovery are subviews of Sign In, not new top-level pages.
  let authenticated=false;
- let accountId=null, editId=null;
+ let accountId=null, editId=null, achievementGeneration=0;
  const paths={home:'/login',login:'/signin',register:'/signin#register',
   recover:'/signin#recover',account:'/myaccount'};
  function show(which,replace=false){
@@ -118,6 +118,9 @@
    throw new Error('Account session was not verified.');
   authenticated=true;
   accountId=info.id||null;
+  achievementGeneration++;
+  const achievementList=byId('achievement-list');
+  if(achievementList)achievementList.textContent='';
   byId('identity').textContent=info.nickname+' (@'+info.username+')';
   byId('arc-id').textContent=accountId?'ArcID '+accountId:'';
   byId('profile-nickname').value=info.nickname;
@@ -294,6 +297,22 @@
    status('Profile saved.');
   });
  };
+ const loadAchievementsButton=byId('load-achievements');
+ if(loadAchievementsButton)loadAchievementsButton.onclick=()=>action(async()=>{
+  if(!authenticated||!accountId)return;
+  const generation=achievementGeneration,owner=accountId;
+  const list=byId('achievement-list');
+  list.textContent='';
+  const data=await post('achievements');
+  if(!authenticated||owner!==accountId||generation!==achievementGeneration)return;
+  if(!Array.isArray(data.achievements)||data.achievements.length>14)throw new Error('Achievement data is unavailable.');
+  if(!data.achievements.length)append(list,'p','No earned achievements yet.');
+  for(const award of data.achievements){
+   if(typeof award.label!=='string'||typeof award.category!=='string')continue;
+   append(list,'p',award.category+' · '+award.label);
+  }
+  status('Achievements refreshed.');
+ });
  byId('load-cases').onclick=()=>action(async()=>{await loadCases();status('Cases refreshed.')});
  byId('load-sessions').onclick=()=>action(async()=>{await loadSessions();status('Sessions refreshed.')});
  byId('load-moderation').onclick=()=>action(async()=>{await loadModeration();status('Review queue refreshed.')});
@@ -419,6 +438,9 @@
   status('Signed out.');
   authenticated=false;
   accountId=null;
+  achievementGeneration++;
+  const achievementList=byId('achievement-list');
+  if(achievementList)achievementList.textContent='';
   resetFeedback();
   for(const id of ['active-sessions','feedback-history','violations','review-queue'])byId(id).replaceChildren();
   for(const id of ['moderator','violation-history'])byId(id).hidden=true;
