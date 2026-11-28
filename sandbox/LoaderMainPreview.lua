@@ -49,6 +49,8 @@ bootEnv.__ASC_REQUEST_BAN_REFRESH = nil
 bootEnv.__ASC_BAN_V2_PREVIEW = true
 bootEnv.__ASC_ACCOUNT_QA = nil
 bootEnv.__ASC_ACCOUNT_SIGN_OUT = nil
+bootEnv.__ASC_ACCOUNT_OPEN_LOGIN = nil
+bootEnv.__ASC_ACCOUNT_UI_LOCKED = policyMode == "account_qa"
 local accountLoginSource
 local okClient, client = pcall(function()
     if policyMode == "account_qa" then
@@ -63,6 +65,7 @@ local okClient, client = pcall(function()
             if not login(account, nil, reason) or not account.profile() then return nil end
         end
         bootEnv.__ASC_ACCOUNT_QA = account
+        bootEnv.__ASC_ACCOUNT_UI_LOCKED = false
         return account
     end
     local url = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/BanPolicyClientPreview.lua"
@@ -1707,8 +1710,22 @@ end
 -- while skipping the Editor/Search/RecommendedScript modules.
 if policyMode == "account_qa" then
     local account = bootEnv.__ASC_ACCOUNT_QA
+    -- UI containment is not a substitute for server-side authorization.
+    local signedOut = false
+    display:GetPropertyChangedSignal(displayProperty):Connect(function()
+        if signedOut and display[displayProperty] then
+            display[displayProperty] = false
+        end
+    end)
     bootEnv.__ASC_ACCOUNT_SIGN_OUT = function()
         if bootEnv.__ASC_ACCOUNT_QA ~= account then return false end
+        signedOut = true
+        bootEnv.__ASC_ACCOUNT_UI_LOCKED = true
+        bootEnv.__ASC_ACCOUNT_QA, bootEnv.__ASC_BAN_V2_CLIENT = nil, nil
+        bootEnv.__ASC_BAN_V2_STATE = nil
+        display[displayProperty] = false
+        local gate = bootEnv.ArcScriptPolicyGate
+        if gate and gate.stop then pcall(gate.stop) end
         local remotelyRevoked = not account.hasSession()
         if not remotelyRevoked then
             local ok, confirmed, localCleared = pcall(account.logout)
@@ -1724,9 +1741,6 @@ if policyMode == "account_qa" then
         end
         -- A network outage can prevent server revocation; the local Loader must
         -- still close and return to Login after the credential was erased.
-        bootEnv.__ASC_ACCOUNT_QA, bootEnv.__ASC_BAN_V2_CLIENT = nil, nil
-        local gate = bootEnv.ArcScriptPolicyGate
-        if gate and gate.stop then gate.stop() end
         display[displayProperty] = false
         if not remotelyRevoked then
             warn("[ES][AccountQA] Signed out locally; server revocation is unconfirmed. The old server session may remain valid until expiry.")
@@ -1737,15 +1751,29 @@ if policyMode == "account_qa" then
                 })
             end)
         end
-        task.defer(function()
-            local login = assert(loadstring(game:HttpGet(accountLoginSource)))
-            if login(account, nil, nil) then
-                -- A new Roblox run starts with fresh UI closures and profile.
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "ArcScriptCenter", Text = "Rejoin and run Account QA to open ExperienceSettings. If Remember was off, pair again.",
-                })
-            end
-        end)
+        local loginOpen = false
+        bootEnv.__ASC_ACCOUNT_OPEN_LOGIN = function()
+            if not signedOut or not bootEnv.__ASC_ACCOUNT_UI_LOCKED or loginOpen or account.hasSession() then return end
+            loginOpen = true
+            task.spawn(function()
+                local ok, ready = pcall(function()
+                    local login = assert(loadstring(game:HttpGet(accountLoginSource)))
+                    return login(account, nil, nil)
+                end)
+                loginOpen = false
+                if ok and ready then
+                    -- A fresh startup is required; never restore prior UI closures.
+                    pcall(function()
+                        game:GetService("StarterGui"):SetCore("SendNotification", {
+                            Title = "ArcScriptCenter", Text = "Rejoin for a fresh Loader session. The previous UI stays locked.",
+                        })
+                    end)
+                elseif not ok then
+                    warn("[ES][AccountQA] Login unavailable. Open ESLogin to try again.")
+                end
+            end)
+        end
+        task.defer(bootEnv.__ASC_ACCOUNT_OPEN_LOGIN)
         return true
     end
     task.spawn(function()

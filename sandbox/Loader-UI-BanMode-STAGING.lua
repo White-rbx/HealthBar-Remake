@@ -1001,7 +1001,7 @@ local HIDE_MENU_STATUS = Data.UI.HideMenu -- อ่านจาก json คร�
 
 loc.applyHideMenu = function()
     if MENU_INSTANCE then
-        MENU_INSTANCE.Enabled = not HIDE_MENU_STATUS
+        MENU_INSTANCE.Enabled = not HIDE_MENU_STATUS and not _boot.__ASC_ACCOUNT_UI_LOCKED
     end
 end
 
@@ -1894,7 +1894,7 @@ task.spawn(function()
 	end
 end)
 
-loc.o(
+loc.HideMenuRow = loc.o(
     "Hide ExperienceSettings",
     255,255,255,
     false, nil,
@@ -1911,6 +1911,25 @@ loc.o(
     Data.UI.HideMenu,
     scr
 )
+
+-- Sign-out does not change the saved visibility preference.
+if _boot.__ASC_ACCOUNT_QA or _boot.__ASC_ACCOUNT_UI_LOCKED then
+    loc.OpenLoginRow = loc.o("Open ESLogin",255,255,255,false,nil,true,"Open",nil,function()
+        local openLogin = _boot.__ASC_ACCOUNT_OPEN_LOGIN
+        if _boot.__ASC_ACCOUNT_UI_LOCKED and type(openLogin) == "function" then openLogin() end
+    end,nil,scr)
+    loc.OpenLoginRow.Frame.Visible = false
+    task.spawn(function()
+        while loc.OpenLoginRow.Frame.Parent do
+            local locked = _boot.__ASC_ACCOUNT_UI_LOCKED == true
+            loc.HideMenuRow.Button.Active = not locked
+            loc.HideMenuRow.Button.Interactable = not locked
+            loc.OpenLoginRow.Frame.Visible = locked and type(_boot.__ASC_ACCOUNT_OPEN_LOGIN) == "function"
+            if locked then loc.applyHideMenu() end
+            task.wait(0.25)
+        end
+    end)
+end
 
 --// =====================================================
 --// FOUND HUMANOIDROOTPART STATUS

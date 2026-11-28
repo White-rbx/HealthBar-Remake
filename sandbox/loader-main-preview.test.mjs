@@ -316,3 +316,16 @@ test('Stage 7 Roblox pairing cannot bypass Cloudflare Access or impersonate Chro
     assert.doesNotMatch(src,/CF_Authorization\s*=|CF-Access-Client-Secret|cf-access-token|cloudflare_access_cookie/i);
   }
 });
+
+test('Account logout hides and locks old UI before attempting revocation',()=>{
+ const ui=readFileSync('sandbox/Loader-UI-BanMode-STAGING.lua','utf8');
+ const start=main.indexOf('bootEnv.__ASC_ACCOUNT_SIGN_OUT = function()');
+ const lock=main.indexOf('bootEnv.__ASC_ACCOUNT_UI_LOCKED = true',start);
+ const revoke=main.indexOf('pcall(account.logout)',start);
+ assert.ok(start>=0&&lock>start&&revoke>lock);
+ assert.match(main,/if signedOut and display\[displayProperty\] then\s+display\[displayProperty\] = false/);
+ assert.match(ui,/MENU_INSTANCE\.Enabled = not HIDE_MENU_STATUS and not _boot\.__ASC_ACCOUNT_UI_LOCKED/);
+ assert.match(ui,/loc\.HideMenuRow\.Button\.Interactable = not locked/);
+ assert.match(ui,/"Open ESLogin"/);
+ assert.match(ui,/loc\.OpenLoginRow\.Frame\.Visible = locked and type\(_boot\.__ASC_ACCOUNT_OPEN_LOGIN\) == "function"/);
+});
