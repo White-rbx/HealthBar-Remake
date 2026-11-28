@@ -934,7 +934,23 @@ end
 function account.heartbeat() error('heartbeat should not run after shutdown') end
 local state={__ASC_ACCOUNT_QA=account,__ASC_BAN_V2_CLIENT=account,
  ArcScriptPolicyGate={stop=function() stopped+=1 end}}
-local screen={Visible=true}
+local visibilityChanged=signal()
+local visible=true
+local screen=setmetatable({
+ GetPropertyChangedSignal=function(_,name)
+  assert(name=='Visible')
+  return visibilityChanged
+ end,
+},{
+ __index=function(_,key) if key=='Visible' then return visible end end,
+ __newindex=function(_,key,value)
+  assert(key=='Visible')
+  if visible~=value then
+   visible=value
+   visibilityChanged:Fire()
+  end
+ end,
+})
 local env={
  policyMode='account_qa',bootEnv=state,display=screen,displayProperty='Visible',
  accountLoginSource='qa-login-source',asrt={Parent=nil},
@@ -960,6 +976,9 @@ assert(type(signOut)=='function' and signOut()==true)
 assert(logoutCalls==1 and not account.hasSession())
 assert(state.__ASC_ACCOUNT_QA==nil and state.__ASC_BAN_V2_CLIENT==nil)
 assert(screen.Visible==false and stopped==1 and warned==1 and notices==1)
+assert(state.__ASC_ACCOUNT_UI_LOCKED==true)
+screen.Visible=true
+assert(screen.Visible==false,'a later visibility toggle must not reopen signed-out UI')
 advance(0)
 assert(reopened==1,'sign-out must offer ESLogin again')
 assert(signOut()==false,'repeat sign-out must not reopen the Loader')
