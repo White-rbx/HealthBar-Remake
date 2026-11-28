@@ -132,6 +132,11 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
  await page.locator('#profile-nickname').fill('Browser QA');
  await page.locator('#profile-image').fill('123');
  await page.locator('#profile-banner-id').fill('123');
+ await page.getByRole('button',{name:'Preview images'}).click();
+ await status('Image preview. Save profile to apply.');
+ assert.equal(await page.locator('#avatar-image').getAttribute('src'),'https://t0.rbxcdn.com/qa-fixture');
+ assert.equal(await page.locator('#banner-image').getAttribute('src'),'https://t0.rbxcdn.com/qa-fixture');
+ assert.equal((await db.prepare("SELECT profile_image FROM asc_accounts WHERE username='syntheticbrowser'").first()).profile_image,null);
  await page.getByRole('button',{name:'Save profile'}).click();
  await status('Profile saved');
  assert.equal(await page.locator('#identity').textContent(),'Browser QA (@syntheticbrowser)');

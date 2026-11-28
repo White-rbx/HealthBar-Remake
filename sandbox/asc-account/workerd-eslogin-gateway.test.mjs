@@ -71,9 +71,13 @@ test('workerd: real website approval, independent D1 gateway, replay, expiry and
  const bearer={Authorization:'Bearer '+session};
  const checked=await post(entry,gateway,'session',{},bearer);
  assert.equal(checked.status,200);
- assert.deepEqual((await checked.json()).account,{id:'synthetic',nickname:'Synthetic',status:'normal'});
+ assert.deepEqual((await checked.json()).account,{id:'synthetic',nickname:'Synthetic',status:'normal',image:null,banner:null,bannerColor:'#102757'});
  assert.equal((await post(web,website,'history',{},bearer)).status,401);
- assert.equal((await post(entry,gateway,'heartbeat',{},bearer)).status,200);
+ await db.prepare("UPDATE asc_accounts SET profile_image='123',banner_image='456',banner_color='#445566' WHERE id='synthetic'").run();
+ const heartbeat=await post(entry,gateway,'heartbeat',{},bearer);
+ assert.equal(heartbeat.status,200);
+ assert.deepEqual((await heartbeat.json()).account,{id:'synthetic',nickname:'Synthetic',status:'normal',image:'123',banner:'456',bannerColor:'#445566'});
+ assert.equal((await post(entry,gateway,'profile/preview',{image:'123',banner:null},bearer)).status,404);
  await db.prepare("UPDATE asc_accounts SET status='restricted_mode'").run();
  const restricted=await post(entry,gateway,'session',{},bearer);
  assert.equal((await restricted.json()).account.status,'restricted_mode');

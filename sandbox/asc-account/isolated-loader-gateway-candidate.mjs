@@ -16,7 +16,9 @@ const fail=(status,code)=>result(status,{ok:false,code});
 const ok=payload=>result(200,{ok:true,...payload});
 const stamp=()=>Math.floor(Date.now()/1000);
 // Only return fields required to continue the Loader and apply UI policy.
-const loaderProfile=({id,nickname,status})=>({id,nickname,status});
+const loaderProfile=({id,nickname,status,profile_image,banner_image,banner_color})=>({
+ id,nickname,status,image:profile_image??null,banner:banner_image??null,bannerColor:banner_color??'#102757',
+});
 async function emptyJson(request){
  if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')||''))return false;
  if(Number(request.headers.get('content-length')||0)>64)return false;
@@ -85,12 +87,15 @@ export function createLoaderGatewayCandidate({
      AND EXISTS (SELECT 1 FROM asc_accounts WHERE id=asc_account_sessions.account_id AND status<>'banned')
      RETURNING account_id AS id,
        (SELECT nickname FROM asc_accounts WHERE id=asc_account_sessions.account_id) AS nickname,
-       (SELECT status FROM asc_accounts WHERE id=asc_account_sessions.account_id) AS status
+       (SELECT status FROM asc_accounts WHERE id=asc_account_sessions.account_id) AS status,
+        (SELECT profile_image FROM asc_accounts WHERE id=asc_account_sessions.account_id) AS profile_image,
+        (SELECT banner_image FROM asc_accounts WHERE id=asc_account_sessions.account_id) AS banner_image,
+        (SELECT banner_color FROM asc_accounts WHERE id=asc_account_sessions.account_id) AS banner_color
     `).bind(now,digest).first();
     if(current)return ok({account:loaderProfile(current)});
    }
    const account=await db.prepare(`
-    SELECT a.id,a.nickname,a.status,s.expires_at
+    SELECT a.id,a.nickname,a.status,a.profile_image,a.banner_image,a.banner_color,s.expires_at
     FROM asc_account_sessions s JOIN asc_accounts a ON a.id=s.account_id
     WHERE s.digest=?1 AND s.scope='loader' AND s.revoked_at IS NULL AND s.expires_at>?2
    `).bind(digest,now).first();

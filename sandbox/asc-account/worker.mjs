@@ -109,7 +109,7 @@ const webOps=new Set(['passkey/backup/options','passkey/backup/verify-current','
  'passkey/register/options','passkey/register/verify',
  'passkey/recovery/options','passkey/recovery/verify','passkey/login/options','passkey/login/verify',
  'register','login','factor','pair/approve','security/sessions','security/revoke','security/setup','security/enable',
- 'security/disable','security/password','profile','moderation']);
+ 'security/disable','security/password','profile','profile/preview','moderation']);
 const loaderOps=new Set(['pair/start','pair/poll','session','heartbeat','history','appeal','feedback','logout']);
 const commonOps=new Set(['session','history','appeal','feedback','logout']);
 
@@ -338,18 +338,21 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
     `).bind(account.id,now).all();
     return ok({current:account.session_id,sessions:sessions.results});
    }
-   if(op==='profile'){
-    if(account.status==='banned')return fail(403,'account_banned');
-    if(!displayName(body.nickname)||!asset(body.image)||!asset(body.banner)||typeof body.color!=='string'||
-       !/^#[0-9a-f]{6}$/i.test(body.color))return fail(400,'invalid_input');
+   if(op==='profile'||op==='profile/preview'){
+     if(op==='profile/preview'&&(!web||!passkeyMode))return fail(404,'not_found');
+     if(account.status==='banned')return fail(403,'account_banned');
+     if(!asset(body.image)||!asset(body.banner)||
+        (op==='profile'&&(!displayName(body.nickname)||typeof body.color!=='string'||
+        !/^#[0-9a-f]{6}$/i.test(body.color))))return fail(400,'invalid_input');
     const images=new Map([[null,null]]);
     for(const value of new Set([body.image,body.banner])){
      if(!value)continue;
      const thumbnail=await validImage(value,fetcher);
      if(!thumbnail)return fail(400,'image_unavailable');
      images.set(value,thumbnail);
-    }
-    const changed=await db.prepare(`
+     }
+     if(op==='profile/preview')return ok({imageThumbnail:images.get(body.image),bannerThumbnail:images.get(body.banner)});
+     const changed=await db.prepare(`
      UPDATE asc_accounts SET nickname=?1,profile_image=?2,banner_image=?3,banner_color=?4,
       profile_thumbnail=?5,banner_thumbnail=?6
      WHERE id=?7 AND status<>'banned'

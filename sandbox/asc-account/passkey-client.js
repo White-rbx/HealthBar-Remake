@@ -271,6 +271,18 @@
    }
   }
  }
+ byId('profile-color').oninput=()=>{
+  const color=byId('profile-color').value;
+  if(/^#[0-9a-f]{6}$/i.test(color)&&byId('profile-banner').style)
+   byId('profile-banner').style.backgroundColor=color;
+ };
+ byId('preview-profile').onclick=()=>action(async()=>{
+  const form=new FormData(byId('profile-form'));
+  const data=await post('profile/preview',{image:field(form,'image')||null,banner:field(form,'banner')||null});
+  previewImage('avatar-image',data.imageThumbnail);
+  previewImage('banner-image',data.bannerThumbnail);
+  status('Image preview. Save profile to apply.');
+ });
  byId('profile-form').onsubmit=e=>{
   e.preventDefault();
   action(async()=>{

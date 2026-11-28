@@ -196,14 +196,16 @@ test('Full candidate: paired loader bearer is server-verified, heartbeat-scoped 
  const profile=await loader('session',token);
  assert.equal(profile.status,200);
  assert.equal(profile.body.account.id,'account-a');
- assert.deepEqual(profile.body.account,{id:'account-a',nickname:'Synthetic QA',status:'normal'});
+ assert.deepEqual(profile.body.account,{id:'account-a',nickname:'Synthetic QA',status:'normal',image:null,banner:null,bannerColor:'#102757'});
  assert.equal(profile.body.expiresAt,now+14400);
  assert.equal(profile.response.headers.get('Access-Control-Allow-Origin'),null);
  assert.equal(profile.response.headers.get('Set-Cookie'),null);
  assert.doesNotMatch(JSON.stringify(profile.body),/synthetic-only|f{64}/);
+ f.sqlite.prepare("UPDATE asc_accounts SET profile_image='123',banner_image='456',banner_color='#112233' WHERE id='account-a'").run();
  const heartbeat=await loader('heartbeat',token);
  assert.equal(heartbeat.status,200);
- assert.equal(heartbeat.body.account.status,'normal');
+ assert.deepEqual(heartbeat.body.account,{id:'account-a',nickname:'Synthetic QA',status:'normal',image:'123',banner:'456',bannerColor:'#112233'});
+ assert.deepEqual((await loader('session',token)).body.account,heartbeat.body.account);
  const seen=f.sqlite.prepare("SELECT last_seen FROM asc_account_sessions WHERE scope='loader'").get();
  assert.equal(seen.last_seen,now);
  assert.equal((await loader('session','b'.repeat(64))).status,401);
