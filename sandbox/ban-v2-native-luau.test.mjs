@@ -39,6 +39,7 @@ const files = {
  startup: section(main, 'local function canStartMain()', 'if not canStartMain() then') + '\nreturn canStartMain',
  main: section(main, '-- ASC BAN V2 MAIN REFRESH BEGIN', '-- ASC BAN V2 MAIN REFRESH END'),
  sendButton: section(arcsen, 'loc.API.UpdateSendButton = function()', '-- Context-sensitive chat-tip typewriter.') + '\nreturn loc.API.UpdateSendButton',
+ accountCard: section(arcsen, '-- The account Preview uses the same settings renderer', '-- Lightweight diagnostics within existing Arcsen Settings'),
  signOut: section(main, '-- Ban in-game never reaches here. Restricted Mode deliberately loads MAIN',
     'local isRestrictedMode =') + '\nreturn bootEnv.__ASC_ACCOUNT_SIGN_OUT',
  arcsen: section(arcsen, '    local function apply(status, reason)', '    -- Use a fixed production origin') +
@@ -1279,5 +1280,61 @@ env.__ES_RESTRICTED_MODE=false
 env.__ASC_ACCOUNT_UI_LOCKED=true
 apply("not_banned")
 assert(not send.Active and not send.Interactable and not box.TextEditable)
+`);
+});
+
+test('Luau VM: owner profile card renders authenticated appearance, escapes details and clears on sign-out',()=>{
+ luau(String.raw`
+local items={}
+local frame={Parent={}}
+local function make(kind)
+ local object={ClassName=kind,Name=kind,Interactable=true,Activated=signal()}
+ table.insert(items,object)
+ return object
+end
+local function get(name)
+ for _,object in ipairs(items) do if object.Name==name then return object end end
+ error('Missing UI '..name)
+end
+local function rgb(r,g,b) return tostring(r)..','..tostring(g)..','..tostring(b) end
+local function tuple(...) return {...} end
+local profile={id='qa-arc',nickname='<b>QA & User</b>',image='123',banner='456',bannerColor='#ffffff'}
+local refreshCalls=0
+local account={
+ profile=function() return profile end,
+ refresh=function() refreshCalls+=1; return profile end,
+ website='https://example.invalid',
+}
+local env={__ASC_ACCOUNT_QA=account}
+local loc={API={EscapeRichText=function(value)
+ return tostring(value or ""):gsub("&","&amp;"):gsub("<","&lt;"):gsub(">","&gt;")
+end}}
+local stroke
+run('accountCard',{
+ getgenv=function() return env end,loc=loc,
+ addset=function(_,_,_,_,_,callback) callback(frame) end,
+ ListLayout=function() end,Corner=function() end,
+ Stroke=function() stroke={};return stroke end,
+ Instance={new=make},UDim2={new=tuple,fromOffset=tuple},
+ Enum={BorderMode={Inset=1},ScaleType={Crop=1},TextXAlignment={Left=1},TextYAlignment={Top=1},AutomaticSize={Y=1}},
+ Color3={fromRGB=rgb,new=function(r,g,b)return rgb(r*255,g*255,b*255)end},
+})
+local card,banner,avatar,details=get('Profile'),get('Banner'),get('MainProfile'),get('Details')
+assert(card.Parent==frame and banner.Parent==card and avatar.Parent==card and details.Parent==card)
+assert(card.Size[4]==150 and banner.Size[4]==80 and avatar.Size[1]==65)
+assert(card.BackgroundColor3=='255,255,255' and stroke.Color==card.BackgroundColor3)
+assert(details.TextColor3=='0,0,0' and details.Text:find('&lt;b&gt;QA &amp; User&lt;/b&gt;',1,true))
+assert(avatar.Image:find('id=123&',1,true) and banner.Image:find('id=456&',1,true))
+local cards=0
+for _,item in ipairs(items) do if item.Name=='Profile' then cards+=1 end end
+assert(cards==1)
+profile={id='qa-arc',nickname='Updated',image='789',bannerColor='#003264'}
+advance(1)
+assert(card.BackgroundColor3=='0,50,100' and details.TextColor3=='255,255,255')
+assert(details.Text:find('Updated',1,true) and banner.Image=='' and avatar.Image:find('id=789&',1,true))
+assert(refreshCalls==0,'cache polling must not add HTTP calls')
+env.__ASC_ACCOUNT_QA=nil
+advance(2)
+assert(avatar.Image=='' and banner.Image=='' and not details.Text:find('qa-arc',1,true))
 `);
 });

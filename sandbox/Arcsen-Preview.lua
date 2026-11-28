@@ -13696,43 +13696,107 @@ if type(getgenv) == "function" and getgenv().__ASC_ACCOUNT_QA then
         local account = env.__ASC_ACCOUNT_QA
         if not account then return end
         ListLayout(frame, 0, 5, "HLeft", "VTop", "SLayout", "FillV")
+        -- Owner's Profile.lua card: one parent, overlapping avatar, rich details.
+        local pf = Instance.new("Frame")
+        pf.Name = "Profile"
+        pf.Size = UDim2.new(1,-8,0,150)
+        pf.LayoutOrder = 0
+        pf.BackgroundColor3 = Color3.fromRGB(0,50,100)
+        pf.BorderMode = Enum.BorderMode.Inset
+        pf.BorderSizePixel = 0
+        pf.Parent = frame
+        Corner(0,8,pf)
+
         local banner = Instance.new("ImageLabel")
-        banner.Name = "AccountBanner"
-        banner.Size = UDim2.new(1,-8,0,64)
+        banner.Name = "Banner"
+        banner.Size = UDim2.new(1,0,0,80)
+        banner.BackgroundTransparency = 1
+        banner.BorderSizePixel = 0
+        banner.Image = ""
         banner.ScaleType = Enum.ScaleType.Crop
-        banner.Parent = frame
+        banner.Parent = pf
+        Corner(0,8,banner)
+
         local avatar = Instance.new("ImageLabel")
-        avatar.Name = "AccountProfileImage"
-        avatar.Size = UDim2.fromOffset(52,52)
+        avatar.Name = "MainProfile"
+        avatar.Size = UDim2.fromOffset(65,65)
+        avatar.Position = UDim2.fromOffset(15,50)
         avatar.BackgroundTransparency = 1
-        avatar.Parent = frame
+        avatar.ZIndex = 2
+        avatar.BorderSizePixel = 0
+        avatar.ScaleType = Enum.ScaleType.Crop
+        avatar.Image = ""
+        avatar.Parent = pf
+        Corner(1,0,avatar)
+        local avatarStroke = Stroke(avatar, ASMBorder, 0,50,100, LJMRound, 5, 0)
+
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1,-8,0,44)
+        label.Name = "Details"
+        label.Size = UDim2.new(1,-105,0,55)
+        label.Position = UDim2.fromOffset(95,90)
         label.BackgroundTransparency = 1
         label.TextColor3 = Color3.new(1,1,1)
+        label.TextSize = 14
         label.TextWrapped = true
-        label.RichText = false
-        label.Parent = frame
+        label.RichText = true
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.TextYAlignment = Enum.TextYAlignment.Top
+        label.ZIndex = 2
+        label.Parent = pf
+
+        local statusLabel = Instance.new("TextLabel")
+        statusLabel.Name = "AccountProfileStatus"
+        statusLabel.Size = UDim2.new(1,-8,0,0)
+        statusLabel.AutomaticSize = Enum.AutomaticSize.Y
+        statusLabel.LayoutOrder = 4
+        statusLabel.BackgroundTransparency = 1
+        statusLabel.TextColor3 = Color3.fromRGB(210,225,240)
+        statusLabel.TextSize = 13
+        statusLabel.TextWrapped = true
+        statusLabel.RichText = false
+        statusLabel.Visible = false
+        statusLabel.Parent = frame
+        local function setStatus(message)
+            if not statusLabel.Parent then return end
+            statusLabel.Text = tostring(message or "")
+            statusLabel.Visible = statusLabel.Text ~= ""
+        end
         local function thumbnail(id)
             return type(id) == "string" and id:match("^[1-9]%d*$") and ("rbxthumb://type=Asset&id="..id.."&w=150&h=150") or ""
         end
         local function refreshProfile(profile)
+            -- The card displays only the current authenticated account.
+            if env.__ASC_ACCOUNT_QA ~= account then profile = nil end
+            local hex = profile and profile.bannerColor or "#003264"
+            local r,g,b = tostring(hex):match("^#(%x%x)(%x%x)(%x%x)$")
+            r,g,b = tonumber(r or "00",16),tonumber(g or "32",16),tonumber(b or "64",16)
+            local color = Color3.fromRGB(r,g,b)
+            pf.BackgroundColor3 = color
+            avatarStroke.Color = color
+            -- Relative luminance selects black or white for readable details.
+            local function linear(channel)
+                channel = channel / 255
+                return channel <= 0.04045 and channel / 12.92 or ((channel + 0.055) / 1.055)^2.4
+            end
+            local luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+            label.TextColor3 = luminance > 0.179 and Color3.new(0,0,0) or Color3.new(1,1,1)
             if not profile then
                 label.Text = "Account service unavailable."
                 avatar.Image, banner.Image = "", ""
-                banner.BackgroundColor3 = Color3.fromRGB(16,39,87)
                 return
             end
-            label.Text = profile.nickname.."\nArcID "..profile.id
+            local escape = loc.API.EscapeRichText
+            label.Text = "<b>"..escape(profile.nickname).."</b>\n<font size='10'>ArcID: "..escape(profile.id).."</font>"
             avatar.Image = thumbnail(profile.image)
             if avatar.Image == "" then avatar.Image = "rbxassetid://120500539322715" end
             banner.Image = thumbnail(profile.banner)
-            local r,g,b = (profile.bannerColor or "#102757"):match("^#(%x%x)(%x%x)(%x%x)$")
-            if r then banner.BackgroundColor3 = Color3.fromRGB(tonumber(r,16),tonumber(g,16),tonumber(b,16)) end
         end
+        local actionOrder = 0
         local function action(text, callback)
+            actionOrder += 1
             local button = Instance.new("TextButton")
             button.Size = UDim2.new(1,-8,0,32)
+            button.LayoutOrder = actionOrder
             button.Text = text
             button.TextColor3 = Color3.new(1,1,1)
             button.BackgroundColor3 = Color3.fromRGB(30,85,120)
@@ -13743,20 +13807,24 @@ if type(getgenv) == "function" and getgenv().__ASC_ACCOUNT_QA then
                 button.Interactable = false
                 task.spawn(function()
                     local ok = pcall(callback)
-                    if not ok and label.Parent then label.Text = "Could not complete the request." end
+                    if not ok then setStatus("Could not complete the request.") end
                     if button.Parent then button.Interactable = true end
                 end)
             end)
         end
-        action("Refresh profile", function() refreshProfile(account.refresh()) end)
+        action("Refresh profile", function()
+            local latest = account.refresh()
+            refreshProfile(latest)
+            setStatus(latest and "Profile refreshed." or "Could not refresh profile.")
+        end)
         action("MyAccount, Feedback & History", function()
             local url = account.website.."/myaccount"
-            if type(setclipboard) == "function" then setclipboard(url); label.Text = "MyAccount website copied."
-            else label.Text = url end
+            if type(setclipboard) == "function" then setclipboard(url); setStatus("MyAccount website copied.")
+            else setStatus(url) end
         end)
         action("Logout", function()
             if not env.__ASC_ACCOUNT_SIGN_OUT or not env.__ASC_ACCOUNT_SIGN_OUT() then
-                label.Text = "Could not revoke the session. Try again."
+                setStatus("Could not revoke the session. Try again.")
             end
         end)
         local cachedProfile = account.profile()
