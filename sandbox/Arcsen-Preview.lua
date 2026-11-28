@@ -14101,7 +14101,7 @@ loc.API.ArcScriptCenterCloudSettings = addset(
         rankPrivacy.TextSize = 11
         rankPrivacy.TextWrapped = true
         rankPrivacy.TextXAlignment = Enum.TextXAlignment.Left
-        rankPrivacy.Text = "Names are client-reported (not Roblox-verified). Username and UserID are masked by the Worker. Only opted-in profiles are shown even after logout. Time is accumulated by Function_Two toggles."
+        rankPrivacy.Text = "Names are client-reported (not Roblox-verified). Only opted-in profiles are shown. Account IDs are hidden. Time is accumulated by Function_Two toggles."
         rankPrivacy.Parent = frame
 
         local function usageTime(seconds)
@@ -14147,7 +14147,9 @@ loc.API.ArcScriptCenterCloudSettings = addset(
         end
 
         local function renderRankings(items)
-            -- Reuse one ScrollingFrame; no duplicate ranks after refresh/period switch.
+            -- Compact Profile Card, matching the owner's Full Profile layout.
+            -- The legacy public feed has no consented account banner/color or
+            -- achievement fields. Do not read private account profile data here.
             for _, child in ipairs(rankScroll:GetChildren()) do
                 if child:IsA("Frame") then child:Destroy() end
             end
@@ -14156,83 +14158,98 @@ loc.API.ArcScriptCenterCloudSettings = addset(
             for _, info in ipairs(type(items) == "table" and items or {}) do
                 if shown >= 50 then break end
                 if type(info) == "table" then
-                    local nickname = tostring(info.nickname or "Unknown"):sub(1, 40)
+                    local nickname = tostring(info.nickname or "Unknown")
+                    if not utf8.len(nickname) then nickname = "Unknown" end
+                    local cut = utf8.offset(nickname,41)
+                    if cut then nickname = nickname:sub(1,cut-1) end
                     local username = tostring(info.username or ""):sub(1, 64)
                     local userId = tostring(info.userId or ""):sub(1, 32)
-                    -- Defense in depth: refuse to render accidentally unmasked identifiers.
+                    -- Keep the existing masked-response gate. Neither identifier
+                    -- is displayed on the compact public card.
                     if username:find("*", 1, true) and userId:find("*", 1, true) then
                         shown += 1
-                        local rank = tonumber(info.rank) or shown
+                        local rank = tonumber(info.rank)
+                        if not rank or rank ~= rank or rank < 1 or rank == math.huge then rank = shown end
                         local entry = Instance.new("Frame")
                         entry.Name = "LeaderboardEntry_" .. tostring(shown)
-                        entry.Size = UDim2.new(1, -8, 0, 67)
+                        entry.Size = UDim2.new(1, -8, 0, 104)
                         entry.LayoutOrder = shown
-                        entry.BackgroundColor3 = Color3.fromRGB(38, 49, 67)
+                        entry.BackgroundColor3 = Color3.fromRGB(0,50,100)
                         entry.BorderSizePixel = 0
                         entry.Parent = rankScroll
-                        Corner(0, 5, entry)
+                        Corner(0,8,entry)
+
+                        local banner = Instance.new("Frame")
+                        banner.Name = "Banner"
+                        banner.Size = UDim2.new(1,0,0,45)
+                        banner.BackgroundColor3 = Color3.fromRGB(35,88,125)
+                        banner.BorderSizePixel = 0
+                        banner.Parent = entry
+                        Corner(0,8,banner)
 
                         local profileImage = Instance.new("ImageLabel")
                         profileImage.Name = "PublicAvatar"
-                        profileImage.Size = UDim2.fromOffset(38, 38)
-                        profileImage.Position = UDim2.fromOffset(39, 11)
+                        profileImage.Size = UDim2.fromOffset(40,40)
+                        profileImage.Position = UDim2.fromOffset(12,25)
                         profileImage.BackgroundColor3 = Color3.fromRGB(55,70,88)
                         profileImage.BorderSizePixel = 0
+                        profileImage.ScaleType = Enum.ScaleType.Crop
+                        profileImage.ZIndex = 2
                         profileImage.Parent = entry
                         Corner(1,0,profileImage)
+                        Stroke(profileImage, ASMBorder, 0,50,100, LJMRound, 3,0)
                         local initial = Instance.new("TextLabel")
                         initial.Name = "AvatarFallback"
                         initial.Size = UDim2.fromScale(1,1)
                         initial.BackgroundTransparency = 1
                         initial.TextColor3 = Color3.fromRGB(235,245,255)
                         initial.TextSize = 19
-                        initial.Text = nickname:sub(1,1):upper()
+                        initial.Text = (nickname:sub(1,(utf8.offset(nickname,2) or (#nickname+1))-1):upper())
+                        initial.RichText = false
+                        initial.ZIndex = 3
                         initial.Parent = profileImage
                         tryLoadAvatar(profileImage, initial, info.avatarUrl, shown)
 
                         local number = Instance.new("TextLabel")
                         number.Name = "Rank"
-                        number.Size = UDim2.new(0, 40, 1, 0)
-                        number.BackgroundTransparency = 1
-                        number.TextColor3 = Color3.fromRGB(130, 195, 255)
-                        number.TextSize = 15
+                        number.Size = UDim2.fromOffset(54,24)
+                        number.Position = UDim2.new(1,-60,0,6)
+                        number.BackgroundColor3 = Color3.fromRGB(20,26,39)
+                        number.BackgroundTransparency = 0.15
+                        number.BorderSizePixel = 0
+                        number.TextColor3 = Color3.fromRGB(235,245,255)
+                        number.TextSize = 13
                         number.Text = "#" .. tostring(math.floor(rank))
+                        number.RichText = false
+                        number.ZIndex = 2
                         number.Parent = entry
+                        Corner(0,5,number)
 
                         local display = Instance.new("TextLabel")
                         display.Name = "Nickname"
-                        display.Position = UDim2.fromOffset(83, 2)
-                        display.Size = UDim2.new(1, -88, 0, 20)
+                        display.Position = UDim2.fromOffset(62,49)
+                        display.Size = UDim2.new(1,-70,0,21)
                         display.BackgroundTransparency = 1
-                        display.TextColor3 = Color3.fromRGB(245, 250, 255)
-                        display.TextSize = 13
-                        display.TextWrapped = true
+                        display.TextColor3 = Color3.fromRGB(245,250,255)
+                        display.TextSize = 14
+                        display.Font = Enum.Font.GothamBold
                         display.TextTruncate = Enum.TextTruncate.AtEnd
                         display.TextXAlignment = Enum.TextXAlignment.Left
+                        display.RichText = false
                         display.Text = nickname
                         display.Parent = entry
 
-                        local metadata = Instance.new("TextLabel")
-                        metadata.Name = "MaskedIdentity"
-                        metadata.Position = UDim2.fromOffset(83, 22)
-                        metadata.Size = UDim2.new(1, -88, 0, 19)
-                        metadata.BackgroundTransparency = 1
-                        metadata.TextColor3 = Color3.fromRGB(185, 203, 225)
-                        metadata.TextSize = 11
-                        metadata.TextWrapped = true
-                        metadata.TextTruncate = Enum.TextTruncate.AtEnd
-                        metadata.TextXAlignment = Enum.TextXAlignment.Left
-                        metadata.Text = "@" .. username .. "  |  [" .. userId .. "]"
                         local timeLabel = Instance.new("TextLabel")
                         timeLabel.Name = "AccumulatedTime"
-                        timeLabel.Position = UDim2.fromOffset(83, 42)
-                        timeLabel.Size = UDim2.new(1, -88, 0, 20)
+                        timeLabel.Position = UDim2.fromOffset(62,72)
+                        timeLabel.Size = UDim2.new(1,-70,0,22)
                         timeLabel.BackgroundTransparency = 1
-                        timeLabel.TextColor3 = Color3.fromRGB(140,225,190)
+                        timeLabel.TextColor3 = Color3.fromRGB(205,225,240)
                         timeLabel.TextSize = 12
+                        timeLabel.TextTruncate = Enum.TextTruncate.AtEnd
                         timeLabel.TextXAlignment = Enum.TextXAlignment.Left
+                        timeLabel.RichText = false
                         timeLabel.Text = "Usage: " .. usageTime(info.seconds)
-                        metadata.Parent = entry
                         timeLabel.Parent = entry
                     end
                 end

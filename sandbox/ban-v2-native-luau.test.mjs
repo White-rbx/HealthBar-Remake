@@ -40,6 +40,7 @@ const files = {
  main: section(main, '-- ASC BAN V2 MAIN REFRESH BEGIN', '-- ASC BAN V2 MAIN REFRESH END'),
  sendButton: section(arcsen, 'loc.API.UpdateSendButton = function()', '-- Context-sensitive chat-tip typewriter.') + '\nreturn loc.API.UpdateSendButton',
  accountCard: section(arcsen, '-- The account Preview uses the same settings renderer', '-- Lightweight diagnostics within existing Arcsen Settings'),
+ leaderboardCards: section(arcsen, '        local function renderRankings(items)', '        refreshLeaderboard = function(force)') + '\nreturn renderRankings',
  signOut: section(main, '-- Ban in-game never reaches here. Restricted Mode deliberately loads MAIN',
     'local isRestrictedMode =') + '\nreturn bootEnv.__ASC_ACCOUNT_SIGN_OUT',
  arcsen: section(arcsen, '    local function apply(status, reason)', '    -- Use a fixed production origin') +
@@ -1336,5 +1337,54 @@ assert(refreshCalls==0,'cache polling must not add HTTP calls')
 env.__ASC_ACCOUNT_QA=nil
 advance(2)
 assert(avatar.Image=='' and banner.Image=='' and not details.Text:find('qa-arc',1,true))
+`);
+});
+
+test('Luau VM: compact leaderboard cards preserve masked feed gate and refresh without duplicate entries',()=>{
+ luau(String.raw`
+local items={}
+local scroll={}
+local function make(kind)
+ local object={ClassName=kind,Name=kind}
+ function object:IsA(name) return self.ClassName==name end
+ function object:Destroy() self.Parent=nil end
+ table.insert(items,object)
+ return object
+end
+function scroll:GetChildren()
+ local out={}
+ for _,item in ipairs(items) do if item.Parent==self then table.insert(out,item) end end
+ return out
+end
+local function child(parent,name)
+ for _,item in ipairs(items) do
+  if item.Parent==parent and item.Name==name then return item end
+ end
+end
+local function tuple(...) return {...} end
+local requested={}
+local render=run('leaderboardCards',{
+ rankScroll=scroll,Vector2={zero={0,0}},Instance={new=make},
+ UDim2={new=tuple,fromOffset=tuple,fromScale=tuple},
+ Color3={fromRGB=tuple},Corner=function()end,Stroke=function()end,
+ Enum={ScaleType={Crop=1},Font={GothamBold=1},TextTruncate={AtEnd=1},TextXAlignment={Left=1}},
+ usageTime=function(seconds)return tostring(seconds).."s" end,
+ tryLoadAvatar=function(image,initial,url) table.insert(requested,url or "") end,
+})
+local masked={rank=2,nickname='ผู้ใช้',username='p***',userId='1***',seconds=120,avatarUrl='https://t0.rbxcdn.com/fixture',banner='999',bannerColor='#ffffff',id='private-arcid'}
+assert(render({masked,{username='unmasked',userId='123',nickname='Rejected'}})==1)
+local card=assert(child(scroll,'LeaderboardEntry_1'))
+assert(card.Size[4]==104 and child(card,'Banner').Size[4]==45)
+assert(child(card,'PublicAvatar').Size[1]==40)
+assert(child(card,'Rank').Text=='#2' and child(card,'Nickname').Text==masked.nickname)
+assert(child(card,'Nickname').RichText==false and child(card,'AccumulatedTime').Text=='Usage: 120s')
+assert(child(card,'MaskedIdentity')==nil and child(card,'ArcID')==nil)
+assert(child(card,'Banner').Image==nil,'private banner must not be used')
+assert(#requested==1 and requested[1]==masked.avatarUrl)
+assert(render({masked})==1 and #scroll:GetChildren()==1 and card.Parent==nil)
+local many={}
+for i=1,51 do table.insert(many,masked) end
+assert(render(many)==50 and #scroll:GetChildren()==50)
+assert(render({})==0 and #scroll:GetChildren()==0)
 `);
 });
