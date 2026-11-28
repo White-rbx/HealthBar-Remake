@@ -91,7 +91,7 @@ jobs:
       - name: Universal case sessions without a Roblox server bridge
         run: node --test sandbox/banned-token-universal-qa.test.mjs
       - name: ArcScriptCenter unified account, web sessions, and moderation
-        run: node --test sandbox/asc-account/worker.test.mjs
+        run: node --test sandbox/asc-account/worker.test.mjs sandbox/asc-account/achievements-candidate.test.mjs
       - name: Locked Account QA Preview origin and Access destination offline tests
         run: node --test sandbox/asc-account/private-preview-gate.test.mjs sandbox/asc-account/private-preview-locked-entry.test.mjs
       - name: Separate ESLogin HTTPS edge Worker remains provisioning-only
