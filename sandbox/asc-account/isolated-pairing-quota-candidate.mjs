@@ -1,4 +1,4 @@
-// Stage 7 review-only isolated QA admission counter; not deployed or wired.
+// Durable admission counter for the isolated STAGING Gateway.
 // Apply schema only to the dedicated QA database after review. Never Production.
 export const quotaSchema = `CREATE TABLE IF NOT EXISTS asc_qa_pair_gateway_budget (
  op TEXT PRIMARY KEY CHECK(op IN ('pair/start','pair/poll','session','heartbeat','logout')),

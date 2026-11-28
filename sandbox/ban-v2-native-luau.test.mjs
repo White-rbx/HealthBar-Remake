@@ -965,15 +965,14 @@ assert(signOut()==false,'repeat sign-out must not reopen the Loader')
 `);
 });
 
-test('Luau VM: Executor account policy, opt-in JSON persistence, and logout', () => {
+test('Luau VM: Gateway account policy, memory-only sessions, and logout', () => {
  luau(String.raw`
-local values,stored={},nil
+local values={}
 local session=string.rep('a',64)
 local status='restricted_mode'
 local fail,cancelWhilePolling=false,false
-local slowSession,remoteExpired,deleteFails,writeFails=false,false,false,false
+local slowSession,remoteExpired=false,false
 local accessRedirect=false
-local rememberedValue=true
 local revoked=0
 local auth={
  getgenv=function() return {} end,
@@ -984,14 +983,14 @@ local auth={
  Instance={new=function(name) assert(name=='BindableEvent');local event=signal();return {Event=event,Fire=function() event:Fire() end,Destroy=function() end} end},
  request=function(r)
     local op=r.Url:match('/accounts/(.+)$')
-    assert(r.Url:find('https://arcscriptcenter-eslogin-edge-qa.kogpasan14.workers.dev/',1,true)==1)
+    assert(r.Url:find('https://arcscriptcenter-eslogin-pairing-qa.kogpasan14.workers.dev/',1,true)==1)
     assert(r.Method=='POST' and r.Headers.Origin==nil and r.Headers.Cookie==nil)
     local v={ok=true}
     if op=='pair/start' then
         if accessRedirect then return {StatusCode=302,Body=''} end
         assert(r.Headers.Authorization==nil); v.code='ABCDEF123456'; v.secret=session; v.expiresAt=100
     elseif op=='pair/poll' then
-        assert(values[tonumber(r.Body)].remember==rememberedValue)
+        assert(values[tonumber(r.Body)].remember==nil)
         if cancelWhilePolling then runtime.task.wait(2) end
         v.session=session; v.state='ready'; v.expiresAt=100
     else
@@ -1007,94 +1006,48 @@ local auth={
     table.insert(values,v)
     return {StatusCode=200,Body=tostring(#values)}
  end,
- writefile=function(path,body)
-    assert(path=='ArcScriptCenter/Account.json')
-    if writeFails then return false end
-    stored=body
- end,
- readfile=function(path) assert(path=='ArcScriptCenter/Account.json');return stored end,
- delfile=function() if deleteFails then error('deletion unavailable') end stored=nil end,
+ writefile=function() error('must never write credentials') end,
+ readfile=function() error('must never read credentials') end,
+
 }
 local progress=0
 runtime.task.spawn(function()
     local c=run('accountClient',auth)
     assert(not c.hasSession() and c.refresh()==nil)
-    assert(c.poll(assert(c.begin()),true).saved and stored)
-    assert(values[tonumber(stored)].origin==c.website)
-    local remembered=values[tonumber(stored)]
-    for _,origin in {'https://arcscriptcenter-account-qa.kogpasan14.workers.dev',false} do
-        remembered.origin=origin or nil
-        assert(not run('accountClient',auth).hasSession(),'Remember must match the issuing QA origin')
-    end
-    remembered.origin=c.website
+    assert(c.poll(assert(c.begin()),true).saved==false and not c.canRemember())
+    assert(not run('accountClient',auth).hasSession(),'rejoin starts without a credential')
+    assert(not c.hasPrivateCaseChannel() and c.history()==nil)
+    assert(c.policy().state=='restricted_mode')
+    status='banned'; assert(c.policy().state=='ban_ingame')
+    status='normal'; assert(c.policy().state=='clear')
     accessRedirect=true
     local denied,why=c.begin()
     assert(not denied and why=='access_required')
     accessRedirect=false
-    local restored=run('accountClient',auth)
-    assert(restored.hasSession() and restored.policy().state=='restricted_mode')
-    status='banned'; assert(restored.policy().state=='ban_ingame')
-    status='normal'; assert(restored.policy().state=='clear')
-    assert(restored.hasPrivateCaseChannel())
     fail=true
-    assert(restored.policy()==nil and restored.hasSession())
-    assert(restored.profile()==nil and not restored.hasPrivateCaseChannel(),
-        'failed revalidation must not retain previously verified identity')
+    assert(c.policy()==nil and c.hasSession() and c.profile()==nil)
+    assert(c.logout()==false and not c.hasSession())
     fail=false
-    assert(restored.refresh() and restored.hasPrivateCaseChannel(),
-        'transient outage may be retried with the same unexpired token')
-    fail=true
-    assert(restored.heartbeat()==nil and not restored.hasPrivateCaseChannel(),
-        'failed heartbeat must fail closed for owner-scoped UI')
-    fail=false
-    assert(restored.refresh() and restored.hasPrivateCaseChannel())
-    assert(restored.logout() and not stored and not restored.hasSession())
-    assert(revoked==1)
-    rememberedValue=false
-    c.website='https://forged.test'
-    assert(c.poll(assert(c.begin()),false).state=='ready' and stored==nil)
-    assert(c.logout())
-    rememberedValue=true
+    assert(c.poll(assert(c.begin()),false).state=='ready')
+    assert(c.logout() and revoked==1)
     cancelWhilePolling=true
     local open=true
     local pair=assert(c.begin())
     runtime.task.delay(1,function() open=false end)
     local result,reason=c.poll(pair,true,function() return open end)
-    assert(result==nil and reason=='cancelled' and stored==nil and not c.hasSession())
-    assert(revoked==3)
+    assert(not result and reason=='cancelled' and not c.hasSession() and revoked==2)
     cancelWhilePolling=false
-    assert(c.poll(assert(c.begin()),true).saved and stored)
-    fail=true
-    assert(c.logout()==false, 'offline logout must report unconfirmed server revocation')
-    assert(stored==nil and not c.hasSession() and c.profile()==nil,
-        'offline logout must erase the saved credential and current identity')
-    fail=false
-    assert(revoked==3, 'offline logout cannot falsely claim remote revocation')
-    assert(c.poll(assert(c.begin()),true).saved and stored)
-    deleteFails,fail=true,true
-    local remote,localCleared=c.logout()
-    assert(not remote and localCleared and stored=='{}')
-    assert(not run('accountClient',auth).hasSession(), 'fallback clear must prevent automatic rejoin')
-    fail=false
-    assert(c.poll(assert(c.begin()),true).saved)
+    assert(c.poll(assert(c.begin()),false).state=='ready')
     slowSession=true
     local profile,reason=c.refresh()
     assert(profile==nil and reason=='unavailable' and c.profile()==nil and c.hasSession())
     runtime.task.wait(3)
-    assert(c.profile()==nil, 'late success after timeout must not restore a verified profile')
+    assert(c.profile()==nil)
     slowSession=false
     assert(c.refresh())
     remoteExpired=true
     profile,reason=c.refresh()
-    assert(profile==nil and reason=='session_expired' and not c.hasSession() and stored=='{}')
-    remoteExpired=false
-    assert(c.poll(assert(c.begin()),true).saved)
-    values[tonumber(stored)].expiresAt=0
-    assert(not run('accountClient',auth).hasSession() and stored=='{}', 'expired Remember file cannot rejoin')
-    writeFails=true
-    assert(c.poll(assert(c.begin()),true).saved==false, 'filesystem returning false must not report Remember saved')
-    remote,localCleared=c.logout()
-    assert(remote and not localCleared and not c.hasSession())
+    assert(not profile and reason=='session_expired' and not c.hasSession())
     progress=1
 end)
 advance(30)

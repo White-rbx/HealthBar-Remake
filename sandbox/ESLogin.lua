@@ -238,7 +238,7 @@ local TouchInputService = game:GetService("TouchInputService")
 
 --====== CLIENT SERVICES ( TABLE ); Use like this 'Service.Example' ======--
 
-local client, parent, initialStatus = ...
+local function openLogin(client, parent, initialStatus)
 if type(client) ~= "table" then return false end
 
 local tweenService = game:GetService("TweenService")
@@ -531,6 +531,8 @@ local messages = {
     session_expired = "Session expired. Sign in again.",
     no_session = "Tap Login, then use your passkey in the browser.",
     access_required = "Roblox HTTP pairing is blocked by Cloudflare Access. Browser login is separate; do not copy Access cookies.",
+    pairing_gateway_locked = "STAGING pairing is currently locked.",
+    pairing_unavailable = "Pairing service unavailable. Try Login again.",
     account_qa_provisioning = "STAGING sign-in is locked. The website shows the current status.",
     tester_preview_only = "Tester UI only. Login is locked; no account or password will be sent.",
     unavailable = "Account service unavailable. Try Login again.",
@@ -628,11 +630,16 @@ Login.Activated:Connect(function()
                     end
                     if failure == "session_expired" then break end
                     if failure == "account_qa_provisioning" or failure == "transport_unavailable"
-                        or failure == "access_required" then
+                        or failure == "access_required" or failure == "pairing_gateway_locked" then
                         finalMessage = messages[failure]
                         break
                     end
-                    if not checked or failure then status(messages[failure] or messages.unavailable) end
+                    if failure == "rate_limited" then
+                        status(messages.rate_limited)
+                        task.wait(6)
+                    elseif not checked or failure then
+                        status(messages[failure] or messages.unavailable)
+                    end
                 end
             else
                 finalMessage = messages[why] or messages.unavailable
@@ -650,3 +657,9 @@ Login.Activated:Connect(function()
 end)
 while ESLoginGui.Parent and not ready and not cancelled do task.wait(0.2) end
 return ready and not cancelled
+end
+
+if typeof(script) == "Instance" and script:IsA("ModuleScript") then
+    return openLogin
+end
+return openLogin(...)

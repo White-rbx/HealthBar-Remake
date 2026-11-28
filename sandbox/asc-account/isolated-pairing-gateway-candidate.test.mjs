@@ -10,9 +10,10 @@ const origin='https://pairing.qa.invalid';
 const prefix='/api/v1/accounts/';
 const now=1795440001;
 
-function fixture(){
+function fixture(withQuota=true){
  const sqlite=new DatabaseSync(':memory:');
  sqlite.exec(readFileSync(new URL('../../migrations/asc_unified_account_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8'));
+ if(withQuota)sqlite.exec(quotaSchema);
  const db={prepare(sql){
   return {bind(...params){
    return {
@@ -139,17 +140,17 @@ test('Browser-confirmed 5-minute code yields one scoped loader session to secret
  f.grant();
  f.approve(start.body.code);
  const [first,second]=await Promise.all([
-  f.post('pair/poll',{secret:start.body.secret,remember:true}),
-  f.post('pair/poll',{secret:start.body.secret,remember:true}),
+  f.post('pair/poll',{secret:start.body.secret}),
+  f.post('pair/poll',{secret:start.body.secret}),
  ]);
  assert.deepEqual([first.status,second.status].sort(),[200,410]);
  const ready=first.status===200?first:second;
  assert.equal(ready.body.state,'ready');
  assert.match(ready.body.session,/^[0-9a-f]{64}$/);
- assert.equal(ready.body.expiresAt,now+43200);
+ assert.equal(ready.body.expiresAt,now+14400);
  const loader=f.sqlite.prepare("SELECT * FROM asc_account_sessions WHERE scope='loader'").get();
  assert.equal(loader.account_id,'account-a');
- assert.equal(loader.expires_at,now+43200);
+ assert.equal(loader.expires_at,now+14400);
  assert.notEqual(loader.digest,ready.body.session,'the raw loader token must never be stored');
  assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_sessions WHERE scope=\'loader\'').get().n,1);
  assert.equal((await f.post('pair/poll',{secret:start.body.secret})).status,410);
@@ -195,7 +196,7 @@ test('Full candidate: paired loader bearer is server-verified, heartbeat-scoped 
  const profile=await loader('session',token);
  assert.equal(profile.status,200);
  assert.equal(profile.body.account.id,'account-a');
- assert.equal(profile.body.account.username,'synthetic_qatest');
+ assert.deepEqual(profile.body.account,{id:'account-a',nickname:'Synthetic QA',status:'normal'});
  assert.equal(profile.body.expiresAt,now+14400);
  assert.equal(profile.response.headers.get('Access-Control-Allow-Origin'),null);
  assert.equal(profile.response.headers.get('Set-Cookie'),null);
@@ -297,7 +298,8 @@ test('Stage 7 durable QA budget: daily ceiling and UTC rollover',async()=>{
 });
 
 test('Stage 7 durable QA budget: unavailable schema, locked flag and unexpected route fail closed',async()=>{
- const f=fixture();
+ const f=fixture(false);
+ assert.equal((await f.post('pair/start')).status,503);
  assert.equal((await reservePairGatewayBudget(f.env,'pair/start',now)).status,503);
  f.sqlite.exec(quotaSchema);
  for(const op of ['history','__proto__','constructor','pair/approve']){
@@ -307,4 +309,27 @@ test('Stage 7 durable QA budget: unavailable schema, locked flag and unexpected 
  assert.equal((await reservePairGatewayBudget(locked,'pair/start',now)).status,503);
  assert.equal((await reservePairGatewayBudget(f.env,'pair/start',NaN)).status,503);
  assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_qa_pair_gateway_budget').get().n,0);
+});
+
+ test('Gateway admission caps concurrent starts before business writes',async()=>{
+ const f=fixture();
+ const responses=await Promise.all(Array.from({length:25},()=>f.post('pair/start')));
+ assert.equal(responses.filter(r=>r.status===200).length,20);
+ assert.equal(responses.filter(r=>r.status===429).length,5);
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_pairings').get().n,20);
+ const ddl=readFileSync(new URL('../../migrations/asc_eslogin_gateway_budget_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8');
+ assert.equal(ddl.split('\n').slice(1).join('\n').trim(),quotaSchema+';');
+});
+
+test('Gateway does not accept a Loader bearer issued by the protected website',async()=>{
+ const f=fixture();
+ f.grant();
+ const {createHash}=await import('node:crypto');
+ const raw='a'.repeat(64);
+ f.sqlite.prepare("INSERT INTO asc_account_sessions(id,account_id,digest,scope,created_at,expires_at) VALUES('legacy','account-a',?,'loader',?,?)")
+  .run(createHash('sha256').update(raw).digest('hex'),now,now+3600);
+ const r=await createLoaderGatewayCandidate({origin,clock:()=>now}).fetch(
+  new Request(origin+prefix+'session',{method:'POST',headers:{Authorization:'Bearer '+raw,
+   'Content-Type':'application/json'},body:'{}'}),f.env);
+ assert.equal(r.status,401);
 });

@@ -54,7 +54,7 @@ local okClient, client = pcall(function()
     if policyMode == "account_qa" then
         local base = "https://raw.githubusercontent.com/White-rbx/HealthBar-Remake/refs/heads/feedback-appeal-release-track/sandbox/"
         -- Compile the original ESLogin GUI at the very start of the Account QA Loader.
-        -- Only show it when the server has not verified a valid remembered session.
+        -- Only show it when there is no verified in-memory session.
         accountLoginSource = base.."ESLogin.lua"
         local login = assert(loadstring(game:HttpGet(accountLoginSource)))
         local account = assert(loadstring(game:HttpGet(base.."ASCAccountClientPreview.lua")))()

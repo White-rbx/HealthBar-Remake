@@ -94,7 +94,7 @@ jobs:
         run: node --test sandbox/asc-account/private-preview-gate.test.mjs sandbox/asc-account/private-preview-locked-entry.test.mjs
       - name: Separate ESLogin HTTPS edge Worker remains provisioning-only
         run: node --test sandbox/asc-account/eslogin-independent-edge-qa.test.mjs
-      - name: Stage 7 scoped Loader gateway candidate is undeployed and fails closed
+      - name: Stage 7 scoped Loader gateway route, quota and credential boundaries
         run: node --test sandbox/asc-account/isolated-pairing-gateway-candidate.test.mjs
       - name: Isolated ESLogin QA D1 and rate-limit control-plane gates (offline)
         run: node --test sandbox/asc-account/eslogin-locked-resources-gate.test.mjs
@@ -112,6 +112,7 @@ jobs:
           npm run test:passkey --prefix sandbox/asc-account
           npm run build:passkey --prefix sandbox/asc-account
           npm run build:eslogin --prefix sandbox/asc-account
+          npm run build:pairing-gateway --prefix sandbox/asc-account
           # The immutable Version 11 uploader is pinned to its original SHA-256.
           # A newly edited website bundle must fail closed rather than re-pin.
           node --test sandbox/asc-account/qa-undeployed-version-upload.test.mjs
@@ -129,7 +130,7 @@ jobs:
           export ASC_ACCOUNT_WORKERD_PREFIX="$RUNNER_TEMP/asc-account-workerd"
           npm install --prefix "$ASC_ACCOUNT_WORKERD_PREFIX" --no-audit --no-fund miniflare@4.20260730.0 playwright-core@1.56.1
           node --test sandbox/asc-account/workerd.test.mjs
-          node --test sandbox/asc-account/workerd-passkey.test.mjs
+          node --test sandbox/asc-account/workerd-passkey.test.mjs sandbox/asc-account/workerd-eslogin-gateway.test.mjs
           export ASC_CHROMIUM_BIN="$(command -v google-chrome)"
           node --test sandbox/asc-account/eslogin-browser.test.mjs
       - name: Compile and run Roblox policy code in the Luau VM with mocked Roblox services
@@ -139,7 +140,7 @@ jobs:
           git -C "$luau_dir" fetch --depth 1 https://github.com/luau-lang/luau.git c87565b8b0db5d5d5bfd2b8b00ad6573e5d06d9f
           git -C "$luau_dir" checkout --detach FETCH_HEAD
           make -s -C "$luau_dir" config=release -j"$(nproc)" luau luau-compile
-          "$luau_dir/luau-compile" --null sandbox/{BannedCenterLoaderPreview,BanPolicyClientPreview,ArcScriptCenterBanBridge.server,RestrictedMode-Topbar-STAGING,Loader-UI-BanMode-STAGING,ExperienceSettings-SetUp-Preview,LoaderMainPreview,Arcsen-Preview,ESLogin,ESLoginTesterPreview,ASCAccountClientPreview,ASCAccountLoaderPreview,ASCAccountTesterPreview,FunctionTwoAccountPreview}.lua
+          "$luau_dir/luau-compile" --null sandbox/{BannedCenterLoaderPreview,BanPolicyClientPreview,ArcScriptCenterBanBridge.server,RestrictedMode-Topbar-STAGING,Loader-UI-BanMode-STAGING,ExperienceSettings-SetUp-Preview,LoaderMainPreview,Arcsen-Preview,ESLogin,ESLoginTesterPreview,ASCAccountStudioBridge.server,ASCAccountStudioQA.client,ASCAccountClientPreview,ASCAccountLoaderPreview,ASCAccountTesterPreview,FunctionTwoAccountPreview}.lua
           LUAU_BIN="$luau_dir/luau" node --test sandbox/ban-v2-native-luau.test.mjs
       - name: Universal Ban status, scoped lookup and live QA isolation
         run: node --test sandbox/ban-v2-public-qa.test.mjs sandbox/ban-v2-public-qa-live.test.mjs

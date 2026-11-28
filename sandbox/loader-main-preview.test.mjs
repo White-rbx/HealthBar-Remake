@@ -39,7 +39,7 @@ test('ESLogin is compiled in the first Loader bootstrap stage and X cancels the 
   assert.match(accountLogin,/if busy or not canContinue\(\) then return end/);
   assert.match(accountLogin,/return ready and not cancelled/);
   assert.match(accountLogin,/pcall\(client\.poll, pair, remembered, canContinue\)/);
-  assert.match(accountClient,/function client\.poll\(pair, remember, stillOpen\)/);
+  assert.match(accountClient,/function client\.poll\(pair, _remember, stillOpen\)/);
   assert.match(accountClient,/if cancelled\(\) then return cancelIssuedSession\(\) end/);
   assert.match(accountClient,/local cleared = erase\(\)/);
   assert.doesNotMatch(main,/if not login\(account, nil, reason\) then\s+bootEnv\.__ASC_ACCOUNT_QA = account/);
@@ -310,7 +310,7 @@ test('Stage 7 Roblox pairing cannot bypass Cloudflare Access or impersonate Chro
   assert.match(accountClient,/if accessChallenge\(reply, status, raw\) then return nil, "access_required" end/);
   assert.match(accountClient,/if raw:match\("\^%s\*<"\) then return nil, "unavailable" end/);
   assert.match(accountLogin,/Roblox HTTP pairing is blocked by Cloudflare Access/);
-  assert.match(accountLogin,/failure == "access_required" then[\s\S]*?finalMessage = messages\[failure\][\s\S]*?break/);
+  assert.match(accountLogin,/failure == "access_required" or failure == "pairing_gateway_locked" then[\s\S]*?finalMessage = messages\[failure\][\s\S]*?break/);
   assert.match(main,/if not login\(account, nil, reason\) or not account\.profile\(\) then return nil end/);
   for(const src of [accountClient, accountLogin]){
     assert.doesNotMatch(src,/CF_Authorization\s*=|CF-Access-Client-Secret|cf-access-token|cloudflare_access_cookie/i);

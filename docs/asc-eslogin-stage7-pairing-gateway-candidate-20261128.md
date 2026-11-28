@@ -40,3 +40,42 @@ Confirm in a real Roblox-supported HTTP environment that a separately approved s
 - Keep `arcscriptcenter-eslogin-edge-qa` on its last verified live version and original Account QA / Production unchanged. PR #16 stays Draft.
 - Stage 6: Android registration and login observed PASS; real Backup and Recovery not complete.
 - Stage 7: authenticated website works; a five-route Loader transport exists only as offline candidate and is BLOCKED pending reviewed Gateway deployment, Access separation and real Roblox Mobile tests.
+
+## Stage 7 rollout and mobile acceptance — 2026-11-28
+
+The sections above record the original review-only candidate. The owner subsequently authorized the five Gateway operations below for isolated STAGING. The protected ESLogin website keeps its existing single-email Access policy and remains the only interface for Passkeys and pairing approvals.
+
+| Component | Verified configuration |
+| --- | --- |
+| Gateway | `arcscriptcenter-eslogin-pairing-qa.kogpasan14.workers.dev`, exactly five POST routes under `/api/v1/accounts/` |
+| Approved routes | `pair/start`, `pair/poll`, `session`, `heartbeat`, `logout` |
+| D1 | `04715765-050f-4e26-b4f6-6101bba9dc97`; additive `asc_qa_pair_gateway_budget` table; foreign key check passed |
+| Rate limits | Separate edge namespace `71128` plus atomic global per-route fixed-minute and daily D1 counters |
+| Credential scope | 5-minute approval, one successful claim, 4-hour maximum in-memory Loader session; domain-separated digests keep it separate from protected-site credentials |
+| Gateway response | Minimal account ID, display name, and moderation status after a valid Gateway bearer |
+| Locked rollback version | `3a30a139-ff20-4e45-9e5a-ad2d230c326b` |
+| Protected site | `arcscriptcenter-eslogin-edge-qa.kogpasan14.workers.dev`; Access and browser routes unchanged |
+
+The opt-in Loader uses the new Gateway for server checks and the protected website for user approval. Remember is disabled. Rejoin requires a new pairing, even if the browser already has a valid Passkey session. The Gateway cannot serve private account cases, browser authentication, or account settings. Tests exercising fail-closed, SQLite, Luau VM, and shared-D1 workerd run in the consolidated CI workflow.
+
+### Authorized Roblox Studio place
+
+Use a private STAGING place the project owner controls. Turn on **Allow HTTP Requests** in Experience Settings → Security and install the following scripts from this branch.
+
+| Studio location | Source and instance type |
+| --- | --- |
+| ServerScriptService | `ASCAccountClientPreview` ModuleScript from `sandbox/ASCAccountClientPreview.lua` and `ASCAccountStudioBridge` Script from `sandbox/ASCAccountStudioBridge.server.lua` |
+| ReplicatedStorage | `ESLogin` ModuleScript from `sandbox/ESLogin.lua` |
+| StarterPlayerScripts | `ASCAccountStudioQA` LocalScript from `sandbox/ASCAccountStudioQA.client.lua`. Add its child BindableEvents `VerifiedLoaderSession` and `SignOut`. |
+
+The server creates the dedicated RemoteFunction and uses Roblox `HttpService:RequestAsync`; the client receives only the short-lived display code and verified status. Connect the place's Studio-compatible ExperienceSettings Loader to the LocalScript's `VerifiedLoaderSession` event. Continue on `normal`, continue with feature restrictions applied on `restricted_mode`, and close protected UI on `false`. The owner-controlled Studio place and its Loader code are required to verify this handoff on a device.
+
+### Android acceptance
+
+1. Join the private staging place and tap **Login** in the original ESLogin UI. In Android Chrome, use the identity already admitted by Access, sign in using a Passkey, then approve the code from this Roblox instance.
+2. Return to Roblox. Confirm pairing completes, the gate returns `normal`, and the Studio-compatible Loader opens. Confirm **Remember** is disabled. Leave and rejoin, then confirm a fresh pairing is required.
+3. Sign out using the place's **Sign Out** control wired to the `SignOut` event. Confirm protected UI closes and the old session is rejected. Repeat with an X close before approving, and with a code left unapproved for five minutes. Neither should continue to Loader.
+4. Use a synthetic restricted account and verify restricted UI, then a synthetic banned account and verify the Loader stays closed. Test airplane mode during a check and verify Loader policy does not report a verified session.
+5. Record build, device, and outcome. Avoid recording the pairing code or any authentication credential. Record separately whether the Studio-compatible Loader continued and whether restriction behavior passed.
+
+**Full Stage 7 acceptance remains pending a real Roblox Mobile run in the authorized experience.**
