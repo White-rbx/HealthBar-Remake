@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import * as gatewayModule from './isolated-pairing-gateway-candidate.mjs';
+import {createLoaderGatewayCandidate} from './isolated-loader-gateway-candidate.mjs';
 
 const {createPairingGatewayCandidate}=gatewayModule;
 const origin='https://pairing.qa.invalid';
@@ -172,4 +173,99 @@ test('Revoked browser authorization, expiry and reused code never issue loader t
  assert.equal(expired.status,410);
  const never=f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_sessions WHERE scope=\'loader\'').get();
  assert.equal(never.n,0);
+});
+
+test('Full candidate: paired loader bearer is server-verified, heartbeat-scoped and revocable',async()=>{
+ const f=fixture();
+ const handler=createLoaderGatewayCandidate({origin,clock:()=>now});
+ const loader=async(op,token,body={},extra={})=>{
+  const request=new Request(origin+prefix+op,{
+   method:'POST',headers:{'Content-Type':'application/json',
+    ...(token?{Authorization:'Bearer '+token}:{}),...extra},body:JSON.stringify(body),
+  });
+  const response=await handler.fetch(request,f.env);
+  return {status:response.status,body:await response.json(),response};
+ };
+ const start=await f.post('pair/start');
+ f.grant();
+ f.approve(start.body.code);
+ const approved=await f.post('pair/poll',{secret:start.body.secret});
+ assert.equal(approved.status,200);
+ const token=approved.body.session;
+ const profile=await loader('session',token);
+ assert.equal(profile.status,200);
+ assert.equal(profile.body.account.id,'account-a');
+ assert.equal(profile.body.account.username,'synthetic_qatest');
+ assert.equal(profile.body.expiresAt,now+14400);
+ assert.equal(profile.response.headers.get('Access-Control-Allow-Origin'),null);
+ assert.equal(profile.response.headers.get('Set-Cookie'),null);
+ assert.doesNotMatch(JSON.stringify(profile.body),/synthetic-only|f{64}/);
+ const heartbeat=await loader('heartbeat',token);
+ assert.equal(heartbeat.status,200);
+ assert.equal(heartbeat.body.account.status,'normal');
+ const seen=f.sqlite.prepare("SELECT last_seen FROM asc_account_sessions WHERE scope='loader'").get();
+ assert.equal(seen.last_seen,now);
+ assert.equal((await loader('session','b'.repeat(64))).status,401);
+ assert.equal((await loader('session',token,{userId:1})).status,400);
+ assert.equal((await loader('session',token,{}, {Cookie:'__Host-ascqa=synthetic'})).status,403);
+ assert.equal((await loader('session',token,{}, {Origin:'https://protected.qa.invalid'})).status,403);
+ const loggedOut=await loader('logout',token);
+ assert.equal(loggedOut.status,200);
+ assert.equal(loggedOut.body.ok,true);
+ assert.equal((await loader('session',token)).status,401);
+ assert.equal((await loader('heartbeat',token)).status,401);
+ assert.equal((await loader('logout',token)).status,401);
+ assert.equal(f.sqlite.prepare("SELECT COUNT(*) AS n FROM asc_account_sessions WHERE scope='loader' AND revoked_at IS NOT NULL").get().n,1);
+});
+
+test('Full candidate: session endpoint denies missing launch flags and never proxies web/admin routes',async()=>{
+ const f=fixture(),handler=createLoaderGatewayCandidate({origin,clock:()=>now});
+ const webPaths=['/signin','/myaccount','/api/v1/accounts/security/sessions',
+  '/api/v1/accounts/passkey/login/options','/api/v1/accounts/history',
+  '/api/v1/accounts/feedback','/api/v1/accounts/appeal'];
+ for(const path of webPaths){
+  const resp=await handler.fetch(new Request(origin+path,{
+   method:'POST',headers:{'Content-Type':'application/json',
+    Authorization:'Bearer '+'a'.repeat(64)},body:'{}',
+  }),f.env);
+  assert.equal(resp.status,404,path);
+ }
+ const payload=()=>new Request(origin+prefix+'session',{method:'POST',
+  headers:{'Content-Type':'application/json',
+   Authorization:'Bearer '+'a'.repeat(64)},body:'{}'});
+ for(const binding of ['PAIR_DB','PAIR_RATE','ASC_PAIR_GATEWAY_MODE','ASC_PAIR_GATEWAY_LAUNCH_STATE']){
+  const env={...f.env};delete env[binding];
+  const r=await handler.fetch(payload(),env);
+  assert.equal(r.status,503,binding);
+  assert.equal((await r.json()).code,'pairing_gateway_locked');
+ }
+ assert.equal((await handler.fetch(payload(),f.env)).status,401);
+ const raw=await handler.fetch(new Request(origin+prefix+'session',{
+  method:'POST',headers:{'Content-Type':'application/json',
+   Authorization:'Bearer '+'a'.repeat(64)},body:'{}',
+ }),f.env);
+ assert.equal(raw.status,401);
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_account_sessions').get().n,0);
+});
+
+test('Full candidate: revoked or banned account cannot extend live presence',async()=>{
+ const f=fixture(),handler=createLoaderGatewayCandidate({origin,clock:()=>now});
+ f.grant();
+ const start=await f.post('pair/start');
+ f.approve(start.body.code);
+ const poll=await f.post('pair/poll',{secret:start.body.secret});
+ assert.equal(poll.status,200);
+ const request=op=>new Request(origin+prefix+op,{
+  method:'POST',headers:{'Content-Type':'application/json',
+   Authorization:'Bearer '+poll.body.session},body:'{}',
+ });
+ f.sqlite.prepare("UPDATE asc_accounts SET status='banned' WHERE id='account-a'").run();
+ const denied=await handler.fetch(request('heartbeat'),f.env);
+ assert.equal(denied.status,403);
+ assert.equal((await denied.json()).code,'account_banned');
+ const profile=await handler.fetch(request('session'),f.env);
+ assert.equal(profile.status,200);
+ assert.equal((await profile.json()).account.status,'banned');
+ f.sqlite.prepare("UPDATE asc_account_sessions SET revoked_at=? WHERE scope='loader'").run(now);
+ assert.equal((await handler.fetch(request('session'),f.env)).status,401);
 });
