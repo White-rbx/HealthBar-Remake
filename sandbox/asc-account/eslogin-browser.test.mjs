@@ -63,7 +63,7 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
   await cdp.send('WebAuthn.removeVirtualAuthenticator',{authenticatorId:device});
   device=await authenticator();
  }
- await context.route('**/*',async route=>{
+ const fixtureRoute=async route=>{
   const req=route.request(),url=new URL(req.url());
   if(url.origin!==origin)return route.abort();
   const headers=await req.allHeaders();
@@ -73,7 +73,8 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
   if(url.pathname===api+'passkey/backup/verify-current'&&response.ok)await replaceDevice();
   // Playwright relays Chromium's own Origin and cookie headers without overriding them.
   await route.fulfill({status:response.status,headers:h,body:Buffer.from(await response.arrayBuffer())});
- });
+ };
+ await context.route('**/*',fixtureRoute);
  async function submit(form,action){
   // Fixture replaces only Turnstile output in the disconnected local browser.
   await form.evaluate((form,action)=>{
@@ -160,5 +161,41 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
  const newCodes=(await page.locator('#recovery-code-list').textContent()).trim().split('\n');
  assert.equal(newCodes.length,8);
  assert.ok(!newCodes.some(code=>codes.includes(code)));
+ // Synthetic cross-context reuse of one resident credential, not Google sync.
+ // Only locally generated virtual credentials are copied; never print or persist them.
+ if(profile.isMobile){
+  const before=await db.prepare('SELECT id FROM asc_accounts').first();
+  const virtual=await cdp.send('WebAuthn.getCredentials',{authenticatorId:device});
+  assert.equal(virtual.credentials.length,1);
+  await page.locator('#sign-out').click();
+  await status('Signed out');
+  const desktop=await browser.newContext({viewport:{width:1280,height:900},serviceWorkers:'block'});
+  try{
+   await desktop.route('**/*',fixtureRoute);
+   const other=await desktop.newPage();
+   other.setDefaultTimeout(9000);
+   const otherCDP=await desktop.newCDPSession(other);
+   await otherCDP.send('WebAuthn.enable');
+   const {authenticatorId}=await otherCDP.send('WebAuthn.addVirtualAuthenticator',{options:{
+    protocol:'ctap2',transport:'usb',hasResidentKey:true,hasUserVerification:true,
+    automaticPresenceSimulation:true,isUserVerified:true,
+   }});
+   // Transfer the test-only resident key in memory to simulate availability on
+   // another device. This does not exercise a real password-manager sync service.
+   await otherCDP.send('WebAuthn.addCredential',{authenticatorId,credential:virtual.credentials[0]});
+   await other.goto(origin+'/login');
+   await other.locator('#open-signin').click();
+   await other.locator('#passkey-login').click();
+   await other.locator('#status').filter({hasText:'Signed in using a passkey'}).waitFor();
+   assert.equal((await db.prepare('SELECT count(*) AS n FROM asc_accounts').first()).n,1);
+   assert.equal((await db.prepare('SELECT count(*) AS n FROM asc_account_passkeys').first()).n,1);
+   assert.equal((await db.prepare('SELECT id FROM asc_accounts').first()).id,before.id);
+   const active=await db.prepare("SELECT account_id FROM asc_account_sessions WHERE scope='web' AND revoked_at IS NULL AND expires_at>?").bind(Math.floor(Date.now()/1000)).first();
+   assert.equal(active?.account_id,before.id);
+   await other.locator('#sign-out').click();
+   await other.locator('#status').filter({hasText:'Signed out'}).waitFor();
+  } finally {await desktop.close();}
+ }
+
 });
 }
