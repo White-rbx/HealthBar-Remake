@@ -79,3 +79,14 @@ The server creates the dedicated RemoteFunction and uses Roblox `HttpService:Req
 5. Record build, device, and outcome. Avoid recording the pairing code or any authentication credential. Record separately whether the Studio-compatible Loader continued and whether restriction behavior passed.
 
 **Full Stage 7 acceptance remains pending a real Roblox Mobile run in the authorized experience.**
+
+### Deployed evidence
+
+- Gateway code commit `33c92a314136cace915c93f636ea6d3b4eb1194c`; deployment `448bdee9-c8f0-4100-bd0d-bc81bacb9ac7` runs version 3 `e5024868-9acb-4c61-a06f-b987ba5ac0dd` at 100%. Version URLs are disabled.
+- Live protected-site routes for approval, Passkey login options and private history returned the expected Cloudflare Access challenge for anonymous requests. The protected site deployment remains `2ce77fd5-f88c-48a9-b574-7b1e6a3a57b0`, with the original Account QA still at Version 10.
+- Live public Gateway returned a synthetic pairing in the pending state. A nonexistent pairing returned HTTP 410. Session, heartbeat and logout with no bearer returned 401. Disallowed paths and OPTIONS returned 404. Cross-origin requests were rejected and the Gateway issued no cookies. The live D1 quota table recorded the start and polls; foreign-key check was clean. The synthetic pairing expires automatically.
+- Local regressions passed 36/36, and Luau VM passed 19/19. The shared-D1 workerd test ran the protected Worker approval handler and the Gateway claim. Concurrent claims returned one success and one HTTP 410. The D1 budget admitted 20 of 22 concurrent start requests. The test also confirmed expiry, restricted-account status, revocation and credential separation. The local fixture uses a synthetic browser session.
+- GitHub Actions passed [Consolidated QA](https://github.com/White-rbx/HealthBar-Remake/actions/runs/46119094452) and [Verified History QA](https://github.com/White-rbx/HealthBar-Remake/actions/runs/46119094481) for the deployed code.
+- Rollback the independent Gateway to its locked version above, then disable its `workers.dev` subdomain if necessary. Keep Version URLs disabled. Keep the additive D1 table, and leave the protected site deployment and Access policy in place.
+
+**GO for the private-place acceptance test. Stage 7 remains open.** A real Android pairing approved on the protected website and followed by verified ExperienceSettings Loader continuation has not yet been witnessed.
