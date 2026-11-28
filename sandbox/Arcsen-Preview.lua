@@ -11354,7 +11354,8 @@ loc.API.UpdateSendButton = function()
     -- UI is not a server authorization boundary: this prevents accidental
     -- re-enabling of chat when UpdateSendButton redraws the input.
     if loc.API.PolicyReadOnly == true
-        or (type(getgenv) == "function" and getgenv().__ES_RESTRICTED_MODE == true) then
+        or (type(getgenv) == "function" and (getgenv().__ES_RESTRICTED_MODE == true
+            or getgenv().__ASC_ACCOUNT_UI_LOCKED == true)) then
         c_box.TextEditable = false
         c_b_send.Active = false
         c_b_send.Interactable = false
@@ -11383,6 +11384,7 @@ loc.API.UpdateSendButton = function()
         c_b_send.TextColor3 = Color3.new(0,1,0)
     end
     c_b_send.Active = true
+    c_b_send.Interactable = true
 end
 
 -- Context-sensitive chat-tip typewriter. This never replaces HereChat's placeholder.
@@ -18152,6 +18154,11 @@ More information in discord you can find the link at About or on the ScriptBlox/
             c_scr.Visible = saved.currentChatVisible
             c_box.TextEditable = saved.textEditable
             overlay.Visible = false
+            -- Recompute the send control only in the already allowed policy
+            -- branch; the startup snapshot can predate successful verification.
+            if type(loc.API.UpdateSendButton) == "function" then
+                loc.API.UpdateSendButton()
+            end
             local commands = loc.API.ArcsenCommand
             if wasReadOnly and commands and type(commands.isHereChatEnabled) == "function"
                 and commands.isHereChatEnabled() and type(loc.API.EnsureHereChatTab) == "function" then

@@ -38,6 +38,7 @@ const files = {
   '\nreturn banData',
  startup: section(main, 'local function canStartMain()', 'if not canStartMain() then') + '\nreturn canStartMain',
  main: section(main, '-- ASC BAN V2 MAIN REFRESH BEGIN', '-- ASC BAN V2 MAIN REFRESH END'),
+ sendButton: section(arcsen, 'loc.API.UpdateSendButton = function()', '-- Context-sensitive chat-tip typewriter.') + '\nreturn loc.API.UpdateSendButton',
  signOut: section(main, '-- Ban in-game never reaches here. Restricted Mode deliberately loads MAIN',
     'local isRestrictedMode =') + '\nreturn bootEnv.__ASC_ACCOUNT_SIGN_OUT',
  arcsen: section(arcsen, '    local function apply(status, reason)', '    -- Use a fixed production origin') +
@@ -1249,5 +1250,34 @@ assert(accessChallenge({Headers={}}, 200, '{"ok":true,"account":{"id":"fake"}}')
 assert(accessChallenge({Headers={}}, 401, '{"ok":false,"code":"session_expired"}') == false, 'Normal API session errors are distinct from Access')
 assert(accessChallenge({Headers={}}, 503, '<html>Temporary outage</html>') == false, 'Unrelated HTML is not falsely authenticated as Access')
 assert(accessChallenge({Headers={}}, 303, nil) == true, 'Redirect cannot become an account session')
+`);
+});
+
+test('Luau VM: allowed chat restores the send control without unlocking restricted or signed-out UI',()=>{
+ luau(String.raw`
+local send={Active=false,Interactable=false}
+local box={TextEditable=false}
+local env={__ES_RESTRICTED_MODE=false,__ASC_ACCOUNT_UI_LOCKED=false}
+local loc={API={PolicyReadOnly=true,ChatData={}}}
+local color={new=function() return "green" end,fromRGB=function() return "gray" end}
+loc.API.UpdateSendButton=run("sendButton",{loc=loc,c_box=box,c_b_send=send,Color3=color,getgenv=function() return env end})
+local apply=run("arcsen",{
+ env=env,loc=loc,gate={},new={},c_b_send=send,scr={},c_input={},c_scr={},c_box=box,overlay={},
+ saved={newVisible=true,textEditable=false,interaction={true,true,false,false}},
+ Color3=color,showSettings=function() end,revealAppealDraft=function() end,
+})
+apply("unknown")
+assert(not send.Active and not send.Interactable and not box.TextEditable)
+apply("not_banned")
+assert(send.Active and send.Interactable and box.TextEditable)
+env.__ES_RESTRICTED_MODE=true
+env.__ES_BAN_SELECTION="restricted_mode"
+apply("not_banned")
+loc.API.UpdateSendButton()
+assert(not send.Active and not send.Interactable and not box.TextEditable)
+env.__ES_RESTRICTED_MODE=false
+env.__ASC_ACCOUNT_UI_LOCKED=true
+apply("not_banned")
+assert(not send.Active and not send.Interactable and not box.TextEditable)
 `);
 });
