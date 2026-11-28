@@ -90,3 +90,13 @@ The server creates the dedicated RemoteFunction and uses Roblox `HttpService:Req
 - Rollback the independent Gateway to its locked version above, then disable its `workers.dev` subdomain if necessary. Keep Version URLs disabled. Keep the additive D1 table, and leave the protected site deployment and Access policy in place.
 
 **GO for the private-place acceptance test. Stage 7 remains open.** A real Android pairing approved on the protected website and followed by verified ExperienceSettings Loader continuation has not yet been witnessed.
+
+### Owner architecture clarification — 2026-11-28
+
+The owner-provided flow diagram distinguishes the **ArcScriptCenter/Cloudflare server** from a Roblox experience server. ESLogin and the Loader's presentation are per-user client UI; account creation, human verification, authentication, pairing approval, session validity, and account authorization are Cloudflare responsibilities. The Cloudflare Gateway is a transport-independent backend with no dependency on a particular Roblox place or game server. The Studio bridge is an optional, owner-authorized QA adapter, not a dependency of the Cloudflare service and not a change to the intended UI architecture.
+
+The supported Roblox runtime still requires an experience server for outbound external HTTP. Do not bypass that platform restriction or treat unsupported runtimes as verified deployment targets. For any other authorized application runtime, separately assess its supported HTTPS transport and credential isolation. A local Loader UI gate is not a security boundary: privileged backend actions must independently authenticate and authorize each request.
+
+Interpret an unauthenticated/expired session as **sign-in required**, not proof that the person has no account. Existing users sign in on the protected website; new users register and complete human verification there. The current Stage 7 protocol has the application initiate a short-lived pairing and the authenticated website approve it, not the reverse. Keep password hashes and WebAuthn public credential material server-side; never store Passkey private keys or expose recovery secrets in the Loader. Keep the five-route Gateway scope unchanged.
+
+Read-only control-plane recheck: Gateway version `e5024868-9acb-4c61-a06f-b987ba5ac0dd` at 100%, workers.dev enabled and preview URLs disabled; protected website version `d615ff9c-7631-499e-9031-b1b2ca2b96d5`; Production API version `298de84d-418c-489c-b133-c549c785f66e`. No deployment or database changes in this architecture clarification. Mobile acceptance still requires the real authorized place and a Studio-compatible Loader; a passing backend test is not proof of a supported mobile integration.
