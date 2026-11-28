@@ -78,3 +78,45 @@ test('isolated achievement storage is additive, account-scoped, idempotent and c
  assert.equal(await refreshOwnAchievements(db,own,62),null);
  sqlite.close();
 });
+
+import {ownLeaderboardDraft,parseVisibility,projectCompactCard} from './leaderboard-visibility-candidate.mjs';
+test('compact projection excludes identity and moderation data and shares only chosen fields',()=>{
+ const row={listed:1,appearance:1,badges:1,status:'normal',nickname:'QA Card',username:'private',id:'private-id',profile_image:'123',banner_image:'456',banner_color:'#ABCDEF',password_hash:'private-hash',reason:'private-reason'};
+ const earned=[{achievement_id:'feedback_first_sent',earned_at:1},{achievement_id:'unknown'}];
+ const card=projectCompactCard(row,earned);
+ assert.deepEqual(Object.keys(card),['nickname','image','banner','bannerColor','achievements']);
+ assert.equal(card.image,'123');assert.equal(card.banner,'456');assert.equal(card.achievements.length,1);
+ assert.doesNotMatch(JSON.stringify(card),/private|earned_at|unknown/);
+ assert.equal(projectCompactCard({...row,listed:0},earned),null);
+ assert.equal(projectCompactCard({...row,status:'banned'},earned),null);
+ assert.deepEqual(projectCompactCard({...row,appearance:0,badges:0},earned),{nickname:'QA Card',image:null,banner:null,bannerColor:'#003264',achievements:[]});
+ assert.equal(projectCompactCard({...row,banner_image:'https://example.invalid',banner_color:'bad'},earned).banner,null);
+ assert.equal(parseVisibility({accountId:'other'}),undefined);
+ assert.equal(parseVisibility({listed:true,appearance:false,badges:true,rank:1}),undefined);
+ assert.deepEqual(parseVisibility({listed:false,appearance:true,badges:true}),{listed:false,appearance:false,badges:false});
+});
+test('visibility draft is private by default and rechecks owner, expiry and revocation',async()=>{
+ const sqlite=new DatabaseSync(':memory:');
+ sqlite.exec('PRAGMA foreign_keys=ON');
+ for(const name of ['asc_unified_account','asc_achievements','asc_leaderboard_visibility']){
+  sqlite.exec(readFileSync(new URL('../../migrations/'+name+'_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8'));
+ }
+ const db={prepare(sql){return {bind(...args){return {execute(){const p=sqlite.prepare(sql);return p.columns().length?{results:p.all(...args)}:{meta:p.run(...args)}}};}};},async batch(ops){sqlite.exec('BEGIN');try{const r=ops.map(x=>x.execute());sqlite.exec('COMMIT');return r;}catch(e){sqlite.exec('ROLLBACK');throw e;}}};
+ for(const id of ['a','b'])sqlite.prepare('INSERT INTO asc_accounts(id,username,password_hash,nickname,created_at) VALUES(?,?,?,?,?)').run(id,id,'synthetic','QA '+id,1);
+ sqlite.prepare("INSERT INTO asc_account_sessions(id,account_id,digest,scope,created_at,expires_at) VALUES(?,?,?,'web',1,100)").run('session-a','a','digest-a');
+ sqlite.prepare('INSERT INTO asc_account_achievements VALUES(?,?,?)').run('a','feedback_first_sent',1);
+ const owner={id:'a',session_id:'session-a',scope:'web'};
+ const opt={listed:true,appearance:true,badges:true};
+ assert.deepEqual(await ownLeaderboardDraft(db,owner,2),{visibility:{listed:false,appearance:false,badges:false},preview:null});
+ assert.equal(await ownLeaderboardDraft(db,{...owner,id:'b'},2,opt),null);
+ const saved=await ownLeaderboardDraft(db,owner,3,opt);assert.equal(saved.preview.nickname,'QA a');assert.equal(saved.preview.achievements.length,1);
+ assert.equal(await ownLeaderboardDraft(db,owner,100,opt),null);
+ sqlite.prepare("UPDATE asc_accounts SET status='restricted_mode' WHERE id='a'").run();
+ assert.equal((await ownLeaderboardDraft(db,owner,4)).preview,null);
+ assert.deepEqual(await ownLeaderboardDraft(db,owner,5,opt),{denied:true});
+ assert.equal((await ownLeaderboardDraft(db,owner,6,{...opt,listed:false})).preview,null);
+ sqlite.prepare("UPDATE asc_account_sessions SET revoked_at=7 WHERE id='session-a'").run();
+ assert.equal(await ownLeaderboardDraft(db,owner,8,opt),null);
+ assert.equal(sqlite.prepare('SELECT count(*) AS n FROM asc_account_leaderboard_visibility WHERE account_id=?').get('b').n,0);
+ sqlite.close();
+});

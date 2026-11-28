@@ -121,6 +121,7 @@
   achievementGeneration++;
   const achievementList=byId('achievement-list');
   if(achievementList)achievementList.textContent='';
+  clearLeaderboardDraft();
   byId('identity').textContent=info.nickname+' (@'+info.username+')';
   byId('arc-id').textContent=accountId?'ArcID '+accountId:'';
   byId('profile-nickname').value=info.nickname;
@@ -297,6 +298,48 @@
    status('Profile saved.');
   });
  };
+ function clearLeaderboardDraft(){
+  const preview=byId('leaderboard-card-preview');
+  if(!preview)return;
+  preview.textContent='';
+  for(const id of ['leaderboard-listed','leaderboard-appearance','leaderboard-badges']){
+   const input=byId(id);if(input)input.checked=false;
+  }
+ }
+ async function loadLeaderboardDraft(change={}){
+  if(!authenticated||!accountId)return;
+  const owner=accountId,generation=achievementGeneration;
+  const data=await post('leaderboard/visibility',change);
+  if(!authenticated||owner!==accountId||generation!==achievementGeneration)return;
+  const preview=byId('leaderboard-card-preview');
+  if(!preview)return;
+  clearLeaderboardDraft();
+  const v=data.visibility;
+  if(!v||typeof v.listed!=='boolean'||typeof v.appearance!=='boolean'||typeof v.badges!=='boolean')throw new Error('Visibility draft unavailable.');
+  byId('leaderboard-listed').checked=v.listed;
+  byId('leaderboard-appearance').checked=v.appearance;
+  byId('leaderboard-badges').checked=v.badges;
+  if(!data.preview){append(preview,'p','Private profile. No card will be shared.');return;}
+  const card=append(preview,'article','');
+  append(card,'strong',data.preview.nickname);
+  append(card,'p',v.appearance?'Custom appearance selected':'Default appearance');
+  if(v.badges&&Array.isArray(data.preview.achievements)){
+   for(const award of data.preview.achievements.slice(0,14))append(card,'p',award.label);
+  }
+  append(card,'p','Draft preview only. No ranking or public sharing.');
+ }
+ const visibilityForm=byId('leaderboard-visibility-form');
+ if(visibilityForm)visibilityForm.onsubmit=e=>{
+  e.preventDefault();action(async()=>{
+   await loadLeaderboardDraft({listed:byId('leaderboard-listed').checked,
+    appearance:byId('leaderboard-appearance').checked,badges:byId('leaderboard-badges').checked});
+   status('Visibility draft saved.');
+  });
+ };
+ const loadVisibility=byId('load-leaderboard-visibility');
+ if(loadVisibility)loadVisibility.onclick=()=>action(async()=>{
+  await loadLeaderboardDraft();status('Visibility draft refreshed.');
+ });
  const loadAchievementsButton=byId('load-achievements');
  if(loadAchievementsButton)loadAchievementsButton.onclick=()=>action(async()=>{
   if(!authenticated||!accountId)return;
@@ -441,6 +484,7 @@
   achievementGeneration++;
   const achievementList=byId('achievement-list');
   if(achievementList)achievementList.textContent='';
+  clearLeaderboardDraft();
   resetFeedback();
   for(const id of ['active-sessions','feedback-history','violations','review-queue'])byId(id).replaceChildren();
   for(const id of ['moderator','violation-history'])byId(id).hidden=true;

@@ -1,6 +1,6 @@
 // arcscriptcenter-login: three-page STAGING shell. Password method stays intentionally disabled.
 // Live identity requires the existing validated Passkey Session; no local credential storage.
-export function passkeyPage(siteKey,{achievementsEnabled=false}={}){
+export function passkeyPage(siteKey,{achievementsEnabled=false,leaderboardPreviewEnabled=false}={}){
  if(!/^[A-Za-z0-9_-]{8,100}$/.test(siteKey))throw new Error('Missing QA Turnstile public key');
  return [
   '<!doctype html><html lang="en"><meta charset="utf-8">',
@@ -68,6 +68,16 @@ export function passkeyPage(siteKey,{achievementsEnabled=false}={}){
    '<p class="small">Private account badges. Feedback awards are available in this QA; other categories are not yet connected.</p>',
    '<button id="load-achievements" type="button" class="secondary">Refresh achievements</button>',
    '<div id="achievement-list" aria-live="polite"></div></details>',
+  ]:[]),
+  ...(leaderboardPreviewEnabled?[
+   '<details id="leaderboard-visibility"><summary>Leaderboard visibility (QA preview)</summary>',
+   '<p class="small">Draft settings only. Nothing is published. Keep your card private or choose what a future leaderboard may display.</p>',
+   '<form id="leaderboard-visibility-form"><label class="choice"><input id="leaderboard-listed" type="checkbox">Include nickname</label>',
+   '<label class="choice"><input id="leaderboard-appearance" type="checkbox">Include avatar and banner</label>',
+   '<label class="choice"><input id="leaderboard-badges" type="checkbox">Include earned badges</label>',
+   '<button id="save-leaderboard-visibility" type="submit">Save draft</button></form>',
+   '<button id="load-leaderboard-visibility" type="button" class="secondary">Refresh draft</button>',
+   '<div id="leaderboard-card-preview" aria-live="polite"></div></details>',
   ]:[]),
   '<details><summary>Security and active sessions</summary>',
   '<button id="load-sessions" class="secondary">Refresh sessions</button><div id="active-sessions"></div></details>',

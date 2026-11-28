@@ -29,7 +29,7 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
   d1Databases:{ACCOUNT_DB:'browser-fixture'},
   ratelimits:{ACCOUNT_RATE:{namespace_id:'20261125',simple:{limit:40,period:60}}},
   bindings:{ASC_ACCOUNT_MODE:'isolated-qa',ASC_ACCOUNT_AUTH_MODE:'passkey',
-   ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',ASC_ACCOUNT_ACHIEVEMENTS:'isolated-qa-enabled',ACCOUNT_TOTP_KEY:'ab'.repeat(32),
+   ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',ASC_ACCOUNT_ACHIEVEMENTS:'isolated-qa-enabled',ASC_ACCOUNT_LEADERBOARD_PREVIEW:'isolated-qa-enabled',ACCOUNT_TOTP_KEY:'ab'.repeat(32),
    ACCOUNT_TURNSTILE_SECRET:'fixture',ACCOUNT_TURNSTILE_SITE_KEY:'fixture_site'},
   outboundService:async request=>{
    if(new URL(request.url).origin==='https://thumbnails.roblox.com'){
@@ -43,7 +43,7 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
  });
  t.after(()=>worker.dispose());
  const db=await worker.getD1Database('ACCOUNT_DB');
- for(const name of ['asc_unified_account','asc_passkey','asc_passkey_recovery','asc_passkey_backup','asc_passkey_account_actions','asc_achievements']){
+ for(const name of ['asc_unified_account','asc_passkey','asc_passkey_recovery','asc_passkey_backup','asc_passkey_account_actions','asc_achievements','asc_leaderboard_visibility']){
   const sql=readFileSync(join(root,'migrations',name+'_ISOLATED_QA_ONLY.sql'),'utf8');
   await db.batch(sql.replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean).map(s=>db.prepare(s)));
  }
@@ -154,6 +154,21 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
  await status('Achievements refreshed');
  assert.match(await page.locator('#achievement-list').textContent(),/Feedback · First sent/);
  assert.doesNotMatch(await page.locator('#achievement-list').textContent(),/Bug Hunter/);
+ await page.locator('#leaderboard-visibility summary').click();
+ await page.locator('#load-leaderboard-visibility').click();
+ await status('Visibility draft refreshed');
+ assert.match(await page.locator('#leaderboard-card-preview').textContent(),/Private profile/);
+ await page.locator('#leaderboard-listed').check();
+ await page.locator('#leaderboard-badges').check();
+ await page.locator('#save-leaderboard-visibility').click();
+ await status('Visibility draft saved');
+ assert.match(await page.locator('#leaderboard-card-preview').textContent(),/First sent/);
+ assert.doesNotMatch(await page.locator('#leaderboard-card-preview').textContent(),/ArcID|syntheticbrowser/);
+ await page.locator('#leaderboard-listed').uncheck();
+ await page.locator('#save-leaderboard-visibility').click();
+ await status('Visibility draft saved');
+ assert.match(await page.locator('#leaderboard-card-preview').textContent(),/Private profile/);
+ assert.equal(await page.locator('#leaderboard-badges').isChecked(),false);
  const anonymousAwards=await worker.dispatchFetch(origin+api+'achievements',{
   method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:'{}',
  });
