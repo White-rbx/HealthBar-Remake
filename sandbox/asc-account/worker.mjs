@@ -1,5 +1,6 @@
 import {readJson,BanError} from './request.mjs';
 import {accountProfile,validImage} from './moderation.mjs';
+import {feedbackInput,manageAccountFeedback,mayModerate,submitAccountFeedback} from './account-actions.mjs';
 import {displayTotp,loginPassword,matchingTotpStep,newTotpSecret,passwordHash,passwordMatches,randomHex,readTotp,sealTotp,sha,strongPassword} from './security.mjs';
 import {website} from './website.mjs';
 import provisioning from './provisioning-worker.mjs';
@@ -104,6 +105,7 @@ function accountQAReady(env){
 }
 
 const webOps=new Set(['passkey/backup/options','passkey/backup/verify-current','passkey/backup/verify',
+ 'passkey/action/options','passkey/action/verify','feedback/manage','moderation/queue',
  'passkey/register/options','passkey/register/verify',
  'passkey/recovery/options','passkey/recovery/verify','passkey/login/options','passkey/login/verify',
  'register','login','factor','pair/approve','security/sessions','security/revoke','security/setup','security/enable',
@@ -248,7 +250,8 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
    const account=await loadSession(db,await sha(raw),scope,now);
    if(!account)return fail(401,'session_expired');
    if(!await rate(env,op+':account:'+account.id))return fail(429,'rate_limited');
-   if(op==='session')return ok({account:accountProfile(account),expiresAt:account.expires_at});
+   if(op==='session')return ok({account:accountProfile(account),expiresAt:account.expires_at,
+    ...(passkeyMode&&web?{canModerate:mayModerate(account,env)}:{})});
    if(op==='logout'){
     await db.prepare('UPDATE asc_account_sessions SET revoked_at=? WHERE id=?').bind(now,account.session_id).run();
     return json(200,{ok:true},web?{'Set-Cookie':cookie('',0)}:{});
@@ -261,10 +264,14 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
     return r?ok({account:accountProfile(account)}):fail(403,'account_banned');
    }
    if(op==='history'){
-    const result=await db.prepare(`
+    const result=await (passkeyMode&&web?db.prepare(`
+     SELECT c.id,c.kind,c.status,c.reason,c.moderator_message AS moderatorMessage,c.created_at AS createdAt,f.topic
+     FROM asc_account_cases c LEFT JOIN asc_account_feedback_details f ON f.case_id=c.id
+     WHERE c.account_id=? ORDER BY c.created_at DESC,c.id DESC LIMIT 100
+    `):db.prepare(`
      SELECT id,kind,status,reason,moderator_message AS moderatorMessage,created_at AS createdAt
      FROM asc_account_cases WHERE account_id=? ORDER BY created_at DESC,id DESC LIMIT 100
-    `).bind(account.id).all();
+    `)).bind(account.id).all();
     const cases=result.results||[];
     return ok({cases,notices:cases.filter(x=>x.kind==='violation'||x.kind==='ban').map(x=>({...x,
      appealStatus:x.status==='open'?'not_appealed':x.status,canAppealAgain:x.status==='open',
@@ -283,6 +290,12 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
    }
    if(op==='feedback'){
     if(account.status==='banned')return fail(403,'account_banned');
+    if(passkeyMode&&web&&body.topic!==undefined){
+     const input=feedbackInput(body);
+     if(!input)return fail(400,'invalid_input');
+     const id=await submitAccountFeedback(db,account,input,now);
+     return id?ok({id}):fail(403,'account_banned');
+    }
     if(typeof body.description!=='string'||body.description.trim().length<50||body.description.length>1500)
      return fail(400,'invalid_input');
     const row=await db.prepare(`
@@ -291,6 +304,21 @@ export function createAccountWorker({origin=defaultOrigin,clock=seconds,fetcher=
      WHERE a.id=?4 AND a.status<>'banned' AND s.id=?5 AND s.revoked_at IS NULL AND s.expires_at>?3 RETURNING id
     `).bind(crypto.randomUUID(),body.description.trim(),now,account.id,account.session_id).first();
     return row?ok({id:row.id}):fail(403,'account_banned');
+   }
+   if(op==='feedback/manage'){
+    if(!passkeyMode||!web)return fail(404,'not_found');
+    const changed=await manageAccountFeedback(db,account,body,now);
+    return changed===null?fail(400,'invalid_input'):changed?ok():fail(409,'no_status_change');
+   }
+   if(op==='moderation/queue'){
+    if(!passkeyMode||!web)return fail(404,'not_found');
+    if(!mayModerate(account,env))return fail(403,'forbidden');
+    const queue=await db.prepare(`
+     SELECT c.id,c.account_id AS arcId,c.kind,c.reason,c.appeal,c.created_at AS createdAt,f.topic
+     FROM asc_account_cases c LEFT JOIN asc_account_feedback_details f ON f.case_id=c.id
+     WHERE c.status='reviewing' ORDER BY c.created_at DESC,c.id DESC LIMIT 100
+    `).all();
+    return ok({cases:queue.results||[],activeUsers:await activeAccounts(db,now)});
    }
    if(op==='pair/approve'){
     if(typeof body.code!=='string'||!pairCode.test(body.code)||body.confirm!==true)return fail(400,'invalid_input');

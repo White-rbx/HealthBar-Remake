@@ -32,6 +32,9 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
    ASC_ACCOUNT_LAUNCH_STATE:'isolated-test-enabled',ACCOUNT_TOTP_KEY:'ab'.repeat(32),
    ACCOUNT_TURNSTILE_SECRET:'fixture',ACCOUNT_TURNSTILE_SITE_KEY:'fixture_site'},
   outboundService:async request=>{
+   if(new URL(request.url).origin==='https://thumbnails.roblox.com'){
+    return LocalResponse.json({data:[{targetId:123,state:'Completed',imageUrl:'https://t0.rbxcdn.com/qa-fixture'}]});
+   }
    assert.equal(request.url,'https://challenges.cloudflare.com/turnstile/v0/siteverify');
    const {response,secret}=await request.json();
    return LocalResponse.json({success:secret==='fixture'&&['asc_register','asc_recover'].includes(response),
@@ -40,7 +43,7 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
  });
  t.after(()=>worker.dispose());
  const db=await worker.getD1Database('ACCOUNT_DB');
- for(const name of ['asc_unified_account','asc_passkey','asc_passkey_recovery','asc_passkey_backup']){
+ for(const name of ['asc_unified_account','asc_passkey','asc_passkey_recovery','asc_passkey_backup','asc_passkey_account_actions']){
   const sql=readFileSync(join(root,'migrations',name+'_ISOLATED_QA_ONLY.sql'),'utf8');
   await db.batch(sql.replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean).map(s=>db.prepare(s)));
  }
@@ -125,6 +128,48 @@ test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs
  await page.locator('#open-signin').click();
  await page.locator('#passkey-login').click();
  await status('Signed in using a passkey');
+ await page.getByText('Profile',{exact:true}).click();
+ await page.locator('#profile-nickname').fill('Browser QA');
+ await page.locator('#profile-image').fill('123');
+ await page.locator('#profile-banner-id').fill('123');
+ await page.getByRole('button',{name:'Save profile'}).click();
+ await status('Profile saved');
+ assert.equal(await page.locator('#identity').textContent(),'Browser QA (@syntheticbrowser)');
+ assert.match(await page.locator('#arc-id').textContent(),/^ArcID [0-9a-f-]{36}$/);
+ assert.equal(await page.locator('#avatar-image').getAttribute('src'),'https://t0.rbxcdn.com/qa-fixture');
+ assert.equal(await page.locator('#violation-history').isVisible(),false);
+ assert.equal(await page.locator('#moderator').isVisible(),false);
+ await page.getByText('Feedback and case history',{exact:true}).click();
+ await page.locator('#feedback-topic').fill('Synthetic feedback');
+ await page.locator('#feedback-description').fill('Synthetic account feedback long enough for the approved submission form.');
+ await page.locator('#send-feedback').click();
+ await status('Feedback submitted for review');
+ await page.locator('#feedback-history').getByRole('button',{name:'Edit'}).click();
+ await page.locator('#feedback-topic').fill('Updated synthetic feedback');
+ await page.locator('#send-feedback').click();
+ await status('Feedback updated');
+ assert.match(await page.locator('#feedback-history').textContent(),/Updated synthetic feedback/);
+ await page.locator('#feedback-history').getByRole('button',{name:'Remove'}).click();
+ await status('Feedback removed');
+ assert.equal(await page.locator('#feedback-history').getByRole('button',{name:'Edit'}).count(),0);
+ const accountId=(await db.prepare('SELECT id FROM asc_accounts WHERE username=?').bind('syntheticbrowser').first()).id;
+ await db.prepare("INSERT INTO asc_account_cases(id,account_id,kind,reason,created_at) VALUES(?,?,'violation',?,?)")
+  .bind(crypto.randomUUID(),accountId,'Synthetic moderation case',1800000000).run();
+ await page.locator('#load-cases').click();
+ await status('Cases refreshed');
+ await page.locator('#violation-history summary').click();
+ await page.locator('#violations textarea').fill('Synthetic appeal asking the moderator to review this account violation.');
+ await page.locator('#violations').getByRole('button',{name:'Submit appeal'}).click();
+ await status('Appeal submitted for review');
+ assert.equal(await page.locator('#violations').getByRole('button',{name:'Submit appeal'}).count(),0);
+
+ const browserRevoked=await pair();
+ await page.getByText('Security and active sessions',{exact:true}).click();
+ await page.locator('#load-sessions').click();
+ await status('Sessions refreshed');
+ await page.getByRole('button',{name:'Revoke session'}).click();
+ await status('Session revoked');
+ assert.equal((await loader('session',{},browserRevoked)).status,401);
  const first=await pair();
  assert.equal((await (await loader('session',{},first)).json()).account.status,'normal');
  await db.prepare("UPDATE asc_accounts SET status='restricted_mode' WHERE username=?").bind('syntheticbrowser').run();

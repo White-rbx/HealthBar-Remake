@@ -70,25 +70,33 @@ export function createLoaderGatewayCandidate({
    }
    const budget=await reservePairGatewayBudget(env,op,now);
    if(!budget.allowed)return fail(budget.status,budget.status===429?'rate_limited':'pairing_unavailable');
+   if(op==='logout'){
+    const revoked=await db.prepare(`
+     UPDATE asc_account_sessions SET revoked_at=?1
+     WHERE digest=?2 AND scope='loader' AND revoked_at IS NULL AND expires_at>?1
+     RETURNING id
+    `).bind(now,digest).first();
+    return revoked?ok():fail(401,'session_expired');
+   }
+   if(op==='heartbeat'){
+    const current=await db.prepare(`
+     UPDATE asc_account_sessions SET last_seen=?1
+     WHERE digest=?2 AND scope='loader' AND revoked_at IS NULL AND expires_at>?1
+     AND EXISTS (SELECT 1 FROM asc_accounts WHERE id=asc_account_sessions.account_id AND status<>'banned')
+     RETURNING account_id AS id,
+       (SELECT nickname FROM asc_accounts WHERE id=asc_account_sessions.account_id) AS nickname,
+       (SELECT status FROM asc_accounts WHERE id=asc_account_sessions.account_id) AS status
+    `).bind(now,digest).first();
+    if(current)return ok({account:loaderProfile(current)});
+   }
    const account=await db.prepare(`
-    SELECT a.id,a.nickname,a.status,s.id AS session_id,s.expires_at
+    SELECT a.id,a.nickname,a.status,s.expires_at
     FROM asc_account_sessions s JOIN asc_accounts a ON a.id=s.account_id
     WHERE s.digest=?1 AND s.scope='loader' AND s.revoked_at IS NULL AND s.expires_at>?2
    `).bind(digest,now).first();
    if(!account)return fail(401,'session_expired');
    if(op==='session')return ok({account:loaderProfile(account),expiresAt:account.expires_at});
-   if(op==='logout'){
-    await db.prepare('UPDATE asc_account_sessions SET revoked_at=? WHERE id=?')
-     .bind(now,account.session_id).run();
-    return ok();
-   }
-   const current=await db.prepare(`
-    UPDATE asc_account_sessions SET last_seen=?1
-    WHERE id=?2 AND revoked_at IS NULL AND expires_at>?1
-    AND EXISTS (SELECT 1 FROM asc_accounts WHERE id=?3 AND status<>'banned')
-    RETURNING (SELECT status FROM asc_accounts WHERE id=?3) AS account_status
-   `).bind(now,account.session_id,account.id).first();
-   return current?ok({account:loaderProfile({...account,status:current.account_status})}):fail(403,'account_banned');
+   return account.status==='banned'?fail(403,'account_banned'):fail(503,'pairing_unavailable');
   }catch{
    // Never include DB errors or credentials in a public error response.
    return fail(503,'pairing_unavailable');

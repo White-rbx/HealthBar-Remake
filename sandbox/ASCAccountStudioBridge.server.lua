@@ -2,22 +2,29 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local newClient = require(script.Parent:WaitForChild("ASCAccountClientPreview"))
 local states = {}
 local bridge = Instance.new("RemoteFunction")
 bridge.Name = "ASCAccountStudioQA"
+local authorization = Instance.new("BindableFunction")
+authorization.Name = "ASCAccountLoaderAuthorization"
 local allowed = {begin=true, poll=true, session=true, heartbeat=true, logout=true, cancel=true}
-local waitBetween = {begin=3, poll=2, session=1, heartbeat=5, logout=1}
+local waitBetween = {begin=3, poll=2, session=1, heartbeat=5}
+
+authorization.OnInvoke = function(player)
+    local state = states[player]
+    local expiresAt = state and state.client.expiresAt()
+    if expiresAt and expiresAt > os.time() and state.validUntil and state.validUntil > os.clock() then
+        return state.status
+    end
+    return nil
+end
 
 local function request(options)
     return HttpService:RequestAsync({
         Url=options.Url, Method=options.Method, Headers=options.Headers, Body=options.Body,
     })
-end
-
-local function clear(player, state)
-    state.pair = nil
-    player:SetAttribute("ASCAccountQAStatus", nil)
 end
 
 local function handle(player, state, op)
@@ -37,22 +44,14 @@ local function handle(player, state, op)
         local result, reason = client.poll(state.pair, false, function()
             return not state.cancelled and player.Parent == Players
         end)
-        if result and result.state == "ready" then
-            state.pair = nil
-            player:SetAttribute("ASCAccountQAStatus", client.profile().status)
-        elseif reason == "session_expired" then
+        if (result and result.state == "ready") or reason == "session_expired" then
             state.pair = nil
         end
-        return result, reason
-    elseif op == "logout" then
-        clear(player, state)
-        return client.logout()
+        return result and {state=result.state, saved=false}, reason
+    elseif op == "session" then
+        return client.refresh()
     end
-    local profile, reason
-    if op == "session" then profile, reason = client.refresh()
-    else profile = client.heartbeat() end
-    player:SetAttribute("ASCAccountQAStatus", profile and profile.status or nil)
-    return profile, reason
+    return client.heartbeat()
 end
 
 bridge.OnServerInvoke = function(player, op)
@@ -65,15 +64,16 @@ bridge.OnServerInvoke = function(player, op)
         state = {client=newClient(request), nextAt={}}
         states[player] = state
     end
-    if op == "cancel" then
+    if op == "cancel" or op == "logout" then
         state.cancelled = true
-        clear(player, state)
+        state.pair, state.status, state.validUntil = nil, nil, nil
         if not state.busy and state.client.hasSession() then
             state.busy = true
-            state.client.logout()
+            local revoked = state.client.logout()
             state.busy = false
+            return revoked
         end
-        return true
+        return true, state.busy and "revocation_pending" or nil
     end
     local now = os.clock()
     if state.busy or now < (state.nextAt[op] or 0) then return nil, "rate_limited" end
@@ -83,11 +83,18 @@ bridge.OnServerInvoke = function(player, op)
     local ok, result, reason = pcall(handle, player, state, op)
     if state.cancelled then
         if state.client.hasSession() then state.client.logout() end
-        clear(player, state)
+        state.pair = nil
         result, reason = nil, "cancelled"
     end
     state.busy = false
-    if not ok then clear(player, state); return nil, "unavailable" end
+    if op == "heartbeat" then
+        state.status = ok and result and result.status or nil
+        state.validUntil = state.status and now + 28 or nil
+    end
+    if not ok then
+        state.pair = nil
+        return nil, "unavailable"
+    end
     return result, reason
 end
 
@@ -100,3 +107,4 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 bridge.Parent = ReplicatedStorage
+authorization.Parent = ServerScriptService

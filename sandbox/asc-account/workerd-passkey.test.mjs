@@ -41,7 +41,7 @@ test('Cloudflare workerd bundled Passkey QA has strict pages, challenge flow and
  });
  try{
   const db=await worker.getD1Database('ACCOUNT_DB');
-  for(const file of ['asc_unified_account_ISOLATED_QA_ONLY.sql','asc_passkey_ISOLATED_QA_ONLY.sql','asc_passkey_recovery_ISOLATED_QA_ONLY.sql','asc_passkey_backup_ISOLATED_QA_ONLY.sql']){
+  for(const file of ['asc_unified_account_ISOLATED_QA_ONLY.sql','asc_passkey_ISOLATED_QA_ONLY.sql','asc_passkey_recovery_ISOLATED_QA_ONLY.sql','asc_passkey_backup_ISOLATED_QA_ONLY.sql','asc_passkey_account_actions_ISOLATED_QA_ONLY.sql']){
    const ddl=readFileSync(join(root,'migrations',file),'utf8');
    const commands=ddl.replace(/^--.*$/gm,'').split(';').map(x=>x.trim()).filter(Boolean);
    await db.batch(commands.map(sql=>db.prepare(sql)));
@@ -165,7 +165,7 @@ test('isolated preview uses its fixed WebAuthn origin and validates both Turnsti
  });
  try {
   const db=await worker.getD1Database('ACCOUNT_DB');
-  for(const file of ['asc_unified_account','asc_passkey','asc_passkey_recovery','asc_passkey_backup']){
+  for(const file of ['asc_unified_account','asc_passkey','asc_passkey_recovery','asc_passkey_backup','asc_passkey_account_actions']){
    const ddl=readFileSync(join(root,'migrations',file+'_ISOLATED_QA_ONLY.sql'),'utf8');
    const statements=ddl.replace(/^--.*$/gm,'').split(';').map(x=>x.trim()).filter(Boolean);
    await db.batch(statements.map(sql=>db.prepare(sql)));

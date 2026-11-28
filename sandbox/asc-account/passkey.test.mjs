@@ -30,6 +30,7 @@ function fixture(){
  sqlite.exec(readFileSync(new URL('../../migrations/asc_passkey_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8'));
  sqlite.exec(readFileSync(new URL('../../migrations/asc_passkey_recovery_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8'));
  sqlite.exec(readFileSync(new URL('../../migrations/asc_passkey_backup_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8'));
+ sqlite.exec(readFileSync(new URL('../../migrations/asc_passkey_account_actions_ISOLATED_QA_ONLY.sql',import.meta.url),'utf8'));
  const db={
   prepare(sql){return {bind(...args){return{
    first:async()=>sqlite.prepare(sql).get(...args)||null,
@@ -242,6 +243,34 @@ test('synthetic P-256 passkey registers, signs in and rejects replayed assertion
  const backupReplay=await f.service.handle('passkey/backup/verify',{response:backupCredential},
   requestWithCookies(backupFlow),f.env);
  assert.equal(backupReplay.status,410);
+
+ const action=(suffix,body,flow)=>f.service.handle('passkey/action/'+suffix,body,requestWithCookies(flow),f.env);
+ const target=crypto.randomUUID(),caseId=crypto.randomUUID();
+ const review={action:'review_case',caseId,decision:'approved',message:'Synthetic review'};
+ assert.equal((await action('options',review)).status,403);
+ f.env.ACCOUNT_MODERATOR_IDS=account.id;
+ f.sqlite.prepare(`INSERT INTO asc_accounts(id,username,password_hash,nickname,created_at)
+ VALUES(?,?,'passkey-only','Other separate QA account',?)`).run(target,'other_qa',1795440001);
+ f.sqlite.prepare(`INSERT INTO asc_account_cases(id,account_id,kind,status,reason,appeal,created_at)
+ VALUES(?,?,'violation','reviewing','Reviewed case','Synthetic appeal',1795440001)`).run(caseId,target);
+ const startedReview=await action('options',review);
+ assert.equal(startedReview.status,200);
+ const reviewFlow=flowFrom(startedReview);
+ const reviewOptions=(await startedReview.json()).options;
+ assert.equal(reviewOptions.userVerification,'required');
+ const reviewAuth=authData(hash,0x05,3);
+ const reviewClient=encoder.encode(JSON.stringify({
+  type:'webauthn.get',challenge:reviewOptions.challenge,origin,crossOrigin:false,
+ }));
+ const reviewHash=await crypto.subtle.digest('SHA-256',reviewClient);
+ const rawReview=new Uint8Array(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key.privateKey,concat(reviewAuth,reviewHash)));
+ const reviewR=derInteger(rawReview.slice(0,32)),reviewS=derInteger(rawReview.slice(32));
+ const response={...proof,response:{...proof.response,clientDataJSON:b64(reviewClient),authenticatorData:b64(reviewAuth),
+  signature:b64(concat(Buffer.from([0x30,reviewR.length+reviewS.length]),reviewR,reviewS))}};
+ // Verify consumes the stored, allowlisted action instead of any replacement form data.
+ assert.equal((await action('verify',{response,decision:'denied'},reviewFlow)).status,200);
+ assert.equal((await action('verify',{response},reviewFlow)).status,410);
+ assert.equal(f.sqlite.prepare('SELECT status FROM asc_account_cases WHERE id=?').get(caseId).status,'approved');
  
  // Recovery requires the *actual* stored offline code, plus Turnstile and a
  // newly user-verified WebAuthn credential. This synthetic flow uses no users.

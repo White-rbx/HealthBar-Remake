@@ -13716,11 +13716,11 @@ if type(getgenv) == "function" and getgenv().__ASC_ACCOUNT_QA then
         end
         local function refreshProfile(profile)
             if not profile then label.Text = "Account service unavailable."; return end
-            label.Text = profile.nickname.."  (@"..profile.username..")"
+            label.Text = profile.nickname.."\nArcID "..profile.id
             avatar.Image = thumbnail(profile.image)
             if avatar.Image == "" then avatar.Image = "rbxassetid://120500539322715" end
             banner.Image = thumbnail(profile.banner)
-            local r,g,b = profile.bannerColor:match("^#(%x%x)(%x%x)(%x%x)$")
+            local r,g,b = (profile.bannerColor or "#102757"):match("^#(%x%x)(%x%x)(%x%x)$")
             if r then banner.BackgroundColor3 = Color3.fromRGB(tonumber(r,16),tonumber(g,16),tonumber(b,16)) end
         end
         local function action(text, callback)
@@ -13742,18 +13742,10 @@ if type(getgenv) == "function" and getgenv().__ASC_ACCOUNT_QA then
             end)
         end
         action("Refresh profile", function() refreshProfile(account.refresh()) end)
-        action("Account Security, Active Sessions & Profile", function()
-            if type(setclipboard) == "function" then setclipboard(account.website); label.Text = "Account website copied."
-            else label.Text = account.website end
-        end)
-        action("Violation & Appeal", function()
-            local history = account.history()
-            if not history or #history == 0 then label.Text = "No verified violation is available."
-            else
-                label.Text = "Open ArcScriptCenter → Feedback & Appeal → Violation."
-                local policy = env.ArcScriptPolicyGate
-                if policy and policy.refresh then policy.refresh() end
-            end
+        action("MyAccount, Feedback & History", function()
+            local url = account.website.."/myaccount"
+            if type(setclipboard) == "function" then setclipboard(url); label.Text = "MyAccount website copied."
+            else label.Text = url end
         end)
         action("Logout", function()
             if not env.__ASC_ACCOUNT_SIGN_OUT or not env.__ASC_ACCOUNT_SIGN_OUT() then
@@ -14651,6 +14643,9 @@ task.spawn(function()
         local valid,errorText=caseValidate(kind,topic,description)
         if not valid then return nil,errorText,false end
         if banPolicyClient and banPolicyClient.accountMode and kind == "feedback" then
+            if type(banPolicyClient.feedback) ~= "function" then
+                return nil,"Submit account Feedback at "..banPolicyClient.website.."/myaccount.",false
+            end
             local result = banPolicyClient.feedback(topic.."\n"..description)
             if not result then return nil,"Could not submit account feedback.",false end
             return {id=result.id,kind="feedback",status="reviewing",topic=topic},nil,false
@@ -15931,7 +15926,7 @@ More information in discord you can find the link at About or on the ScriptBlox/
                     if not (banPolicyClient and banPolicyClient.accountMode) then return end
                     local records=banPolicyClient.caseHistory()
                     if not records then
-                        setFeedbackReview("Could not load account case history.")
+                        setFeedbackReview("View your account Feedback and case history at "..banPolicyClient.website.."/myaccount.")
                         return
                     end
                     local buckets={reviewing={},approved={},denied={}}

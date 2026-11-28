@@ -14,6 +14,8 @@ on:
       - 'migrations/asc_passkey_ISOLATED_QA_ONLY.sql'
       - 'migrations/asc_passkey_recovery_ISOLATED_QA_ONLY.sql'
       - 'migrations/asc_passkey_backup_ISOLATED_QA_ONLY.sql'
+      - 'migrations/asc_passkey_account_actions_ISOLATED_QA_ONLY.sql'
+      - 'migrations/asc_eslogin_gateway_budget_ISOLATED_QA_ONLY.sql'
       - 'docs/asc-unified-account-staging.md'
       - 'sandbox/ban-v2-*'
       - 'sandbox/banned-token-*.mjs'
@@ -140,7 +142,7 @@ jobs:
           git -C "$luau_dir" fetch --depth 1 https://github.com/luau-lang/luau.git c87565b8b0db5d5d5bfd2b8b00ad6573e5d06d9f
           git -C "$luau_dir" checkout --detach FETCH_HEAD
           make -s -C "$luau_dir" config=release -j"$(nproc)" luau luau-compile
-          "$luau_dir/luau-compile" --null sandbox/{BannedCenterLoaderPreview,BanPolicyClientPreview,ArcScriptCenterBanBridge.server,RestrictedMode-Topbar-STAGING,Loader-UI-BanMode-STAGING,ExperienceSettings-SetUp-Preview,LoaderMainPreview,Arcsen-Preview,ESLogin,ESLoginTesterPreview,ASCAccountStudioBridge.server,ASCAccountStudioQA.client,ASCAccountClientPreview,ASCAccountLoaderPreview,ASCAccountTesterPreview,FunctionTwoAccountPreview}.lua
+          "$luau_dir/luau-compile" --null sandbox/{BannedCenterLoaderPreview,BanPolicyClientPreview,ArcScriptCenterBanBridge.server,RestrictedMode-Topbar-STAGING,Loader-UI-BanMode-STAGING,LoaderMainPreview,ExperienceSettings-SetUp-Preview,Arcsen-Preview,ESLogin,ESLoginTesterPreview,ASCAccountStudioBridge.server,ASCAccountStudioQA.client,ASCAccountClientPreview,ASCAccountLoaderGate,ASCAccountLoaderPreview,ASCAccountTesterPreview,FunctionTwoAccountPreview}.lua
           LUAU_BIN="$luau_dir/luau" node --test sandbox/ban-v2-native-luau.test.mjs
       - name: Universal Ban status, scoped lookup and live QA isolation
         run: node --test sandbox/ban-v2-public-qa.test.mjs sandbox/ban-v2-public-qa-live.test.mjs

@@ -23,6 +23,7 @@ const section = (source, start, end) => {
 const files = {
  entry, client, server, topbar,
  accountUi: read('ESLogin.lua'), accountClient: read('ASCAccountClientPreview.lua'),
+ accountLoaderGate: read('ASCAccountLoaderGate.lua'),
  accountAccessChallenge: section(read('ASCAccountClientPreview.lua'),
    'local function accessChallenge(reply, status, raw)',
    'local function send(route, body, authenticated)') + '\nreturn accessChallenge',
@@ -1052,6 +1053,65 @@ runtime.task.spawn(function()
 end)
 advance(30)
 assert(progress==1)
+`);
+});
+
+test('Luau VM: Studio Loader waits for verified login and stops on revocation',()=>{
+ luau(String.raw`
+local status,loginOpen='restricted_mode',false
+local started,updated,closed,logout,cancel=0,0,0,0,0
+local playerGui={}
+local bridge={InvokeServer=function(_,op)
+ if op=='heartbeat' then
+  if not status then return nil,'session_expired' end
+  return {id='qa-account',nickname='QA',status=status}
+ end
+ if op=='logout' then logout+=1 end
+ if op=='cancel' then cancel+=1 end
+end}
+local storage={WaitForChild=function(_,name)
+ if name=='ASCAccountStudioQA' then return bridge end
+ assert(name=='ESLogin')
+ return name
+end}
+local env={
+ game={GetService=function(_,name)
+  if name=='ReplicatedStorage' then return storage end
+  assert(name=='Players')
+  return {LocalPlayer={WaitForChild=function() return playerGui end}}
+ end},
+ script={Parent=storage},
+ require=function(name)
+  assert(name=='ESLogin')
+  return function(login,parent)
+   assert(parent==playerGui and not login.canRemember())
+   return loginOpen
+  end
+ end,
+}
+local loader={
+ start=function(profile,signOut)
+  assert(profile.status=='restricted_mode' and type(signOut)=='function')
+  started+=1
+ end,
+ update=function(profile) assert(profile.status=='normal'); updated+=1 end,
+ stop=function(reason) assert(reason=='session_expired'); closed+=1 end,
+}
+local runGate=run('accountLoaderGate',env)
+assert(runGate(loader)==false and cancel==1 and started==0)
+loginOpen=true
+status='banned'
+assert(runGate(loader)==false and logout==1 and started==0)
+status='restricted_mode'
+runtime.task.spawn(function() assert(runGate(loader)) end)
+advance(0)
+assert(started==1 and updated==0)
+status='normal'
+advance(25)
+assert(updated==1)
+status=false
+advance(50)
+assert(closed==1 and logout==2)
 `);
 });
 

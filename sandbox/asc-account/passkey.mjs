@@ -7,6 +7,8 @@ import {
 } from '@simplewebauthn/server';
 import {Buffer} from 'node:buffer';
 import {randomHex,sha} from './security.mjs';
+import {executeAction,mayModerate,readAction} from './account-actions.mjs';
+import {accountProfile} from './moderation.mjs';
 
 const usernameRE=/^[A-Za-z0-9_]{3,24}$/;
 const credentialRE=/^[A-Za-z0-9_-]{8,2048}$/;
@@ -90,6 +92,64 @@ export function createPasskeyCeremonies({
    // per-operation bucket would let one QA client throttle all other testers.
    const edgeIp=request.headers.get('CF-Connecting-IP')||'unknown';
    if(!await rate(env,'passkey:'+op+':ip:'+edgeIp))return reject(429,'rate_limited');
+   if(op==='passkey/action/options'||op==='passkey/action/verify'){
+    const account=await webAccount(db,request,now);
+    if(!account)return reject(401,'session_expired');
+    if(!await rate(env,'passkey:action:account:'+account.id))return reject(429,'rate_limited');
+    if(op==='passkey/action/options'){
+     const action=readAction(body);
+     if(!action)return reject(400,'invalid_input');
+     if(action.action!=='revoke_session'&&!mayModerate(account,env))return reject(403,'forbidden');
+     const keys=await db.prepare('SELECT credential_id,transports_json FROM asc_account_passkeys WHERE account_id=?')
+      .bind(account.id).all();
+     if(!keys.results?.length)return reject(403,'reauth_required');
+     const options=await generateAuthenticationOptions({
+      rpID,timeout:60000,userVerification:'required',
+      allowCredentials:keys.results.map(key=>({id:key.credential_id,transports:JSON.parse(key.transports_json)})),
+     });
+     const cookieValue=randomHex(32);
+     await db.batch([
+      db.prepare('DELETE FROM asc_account_passkey_actions WHERE expires_at<=?').bind(now),
+      db.prepare(`
+       INSERT INTO asc_account_passkey_actions(flow_hash,account_id,session_id,challenge,action,payload,expires_at)
+       VALUES(?,?,?,?,?,?,?)
+      `).bind(await sha(cookieValue),account.id,account.session_id,options.challenge,action.action,JSON.stringify(action),now+ttl),
+     ]);
+     return approve({options},{setFlow:cookieValue});
+    }
+    const digest=await getBackupCookie(request);
+    if(!digest||!validResponse(body.response))return reject(400,'invalid_input',{clearFlow:true});
+    const flow=await db.prepare(`
+     DELETE FROM asc_account_passkey_actions
+     WHERE flow_hash=? AND account_id=? AND session_id=? AND expires_at>? RETURNING *
+    `).bind(digest,account.id,account.session_id,now).first();
+    if(!flow)return reject(410,'challenge_expired',{clearFlow:true});
+    if(flow.action!=='revoke_session'&&!mayModerate(account,env))return reject(403,'forbidden',{clearFlow:true});
+    const key=await db.prepare('SELECT * FROM asc_account_passkeys WHERE credential_id=? AND account_id=?')
+     .bind(body.response.id,account.id).first();
+    const handle=body.response.response.userHandle;
+    if(!key||(handle!=null&&(typeof handle!=='string'||Buffer.from(handle,'base64url').toString('utf8')!==account.id)))
+     return reject(401,'passkey_verification_failed',{clearFlow:true});
+    let verified;
+    try{
+     verified=await verifyAuthenticationResponse({
+      response:body.response,expectedChallenge:flow.challenge,expectedOrigin:origin,
+      expectedRPID:rpID,requireUserVerification:true,
+      credential:{id:key.credential_id,counter:key.counter,transports:JSON.parse(key.transports_json),
+       publicKey:new Uint8Array(Buffer.from(key.public_key_b64url,'base64url'))},
+     });
+    }catch{return reject(401,'passkey_verification_failed',{clearFlow:true})}
+    if(!verified.verified)return reject(401,'passkey_verification_failed',{clearFlow:true});
+    const checkedAt=clock();
+    if(flow.expires_at<=checkedAt)return reject(410,'challenge_expired',{clearFlow:true});
+    const current=await db.prepare(`
+     UPDATE asc_account_passkeys SET counter=?,last_used_at=?
+     WHERE credential_id=? AND account_id=? AND counter=? RETURNING credential_id
+    `).bind(verified.authenticationInfo.newCounter,checkedAt,key.credential_id,account.id,key.counter).first();
+    if(!current)return reject(409,'retry',{clearFlow:true});
+    const changed=await executeAction(db,account,JSON.parse(flow.payload),checkedAt,env);
+    return changed?approve({},{clearFlow:true}):reject(409,'no_status_change',{clearFlow:true});
+   }
    if(op==='passkey/register/options'){
     if(!usernameRE.test(body.username||'')||body.presence!==true)return reject(400,'invalid_input');
     if(!await rate(env,'passkey:register:name:'+await sha(body.username.toLowerCase())))
@@ -272,7 +332,7 @@ export function createPasskeyCeremonies({
     const session=row&&await issueSession(db,row,'web',now,28800);
     if(!session)return reject(503,'session_unavailable',{clearFlow:true});
     // One-time offline recovery codes are shown ONLY in this response.
-    return approve({account:{id:row.id,username:row.username,nickname:row.nickname},
+    return approve({account:accountProfile(row),
      recoveryCodes:codes},{issuedSession:session,clearFlow:true});
    }
    if(op==='passkey/login/verify'){
@@ -304,7 +364,7 @@ export function createPasskeyCeremonies({
     if(!updated)return reject(409,'retry',{clearFlow:true});
     const session=await issueSession(db,row,'web',now,28800);
     if(!session)return reject(503,'session_unavailable',{clearFlow:true});
-    return approve({account:{id:row.id,username:row.username,nickname:row.nickname}},
+    return approve({account:accountProfile(row),canModerate:mayModerate(row,env)},
      {issuedSession:session,clearFlow:true});
    }
    if(op==='passkey/recovery/verify'){
@@ -369,7 +429,7 @@ export function createPasskeyCeremonies({
      .bind(flow.account_id).first();
     const session=account&&await issueSession(db,account,'web',now,28800);
     if(!session)return reject(503,'session_unavailable',{clearFlow:true});
-    return approve({account:{id:account.id,username:account.username,nickname:account.nickname},
+    return approve({account:accountProfile(account),canModerate:mayModerate(account,env),
      recoveryCodes:codes},{issuedSession:session,clearFlow:true});
    }
    return reject(404,'not_found');

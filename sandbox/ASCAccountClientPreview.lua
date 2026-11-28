@@ -6,12 +6,12 @@ local function newClient(requestFn)
         website = "https://arcscriptcenter-eslogin-edge-qa.kogpasan14.workers.dev",
         publicLookup = false, isolatedQA = true, accountMode = true,
     }
-    local session, current, currentPolicy, expectedAccountId
+    local session, sessionExpiresAt, current, currentPolicy, expectedAccountId
     local function credential(value)
         return type(value) == "string" and #value == 64 and value:match("^[0-9a-f]+$") ~= nil
     end
     local function erase()
-        session, current, currentPolicy, expectedAccountId = nil, nil, nil, nil
+        session, sessionExpiresAt, current, currentPolicy, expectedAccountId = nil, nil, nil, nil, nil
         return true
     end
     -- Cloudflare Access is a different authentication layer from ESLogin Passkeys.
@@ -40,6 +40,10 @@ local function newClient(requestFn)
     local function send(route, body, authenticated)
         if not requestFn then return nil, "transport_unavailable" end
         if authenticated and not session then return nil, "session_expired" end
+        if authenticated and sessionExpiresAt and sessionExpiresAt <= os.time() then
+            erase()
+            return nil, "session_expired"
+        end
         local expected = session
         local completed, response, why = false, nil, nil
         local signal = Instance.new("BindableEvent")
@@ -109,6 +113,9 @@ local function newClient(requestFn)
     function client.hasSession()
         return session ~= nil
     end
+    function client.expiresAt()
+        return sessionExpiresAt
+    end
     function client.canRemember()
         return false
     end
@@ -130,7 +137,7 @@ local function newClient(requestFn)
         if cancelled() and (not data or data.state ~= "ready") then return nil, "cancelled" end
         if not data or data.state == "pending" then return data, reason end
         if data.state ~= "ready" or not credential(data.session) then return nil, "unavailable" end
-        session, current, currentPolicy, expectedAccountId = data.session, nil, nil, nil
+        session, sessionExpiresAt, current, currentPolicy, expectedAccountId = data.session, nil, nil, nil, nil
         local function cancelIssuedSession()
             -- A session created while closing the GUI must never be remembered locally.
             client.logout() -- attempt remote revocation and always invalidate locally
@@ -143,14 +150,15 @@ local function newClient(requestFn)
             client.logout()
             return nil, errorCode or "session_expired"
         end
+        sessionExpiresAt = data.expiresAt
         return {state="ready",saved=false}
     end
 
     function client.heartbeat()
-        local reply = send("heartbeat", {}, true)
+        local reply, reason = send("heartbeat", {}, true)
         local account = applyProfile(reply)
         if not account then current, currentPolicy = nil, nil end
-        return account
+        return account, reason
     end
     function client.policy()
         local started = os.clock()
