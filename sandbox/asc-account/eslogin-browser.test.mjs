@@ -11,7 +11,13 @@ const runtime = process.env.ASC_ACCOUNT_WORKERD_PREFIX;
 const root = fileURLToPath(new URL('../../',import.meta.url));
 const api = '/api/v1/accounts/';
 
-test('isolated ESLogin browser registers, signs in, adds a backup, pairs, and recovers', {
+// These are synthetic browser profiles, not real Google Password Manager devices.
+// Each case starts with an independent in-memory Worker and D1 fixture.
+for(const profile of [
+ {name:'Mobile Chromium',viewport:{width:393,height:852},isMobile:true,hasTouch:true},
+ {name:'Desktop Chromium',viewport:{width:1280,height:900},isMobile:false,hasTouch:false},
+]){
+test(`isolated ESLogin ${profile.name} registers, signs in, adds a backup, pairs, and recovers`, {
  skip: !runtime && 'requires Miniflare, playwright-core and Chromium', timeout: 90000,
 }, async t => {
  const require = createRequire(join(runtime,'package.json'));
@@ -40,7 +46,7 @@ test('isolated ESLogin browser registers, signs in, adds a backup, pairs, and re
  }
  const browser=await chromium.launch({executablePath:process.env.ASC_CHROMIUM_BIN});
  t.after(()=>browser.close());
- const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,serviceWorkers:'block'});
+ const context=await browser.newContext({viewport:profile.viewport,isMobile:profile.isMobile,hasTouch:profile.hasTouch,serviceWorkers:'block'});
  const page=await context.newPage();
  page.setDefaultTimeout(9000);
  const cdp=await context.newCDPSession(page);
@@ -155,3 +161,4 @@ test('isolated ESLogin browser registers, signs in, adds a backup, pairs, and re
  assert.equal(newCodes.length,8);
  assert.ok(!newCodes.some(code=>codes.includes(code)));
 });
+}
