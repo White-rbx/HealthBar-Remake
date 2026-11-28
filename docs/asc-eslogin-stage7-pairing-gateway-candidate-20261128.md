@@ -20,16 +20,17 @@ For a universal cross-experience integration, evaluate a **separately routed, le
   - Uses 48-bit random display code + independent 256-bit secret; stores only SHA-256 of the secret in D1. Access-protected browser must explicitly approve the one-time code in the existing account application.
   - Uses the same 5-minute expiry and D1 conditional, atomic session claim as the protected Account Worker; only a valid unrevoked web approval may yield a `loader`-scoped session.
   - Public route rate limits remain mandatory. No account password, recovery code, passkey material or personal IP identity is stored.
-- `sandbox/asc-account/isolated-pairing-gateway-candidate.test.mjs`: disconnected synthetic D1 tests for disabled gate, only-two-route attack surface, malicious origins, malformed payloads, rate-limit denial, secret storage, unapproved state, single-use issuance, replay, expired approval and revoked web session.
+- `sandbox/asc-account/isolated-loader-gateway-candidate.mjs`: **undeployed** composition of the pairing-only gateway with three additional loader-scoped operations: `session`, `heartbeat` and `logout`. Each requires an opaque 256-bit `Bearer` token returned only once to the holder of the approved pairing secret. The server hashes the token and checks `scope='loader'`, session revocation, expiry, and account state in the isolated D1. `heartbeat` respects banned accounts, `logout` revokes the D1 session. No personal UserId claim or browser cookie is accepted.
+- `sandbox/asc-account/isolated-pairing-gateway-candidate.test.mjs`: disconnected synthetic D1 tests for disabled gates, only-five-route composite scope (two anonymous + three bearer-authenticated), malicious origins, malformed payloads, rate-limit denial, secret storage, unapproved state, single-use issuance, replay, expired approval, revoked web session, Loader profile validation, banned heartbeat and logout revocation.
 - The existing `sandbox/ASCAccountClientPreview.lua` is **not** routed through this gateway yet. No unreviewed gateway hostname is invented or configured.
 
 ## Remaining protocol work before live Stage 7
 
-This candidate **does not** make Loader login work by itself. After `pair/poll`, Roblox still needs to validate its `loader` session and eventually revoke it. The existing `session`, `heartbeat` and `logout` routes are still protected by Cloudflare Access.
+**The offline Gateway protocol is now implemented as a candidate, but it does not make Roblox Login live.** No separate Gateway Worker has been created/deployed or made public, and the Luau client still targets the Access-protected website. Code in this branch alone does not open Cloudflare's Access layer.
 
-A complete client transport would require a design for only those **bearer-authenticated, loader-scoped** APIs in the same isolated security boundary, retaining strict D1 session verification and revocation; case/history/appeal APIs need separate review and must not be exposed accidentally.
+Before actual Roblox use: audit the composite five-route transport for security, provision an isolated Cloudflare Worker with only the required D1/rate bindings, decide and explicitly authorize its Internet exposure, verify rate-limit behavior and Access separation, and then change the opt-in Roblox client to send ONLY the approved five operations to the audited Gateway origin. Do not forward `history`, `feedback`, `appeal`, `profile`, `security/*` or browser Passkey routes through it; those require separate identity/data-access review.
 
-Implement the remaining loader-session surface with negative tests and a segregated client `pairOrigin` only after the architecture has been reviewed. Confirm in a real Roblox-supported HTTP environment that a separate staging gateway is reachable without copying browser credentials. For a game owned by the developer, a trusted Roblox game server with owner-stored secrets is an alternative, but it **does not** solve deployment into arbitrary third-party games.
+Confirm in a real Roblox-supported HTTP environment that a separately approved staging Gateway is reachable without copying browser credentials. For a game owned by the developer, a trusted Roblox game server with owner-stored secrets is an alternative, but it **does not** solve deployment into arbitrary third-party games.
 
 ## Release controls
 
@@ -38,4 +39,4 @@ Implement the remaining loader-session surface with negative tests and a segrega
 - Never log pairing secrets, Loader bearer sessions, recovery codes, Access cookies, or personal identifiers.
 - Keep `arcscriptcenter-eslogin-edge-qa` on its last verified live version and original Account QA / Production unchanged. PR #16 stays Draft.
 - Stage 6: Android registration and login observed PASS; real Backup and Recovery not complete.
-- Stage 7: authenticated website works; universal Loader transport remains BLOCKED until session API and reviewed gateway deployment are completed.
+- Stage 7: authenticated website works; a five-route Loader transport exists only as offline candidate and is BLOCKED pending reviewed Gateway deployment, Access separation and real Roblox Mobile tests.
