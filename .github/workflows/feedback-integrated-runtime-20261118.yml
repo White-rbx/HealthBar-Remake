@@ -1,0 +1,34 @@
+name: ArcScriptCenter — Integrated Candidate one-shot QA
+on:
+  push:
+    branches: [feedback-appeal-release-track]
+    paths:
+      - '.github/workflows/feedback-integrated-runtime-20261118.yml'
+permissions:
+  contents: read
+jobs:
+  integrated-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Exercise actual combined Candidate + isolated D1
+        env:
+          QA_URL: https://asc-feedback-integrated-qa-20261118.kogpasan14.workers.dev/__qa/once
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --retry 0 --max-time 50 --request POST \
+            --output /tmp/integrated-result.json --write-out '%{http_code}' "$QA_URL")
+          echo "Integrated Candidate Worker HTTP: $status"
+          cat /tmp/integrated-result.json
+          if [ "$status" != "200" ]; then
+            echo "::error::Integrated Worker test did not pass"
+            exit 1
+          fi
+          node -e '
+            const j=JSON.parse(require("node:fs").readFileSync("/tmp/integrated-result.json","utf8"));
+            const expected={legacyBootstrap:200,adminWithoutKey:401,adminWrongOrigin:403,invalidFeedback:400,submitted:201,wrongReceipt:404,validReceipt:200,privateNoteHidden:true,userEdited:200,adminList:200,adminReview:200,finalStatus:200,approved:true,privateNoteStillHidden:true,editAfterReview:409};
+            if(j.ok!==true||j.source!=="real-candidate-isolated-d1"||
+                Object.entries(expected).some(([k,v])=>j.statuses?.[k]!==v))throw Error("Candidate integration acceptance failed");
+            console.log("PASS: exact Worker Candidate synthetic Feedback->Receipt->Admin->Approval integration");
+          '

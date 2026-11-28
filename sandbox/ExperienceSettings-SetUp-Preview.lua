@@ -1,0 +1,835 @@
+-- ExperienceSettings SetUp Preview — isolated copy for LoaderMainPreview.
+-- Based on sandbox/ExperienceSettings-SetUp-BanMode-STAGING.lua.
+-- Keep original SetUp & Production unchanged; preview remains on this PR branch.
+local v_ver = [[ExperienceSettings-SetUp 1.247 BanSchedule]]
+
+------------------------------------------------------------------------------------------
+
+-- =====>> Saved Functions <<=====
+-- ====FUNCTION CORNER=====
+local function Corner(Scale, Offset, Parent)
+  local Corner = Instance.new("UICorner")
+  Corner.CornerRadius = UDim.new(Scale or 0, Offset or 0)
+  Corner.Parent = Parent
+  return Corner
+end
+-- =====END FUNCTION CORNER====
+
+-- =====FUNCTION UILISTLAYOUT=====
+local HCenter = Enum.HorizontalAlignment.Center
+local VCenter = Enum.VerticalAlignment.Center
+local HLeft = Enum.HorizontalAlignment.Left
+local VTop = Enum.VerticalAlignment.Top
+local HRight = Enum.HorizontalAlignment.Right
+local VBottom = Enum.VerticalAlignment.Bottom
+local FillH = Enum.FillDirection.Horizontal
+local FillV = Enum.FillDirection.Vertical
+local SCustom = Enum.SortOrder.Custom
+local SLayout = Enum.SortOrder.LayoutOrder
+local SName = Enum.SortOrder.Name
+
+local function ListLayout(parent, scale, offset, HZ, VT, SO, FILL)
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(scale or 0, offset or 0)
+    list.FillDirection = FILL or FillH
+    list.HorizontalAlignment = HZ or HCenter
+    list.VerticalAlignment = VT or VCenter
+    list.SortOrder = SO or SName
+    list.Parent = parent
+    return list
+end
+-- =====END FUNCTION UILISTLAYOUT=====
+
+-- ====FUNCTION UISTROKE=====
+local ASMBorder = Enum.ApplyStrokeMode.Border
+local ASMContextual = Enum.ApplyStrokeMode.Contextual
+
+local LJMBevel = Enum.LineJoinMode.Bevel
+local LJMMiter = Enum.LineJoinMode.Miter
+local LJMRound = Enum.LineJoinMode.Round
+
+local function Stroke(parent, ASM, R, G, B, LJM, Tn, Transy)
+    local stroke = parent:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
+    stroke.ApplyStrokeMode = ASM or ASMBorder
+    stroke.Color = Color3.fromRGB(R or 255, G or 255, B or 255)
+    stroke.LineJoinMode = LJM or LJMRound
+    stroke.Thickness = Tn or 1
+    stroke.Transparency = Transy or 0
+    stroke.Parent = parent
+    return stroke
+end
+-- =====END FUNCTION UISTROKE=====
+
+-- ====FUNCTION UIGRADIENT=====
+local function Gradient(parent, rotation, offsetX, offsetY, ...)
+    local grad = parent:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+    grad.Rotation = rotation or 0
+    grad.Offset = Vector2.new(offsetX or 0, offsetY or 0)
+
+    local colors = {...}
+    local keypoints = {}
+
+    if #colors == 0 then
+        keypoints = { ColorSequenceKeypoint.new(0, Color3.new(1,1,1)), ColorSequenceKeypoint.new(1, Color3.new(1,1,1)) }
+    elseif #colors == 1 then
+        keypoints = { ColorSequenceKeypoint.new(0, colors[1]), ColorSequenceKeypoint.new(1, colors[1]) }
+    else
+        for i, c in ipairs(colors) do
+            local t = (i-1) / (#colors-1)
+            table.insert(keypoints, ColorSequenceKeypoint.new(t, c))
+        end
+    end
+
+    grad.Color = ColorSequence.new(keypoints)
+    grad.Parent = parent
+    return grad
+end
+-- =====END FUNCTION UIGRADIENT=====
+
+-- ====FUNCTION UIPADDING (ตามลำดับ Roblox)=====
+local function Padding(parent, bottom, left, right, top)
+    local pad = parent:FindFirstChildOfClass("UIPadding") or Instance.new("UIPadding")
+    local function toUDim(value)
+        if typeof(value) == "UDim" then
+            return value
+        elseif type(value) == "number" then
+            return UDim.new(0, value)
+        elseif type(value) == "table" and #value >= 2 then
+            return UDim.new(value[1] or 0, value[2] or 0)
+        else
+            return UDim.new(0, 0)
+        end
+    end
+
+    pad.PaddingBottom = toUDim(bottom)
+    pad.PaddingLeft   = toUDim(left)
+    pad.PaddingRight  = toUDim(right)
+    pad.PaddingTop    = toUDim(top)
+
+    pad.Parent = parent
+    return pad
+end
+
+-- =====FUNCTION UIASPECTRATIONCONSTRAINT====
+--// ENUM SHORTCUTS
+local Axis = Enum.DominantAxis
+local Type = Enum.AspectType
+
+-- optional ultra-short aliases
+local Width = Axis.Width
+local Height = Axis.Height
+
+local Fit = Type.FitWithinMaxSize
+local Scale = Type.ScaleWithParentSize
+
+
+--// ASPECT FUNCTION
+function Aspect(parent, ratio, aspectType, dominantAxis)
+	if not parent then return end
+	
+	-- prevent duplicates
+	local existing = parent:FindFirstChildOfClass("UIAspectRatioConstraint")
+	if existing then
+		-- update instead
+		existing.AspectRatio = ratio or existing.AspectRatio
+		existing.AspectType = aspectType or existing.AspectType
+		existing.DominantAxis = dominantAxis or existing.DominantAxis
+		return existing
+	end
+	
+	-- create new
+	local constraint = Instance.new("UIAspectRatioConstraint")
+	constraint.Parent = parent
+	
+	constraint.AspectRatio = ratio or 1
+	constraint.AspectType = aspectType or Fit
+	constraint.DominantAxis = dominantAxis or Width
+	
+	return constraint
+end
+
+-- =====END FUNCTION UIASPECTRATIONCONSTRAINT=====
+
+--====== CLIENT SERVICES ======--
+
+-- UI / Player Interface
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
+
+-- 3D/2D Destroy
+local Debris = game:GetService("Debris")
+
+-- 3D Wprkspace
+local Workspace = game:GetService("Workspace")
+local TeleportService = game:GetService("TeleportService")
+local Camera = Workspace.CurrentCamera
+
+-- Third Party
+local HttpService = game:GetService("HttpService")
+
+-- Audio / Feedback
+local SoundService = game:GetService("SoundService")
+
+-- Commerce / Monetization
+local MarketplaceService = game:GetService("MarketplaceService")
+
+-- Runtime / Frame Updates
+local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
+
+-- Animation / Transitions
+local TweenService = game:GetService("TweenService")
+local ContentProvider = game:GetService("ContentProvider")
+
+-- Input (Desktop / Mobile)
+local UserInputService = game:GetService("UserInputService")
+local TouchInputService = game:GetService("TouchInputService")
+
+---------------------------------------------------------------------------------------
+
+local old = CoreGui:FindFirstChild("ExperienceSettings-SetUp")
+if old then
+	old:Destroy()
+end
+
+-- Folder
+local Folder = Instance.new("Folder")
+Folder.Name = "ExperienceSettings-SetUp"
+Folder.Parent = game:GetService("CoreGui")
+
+local Screen = Instance.new("ScreenGui")
+Screen.Name = "Display"
+Screen.DisplayOrder = 2147483646
+Screen.ScreenInsets = Enum.ScreenInsets.None
+Screen.Parent = Folder
+
+local Frame = Instance.new("Frame")
+Frame.Name = "SetUp"
+Frame.Size = UDim2.new(1,0,1,0)
+Frame.BackgroundColor3 = Color3.new(0,0,0)
+Frame.BackgroundTransparency = 1
+Frame.Parent = Screen
+
+local imgbg = Instance.new("ImageLabel")
+imgbg.Active = false
+imgbg.Size = UDim2.new(1,0,1,0)
+imgbg.BackgroundTransparency = 1
+imgbg.Image = "rbxassetid://83287919609198"
+imgbg.ImageTransparency = 1
+imgbg.ZIndex = 0
+imgbg.Parent = Frame
+
+local Image = Instance.new("ImageLabel")
+Image.AnchorPoint = Vector2.new(0.5,0.5)
+Image.Position = UDim2.new(0.5,0,0.5,0)
+Image.Size = UDim2.new(0,640,0,640)
+Image.BackgroundTransparency = 1
+Image.ImageTransparency = 1
+Image.Parent = Frame
+
+local Logo = Instance.new("ImageLabel")
+Logo.Name = "Logo"
+Logo.Image = "rbxassetid://120500539322715"
+Logo.Active = true
+Logo.BackgroundTransparency = 1
+Logo.ImageTransparency = 1
+Logo.Position = UDim2.new(0, 186, 0, 356)
+Logo.Size = UDim2.new(0, 50, 0, 50)
+Logo.Parent = Image
+
+local Team = Instance.new("TextLabel")
+Team.Name = "Brand"
+Team.RichText = true
+Team.Text = "<b><font color=\"rgb(0,255,255)\">Arc</font></b><b><font color=\"rgb(255,255,0)\">Script</font></b> Dev"
+Team.TextColor3 = Color3.new(1, 1, 1)
+Team.TextSize = 16
+Team.Active = true
+Team.BackgroundTransparency = 1
+Team.TextTransparency = 1
+Team.Position = UDim2.new(0, 50, 0, 0)
+Team.Size = UDim2.new(0, 200, 0, 50)
+Team.Parent = Logo
+
+local Canvas = Instance.new("CanvasGroup")
+-- CanvasGroup defaults to an opaque grey background; keep the loading UI transparent.
+Canvas.BackgroundTransparency = 1
+Canvas.Visible = false
+Canvas.GroupTransparency = 1
+Canvas.Position = UDim2.new(0.1,0,0.5,0)
+Canvas.Size = UDim2.new(0.8,0,0.5,0)
+Canvas.Parent = Frame
+
+local twarn = Instance.new("TextLabel")
+twarn.BackgroundTransparency = 1
+twarn.TextTransparency = 1
+twarn.Size = UDim2.new(1,0,0,90)
+twarn.TextSize = 18
+twarn.TextColor3 = Color3.new(1,1,1)
+twarn.Text = [[We're <mark color="rgb(255,255,0)" transparency="0.8">setting up</mark> for you. Its may take a few seconds!]]
+twarn.TextWrapped = true
+twarn.RichText = true
+twarn.Parent = Canvas
+
+local CanBar = Instance.new("CanvasGroup")
+CanBar.Size = UDim2.new(0.7,0,0,20)
+CanBar.Position = UDim2.new(0.15,0,0,105)
+CanBar.BackgroundTransparency = 1
+CanBar.Parent = Canvas
+Corner(1,0,CanBar)
+Stroke(CanBar, ASMBorder, 255,255,255, LJMRound, 2, 0)
+
+local CanBarStroke = CanBar.UIStroke
+
+local insideBar = Instance.new("Frame")
+insideBar.BackgroundTransparency = 1
+insideBar.Position = UDim2.new(0.01,0,0.16,0)
+insideBar.Size = UDim2.new(0.98,0,0.68,0)
+insideBar.Parent = CanBar
+
+local Load = Instance.new("Frame")
+Load.Size = UDim2.new(0,0,1,0)
+Load.BackgroundColor3 = Color3.new(1,1,1)
+Load.Parent = insideBar
+Corner(1,0, Load)
+
+local btnBar = Instance.new("TextButton")
+btnBar.Visible = false
+btnBar.Active = true
+btnBar.Position = UDim2.new(0.4,0,0.4,30)
+btnBar.Size = UDim2.new(0.2,0,0.2,0)
+btnBar.BackgroundColor3 = Color3.new(1,0,0)
+btnBar.Text = "Close"
+btnBar.TextWrapped = true
+btnBar.RichText = true
+btnBar.TextColor3 = Color3.new(1,1,1)
+btnBar.TextSize = 18
+btnBar.Parent = Canvas
+Corner(0.15,0,btnBar)
+Stroke(btnBar, ASMBorder, 170,0,0, LJMRound, 3, 0)
+
+btnBar.MouseButton1Click:Connect(function()
+	if Folder then
+		Folder:Destroy()
+	end
+end)
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Primary source: getgenv()._ES
+-- Backup is used only when the primary source is absent or invalid.
+local _0x13 = {
+    Usernames = {
+        ["Roblox"] = {
+            Reason = "I'm sorry I had to...",
+            Description = "You are the CEO you cannot using our script."
+        },
+        ["makiro5556"] = {
+            Reason = "Bad Behavior",
+            Description = "Appeal to John in discord | Last seen: 'Nothingness'; Game ID: 6252985844"
+        },
+    },
+    UserIds = {
+        -- [123456789] = {
+        --     Reason = "Rule violation",
+        --     Description = "Temporary restriction",
+        --     StartAt = "2026-11-05 09:00",   -- ICT (UTC+7), optional
+        --     ExpiresAt = "2026-11-12 09:00" -- optional; omit for permanent
+        -- },
+		--[[ [11810742331] = {
+            Reason = "การเป็นศัตรูและการหักหลังผู้อื่น",
+            Description = "โปรดติดต่อจอห์นผ่านทางดิสคอร์ด | เห็นล่าสุดที่: 'Rintama High'; เกมไอดี: 131031240633619"
+		}]]
+    }
+}
+
+-- Ban schedule: timestamps may be Unix seconds or "YYYY-MM-DD HH:MM"
+-- Date strings use Thailand time (ICT, UTC+7). Missing ExpiresAt = permanent.
+local function _banTime(value)
+    if value == nil or value == "" then return nil, true end
+    if type(value) == "number" then
+        if value == value and value >= 0 and value < 253402300800 then
+            return math.floor(value), true
+        end
+        return nil, false
+    end
+    if type(value) ~= "string" then return nil, false end
+
+    local y, mo, d, h, mi, sec =
+        value:match("^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d):(%d%d)$")
+    if not y then
+        y, mo, d, h, mi =
+            value:match("^(%d%d%d%d)%-(%d%d)%-(%d%d) (%d%d):(%d%d)$")
+        sec = "00"
+    end
+    if not y then return nil, false end
+    y, mo, d = tonumber(y), tonumber(mo), tonumber(d)
+    h, mi, sec = tonumber(h), tonumber(mi), tonumber(sec)
+    if y < 2000 or y > 2100 or mo < 1 or mo > 12
+        or d < 1 or d > 31 or h > 23 or mi > 59 or sec > 59 then
+        return nil, false
+    end
+
+    local ok, result = pcall(function()
+        -- Interpret the clock fields as an ICT wall-clock, then shift to UTC.
+        return DateTime.fromUniversalTime(y, mo, d, h, mi, sec).UnixTimestamp - 7 * 3600
+    end)
+    if not ok or type(result) ~= "number" then return nil, false end
+    local check = os.date("!*t", result + 7 * 3600)
+    if check.year ~= y or check.month ~= mo or check.day ~= d
+        or check.hour ~= h or check.min ~= mi or check.sec ~= sec then
+        return nil, false
+    end
+    return result, true
+end
+
+local function _0x14(entry)
+    if not entry then return nil end
+    if type(entry) ~= "table" then
+        return {
+            Reason = "Restricted access",
+            Description = "This account is listed in the access restriction data.",
+            Selection = "ban_ingame", -- legacy entries remain SetUp-only
+            SelectionAssigned = false,
+            Duration = "permanent"
+        }
+    end
+    if entry.Enabled == false then return nil end
+
+    local startAt, startOK = _banTime(entry.StartAt)
+    local expiresAt, expiresOK = _banTime(entry.ExpiresAt)
+    if not startOK or not expiresOK then
+        warn("[ExperienceSettings] Invalid ban date/time; entry skipped.")
+        return nil
+    end
+    if startAt and expiresAt and expiresAt <= startAt then
+        warn("[ExperienceSettings] Ban end must be later than start; entry skipped.")
+        return nil
+    end
+
+    local now = os.time()
+    if (startAt and now < startAt) or (expiresAt and now >= expiresAt) then
+        return nil
+    end
+    -- Ban Selection is independent from Duration. Legacy records have no
+    -- explicit Selection and retain their previous SetUp-only behavior.
+    local rawSelection = entry.Selection or entry.selection
+    local assigned = rawSelection == "ban_ingame" or rawSelection == "restricted_mode"
+    local selection = assigned and rawSelection or "ban_ingame"
+    local duration = expiresAt and "temporary" or "permanent"
+    local declaredDuration = entry.Duration or entry.duration
+    if declaredDuration ~= nil and declaredDuration ~= duration then
+        warn("[ExperienceSettings] Ban Duration mismatch; retaining SetUp-only for safety.")
+        selection = "ban_ingame"
+        assigned = false
+    end
+    if rawSelection ~= nil and not assigned then
+        warn("[ExperienceSettings] Unknown or inconsistent Ban Selection; using SetUp-only.")
+    end
+    return {
+        Reason = tostring(entry.Reason or "Restricted access"),
+        Description = tostring(entry.Description or "This account is listed in the access restriction data."),
+        StartAt = startAt,
+        ExpiresAt = expiresAt,
+        Selection = selection,
+        SelectionAssigned = assigned,
+        Duration = duration
+    }
+end
+
+local function _0x15(source)
+    if type(source) ~= "table" then return nil end
+    local names = source.Usernames or source.usernames or source.Names or source.names
+    local ids = source.UserIds or source.UserIDs or source.userIds or source.Ids or source.ids
+
+    if type(names) == "table" then
+        local result = _0x14(names[player.Name])
+        if result then return result end
+        for name, data in pairs(names) do
+            if type(name) == "string" and name:lower() == player.Name:lower() then
+                result = _0x14(data)
+                if result then return result end
+            end
+        end
+    end
+
+    if type(ids) == "table" then
+        local result = _0x14(ids[player.UserId] or ids[tostring(player.UserId)])
+        if result then return result end
+    end
+
+    local result = _0x14(source[player.Name] or source[player.UserId] or source[tostring(player.UserId)])
+    if result then return result end
+    for key, data in pairs(source) do
+        if type(key) == "string" and key:lower() == player.Name:lower() then
+            result = _0x14(data)
+            if result then return result end
+        end
+    end
+    return nil
+end
+
+-- ARCSCRIPT_BANS_BEGIN
+local _ASC_MANAGED_JSON = [==[
+{"schema":1,"entries":[]}
+]==]
+-- ARCSCRIPT_BANS_END
+
+-- GitHub-managed restrictions take priority over legacy local lists.
+-- These entries only restrict access to ExperienceSettings, not Roblox accounts.
+local _ASC_MANAGED_BANS = { UserIds = {} }
+do
+    local ok, result = pcall(HttpService.JSONDecode, HttpService, _ASC_MANAGED_JSON)
+    if ok and type(result) == "table" and type(result.entries) == "table" then
+        for _, entry in ipairs(result.entries) do
+            if type(entry) == "table" and tonumber(entry.userId) then
+                _ASC_MANAGED_BANS.UserIds[tonumber(entry.userId)] = {
+                    Reason = entry.reason,
+                    Description = entry.description,
+                    StartAt = entry.startAt,
+                    ExpiresAt = entry.expiresAt,
+                    Selection = entry.selection,
+                    Duration = entry.duration
+                }
+            end
+        end
+    end
+end
+
+local _0x16 = getgenv()._ES
+local banData = _0x15(_ASC_MANAGED_BANS)
+if not banData then
+    if type(_0x16) == "table" then
+        banData = _0x15(_0x16)
+    else
+        banData = _0x15(_0x13)
+    end
+end
+local qaEnv = getgenv()
+local anim = {
+	0,85215834651365,113081160999318,110302272078310,74005522254669,74901110508812,
+	100677834962357,119529343123060,102721895347323,112327619673337,73610060099140,
+	98488480836543,132422243528476,130843077592585,79673632253550,134159435776056,
+	83129763923894,90474468579660,87006754440046,82822070509197,125312656223281,
+	82573341459524,70526845664066,106275683041563,107346892718775,82224513141027,
+	77152703547148,119997226638347,132675979388694,113445287804115,78540048370317,
+	129325945927960
+}
+
+local FPS = 15
+local FRAME_TIME = 1 / FPS
+
+local ContentProvider = game:GetService("ContentProvider")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- preload
+local preload = {}
+for _, id in ipairs(anim) do
+	table.insert(preload, "rbxassetid://"..id)
+end
+ContentProvider:PreloadAsync(preload)
+
+-- 🎬 INTRO
+TweenService:Create(Frame, TweenInfo.new(0.5), {BackgroundTransparency = 0.35}):Play()
+TweenService:Create(Image, TweenInfo.new(0.5), {ImageTransparency = 0}):Play()
+
+Image.Image = "rbxassetid://"..anim[1]
+task.wait(0.5)
+
+for i = 2, #anim do
+	Image.Image = "rbxassetid://"..anim[i]
+	task.wait(FRAME_TIME)
+end
+
+-- 🎬 Freeze + Slide
+task.wait(0.3)
+
+TweenService:Create(Image, TweenInfo.new(0.5), {
+	Position = UDim2.new(0.5,0,0.35,0)
+}):Play()
+
+-- 🎬 SHOW UI
+Canvas.Visible = true
+
+TweenService:Create(Canvas, TweenInfo.new(0.5), {
+	GroupTransparency = 0
+}):Play()
+
+TweenService:Create(twarn, TweenInfo.new(0.5), {
+	TextTransparency = 0
+}):Play()
+
+TweenService:Create(Logo, TweenInfo.new(0.5), {
+	ImageTransparency = 0
+}):Play()
+
+TweenService:Create(imgbg, TweenInfo.new(0.5), {
+	ImageTransparency = 0
+}):Play()
+
+TweenService:Create(Team, TweenInfo.new(0.5), {
+	TextTransparency = 0
+}):Play()
+
+TweenService:Create(CanBar, TweenInfo.new(0.5), {
+	BackgroundTransparency = 1
+}):Play()
+
+TweenService:Create(insideBar, TweenInfo.new(0.5), {
+	BackgroundTransparency = 1
+}):Play()
+
+TweenService:Create(Load, TweenInfo.new(0.5), {
+	BackgroundTransparency = 0
+}):Play()
+
+-- =========================
+
+getgenv().__ES_READY = false
+local function renderBanBlock(item)
+    local function escapeText(value)
+        return tostring(value or ""):gsub("&", "&amp;")
+            :gsub("<", "&lt;"):gsub(">", "&gt;")
+            :gsub('"', "&quot;"):gsub("'", "&#39;")
+    end
+    local function formatTime(value)
+        return os.date("!%Y-%m-%d %H:%M", value + 7 * 3600) .. " ICT (UTC+7)"
+    end
+    local selection = item.SelectionAssigned and "Ban in-game" or "Ban in-game (Legacy)"
+    twarn.Text = "<b>You have been banned from ExperienceSettings.</b>\n"
+        .. "Selection: <b>" .. selection .. "</b>\n"
+        .. "Duration: <b>" .. escapeText(item.Duration) .. "</b>\n"
+        .. "Reason: <mark color='rgb(255,85,85)' transparency='0.5'>" .. escapeText(item.Reason) .. "</mark>\n"
+        .. (item.Description and ("Description: " .. escapeText(item.Description) .. "\n") or "")
+        .. (item.StartAt and ("From: " .. formatTime(item.StartAt) .. "\n") or "")
+        .. "Until: <b>" .. (item.ExpiresAt and formatTime(item.ExpiresAt) or "Permanent") .. "</b>"
+        .. (item.Reference and ("\nReference: " .. item.Reference) or "")
+        .. (item.PublicLookup and "\nPrivate references appear in WarningUI after case access is verified." or "")
+        .. "\nFor an appeal, use the existing ArcScriptCenter appeal channel."
+end
+
+-- ASC BAN V2 SETUP BEGIN
+if qaEnv.__ASC_BAN_V2_PREVIEW then
+    local client = qaEnv.__ASC_BAN_V2_CLIENT
+    local originalText = twarn.Text
+    local details
+    while Folder.Parent do
+        local status = client and client.policy()
+        if not Folder.Parent then break end
+        qaEnv.__ASC_BAN_V2_STATE = status
+        qaEnv.__ASC_BAN_POLICY_ERROR = status == nil
+        qaEnv.__ES_BANNED = status ~= nil and status.state == "ban_ingame"
+        local item = status and status.ban
+        banData = item and {
+            Selection = item.selection, SelectionAssigned = item.legacy ~= true,
+            Duration = item.duration, Reason = item.reason, Description = item.description,
+            StartAt = item.startAt, ExpiresAt = item.expiresAt,
+            Reference = status.identityVerified == true and type(item.reference) == "string"
+                and item.reference:match("^••••[0-9A-F][0-9A-F]$") or nil,
+        } or nil
+        if status and status.notice then
+            banData = { Selection = status.state, SelectionAssigned = true,
+                Duration = status.notice.duration, Reason = status.notice.reason, ExpiresAt = status.notice.expiresAt,
+                PublicLookup = true }
+        end
+        if qaEnv.__ASC_SYNC_POLICY_WARNING then pcall(qaEnv.__ASC_SYNC_POLICY_WARNING, status) end
+        if status and not qaEnv.__ES_BANNED then break end
+
+        if not details then
+            details = Instance.new("ScrollingFrame")
+            details.BackgroundTransparency = 1
+            details.BorderSizePixel = 0
+            details.Size = UDim2.new(1, 0, 0.75, 0)
+            details.CanvasSize = UDim2.new()
+            details.AutomaticCanvasSize = Enum.AutomaticSize.Y
+            details.ScrollingDirection = Enum.ScrollingDirection.Y
+            details.ScrollBarThickness = 4
+            details.Parent = Canvas
+            twarn.Parent = details
+            twarn.TextYAlignment = Enum.TextYAlignment.Top
+            twarn.AutomaticSize = Enum.AutomaticSize.Y
+            twarn.Size = UDim2.new(1, -8, 0, 0)
+            CanBar.Visible = false
+            btnBar.Position = UDim2.new(0.3, 0, 0.78, 0)
+            btnBar.Size = UDim2.new(0.4, 0, 0, 46)
+            btnBar.Visible = true
+            btnBar.Text = "Close"
+        end
+        if banData then
+            renderBanBlock(banData)
+        elseif not client then
+            twarn.Text = "The restriction status service is unavailable in this runtime. Close and run the preview again."
+        elseif client.isOutsideQA and client.isOutsideQA() then
+            twarn.Text = "This Roblox account is outside the Ban Policy QA test allowlist.\nThis is a test-access restriction, NOT an ArcScriptCenter account ban.\nFor Account Login QA, use sandbox/ASCAccountLoaderPreview.lua after its isolated QA Worker is deployed."
+        else
+            twarn.Text = "Could not verify your restriction status with the server. Retrying automatically."
+        end
+        if not client then return end
+        if client.isOutsideQA and client.isOutsideQA() then return end
+
+        local retryAt = os.clock() + (status and math.max(2, client.secondsRemaining(status)) or 5)
+        repeat task.wait(0.25) until not Folder.Parent or os.clock() >= retryAt
+    end
+    if not Folder.Parent then
+        qaEnv.__ASC_BAN_POLICY_ERROR = true
+        return
+    end
+    if details then
+        twarn.Parent = Canvas
+        twarn.TextYAlignment = Enum.TextYAlignment.Center
+        twarn.AutomaticSize = Enum.AutomaticSize.None
+        twarn.Size = UDim2.new(1, 0, 0, 90)
+        twarn.Text = originalText
+        details:Destroy()
+        CanBar.Visible = true
+        btnBar.Visible = false
+    end
+end
+-- ASC BAN V2 SETUP END
+
+-- These are client-side presentation signals, NOT server authorization.
+getgenv().__ES_BAN_SELECTION = banData and banData.Selection or nil
+getgenv().__ES_BAN_DURATION = banData and banData.Duration or nil
+getgenv().__ES_BAN_SELECTION_ASSIGNED = banData and banData.SelectionAssigned or false
+getgenv().__ES_RESTRICTED_MODE = banData ~= nil and banData.Selection == "restricted_mode"
+getgenv().__ES_BANNED = banData ~= nil and banData.Selection ~= "restricted_mode"
+
+if banData and getgenv().__ES_BANNED then
+    getgenv().ES = nil
+    renderBanBlock(banData)
+    twarn.TextYAlignment = Enum.TextYAlignment.Top
+    twarn.AutomaticSize = Enum.AutomaticSize.Y
+    twarn.Size = UDim2.new(1, 0, 0, 100)
+    CanBar.Visible = false
+    btnBar.Position = UDim2.new(0.3, 0, 0.78, 0)
+    btnBar.Size = UDim2.new(0.4, 0, 0, 46)
+    btnBar.Visible = true
+    btnBar.Text = "I <font color='rgb(0,255,0)'>agree</font> and close the UI."
+    return
+end
+
+-- Restricted Mode is NOT SetUp-only. Close SetUp normally, then let the
+-- main Loader finish, where disallowed features must be inactive.
+if banData and getgenv().__ES_RESTRICTED_MODE and twarn then
+    local untilText = banData.ExpiresAt and
+        (os.date("!%Y-%m-%d %H:%M", banData.ExpiresAt + 7 * 3600) .. " ICT")
+        or "Permanent"
+    twarn.Text = "<b>Restricted Mode</b>\n"
+        .. "Duration: " .. banData.Duration .. "\nUntil: " .. untilText .. "\n"
+        .. "Opening the restricted Loader. Settings and Feedback &amp; Appeal remain available."
+end
+
+-- ✅ CREATE ES เฉพาะคนที่ผ่าน or Restricted Mode
+getgenv().ES = {
+	progress = 0,
+	max = 100,
+	error = false,
+	done = false,
+	lastError = nil
+}
+
+local ES = getgenv().ES
+
+if ES.initialized then return end
+ES.initialized = true
+
+
+getgenv().__ES_READY = true
+
+local current = 0
+local connection
+local finished = false -- กันรันซ้ำ
+
+connection = RunService.RenderStepped:Connect(function()
+	if finished then return end
+
+	-- ===== PROGRESS =====
+	local target = math.clamp((ES.progress or 0)/(ES.max or 100),0,1)
+	current = current + (target - current) * 0.15
+	Load.Size = UDim2.new(current,0,1,0)
+
+	-- =========================
+	-- 💥 ERROR DETECT (PRIORITY 1)
+	-- =========================
+	if ES.error then
+		finished = true
+
+		local msg = ES.lastError or "Unknown error"
+
+		twarn.Text = [[Whoops! Looks like we got an <mark color="rgb(255,0,0)" transparency="0.5">error</mark>.
+Please wait for the next update!
+Error: <font size="10" face="Code">]] .. msg .. [[</font>]]
+
+		btnBar.Visible = true
+
+		warn("[ ExperienceSettings SetUp | Error found ]:", msg)
+
+		connection:Disconnect()
+		return
+	end
+
+	-- =========================
+	-- ✅ DONE (ONLY IF NO ERROR)
+	-- =========================
+	if ES.done and not ES.error then
+		finished = true
+
+		connection:Disconnect()
+
+		-- 🎬 Fade everything
+		TweenService:Create(Canvas, TweenInfo.new(0.5), {
+			GroupTransparency = 1
+		}):Play()
+
+		TweenService:Create(twarn, TweenInfo.new(0.5), {
+			TextTransparency = 1
+		}):Play()
+
+		TweenService:Create(Logo, TweenInfo.new(0.5), {
+	        ImageTransparency = 1
+        }):Play()
+
+		TweenService:Create(imgbg, TweenInfo.new(0.5), {
+	        ImageTransparency = 1
+        }):Play()
+
+        TweenService:Create(Team, TweenInfo.new(0.5), {
+          	TextTransparency = 1
+        }):Play()
+
+		TweenService:Create(CanBar, TweenInfo.new(0.5), {
+			BackgroundTransparency = 1
+		}):Play()
+
+		TweenService:Create(insideBar, TweenInfo.new(0.5), {
+			BackgroundTransparency = 1
+		}):Play()
+
+		TweenService:Create(Load, TweenInfo.new(0.5), {
+			BackgroundTransparency = 1
+		}):Play()
+
+		TweenService:Create(Frame, TweenInfo.new(0.5), {
+			BackgroundTransparency = 1
+		}):Play()
+
+		TweenService:Create(Image, TweenInfo.new(0.5), {
+			ImageTransparency = 1
+		}):Play()
+
+		if CanBarStroke then
+			TweenService:Create(CanBarStroke, TweenInfo.new(0.5), {
+				Transparency = 1
+			}):Play()
+		end
+
+		task.delay(0.6,function()
+			if Folder then
+				Folder:Destroy()
+			end
+		end)
+	end
+end)

@@ -1,0 +1,38 @@
+name: ArcScriptCenter Account QA — Private Preview Preflight (offline)
+# STAGING ONLY: no Cloudflare token, no API writes, no Preview creation, no D1 changes.
+on:
+  push:
+    branches: [feedback-appeal-release-track]
+    paths:
+      - 'sandbox/asc-account/private-preview-gate.mjs'
+      - 'sandbox/asc-account/private-preview-gate.test.mjs'
+      - 'sandbox/asc-account/private-preview-locked-entry.mjs'
+      - 'sandbox/asc-account/private-preview-locked-entry.test.mjs'
+      - 'sandbox/asc-account/eslogin-independent-edge-qa.mjs'
+      - 'sandbox/asc-account/eslogin-independent-edge-qa.test.mjs'
+      - 'sandbox/asc-account/eslogin-locked-resources-gate.mjs'
+      - 'sandbox/asc-account/eslogin-locked-resources-gate.test.mjs'
+      - 'sandbox/asc-account/eslogin-isolated-account-candidate.mjs'
+      - 'sandbox/asc-account/eslogin-isolated-account-candidate.test.mjs'
+      - 'sandbox/asc-account/provisioning-worker.mjs'
+      - '.github/workflows/asc-account-private-preview-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  private-preview-preflight:
+    if: github.repository == 'White-rbx/HealthBar-Remake' && github.ref == 'refs/heads/feedback-appeal-release-track'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify private QA preview fail-closed gate
+        run: node --test sandbox/asc-account/private-preview-gate.test.mjs sandbox/asc-account/private-preview-locked-entry.test.mjs sandbox/asc-account/eslogin-independent-edge-qa.test.mjs sandbox/asc-account/eslogin-locked-resources-gate.test.mjs sandbox/asc-account/eslogin-isolated-account-candidate.test.mjs
+      - name: State explicitly that no live preview has been created
+        run: |
+          echo "PASS means offline gate assertions only. No Cloudflare or D1 API calls made." >> "$GITHUB_STEP_SUMMARY"
+          echo "Locked Preview entry accepts an explicitly pinned origin and always denies enrollment, pairing, and login." >> "$GITHUB_STEP_SUMMARY"
+          echo "Live Preview remains blocked until verified Access policies/anonymous denial, separate D1, fixed WebAuthn Origin and owner approval." >> "$GITHUB_STEP_SUMMARY"

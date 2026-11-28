@@ -1,0 +1,48 @@
+name: ArcScriptCenter Account QA — Locked Undeployed Version
+# This workflow NEVER deploys a Worker, edits D1, or changes login flags.
+# A GitHub secret is optional; without it the job validates and exits without uploading.
+on:
+  push:
+    branches: [feedback-appeal-release-track]
+    paths:
+      - '.github/workflows/asc-account-qa-locked-version.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: asc-account-qa-locked-version
+  cancel-in-progress: false
+jobs:
+  locked-version:
+    if: github.repository == 'White-rbx/HealthBar-Remake' && github.ref == 'refs/heads/feedback-appeal-release-track'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout isolated QA candidate
+        uses: actions/checkout@v4
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build pinned Passkey candidate without install scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix sandbox/asc-account --ignore-scripts --no-audit --no-fund
+          npm run build:passkey --prefix sandbox/asc-account
+          node --test sandbox/asc-account/qa-undeployed-version-upload.test.mjs
+          node sandbox/asc-account/qa-undeployed-version-upload.mjs
+      - name: Upload immutable version only if a scoped GitHub API token exists
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ASC_ALLOW_ACCOUNT_QA_VERSION_UPLOAD: YES_QA_UNDEPLOYED_ONLY
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "::warning::No CLOUDFLARE_API_TOKEN secret: upload skipped. No traffic changed."
+            echo "Bundle check PASS; account QA version upload SKIPPED because no scoped token was configured." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node sandbox/asc-account/qa-undeployed-version-upload.mjs --upload
+          echo "Version API accepted locked Account QA candidate; original QA deployment unchanged (100%)." >> "$GITHUB_STEP_SUMMARY"

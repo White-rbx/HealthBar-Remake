@@ -1,0 +1,67 @@
+name: Feedback Dashboard - Existing UI Integrity Preview
+# Generates an artifact only when the actual adapter or its workflow changes.
+# Uses push on this review branch because workflow_dispatch requires a
+# workflow file on the default branch to appear in GitHub's manual-run UI.
+on:
+  push:
+    branches: [feedback-appeal-release-track]
+    paths:
+      - '.github/workflows/feedback-dashboard-preview.yml'
+      - 'sandbox/feedback-dashboard-staging-adapter.mjs'
+  workflow_dispatch:
+concurrency:
+  group: feedback-dashboard-preview-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  generate-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download immutable STAGING Pages deployment (public assets only)
+        run: |
+          set -euo pipefail
+          mkdir -p dashboard-preview
+          curl -fL --retry 2 --max-time 25 -sS "https://416b162f.arcscriptcenter-dashboard-staging.pages.dev/" -o dashboard-preview/index-source.html
+          curl -fL --retry 2 --max-time 25 -sS "https://416b162f.arcscriptcenter-dashboard-staging.pages.dev/acs-logo.png" -o dashboard-preview/acs-logo.png
+      - name: Verify pinned source hash and apply single-purpose additive adapter
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import {prepareFeedbackDashboardStagingHtml} from './sandbox/feedback-dashboard-staging-adapter.mjs';
+          const source=fs.readFileSync('dashboard-preview/index-source.html','utf8');
+          const md5=crypto.createHash('md5').update(source).digest('hex');
+          // HTTP response bytes differ from Cloudflare's internal asset manifest hash.
+          // Pin the observed immutable deployment HTTP content digest plus source anchors.
+          const expected='4f04057ac9b3934356553499eab5cf9a';
+          console.log('STAGING immutable HTTP source checksum:',md5);
+          if(md5!==expected)throw Error('Pinned STAGING HTTP source has changed: stop, review');
+          if(!source.includes('<title>ArcScriptCenter — Cloud Control Center</title>'))
+            throw Error('Unexpected Pages source; stop');
+          const html=prepareFeedbackDashboardStagingHtml(source);
+          // Native Dashboard already has Feedback & Appeal; never duplicate it.
+          if(!html.includes('id="page-feedback-appeal"'))throw Error('Native Feedback page missing');
+          if(html.includes('id="page-feedback"'))throw Error('Duplicate Feedback page must not be generated');
+          if(!html.includes('Feedback and Appeal UserIds are user-provided, unverified claims'))
+            throw Error('Unverified sender notice missing');
+          fs.writeFileSync('dashboard-preview/index.html',html);
+          fs.writeFileSync('dashboard-preview/README.txt',
+            'REVIEW-ONLY Dashboard preview based on immutable STAGING Pages deployment.\n'+
+            'Preserves the original Admin Feedback & Appeal page and updates its unverified-sender warning only.\n'+
+            'NO Cloudflare deployment. NO Production changes. Admin API must separately authorize each request.\n');
+          fs.unlinkSync('dashboard-preview/index-source.html');
+          JS
+      - name: Verify Node test suite for dashboard patch
+        run: node --test sandbox/feedback-dashboard-staging-adapter.test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arcsen-feedback-dashboard-preview-review-only
+          path: dashboard-preview/
+          if-no-files-found: error
+          retention-days: 7
