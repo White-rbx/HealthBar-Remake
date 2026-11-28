@@ -269,3 +269,42 @@ test('Full candidate: revoked or banned account cannot extend live presence',asy
  f.sqlite.prepare("UPDATE asc_account_sessions SET revoked_at=? WHERE scope='loader'").run(now);
  assert.equal((await handler.fetch(request('session'),f.env)).status,401);
 });
+
+import {quotaSchema,reservePairGatewayBudget} from './isolated-pairing-quota-candidate.mjs';
+
+test('Stage 7 durable QA budget: concurrent admission, per-route isolation and minute reset',async()=>{
+ const f=fixture();
+ f.sqlite.exec(quotaSchema);
+ const result=await Promise.all(Array.from({length:25},()=>reservePairGatewayBudget(f.env,'pair/start',now)));
+ assert.equal(result.filter(x=>x.allowed).length,20);
+ assert.equal(result.filter(x=>x.status===429).length,5);
+ assert.equal((await reservePairGatewayBudget(f.env,'logout',now)).allowed,true);
+ assert.equal((await reservePairGatewayBudget(f.env,'pair/start',now+60)).allowed,true);
+ assert.equal((await reservePairGatewayBudget(f.env,'pair/start',now)).status,429);
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_qa_pair_gateway_budget').get().n,2);
+});
+
+test('Stage 7 durable QA budget: daily ceiling and UTC rollover',async()=>{
+ const f=fixture();
+ f.sqlite.exec(quotaSchema);
+ const start=Math.floor(now/86400)*86400;
+ for(let minute=0;minute<10;minute++){
+  for(let j=0;j<20;j++)assert.equal((await reservePairGatewayBudget(f.env,'pair/start',start+minute*60)).allowed,true);
+ }
+ assert.equal((await reservePairGatewayBudget(f.env,'pair/start',start+600)).status,429);
+ assert.equal((await reservePairGatewayBudget(f.env,'pair/start',start+86400)).allowed,true);
+ assert.deepEqual({...f.sqlite.prepare("SELECT minute_count,day_count FROM asc_qa_pair_gateway_budget WHERE op='pair/start'").get()},{minute_count:1,day_count:1});
+});
+
+test('Stage 7 durable QA budget: unavailable schema, locked flag and unexpected route fail closed',async()=>{
+ const f=fixture();
+ assert.equal((await reservePairGatewayBudget(f.env,'pair/start',now)).status,503);
+ f.sqlite.exec(quotaSchema);
+ for(const op of ['history','__proto__','constructor','pair/approve']){
+  assert.equal((await reservePairGatewayBudget(f.env,op,now)).status,503);
+ }
+ const locked={...f.env,ASC_PAIR_GATEWAY_LAUNCH_STATE:'locked'};
+ assert.equal((await reservePairGatewayBudget(locked,'pair/start',now)).status,503);
+ assert.equal((await reservePairGatewayBudget(f.env,'pair/start',NaN)).status,503);
+ assert.equal(f.sqlite.prepare('SELECT COUNT(*) AS n FROM asc_qa_pair_gateway_budget').get().n,0);
+});
